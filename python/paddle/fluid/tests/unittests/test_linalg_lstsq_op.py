@@ -18,10 +18,14 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class LinalgLstsqTestCase(unittest.TestCase):
     def setUp(self):
+        self.devices = ["cpu"]
+        if core.is_compiled_with_cuda():
+            self.devices.append("gpu:0")
         self.init_config()
         self.generate_input()
         self.generate_output()
@@ -29,7 +33,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
-        self.driver = "gelsd"
+        self.driver = "gels"
         self._input_shape_1 = (5, 4)
         self._input_shape_2 = (5, 3)
 
@@ -54,77 +58,54 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def test_dygraph(self):
         paddle.disable_static()
-        paddle.device.set_device("cpu")
-        place = paddle.CPUPlace()
-        x = paddle.to_tensor(self._input_data_1, place=place, dtype=self.dtype)
-        y = paddle.to_tensor(self._input_data_2, place=place, dtype=self.dtype)
-        results = paddle.linalg.lstsq(
-            x, y, rcond=self.rcond, driver=self.driver)
-
-        res_solution = results[0].numpy()
-        res_residuals = results[1].numpy()
-        res_rank = results[2].numpy()
-        res_singular_values = results[3].numpy()
-
-        if x.shape[-2] > x.shape[-1] and self._output_rank == x.shape[-1]:
-            if (np.abs(res_residuals - self._output_residuals) < 1e-6).any():
-                pass
-            else:
-                raise RuntimeError("Check LSTSQ residuals dygraph Failed")
-
-        if self.driver in ("gelsy", "gelsd", "gelss"):
-            if (np.abs(res_rank - self._output_rank) < 1e-6).any():
-                pass
-            else:
-                raise RuntimeError("Check LSTSQ rank dygraph Failed")
-
-        if self.driver in ("gelsd", "gelss"):
-            if (np.abs(res_singular_values - self._output_sg_values) < 1e-6
-                ).any():
-                pass
-            else:
-                raise RuntimeError("Check LSTSQ singular values dygraph Failed")
+        for dev in self.devices:
+            paddle.set_device(dev)
+            place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)
+            x = paddle.to_tensor(
+                self._input_data_1, place=place, dtype=self.dtype)
+            y = paddle.to_tensor(
+                self._input_data_2, place=place, dtype=self.dtype)
+            results = paddle.linalg.lstsq(
+                x, y, rcond=self.rcond, driver=self.driver)
+            self.assert_np_close(results)
 
     def test_static(self):
         paddle.enable_static()
-        paddle.device.set_device("cpu")
-        place = fluid.CPUPlace()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = paddle.fluid.data(
-                name="x",
-                shape=self._input_shape_1,
-                dtype=self._input_data_1.dtype)
-            y = paddle.fluid.data(
-                name="y",
-                shape=self._input_shape_2,
-                dtype=self._input_data_2.dtype)
-            results = paddle.linalg.lstsq(
-                x, y, rcond=self.rcond, driver=self.driver)
-            exe = fluid.Executor(place)
-            fetches = exe.run(
-                fluid.default_main_program(),
-                feed={"x": self._input_data_1,
-                      "y": self._input_data_2},
-                fetch_list=[results])
+        for dev in self.devices:
+            paddle.set_device(dev)
+            place = fluid.CPUPlace() if dev == "cpu" else fluid.CUDAPlace(0)
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = paddle.fluid.data(
+                    name="x",
+                    shape=self._input_shape_1,
+                    dtype=self._input_data_1.dtype)
+                y = paddle.fluid.data(
+                    name="y",
+                    shape=self._input_shape_2,
+                    dtype=self._input_data_2.dtype)
+                results = paddle.linalg.lstsq(
+                    x, y, rcond=self.rcond, driver=self.driver)
+                exe = fluid.Executor(place)
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"x": self._input_data_1,
+                          "y": self._input_data_2},
+                    fetch_list=[results])
+                self.assert_np_close(fetches)
 
-            if x.shape[-2] > x.shape[-1] and self._output_rank == x.shape[-1]:
-                if (np.abs(fetches[1] - self._output_residuals) < 1e-6).any():
-                    pass
-                else:
-                    raise RuntimeError("Check LSTSQ residuals static Failed")
+    def assert_np_close(self, results):
+        np.testing.assert_allclose(results[0], self._output_solution, rtol=1e-3)
+        if self._input_shape_1[-2] > self._input_shape_1[
+                -1] and self._output_rank == self._input_shape_1[-1]:
+            np.testing.assert_allclose(
+                results[1], self._output_residuals, rtol=1e-5)
 
-            if self.driver in ("gelsy", "gelsd", "gelss"):
-                if (np.abs(fetches[2] - self._output_rank) < 1e-6).any():
-                    pass
-                else:
-                    raise RuntimeError("Check LSTSQ rank static Failed")
+        if self.driver in ("gelsy", "gelsd", "gelss"):
+            np.testing.assert_allclose(results[2], self._output_rank, rtol=1e-5)
 
-            if self.driver in ("gelsd", "gelss"):
-                if (np.abs(fetches[3] - self._output_sg_values) < 1e-6).any():
-                    pass
-                else:
-                    raise RuntimeError(
-                        "Check LSTSQ singular values static Failed")
+        if self.driver in ("gelsd", "gelss"):
+            np.testing.assert_allclose(
+                results[3], self._output_sg_values, rtol=1e-5)
 
 
 class LinalgLstsqTestCase(LinalgLstsqTestCase):
@@ -161,6 +142,7 @@ class LinalgLstsqTestCaseGelssFloat64(LinalgLstsqTestCase):
         self.driver = "gelss"
         self._input_shape_1 = (5, 5)
         self._input_shape_2 = (5, 1)
+        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
@@ -170,6 +152,7 @@ class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
         self.driver = "gelsy"
         self._input_shape_1 = (8, 2)
         self._input_shape_2 = (8, 10)
+        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
@@ -197,15 +180,7 @@ class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):
         self.driver = "gelsd"
         self._input_shape_1 = (200, 100)
         self._input_shape_2 = (200, 50)
-
-
-class LinalgLstsqTestCaseLarge2(LinalgLstsqTestCase):
-    def init_config(self):
-        self.dtype = 'float32'
-        self.rcond = 1e-15
-        self.driver = "gelss"
-        self._input_shape_1 = (50, 600)
-        self._input_shape_2 = (50, 300)
+        self.devices = ["cpu"]
 
 
 if __name__ == '__main__':
