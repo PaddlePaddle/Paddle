@@ -27,10 +27,9 @@ template <typename T>
 class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet(
-            "This kernel (PutAlongAxisCUDAKernel) only runs on GPU device."));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "PutAlongAxisCUDAKernel only runs on GPU device."));
     auto input = ctx.Input<Tensor>("Input");
     auto axis = ctx.Attr<int>("Axis");
     auto value = ctx.Input<Tensor>("Value");
@@ -68,7 +67,7 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "can not support reduce_op: (%s) for scatter kernel, only "
+          "can not support reduce_op: '%s' for scatter kernel, only "
           "support reduce op: 'add‘, 'assign', 'mul' and 'multiply', the "
           "defalut reduce op is 'assign' ",
           reduce_op));
@@ -81,10 +80,9 @@ template <typename T>
 class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet(
-            "This kernel (PutAlongAxisGradOpCUDAKernel) only runs on GPU."));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "PutAlongAxisGradOpCUDAKernel only runs on GPU."));
 
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto value_grad = ctx.Output<Tensor>(framework::GradVarName("Value"));
