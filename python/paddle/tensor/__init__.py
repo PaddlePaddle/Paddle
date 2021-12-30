@@ -247,6 +247,8 @@ from .search import nonzero  # noqa: F401
 from .search import sort  # noqa: F401
 from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
+from .search import mode  # noqa: F401
+
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
@@ -462,6 +464,7 @@ tensor_method_func  = [ #noqa
            'gcd',
            'lcm',
            'diff',
+           "mode",
            'lerp',
            'lerp_',
            'erfinv',
