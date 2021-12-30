@@ -316,6 +316,7 @@ class DenseTensor : public TensorBase,
     return storage_ == nullptr ? nullptr : std::move(storage_->data_shared());
   }
 
+  void set_offset(size_t offset) { meta_.offset = offset; }
   size_t offset() const { return meta_.offset; }
 
   std::shared_ptr<paddle::memory::Allocation> MoveMemoryHolder() {
