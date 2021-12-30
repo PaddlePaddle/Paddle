@@ -16,6 +16,7 @@ import copy
 import unittest
 
 import paddle
+from paddle.fluid import core
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
@@ -91,6 +92,32 @@ class TestDistributedTensor(unittest.TestCase):
 
         dist_context.dist_main_programs[1] = dist_main_prog
         dist_context.dist_startup_programs[1] = dist_startup_prog
+
+        cur_rank = 0
+        block_id = 0
+        name = "layer_norm_1.tmp_2"
+        # print(dist_context.dist_main_programs[cur_rank])
+        tensor = dist_context.dist_main_programs[cur_rank].global_block().vars[
+            name]
+        intermediate_var_0 = dist_context.new_local_tensor(
+            rank=cur_rank,
+            block_id=block_id,
+            name="intermediate_var_0",
+            dtype=tensor.dtype,
+            shape=(6, 6),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+        self.assertEqual(intermediate_var_0.shape, (6, 6))
+        self.assertEqual(intermediate_var_0.name, "intermediate_var_0")
+
+        dist_tensor = dist_context.get_dist_tensor_for_program(
+            complete_train_program.global_block().vars[name])
+        intermediate_var_1 = dist_context.new_local_tensor(
+            dist_tensor=dist_tensor, name="intermediate_var_1")
+
+        self.assertEqual(intermediate_var_1.shape, (2, 1024))
+        self.assertEqual(intermediate_var_1.name, "intermediate_var_1")
 
     def test_static_method(self):
         dims_mapping = [1, 0]

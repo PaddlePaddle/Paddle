@@ -14,6 +14,8 @@
 
 import copy
 import paddle
+import inspect
+
 from paddle.fluid import core
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import get_tensor_dist_attr_field_keys
@@ -252,16 +254,38 @@ class DistributedTensor:
         return local_shard
 
     def new_local_tensor(self, block, rank, *args, **kwargs):
-        if not isinstance(block, core.framework.Block):
+        if not isinstance(block, paddle.fluid.framework.Block):
             raise TypeError("The block must be Block, but got {}.".format(
                 type(block)))
 
         # copy serial tensor attribute
-        for key in self.serial_tensor.__dict__:
+        arg_spec = inspect.getargspec(paddle.fluid.framework.Variable.__init__)
+        no_need_copy_args = ["self", "block", "shape", "name"]
+        for key in arg_spec.args:
             # TODO: Check the copied attribute from serial tensor whether valid
-            if key != "shape" and key != "name":
-                kwargs[key] = self.serial_tensor.__dict__[key]
-        kwargs["shape"] = self.get_local_sizes()
+            if key in no_need_copy_args:
+                continue
+            elif key not in kwargs:
+                if key == "type":
+                    kwargs[key] = self.serial_tensor.desc.type()
+                elif key == "dtype":
+                    kwargs[key] = self.serial_tensor.desc.dtype()
+                elif key == "lod_level":
+                    kwargs[key] = self.serial_tensor.desc.lod_level()
+                elif key == "persistable":
+                    kwargs[key] = self.serial_tensor.desc.persistable()
+                elif key == "stop_gradient":
+                    kwargs[key] = self.serial_tensor.desc.stop_gradient()
+                elif key == "need_check_feed":
+                    kwargs[key] = self.serial_tensor.desc.need_check_feed()
+                # TODO: Get capacity
+                elif key == "capacity":
+                    continue
+                else:
+                    kwargs[key] = self.serial_tensor.__dict__[key]
+
+        kwargs["shape"] = self.local_sizes(
+            rank) if "shape" not in kwargs else kwargs["shape"]
         local_tensor = block.create_var(*args, **kwargs)
 
         # TODO: Set original id when set original_id is approved

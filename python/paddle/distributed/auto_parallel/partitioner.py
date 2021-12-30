@@ -211,7 +211,6 @@ class Partitioner(object):
                                              **koutputs)
 
             elif is_backward_op(op):
-                print(str(op))
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_backward_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, forward_op_id2forward_op)

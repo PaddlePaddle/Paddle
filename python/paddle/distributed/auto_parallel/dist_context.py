@@ -14,6 +14,8 @@
 
 import copy
 from collections import defaultdict
+
+import paddle
 from paddle.fluid import framework
 from paddle.fluid import core
 from .dist_attribute import TensorDistributedAttribute
