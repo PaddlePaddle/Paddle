@@ -30,19 +30,19 @@ class PutAlongAxisOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"), true,
         platform::errors::InvalidArgument(
-            "Input(Input) of PutAlongAxisOpOp should not be null."));
+            "Input(Input) of PutAlongAxisOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Index"), true,
         platform::errors::InvalidArgument(
-            "Input(Index) of PutAlongAxisOpOp should not be null."));
+            "Input(Index) of PutAlongAxisOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Value"), true,
         platform::errors::InvalidArgument(
-            "Input(Value) of PutAlongAxisOpOp should not be null."));
+            "Input(Value) of PutAlongAxisOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Result"), true,
         platform::errors::InvalidArgument(
-            "Output(Result) of PutAlongAxisOpOp should not be null."));
+            "Output(Result) of PutAlongAxisOp should not be null."));
 
     auto index_dim = ctx->GetInputDim("Index");
 

@@ -29,7 +29,8 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
+        platform::errors::PreconditionNotMet(
+            "This kernel (PutAlongAxisOpKernel) only runs on CPU."));
 
     auto input = ctx.Input<Tensor>("Input");
     auto axis = ctx.Attr<int>("Axis");
@@ -67,7 +68,7 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "can not suppor reduce_op: (%s) for scatter kernel, only "
+          "can not support reduce_op: (%s) for scatter kernel, only "
           "support reduce op: 'add‘, 'assign', 'mul' and 'multiply', the "
           "defalut reduce "
           "op is 'assign' ",
@@ -83,7 +84,8 @@ class PutAlongAxisGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
+        platform::errors::PreconditionNotMet(
+            "This kernel (PutAlongAxisGradOpKernel) only runs on CPU."));
 
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto value_grad = ctx.Output<Tensor>(framework::GradVarName("Value"));

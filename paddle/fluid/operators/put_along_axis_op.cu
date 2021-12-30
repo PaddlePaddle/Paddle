@@ -27,9 +27,10 @@ template <typename T>
 class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "This kernel only runs on GPU device."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet(
+            "This kernel (PutAlongAxisCUDAKernel) only runs on GPU device."));
     auto input = ctx.Input<Tensor>("Input");
     auto axis = ctx.Attr<int>("Axis");
     auto value = ctx.Input<Tensor>("Value");
@@ -39,40 +40,40 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
     const platform::DeviceContext &device_ctx = ctx.device_context();
 
     const auto &index_type = index->type();
+
+    framework::TensorCopy(*input, ctx.GetPlace(), result);
     if (reduce_op == "add") {
       if (index_type == framework::proto::VarType::INT32) {
-        gpu_scatter_add_kernel<T, int32_t>(*input, axis, *index, *value,
+        gpu_scatter_add_kernel<T, int32_t>(*result, axis, *index, *value,
                                            device_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        gpu_scatter_add_kernel<T, int64_t>(*input, axis, *index, *value,
+        gpu_scatter_add_kernel<T, int64_t>(*result, axis, *index, *value,
                                            device_ctx);
       }
     } else if (reduce_op == "multiply" || reduce_op == "mul") {
       if (index_type == framework::proto::VarType::INT32) {
-        gpu_scatter_mul_kernel<T, int32_t>(*input, axis, *index, *value,
+        gpu_scatter_mul_kernel<T, int32_t>(*result, axis, *index, *value,
                                            device_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        gpu_scatter_mul_kernel<T, int64_t>(*input, axis, *index, *value,
+        gpu_scatter_mul_kernel<T, int64_t>(*result, axis, *index, *value,
                                            device_ctx);
       }
     } else if (reduce_op == "assign") {
       if (index_type == framework::proto::VarType::INT32) {
-        gpu_scatter_assign_kernel<T, int32_t>(*input, axis, *index, *value,
+        gpu_scatter_assign_kernel<T, int32_t>(*result, axis, *index, *value,
                                               device_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        gpu_scatter_assign_kernel<T, int64_t>(*input, axis, *index, *value,
+        gpu_scatter_assign_kernel<T, int64_t>(*result, axis, *index, *value,
                                               device_ctx);
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "can not suppor reduce_op: (%s) for scatter kernel : %s, only "
+          "can not support reduce_op: (%s) for scatter kernel, only "
           "support reduce op: 'add‘, 'assign', 'mul' and 'multiply', the "
-          "defalut reduce "
-          "op is assign ",
+          "defalut reduce op is 'assign' ",
           reduce_op));
       return;
     }
-    framework::TensorCopy(*input, ctx.GetPlace(), result);
   }
 };
 
@@ -82,7 +83,8 @@ class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
+        platform::errors::PreconditionNotMet(
+            "This kernel (PutAlongAxisGradOpCUDAKernel) only runs on GPU."));
 
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto value_grad = ctx.Output<Tensor>(framework::GradVarName("Value"));
