@@ -285,7 +285,6 @@ EOF
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-        -DCUDA_ARCH_BIN="${DCUDA_ARCH_BIN}" \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
