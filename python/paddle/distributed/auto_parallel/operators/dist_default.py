@@ -22,6 +22,7 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
@@ -86,6 +87,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(src_op.desc)
+        set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
@@ -170,6 +172,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
+        # Refer to the related dist op
+        set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         for input_name in backward_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in backward_op.desc.output_names():

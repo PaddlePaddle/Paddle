@@ -72,12 +72,14 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes || storage_->size() == 0) {
+  if (storage_->size() < bytes + meta_.offset || storage_->size() == 0) {
     VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
              << ", new size: " << bytes;
     storage_->Realloc(bytes);
+    meta_.offset = 0;
   }
-  return storage_->data();
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+                                 meta_.offset);
 }
 
 template <typename T>
@@ -116,7 +118,8 @@ const void* DenseTensor::data() const {
       storage_,
       paddle::platform::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
-  return storage_->data();
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+                                 meta_.offset);
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
