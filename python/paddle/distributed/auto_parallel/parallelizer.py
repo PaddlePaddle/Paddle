@@ -165,14 +165,13 @@ class AutoParallelizer:
                                                    config)
             auto_parallel_sharding_pass.apply(
                 [main_program], [startup_program], self._pass_context)
-        
+
         if self._dist_strategy.gradient_merge:
             config = copy.deepcopy(self._dist_strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config)
-
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context)
 
