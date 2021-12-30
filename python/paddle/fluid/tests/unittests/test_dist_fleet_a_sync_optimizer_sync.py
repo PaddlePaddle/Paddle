@@ -62,10 +62,6 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         self.assertEqual(sends, 0)
         self.assertEqual(sgds, 0)
 
-        fleet.init_worker()
-        time.sleep(8)
-        fleet.stop_worker()
-
 
 if __name__ == "__main__":
     unittest.main()

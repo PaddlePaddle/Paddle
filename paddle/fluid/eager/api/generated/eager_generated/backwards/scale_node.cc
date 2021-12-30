@@ -83,7 +83,7 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
                       SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size), 0),
+          paddle::memory::Alloc(place, bytes_size)),
       std::move(tensor_meta));
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place =

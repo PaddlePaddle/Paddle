@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/pten/kernels/cast_kernel.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
@@ -56,13 +54,10 @@ __global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
 }
 
 template <typename InT, typename OutT>
-void CastCUDAKernelImpl(const GPUContext& dev_ctx,
-                        const DenseTensor& x,
-                        DenseTensor* out) {
-  auto* in_data = x.data<InT>();
-  auto size = x.numel();
-  auto* out_data = out->mutable_data<OutT>();
-
+void CastCUDAKernelImplWithPtr(const GPUContext& dev_ctx,
+                               const InT* in_data,
+                               OutT* out_data,
+                               int64_t size) {
   paddle::platform::GpuLaunchConfig config =
       paddle::platform::GetGpuLaunchConfig1D(dev_ctx, size);
   int vec_size = paddle::platform::GetVectorizedSize<OutT>(out_data);
@@ -80,11 +75,20 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   }
 }
 
+template <typename InT, typename OutT>
+void CastCUDAKernelImpl(const GPUContext& dev_ctx,
+                        const DenseTensor& x,
+                        DenseTensor* out) {
+  auto* in_data = x.data<InT>();
+  auto size = x.numel();
+  auto* out_data = out->mutable_data<OutT>();
+  CastCUDAKernelImplWithPtr(dev_ctx, in_data, out_data, size);
+}
+
 template <typename T, typename ContextT>
 void Cast(const ContextT& dev_ctx,
           const DenseTensor& x,
           DataType out_dtype,
-          DataType in_dtype,
           DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
                        CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);

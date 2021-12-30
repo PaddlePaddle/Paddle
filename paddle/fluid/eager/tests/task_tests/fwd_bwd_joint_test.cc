@@ -41,7 +41,7 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
       paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size), 0),
+          paddle::memory::Alloc(place, bytes_size)),
       std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>();
