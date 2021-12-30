@@ -60,11 +60,11 @@ class MKLDNNActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(dout->layout(), DataLayout::kMKLDNN,
+    const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
                       platform::errors::InvalidArgument(
                           "Wrong layout set for Input OutGrad tensor"));
-    PADDLE_ENFORCE_NE(dout->format(), MKLDNNMemoryFormat::undef,
+    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
                       platform::errors::InvalidArgument(
                           "Wrong format set for Input OutGrad tensor"));
 
