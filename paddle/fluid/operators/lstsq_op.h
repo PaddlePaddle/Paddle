@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
 
 #define EPSILON 1e-6

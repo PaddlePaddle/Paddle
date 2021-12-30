@@ -2623,19 +2623,31 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     the least squares problem of a system of linear equations.
 
     Args:
-        x (Tensor): A tensor with shape :math:`[_, M, N]` , The data 
-            type of the input Tensor x should be one of float32, float64.
-        y (Tensor): A tensor with shape :math:`[_, M, K]` , The data 
-            type of the input Tensor y should be one of float32, float64.
+        x (Tensor): A tensor with shape :math:`[_, M, N]` , the data type of the input Tensor `x` 
+            should be one of float32, float64.
+        y (Tensor): A tensor with shape :math:`[_, M, K]` , the data type of the input Tensor `y` 
+            should be one of float32, float64.
         rcond(float, optional): A float pointing number used to determine the effective rank of x.
             If `rcond` is None, it will be set to max(M, N) times the machine precision of x_dtype.
-        driver(str, optional):  The name of LAPACK method to be used. If `driver` is None, ‘gelsy’ 
-            is used for CPU inputs and ‘gels’ for CUDA inputs.
+        driver(str, optional):  The name of LAPACK method to be used. For CPU inputs the valid values 
+            are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only valid driver is ‘gels’. If 
+            `driver` is None, ‘gelsy’ is used for CPU inputs and ‘gels’ for CUDA inputs.
         name(str, optional): The default value is None. Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tuple: A tuple including solution, residuals, rank, singular_values.
+
+        solution: A tensor with shape :math:`[_, N, K]`, the least squares solution.
+
+        residuals: A tensor with shape :math:`[_, K]`, the squared residuals of the solutions. 
+            It is computed when M > N and every matrix in `x` is full-rank, otherwise return an empty tensor. 
+        
+        rank: A tensor with shape :math:`[_]`, ranks of the matrices in `x`. It is computed when driver 
+            in (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor.
+        
+        singular_values: A tensor with shape :math:`[_, min(M, N)]`, singular values of the matrices in `x`. 
+            It is computed when driver in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
 
     Examples:
         .. code-block:: python
