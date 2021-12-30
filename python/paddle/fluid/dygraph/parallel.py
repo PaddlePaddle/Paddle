@@ -356,8 +356,7 @@ def sync_params_buffers(model,
                         src_rank=0,
                         is_model_parallel=False):
     model_vars = []
-    params_buffers = model.parameters() + model.buffers()
-    for param in params_buffers:
+    for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.VarBase):
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)

@@ -113,7 +113,6 @@ TEST(InterceptorTest, PingPong) {
     if (pid == 0) {
       Carrier* carrier =
           FleetExecutor::CreateCarrier(0, interceptor_id_to_rank);
-      carrier->SetCreatingFlag(false);
       auto msg_bus = std::make_shared<MessageBus>();
       carrier->SetMsgBus(msg_bus);
       // NOTE: need Init msg_bus after carrier SetMsgBus
@@ -128,7 +127,6 @@ TEST(InterceptorTest, PingPong) {
     } else {
       Carrier* carrier =
           FleetExecutor::CreateCarrier(1, interceptor_id_to_rank);
-      carrier->SetCreatingFlag(false);
       auto msg_bus = std::make_shared<MessageBus>();
       carrier->SetMsgBus(msg_bus);
       msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);

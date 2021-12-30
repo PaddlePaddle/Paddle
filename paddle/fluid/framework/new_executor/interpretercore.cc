@@ -16,9 +16,14 @@
 #include <unordered_set>
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_event_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/framework/new_executor/interpretercore_fast_garbage_collector.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -28,6 +33,8 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
+DECLARE_bool(fast_eager_deletion_mode);
+DECLARE_bool(use_stream_safe_cuda_allocator);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -36,6 +43,10 @@ namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
 static constexpr size_t kHostNumThreads = 4;
+
+bool IsInterpretercoreFastGCEnabled() {
+  return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+}
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
@@ -47,7 +58,16 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   is_build_ = false;
   async_work_queue_.reset(
       new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
-  gc_.reset(new InterpreterCoreGarbageCollector());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (IsInterpretercoreFastGCEnabled()) {
+    gc_ = std::make_unique<InterpreterCoreFastGarbageCollector>();
+  } else {
+    gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
+  }
+#else
+  gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
+#endif
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -513,7 +533,10 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       RunInstruction(instr_node);
-      // GC infomation
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      RecordStreamForGC(instr_node);
+#endif
       CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
@@ -552,6 +575,99 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   }
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
+  if (!IsInterpretercoreFastGCEnabled() ||
+      instr.KernelType() != OpFuncType::kQueueAsync) {
+    return;
+  }
+
+  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                           instr.DeviceContext())
+                           .stream();
+  auto TensorRecordStream = [&stream](Tensor& tensor) {
+    auto allocation = tensor.Holder();
+    if (allocation == nullptr) {
+      return;
+    }
+
+    const platform::Place& place = allocation->place();
+    if (platform::is_gpu_place(place)) {
+      memory::RecordStream(allocation, stream);
+    } else if (platform::is_cuda_pinned_place(place)) {
+      // TODO(Ruibiao): Here should do something to make sure that the tensor is
+      // not freed until the H2D copies done. However, simplely launch a CUDA
+      // runtime callback to the H2D stream may lead a high performance
+      // overhead. As all the cases we meet in H2D are copies from CPUPlace at
+      // present, we just log a WARNING here. A better design is required.
+      LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
+                      "manner may lead a data inconsistent";
+    } else {
+      // memory copies involve CPUPlace are always synchronous, so just do
+      // nothing here
+    }
+  };
+
+  /* NOTE(Ruibiao)：Cross-stream tensor synchronization is required only when
+   * all the following conditions are satisfied:
+   * 1. The tensor will be GC after running the instruction, i.e., in
+   * instr.GCCheckVars.
+   * 2. The stream which initializes this tensor is different from the stream
+   * which the instruction run in.
+   * 3. The tensor is the instruction's input, cause we assume that instruction
+   * will initialize all output tensors with its running stream.
+   * 4. In the OP function of this instruction, the tensor is an input of a
+   * async CUDA kernel.
+   *
+   * Here we only process the first condition, because:
+   * 1. Since the RecordStream function will directly return when the recored
+   * stream is equal to the owning stream, recording a stream same as which
+   * initialized this tensor has less time overhead. Conversely, it may take
+   * more time if we try to extract those cross-stream input vars from
+   * instr.GCCheckVars.
+   * 2. Now the instruction has no idea of which vars involving async running in
+   * OP function, and thus we can not recognize condition 4. It should be
+   * supported later.
+   */
+  for (int var_id : instr.GCCheckVars()) {
+    VLOG(4) << "GC sync " << global_scope_->GetNameById(var_id) << " "
+            << global_scope_->VarDesc(var_id);
+
+    // persistable var will be ignore while GC
+    if (global_scope_->VarDesc(var_id) &&
+        global_scope_->VarDesc(var_id)->Persistable()) {
+      continue;
+    }
+
+    paddle::framework::Variable* var = global_scope_->Var(var_id);
+    if (var == nullptr) {
+      continue;
+    }
+
+    if (var->IsType<LoDTensor>()) {
+      TensorRecordStream(*(var->GetMutable<LoDTensor>()));
+    } else if (var->IsType<
+                   operators::reader::
+                       OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+      // do nothing
+    } else if (var->IsType<SelectedRows>()) {
+      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& tensor : *tensor_arr) {
+        TensorRecordStream(tensor);
+      }
+    } else if (var->IsType<std::vector<Scope*>>()) {
+      // do nothing
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The variable(%s) is not supported in eager deletion.",
+          framework::ToTypeName(var->Type())));
+    }
+  }
+}
+#endif
+
 void InterpreterCore::CheckGC(const Instruction& instr) {
   size_t instr_id = instr.Id();
   auto& var_scope = *global_scope_;
@@ -570,8 +686,21 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
-      gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-               &instr.DeviceContext());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (IsInterpretercoreFastGCEnabled()) {
+        static_cast<InterpreterCoreFastGarbageCollector*>(gc_.get())->Add(
+            var_scope.Var(var_id));
+
+      } else {
+        static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
+            var_scope.Var(var_id), gc_event_.at(instr_id),
+            &instr.DeviceContext());
+      }
+#else
+      static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
+          var_scope.Var(var_id), gc_event_.at(instr_id),
+          &instr.DeviceContext());
+#endif
     }
   }
 }
