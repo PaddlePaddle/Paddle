@@ -23,8 +23,6 @@ from paddle.fluid import unique_name, layers
 from paddle.fluid.clip import append_gradient_clip_ops
 from .pass_base import PassBase, PassType, register_pass
 
-GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
-
 
 def _is_the_backward_op(op):
     OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
