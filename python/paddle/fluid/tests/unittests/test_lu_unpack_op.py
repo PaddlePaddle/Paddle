@@ -26,27 +26,33 @@ import scipy.linalg
 import copy
 
 
-def scipy_lu(A, pivot):
+def scipy_lu_unpack(A):
     shape = A.shape
     if len(shape) == 2:
-        return scipy.linalg.lu(A, permute_l=not pivot)
+        return scipy.linalg.lu(A)
     else:
         preshape = shape[:-2]
         batchsize = np.product(shape) // (shape[-2] * shape[-1])
-        PP = []
-        PL = []
-        PU = []
+        Plst = []
+        Llst = []
+        Ulst = []
+
         NA = A.reshape((-1, shape[-2], shape[-1]))
         for b in range(batchsize):
-            P, L, U = scipy.linalg.lu(NA[b], permute_l=not pivot)
+            As = NA[b]
+            P, L, U = scipy.linalg.lu(As)
+
             pshape = P.shape
             lshape = L.shape
             ushape = U.shape
-            PP.append(P)
-            PL.append(L)
-            PU.append(U)
-        return np.array(PP).reshape(preshape + pshape), np.array(PL).reshape(
-            preshape + lshape), np.array(PU).reshape(preshape + ushape)
+
+            Plst.append(P)
+            Llst.append(L)
+            Ulst.append(U)
+
+        return np.array(Plst).reshape(preshape + pshape), np.array(
+            Llst).reshape(preshape + lshape), np.array(Ulst).reshape(preshape +
+                                                                     ushape)
 
 
 def Pmat_to_perm(Pmat_org, cut):
@@ -69,6 +75,7 @@ def Pmat_to_perm(Pmat_org, cut):
 
         permmat.append(permlst)
     Pivot = np.array(permmat).reshape(list(shape[:-2]) + [rows, ]) + 1
+
     return Pivot[..., :cut]
 
 
@@ -91,85 +98,96 @@ def perm_to_Pmat(perm, dim):
     return np.array(oneslst).reshape(list(pshape[:-1]) + [dim, dim])
 
 
-# m < n
-class TestLUOp(OpTest):
+# m > n
+class TestLU_UnpackOp(OpTest):
     """
     case 1
     """
 
     def config(self):
-        self.x_shape = [3, 10, 12]
-        self.pivot = True
-        self.get_infos = True
+        self.x_shape = [2, 12, 10]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
         self.dtype = "float64"
 
-    def set_output(self):
-        X = self.inputs['X']
-        sP, sl, sU = scipy_lu(X, self.pivot)
-        sL = np.tril(sl, -1)
-        ashape = np.array(X.shape)
-        lshape = np.array(sL.shape)
-        ushape = np.array(sU.shape)
-
-        lpad = (len(sL.shape) - 2) * [(0, 0)] + list((
-            (0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
-        upad = (len(sU.shape) - 2) * [(0, 0)] + list((
-            (0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
-
-        NsL = np.pad(sL, lpad)
-        NsU = np.pad(sU, upad)
-        NLU = NsL + NsU
-        self.output = NLU
-        self.Pivots = Pmat_to_perm(sP, min(ashape[-2], ashape[-1]))
-        self.Infos = np.zeros(self.x_shape[:-2]) if len(
-            X.shape) > 2 else np.array([0])
+    def set_output(self, A):
+        sP, sL, sU = scipy_lu_unpack(A)
+        self.L = sL
+        self.U = sU
+        self.P = sP
 
     def setUp(self):
-        self.op_type = "lu"
+        self.op_type = "lu_unpack"
         self.config()
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        if paddle.in_dynamic_mode():
+            xt = paddle.to_tensor(x)
+            lu, pivots = paddle.linalg.lu(xt)
+            lu = lu.numpy()
+            pivots = pivots.numpy()
+        else:
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                place = fluid.CPUPlace()
+                if core.is_compiled_with_cuda():
+                    place = fluid.CUDAPlace(0)
+                xv = paddle.fluid.data(
+                    name="input", shape=self.x_shape, dtype=self.dtype)
+                lu, p = paddle.linalg.lu(xv)
+                exe = fluid.Executor(place)
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": x},
+                                  fetch_list=[lu, p])
+                lu, pivots = fetches[0], fetches[1]
 
-        self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
-        self.attrs = {'pivots': self.pivot}
-        self.set_output()
+        self.inputs = {'X': lu, 'Pivots': pivots}
+
+        self.attrs = {
+            'unpack_ludata': self.unpack_ludata,
+            'unpack_pivots': self.unpack_pivots
+        }
+        self.set_output(x)
         self.outputs = {
-            'Out': self.output,
-            'Pivots': self.Pivots,
-            'Infos': self.Infos
+            'Pmat': self.P,
+            'L': self.L,
+            'U': self.U,
         }
 
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], ['L', 'U'])
 
-# m = n 2D
-class TestLUOp2(TestLUOp):
+
+# m = n
+class TestLU_UnpackOp2(TestLU_UnpackOp):
     """
     case 2
     """
 
     def config(self):
-        self.x_shape = [10, 10]
-        self.pivot = True
-        self.get_infos = True
+        self.x_shape = [2, 10, 10]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
         self.dtype = "float64"
 
 
-# m > n
-class TestLUOp3(TestLUOp):
+# m < n
+class TestLU_UnpackOp3(TestLU_UnpackOp):
     """
     case 3
     """
 
     def config(self):
-        self.x_shape = [2, 12, 10]
-        self.pivot = True
-        self.get_infos = True
+        self.x_shape = [2, 10, 12]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
         self.dtype = "float64"
 
 
-class TestLUAPI(unittest.TestCase):
+class TestLU_UnpackAPI(unittest.TestCase):
     def test_dygraph(self):
-        def run_lu_dygraph(shape, dtype):
+        def run_lu_unpack_dygraph(shape, dtype):
             if dtype == "float32":
                 np_dtype = np.float32
             elif dtype == "float64":
@@ -178,28 +196,21 @@ class TestLUAPI(unittest.TestCase):
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
-            pivot = True
 
             places = [fluid.CPUPlace()]
             if core.is_compiled_with_cuda():
                 places.append(fluid.CUDAPlace(0))
             for place in places:
                 paddle.disable_static(place)
-                batch_size = a.size // (a.shape[-1] * a.shape[-2])
-                x = paddle.to_tensor(a, dtype=dtype)
-                sP, sl, sU = scipy_lu(a, pivot)
-                sL = np.tril(sl, -1)
-                LU, P, Info = paddle.linalg.lu(x, pivot=pivot, get_infos=True)
-                m, n = LU.shape[-2], LU.shape[-1]
-                tril = np.tril(LU, -1)[..., :m, :m]
-                triu = np.triu(LU)[..., :n, :n]
-                mtp = Pmat_to_perm(sP, min(m, n))
-                nP = perm_to_Pmat(P, sP.shape[-1])
 
-                self.assertTrue(np.allclose(sU, triu, atol=1e-5))
-                self.assertTrue(np.allclose(sL, tril, atol=1e-5))
-                self.assertTrue(np.allclose(P, mtp, atol=1e-5))
-                self.assertTrue(np.allclose(nP, sP, atol=1e-5))
+                x = paddle.to_tensor(a, dtype=dtype)
+                sP, sL, sU = scipy_lu_unpack(a)
+                LU, P = paddle.linalg.lu(x)
+                pP, pL, pU = paddle.linalg.lu_unpack(LU, P)
+
+                self.assertTrue(np.allclose(sU, pU, atol=1e-5))
+                self.assertTrue(np.allclose(sL, pL, atol=1e-5))
+                self.assertTrue(np.allclose(sP, pP, atol=1e-5))
 
         tensor_shapes = [
             (3, 5),
@@ -214,7 +225,7 @@ class TestLUAPI(unittest.TestCase):
         ]
         dtypes = ["float32", "float64"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
-            run_lu_dygraph(tensor_shape, dtype)
+            run_lu_unpack_dygraph(tensor_shape, dtype)
 
     def test_static(self):
         paddle.enable_static()
@@ -228,38 +239,25 @@ class TestLUAPI(unittest.TestCase):
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
-            pivot = True
 
-            places = []
             places = [fluid.CPUPlace()]
             if core.is_compiled_with_cuda():
                 places.append(fluid.CUDAPlace(0))
             for place in places:
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    batch_size = a.size // (a.shape[-1] * a.shape[-2])
-                    sP, sl, sU = scipy_lu(a, pivot)
-                    sL = np.tril(sl, -1)
-                    ashape = np.array(a.shape)
-                    lshape = np.array(sL.shape)
-                    ushape = np.array(sU.shape)
-
-                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list((
-                        (0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
-                    upad = (len(sU.shape) - 2) * [(0, 0)] + list((
-                        (0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
-
-                    NsL = np.pad(sL, lpad)
-                    NsU = np.pad(sU, upad)
-                    NLU = NsL + NsU
+                    sP, sL, sU = scipy_lu_unpack(a)
 
                     x = paddle.fluid.data(
                         name="input", shape=shape, dtype=dtype)
-                    lu, p = paddle.linalg.lu(x, pivot=pivot)
+                    lu, p = paddle.linalg.lu(x)
+                    pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
                     exe = fluid.Executor(place)
                     fetches = exe.run(fluid.default_main_program(),
                                       feed={"input": a},
-                                      fetch_list=[lu, p])
-                    self.assertTrue(np.allclose(fetches[0], NLU, atol=1e-5))
+                                      fetch_list=[pP, pL, pU])
+                    self.assertTrue(np.allclose(fetches[0], sP, atol=1e-5))
+                    self.assertTrue(np.allclose(fetches[1], sL, atol=1e-5))
+                    self.assertTrue(np.allclose(fetches[2], sU, atol=1e-5))
 
         tensor_shapes = [
             (3, 5),
