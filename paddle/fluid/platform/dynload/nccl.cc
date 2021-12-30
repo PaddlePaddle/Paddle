@@ -37,6 +37,10 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2304(DEFINE_WRAP)
 NCCL_RAND_ROUTINE_EACH_AFTER_2703(DEFINE_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 21100
+NCCL_RAND_ROUTINE_EACH_AFTER_21100(DEFINE_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
