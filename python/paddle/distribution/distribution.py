@@ -42,10 +42,34 @@ class Distribution(object):
     implemented in specific distributions.
     """
 
-    def __init__(self):
+    def __init__(self, batch_shape=(), event_shape=()):
+
+        self._batch_shape = batch_shape if isinstance(
+            batch_shape, tuple) else tuple(batch_shape)
+        self._event_shape = event_shape if isinstance(
+            event_shape, tuple) else tuple(event_shape)
+
         super(Distribution, self).__init__()
 
-    def sample(self):
+    @property
+    def batch_shape(self):
+        """Returns batch shape of distribution
+
+        Returns:
+            Tensor: batch shape
+        """
+        return self._batch_shape
+
+    @property
+    def event_shape(self):
+        """Returns event shape of distribution
+
+        Returns:
+            Tensor: event shape
+        """
+        return self._event_shape
+
+    def sample(self, shape=()):
         """Sampling from the distribution."""
         raise NotImplementedError
 
@@ -57,6 +81,14 @@ class Distribution(object):
         """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
+    def prob(self, value):
+        """Probability density/mass function evaluated at value.
+
+        Args:
+            value (Tensor): value which will be evaluated
+        """
+        raise NotImplementedError
+
     def log_prob(self, value):
         """Log probability density/mass function."""
         raise NotImplementedError
@@ -64,6 +96,17 @@ class Distribution(object):
     def probs(self, value):
         """Probability density/mass function."""
         raise NotImplementedError
+
+    def _extend_shape(self, sample_shape):
+        """compute shape of the sample 
+
+        Args:
+            sample_shape (Tensor): sample shape
+
+        Returns:
+            Tensor: generated sample data shape
+        """
+        return sample_shape + self._batch_shape + self._event_shape
 
     def _validate_args(self, *args):
         """

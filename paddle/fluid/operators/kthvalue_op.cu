@@ -27,7 +27,7 @@
 namespace paddle {
 namespace operators {
 
-int ComputeBlockSize(int col) {
+int getBlockSize(int col) {
   if (col > 512)
     return 1024;
   else if (col > 256 && col <= 512)
@@ -53,7 +53,7 @@ bool SortKthvalue(const platform::CUDADeviceContext& ctx,
   input_indices.Resize(dim);
   input_indices.mutable_data<int64_t>(ctx.GetPlace());
   size_t temp_storage_bytes = -1;
-  int block_size = ComputeBlockSize(num_cols);
+  int block_size = getBlockSize(num_cols);
   unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
@@ -253,7 +253,7 @@ class KthvalueOpGradCUDAKernel : public framework::OpKernel<T> {
     int pre, n, post;
     GetDims(in_dims, axis, &pre, &n, &post);
     auto& dev_ctx = context.cuda_device_context();
-    int block_size = ComputeBlockSize(post * k);
+    int block_size = getBlockSize(post * k);
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
     int grid_size = std::min(max_blocks, pre);

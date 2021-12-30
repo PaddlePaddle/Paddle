@@ -358,6 +358,12 @@ class CUDAContext {
     return cublas_tensor_core_handle_;
   }
 
+#ifndef PADDLE_WITH_HIP
+  const std::unique_ptr<CusparseHandleHolder>& CusparseHandle() const {
+    return cusparse_handle_;
+  }
+#endif
+
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
@@ -367,6 +373,14 @@ class CUDAContext {
       cublas_handle_->Call(std::forward<Callback>(callback));
     }
   }
+
+#ifndef PADDLE_WITH_HIP
+  /*! \brief  Call cusparse function safely. */
+  template <typename Callback>
+  inline void CusparseCall(Callback&& callback) const {
+    cusparse_handle_->Call(std::forward<Callback>(callback));
+  }
+#endif
 
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
@@ -403,6 +417,12 @@ class CUDAContext {
 #endif  // CUDA_VERSION >= 11000
 #endif  // CUDA_VERSION >= 9000
     }
+  }
+#endif
+
+#ifndef PADDLE_WITH_HIP
+  void InitCuSparseContext() {
+    cusparse_handle_.reset(new CusparseHandleHolder(RawStream()));
   }
 #endif
 
@@ -479,6 +499,10 @@ class CUDAContext {
   }
 
 #ifndef PADDLE_WITH_HIP
+  void DestoryCuSparseContext() { cusparse_handle_.reset(); }
+#endif
+
+#ifndef PADDLE_WITH_HIP
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -501,6 +525,7 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
 #ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle_;
+  std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #endif
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
@@ -540,6 +565,14 @@ class CUDADeviceContext : public DeviceContext {
     return context()->CublasCall(callback);
   }
 
+#ifndef PADDLE_WITH_HIP
+  /*! \brief  Call cusparse function safely. */
+  template <typename Callback>
+  inline void CusparseCall(Callback&& callback) const {
+    return context()->CusparseCall(callback);
+  }
+#endif
+
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
 
@@ -562,6 +595,7 @@ class CUDADeviceContext : public DeviceContext {
   rocblas_handle cublas_handle() const;
 #else
   cublasHandle_t cublas_handle() const;
+  cusparseHandle_t cusparse_handle() const;
 #endif
 
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
