@@ -2758,7 +2758,7 @@ def take_along_axis(arr, indices, axis):
     Args:
         arr (Tensor) : The input Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
-        and need to broadcast against arr. Supported data type are int and int64.
+            and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to take 1d slices along. 
 
     Returns: 
@@ -2813,7 +2813,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     Args:
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
-        and need to broadcast against arr. Supported data type are int and int64.
+            and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along. 
         reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
     Returns : 
