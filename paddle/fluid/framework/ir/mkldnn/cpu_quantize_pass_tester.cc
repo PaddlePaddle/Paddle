@@ -58,7 +58,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
-  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2") {
+  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
+             type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "slice") {
@@ -432,6 +433,18 @@ TEST(CpuQuantizePass, slice) { TestImmutableOp("slice"); }
 
 TEST(CpuQuantizePass, sliceBetweenNonQuantizedOp) {
   TestImmutableOpBetweenNonQuantizedOp("slice");
+}
+
+TEST(CpuQuantizePass, nearestInterp) { TestImmutableOp("nearest_interp"); }
+
+TEST(CpuQuantizePass, nearestInterpBetweenNonQuantizedOp) {
+  TestImmutableOpBetweenNonQuantizedOp("nearest_interp");
+}
+
+TEST(CpuQuantizePass, nearestInterpV2) { TestImmutableOp("nearest_interp_v2"); }
+
+TEST(CpuQuantizePass, nearestInterpV2BetweenNonQuantizedOp) {
+  TestImmutableOpBetweenNonQuantizedOp("nearest_interp_v2");
 }
 
 static const std::initializer_list<std::string> variable_names_matmul = {
