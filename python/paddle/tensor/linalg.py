@@ -2643,11 +2643,11 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         residuals: A tensor with shape :math:`[_, K]`, the squared residuals of the solutions. 
             It is computed when M > N and every matrix in `x` is full-rank, otherwise return an empty tensor. 
         
-        rank: A tensor with shape :math:`[_]`, ranks of the matrices in `x`. It is computed when driver 
+        rank: A tensor with shape :math:`[_]`, ranks of the matrices in `x`. It is computed when `driver `
             in (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor.
         
         singular_values: A tensor with shape :math:`[_, min(M, N)]`, singular values of the matrices in `x`. 
-            It is computed when driver in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
+            It is computed when `driver` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
 
     Examples:
         .. code-block:: python

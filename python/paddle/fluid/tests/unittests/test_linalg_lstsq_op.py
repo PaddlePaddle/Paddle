@@ -24,9 +24,9 @@ import paddle.fluid.core as core
 class LinalgLstsqTestCase(unittest.TestCase):
     def setUp(self):
         self.devices = ["cpu"]
-        if core.is_compiled_with_cuda():
-            self.devices.append("gpu:0")
         self.init_config()
+        if core.is_compiled_with_cuda() and self.driver == "gels":
+            self.devices.append("gpu:0")
         self.generate_input()
         self.generate_output()
 
@@ -151,19 +151,18 @@ class LinalgLstsqTestCase(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
-        self.driver = "gels"
-        self._input_shape_1 = (8, 7)
-        self._input_shape_2 = (8, 5)
+        self.driver = "gelsy"
+        self._input_shape_1 = (5, 10)
+        self._input_shape_2 = (5, 5)
 
 
 class LinalgLstsqTestCaseRcond(LinalgLstsqTestCase):
     def init_config(self):
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.rcond = 1e-7
-        self.driver = "gels"
+        self.driver = "gelsd"
         self._input_shape_1 = (3, 2)
         self._input_shape_2 = (3, 3)
-        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseGelsFloat32(LinalgLstsqTestCase):
@@ -182,7 +181,6 @@ class LinalgLstsqTestCaseGelssFloat64(LinalgLstsqTestCase):
         self.driver = "gelss"
         self._input_shape_1 = (5, 5)
         self._input_shape_2 = (5, 1)
-        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
@@ -192,7 +190,6 @@ class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
         self.driver = "gelsy"
         self._input_shape_1 = (8, 2)
         self._input_shape_2 = (8, 10)
-        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
@@ -202,17 +199,15 @@ class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
         self.driver = "gelss"
         self._input_shape_1 = (2, 3, 10)
         self._input_shape_2 = (2, 3, 4)
-        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
-        self.driver = "gelsd"
+        self.driver = "gelss"
         self._input_shape_1 = (10, 8, 6)
         self._input_shape_2 = (10, 8, 2)
-        self.devices = ["cpu"]
 
 
 class LinalgLstsqTestCaseLarge(LinalgLstsqTestCase):
@@ -222,7 +217,6 @@ class LinalgLstsqTestCaseLarge(LinalgLstsqTestCase):
         self.driver = "gelsd"
         self._input_shape_1 = (200, 100)
         self._input_shape_2 = (200, 50)
-        self.devices = ["cpu"]
 
 
 if __name__ == '__main__':
