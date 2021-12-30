@@ -18,6 +18,7 @@ from . import core
 from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
+import sys
 
 __all__ = [
     'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
@@ -355,3 +356,33 @@ def profiler(state,
         yield
     finally:
         stop_profiler(sorted_key, profile_path)
+
+
+@signature_safe_contextmanager
+def _nvprof_range(iter_id, start, end, exit_after_prof=True):
+    '''
+    A range profiler interface (not public yet).
+
+    Examples:
+
+        .. code-block:: python
+            
+            model = Model()
+            for i in range(max_iter):
+                paddle.fluid.profiler._nvprof_range(i, 10, 20):
+                    out = model(in)
+    '''
+    try:
+        if iter_id == start:
+            core.nvprof_start()
+            core.nvprof_enable_record_event()
+        if iter_id >= start:
+            core.nvprof_nvtx_push(str(iter_id))
+        yield
+    finally:
+        if iter_id < end:
+            core.nvprof_nvtx_pop()
+        if iter_id == end:
+            core.nvprof_stop()
+            if exit_after_prof:
+                sys.exit()
