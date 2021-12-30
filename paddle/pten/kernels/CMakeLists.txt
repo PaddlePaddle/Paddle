@@ -28,11 +28,9 @@ set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory convert_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
 
-set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
+set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel pten_transpose_cpu)
 if(WITH_GPU OR WITH_ROCM)
   set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_gpu)
-else()
-  set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_cpu)
 endif()
 
 # auto build kernel targets by cmake
