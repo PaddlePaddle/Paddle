@@ -545,6 +545,108 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
   program->CopyFrom(program_pb);
 }
 
+static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
+    const BlockDesc &block, const std::unordered_set<ir::Node *> &nodes) {
+  auto block_ops = block.AllOps();
+  size_t op_num = block_ops.size();
+  std::unordered_map<const ir::Node *, std::unordered_set<const ir::Node *>>
+      preceding_ops(op_num);
+  std::unordered_map<const ir::Node *, size_t> preceding_deps(op_num);
+  std::unordered_map<const ir::Node *, std::unordered_set<const ir::Node *>>
+      pending_ops(op_num);
+
+  std::queue<const ir::Node *> ready_ops;
+  for (const auto *node : nodes) {
+    if (!node->IsOp()) continue;
+
+    auto &tmp_preceding_ops = preceding_ops[node];
+    for (const auto *in_var : node->inputs) {
+      for (const auto *in_op : in_var->inputs) {
+        tmp_preceding_ops.insert(in_op);
+      }
+    }
+    if (tmp_preceding_ops.empty()) {
+      ready_ops.push(node);
+    }
+    preceding_deps[node] = tmp_preceding_ops.size();
+
+    auto &tmp_pending_ops = pending_ops[node];
+    for (const auto *out_var : node->outputs) {
+      for (const auto *out_op : out_var->outputs) {
+        tmp_pending_ops.insert(out_op);
+      }
+    }
+  }
+
+  std::unordered_map<const ir::Node *, std::unordered_set<const ir::Node *>>
+      all_preceding_ops;
+  while (!ready_ops.empty()) {
+    const auto *cur_op = ready_ops.front();
+    ready_ops.pop();
+
+    auto &all_preceding_ops_of_cur_op = all_preceding_ops[cur_op];
+    for (const auto *preceding_op : preceding_ops.at(cur_op)) {
+      all_preceding_ops_of_cur_op.insert(preceding_op);
+      auto &prev_preceding_ops = all_preceding_ops[preceding_op];
+      all_preceding_ops_of_cur_op.insert(prev_preceding_ops.begin(),
+                                         prev_preceding_ops.end());
+    }
+
+    for (const auto *pending_op : pending_ops.at(cur_op)) {
+      if (--preceding_deps.at(pending_op) == 0) {
+        ready_ops.push(pending_op);
+      }
+    }
+  }
+
+  std::unordered_map<uint64_t, size_t> op_id_to_idx(op_num);
+  for (const auto *op_desc : block_ops) {
+    size_t op_idx = op_id_to_idx.size();
+    PADDLE_ENFORCE_EQ(
+        op_id_to_idx.emplace(op_desc->Id(), op_idx).second, true,
+        platform::errors::InvalidArgument(
+            "There should not be duplicate op id: %d", op_desc->Id()));
+  }
+
+  std::vector<std::vector<ir::Node::Dep>> dep_matrix(op_num);
+  for (size_t i = 0; i < op_num; ++i) {
+    dep_matrix[i].resize(op_num, ir::Node::Dep::kNoDep);
+    dep_matrix[i][i] = ir::Node::Dep::kSame;
+  }
+
+  auto get_op_idx_by_id = [&op_id_to_idx](uint64_t op_id) {
+    auto iter = op_id_to_idx.find(op_id);
+    PADDLE_ENFORCE_NE(iter, op_id_to_idx.end(),
+                      platform::errors::InvalidArgument(
+                          "Cannot find OpDesc with id %d", op_id));
+    return iter->second;
+  };
+
+  for (const auto &pair : all_preceding_ops) {
+    const auto *cur_op_node = pair.first;
+    size_t op_idx_1 = get_op_idx_by_id(cur_op_node->Op()->Id());
+    for (const auto *preceding_op_node : pair.second) {
+      size_t op_idx_2 = get_op_idx_by_id(preceding_op_node->Op()->Id());
+      dep_matrix[op_idx_1][op_idx_2] = ir::Node::Dep::kAfter;
+      dep_matrix[op_idx_2][op_idx_1] = ir::Node::Dep::kBefore;
+    }
+  }
+  return dep_matrix;
+}
+
+std::vector<std::vector<std::vector<ir::Node::Dep>>> GetOpDependencies(
+    const ProgramDesc &program) {
+  ir::Graph graph(program);
+  size_t block_num = program.Size();
+  std::vector<std::vector<std::vector<ir::Node::Dep>>> deps;
+  deps.reserve(block_num);
+  for (size_t i = 0; i < block_num; ++i) {
+    deps.emplace_back(
+        GetOpDependencies(program.Block(i), graph.GetSubGraph(i)->Nodes()));
+  }
+  return deps;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

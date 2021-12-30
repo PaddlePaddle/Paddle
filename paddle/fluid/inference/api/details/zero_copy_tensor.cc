@@ -240,6 +240,14 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #else
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #endif
+  } else if (paddle::platform::is_ipu_place(t_place)) {
+#ifdef PADDLE_WITH_IPU
+    std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with IPU place because paddle is not compiled "
+        "with IPU."));
+#endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
@@ -290,7 +298,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), npu_place, t_data,
                          ele_num * sizeof(T), dev_ctx->stream());
-    aclrtSynchronizeStream(dev_ctx->stream());
+    paddle::platform::NPUStreamSync(dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "Can not create tensor with NPU place because paddle is not compiled "

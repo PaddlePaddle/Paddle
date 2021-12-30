@@ -69,7 +69,7 @@ class FMHARef {
   ~FMHARef() {}
 
   void ComputeForward(const Tensor& qkv_input_tensor,
-                      const Tensor& src_mask_tensor,
+                      const Tensor* src_mask_tensor,
                       Tensor* transpose_2_out_tensor, Tensor* qk_out_tensor,
                       Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
                       Tensor* dropout_mask_out_tensor,
@@ -111,17 +111,17 @@ class FMHARef {
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha, q_ptr,
                      k_ptr, beta, qk_out_data, gemm_batch_size, stride_a,
                      stride_b);
-
-    std::vector<const Tensor*> ins;
-    std::vector<Tensor*> outs;
-    ins.emplace_back(qk_out_tensor);
-    ins.emplace_back(&src_mask_tensor);
-    outs.emplace_back(src_mask_out_tensor);
-    int elewise_add_axis = -1;
     int softmax_axis = -1;
-    if (&src_mask_tensor != nullptr) {
+    if (src_mask_tensor != nullptr) {
+      std::vector<const Tensor*> ins;
+      std::vector<Tensor*> outs;
+      ins.emplace_back(qk_out_tensor);
+      ins.emplace_back(src_mask_tensor);
+      outs.emplace_back(src_mask_out_tensor);
+      int elewise_add_axis = -1;
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
+
       SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
                                         softmax_axis, softmax_out_tensor);
     } else {
@@ -165,7 +165,7 @@ class FMHARef {
   }
 
   void ComputeBackward(
-      const Tensor& transpose_2_out_tensor, const Tensor& src_mask_tensor,
+      const Tensor& transpose_2_out_tensor, const Tensor* src_mask_tensor,
       const Tensor& softmax_out_tensor, const Tensor& dropout_mask_out_tensor,
       const Tensor& dropout_out_tensor, const Tensor& qk_out_tensor,
       const Tensor& src_mask_out_tensor, const Tensor& fmha_out_grad_tensor,
@@ -249,7 +249,7 @@ class FMHARef {
           softmax_out_grad_tensor);
     }
 
-    if (&src_mask_tensor != nullptr) {
+    if (src_mask_tensor != nullptr) {
       SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
                                          *softmax_out_grad_tensor, softmax_axis,
                                          src_mask_out_grad_tensor);

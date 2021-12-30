@@ -20,9 +20,9 @@
 #include "paddle/fluid/platform/for_range.h"
 
 // only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/linalg.h"
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/linalg.h"
 
 namespace paddle {
 namespace operators {

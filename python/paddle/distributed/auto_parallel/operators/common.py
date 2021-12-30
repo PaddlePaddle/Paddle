@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from ..dist_attribute import OperatorDistributedAttribute
+
 _g_distributed_operator_impl_registries = {}
+BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale'}
 
 
 class DistributedOperatorImplContainer:
@@ -56,6 +59,9 @@ class DistributedOperatorImpl:
     def is_compatible(self, dist_op):
         return self.is_input_compatible(dist_op) and \
             self.is_output_compatible(dist_op)
+
+    def is_auto_compatible(self, dist_op):
+        raise NotImplementedError("Please Implement this method in Subclass.")
 
     def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
@@ -111,84 +117,78 @@ def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
     return best_compatible_impl, idx
 
 
-# def copy_distributed_attr_for_var(src_op_dist_attr, dst_var, src_var):
-#     """
-#     copy src var's dist_attr to dst var
-#     """
-#     import copy
-
-#     auto_paralle_context = src_op_dist_attr.get_owner_context()
-#     dist_attr = copy.deepcopy(
-#         auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
-#     dist_attr._owner_tensor = var
-#     dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
-#         src_var)._owner_context
-#     auto_paralle_context.set_tensor_distributed_attr_for_program(var, dist_attr)
+def is_parameter_related(varname, block):
+    if ".cast_fp" in varname:
+        varname = varname[:varname.index(".cast_fp")]
+    assert block.has_var(varname)
+    var = block.var(varname)
+    return var.is_parameter
 
 
-def copy_distributed_attr_for_var(dist_context, dst_var, src_var):
-    """
-    copy src var's dist_attr to dst var
-    """
-    dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
-    dist_context.set_tensor_dist_attr_for_program(dst_var, dist_attr)
+def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
+    var_shape = block.var(src_var.name).shape
+    var_topoloy = src_var_dist_attr.process_mesh.topology
+    var_dims_mapping = src_var_dist_attr.dims_mapping
+
+    complete_shape = []
+    for idx, shape in enumerate(var_shape):
+        if var_dims_mapping[idx] == -1:
+            complete_shape.append(shape)
+        else:
+            new_shape = shape * var_topoloy[var_dims_mapping[idx]]
+            complete_shape.append(new_shape)
+
+    exact_shape = []
+    input_topology = op_input_dist_attr.process_mesh.topology
+    input_dims_mapping = op_input_dist_attr.dims_mapping
+    for idx, shape in enumerate(complete_shape):
+        if input_dims_mapping[idx] == -1:
+            exact_shape.append(shape)
+        else:
+            new_shape = shape // input_topology[input_dims_mapping[idx]]
+            exact_shape.append(new_shape)
+
+    return exact_shape
 
 
-# def copy_distributed_attr_for_dist_op(dist_op, dst_block, src_op_dist_attr):
-#     """
-#     copy src op's dist_attr to dst dist op
-#     """
-#     from ..attribute import OperatorDistributedAttribute
+def set_comm_op_dist_attr_for_program(new_op, process_mesh, tensor_dist_attr,
+                                      ctx):
+    assert process_mesh is not None
+    assert tensor_dist_attr is not None
 
-#     auto_paralle_context = src_op_dist_attr.get_owner_context()
-#     op_dist_attr = OperatorDistributedAttribute(dist_op, auto_paralle_context)
-#     auto_paralle_context._copy_distributed_attr_from_op_desc(dist_op.desc,
-#                                                              op_dist_attr)
-#     auto_paralle_context.set_op_distributed_attr_for_program(dist_op,
-#                                                              op_dist_attr)
-
-#     op_dist_attr.set_process_mesh(src_op_dist_attr.get_process_mesh())
-#     op_dist_attr.set_impl_idx(src_op_dist_attr.get_impl_idx())
-
-#     for input_varname in dist_op.desc.input_arg_names():
-#         input_var = dst_block.var(input_varname)
-#         tensor_dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
-#             input_var)
-#         tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-#         op_dist_attr.set_input_dims_mapping(input_varname, tensor_dims_mapping)
-
-#     for output_varname in dist_op.desc.output_arg_names():
-#         output_var = dst_block.var(output_varname)
-#         tensor_dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
-#             output_var)
-#         tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-#         op_dist_attr.set_output_dims_mapping(output_varname,
-#                                              tensor_dims_mapping)
+    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr.process_mesh = process_mesh
+    for input_varname in new_op.desc.input_arg_names():
+        new_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+    for output_varname in new_op.desc.output_arg_names():
+        new_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+    ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
-def copy_distributed_attr_for_dist_op(dist_context, dist_op, dst_block,
-                                      src_op_dist_attr):
-    """
-    copy src op's dist_attr to dst dist op
-    """
-    from ..dist_attribute import OperatorDistributedAttribute
-    # need check dist op attr and its inputs and outputs
+def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
 
-    op_dist_attr = OperatorDistributedAttribute()
-    op_dist_attr.process_mesh = src_op_dist_attr.process_mesh
-    op_dist_attr.impl_idx = src_op_dist_attr.impl_idx
+    ref_dist_attr = ctx.get_op_dist_attr_for_program(ref_op)
+    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr.process_mesh = ref_dist_attr.process_mesh
 
-    for input_varname in dist_op.desc.input_arg_names():
-        input_var = dst_block.var(input_varname)
-        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-            input_var)
-        op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+    for input_name in ref_op.input_names:
+        assert input_name in new_op.input_names
+        assert len(ref_op.input(input_name)) == 1
+        assert len(new_op.input(input_name)) == 1
 
-    for output_varname in dist_op.desc.output_arg_names():
-        output_var = dst_block.var(output_varname)
-        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-            output_var)
-        op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        ref_tensor_dist_attr = ref_dist_attr.get_input_dist_attr(
+            ref_op.input(input_name)[0])
+        new_op_dist_attr.set_input_dist_attr(
+            new_op.input(input_name)[0], ref_tensor_dist_attr)
 
-    dist_context.set_op_dist_attr_for_program(dist_op, op_dist_attr)
-    op_dist_attr = dist_context.get_op_dist_attr_for_program(dist_op)
+    for output_name in ref_op.output_names:
+        assert output_name in new_op.output_names
+        assert len(ref_op.output(output_name)) == 1
+        assert len(new_op.output(output_name)) == 1
+
+        ref_tensor_dist_attr = ref_dist_attr.get_output_dist_attr(
+            ref_op.output(output_name)[0])
+        new_op_dist_attr.set_output_dist_attr(
+            new_op.output(output_name)[0], ref_tensor_dist_attr)
+
+    ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)

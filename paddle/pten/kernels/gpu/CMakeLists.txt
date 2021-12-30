@@ -1,0 +1,5 @@
+if(WITH_GPU)
+  nv_library(math_gpu SRCS math.cu DEPS eigen_function dense_tensor convert_utils kernel_context kernel_factory pten_transpose_gpu cast_kernel copy_kernel)
+elseif(WITH_ROCM)
+  hip_library(math_gpu SRCS math.cu DEPS eigen_function dense_tensor convert_utils kernel_context kernel_factory pten_transpose_gpu cast_kernel copy_kernel)
+endif()

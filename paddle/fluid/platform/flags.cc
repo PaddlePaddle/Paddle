@@ -434,7 +434,7 @@ PADDLE_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
 
 /**
  * Memory related FLAG
@@ -662,8 +662,9 @@ PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
                              "The maximum time for get host by name time");
 #endif
@@ -694,6 +695,18 @@ PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
                             "It controls whether to use pten kernel");
 
 /**
+ * Pt kernel related FLAG
+ * Name: FLAGS_run_kp_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in
+ * the Op for XPU2.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, true,
+                            "It controls whether to use kp kernel for xpu2");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_allreduce_record_one_event
  * Since Version: 2.2.0
@@ -710,6 +723,7 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
                             "events. Currently, only fuse allreduce supports "
                             "this. Otherwise, the precision may be wrong.");
 
+#ifdef PADDLE_WITH_CINN
 /*
  * CINN related FLAG
  * Name: FLAGS_use_cinn
@@ -717,9 +731,31 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
  * Value Range: bool, default=false
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
-#ifdef PADDLE_WITH_CINN
 PADDLE_DEFINE_EXPORTED_bool(
     use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_allow_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_allow_cinn_ops="mul;relu" would only cover `mul` and `relu`
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
+                              "It controls the cinn op subset to be used, "
+                              "which has the highest priority.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_deny_cinn_ops="mul;relu" would block `mul` and `relu` two ops
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
+                              "It controls the cinn op subset to be not used.");
 #endif
 
 DEFINE_int32(record_pool_max_size, 2000000,

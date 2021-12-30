@@ -33,7 +33,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise_no_broadcast.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -167,21 +168,18 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto* y_data = y->data<T>();
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #endif
       return;
     }
-
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(dev_ctx, size);
 
     // increment is used to set the args(offset) of curand_init, which defines
     // offset in subsequence.
@@ -192,11 +190,15 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     // same as the previous calls.
     uint64_t seed_data;
     uint64_t increment;
-    int vec_size = platform::GetVectorizedSize<T>(x_data);
-    auto offset = ((x_numel - 1) / (config.block_per_grid.x *
-                                    config.thread_per_block.x * vec_size) +
-                   1) *
-                  vec_size;
+    // VectorizedRandomGenerator use curand_uniform4, so we only support
+    // vec_size is 4;
+    int vec_size = (platform::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
+    int block_size = pten::GetThreadsConfig(dev_ctx, x_numel, vec_size);
+    int grid_size =
+        ((x_numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
+
+    auto offset =
+        ((x_numel - 1) / (grid_size * block_size * vec_size) + 1) * vec_size;
 
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
@@ -204,26 +206,23 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {
       hipLaunchKernelGGL(
-          HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>),
-          config.block_per_grid, config.thread_per_block, 0, stream, size,
-          seed_data, dropout_prob, x_data, mask_data, y_data, upscale_in_train,
-          increment);
+          HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>), grid_size,
+          block_size, 0, stream, size, seed_data, dropout_prob, x_data,
+          mask_data, y_data, upscale_in_train, increment);
     } else {
       hipLaunchKernelGGL(HIP_KERNEL_NAME(RandomGenerator<T, uint8_t>),
-                         config.block_per_grid, config.thread_per_block, 0,
-                         stream, size, seed_data, dropout_prob, x_data,
-                         mask_data, y_data, upscale_in_train, increment);
+                         grid_size, block_size, 0, stream, size, seed_data,
+                         dropout_prob, x_data, mask_data, y_data,
+                         upscale_in_train, increment);
     }
 #else
     if (vec_size == 4 && size % 4 == 0) {
-      VectorizedRandomGenerator<
-          T, uint8_t,
-          4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+      VectorizedRandomGenerator<T, uint8_t,
+                                4><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     } else {
-      RandomGenerator<T, uint8_t><<<config.block_per_grid,
-                                    config.thread_per_block, 0, stream>>>(
+      RandomGenerator<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     }
@@ -244,34 +243,42 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                 const std::string dropout_implementation,
                                 float dropout_prob, const Tensor& grad_y,
                                 const Tensor& mask, int64_t size,
-                                Tensor* grad_x) {
-  auto M = EigenVector<uint8_t>::Flatten(mask);
+                                Tensor* grad_x, bool is_test = false) {
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(grad_y);
 
   auto& place = *dev_ctx.eigen_device();
-  if (dropout_implementation == "upscale_in_train") {
-    if (dropout_prob == 1.0f) {
-      dX.device(place) = static_cast<T>(0) * dY;
+  if (is_test) {
+    if (dropout_implementation == "upscale_in_train") {
+      dX.device(place) = static_cast<T>(1) * dY;
     } else {
-      int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
-      if (vec_size == 4 && size % 4 == 0) {
-        auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-        auto stream = dev_ctx.stream();
-        platform::GpuLaunchConfig config =
-            platform::GetGpuLaunchConfig1D(dev_ctx, size);
-        DropoutGradCUDAKernel<
-            T, uint8_t,
-            4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-            grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
-            grad_x->data<T>());
-      } else {
-        dX.device(place) =
-            dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
-      }
+      dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
     }
   } else {
-    dX.device(place) = dY * M.cast<T>();
+    auto M = EigenVector<uint8_t>::Flatten(mask);
+    if (dropout_implementation == "upscale_in_train") {
+      if (dropout_prob == 1.0f) {
+        dX.device(place) = static_cast<T>(0) * dY;
+      } else {
+        int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
+        if (vec_size == 4 && size % 4 == 0) {
+          auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+          auto stream = dev_ctx.stream();
+          platform::GpuLaunchConfig config =
+              platform::GetGpuLaunchConfig1D(dev_ctx, size);
+          DropoutGradCUDAKernel<
+              T, uint8_t,
+              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+              grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
+              grad_x->data<T>());
+        } else {
+          dX.device(place) =
+              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+        }
+      }
+    } else {
+      dX.device(place) = dY * M.cast<T>();
+    }
   }
 }
 

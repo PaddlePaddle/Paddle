@@ -69,7 +69,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // In that case reorder must be executed to maintain compatibility with
     // PaddlePaddle reduce op
     if (input_dims == output_dims) {
-      mkldnn::memory::data_type input_type =
+      dnnl::memory::data_type input_type =
           framework::ToMKLDNNDataType(input->type());
       platform::ReorderMKLDNNHandler reorder_handler(input_dims, input->type(),
                                                      input_type, onednn_engine);

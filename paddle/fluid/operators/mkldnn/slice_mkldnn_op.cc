@@ -77,7 +77,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(framework::make_ddim(slice_dims));
 
-    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
 
     platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
                                                    x_type, onednn_engine);
@@ -171,7 +171,7 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    mkldnn::memory::data_type dout_type =
+    dnnl::memory::data_type dout_type =
         framework::ToMKLDNNDataType(dout->type());
     auto dout_md = dout->mem_desc().reshape(slice_dims);
 
@@ -203,6 +203,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(slice, MKLDNN, paddle::platform::CPUPlace,
                    ops::SliceMKLDNNKernel<float>,
+                   ops::SliceMKLDNNKernel<int8_t>,
+                   ops::SliceMKLDNNKernel<uint8_t>,
                    ops::SliceMKLDNNKernel<paddle::platform::bfloat16>);
 
 namespace ops = paddle::operators;

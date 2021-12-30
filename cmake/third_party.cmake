@@ -278,6 +278,11 @@ if(WITH_XPU)
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 
+if(WITH_MLU)
+    include(external/concurrentqueue) # download, build, install concurrentqueue
+    list(APPEND third_party_deps extern_concurrentqueue)
+endif(WITH_MLU)
+
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
     list(APPEND third_party_deps extern_pslib)
@@ -331,7 +336,7 @@ if (WITH_PSCORE)
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
-    
+
     if (WITH_HETERPS)
         include(external/rocksdb)     # download, build, install libmct
         list(APPEND third_party_deps extern_rocksdb)
@@ -364,6 +369,14 @@ if (WITH_CINN)
     message(STATUS "Compile Paddle with CINN.")
     include(external/cinn)
     add_definitions(-DPADDLE_WITH_CINN)
+    if (WITH_GPU)
+        add_definitions(-DCINN_WITH_CUDA)
+        add_definitions(-DCINN_WITH_CUDNN)
+    endif (WITH_GPU)
+    if (WITH_MKL)
+        add_definitions(-DCINN_WITH_MKL_CBLAS)
+        add_definitions(-DCINN_WITH_MKLDNN)
+    endif (WITH_MKL)
 endif (WITH_CINN)
 
 if (WITH_CRYPTO)
@@ -377,5 +390,20 @@ if (WITH_POCKETFFT)
     list(APPEND third_party_deps extern_pocketfft)
     add_definitions(-DPADDLE_WITH_POCKETFFT)
 endif (WITH_POCKETFFT)
+
+if (WIN32)
+    include(external/dirent)
+    list(APPEND third_party_deps extern_dirent)
+endif (WIN32)
+
+if (WITH_INFRT)
+    include(external/llvm)
+    list(APPEND third_party_deps ${llvm_libs})
+endif()
+
+if (WITH_IPU)
+    include(external/poplar)
+    list(APPEND third_party_deps extern_poplar)
+endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

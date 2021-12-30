@@ -57,7 +57,23 @@ extern bool HasCUDADriver();
   __macro(cuCtxCreate);                                 \
   __macro(cuCtxGetCurrent);                             \
   __macro(cuDeviceGetCount);                            \
-  __macro(cuDevicePrimaryCtxGetState)
+  __macro(cuDevicePrimaryCtxGetState);                  \
+  __macro(cuDeviceGetAttribute);                        \
+  __macro(cuDeviceGet)
+
+#if CUDA_VERSION >= 10020
+#define CUDA_ROUTINE_EACH_VVM(__macro)    \
+  __macro(cuMemGetAllocationGranularity); \
+  __macro(cuMemAddressReserve);           \
+  __macro(cuMemCreate);                   \
+  __macro(cuMemMap);                      \
+  __macro(cuMemSetAccess);                \
+  __macro(cuMemUnmap);                    \
+  __macro(cuMemRelease);                  \
+  __macro(cuMemAddressFree)
+
+CUDA_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
+#endif
 
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 

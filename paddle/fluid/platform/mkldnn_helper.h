@@ -20,7 +20,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -31,16 +31,16 @@ limitations under the License. */
 
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
+using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
 
-using MKLDNNStream = mkldnn::stream;
-using MKLDNNEngine = mkldnn::engine;
-using MKLDNNMemory = mkldnn::memory;
-using MKLDNNMemoryDescriptor = mkldnn::memory::desc;
-using MKLDNNPrimitive = mkldnn::primitive;
-using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
+using MKLDNNStream = dnnl::stream;
+using MKLDNNEngine = dnnl::engine;
+using MKLDNNMemory = dnnl::memory;
+using MKLDNNMemoryDescriptor = dnnl::memory::desc;
+using MKLDNNPrimitive = dnnl::primitive;
+using MKLDNNPrimitiveDesc = dnnl::handle<dnnl_primitive_desc_t>;
 
 typedef std::unique_ptr<MKLDNNStream> MKLDNNStreamPtr;
 typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
@@ -67,7 +67,7 @@ using tf_pd = typename Type::primitive_desc;
 template <typename Type, typename Engine, typename... Args>
 std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
                                                     Args&&... args) {
-  auto desc = tf_desc<Type>(mkldnn::prop_kind::forward, (args)...);
+  auto desc = tf_desc<Type>(dnnl::prop_kind::forward, (args)...);
   auto pd = new tf_pd<Type>(desc, e);
   return std::shared_ptr<tf_pd<Type>>(pd);
 }
@@ -134,10 +134,10 @@ struct mkldnn_dummy_primitive {
   struct desc {};
 };
 
-inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
-                                          mkldnn::memory::data_type data_type,
-                                          MKLDNNMemoryFormat format) {
-  return mkldnn::memory::desc({dims}, data_type, format);
+inline dnnl::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
+                                        dnnl::memory::data_type data_type,
+                                        MKLDNNMemoryFormat format) {
+  return dnnl::memory::desc({dims}, data_type, format);
 }
 
 inline void ClearMKLDNNCache(const platform::Place& place,
@@ -164,36 +164,35 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
 }
 
 template <typename Type>
-mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_type::undef;
+dnnl::memory::data_type MKLDNNGetDataType() {
+  return dnnl::memory::data_type::undef;
 }
 
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
-  return mkldnn::memory::data_type::f32;
+inline dnnl::memory::data_type MKLDNNGetDataType<float>() {
+  return dnnl::memory::data_type::f32;
 }
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<int32_t>() {
-  return mkldnn::memory::data_type::s32;
+inline dnnl::memory::data_type MKLDNNGetDataType<int32_t>() {
+  return dnnl::memory::data_type::s32;
 }
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<int8_t>() {
-  return mkldnn::memory::data_type::s8;
+inline dnnl::memory::data_type MKLDNNGetDataType<int8_t>() {
+  return dnnl::memory::data_type::s8;
 }
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
-  return mkldnn::memory::data_type::u8;
+inline dnnl::memory::data_type MKLDNNGetDataType<uint8_t>() {
+  return dnnl::memory::data_type::u8;
 }
 
 template <>
-inline mkldnn::memory::data_type
-MKLDNNGetDataType<paddle::platform::bfloat16>() {
-  return mkldnn::memory::data_type::bf16;
+inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
+  return dnnl::memory::data_type::bf16;
 }
 
-inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
-                    const mkldnn::engine& engine) {
-  auto reorder_prim = mkldnn::reorder(src, dst);
+inline void Reorder(dnnl::memory src, dnnl::memory dst,
+                    const dnnl::engine& engine) {
+  auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::EventRole::kUniqueOp);
@@ -207,34 +206,34 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   return GetMKLDNNFormat(mem_desc);
 }
 
-inline mkldnn::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
+inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
     case 1:
-      return mkldnn::memory::format_tag::a;
+      return dnnl::memory::format_tag::a;
       break;
     case 2:
-      return mkldnn::memory::format_tag::ab;
+      return dnnl::memory::format_tag::ab;
       break;
     case 3:
-      return mkldnn::memory::format_tag::abc;
+      return dnnl::memory::format_tag::abc;
       break;
     case 4:
-      return mkldnn::memory::format_tag::abcd;
+      return dnnl::memory::format_tag::abcd;
       break;
     case 5:
-      return mkldnn::memory::format_tag::abcde;
+      return dnnl::memory::format_tag::abcde;
       break;
     case 6:
-      return mkldnn::memory::format_tag::abcdef;
+      return dnnl::memory::format_tag::abcdef;
       break;
     case 7:
-      return mkldnn::memory::format_tag::abcdefg;
+      return dnnl::memory::format_tag::abcdefg;
       break;
     case 8:
-      return mkldnn::memory::format_tag::abcdefgh;
+      return dnnl::memory::format_tag::abcdefgh;
       break;
     case 9:
-      return mkldnn::memory::format_tag::abcdefghi;
+      return dnnl::memory::format_tag::abcdefghi;
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -315,24 +314,24 @@ inline void AppendKey(std::string* key, const T& num) {
 
 template <>
 inline void AppendKey(std::string* key,
-                      const mkldnn::memory::format_tag& format) {
+                      const dnnl::memory::format_tag& format) {
   key->append(std::to_string(static_cast<int>(format)));
 }
 
 template <>
 inline void AppendKey(std::string* key,
-                      const mkldnn::memory::data_type& data_type) {
+                      const dnnl::memory::data_type& data_type) {
   key->append(std::to_string(static_cast<int>(data_type)));
 }
 
 template <>
-inline void AppendKey(std::string* key, const mkldnn::algorithm& algorithm) {
+inline void AppendKey(std::string* key, const dnnl::algorithm& algorithm) {
   key->append(std::to_string(static_cast<int>(algorithm)));
 }
 
 template <>
 inline void AppendKey(std::string* key,
-                      const mkldnn::normalization_flags& flags) {
+                      const dnnl::normalization_flags& flags) {
   key->append(std::to_string(static_cast<int>(flags)));
 }
 

@@ -37,30 +37,19 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   }
 }
 
-struct CastDataLayout {
-  CastDataLayout(const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis, const framework::Tensor& in,
-                 framework::Tensor* out)
-      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
-  const framework::Tensor in_;
-  framework::Tensor* out_;
-  const platform::DeviceContext* ctx_;
-  const std::vector<int> axis_;
+template <typename T>
+void CastDataLayout::apply() {
+  auto place = ctx_->GetPlace();
 
-  template <typename T>
-  void apply() {
-    auto place = ctx_->GetPlace();
-
-    if (platform::is_cpu_place(place)) {
-      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
-      trans4(*context, in_, out_, axis_);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Unsupported data layout cast from CPU to GPU."));
-    }
+  if (platform::is_cpu_place(place)) {
+    operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+    auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+    trans4(*context, in_, out_, axis_);
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Unsupported data layout cast from CPU to GPU."));
   }
-};
+}
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type, const Tensor& in,
@@ -100,21 +89,21 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::reorder;
 
-void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
+void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
   switch (type) {
-    case mkldnn::memory::data_type::f32:
+    case dnnl::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
-    case mkldnn::memory::data_type::s8:
+    case dnnl::memory::data_type::s8:
       return platform::to_void_cast(tensor.data<int8_t>());
-    case mkldnn::memory::data_type::u8:
+    case dnnl::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
-    case mkldnn::memory::data_type::s32:
+    case dnnl::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
-    case mkldnn::memory::data_type::bf16:
+    case dnnl::memory::data_type::bf16:
       return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
     default:
       PADDLE_THROW(

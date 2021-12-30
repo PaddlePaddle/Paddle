@@ -29,6 +29,7 @@ namespace plat = paddle::platform;
 template <typename DeviceContext, typename InT>
 class CastXPUKernel : public framework::OpKernel<InT> {
   using XPUInTDType = typename XPUTypeTrait<InT>::Type;
+  using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& context) const override {

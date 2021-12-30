@@ -43,7 +43,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
       data[i] = dist(*engine);
     }
 
-    mkldnn::memory::desc out_mem_desc(
+    dnnl::memory::desc out_mem_desc(
         framework::vectorize(tensor->dims()),
         framework::ToMKLDNNDataType(tensor->type()),
         platform::GetPlainMKLDNNFormat(tensor->dims().size()));

@@ -51,6 +51,7 @@ class Node {
 
  protected:
   uint64_t id;
+  bool is_weighted;
 };
 
 class GraphNode : public Node {

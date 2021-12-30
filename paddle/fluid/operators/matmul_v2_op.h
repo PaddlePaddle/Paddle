@@ -25,8 +25,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
+
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
 
 namespace paddle {
@@ -34,24 +39,14 @@ namespace operators {
 
 using framework::Tensor;
 
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  template <typename U>
-  HOSTDEVICE inline U operator()(const U& x) const {
-    return x;
-  }
-};
-
 template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduce<T, T, cub::Sum, IdentityFunctor>(*input, output, reduce_dims,
-                                                static_cast<T>(0), cub::Sum(),
-                                                IdentityFunctor(), stream);
+  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      *input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, true, false, ctx)
@@ -380,15 +375,17 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto* Out = ctx.Output<Tensor>("Out");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
-    PADDLE_ENFORCE_NE(framework::product(X->dims()), 0,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) dims size must not be equal 0,"
-                          " but reviced dims size is 0. "));
-    PADDLE_ENFORCE_NE(framework::product(Y->dims()), 0,
-                      platform::errors::InvalidArgument(
-                          "The Input(Y) dims size must not be equal 0,"
-                          " but reviced dims size is 0. "));
-    MatMulFunction<DeviceContext, T>(X, Y, Out, trans_x, trans_y, ctx);
+
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    Out->mutable_data<T>(X->place());
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*X);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*Y);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
+
+    // call new kernel
+    pten::MatmulKernel<T>(dev_ctx, *pt_x, *pt_y, trans_x, trans_y,
+                          pt_out.get());
   }
 };
 

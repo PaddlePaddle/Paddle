@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 // temporary import, it will be deleted after full mkldnn tensor refactoring
 #ifdef PADDLE_WITH_MKLDNN
@@ -86,6 +87,7 @@ class TensorInplaceVersion {
   bool IsUnique() const { return inplace_version_ == 0; }
   void Bump() { ++inplace_version_; }
   uint32_t CurrentVersion() const { return inplace_version_; }
+  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
  private:
   uint32_t inplace_version_;
@@ -95,15 +97,15 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::desc mem_desc() const {
+  inline dnnl::memory::desc mem_desc() const {
     // for now some ops are using format and some are using mem_desc, so
     // supporting both is needed
     return mem_desc_ ? mem_desc_
-                     : mkldnn::memory::desc(framework::vectorize(dims_),
+                     : dnnl::memory::desc(framework::vectorize(dims_),
                                             ToMKLDNNDataType(type_), format_);
   }
 
-  inline void set_mem_desc(const mkldnn::memory::desc& mem_desc) {
+  inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
     mem_desc_ = mem_desc;
     layout_ = DataLayout::kMKLDNN;
   }
@@ -116,7 +118,7 @@ class Tensor {
     return mem_desc_ ? platform::GetMKLDNNFormat(mem_desc_) : format_;
   }
 
-  inline void set_format(const mkldnn::memory::format_tag format) {
+  inline void set_format(const dnnl::memory::format_tag format) {
     format_ = format;
   }
 
@@ -130,8 +132,8 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::desc mem_desc_;
-  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
+  dnnl::memory::desc mem_desc_;
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
  public:
@@ -173,6 +175,9 @@ class Tensor {
                      size_t requested_size = 0);
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
+
+  void* mutable_data(const platform::Place& place, proto::VarType::Type type,
+                     const platform::Stream& stream);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -279,8 +284,13 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
-    type_ = tensor.type_;
+    // NOTE(chenfeiyu): when sharing buffer, by definition only holder
+    // to the memory allocation and offset should be shared. Shape,
+    // data type, layout, and other metadata associated with a Tensor
+    // should not be copied.
   }
+
+  void ShareDataTypeWith(const Tensor& tensor) { type_ = tensor.type_; }
 
   bool IsSharedBufferWith(const Tensor& src) const {
     return holder_ && holder_ == src.Holder();
@@ -288,6 +298,7 @@ class Tensor {
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
+  void set_offset(size_t offset) { offset_ = offset; }
 
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);
@@ -296,7 +307,9 @@ class Tensor {
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                           const proto::VarType::Type type);
+                           const proto::VarType::Type& type);
+
+  void set_type(const proto::VarType::Type& type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;

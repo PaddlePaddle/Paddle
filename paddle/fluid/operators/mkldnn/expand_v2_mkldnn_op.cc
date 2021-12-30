@@ -109,7 +109,7 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = MKLDNNDeviceContext::tls().get_stream();
     if (dout_vec_dims == dx_vec_dims) {
-      mkldnn::memory::data_type dout_type =
+      dnnl::memory::data_type dout_type =
           paddle::framework::ToMKLDNNDataType(dout->type());
       paddle::platform::ReorderMKLDNNHandler reorder_handler(
           dout_vec_dims, dout->type(), dout_type, onednn_engine);

@@ -43,8 +43,8 @@ void TransformData(const OpKernelType &expected_kernel_type,
   Tensor in;
   in.ShareDataWith(input_tensor);
   Tensor out;
-  DataLayout lin = kernel_type_for_var.data_layout_;
-  DataLayout lout = expected_kernel_type.data_layout_;
+  const DataLayout lin = kernel_type_for_var.data_layout_;
+  const DataLayout lout = expected_kernel_type.data_layout_;
 
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
