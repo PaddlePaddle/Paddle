@@ -32,8 +32,8 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def init_config(self):
         self.dtype = 'float64'
-        self.rcond = None
-        self.driver = "gels"
+        self.rcond = 1e-15
+        self.driver = "gelsd"
         self._input_shape_1 = (5, 4)
         self._input_shape_2 = (5, 3)
 
@@ -177,7 +177,7 @@ class LinalgLstsqTestCaseGelsFloat32(LinalgLstsqTestCase):
 class LinalgLstsqTestCaseGelssFloat64(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
-        self.rcond = 1e-15
+        self.rcond = None
         self.driver = "gelss"
         self._input_shape_1 = (5, 5)
         self._input_shape_2 = (5, 1)

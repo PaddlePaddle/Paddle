@@ -2623,9 +2623,9 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     the least squares problem of a system of linear equations.
 
     Args:
-        x (Tensor): A tensor with shape :math:`[_, M, N]` , the data type of the input Tensor `x` 
+        x (Tensor): A tensor with shape ``(*, M, N)`` , the data type of the input Tensor `x` 
             should be one of float32, float64.
-        y (Tensor): A tensor with shape :math:`[_, M, K]` , the data type of the input Tensor `y` 
+        y (Tensor): A tensor with shape ``(*, M, K)`` , the data type of the input Tensor `y` 
             should be one of float32, float64.
         rcond(float, optional): A float pointing number used to determine the effective rank of x.
             If `rcond` is None, it will be set to max(M, N) times the machine precision of x_dtype.
@@ -2636,14 +2636,14 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tuple: A tuple including solution, residuals, rank, singular_values.
-        solution: A tensor with shape :math:`[_, N, K]`, the least squares solution.
-        residuals: A tensor with shape :math:`[_, K]`, the squared residuals of the solutions. 
-            It is computed when M > N and every matrix in `x` is full-rank, otherwise return an empty tensor. 
-        rank: A tensor with shape :math:`[_]`, ranks of the matrices in `x`. It is computed when `driver `
-            in (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor.
-        singular_values: A tensor with shape :math:`[_, min(M, N)]`, singular values of the matrices in `x`. 
-            It is computed when `driver` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
+        Tuple: A tuple of 4 Tensors which is (``solution``, ``residuals``, ``rank``, ``singular_values``). 
+        ``solution`` is a tensor with shape ``(*, N, K)``, meaning the least squares solution. ``residuals`` 
+        is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed 
+        when M > N and every matrix in `x` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor 
+        with shape ``(*)``, meaning the ranks of the matrices in `x`, which is computed when `driver ` in 
+        (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with 
+        shape ``(*, min(M, N))``, meaning singular values of the matrices in `x`, which is computed when `driver` 
+        in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
 
     Examples:
         .. code-block:: python
@@ -2672,6 +2672,8 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             # [[ 0.39386186,  0.10230173,  0.93606132],
             # [ 0.10741687, -0.29028133,  0.11892585],
             # [-0.05115091,  0.51918161, -0.19948854]]
+            print(results[1])
+            # []
     """
     device = paddle.get_device()
     if device == "cpu":
