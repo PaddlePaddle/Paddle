@@ -105,13 +105,18 @@ ipu_stage_attr_name = 'ipu_stage'
 @signature_safe_contextmanager
 def ipu_shard(ipu_index=None, ipu_stage=None):
     """
-    Set model sharding id and pipeline stage.
+    Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
-        ipu_index(int): Specify which ipu the Tensor is computed on, (such as ‘0, 1’).
-            The default value is None.
-        ipu_stage(int): Specify the computation order of the sharded model(such as ‘0, 1’).
-            The sharded model will be computed from small to large. The default value is None.
+        ipu_index(int): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+            The default value is None, which means the Op only run on IPU 0.
+        ipu_stage(int): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+            The sharded model will be computed from small to large. The default value is None, 
+            which means no computation order and no pipelining.
+    
+    Notes:
+        - Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None.Please refer to :code:`paddle.static.IpuGraphConfig` . 
+        - Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. Please refer to :code:`paddle.static.IpuPipeliningConfig` .
 
     Examples:
         .. code-block:: python

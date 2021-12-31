@@ -487,13 +487,13 @@ class CompiledProgram(object):
 
 def IpuConfig():
     """
-    Get the IPU configuration instance. 
+    Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
 
     Args:
         None.
         
     Returns:
-        The IPU configuration instance.
+        The IpuConfig instance.
 
     Examples:
         .. code-block:: python
@@ -523,10 +523,10 @@ def IpuGraphConfig(ipu_config,
                    enable_manual_shard=False,
                    need_avg_shard=False):
     """
-    Set graph configuration for IPUs. 
+    Set graph configuration to the IpuConfig instance.
 
     Args:
-        ipu_config (IpuConfig): The IPU configuration instance.
+        ipu_config (IpuConfig): The IpuConfig instance.
         num_ipus (int, optional): Number of IPU devices. Default 1.
         is_training (bool, optional): True is training graph, False is inference graph. Default True.
         batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
@@ -576,10 +576,10 @@ def IpuPipeliningConfig(ipu_config,
                         batches_per_step=1,
                         accumulationFactor=1):
     """
-    Set pipelining configuration for IPUs. Used to optimize the throughput performance.
+    Set pipelining configuration to the IpuConfig instance. Used to optimize the throughput performance.
 
     Args:
-        ipu_config (IpuConfig): The IPU configuration instance.
+        ipu_config (IpuConfig): The IpuConfig instance.
         enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Default False.
             Only if enable_manual_shard=True, enable_pipelining is able to be set True.
         batches_per_step (int, optional): Set the batches per run in data pipelining mode. Default 1.
@@ -622,7 +622,7 @@ def IpuPipeliningConfig(ipu_config,
 
 def IpuHalfConfig(ipu_config, enable_fp16=False):
     """
-    Set Half configuration for IPUs. Used to optimize the performance.
+    Set half computation configuration to the IpuConfig instance. Used to optimize the performance.
 
     Args:
         ipu_config (IpuConfig): The IPU configuration instance.
@@ -650,20 +650,20 @@ def IpuHalfConfig(ipu_config, enable_fp16=False):
 
 class IpuCompiledProgram(object):
     """
-    :api_attr: Static Graph
-
-    The IpuCompiledProgram is used to transform a program to a ipu-target program.
+    The IpuCompiledProgram is used to transform a program to a ipu-target program based on `ipu_config`, 
+    such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.
 
     Args:
         program(Program): This parameter represents the :code:`Program`
             to be executed. If this parameter is not provided, that parameter is None,
             the program will be set to :code:`paddle.static.default_main_program()`.
-            The default is None.
-        scope(Scope): the scope used to run this program, you can switch
-            it to different scope. Default is :code:`paddle.static.global_scope()`
-        ipu_config(IpuConfig): This argument is used to build the program with the
+        scope(Scope, optional): The scope used to run this program, you can switch
+            it to different scope. Default is None, which means use the global 
+            scope :code:`paddle.static.global_scope()` .
+        ipu_config(IpuConfig, optional): This argument is used to build the program with the
             specified options, such as training or inference mode, batch size in popart,
             dtype, etc. For more details, please refer to :code:`paddle.static.IpuConfig`.
+            Default is None, which means transform the program based on the default `ipu_config. 
 
     Returns:
         IpuCompiledProgram
