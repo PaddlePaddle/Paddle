@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cusolver
+
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/lstsq_op.h"
@@ -187,3 +190,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     lstsq, ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+
+#endif  // not PADDLE_WITH_HIP

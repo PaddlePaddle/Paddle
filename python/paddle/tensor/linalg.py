@@ -2637,15 +2637,11 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
 
     Returns:
         Tuple: A tuple including solution, residuals, rank, singular_values.
-
         solution: A tensor with shape :math:`[_, N, K]`, the least squares solution.
-
         residuals: A tensor with shape :math:`[_, K]`, the squared residuals of the solutions. 
             It is computed when M > N and every matrix in `x` is full-rank, otherwise return an empty tensor. 
-        
         rank: A tensor with shape :math:`[_]`, ranks of the matrices in `x`. It is computed when `driver `
             in (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor.
-        
         singular_values: A tensor with shape :math:`[_, min(M, N)]`, singular values of the matrices in `x`. 
             It is computed when `driver` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
 
@@ -2669,7 +2665,6 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             print(results[3])
             # [9.03455734, 1.54167950]
 
-            paddle.set_device("gpu:0")
             x = paddle.to_tensor([[10, 2, 3], [3, 10, 5], [5, 6, 12.]])
             y = paddle.to_tensor([[4, 2, 9], [2, 0, 3], [2, 5, 3.]])
             results = paddle.linalg.lstsq(x, y, driver="gels")
