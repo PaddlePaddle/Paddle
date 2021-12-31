@@ -114,8 +114,11 @@ class HostRecordNode {
     uint64_t duration() { return end_ns_ - start_ns_; }
 
     // member function
-    void AddChild(HostRecordNode* node);
+    void AddChildren(HostRecordNode* node);
     void AddCudaRuntimeNode(CudaRuntimeRecordNode* node);
+    std::vector<HostRecordNode*> GetChildren();
+    std::vector<CudaRuntimeRecordNode*> GetRuntimeRecordNode();
+    void logme(BaseLogger* logger);
 
   private:
     // record name
@@ -160,6 +163,8 @@ class CudaRuntimeRecordNode{
     uint32_t callback_id() {return callback_id_; }
     // member function
     void AddDeviceRecordNode(DeviceRecordNode* node);
+    void logme(BaseLogger* logger);
+    std::vector<DeviceRecordNode*> GetDeviceRecordNode();
 
   private:
     // record name
@@ -237,6 +242,9 @@ class DeviceRecordNode{
                     "to get memset_info, TracerEventType in node must be TracerEventType::Memset");
       return memset_info_; 
       }
+    
+    // member function
+    void logme(BaseLogger* logger);
 
   private:
     // record name
