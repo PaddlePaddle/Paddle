@@ -29,7 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestConvNet(unittest.TestCase):
     def test_training(self):
-        ipu_strategy = compiler.get_ipu_strategy()
+        ipu_strategy = paddle.static.IpuConfig()
 
         assert ipu_strategy.num_ipus == 1, "Default num_ipus must be 1"
         assert ipu_strategy.is_training == True, "Default is_training is True"

@@ -91,11 +91,12 @@ class TestBase(IPUOpTest):
 
             if run_ipu:
                 feed_list = self.feed_list
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = self.is_training
+                ipu_config = paddle.static.IpuConfig()
+                paddle.static.IpuGraphConfig(
+                    ipu_config, is_training=self.is_training)
                 program = compiler.IPUCompiledProgram(
                     main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                    ipu_config=ipu_config).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 

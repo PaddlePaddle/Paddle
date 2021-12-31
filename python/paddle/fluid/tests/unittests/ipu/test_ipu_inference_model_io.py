@@ -94,11 +94,12 @@ class TestBase(IPUOpTest):
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
 
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = self.attrs['is_training']
+                ipu_config = paddle.static.IpuConfig()
+                paddle.static.IpuGraphConfig(
+                    ipu_config, is_training=self.attrs['is_training'])
                 program = compiler.IPUCompiledProgram(
-                    main_prog, ipu_strategy=ipu_strategy).compile(
-                        self.feed_list, fetch_list)
+                    main_prog, ipu_config=ipu_config).compile(self.feed_list,
+                                                              fetch_list)
 
                 result = []
                 for i in range(self.attrs['steps']):
@@ -123,11 +124,11 @@ class TestBase(IPUOpTest):
         if run_ipu:
             feed_list = feed_target_names
             fetch_list = [fetch_targets[0].name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
+            ipu_config = paddle.static.IpuConfig()
+            paddle.static.IpuGraphConfig(ipu_config, is_training=False)
             program = compiler.IPUCompiledProgram(
                 inference_program,
-                ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                ipu_config=ipu_config).compile(feed_list, fetch_list)
         else:
             program = inference_program
 
