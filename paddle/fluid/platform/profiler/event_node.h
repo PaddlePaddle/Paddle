@@ -41,6 +41,56 @@ enum class TracerEventType {
   NumTypes
 };
 
+struct KernelDetails {
+  // the number of registers used in this kernel.
+  uint32_t registers_per_thread;
+  // the amount of shared memory space used by a thread block.
+  uint32_t static_shared_memory_usage;
+  // the amount of dynamic memory space used by a thread block.
+  uint32_t dynamic_shared_memory_usage;
+  // X-dimension of a thread block.
+  uint32_t block_x;
+  // Y-dimension of a thread block.
+  uint32_t block_y;
+  // Z-dimension of a thread block.
+  uint32_t block_z;
+  // X-dimension of a grid.
+  uint32_t grid_x;
+  // Y-dimension of a grid.
+  uint32_t grid_y;
+  // Z-dimension of a grid.
+  uint32_t grid_z;
+};
+
+struct MemcpyDetails {
+  // the amount of data copied for memcpy events.
+  size_t num_bytes;
+  // the destination device id for peer-2-peer communication (memcpy). The source
+  // device is implicit: it's the current device.
+  uint32_t destination_device_id;
+  // whether or not the memcpy is asynchronous.
+  bool async;
+  // this contains CUpti_ActivityMemcpyKind for activity event (on device).
+  // for events from other CuptiTracerEventSource, it is always 0.
+  int8_t copy_kind;
+  // CUpti_ActivityMemoryKind of source.
+  int8_t src_mem_kind;
+  // CUpti_ActivityMemoryKind of destination.
+  int8_t dst_mem_kind;
+};
+
+struct MemsetDetails {
+  // size of memory to be written over in bytes.
+  size_t num_bytes;
+  // the CUpti_ActivityMemoryKind value for this activity event.
+  int8_t mem_kind;
+  // whether or not the memset is asynchronous.
+  bool async;
+  // the value being assigned to memory by the memory set.
+  uint32_t value;
+
+};
+
 class HostRecordNode {
   public:
     // constructor
@@ -84,7 +134,7 @@ class HostRecordNode {
     std::vector<CudaRuntimeRecordNode*> runtime_node_ptrs_;
     // host records called by this
     std::vector<HostRecordNode*> children_;
-}
+};
 
 class CudaRuntimeRecordNode{
   public:
@@ -130,7 +180,7 @@ class CudaRuntimeRecordNode{
     uint32_t callback_id_;
     // device records called by this
     std::vector<DeviceRecordNode*> device_node_ptrs_; 
-}
+};
 
 class DeviceRecordNode{
   public:
@@ -214,56 +264,19 @@ class DeviceRecordNode{
       // used for TracerEventType::Memset
       MemsetDetails memset_info_;
     }   
-}
-
-struct KernelDetails {
-  // the number of registers used in this kernel.
-  uint32_t registers_per_thread;
-  // the amount of shared memory space used by a thread block.
-  uint32_t static_shared_memory_usage;
-  // the amount of dynamic memory space used by a thread block.
-  uint32_t dynamic_shared_memory_usage;
-  // X-dimension of a thread block.
-  uint32_t block_x;
-  // Y-dimension of a thread block.
-  uint32_t block_y;
-  // Z-dimension of a thread block.
-  uint32_t block_z;
-  // X-dimension of a grid.
-  uint32_t grid_x;
-  // Y-dimension of a grid.
-  uint32_t grid_y;
-  // Z-dimension of a grid.
-  uint32_t grid_z;
 };
 
-struct MemcpyDetails {
-  // the amount of data copied for memcpy events.
-  size_t num_bytes;
-  // the destination device id for peer-2-peer communication (memcpy). The source
-  // device is implicit: it's the current device.
-  uint32_t destination_device_id;
-  // whether or not the memcpy is asynchronous.
-  bool async;
-  // this contains CUpti_ActivityMemcpyKind for activity event (on device).
-  // for events from other CuptiTracerEventSource, it is always 0.
-  int8_t copy_kind;
-  // CUpti_ActivityMemoryKind of source.
-  int8_t src_mem_kind;
-  // CUpti_ActivityMemoryKind of destination.
-  int8_t dst_mem_kind;
-};
-
-struct MemsetDetails {
-  // size of memory to be written over in bytes.
-  size_t num_bytes;
-  // the CUpti_ActivityMemoryKind value for this activity event.
-  int8_t mem_kind;
-  // whether or not the memset is asynchronous.
-  bool async;
-  // the value being assigned to memory by the memory set.
-  uint32_t value;
-
+class TraceResult {
+  public:
+    void AddHostRecordNode(HostRecordNode* node);
+    void AddCudaRuntimeRecordNode(CudaRuntimeRecordNode* node);
+    void AddDeviceRecordNode(DeviceRecordNode* node);
+    void BuildTree();
+  private:
+    std::vector<HostRecordNode*> host_record_nodes_;
+    std::vector<CudaRuntimeRecordNode*> runtime_record_nodes;
+    std::vector<DeviceRecordNode*> device_record_nodes;
+    std::map<uint64_t, HostRecordNode*> thread_record_trees_map_;
 };
 
 
