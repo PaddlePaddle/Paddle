@@ -71,6 +71,14 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   return node_in_degree_map;
 }
 
+void RunBackwardHooks(
+    const std::vector<std::vector<egr::EagerTensor>>& grad_tensors,
+    egr::GradNodeBase* grad_node) {
+  grad_node->ApplyGradientHooks(grad_tensors);
+  VLOG(6) << "Apply Reduce Hooks for node";
+  grad_node->ApplyReduceHooks();
+}
+
 void RunBackward(const std::vector<egr::EagerTensor>& tensors,
                  const std::vector<egr::EagerTensor>& grad_tensors,
                  bool retain_graph) {
@@ -157,7 +165,11 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
     VLOG(6) << "Run Backward Kernel with input_buffer";
-    // Run Backward Node and get outputs
+
+    RunBackwardHooks(node_input_buffer->Buffers(), node);
+    // TODO(jiabin): Support post hook here and make hook run in seperate
+    // operator
+    // Run Pre Backward Node and get outputs
     std::vector<std::vector<egr::EagerTensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
     // TODO(jiabin): Should we erase it or find a more efficient way.

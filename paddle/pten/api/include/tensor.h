@@ -204,6 +204,14 @@ class PADDLE_API Tensor final {
    */
   DataLayout layout() const;
 
+  /**
+   * @brief Determine whether tensor is DenseTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dense_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
@@ -296,7 +304,7 @@ class PADDLE_API Tensor final {
    *                 The index number begins from begin_idx + 1.
    * @return Tensor
    */
-  Tensor slice(const int64_t begin_idx, const int64_t end_idx) const;
+  Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
   /**
    * @brief Return the implemention of current Tensor.

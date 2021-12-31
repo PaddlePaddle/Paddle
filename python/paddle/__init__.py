@@ -64,14 +64,13 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 
-from .tensor.random import bernoulli  # noqa: F401
-
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
 from .tensor.attribute import rank  # noqa: F401
 from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
+from .tensor.attribute import is_floating_point  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -159,6 +158,7 @@ from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
+from .tensor.manipulation import take_along_axis  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
@@ -198,13 +198,16 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nansum  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
 from .tensor.math import max  # noqa: F401
 from .tensor.math import maximum  # noqa: F401
+from .tensor.math import amax  # noqa: F401
 from .tensor.math import min  # noqa: F401
 from .tensor.math import minimum  # noqa: F401
+from .tensor.math import amin  # noqa: F401
 from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
@@ -212,6 +215,7 @@ from .tensor.math import remainder  # noqa: F401
 from .tensor.math import mod  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
+from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
@@ -237,6 +241,7 @@ from .tensor.math import acosh  # noqa: F401
 from .tensor.math import asinh  # noqa: F401
 from .tensor.math import atanh  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
+from .tensor.math import erfinv  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
 from .tensor.math import gcd  # noqa: F401
@@ -245,7 +250,11 @@ from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
 from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
+from .tensor.math import inner  # noqa: F401
+from .tensor.math import outer  # noqa: F401
 
+from .tensor.random import bernoulli  # noqa: F401
+from .tensor.random import poisson  # noqa: F401
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
 from .tensor.random import normal  # noqa: F401
@@ -265,6 +274,7 @@ from .tensor.search import where  # noqa: F401
 from .tensor.search import index_select  # noqa: F401
 from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
+from .tensor.search import mode  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
@@ -284,6 +294,7 @@ from .framework import CUDAPinnedPlace  # noqa: F401
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
 from .autograd import set_grad_enabled  # noqa: F401
+from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
@@ -390,9 +401,11 @@ __all__ = [  # noqa
            'cos',
            'tan',
            'mean',
+           'mode',
            'mv',
            'in_dynamic_mode',
            'min',
+           'amin',
            'any',
            'slice',
            'normal',
@@ -435,6 +448,7 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
+           'amax',
            'logical_or',
            'bitwise_and',
            'bitwise_or',
@@ -452,6 +466,7 @@ __all__ = [  # noqa
            'shape',
            'real',
            'imag',
+           'is_floating_point',
            'complex',
            'reciprocal',
            'rand',
@@ -467,6 +482,7 @@ __all__ = [  # noqa
            'median',
            'no_grad',
            'set_grad_enabled',
+           'is_grad_enabled',
            'mod',
            'abs',
            'tril',
@@ -483,6 +499,7 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
+           'poisson',
            'sinh',
            'round',
            'DataParallel',
@@ -493,6 +510,9 @@ __all__ = [  # noqa
            'neg',
            'lgamma',
            'lerp',
+           'erfinv',
+           'inner',
+           'outer',
            'square',
            'divide',
            'ceil',
@@ -512,6 +532,7 @@ __all__ = [  # noqa
            'ones',
            'not_equal',
            'sum',
+           'nansum',
            'tile',
            'greater_equal',
            'isfinite',
@@ -589,4 +610,5 @@ __all__ = [  # noqa
            'moveaxis',
            'repeat_interleave',
            'clone',
+           'renorm',
 ]

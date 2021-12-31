@@ -185,9 +185,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(NPUContext);
-#endif
 #ifdef PADDLE_WITH_XPU
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif

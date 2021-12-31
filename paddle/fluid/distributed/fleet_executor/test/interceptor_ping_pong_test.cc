@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global_map.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -59,21 +60,21 @@ class PingPongInterceptor : public Interceptor {
 REGISTER_INTERCEPTOR(PingPong, PingPongInterceptor);
 
 TEST(InterceptorTest, PingPong) {
-  Carrier carrier(0, {{0, 0}, {1, 0}});
+  Carrier* carrier = GlobalMap<int64_t, Carrier>::Create(0, 0);
+  carrier->Init(0, {{0, 0}, {1, 0}}, {0, 1});
   auto msg_bus = std::make_shared<MessageBus>();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
-  carrier.SetMsgBus(msg_bus);
+  carrier->SetMsgBus(msg_bus);
 
-  Interceptor* a = carrier.SetInterceptor(
+  Interceptor* a = carrier->SetInterceptor(
       0, InterceptorFactory::Create("PingPong", 0, nullptr));
 
-  carrier.SetInterceptor(1, std::make_unique<PingPongInterceptor>(1, nullptr));
-  carrier.SetCreatingFlag(false);
+  carrier->SetInterceptor(1, std::make_unique<PingPongInterceptor>(1, nullptr));
 
   InterceptorMessage msg;
   a->Send(1, msg);
 
-  carrier.Wait();
+  carrier->Wait();
 }
 
 }  // namespace distributed

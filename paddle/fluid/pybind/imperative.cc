@@ -763,7 +763,6 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
-
   // Dygraph DataLoader reader process & thread related functions
   m.def(
       "_convert_to_tensor_list",
@@ -866,7 +865,10 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
-
+  m.def("_set_eager_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          egr::Controller::Instance().SetCurrentTracer(tracer);
+        });
   m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
   m.def("_is_dygraph_debug_enabled",
@@ -876,9 +878,8 @@ void BindImperative(py::module *m_ptr) {
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           if (egr::Controller::Instance().InEagerMode()) {
             egr::Controller::Instance().SetCurrentTracer(tracer);
-          } else {
-            imperative::SetCurrentTracer(tracer);
           }
+          imperative::SetCurrentTracer(tracer);
         });
   m.def("_enable_eager_mode",
         []() { egr::Controller::Instance().SetInEagerMode(true); });
@@ -1984,6 +1985,7 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));
              dst_->ShareBufferWith(*src);
+             dst_->ShareDataTypeWith(*src);
            })
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
@@ -2150,6 +2152,8 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
+              // TODO(jiabin): Support eager here when we need to make all
+              // dygraph in eager mode
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::XPUPlace>(obj)) {
