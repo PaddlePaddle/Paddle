@@ -131,6 +131,11 @@ class DistributedContext:
             else:
                 return None
 
+    def del_dist_op_for_program(self, serial_tensor):
+        serial_tensor_id = serial_tensor.desc.id()
+        if self._dist_ops_for_program.get(serial_tensor_id, None):
+            del self._dist_ops_for_program[serial_tensor_id]
+
     def get_dist_op_for_graph(self, serial_op_node):
         serial_op_node_id = serial_op_node.id()
         return self._dist_ops_for_graph.get(serial_op_node_id, None)
