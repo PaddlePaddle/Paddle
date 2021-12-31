@@ -1320,7 +1320,7 @@ def margin_cross_entropy(logits,
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dygraph_mode():
-        softmax, loss = core.ops.margin_cross_entropy(
+        softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
             scale, 'return_softmax', return_softmax)

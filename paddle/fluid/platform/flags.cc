@@ -434,7 +434,7 @@ PADDLE_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
 
 /**
  * Memory related FLAG
@@ -662,8 +662,9 @@ PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
                              "The maximum time for get host by name time");
 #endif
@@ -692,6 +693,18 @@ PADDLE_DEFINE_EXPORTED_bool(
  */
 PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
                             "It controls whether to use pten kernel");
+
+/**
+ * Pt kernel related FLAG
+ * Name: FLAGS_run_kp_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in
+ * the Op for XPU2.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, true,
+                            "It controls whether to use kp kernel for xpu2");
 
 /**
  * Distributed related FLAG

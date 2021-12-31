@@ -1296,6 +1296,7 @@ class SGDOptimizer(Optimizer):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
+                 multi_precision=False,
                  name=None):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(
@@ -1306,26 +1307,86 @@ class SGDOptimizer(Optimizer):
             name=name)
         self.type = "sgd"
         self._use_mkldnn = False
+        self._multi_precision = multi_precision
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32
+                })
+            self._master_weights[param.name] = var
+        return var
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+        if isinstance(parameters, dict):
+            parameters = self._update_param_group(parameters)
+
+        # Create accumulator tensors for first and second moments
+        for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                continue
+            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Adam optimizer."
+                )
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
+
+        find_master = self._multi_precision and param_and_grad[
+            0].dtype == core.VarDesc.VarType.FP16
+        master_weight = (self._master_weights[param_and_grad[0].name]
+                         if find_master else None)
+
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
-            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1],
-                       param_and_grad[0])
+            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
+                       param_and_grad[0], master_weight)
             return None
 
         assert isinstance(block, framework.Block)
         # create the optimize op
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "LearningRate": lr
+        }
+
+        outputs = {"ParamOut": param_and_grad[0]}
+
+        attrs = {"multi_precision": find_master}
+
+        if find_master:
+            inputs["MasterParam"] = master_weight
+            outputs["MasterParamOut"] = master_weight
+
         sgd_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": lr
-            },
-            attrs={"use_mkldnn": self._use_mkldnn},
-            outputs={"ParamOut": param_and_grad[0]},
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
 
         return sgd_op
@@ -3554,14 +3615,14 @@ class LambOptimizer(AdamOptimizer):
         else:
             weight_decay = self._weight_decay
         lr = self._create_param_lr(param_and_grad)
-
+        master_weight = None
         if framework.in_dygraph_mode():
-            _, _, _, _, _ = _C_ops.lamb(
-                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
-                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
-                weight_decay)
+            _C_ops.lamb(param_and_grad[0], param_and_grad[1], lr, moment1,
+                        moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                        param_and_grad[0], moment1, moment2, beta1_pow_acc,
+                        beta2_pow_acc, master_weight, 'beta1', self._beta1,
+                        'beta2', self._beta2, 'epsilon', self._epsilon,
+                        'weight_decay', weight_decay)
             return None
 
         # create the lamb optimize op

@@ -30,6 +30,7 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -69,8 +70,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
 
-      std::shared_ptr<Allocation> allocation =
-          AllocShared(place_, workspace_size_, stream);
+      std::shared_ptr<Allocation> allocation = AllocShared(
+          place_, workspace_size_,
+          platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
@@ -243,6 +245,27 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   CheckMemLeak(place);
 }
 
+TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  std::shared_ptr<Allocation> zero_size_allocation = AllocShared(place, 0);
+  EXPECT_EQ(zero_size_allocation->ptr(), nullptr);
+
+  gpuStream_t stream;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
+#endif
+
+  EXPECT_NO_THROW(RecordStream(zero_size_allocation, stream));
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
+#endif
+}
+
 TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   size_t alloc_size = 256;
@@ -262,8 +285,9 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&new_stream));
 #endif
 
-  std::shared_ptr<Allocation> allocation_new_stream =
-      AllocShared(place, alloc_size, new_stream);
+  std::shared_ptr<Allocation> allocation_new_stream = AllocShared(
+      place, alloc_size,
+      platform::Stream(reinterpret_cast<platform::StreamId>(new_stream)));
   EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
 
 #ifdef PADDLE_WITH_CUDA
@@ -290,7 +314,9 @@ TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
   EXPECT_THROW(Release(place), paddle::platform::EnforceNotMet);
   EXPECT_THROW(allocation::AllocatorFacade::Instance().GetAllocator(place),
                paddle::platform::EnforceNotMet);
-  EXPECT_THROW(AllocShared(place, alloc_size, nullptr),
+  EXPECT_THROW(AllocShared(place, alloc_size,
+                           platform::Stream(
+                               reinterpret_cast<platform::StreamId>(nullptr))),
                paddle::platform::EnforceNotMet);
   EXPECT_THROW(Alloc(place, alloc_size, nullptr),
                paddle::platform::EnforceNotMet);
@@ -321,13 +347,16 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   // so the second alloc will fail and retry
   size_t alloc_size = available_size / 4 * 3;
 
-  std::shared_ptr<Allocation> allocation1 =
-      AllocShared(place, alloc_size, stream1);
+  std::shared_ptr<Allocation> allocation1 = AllocShared(
+      place, alloc_size,
+      platform::Stream(reinterpret_cast<platform::StreamId>(stream1)));
   std::shared_ptr<Allocation> allocation2;
 
   std::thread th([&allocation2, &place, &stream2, alloc_size]() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    allocation2 = AllocShared(place, alloc_size, stream2);
+    allocation2 = AllocShared(
+        place, alloc_size,
+        platform::Stream(reinterpret_cast<platform::StreamId>(stream2)));
   });
   allocation1.reset();  // free but not release
   th.join();

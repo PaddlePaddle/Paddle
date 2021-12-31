@@ -1,7 +1,0 @@
-if(WITH_GPU)
-  nv_library(scale_kernel_eigen SRCS scale_kernel.cc DEPS dense_tensor eigen_function)
-elseif(WITH_ROCM)
-  hip_library(scale_kernel_eigen SRCS scale_kernel.cc DEPS dense_tensor eigen_function)
-else()
-  cc_library(scale_kernel_eigen SRCS scale_kernel.cc DEPS dense_tensor eigen_function)
-endif()
