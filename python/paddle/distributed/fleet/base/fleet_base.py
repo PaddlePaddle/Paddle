@@ -627,6 +627,8 @@ class Fleet(object):
         """
         self._runtime_handle._init_server(*args, **kwargs)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def load_model(self, path, mode):
         """
         load fleet model from path
@@ -699,6 +701,8 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save(self, dirname, feed=[], fetch=[], **configs):
         inference = True
 
@@ -742,6 +746,8 @@ class Fleet(object):
             self._runtime_handle._save_persistables(
                 executor, dirname, main_program=None, mode=increment_mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -777,6 +783,8 @@ class Fleet(object):
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment, mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
 
