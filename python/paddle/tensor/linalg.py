@@ -2640,7 +2640,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         ``solution`` is a tensor with shape ``(*, N, K)``, meaning the least squares solution. ``residuals`` 
         is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed 
         when M > N and every matrix in `x` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor 
-        with shape ``(*)``, meaning the ranks of the matrices in `x`, which is computed when `driver ` in 
+        with shape ``(*)``, meaning the ranks of the matrices in `x`, which is computed when `driver` in 
         (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with 
         shape ``(*, min(M, N))``, meaning singular values of the matrices in `x`, which is computed when `driver` 
         in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
