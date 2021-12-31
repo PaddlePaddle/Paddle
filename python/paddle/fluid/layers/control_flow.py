@@ -22,7 +22,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, flatten
 import numpy
 import warnings
 import six
@@ -2350,21 +2350,34 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
     """
     A new version of Cond API implemented with `IfOp`.
     """
+    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+    support_ret_buildin_type = (bool, float, six.integer_types)
+    def _record_buildin_with_same_value(var): # for dy2stat
+        """ if the var is build_in type, record the value for dy2stat purify  
+        """
+        if isinstance(var, support_ret_buildin_type):
+            return var
+        return None
+
+    def _create_new_var_if_needed(block, var):
+        if not isinstance(var, Variable):
+            if isinstance(var, support_ret_buildin_type):
+                var = to_static_variable(var)
+            else:
+                raise TypeError(
+                    "Unsupported return type of true_fn or false_fn in cond: false_var "
+                    "returned is type: '{}'".
+                    format(type(var)))
+        new_var = var
+        if var is not None and not block.desc.find_var(
+                bytes(var.name, "ascii")):
+            new_var = layers.assign(var)
+        return new_var
 
     def _build_sub_block(branch_fn):
         """ Don't change ConditionalBlock
         """
-
-        def _create_new_var_if_needed(block, var):
-            new_var = var
-            if var is not None and not block.desc.find_var(
-                    bytes(var.name, "ascii")):
-                new_var = layers.assign(var)
-            return new_var
-
         if branch_fn is not None:
-            outputs, block = None, None
-            is_single_var = True
             if not callable(true_fn):
                 raise TypeError(
                     "The true_fn/false_fn in cond must be callable, but received {}".
@@ -2372,18 +2385,12 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
             branch_sub_block = BlockGuard(helper.main_program)
             with branch_sub_block:
                 output = branch_fn()
+                output_buildin = map_structure(_record_buildin_with_same_value, output)
                 block = helper.main_program.current_block()
-                outputs = [output]
-                if isinstance(output, list) or isinstance(output, tuple):
-                    outputs = output
-                    is_single_var = False
-                outputs = [
-                    _create_new_var_if_needed(block, var) for var in outputs
-                ]
-            return outputs[0] if is_single_var else output, block
-
+                output = map_structure(partial(_create_new_var_if_needed, block), output)
+            return output, output_buildin, block
         else:
-            return None, None
+            return None, None, None
 
     def _check_output(true_output, false_output):
         if true_output is None:
@@ -2411,8 +2418,8 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
     if false_fn is None: false_fn = _empty_fn
 
     helper = LayerHelper('cond_v2', **locals())
-    true_output, true_block = _build_sub_block(true_fn)
-    false_output, false_block = _build_sub_block(false_fn)
+    true_output, true_buildin, true_block = _build_sub_block(true_fn)
+    false_output, false_buildin, false_block = _build_sub_block(false_fn)
 
     all_none = False # indicate whether the true_fn and false_fn is both None.
     if true_output is None and false_output is None:
@@ -2424,8 +2431,14 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
     # ensure output from each branch with same structure.
     _check_output(true_output, false_output)
 
-    ret =  _build_if(pred, true_output, true_block, false_output, false_block,
+    ret = _build_if(pred, true_output, true_block, false_output, false_block,
                      helper)
+
+    def select_buildin_or_var(t_buildin, f_buildin, o_var):
+        if t_buildin and f_buildin and t_buildin == f_buildin:
+            return t_buildin
+        return o_var
+    ret = map_structure(select_buildin_or_var, true_buildin, false_buildin, ret)
     return ret if not all_none else None
 
 def _build_if(pred, true_output, true_block, false_output, false_block, helper):
@@ -2441,7 +2454,6 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
 
     # TODO(Aurelius84): Considering the inplace case.
     """
-
     def _rename_sub_block_output_recursively(sub_block, origin_outputs_name,
                                              if_outputs_name):
         """ 
@@ -2495,68 +2507,15 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
                     out_var_names.add(out_var_name)
         return in_var_names, out_var_names
 
-    # parse all input_vars needed in branch blocks
-    if_input_names, if_output_names = set(), set()
-    for block in [true_block, false_block]:
-        in_var_names, out_var_names = _get_in_out_var_names(block)
-        if_input_names |= in_var_names
-        if_output_names |= out_var_names
-
-    input_vars = [
-        parent_block._var_recursive(var_name) for var_name in if_input_names
-    ]
-
-    # output_vars = []
-    # for out_name in if_output_names:
-    #     out_var = parent_block._find_var_recursive(out_name)
-    #     if out_var:
-    #         output_vars.append(out_var)
-
-    # create output_vars of IfOp using as placeholder
-    output_vars = []
-
-    def _is_list_or_tuple(obj):
-        return isinstance(true_output, tuple) or isinstance(true_output, list)
-
-    true_outputs = true_output if _is_list_or_tuple(
-        true_output) else [true_output]
-    false_outputs = false_output if _is_list_or_tuple(
-        false_output) else [false_output]
-
-    for var in true_outputs:
-        if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
-            and parent_block._find_var_recursive(var.name):
-            parent_block_var = var
-        else:
+    def _collect_output_vars(true_var):
+        if true_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            and parent_block._find_var_recursive(true_var.name):
+            parent_block_var = true_var
+        else :
             parent_block_var = parent_block.create_var(
-                dtype=var.dtype, shape=var.shape, type=var.type)
-        output_vars.append(parent_block_var)
-
-    step_scope = parent_block.create_var(type=core.VarDesc.VarType.STEP_SCOPES)
-    true_out_names = [var.name for var in true_outputs]
-    false_out_names = [var.name for var in false_outputs]
-    output_names = [var.name for var in output_vars]
-    _rename_sub_block_output_recursively(true_block, true_out_names,
-                                         output_names)
-    _rename_sub_block_output_recursively(false_block, false_out_names,
-                                         output_names)
-    if_op = parent_block.append_op(
-        type='if',
-        inputs={
-            'Cond': [pred],
-            'Input': input_vars,
-        },
-        outputs={'Out': output_vars,
-                 'Scope': [step_scope]},
-        attrs={
-            'true_block': true_block,
-            'false_block': false_block,
-            'true_outs': output_names,
-            'false_outs': output_names,
-            'is_grad': False,
-            'is_scalar_condition': True,
-            'skip_eager_deletion_vars': output_names,
-        })
+                dtype=true_var.dtype, shape=true_var.shape, type=true_var.type)
+        return parent_block_var
+        
     def _need_append_grad(true_block, false_block):
         true_bwd = true_block.backward_block_idx
         false_bwd = false_block.backward_block_idx
@@ -2612,10 +2571,50 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
 
         return if_bwd_op
 
+    # parse all input_vars needed in branch blocks
+    if_input_names, if_output_names = set(), set()
+    for block in [true_block, false_block]:
+        in_var_names, out_var_names = _get_in_out_var_names(block)
+        if_input_names |= in_var_names
+        if_output_names |= out_var_names
+
+    input_vars = [
+        parent_block._var_recursive(var_name) for var_name in if_input_names
+    ]
+
+    # output_vars is placeholder of father block of IfOp 
+    output_vars = map_structure(_collect_output_vars, true_output)
+    step_scope = parent_block.create_var(type=core.VarDesc.VarType.STEP_SCOPES)
+
+    true_out_names = [var.name for var in flatten([true_output])]
+    false_out_names = [var.name for var in flatten([false_output])]
+    output_names = [var.name for var in flatten([output_vars])]
+
+    _rename_sub_block_output_recursively(true_block, true_out_names,
+                                         output_names)
+    _rename_sub_block_output_recursively(false_block, false_out_names,
+                                         output_names)
+    if_op = parent_block.append_op(
+        type='if',
+        inputs={
+            'Cond': [pred],
+            'Input': input_vars,
+        },
+        outputs={'Out': flatten([output_vars]),
+                 'Scope': [step_scope]},
+        attrs={
+            'true_block': true_block,
+            'false_block': false_block,
+            'true_outs': output_names,
+            'false_outs': output_names,
+            'is_grad': False,
+            'is_scalar_condition': True,
+            'skip_eager_deletion_vars': output_names,
+        })
+
     if _need_append_grad(true_block, false_block):
         _append_if_grad(parent_block, true_block, false_block)
-        
-    return output_vars if _is_list_or_tuple(true_output) else output_vars[0]
+    return output_vars
 
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
