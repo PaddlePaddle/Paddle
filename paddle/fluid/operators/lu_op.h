@@ -223,7 +223,7 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
   auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
   auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
-  pten::Add<T>(dev_ctx, *pt_x.get(), *pt_y.get(), -1, pt_z.get());
+  pten::AddKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), -1, pt_z.get());
 }
 
 template <typename DeviceContext, typename T>
@@ -234,7 +234,7 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
   auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
   auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
-  pten::Subtract<T>(dev_ctx, *pt_x.get(), *pt_y.get(), -1, pt_z.get());
+  pten::SubtractKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), -1, pt_z.get());
 }
 
 template <typename DeviceContext, typename T, size_t D>
