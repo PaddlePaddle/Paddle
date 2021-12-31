@@ -93,7 +93,7 @@ struct PowFunctor {
   const T* input_;
   T* output_;
   int64_t numel_;
-  float exp_;
+  T exp_;
 };
 
 template <typename T>
