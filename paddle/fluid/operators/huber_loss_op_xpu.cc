@@ -67,7 +67,6 @@ class HuberLossGradXPUKernel : public framework::OpKernel<T> {
     }
     auto dout_data = dout->data<T>();
     auto residual_data = residual->data<T>();
-
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
     int r =
