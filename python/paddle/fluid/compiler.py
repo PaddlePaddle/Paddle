@@ -650,7 +650,7 @@ def IpuHalfConfig(ipu_config, enable_fp16=False):
 
 class IpuCompiledProgram(object):
     """
-    The IpuCompiledProgram is used to transform a program to a ipu-target program based on `ipu_config`, 
+    The IpuCompiledProgram is used to transform a program to a ipu-target program,
     such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.
 
     Args:
@@ -661,9 +661,8 @@ class IpuCompiledProgram(object):
             it to different scope. Default is None, which means use the global 
             scope :code:`paddle.static.global_scope()` .
         ipu_config(IpuConfig, optional): This argument is used to build the program with the
-            specified options, such as training or inference mode, batch size in popart,
-            dtype, etc. For more details, please refer to :code:`paddle.static.IpuConfig`.
-            Default is None, which means transform the program based on the default `ipu_config. 
+            specified options, such as half computation, training or inference session, the number of IPUs, etc.
+            Default is None, which means build the program based on the default `ipu_config`. 
 
     Returns:
         IpuCompiledProgram
