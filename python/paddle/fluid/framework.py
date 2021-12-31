@@ -115,8 +115,10 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
             which means no computation order and no pipelining.
     
     Notes:
-        - Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None.Please refer to :code:`paddle.static.IpuGraphConfig` . 
-        - Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. Please refer to :code:`paddle.static.IpuPipeliningConfig` .
+        Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None.
+        Please refer to :code:`paddle.static.IpuGraphConfig` . 
+        Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. 
+        Please refer to :code:`paddle.static.IpuPipeliningConfig` .
 
     Examples:
         .. code-block:: python
