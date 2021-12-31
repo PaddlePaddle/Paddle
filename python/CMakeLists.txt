@@ -6,6 +6,8 @@ set(PY_FILES paddle/__init__.py
 
 if(WITH_GPU)
   SET(PACKAGE_NAME "paddlepaddle-gpu")
+elseif(WITH_MLU)
+  SET(PACKAGE_NAME "paddlepaddle-mlu")
 elseif(WITH_ROCM)
   SET(PACKAGE_NAME "paddlepaddle-rocm")
 elseif(WITH_ASCEND_CL)
