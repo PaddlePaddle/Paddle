@@ -71,7 +71,7 @@ from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -133,6 +133,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'CUDAPinnedPlace',
         'NPUPlace',
         'IPUPlace',
+        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
