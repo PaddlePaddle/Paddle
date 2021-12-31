@@ -2637,9 +2637,7 @@ void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
                      framework::Tensor *dy, Functor func) {
   framework::Tensor tmp_dx;
   framework::Tensor tmp_dy;
-  dx->mutable_data<T>(platform::CUDAPlace());
   dy->mutable_data<T>(platform::CUDAPlace());
-
   std::vector<framework::Tensor *> outs;
   if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
     outs = {dx, dy};

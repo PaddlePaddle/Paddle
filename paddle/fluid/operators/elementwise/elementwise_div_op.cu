@@ -31,6 +31,7 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
   if (dx != nullptr && dy != nullptr) {
+    dx->mutable_data<T>(platform::CUDAPlace());
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
       dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
@@ -39,6 +40,7 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
     GetGradXAndYOut<ElementwiseType::kTernary, T>(dev_ctx, axis, ins, dout, dx,
                                                   dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
+    dx->mutable_data<T>(platform::CUDAPlace());
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
       dx->mutable_data<T>(x->dims(), platform::CUDAPlace());

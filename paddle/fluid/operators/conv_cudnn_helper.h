@@ -164,7 +164,7 @@ void ChooseAlgo(const std::vector<PerfType>& perf_results,
       VLOG(3) << "    choose algo: " << result.algo << ", TC: " << math_type_str
               << ", time: " << result.time << " ms"
               << ", wksp = " << result.memory << ", status = " << result.status;
-      return;
+      break;
     }
   }
 }
@@ -197,7 +197,6 @@ static void SetConvMathType(const framework::ExecutionContext& ctx,
     VLOG(5) << "NOT use cudnn_tensor_op_math";
   }
 #endif
-  return;
 }
 
 struct ConvArgs {

@@ -580,9 +580,6 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE_EQ(config_.params_file().empty(), false,
-                      platform::errors::PreconditionNotMet(
-                          "Either model_dir or param_file should be set."));
     PADDLE_ENFORCE_EQ(config_.prog_file().empty(), false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
@@ -1135,7 +1132,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
   std::string filename;
   if (!config_.model_dir().empty()) {
     filename = config_.model_dir() + "/__model__";
-  } else if (!config_.prog_file().empty() && !config_.params_file().empty()) {
+  } else if (!config_.prog_file().empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
@@ -1347,6 +1344,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
+  x->executor_->ResetTrtOps(++x->clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 
