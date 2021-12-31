@@ -18,8 +18,8 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Dot(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void Dot(const Context& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out);
