@@ -159,6 +159,7 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import take_along_axis  # noqa: F401
+from .tensor.manipulation import put_along_axis  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
@@ -611,4 +612,6 @@ __all__ = [  # noqa
            'repeat_interleave',
            'clone',
            'renorm',
+           'take_along_axis',
+           'put_along_axis',
 ]
