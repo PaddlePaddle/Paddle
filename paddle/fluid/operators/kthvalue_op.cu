@@ -162,12 +162,11 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
           framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
-      if (SortKthvalue<T>(dev_ctx, input, input_width, input_height, k, output,
-                          indices)) {
-        return;
-      } else {
-        throw "KthvalueOP: Error when use cub sortin";
-      }
+      PADDLE_ENFORCE_EQ(SortKthvalue<T>(dev_ctx, input, input_width,
+                                        input_height, k, output, indices),
+                        true, platform::errors::External(
+                                  "KthvalueOP: Error when use cub sorting"));
+      return;
     } else {
       std::vector<int> trans;
       for (int i = 0; i < axis; i++) {
@@ -210,19 +209,18 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
       const int64_t input_height = framework::product(
           framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
-      if (SortKthvalue<T>(dev_ctx, &trans_input, input_width, input_height, k,
-                          &trans_out, &trans_ind)) {
-        TransCompute<platform::CUDADeviceContext, int64_t>(
-            ndims, dev_ctx, trans_ind, indices, trans);
-        TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, trans_out,
-                                                     output, trans);
-        if (!keepdim) {
-          output->Resize(out_dims);
-          indices->Resize(out_dims);
-        }
-        return;
-      } else {
-        throw "KthvalueOP: Error when use cub sorting";
+      PADDLE_ENFORCE_EQ(
+          SortKthvalue<T>(dev_ctx, &trans_input, input_width, input_height, k,
+                          &trans_out, &trans_ind),
+          true,
+          platform::errors::External("KthvalueOP: Error when use cub sorting"));
+      TransCompute<platform::CUDADeviceContext, int64_t>(
+          ndims, dev_ctx, trans_ind, indices, trans);
+      TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, trans_out,
+                                                   output, trans);
+      if (!keepdim) {
+        output->Resize(out_dims);
+        indices->Resize(out_dims);
       }
     }
   }
