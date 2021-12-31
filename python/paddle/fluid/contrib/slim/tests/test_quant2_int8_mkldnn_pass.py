@@ -216,9 +216,6 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             graph = quant2_int8_mkldnn_pass._update_activations(graph)
             self.check_graph_after_pass(graph)
 
-
-if core.avx_supported():
-
     class TestQuant2Int8MkldnnPassNearestInterp(unittest.TestCase):
         def op_name(self):
             return "nearest_interp"
@@ -344,11 +341,11 @@ if core.avx_supported():
                     "filter": (False, input_scale_tensor),
                     "conv_output": (False, output_scale_tensor),
                 }
-
-                quant2_int8_mkldnn_pass._var_quant_scales = var_scale
-                graph = quant2_int8_mkldnn_pass._propagate_scales(graph)
-                graph = quant2_int8_mkldnn_pass._quantize_fp32_graph(graph)
-                self.check_graph_after_pass(graph)
+                if core.avx_supported():
+                    quant2_int8_mkldnn_pass._var_quant_scales = var_scale
+                    graph = quant2_int8_mkldnn_pass._propagate_scales(graph)
+                    graph = quant2_int8_mkldnn_pass._quantize_fp32_graph(graph)
+                    self.check_graph_after_pass(graph)
 
     class TestQuant2Int8MkldnnPassNearestInterpV2(unittest.TestCase):
         def op_name(self):
