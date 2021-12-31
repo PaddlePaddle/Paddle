@@ -112,7 +112,7 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
             The default value is None, which means the Op only run on IPU 0.
         ipu_stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
             The sharded model will be computed from small to large. The default value is None, 
-            which means no computation order and no pipelining.
+            which means no pipelining computation order and run Ops in terms of graph.
     
     Notes:
         Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None.
