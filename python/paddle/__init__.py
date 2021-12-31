@@ -159,6 +159,7 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import take_along_axis  # noqa: F401
+from .tensor.manipulation import put_along_axis  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
@@ -274,6 +275,7 @@ from .tensor.search import where  # noqa: F401
 from .tensor.search import index_select  # noqa: F401
 from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
+from .tensor.search import mode  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
@@ -400,6 +402,7 @@ __all__ = [  # noqa
            'cos',
            'tan',
            'mean',
+           'mode',
            'mv',
            'in_dynamic_mode',
            'min',
@@ -609,4 +612,6 @@ __all__ = [  # noqa
            'repeat_interleave',
            'clone',
            'renorm',
+           'take_along_axis',
+           'put_along_axis',
 ]
