@@ -159,6 +159,7 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import take_along_axis  # noqa: F401
+from .tensor.manipulation import put_along_axis  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
@@ -290,6 +291,7 @@ from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
+from .framework import MLUPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
@@ -308,6 +310,7 @@ from .tensor.stat import std  # noqa: F401
 from .tensor.stat import var  # noqa: F401
 from .tensor.stat import numel  # noqa: F401
 from .tensor.stat import median  # noqa: F401
+from .tensor.stat import quantile  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
@@ -320,6 +323,7 @@ from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import is_compiled_with_ipu  # noqa: F401
+from .device import is_compiled_with_mlu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
@@ -480,6 +484,7 @@ __all__ = [  # noqa
            'load',
            'numel',
            'median',
+           'quantile',
            'no_grad',
            'set_grad_enabled',
            'is_grad_enabled',
@@ -611,4 +616,6 @@ __all__ = [  # noqa
            'repeat_interleave',
            'clone',
            'renorm',
+           'take_along_axis',
+           'put_along_axis',
 ]

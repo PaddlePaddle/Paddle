@@ -36,7 +36,7 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
 
   auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
-                                        t_dense->pten_layout());
+                                        t_dense->layout());
   auto place = t_dense->place();
   size_t bytes_size =
       paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());

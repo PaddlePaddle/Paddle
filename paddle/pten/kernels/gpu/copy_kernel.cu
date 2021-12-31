@@ -24,8 +24,8 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename ContextT>
-void Copy(const ContextT& dev_ctx,
+template <typename Context>
+void Copy(const Context& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst) {
@@ -51,7 +51,7 @@ void Copy(const ContextT& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  CHECK(dst->pten_layout() == src.pten_layout());
+  CHECK(dst->layout() == src.layout());
 
   auto size = src.numel() *
               paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));

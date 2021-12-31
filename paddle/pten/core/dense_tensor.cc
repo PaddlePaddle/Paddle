@@ -287,12 +287,8 @@ paddle::framework::proto::VarType::Type DenseTensor::saved_type() const {
   return TransToProtoVarType(meta_.dtype);
 }
 
-paddle::framework::DataLayout DenseTensor::layout() const {
-  return TransToFluidDataLayout(meta_.layout);
-}
-
 void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
-  meta_.layout = TransToPtenDataLayout(layout);
+  meta_.layout = layout;
 }
 
 void DenseTensor::ResetHolder(

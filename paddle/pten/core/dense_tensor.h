@@ -123,7 +123,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout pten_layout() const noexcept override { return meta_.layout; }
+  DataLayout layout() const noexcept override { return meta_.layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
@@ -217,17 +217,6 @@ class DenseTensor : public TensorBase,
      Will be adjusted/removed/moved in the near future
    */
  public:
-  /* @jim19930609: Remove following friend classes after Tensor Unification
-   */
-  template <typename T, size_t D, int MajorType, typename IndexType>
-  friend struct EigenTensor;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenMatrix;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenVector;
-
   /* @jim19930609: The way default constructor handles allocator might change,
      according to
                    the final design of Allocation - Allocator.
@@ -291,8 +280,6 @@ class DenseTensor : public TensorBase,
   size_t memory_size() const;
 
   void check_memory_size() const;
-
-  paddle::framework::DataLayout layout() const;
 
   void set_layout(const paddle::framework::DataLayout layout);
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/math_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -69,7 +69,7 @@ TEST(DEV_API, add) {
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
   ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.pten_layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = sum;
   auto actual_result0 = dense_out.data<float>()[0];
@@ -175,7 +175,7 @@ TEST(DEV_API, divide) {
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
   ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.pten_layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = div;
   auto actual_result0 = dense_out.data<float>()[0];
@@ -228,7 +228,7 @@ TEST(DEV_API, multiply) {
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
   ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.pten_layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = mul;
   auto actual_result0 = dense_out.data<float>()[0];
