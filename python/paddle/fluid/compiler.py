@@ -527,14 +527,15 @@ def IpuGraphConfig(ipu_config,
 
     Args:
         ipu_config (IpuConfig): The IpuConfig instance.
-        num_ipus (int, optional): Number of IPU devices. Default 1.
-        is_training (bool, optional): True is training graph, False is inference graph. Default True.
+        num_ipus (int, optional): Number of IPU devices. Default 1, which means only use 1 IPU.
+        is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
         batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
-            if the batch-size in the graph is dynamic. 
-        enable_manual_shard (bool, optional): Enable graph sharding or not. Default False.  
-            Only if num_ipus > 1, enable_manual_shard is able to be set True.
-        need_avg_shard (bool, optional): Enable auto graph sharding or not. Default False.
-            Only if num_ipus > 1 and enable_manual_shard=True, need_avg_shard is able to be set True.
+            if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
+        enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True. 
+            Default False, which means disabled.    
+        need_avg_shard (bool, optional): Enable auto graph sharding or not. Only if num_ipus > 1 and enable_manual_shard=True, need_avg_shard is able to be set Trues. 
+            Default False, which means disabled.
+            
         
     Returns:
         None.
@@ -580,12 +581,12 @@ def IpuPipeliningConfig(ipu_config,
 
     Args:
         ipu_config (IpuConfig): The IpuConfig instance.
-        enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Default False.
-            Only if enable_manual_shard=True, enable_pipelining is able to be set True.
-        batches_per_step (int, optional): Set the batches per run in data pipelining mode. Default 1.
-            Only if enable_pipelining=True, batches_per_step is able to be set > 1.
+        enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True. 
+            Default False, which means disabled.
+        batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
+            Default 1, which means no data pipelining.
         accumulationFactor (int, optional): Specify the number of micro-batches to accumulate 
-            before applying the varUpdate. Default 1.
+            before applying the varUpdate. Default 1, which means disable the accumulation.
         
     Returns:
         None.
@@ -626,7 +627,7 @@ def IpuHalfConfig(ipu_config, enable_fp16=False):
 
     Args:
         ipu_config (IpuConfig): The IPU configuration instance.
-        enable_fp16 (bool, optional): Enable FLOAT16 mode or not. Default False.
+        enable_fp16 (bool, optional): Enable FLOAT16 mode and transform FLOAT32 to FLOAT16. Default False, which means disable FLOAT16 mode.
         
     Returns:
         None.
