@@ -112,6 +112,9 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     while (num_complete != op_deps->size()) {
       size_t num_comp = complete_q->Pop();
       if (num_comp == -1UL) {
+        if (exception_.IsCaught()) {
+          ExecutionFinal(&fetch_ops);
+        }
         int remaining = 0;
         while (true) {
           remaining = remaining_;
@@ -121,9 +124,6 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
           for (int i = 0; i < remaining; ++i) {
             complete_q->Pop();
           }
-        }
-        if (exception_.IsCaught()) {
-          ExecutionFinal(&fetch_ops);
         }
       }
       num_complete += num_comp;
