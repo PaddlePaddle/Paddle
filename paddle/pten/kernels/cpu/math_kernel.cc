@@ -18,9 +18,11 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/hybird/cpu/elementwise.h"
+
+#include "paddle/pten/kernels/cpu/elementwise_impl.h"
+#include "paddle/pten/kernels/funcs/elementwise_functor.h"
+
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -30,29 +32,28 @@
 
 namespace pten {
 
-#define DEFINE_CPU_ELEMENTWISE_OP(name)                                      \
-  template <typename T, typename Context>                                    \
-  void name##Kernel(const Context& dev_ctx,                                  \
-                    const DenseTensor& x,                                    \
-                    const DenseTensor& y,                                    \
-                    int axis,                                                \
-                    DenseTensor* out) {                                      \
-    out->mutable_data<T>();                                                  \
-    if (x.dims() == y.dims()) {                                              \
-      SameDimsElementwiseCompute<                                            \
-          general::SameDims##name##Functor<CPUContext, T>>()(                \
-          dev_ctx, x, y, out);                                               \
-    } else {                                                                 \
-      auto x_dims = x.dims();                                                \
-      auto y_dims = y.dims();                                                \
-      if (x_dims.size() >= y_dims.size()) {                                  \
-        ElementwiseCompute<general::name##Functor<T>, T>(                    \
-            dev_ctx, x, y, axis, general::name##Functor<T>(), out);          \
-      } else {                                                               \
-        ElementwiseCompute<general::Inverse##name##Functor<T>, T>(           \
-            dev_ctx, x, y, axis, general::Inverse##name##Functor<T>(), out); \
-      }                                                                      \
-    }                                                                        \
+#define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
+  template <typename T, typename Context>                                   \
+  void name##Kernel(const Context& dev_ctx,                                 \
+                    const DenseTensor& x,                                   \
+                    const DenseTensor& y,                                   \
+                    int axis,                                               \
+                    DenseTensor* out) {                                     \
+    out->mutable_data<T>();                                                 \
+    if (x.dims() == y.dims()) {                                             \
+      SameDimsElementwiseCompute<SameDims##name##Functor<CPUContext, T>>()( \
+          dev_ctx, x, y, out);                                              \
+    } else {                                                                \
+      auto x_dims = x.dims();                                               \
+      auto y_dims = y.dims();                                               \
+      if (x_dims.size() >= y_dims.size()) {                                 \
+        ElementwiseCompute<funcs::name##Functor<T>, T>(                     \
+            dev_ctx, x, y, axis, funcs::name##Functor<T>(), out);           \
+      } else {                                                              \
+        ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(            \
+            dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out);  \
+      }                                                                     \
+    }                                                                       \
   }
 
 template <typename T, typename Context>
@@ -76,17 +77,17 @@ void DivideKernel(const Context& dev_ctx,
   // allocate memory for out
   out->mutable_data<T>();
   if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
-    SameDimsElementwiseCompute<general::SameDimsDivideFunctor<CPUContext, T>>()(
+    SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
   } else {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::DivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::DivideFunctor<T>(), out);
+      ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+          dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
     } else {
-      ElementwiseCompute<general::InverseDivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseDivideFunctor<T>(), out);
+      ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
+          dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
     }
   }
 }
