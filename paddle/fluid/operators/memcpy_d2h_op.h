@@ -74,7 +74,7 @@ class MemcpyD2HFunctor {
     if (dst_place_type_ == 1) {
       framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
     } else if (dst_place_type_ == 0) {
-      framework::TensorCopySync(src, platform::CPUPlace(), &dst);
+      framework::TensorCopy(src, platform::CPUPlace(), dev_ctx_, &dst);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
