@@ -2630,28 +2630,20 @@ void ReduceWrapper(const platform::CUDADeviceContext &dev_ctx, int axis,
       *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
 }
 
-template <typename T, typename Functor>
-void GetGradXYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  const framework::Tensor *out, const framework::Tensor *dout,
-                  framework::Tensor *dx, framework::Tensor *dy, Functor func) {
+template <ElementwiseType ET, typename T, typename Functor>
+void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
+                     std::vector<const framework::Tensor *> ins,
+                     const framework::Tensor *dout, framework::Tensor *dx,
+                     framework::Tensor *dy, Functor func) {
   framework::Tensor tmp_dx;
   framework::Tensor tmp_dy;
   dx->mutable_data<T>(platform::CUDAPlace());
   dy->mutable_data<T>(platform::CUDAPlace());
-  // For inplace strategy, dx will be stored in addr of dout, which makes
-  // the result of dy wrong.
-  if (dx->IsSharedBufferWith(*dout)) {
-    dx->clear();
-    dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
-  }
 
-  std::vector<const framework::Tensor *> ins = {dout, out, y};
   std::vector<framework::Tensor *> outs;
   if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
     outs = {dx, dy};
-  }
-  if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+  } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
     tmp_dx.mutable_data<T>(dout->dims(), platform::CUDAPlace());
     outs = {&tmp_dx, dy};
   } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
@@ -2663,8 +2655,8 @@ void GetGradXYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
     outs = {&tmp_dx, &tmp_dy};
   }
 
-  LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T, decltype(func),
-                              2>(dev_ctx, ins, &outs, axis, func);
+  LaunchElementwiseCudaKernel<ET, T, T, decltype(func), 2>(dev_ctx, ins, &outs,
+                                                           axis, func);
 
   if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
     ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
@@ -2676,55 +2668,28 @@ void GetGradXYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
   }
 }
 
-template <typename T, typename Functor>
-void GetGradXOut(const platform::CUDADeviceContext &dev_ctx, int axis,
-                 const framework::Tensor *x, const framework::Tensor *y,
-                 const framework::Tensor *dout, framework::Tensor *dx,
-                 Functor func) {
-  framework::Tensor tmp_dx;
-  dx->mutable_data<T>(platform::CUDAPlace());
-  if (dx->IsSharedBufferWith(*dout)) {
-    dx->clear();
-    dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
-  }
-  std::vector<const framework::Tensor *> ins = {dout, y};
+template <ElementwiseType ET, typename T, typename Functor>
+void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
+                    std::vector<const framework::Tensor *> ins,
+                    const framework::Tensor *dout, framework::Tensor *dxy,
+                    Functor func) {
+  framework::Tensor tmp_dxy;
+  dxy->mutable_data<T>(platform::CUDAPlace());
+
   std::vector<framework::Tensor *> outs;
-  if (dx->dims() != dout->dims()) {
-    tmp_dx.mutable_data<T>(dout->dims(), platform::CUDAPlace());
-    outs = {&tmp_dx};
+  if (dxy->dims() != dout->dims()) {
+    tmp_dxy.mutable_data<T>(dout->dims(), platform::CUDAPlace());
+    outs = {&tmp_dxy};
   } else {
-    outs = {dx};
+    outs = {dxy};
   }
 
-  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, ins, &outs, axis, func);
-  if (dx->dims() != dout->dims()) {
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
+  LaunchElementwiseCudaKernel<ET, T, T>(dev_ctx, ins, &outs, axis, func);
+  if (dxy->dims() != dout->dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
   }
 }
 
-template <typename T, typename Functor>
-void GetGradYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
-                 const framework::Tensor *y, const framework::Tensor *out,
-                 const framework::Tensor *dout, framework::Tensor *dy,
-                 Functor func) {
-  framework::Tensor tmp_dy;
-  dy->mutable_data<T>(platform::CUDAPlace());
-  std::vector<const framework::Tensor *> ins = {dout, out, y};
-  std::vector<framework::Tensor *> outs;
-  if (dy->dims() != dout->dims()) {
-    tmp_dy.mutable_data<T>(dout->dims(), platform::CUDAPlace());
-    outs = {&tmp_dy};
-  } else {
-    outs = {dy};
-  }
-
-  LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-      dev_ctx, ins, &outs, axis, func);
-  if (dy->dims() != dout->dims()) {
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
-  }
-}
 #endif
 
 }  // namespace operators

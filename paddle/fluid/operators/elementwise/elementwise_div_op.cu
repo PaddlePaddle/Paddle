@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -32,12 +31,25 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
   if (dx != nullptr && dy != nullptr) {
-    GetGradXYOut<T>(dev_ctx, axis, x, y, out, dout, dx, dy,
-                    DivGradXYFunctor<T, T>());
+    if (dx->IsSharedBufferWith(*dout)) {
+      dx->clear();
+      dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
+    }
+    std::vector<const framework::Tensor*> ins = {dout, out, y};
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(dev_ctx, axis, ins, dout, dx,
+                                                  dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    GetGradXOut<T>(dev_ctx, axis, x, y, dout, dx, DivGradXFunctor<T>());
+    if (dx->IsSharedBufferWith(*dout)) {
+      dx->clear();
+      dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
+    }
+    std::vector<const framework::Tensor*> ins = {dout, y};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, axis, ins, dout, dx,
+                                                DivGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
-    GetGradYOut<T>(dev_ctx, axis, y, out, dout, dy, DivGradYFunctor<T>());
+    std::vector<const framework::Tensor*> ins = {dout, out, y};
+    GetGradXOrYOut<ElementwiseType::kTernary, T>(dev_ctx, axis, ins, dout, dy,
+                                                 DivGradYFunctor<T>());
   }
 }
 
