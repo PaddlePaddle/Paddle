@@ -654,9 +654,9 @@ class IpuCompiledProgram(object):
     such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.
 
     Args:
-        program(Program): This parameter represents the :code:`Program`
-            to be executed. If this parameter is not provided, that parameter is None,
-            the program will be set to :code:`paddle.static.default_main_program()`.
+        program(Program, optional): This parameter represents the :code:`Program`
+            to be executed. Default is None, which means the program will be set to 
+            the default program :code:`paddle.static.default_main_program()` .
         scope(Scope, optional): The scope used to run this program, you can switch
             it to different scope. Default is None, which means use the global 
             scope :code:`paddle.static.global_scope()` .
@@ -692,7 +692,7 @@ class IpuCompiledProgram(object):
                 ipu_config=ipu_config)
     """
 
-    def __init__(self, program, scope=None, ipu_config=None):
+    def __init__(self, program=None, scope=None, ipu_config=None):
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "Can not use this function since PaddlePaddle is not compiled with IPU"
