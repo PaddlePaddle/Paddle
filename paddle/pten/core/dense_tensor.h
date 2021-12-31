@@ -217,17 +217,6 @@ class DenseTensor : public TensorBase,
      Will be adjusted/removed/moved in the near future
    */
  public:
-  /* @jim19930609: Remove following friend classes after Tensor Unification
-   */
-  template <typename T, size_t D, int MajorType, typename IndexType>
-  friend struct EigenTensor;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenMatrix;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenVector;
-
   /* @jim19930609: The way default constructor handles allocator might change,
      according to
                    the final design of Allocation - Allocator.
