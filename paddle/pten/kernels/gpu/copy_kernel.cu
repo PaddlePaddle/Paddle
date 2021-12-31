@@ -51,7 +51,7 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  CHECK(dst->pten_layout() == src.pten_layout());
+  CHECK(dst->layout() == src.layout());
 
   auto size = src.numel() *
               paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));

@@ -1099,7 +1099,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   pten::DDim tmp_ddim;
   pten::DenseTensor tmp = pten::DenseTensor(
       pten::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
-      pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->pten_layout()));
+      pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
 
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>();

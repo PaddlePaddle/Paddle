@@ -122,7 +122,7 @@ DataType Tensor::dtype() const { return impl_->dtype(); }
 
 DataType Tensor::type() const { return impl_->dtype(); }
 
-DataLayout Tensor::layout() const { return impl_->pten_layout(); }
+DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
   return pten::DenseTensor::classof(impl_.get());

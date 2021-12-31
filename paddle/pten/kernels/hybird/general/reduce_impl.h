@@ -57,7 +57,7 @@ void Reduce(const DeviceContext& dev_ctx,
   } else {
     pten::DenseTensor tmp_tensor = pten::DenseTensor(
         pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
-        pten::DenseTensorMeta(out_dtype, x.dims(), x.pten_layout()));
+        pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
     // cast x tensor to out_dtype
     pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);

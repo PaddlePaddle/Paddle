@@ -58,7 +58,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   auto dense_tensor_1 = experimental::MakePtenDenseTensor(lod_tensor);
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->dtype() == dtype);
-  CHECK(dense_tensor_1->pten_layout() == layout);
+  CHECK(dense_tensor_1->layout() == layout);
   CHECK(dense_tensor_1->lod().size() == lod.size());
   CHECK(dense_tensor_1->lod()[0] == lod[0]);
   const float* data_1 = dense_tensor_1->data<float>();
@@ -93,7 +93,7 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   auto dense_tensor_1 = experimental::MakePtenDenseTensor(tensor);
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->dtype() == dtype);
-  CHECK(dense_tensor_1->pten_layout() == layout);
+  CHECK(dense_tensor_1->layout() == layout);
   const float* data_1 = dense_tensor_1->data<float>();
   CHECK(data_1[0] == 1.0f);
   CHECK(data_1[1] == 2.1f);
