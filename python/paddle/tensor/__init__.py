@@ -63,6 +63,8 @@ from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
 from .linalg import cholesky_solve  # noqa: F401
+from .linalg import lu  # noqa: F401
+from .linalg import lu_unpack  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -256,6 +258,8 @@ from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
+from .stat import quantile  # noqa: F401
+
 from .to_string import set_printoptions  # noqa: F401
 
 from .array import array_length  # noqa: F401
@@ -435,6 +439,7 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'quantile',
            'is_complex',
            'is_integer',
            'rank',
@@ -459,6 +464,8 @@ tensor_method_func  = [ #noqa
            'asinh',
            'atanh',
            'acosh',
+           'lu',
+           'lu_unpack',
            'as_complex',
            'as_real',
            'rad2deg',
