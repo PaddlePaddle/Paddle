@@ -620,6 +620,12 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnBfloat16();
 
   ///
+  /// \brief Turn on MKLDNN int8.
+  ///
+  ///
+  void EnableMkldnnInt8();
+
+  ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///
   /// \return bool Whether to use the MKLDNN Bfloat16.
@@ -866,6 +872,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
+  bool use_mkldnn_int8_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
 
   // ipu related.

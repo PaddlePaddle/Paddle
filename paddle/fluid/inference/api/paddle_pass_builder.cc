@@ -186,6 +186,10 @@ void GpuPassStrategy::EnableMkldnnBfloat16() {
   LOG(ERROR) << "GPU not support MKL-DNN bfloat16";
 }
 
+void GpuPassStrategy::EnableMkldnnInt8() {
+  LOG(ERROR) << "GPU not support MKL-DNN int8";
+}
+
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -301,6 +305,54 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
   use_mkldnn_bfloat16_ = true;
 #else
   use_mkldnn_bfloat16_ = false;
+#endif
+}
+
+void CpuPassStrategy::EnableMkldnnInt8() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!use_mkldnn_int8_) {
+    passes_.clear();
+    passes_.push_back("quant_dequant_mkldnn_fuse_pass");
+    passes_.push_back("attention_lstm_fuse_pass");
+    passes_.push_back("seqconv_eltadd_relu_fuse_pass");
+    passes_.push_back("seqpool_cvm_concat_fuse_pass");
+    passes_.push_back("fc_lstm_fuse_pass");
+    passes_.push_back("mul_lstm_fuse_pass");
+    passes_.push_back("fc_gru_fuse_pass");
+    passes_.push_back("mul_gru_fuse_pass");
+    passes_.push_back("multi_gru_fuse_pass");
+    passes_.push_back("multi_gru_seq_fuse_pass");
+    passes_.push_back("seq_concat_fc_fuse_pass");
+    passes_.push_back("squared_mat_sub_fuse_pass");
+    passes_.push_back("is_test_pass");
+    passes_.push_back("map_matmul_v2_to_mul_pass");
+    passes_.push_back("map_matmul_v2_to_matmul_pass");
+    passes_.push_back("map_matmul_to_mul_pass");
+    // 需要参数？
+    /// passes_.push_back("mkldnn_placement_pass");
+    passes_.push_back("depthwise_conv_mkldnn_pass");
+    passes_.push_back("conv_bn_fuse_pass");
+    passes_.push_back("conv_eltwiseadd_bn_fuse_pass");
+    passes_.push_back("conv_transpose_bn_fuse_pass");
+    passes_.push_back("conv_transpose_eltwiseadd_bn_fuse_pass");
+    passes_.push_back("conv_bias_mkldnn_fuse_pass");
+    passes_.push_back("conv_elementwise_add_mkldnn_fuse_pass");
+    passes_.push_back("conv_relu_mkldnn_fuse_pass");
+    passes_.push_back("conv_relu6_mkldnn_fuse_pass");
+    // 需要参数？
+    /// passes_.push_back("fc_fuse_pass");
+    passes_.push_back("repeated_fc_relu_fuse_pass");
+    // 要开吗？
+    // passes_.push_back("fc_mkldnn_pass");
+    // passes_.push_back("fc_act_mkldnn_fuse_pass");
+    passes_.push_back("matmul_transpose_reshape_fuse_pass");
+    passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
+    passes_.push_back("requant_mkldnn_fuse_pass");
+    passes_.push_back("runtime_context_cache_pass");
+  }
+  use_mkldnn_int8_ = true;
+#else
+  use_mkldnn_int8_ = false;
 #endif
 }
 
