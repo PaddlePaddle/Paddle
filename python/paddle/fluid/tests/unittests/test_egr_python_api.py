@@ -20,6 +20,7 @@ from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_eager_
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
 import copy
+import paddle.compat as cpt
 
 
 class EagerScaleTestCase(unittest.TestCase):
@@ -584,6 +585,10 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor24.stop_gradient, True)
         self.assertTrue(egr_tensor24.place._equals(place))
         self.assertTrue(np.array_equal(egr_tensor24.numpy(), x))
+
+        # Bad usage
+        # SyntaxError: positional argument follows keyword argument
+        # egr_tensor25 = core.eager.EagerTensor(value=t, place) 
 
     def test_constructor_with_kwargs(self):
         print("Test_constructor_with_kwargs")
