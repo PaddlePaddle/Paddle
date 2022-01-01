@@ -232,42 +232,25 @@ paddle::platform::Place ParsePlace(
   return place;
 }
 
-bool ParsePersistable(std::unordered_map<std::string, PyObject*> kws_map,
+// boolean arguments: zero_copy, stop_gradient, persistable
+bool ParseBooleanArgs(std::string key,
+                      std::unordered_map<std::string, PyObject*> kws_map,
                       std::unordered_map<std::string, Py_ssize_t> kw_order_map,
                       PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
-  bool persistable = false;
+  bool res = false;
+  if (key == "stop_gradient") res = true;
 
-  if (kw_order_map["persistable"] <= args_num) {
-    persistable = CastPyArg2AttrBoolean(
-        PyTuple_GET_ITEM(args, kw_order_map["persistable"] - 1),
-        kw_order_map["persistable"] - 1);
+  if (kw_order_map[key] <= args_num) {
+    res = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, kw_order_map[key] - 1),
+                                kw_order_map[key] - 1);
   } else {
-    if (flag_kwargs && kws_map["persistable"] != NULL) {
-      persistable = CastPyArg2AttrBoolean(kws_map["persistable"], 0);
+    if (flag_kwargs && kws_map[key] != NULL) {
+      res = CastPyArg2AttrBoolean(kws_map[key], 0);
     } else {
-      return persistable;
+      return res;
     }
   }
-  return persistable;
-}
-
-bool ParseZeroCopy(std::unordered_map<std::string, PyObject*> kws_map,
-                   std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-                   PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
-  bool zero_copy = false;
-
-  if (kw_order_map["zero_copy"] <= args_num) {
-    zero_copy = CastPyArg2AttrBoolean(
-        PyTuple_GET_ITEM(args, kw_order_map["zero_copy"] - 1),
-        kw_order_map["zero_copy"] - 1);
-  } else {
-    if (flag_kwargs && kws_map["zero_copy"] != NULL) {
-      zero_copy = CastPyArg2AttrBoolean(kws_map["zero_copy"], 0);
-    } else {
-      return zero_copy;
-    }
-  }
-  return zero_copy;
+  return res;
 }
 
 std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
@@ -298,26 +281,6 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
   return act_name;
 }
 
-bool ParseStopGradient(std::unordered_map<std::string, PyObject*> kws_map,
-                       std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-                       PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
-  bool stop_gradient = true;
-
-  if (kw_order_map["stop_gradient"] <= args_num) {
-    stop_gradient = CastPyArg2AttrBoolean(
-        PyTuple_GET_ITEM(args, kw_order_map["stop_gradient"] - 1),
-        kw_order_map["stop_gradient"] - 1);
-
-  } else {
-    if (flag_kwargs && kws_map["stop_gradient"] != NULL) {
-      stop_gradient = CastPyArg2AttrBoolean(kws_map["stop_gradient"], 0);
-    } else {
-      return stop_gradient;
-    }
-  }
-  return stop_gradient;
-}
-
 // initialize EagerTensor by PyArray(first argument is PyArray,
 // mix args and kwargs) automatically.
 void AutoInitEagerTensorByPyArray(
@@ -345,12 +308,13 @@ void AutoInitEagerTensorByPyArray(
   numpy_value =
       ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  persistable =
-      ParsePersistable(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  zero_copy = ParseZeroCopy(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  persistable = ParseBooleanArgs("persistable", kws_map, kw_order_map, args,
+                                 flag_kwargs, args_num);
+  zero_copy = ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
+                               flag_kwargs, args_num);
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  stop_gradient =
-      ParseStopGradient(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  stop_gradient = ParseBooleanArgs("stop_gradient", kws_map, kw_order_map, args,
+                                   flag_kwargs, args_num);
 
   EmptyEagerTensorInitializer(py_tensor_ptr, act_name, place, persistable,
                               stop_gradient);
