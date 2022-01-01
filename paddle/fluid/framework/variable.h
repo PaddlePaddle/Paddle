@@ -64,8 +64,10 @@ class Variable {
   void Clear() { holder_.reset(); }
 
   int Type() const {
+    VLOG(1) << 11111;
     PADDLE_ENFORCE_NOT_NULL(
         holder_, platform::errors::NotFound("Variable is not initialized."));
+    VLOG(1) << (holder_ == nullptr);
     return holder_->Type();
   }
 

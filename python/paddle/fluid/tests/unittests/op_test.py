@@ -25,6 +25,7 @@ import time
 import itertools
 import collections
 from collections import defaultdict
+from copy import copy
 
 import paddle
 import paddle.fluid as fluid
@@ -491,7 +492,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=self.attrs if hasattr(self, "attrs") else dict())
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict())
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
@@ -1172,8 +1173,7 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(imperative_actual.value()
-                                                       .get_tensor())
+                        imperative_actual_t = imperative_actual.numpy()
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -1209,8 +1209,7 @@ class OpTest(unittest.TestCase):
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(imperative_actual.value()
-                                                   .get_tensor())
+                    imperative_actual_t = imperative_actual.numpy()
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
