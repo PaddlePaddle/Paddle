@@ -461,7 +461,7 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             dtype=core.VarDesc.VarType.FP32,
             dims=[4, 16, 16, 32],
             name="special_eager_tensor",
-            vtype=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=True)
         self.assertEqual(egr_tensor14.persistable, True)
         self.assertEqual(egr_tensor14.name, "special_eager_tensor")

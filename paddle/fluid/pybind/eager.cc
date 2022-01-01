@@ -88,38 +88,6 @@ void EmptyEagerTensorInitializer(
   }
 }
 
-void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
-                                        const framework::Tensor& src,
-                                        const paddle::platform::Place& place,
-                                        const std::string& name) {
-  self->eager_tensor.set_name(name);
-  if (place == src.place()) {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    self->eager_tensor.set_impl(dense_tensor);
-    VLOG(4) << "Same place, do ShareDataWith";
-  } else {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(
-                src.place()),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    auto temp = egr::EagerTensor(dense_tensor);
-    self->eager_tensor.set_impl(
-        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
-    VLOG(4) << "Different place, do TensorCopy";
-  }
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
-  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
-      ->SetPersistable(false);
-}
-
 void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
                                    const py::object& array,
                                    bool zero_copy = false) {
@@ -187,12 +155,181 @@ void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
   }
 }
 
-// initialize EagerTensor by PyArray (mix args and kwargs) automatically
+void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
+                                        const framework::Tensor& src,
+                                        const paddle::platform::Place& place,
+                                        const std::string& name) {
+  self->eager_tensor.set_name(name);
+  if (place == src.place()) {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    self->eager_tensor.set_impl(dense_tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(
+                src.place()),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    auto temp = egr::EagerTensor(dense_tensor);
+    self->eager_tensor.set_impl(
+        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
+  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
+      ->SetPersistable(false);
+}
+
+py::object ParsePyArray(
+    std::unordered_map<std::string, PyObject*> kws_map,
+    std::unordered_map<std::string, Py_ssize_t> kw_order_map, PyObject* args,
+    bool flag_kwargs, Py_ssize_t args_num) {
+  py::object numpy_value = py::object();
+
+  if (kw_order_map["value"] <= args_num) {
+    numpy_value = py::object(
+        py::handle(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1)), true);
+  } else {
+    if (flag_kwargs && kws_map["value"] != NULL) {
+      numpy_value = py::object(py::handle(kws_map["value"]), true);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The first expected arguments is {value: PyArray}, "
+          "but could not parse the first argument {value: PyArray} "
+          "successfully. "
+          "Please check your input first and make sure you are on the right "
+          "way."));
+    }
+  }
+  return numpy_value;
+}
+
+paddle::platform::Place ParsePlace(
+    std::unordered_map<std::string, PyObject*> kws_map,
+    std::unordered_map<std::string, Py_ssize_t> kw_order_map, PyObject* args,
+    bool flag_kwargs, Py_ssize_t args_num) {
+  paddle::platform::Place place =
+      egr::Controller::Instance().GetExpectedPlace();
+
+  if (kw_order_map["place"] <= args_num) {
+    place = CastPyArg2Place(PyTuple_GET_ITEM(args, kw_order_map["place"] - 1),
+                            kw_order_map["place"] - 1);
+  } else {
+    if (flag_kwargs && kws_map["place"] != NULL) {
+      place = CastPyArg2Place(kws_map["place"], 0);
+    } else {
+      // default
+      return place;
+    }
+  }
+  return place;
+}
+
+bool ParsePersistable(std::unordered_map<std::string, PyObject*> kws_map,
+                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                      PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+  bool persistable = false;
+
+  if (kw_order_map["persistable"] <= args_num) {
+    persistable = CastPyArg2AttrBoolean(
+        PyTuple_GET_ITEM(args, kw_order_map["persistable"] - 1),
+        kw_order_map["persistable"] - 1);
+  } else {
+    if (flag_kwargs && kws_map["persistable"] != NULL) {
+      persistable = CastPyArg2AttrBoolean(kws_map["persistable"], 0);
+    } else {
+      return persistable;
+    }
+  }
+  return persistable;
+}
+
+bool ParseZeroCopy(std::unordered_map<std::string, PyObject*> kws_map,
+                   std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                   PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+  bool zero_copy = false;
+
+  if (kw_order_map["zero_copy"] <= args_num) {
+    zero_copy = CastPyArg2AttrBoolean(
+        PyTuple_GET_ITEM(args, kw_order_map["zero_copy"] - 1),
+        kw_order_map["zero_copy"] - 1);
+  } else {
+    if (flag_kwargs && kws_map["zero_copy"] != NULL) {
+      zero_copy = CastPyArg2AttrBoolean(kws_map["zero_copy"], 0);
+    } else {
+      return zero_copy;
+    }
+  }
+  return zero_copy;
+}
+
+std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
+                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                      PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+  std::string act_name = "";
+  if (kw_order_map["name"] <= args_num) {
+    PyObject* name_obj = PyTuple_GET_ITEM(args, kw_order_map["name"] - 1);
+    if (name_obj == Py_None) {
+      act_name =
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    } else {
+      act_name = CastPyArg2AttrString(name_obj, kw_order_map["name"] - 1);
+    }
+  } else {
+    if (flag_kwargs) {
+      if (kws_map["name"] == NULL) {
+        act_name =
+            egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+      } else {
+        act_name = CastPyArg2AttrString(kws_map["name"], 0);
+      }
+    } else {
+      act_name =
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    }
+  }
+  return act_name;
+}
+
+bool ParseStopGradient(std::unordered_map<std::string, PyObject*> kws_map,
+                       std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                       PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+  bool stop_gradient = true;
+
+  if (kw_order_map["stop_gradient"] <= args_num) {
+    stop_gradient = CastPyArg2AttrBoolean(
+        PyTuple_GET_ITEM(args, kw_order_map["stop_gradient"] - 1),
+        kw_order_map["stop_gradient"] - 1);
+
+  } else {
+    if (flag_kwargs && kws_map["stop_gradient"] != NULL) {
+      stop_gradient = CastPyArg2AttrBoolean(kws_map["stop_gradient"], 0);
+    } else {
+      return stop_gradient;
+    }
+  }
+  return stop_gradient;
+}
+
+// initialize EagerTensor by PyArray(first argument is PyArray,
+// mix args and kwargs) automatically.
 void AutoInitEagerTensorByPyArray(
     EagerTensorObject* py_tensor_ptr,
     std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
     bool flag_kwargs, Py_ssize_t args_num) {
-  // key_word lists: [value, place, persistable, zero_copy, name, stop_gradient]
+  // The first argument of the EagerTensor constructor is PyArray,
+  // there are 6 arguments to construct the new EagerTensor,
+  // kw_order_map's key is every arguments of the constructor,
+  // kw_order_map's value is the position of the arguments respectively.
+  // If u want to update this constructor with new arguments,
+  // need to update this map and to add or change related code.
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{
       {"value", 1},     {"place", 2}, {"persistable", 3},
       {"zero_copy", 4}, {"name", 5},  {"stop_gradient", 6}};
@@ -205,82 +342,34 @@ void AutoInitEagerTensorByPyArray(
   std::string act_name = "";
   bool stop_gradient = true;
 
-  if (kw_order_map["value"] <= args_num) {
-    numpy_value = py::object(py::handle(PyTuple_GET_ITEM(args, 0)), true);
-  } else {
-    if (flag_kwargs && kws_map["value"] != NULL) {
-      numpy_value = py::object(py::handle(kws_map["value"]), true);
-    }
-  }
+  numpy_value =
+      ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  persistable =
+      ParsePersistable(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  zero_copy = ParseZeroCopy(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  stop_gradient =
+      ParseStopGradient(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
-  if (kw_order_map["place"] <= args_num) {
-    place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
-  } else {
-    if (flag_kwargs && kws_map["place"] != NULL) {
-      place = CastPyArg2Place(kws_map["place"], 0);
-    }
-  }
-
-  if (kw_order_map["persistable"] <= args_num) {
-    persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
-  } else {
-    if (flag_kwargs && kws_map["persistable"] != NULL) {
-      persistable = CastPyArg2AttrBoolean(kws_map["persistable"], 0);
-    }
-  }
-
-  if (kw_order_map["zero_copy"] <= args_num) {
-    zero_copy = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
-  } else {
-    if (flag_kwargs && kws_map["zero_copy"] != NULL) {
-      zero_copy = CastPyArg2AttrBoolean(kws_map["zero_copy"], 0);
-    }
-  }
-
-  if (kw_order_map["name"] <= args_num) {
-    PyObject* name_obj = PyTuple_GET_ITEM(args, 4);
-    if (name_obj == Py_None) {
-      act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-    } else {
-      act_name = CastPyArg2AttrString(name_obj, 4);
-    }
-  } else {
-    if (flag_kwargs) {
-      if (kws_map["name"] == NULL) {
-        act_name =
-            egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-      } else {
-        act_name = CastPyArg2AttrString(kws_map["name"], 0);
-      }
-    } else {
-      act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-    }
-  }
-
-  if (kw_order_map["stop_gradient"] <= args_num) {
-    stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
-
-  } else {
-    if (flag_kwargs) {
-      if (kws_map["stop_gradient"] != NULL) {
-        stop_gradient = CastPyArg2AttrBoolean(kws_map["stop_gradient"], 0);
-      }
-    }
-  }
   EmptyEagerTensorInitializer(py_tensor_ptr, act_name, place, persistable,
                               stop_gradient);
   InitEagerTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
 }
 
 // initialize EagerTensor by EagerTensor or framework::Tensor (mix args and
-// kwargs) automatically
+// kwargs) automatically.
 void AutoInitEagerTensorByTensor(
     EagerTensorObject* py_tensor_ptr,
     std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
     bool flag_kwargs, Py_ssize_t args_num, bool init_by_egr_tensor = true) {
-  // key_word lists: [value, place, name]
+  // The first argument of the EagerTensor constructor is EagerTensor or
+  // framework Tensor,
+  // there are 3 arguments to construct the new EagerTensor,
+  // kw_order_map's key is every arguments of the constructor,
+  // kw_order_map's value is the position of the arguments respectively.
+  // If u want to update this constructor with new arguments,
+  // need to update this map and to add or change related code.
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{
       {"value", 1}, {"place", 2}, {"name", 3}};
 
@@ -288,43 +377,25 @@ void AutoInitEagerTensorByTensor(
       egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
-  if (kw_order_map["place"] <= args_num) {
-    place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
-  } else {
-    if (flag_kwargs && kws_map["place"] != NULL) {
-      place = CastPyArg2Place(kws_map["place"], 0);
-    }
-  }
-
-  if (kw_order_map["name"] <= args_num) {
-    PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
-    if (name_obj == Py_None) {
-      act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-    } else {
-      act_name = CastPyArg2AttrString(name_obj, 2);
-    }
-  } else {
-    if (flag_kwargs) {
-      if (kws_map["name"] == NULL) {
-        act_name =
-            egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-      } else {
-        act_name = CastPyArg2AttrString(kws_map["name"], 0);
-      }
-    } else {
-      act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-    }
-  }
+  place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
   if (init_by_egr_tensor) {
     egr::EagerTensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
-      src_tensor = CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+      src_tensor = CastPyArg2EagerTensor(
+          PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
+          kw_order_map["value"] - 1);
     } else {
       if (flag_kwargs && kws_map["value"] != NULL) {
         src_tensor = CastPyArg2EagerTensor(kws_map["value"], 0);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The first expected kwargs is {value: EagerTensor}, "
+            "but could not parse the first argument {value: EagerTensor} "
+            "successfully. "
+            "Please check your input first and make sure you are on the right "
+            "way."));
       }
     }
     InitEagerTensorWithEagerTensor(py_tensor_ptr, src_tensor, place, act_name);
@@ -332,10 +403,19 @@ void AutoInitEagerTensorByTensor(
     // init by framework tensor
     framework::Tensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
-      src_tensor = CastPyArg2FrameworkTensor(PyTuple_GET_ITEM(args, 0), 0);
+      src_tensor = CastPyArg2FrameworkTensor(
+          PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
+          kw_order_map["value"] - 1);
     } else {
       if (flag_kwargs && kws_map["value"] != NULL) {
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The first expected arguments is {value: framework::Tensor}, "
+            "but could not parse the first argument {value: framework::Tensor} "
+            "successfully. "
+            "Please check your input first and make sure you are on the right "
+            "way."));
       }
     }
     InitEagerTensorWithFrameworkTensor(py_tensor_ptr, src_tensor, place,
@@ -406,14 +486,14 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       const_cast<char*>("persistable"), const_cast<char*>("zero_copy"),
       const_cast<char*>("name"),        const_cast<char*>("stop_gradient"),
       const_cast<char*>("dims"),        const_cast<char*>("dtype"),
-      const_cast<char*>("vtype"),       NULL};
+      const_cast<char*>("type"),        NULL};
 
   // 'O' Store a Python object (without any conversion) in a C object pointer,
   // '|' Indicates that the remaining arguments in the Python argument list are
   // optional.
   // PyArg_ParseTupleAndKeywords can Parse the parameters of a function that
   // takes both positional and keyword parameters into local variables,
-  // which enhance case2, case3, case4, case5, case6.
+  // which enhance case2, case3, case4, case5, case6, case7.
   bool flag_ = PyArg_ParseTupleAndKeywords(
       args, kwargs, "|OOOOOOOOO", kwlist, &kw_value, &kw_place, &kw_persistable,
       &kw_zero_copy, &kw_name, &kw_stop_gradient, &kw_dims, &kw_dtype,
@@ -431,9 +511,14 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       {"dtype", kw_dtype},
       {"type", kw_type}};
 
-  PADDLE_ENFORCE_EQ(flag_, true, paddle::platform::errors::PreconditionNotMet(
-                                     "Please check your input first and make "
-                                     "sure you are on the right way."));
+  PADDLE_ENFORCE_EQ(flag_, true,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Could not parse args and kwargs successfully，"
+                        "please check your input first and make"
+                        "sure you are on the right way. "
+                        "The expected arguments as follow: ("
+                        "value, place, persistable, zero_copy, "
+                        "name, stop_gradient, dims, dtype, type)"));
 
   PADDLE_ENFORCE_NOT_NULL(
       self, paddle::platform::errors::Fatal(
@@ -445,229 +530,236 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
   Py_ssize_t args_num = PyTuple_Size(args);
   VLOG(6) << " args_num: " << args_num;
-  switch (args_num) {
-    case (Py_ssize_t)0: {
-      if (!flag_kwargs) {
-        // case 1
-        VLOG(6) << "Calling case1's initializer.";
-        EmptyEagerTensorInitializer(
-            py_tensor_ptr,
-            egr::Controller::Instance().GenerateUniqueName("generated_tensor"),
-            egr::Controller::Instance().GetExpectedPlace());
-        return 0;
-      } else {  // no position args, all arguments are kwargs
-        if (kw_value != NULL) {
-          if (pybind11::detail::npy_api::get().PyArray_Check_(kw_value)) {
-            VLOG(6) << "Calling case3's or case4's initializer";
-            AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
-                                         flag_kwargs, args_num);
-            return 0;
-          } else if (PyObject_IsInstance(kw_value, reinterpret_cast<PyObject*>(
-                                                       p_eager_tensor_type))) {
-            VLOG(6) << "Calling case5's or case6's initializer";
-            AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args,
-                                        flag_kwargs, args_num);
-            return 0;
-          } else if (PyObject_IsInstance(kw_value,
-                                         reinterpret_cast<PyObject*>(
-                                             g_framework_tensor_pytype))) {
-            VLOG(6) << "Calling case7's initializer.";
-            AutoInitEagerTensorByTensor(
-                py_tensor_ptr, kws_map, args, flag_kwargs, args_num,
-                /* false means not init by egr tensor*/ false);
-            return 0;
-          }
-        } else if (kw_dtype != NULL &&
-                   PyObject_IsInstance(kw_dtype, reinterpret_cast<PyObject*>(
-                                                     g_vartype_pytype))) {
-          VLOG(6) << "Calling case2's initializer";
 
-          PADDLE_ENFORCE_NOT_NULL(
-              kw_dims,
-              paddle::platform::errors::Fatal(
-                  "Calling __init__ of Eager Tensor with NULL dims is "
-                  "forbidden. Please check your code and make sure you new a "
-                  "dims before calling this constructor."));
-
-          PADDLE_ENFORCE_NOT_NULL(
-              kw_name,
-              paddle::platform::errors::Fatal(
-                  "Calling __init__ of Eager Tensor with NULL name is "
-                  "forbidden. Please check your code and make sure you new a "
-                  "name before calling this constructor."));
-
-          PADDLE_ENFORCE_NOT_NULL(
-              kw_dtype,
-              paddle::platform::errors::Fatal(
-                  "Calling __init__ of Eager Tensor with NULL dtype is "
-                  "forbidden. Please check your code and make sure you new a "
-                  "dtype before calling this constructor."));
-
-          PADDLE_ENFORCE_NOT_NULL(
-              kw_persistable,
-              paddle::platform::errors::Fatal(
-                  "Calling __init__ of Eager Tensor with NULL persistable is "
-                  "forbidden. Please check your code and make sure you new a "
-                  "persistable before calling this constructor."));
-
-          paddle::framework::proto::VarType::Type dtype =
-              CastPyArg2ProtoType(kw_dtype, 0);
-          std::vector<int> dims = CastPyArg2VectorOfInt(kw_dims, 0);
-
-          std::string act_name = "";
-          if (kw_name == Py_None) {
-            act_name = egr::Controller::Instance().GenerateUniqueName(
-                "generated_tensor");
-          } else {
-            act_name = CastPyArg2AttrString(kw_name, 0);
-          }
-
-          paddle::framework::proto::VarType::Type var_type =
-              CastPyArg2ProtoType(kw_type, 0);
-          bool persistable = CastPyArg2AttrBoolean(kw_persistable, 0);
-
-          EmptyEagerTensorInitializer(
-              py_tensor_ptr, act_name,
-              egr::Controller::Instance().GetExpectedPlace(), persistable,
-              /* stop_gradient */ true, dtype, dims, var_type);
-
-          return 0;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "We support construct tensor from numpy value or tensor "
-              "with python args and kwargs by this initializer, "
-              "please check your input first and make sure you are on the "
-              "right way."));
-        }
-      }
-    }
-    case (Py_ssize_t)1:
-    case (Py_ssize_t)2:
-    case (Py_ssize_t)3: {
-      // 1 to 3 position args, remainting arguments are kwargs
-      PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-        VLOG(6) << "Calling case3's or case4's initializer.";
-        AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
-                                     args_num);
-        return 0;
-      } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
-                                                   p_eager_tensor_type))) {
-        VLOG(6) << "Calling case5's or case6's initializer.";
-        AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
-                                    args_num);
-        return 0;
-      } else if (PyObject_IsInstance(
-                     arg0_ptr,
-                     reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-        VLOG(6) << "Calling case7's initializer.";
-        AutoInitEagerTensorByTensor(
-            py_tensor_ptr, kws_map, args, flag_kwargs, args_num,
-            /* false means not init by egr tensor*/ false);
-        return 0;
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "We support construct tensor from numpy value or tensor "
-            "with python args and kwargs by this initializer, "
-            "please check your input first and make sure you are on the "
-            "right way."));
-      }
+  // args_num = 0, means that there is no position arguments.
+  if (args_num == (Py_ssize_t)0) {
+    if (!flag_kwargs) {
+      // case 1
+      VLOG(6) << "Calling case1's initializer.";
+      EmptyEagerTensorInitializer(
+          py_tensor_ptr,
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor"),
+          egr::Controller::Instance().GetExpectedPlace());
       return 0;
-    }
-    case (Py_ssize_t)4: {
-      // 4 position args, remainting arguments are kwargs
-      PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-        VLOG(6) << "Calling case3's or case4's initializer.";
-        AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
-                                     args_num);
-        return 0;
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "We support construct tensor from numpy value or tensor with "
-            "python args and kwargs by this initializer. "
-            "please check your input first and make sure you are on the "
-            "right way."));
-      }
-    }
-    case (Py_ssize_t)5: {
-      if (!flag_kwargs) {
-        PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-        if (PyObject_IsInstance(
-                arg0_ptr, reinterpret_cast<PyObject*>(g_vartype_pytype))) {
-          VLOG(6) << "Calling case2's initializer.";
-          paddle::framework::proto::VarType::Type dtype =
-              CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
-          std::vector<int> dims =
-              CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
-          std::string act_name = "";
-          PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
-          if (name_obj == Py_None) {
-            act_name = egr::Controller::Instance().GenerateUniqueName(
-                "generated_tensor");
-          } else {
-            act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 2), 2);
-          }
-          paddle::framework::proto::VarType::Type var_type =
-              CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 3), 3);
-          bool persistable =
-              CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
-          EmptyEagerTensorInitializer(
-              py_tensor_ptr, act_name,
-              egr::Controller::Instance().GetExpectedPlace(), persistable, true,
-              dtype, dims, var_type);
-          return 0;
-        } else if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-          VLOG(6) << "Calling case3's initializer.";
-          AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
-                                       flag_kwargs, args_num);
-          return 0;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "We support construct tensor from numpy value or tensor "
-              "with python args and kwargs by this initializer, "
-              "please check your input first and make sure you are on the "
-              "right way."));
-        }
-      } else {  // five position args, remainting arguments are kwargs
-        PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-        if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
+    } else {  // no position args, all arguments are kwargs
+      if (kw_value != NULL) {
+        if (pybind11::detail::npy_api::get().PyArray_Check_(kw_value)) {
           VLOG(6) << "Calling case3's or case4's initializer";
           AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
                                        flag_kwargs, args_num);
           return 0;
+        } else if (PyObject_IsInstance(kw_value, reinterpret_cast<PyObject*>(
+                                                     p_eager_tensor_type))) {
+          VLOG(6) << "Calling case5's or case6's initializer";
+          AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                      args_num);
+          return 0;
+        } else if (PyObject_IsInstance(kw_value,
+                                       reinterpret_cast<PyObject*>(
+                                           g_framework_tensor_pytype))) {
+          VLOG(6) << "Calling case7's initializer.";
+          AutoInitEagerTensorByTensor(
+              py_tensor_ptr, kws_map, args, flag_kwargs, args_num,
+              /* false means not init by egr tensor*/ false);
+          return 0;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "We support construct tensor from numpy value or tensor with "
-              "python args and kwargs by this initializer. "
-              "please check your input first and make sure you are on the "
+              "Could not parse the first keyword argument successfully，"
+              "the first keyword argument is value, but it should be PyArray "
+              "or EagerTensor or framework::Tensor. "
+              "Please check your input first and make sure you are on the "
               "right way."));
         }
+      } else if (kw_dtype != NULL &&
+                 PyObject_IsInstance(
+                     kw_dtype, reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+        VLOG(6) << "Calling case2's initializer";
+
+        PADDLE_ENFORCE_NOT_NULL(
+            kw_dims,
+            paddle::platform::errors::Fatal(
+                "Calling __init__ of Eager Tensor with NULL dims is "
+                "forbidden. Please check your code and make sure you new a "
+                "dims before calling this constructor."));
+
+        PADDLE_ENFORCE_NOT_NULL(
+            kw_name,
+            paddle::platform::errors::Fatal(
+                "Calling __init__ of Eager Tensor with NULL name is "
+                "forbidden. Please check your code and make sure you new a "
+                "name before calling this constructor."));
+
+        PADDLE_ENFORCE_NOT_NULL(
+            kw_dtype,
+            paddle::platform::errors::Fatal(
+                "Calling __init__ of Eager Tensor with NULL dtype is "
+                "forbidden. Please check your code and make sure you new a "
+                "dtype before calling this constructor."));
+
+        PADDLE_ENFORCE_NOT_NULL(
+            kw_persistable,
+            paddle::platform::errors::Fatal(
+                "Calling __init__ of Eager Tensor with NULL persistable is "
+                "forbidden. Please check your code and make sure you new a "
+                "persistable before calling this constructor."));
+
+        paddle::framework::proto::VarType::Type dtype =
+            CastPyArg2ProtoType(kw_dtype, 0);
+        std::vector<int> dims = CastPyArg2VectorOfInt(kw_dims, 0);
+
+        std::string act_name = "";
+        if (kw_name == Py_None) {
+          act_name = egr::Controller::Instance().GenerateUniqueName(
+              "generated_tensor");
+        } else {
+          act_name = CastPyArg2AttrString(kw_name, 0);
+        }
+
+        paddle::framework::proto::VarType::Type var_type =
+            CastPyArg2ProtoType(kw_type, 0);
+        bool persistable = CastPyArg2AttrBoolean(kw_persistable, 0);
+
+        EmptyEagerTensorInitializer(
+            py_tensor_ptr, act_name,
+            egr::Controller::Instance().GetExpectedPlace(), persistable,
+            /* stop_gradient */ true, dtype, dims, var_type);
+
+        return 0;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "We not only support construct EagerTensor from numpy value "
+            "or tensor(EagerTensor or framework::Tensor) "
+            "with python kwargs by this initializer, "
+            "but also even support dtype to init a empty EagerTensor. "
+            "Please check your input first and make sure you call the existed "
+            "constructor."));
       }
     }
-    case (Py_ssize_t)6: {
-      if (!flag_kwargs) {
-        // case 3
+  } else if (args_num == (Py_ssize_t)1 || args_num == (Py_ssize_t)2 ||
+             args_num == (Py_ssize_t)3) {
+    // 1 to 3 position args, remainting arguments are kwargs
+    PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
+    if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
+      VLOG(6) << "Calling case3's or case4's initializer.";
+      AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                   args_num);
+      return 0;
+    } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
+                                                 p_eager_tensor_type))) {
+      VLOG(6) << "Calling case5's or case6's initializer.";
+      AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                  args_num);
+      return 0;
+    } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
+                                                 g_framework_tensor_pytype))) {
+      VLOG(6) << "Calling case7's initializer.";
+      AutoInitEagerTensorByTensor(
+          py_tensor_ptr, kws_map, args, flag_kwargs, args_num,
+          /* false means not init by egr tensor*/ false);
+      return 0;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "We support construct EagerTensor from numpy value "
+          "or tensor(EagerTensor or framework::Tensor) "
+          "with python args and kwargs by this initializer, "
+          "but the first argument should be PyArray or EagerTensor or "
+          "framework::Tensor. "
+          "Please check your input first and make sure you call the existed "
+          "constructor."));
+    }
+  } else if (args_num == (Py_ssize_t)4) {
+    // 4 position args, remainting arguments are kwargs
+    PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
+    if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
+      VLOG(6) << "Calling case3's or case4's initializer.";
+      AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                   args_num);
+      return 0;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Incompatible constructor arguments, "
+          "there are 4 position args and remainting arguments arg kwargs,"
+          "but the first position args should be PyArray. "
+          "Please check your code and make sure the first position args is "
+          "PyArray."));
+    }
+  } else if (args_num == (Py_ssize_t)5) {
+    if (!flag_kwargs) {
+      PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
+      if (PyObject_IsInstance(arg0_ptr,
+                              reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+        VLOG(6) << "Calling case2's initializer.";
+        paddle::framework::proto::VarType::Type dtype =
+            CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
+        std::vector<int> dims =
+            CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
+        std::string act_name = "";
+        PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
+        if (name_obj == Py_None) {
+          act_name = egr::Controller::Instance().GenerateUniqueName(
+              "generated_tensor");
+        } else {
+          act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 2), 2);
+        }
+        paddle::framework::proto::VarType::Type var_type =
+            CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 3), 3);
+        bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+        EmptyEagerTensorInitializer(
+            py_tensor_ptr, act_name,
+            egr::Controller::Instance().GetExpectedPlace(), persistable, true,
+            dtype, dims, var_type);
+        return 0;
+      } else if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
         VLOG(6) << "Calling case3's initializer.";
         AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
                                      args_num);
         return 0;
-      } else {  // six position args, remainting arguments are kwargs, but this
-                // is not a right way
+      } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "There are six position args and the remainting arguments are "
-            "kwargs,"
-            "please check your input first and make sure you are on the right "
-            "way."));
+            "Incompatible constructor arguments, "
+            "there are only 5 position args,"
+            "but the first position args should be PyArray or dtype. "
+            "Please check your code and make sure you call the existed "
+            "constructor."));
+      }
+    } else {  // five position args, remainting arguments are kwargs
+      PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
+      if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
+        VLOG(6) << "Calling case3's or case4's initializer";
+        AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                     args_num);
+        return 0;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Incompatible constructor arguments, "
+            "there are 5 position args and remainting arguments are kwargs,"
+            "but the first position args should be PyArray. "
+            "Please check your code and make sure the first position args is "
+            "PyArray."));
       }
     }
-    default: {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Can't not find expected num of args, please check your call, and "
-          "make sure u call the existed constructor."));
-      return 1;
+  } else if (args_num == (Py_ssize_t)6) {
+    if (!flag_kwargs) {
+      // case 3
+      VLOG(6) << "Calling case3's initializer.";
+      AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                   args_num);
+      return 0;
+    } else {  // six position args, remainting arguments are kwargs, but this
+              // is not a right way
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Incompatible constructor arguments, "
+          "there are 6 position args and the remainting arguments are kwargs. "
+          "Please check your code and make sure the first position args is "
+          "PyArray."));
     }
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Can't not find expected num of args, please check your call, and "
+        "make sure u call the existed constructor."));
   }
+
+  return 1;
 }
 
 static void eagertensor_dealloc(EagerTensorObject* self) {
