@@ -40,8 +40,9 @@ class intrusive_ptr {
     rhs.reset();
   }
 
-  intrusive_ptr<T>& operator=(intrusive_ptr<T>&& rhs) {
-    px = std::move(rhs.px);
+  intrusive_ptr& operator=(intrusive_ptr&& rhs) {
+    px = rhs.px;
+    rhs.px = nullptr;
     return *this;
   }
 

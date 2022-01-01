@@ -83,7 +83,9 @@ class SharedStorage : public pten::Storage {
     size_ = 0;
   }
 
-  size_t size() const noexcept override { return size_; }
+  size_t size() const noexcept override {
+    return data_ ? data_->size() : size_;
+  }
   const paddle::platform::Place& place() const override { return place_; }
   bool OwnsMemory() const noexcept override { return false; }
 

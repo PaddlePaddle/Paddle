@@ -300,9 +300,8 @@ void DenseTensor::ResetHolder(
           "Only the offset is supported to zero when the holder is reset."));
 
   if (storage_ == nullptr) {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("storage_ has to be initialized before "
-                                        "calling ResetHolder() interface."));
+    storage_ =
+        make_intrusive<paddle::experimental::SharedStorage>(holder->place());
   }
 
   if (storage_->data_shared()) {
@@ -433,23 +432,26 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
   if (requested_size && (requested_size > size)) {
     size = requested_size;
   }
-
   if (storage_ == nullptr) {
     storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
   }
-
   /* some versions of boost::variant don't have operator!= */
   if (storage_->data_shared() == nullptr ||
       !(storage_->data_shared()->place() == place) ||
       storage_->data_shared()->size() < size + meta_.offset) {
-    // Reset holder first before re-allocate to save memory
-    storage_->Clear();
-    storage_->set_data_shared(paddle::memory::AllocShared(place, size));
-    meta_.offset = 0;
+    if (auto shared_storage =
+            dynamic_cast<paddle::experimental::SharedStorage*>(
+                storage_.get())) {
+      shared_storage->ResetAllocationPlace(place);
+      shared_storage->Realloc(size);
+      meta_.offset = 0;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Only storage_ with type SharedStorage is supported for now."));
+    }
   }
-  return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(storage_->data_shared()->ptr()) +
-      meta_.offset);
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+                                 meta_.offset);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
@@ -475,20 +477,31 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
           dims(),
           "] now"));
   size_t size = numel() * SizeOf(dtype());
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
+  }
 
   /* some versions of boost::variant don't have operator!= */
-  if (storage_ == nullptr || storage_->data_shared() == nullptr ||
+  if (storage_->data_shared() == nullptr ||
       !(storage_->data_shared()->place() == place) ||
       storage_->data_shared()->size() < size + meta_.offset ||
       !(paddle::platform::is_gpu_place(place) &&
         paddle::memory::InSameStream(storage_->data_shared(), stream))) {
-    storage_->Clear();
-    storage_->set_data_shared(paddle::memory::AllocShared(place, size, stream));
-    meta_.offset = 0;
+    if (auto shared_storage =
+            dynamic_cast<paddle::experimental::SharedStorage*>(
+                storage_.get())) {
+      shared_storage->Clear();
+      shared_storage->ResetAllocationPlace(place);
+      shared_storage->set_data_shared(
+          paddle::memory::AllocShared(place, size, stream));
+      meta_.offset = 0;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Only storage_ with type SharedStorage is supported for now."));
+    }
   }
-  return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(storage_->data_shared()->ptr()) +
-      meta_.offset);
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+                                 meta_.offset);
 }
 
 /* @jim19930609: The following "mutable_data" only supports specific dtypes
