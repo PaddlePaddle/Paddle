@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Used for compute gpu launch parameter
+// Used for compute gpu launch parameter config
 
 #pragma once
 
@@ -28,7 +28,14 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device_context.h"
+
+#ifdef __HIPCC__
+#define ELEMENTWISE_BLOCK_SIZE 256
+#else
+#define ELEMENTWISE_BLOCK_SIZE 512
+#endif
 
 namespace paddle {
 namespace platform {
@@ -47,7 +54,20 @@ inline void ChangeThreadNum(const platform::CUDADeviceContext& context,
 }
 #endif
 
-struct GpuLaunchConfig {
+class GpuLaunchConfig {
+ public:
+  GpuLaunchConfig() {}
+
+  const int GetThreadNum() const { return GetBlockSize() * GetGridSize(); }
+
+  const int GetGridSize() const {
+    return block_per_grid.x * block_per_grid.y * block_per_grid.z;
+  }
+
+  const int GetBlockSize() const {
+    return thread_per_block.x * thread_per_block.y * thread_per_block.z;
+  }
+
   dim3 theory_thread_count = dim3(1, 1, 1);
   dim3 thread_per_block = dim3(1, 1, 1);
   dim3 block_per_grid = dim3(1, 1, 1);
@@ -58,7 +78,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int64_t element_count,
 #ifdef PADDLE_WITH_HIP
     // HIP will throw GPU memory access fault if threads > 256
-    int max_threads = 256) {
+    int max_threads = ELEMENTWISE_BLOCK_SIZE) {
 #else
     int max_threads = 1024) {
 #endif
@@ -128,6 +148,39 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
       (std::min)(max_blocks / grid_x, (std::max)(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
+  return config;
+}
+
+/*
+* According to NVIDIA, if number of threads per block is 64/128/256/512,
+* cuda performs better. And number of blocks should be greater (at least
+* 2x~4x) than number of SMs. Hence, SM count is took into account within
+* this function to determine the right number of threads per block.
+*/
+inline GpuLaunchConfig GetVectorizedLaunchConfig(
+    const paddle::platform::CUDADeviceContext& ctx, int64_t numel,
+    int vec_size) {
+  int threads = ELEMENTWISE_BLOCK_SIZE;
+  int sm_count = ctx.GetSMCount();
+  int active_threads_num = numel / vec_size;
+  if (active_threads_num / (sm_count << 1) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about twice of SM, to acquire better performance.
+    threads = paddle::platform::RoundToPowerOfTwo(active_threads_num /
+                                                  (sm_count << 1));
+  } else if (active_threads_num / (sm_count << 2) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    threads = paddle::platform::RoundToPowerOfTwo(active_threads_num /
+                                                  (sm_count << 2));
+  }
+  // Number of threads per block shall be larger than 64.
+  threads = std::max(64, threads);
+  int blocks = ((numel + vec_size - 1) / vec_size + threads - 1) / threads;
+
+  GpuLaunchConfig config;
+  config.thread_per_block.x = threads;
+  config.block_per_grid.x = blocks;
   return config;
 }
 

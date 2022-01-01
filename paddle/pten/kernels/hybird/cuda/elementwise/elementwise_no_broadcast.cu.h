@@ -14,42 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise_common.cu.h"
 
-#ifdef __HIPCC__
-#define ELEMENTWISE_BLOCK_SIZE 256
-#else
-#define ELEMENTWISE_BLOCK_SIZE 512
-#endif
-
 namespace pten {
-
-/*
-* According to NVIDIA, if number of threads per block is 64/128/256/512,
-* cuda performs better. And number of blocks should be greater (at least
-* 2x~4x) than number of SMs. Hence, SM count is took into account within
-* this function to determine the right number of threads per block.
-*/
-inline int GetThreadsConfig(const paddle::platform::CUDADeviceContext &ctx,
-                            int64_t numel,
-                            int vec_size) {
-  int threads = ELEMENTWISE_BLOCK_SIZE;
-  int sm_count = ctx.GetSMCount();
-  int active_threads_num = numel / vec_size;
-  if (active_threads_num / (sm_count << 1) < ELEMENTWISE_BLOCK_SIZE) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about twice of SM, to acquire better performance.
-    threads = paddle::platform::RoundToPowerOfTwo(active_threads_num /
-                                                  (sm_count << 1));
-  } else if (active_threads_num / (sm_count << 2) < ELEMENTWISE_BLOCK_SIZE) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about 4 times of SM, to acquire better performance.
-    threads = paddle::platform::RoundToPowerOfTwo(active_threads_num /
-                                                  (sm_count << 2));
-  }
-  // Number of threads per block shall be larger than 64.
-  return std::max(64, threads);
-}
 
 template <typename InT,
           typename OutT,
@@ -150,9 +118,7 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = ins[0]->numel();
-  int block_size = GetThreadsConfig(ctx, numel, VecSize);
-  int grid_size =
-      ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
+  auto gpu_config = GetVectorizedLaunchConfig(ctx, numel, VecSize);
   auto stream = ctx.stream();
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
   paddle::framework::Array<OutT *, NumOuts> outs_data;
@@ -164,8 +130,8 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
     outs_data[i] = (*outs)[i]->mutable_data<OutT>();
   }
 #ifdef PADDLE_WITH_XPU2
-  block_size = 128;
-  grid_size = 8;
+  int block_size = 128;
+  int grid_size = 8;
   int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
   VectorizedElementwiseKernel<InT,
                               OutT,
@@ -175,14 +141,13 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
-  int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
-  VectorizedElementwiseKernel<InT,
-                              OutT,
-                              Functor,
-                              Arity,
-                              NumOuts,
-                              VecSize><<<grid_size, block_size, 0, stream>>>(
-      ins_data, outs_data, numel, main_offset, func);
+  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
+                    gpu_config.GetBlockSize();
+  VectorizedElementwiseKernel<InT, OutT, Functor, Arity, NumOuts, VecSize><<<
+      gpu_config.block_per_grid,
+      gpu_config.thread_per_block,
+      0,
+      stream>>>(ins_data, outs_data, numel, main_offset, func);
 #endif
 }
 
