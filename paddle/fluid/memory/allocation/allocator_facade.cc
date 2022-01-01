@@ -690,7 +690,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_MLU
     int device_count = platform::GetMLUDeviceCount();
     for (int i = 0; i < device_count; ++i) {
-      platform::XPUPlace p(i);
+      platform::MLUPlace p(i);
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
