@@ -268,7 +268,9 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
       return MKLDNNMemoryFormat::ndhwc;
     }
   } else if (dims_size == 6) {
-    return MKLDNNMemoryFormat::abcdef;
+    if (data_format == MKLDNNMemoryFormat::nchw) {
+      return MKLDNNMemoryFormat::abcdef;
+    }
   }
   return data_format;
 }
