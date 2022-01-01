@@ -200,8 +200,7 @@ inline void Reorder(dnnl::memory src, dnnl::memory dst,
   astream.wait();
 }
 
-inline dnnl::memory::format_tag GetMKLDNNFormat(
-    const dnnl::memory& memory) {
+inline dnnl::memory::format_tag GetMKLDNNFormat(const dnnl::memory& memory) {
   auto mem_desc = memory.get_desc();
   return GetMKLDNNFormat(mem_desc);
 }

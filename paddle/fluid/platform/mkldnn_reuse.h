@@ -839,7 +839,7 @@ class ActivationMKLDNNHandler
       beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
                                  : ctx.Attr<float>("max");
     }
-    
+
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             algorithm, in_x->mem_desc(), alpha,
                                             beta);
@@ -879,13 +879,13 @@ class ReorderMKLDNNHandler {
         dtype_dst_(dtype_dst),
         engine_(engine) {}
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(
-      const dnnl::memory::desc& md, void* ptr) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const dnnl::memory::desc& md,
+                                                 void* ptr) {
     return std::make_shared<dnnl::memory>(md, engine_, ptr);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(
-      const MKLDNNMemoryFormat& fmt, void* ptr) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
+                                                 void* ptr) {
     auto md = dnnl::memory::desc(dims_, dtype_, fmt);
     return std::make_shared<dnnl::memory>(md, engine_, ptr);
   }

@@ -102,7 +102,7 @@ class Tensor {
     // supporting both is needed
     return mem_desc_ ? mem_desc_
                      : dnnl::memory::desc(framework::vectorize(dims_),
-                                            ToMKLDNNDataType(type_), format_);
+                                          ToMKLDNNDataType(type_), format_);
   }
 
   inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {

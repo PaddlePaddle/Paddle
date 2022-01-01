@@ -107,8 +107,7 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
                                                           reorder_src_memory_p);
 
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          outs[i], out_vec_dims,
-          platform::GetPlainMKLDNNFormat(out_vec_dims.size()), ctx.GetPlace());
+          outs[i], out_vec_dims, x->format(), ctx.GetPlace());
       auto reorder_p =
           reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
