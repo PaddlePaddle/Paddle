@@ -26,6 +26,7 @@ __all__ = [
     'synchronize',
     'device_count',
     'empty_cache',
+    'memory_reserved',
     'stream_guard',
     'get_device_properties',
     'get_device_name',
@@ -149,6 +150,79 @@ def empty_cache():
         core.cuda_empty_cache()
 
 
+def extract_cuda_device_id(device, op_name):
+    '''
+    Return the id of the given cuda device. It is just a utility that will not be exposed to users.
+
+    Args:
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
+            the string name of device like 'gpu:x'.
+            Default: None.
+
+    Returns:
+        int: The id of the given device. If device is None, return -1.
+    '''
+    if (device is None):
+        return -1
+
+    if isinstance(device, int):
+        return device
+    elif isinstance(device, core.CUDAPlace):
+        return device.get_device_id()
+    elif isinstance(device, str):
+        if device.startswith('gpu:'):
+            return int(device[4:])
+        else:
+            raise ValueError(
+                "The current string {} is not expected. Because {} only support string which is like 'gpu:x'. "
+                "Please input appropriate string again!".format(device,
+                                                                op_name))
+    else:
+        raise ValueError(
+            "The device type {} is not expected. Because {} only support int, str or paddle.CUDAPlace. "
+            "Please input appropriate device again!".format(device, op_name))
+
+
+def memory_reserved(device=None):
+    '''
+    Returns the current cached memory held by the allocator.
+
+    Args:
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
+            the string name of device like 'gpu:x'. If device is None, the device is the current device. 
+            Default: None.
+
+    Returns:
+        int: The current cached memory held by the allocator of the given device in bytes.
+
+    Examples:
+    
+        .. code-block:: python
+
+            # required: gpu
+
+            import paddle
+            
+            place = paddle.CUDAPlace(0)
+            data = paddle.zeros(shape=[3, 2])
+            tensor = paddle.to_tensor(data, place=place)
+
+            memory_consumption = paddle.device.cuda.memory_reserved(place)
+            memory_consumption = paddle.device.cuda.memory_reserved(0)
+            memory_consumption = paddle.device.cuda.memory_reserved("gpu:0")
+    '''
+
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            "The API paddle.device.cuda.memory_reserved is not supported in "
+            "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
+            "to call this API.")
+
+    device_id = extract_cuda_device_id(
+        device, op_name="paddle.device.cuda.memory_reserved")
+    return core.cuda_memory_reserved(device_id)
+
+
 def _set_current_stream(stream):
     '''
     Set the current stream.
@@ -251,27 +325,8 @@ def get_device_properties(device=None):
             "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
             "to call this API.")
 
-    if device is not None:
-        if isinstance(device, int):
-            device_id = device
-        elif isinstance(device, core.CUDAPlace):
-            device_id = device.get_device_id()
-        elif isinstance(device, str):
-            if device.startswith('gpu:'):
-                device_id = int(device[4:])
-            else:
-                raise ValueError(
-                    "The current string {} is not expected. Because paddle.device."
-                    "cuda.get_device_properties only support string which is like 'gpu:x'. "
-                    "Please input appropriate string again!".format(device))
-        else:
-            raise ValueError(
-                "The device type {} is not expected. Because paddle.device.cuda."
-                "get_device_properties only support int, str or paddle.CUDAPlace. "
-                "Please input appropriate device again!".format(device))
-    else:
-        device_id = -1
-
+    device_id = extract_cuda_device_id(
+        device, op_name="paddle.device.cuda.get_device_properties")
     return core.get_device_properties(device_id)
 
 

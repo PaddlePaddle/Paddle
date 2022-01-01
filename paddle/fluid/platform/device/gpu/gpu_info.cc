@@ -166,6 +166,10 @@ class RecordedGpuMallocHelper {
       }
     });
 
+    if (dev_id == -1) {
+      dev_id = platform::GetCurrentDeviceId();
+    }
+
     PADDLE_ENFORCE_GE(
         dev_id, 0,
         platform::errors::OutOfRange(

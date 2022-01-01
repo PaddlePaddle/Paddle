@@ -2674,6 +2674,8 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
+  m.def("cuda_memory_reserved", platform::RecordedGpuMallocSize,
+        py::return_value_policy::copy);
   m.def("get_device_properties",
         [](int id) -> const gpuDeviceProp & {
           return platform::GetDeviceProperties(id);
