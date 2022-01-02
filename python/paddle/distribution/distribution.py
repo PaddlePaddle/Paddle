@@ -40,6 +40,14 @@ class Distribution(object):
     """
     The abstract base class for probability distributions. Functions are 
     implemented in specific distributions.
+
+    Args:
+        batch_shape(Sequence[int], optional):  independent, not identically 
+            distributed draws, aka a "collection" or "bunch" of distributions.
+        event_shape(Sequence[int], optional): the shape of a single 
+            draw from the distribution; it may be dependent across dimensions. 
+            For scalar distributions, the event shape is []. For n-dimension 
+            multivariate distribution, the event shape is [n].
     """
 
     def __init__(self, batch_shape=(), event_shape=()):
@@ -56,7 +64,7 @@ class Distribution(object):
         """Returns batch shape of distribution
 
         Returns:
-            Tensor: batch shape
+            Sequence[int]: batch shape
         """
         return self._batch_shape
 
@@ -65,7 +73,7 @@ class Distribution(object):
         """Returns event shape of distribution
 
         Returns:
-            Tensor: event shape
+            Sequence[int]: event shape
         """
         return self._event_shape
 
