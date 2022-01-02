@@ -23,42 +23,24 @@ using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
-static void ReduceDims(const framework::ExecutionContext& ctx,
-                       const aclrtStream& stream, const int axis,
-                       const framework::DDim& ddims,
-                       const framework::DDim& brd_ddims, const Tensor& in,
-                       Tensor* out) {
-  std::vector<int64_t> axes;
-  int64_t brd_size = brd_ddims.size();
-  int64_t org_size = ddims.size();
-  // int64_t diff = brd_dims.size() - dims.size();
-  for (int64_t i = 0; i < brd_size; ++i) {
-    if (i < axis || i >= org_size + axis) {
-      axes.push_back(i);
-      continue;
-    }
-    if (brd_ddims[i] > ddims[i - axis]) {
-      axes.push_back(i);
-    }
-  }
-  // LOG(INFO) << "axes = " << framework::make_ddim(axes).to_str();
-  out->mutable_data<T>(ctx.GetPlace());
-  const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
-                                   {{"axes", axes}, {"keep_dims", false}});
-  runner.Run(stream);
-}
-
-template <typename T>
 class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    // LOG(WARNING) << "ElementwiseMulNPUKernel";
+    // LOG(WARNING) << "op type: " << ctx.Type();
+
     auto& dev_ctx = ctx.template device_context<NPUDeviceContext>();
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
+    // LOG(WARNING) << "x->dims(): " << x->dims();
+    // LOG(WARNING) << "y->dims(): " << y->dims();
+    // LOG(WARNING) << "out->dims(): " << out->dims();
+
     int axis = ctx.Attr<int>("axis");
+    // LOG(WARNING) << "axis: " << axis;
 
     bool direct_compute = false;
     auto x_dims = x->dims();
@@ -69,6 +51,7 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
     } else {
       direct_compute = y_dims.size() == (x_dims.size() + axis);
     }
+    // LOG(WARNING) << "direct_compute: " << direct_compute;
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
@@ -88,6 +71,9 @@ template <typename T>
 class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    // LOG(WARNING) << "ElementwiseMulGradNPUKernel";
+    // LOG(WARNING) << "op type: " << ctx.Type();
+
     auto& dev_ctx = ctx.template device_context<NPUDeviceContext>();
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
@@ -96,18 +82,34 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
+    // LOG(WARNING) << "x->dims(): " << x->dims();
+    // LOG(WARNING) << "y->dims(): " << y->dims();
+    // LOG(WARNING) << "dout->dims(): " << dout->dims();
+    // if (dx)
+    //   LOG(WARNING) << "dx->dims(): " << dx->dims();
+    // if (dy)
+    //   LOG(WARNING) << "dy->dims(): " << dy->dims();
+
+    // LOG(WARNING) << "axis: " << axis;
+
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
     Tensor trans_x, trans_y;
     NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &trans_x, &trans_y);
+    // LOG(WARNING) << "trans_x.dims(): " << trans_x.dims();
+    // LOG(WARNING) << "trans_y.dims(): " << trans_y.dims();
 
     if (dx) {
       if (dx->dims() == dout->dims()) {
+        // LOG(WARNING) << "here";
+
         dx->mutable_data<T>(ctx.GetPlace());
         const auto& runner_dx = NpuOpRunner("Mul", {*dout, trans_y}, {*dx}, {});
         runner_dx.Run(stream);
       } else {
+        // LOG(WARNING) << "here";
+
         Tensor dx_temp(x->type());
         dx_temp.Resize(trans_x.dims());
         dx_temp.mutable_data<T>(ctx.GetPlace());
@@ -120,10 +122,14 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
     }
     if (dy) {
       if (dy->dims() == dout->dims()) {
+        // LOG(WARNING) << "here";
+        
         dy->mutable_data<T>(ctx.GetPlace());
         const auto& runner_dy = NpuOpRunner("Mul", {trans_x, *dout}, {*dy}, {});
         runner_dy.Run(stream);
       } else {
+        // LOG(WARNING) << "here";
+        
         Tensor dy_temp(y->type());
         dy_temp.Resize(trans_y.dims());
         dy_temp.mutable_data<T>(ctx.GetPlace());

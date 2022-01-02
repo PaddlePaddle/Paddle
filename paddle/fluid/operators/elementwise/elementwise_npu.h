@@ -23,6 +23,32 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
+static void ReduceDims(const framework::ExecutionContext& ctx,
+                       const aclrtStream& stream, const int axis,
+                       const framework::DDim& ddims,
+                       const framework::DDim& brd_ddims, const Tensor& in,
+                       Tensor* out) {
+  std::vector<int64_t> axes;
+  int64_t brd_size = brd_ddims.size();
+  int64_t org_size = ddims.size();
+  // int64_t diff = brd_dims.size() - dims.size();
+  for (int64_t i = 0; i < brd_size; ++i) {
+    if (i < axis || i >= org_size + axis) {
+      axes.push_back(i);
+      continue;
+    }
+    if (brd_ddims[i] > ddims[i - axis]) {
+      axes.push_back(i);
+    }
+  }
+  // LOG(INFO) << "axes = " << framework::make_ddim(axes).to_str();
+  out->mutable_data<T>(ctx.GetPlace());
+  const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
+                                   {{"axes", axes}, {"keep_dims", false}});
+  runner.Run(stream);
+}
+
+template <typename T>
 void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
                   int axis, const framework::DDim& dst_dims,
                   Tensor* transformed_src) {

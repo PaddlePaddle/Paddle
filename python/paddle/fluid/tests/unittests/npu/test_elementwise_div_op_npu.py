@@ -199,5 +199,86 @@ class TestFloatStatus(unittest.TestCase):
         paddle.enable_static()
 
 
+# ------------------------------------------------
+# Special Cases for NPU
+# ------------------------------------------------
+
+class TestElementwiseDiv_NPU_Case1(TestElementwiseDiv):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "elementwise_div"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [110, 1]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [110, 2]).astype(self.dtype)
+        out = np.divide(x, y)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.attrs = {}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X', 'Y'],
+            'Out',
+            max_relative_error=0.009, )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            max_relative_error=0.009,
+            no_grad_set=set("X"), )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set("Y"))
+
+
+class TestElementwiseDiv__NPU_Case2(TestElementwiseDiv):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "elementwise_div"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [110, 2]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [110, 1]).astype(self.dtype)
+        out = np.divide(x, y)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.attrs = {}
+        self.outputs = {'Out': out}
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            max_relative_error=0.009,
+            no_grad_set=set("X"), )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            max_relative_error=0.007,
+            no_grad_set=set("Y"))
+
 if __name__ == '__main__':
     unittest.main()
