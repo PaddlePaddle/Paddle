@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {

@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mish_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {

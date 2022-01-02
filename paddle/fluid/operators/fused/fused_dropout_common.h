@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 

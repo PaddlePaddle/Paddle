@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
