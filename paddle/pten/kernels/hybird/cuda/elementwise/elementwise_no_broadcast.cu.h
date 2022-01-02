@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise_common.cu.h"
 
 namespace pten {

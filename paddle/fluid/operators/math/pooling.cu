@@ -16,16 +16,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/pooling.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-
-#ifdef __HIPCC__
-#define POOLING_BLOCK_SIZE 256
-#else
-#define POOLING_BLOCK_SIZE 512
-#endif
 
 namespace paddle {
 namespace operators {
@@ -491,7 +484,7 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, POOLING_BLOCK_SIZE, nthreads);
+    int blocks = GetThreadsPerBlock(context, PREDEFINED_BLOCK_SIZE, nthreads);
     int grids = (nthreads + blocks - 1) / blocks;
 
     auto pool_divmods = FastDivModForPoolingWithMoreStaff(
@@ -541,7 +534,7 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, POOLING_BLOCK_SIZE, nthreads);
+    int blocks = GetThreadsPerBlock(context, PREDEFINED_BLOCK_SIZE, nthreads);
     int grids = (nthreads + blocks - 1) / blocks;
 
     auto pool_divmods = FastDivModForPoolingWithMoreStaff(
