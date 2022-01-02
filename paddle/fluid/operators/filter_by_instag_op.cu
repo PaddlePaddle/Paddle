@@ -55,8 +55,8 @@ __global__ void filter_copy_fuse_kernel(
   // one threads for ins_per_thread(4) instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-  int ins_start = idx * 4;
-  int ins_end = (idx + 1) * 4;
+  int ins_start = idx * ins_per_thread;
+  int ins_end = (idx + 1) * ins_per_thread;
 
   if (ins_start >= N) return;
   if (N < ins_end) ins_end = N;
@@ -95,10 +95,15 @@ __global__ void filter_copy_fuse_kernel(
       if (i == 0)
         prefix_sum[i] = 0;
       else
-        prefix_sum[i] = prefix_sum[i - 1] + flag_data[i - 1];
+        prefix_sum[i] =
+            prefix_sum[i - 1] +
+            flag_data[i - 1] * (x1_lods_data[i] - x1_lods_data[i - 1]);
     }
   }
 
+  // 0 1 0 1 0 1 0 1
+  // 0 1 3 6 10 15 21 28 36
+  // 0 0 2 2 6 6
   __syncthreads();
 
   for (int p = ins_start; p < ins_end; p++) {
@@ -108,10 +113,9 @@ __global__ void filter_copy_fuse_kernel(
 
       T* dst = out_data + output_start_idx * x1_embed_size;
 
-      const T* src_start = x1_data + p * x1_embed_size;
-
-      const T* src_end =
-          x1_data + (p + x1_lods_data[p + 1] - x1_lods_data[p]) * x1_embed_size;
+      //
+      const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
+      const T* src_end = x1_data + (x1_lods_data[p + 1]) * x1_embed_size;
 
       for (const T *j = src_start; j != src_end; dst++, j++) {
         *dst = *j;
@@ -274,8 +278,8 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
-    out->Resize(
-        framework::make_ddim({(int64_t)x2_lods_size, (int64_t)x1_embed_size}));
+    out->Resize(framework::make_ddim(
+        {(int64_t)x1_lods.back(), (int64_t)x1_embed_size}));
 
     // map->Resize(framework::make_ddim({(int64_t)x2_lods_size, 3}));
     // loss_weight->Resize(
@@ -289,13 +293,21 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     thrust::device_ptr<T> out_data_ptr(out_data);
     thrust::fill(out_data_ptr, out_data_ptr + out->numel(), 0);
 
+    // std::cout << "=====DEBUG====== out numel " << out->numel() << " " <<
+    // x2_lods_size << " " << x1_embed_size <<std::endl;
+
     Vector<int> flag(x2_lods_size, 0);
     int* flag_data = flag.CUDAMutableData(context.GetPlace());
 
     int block_size = max_thread_num_per_block;
-    auto ins_per_thread = x2_lods_size / block_size;
+    auto ins_per_thread =
+        x2_lods_size / block_size > 1 ? x2_lods_size / block_size : 1;
     dim3 block_dim(block_size);
     dim3 grid_dim(1);
+
+    // std::cout << "=====DEBUG====== out numel " << out->numel() << " " <<
+    // x2_lods_size << " " << x1_embed_size << " " << block_size << " " <<
+    // ins_per_thread <<std::endl;
 
     // fileter_logic
     // filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
@@ -307,11 +319,32 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
         x3_data, x3->numel(), flag_data, out_data, x1_data, x1_embed_size);
 
+    // std::cout << "============DEBUG=============flag data" << std::endl;
+    // for(int i = 0; i < x2_lods_size; i++) {
+    //  std::cout << flag_data[i] << " ";
+    //}
+    // std::cout << std::endl;
+
     // filter + copy fuse
     // copy_kernel<<<grid_dim_2, block_dim_2, 0, current_stream>>>(N, out_data,
     // x1_data, map_data, x1_embed_size);
 
     platform::GpuStreamSync(current_stream);
+    // std::cout << "============DEBUG=============flag data" << std::endl;
+    // thrust::device_ptr<int> flag_data_ptr(flag_data);
+
+    // for(int i = 0; i < x2_lods_size; i++) {
+    // std::cout << flag_data_ptr[i] << " ";
+    //}
+    // std::cout << std::endl;
+
+    // thrust::device_ptr<const size_t> x1_lods_data_ptr(x1_lods_data);
+    // std::cout << "============DEBUG=============x2_lods data" << std::endl;
+    // for(int i = 0; i <= x2_lods_size; i++) {
+    //  std::cout << x1_lods_data_ptr[i] << " ";
+    //}
+    // std::cout << std::endl;
+
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods;
     out_lods.reserve(x2_lods_size + 1);
@@ -329,9 +362,11 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     if (out_lods.size() - 1 > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+
       map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
       loss_weight->Resize(
           framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+
     } else {
       out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({1, 3}));
@@ -368,6 +403,9 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
+
+      // std::cout << "=====DEBUG====== out numel " << out->numel() << " " <<
+      // out_lods.back() << " " << x1_embed_size << std::endl;
 
       // thrust::device_ptr<T> out_data_ptr(out_data);
       // thrust::fill(out_data_ptr, out_data_ptr + out->numel(), 0);
