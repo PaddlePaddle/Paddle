@@ -16,7 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/pooling.h"
-#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 

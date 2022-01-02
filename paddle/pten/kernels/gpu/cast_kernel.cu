@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace pten {

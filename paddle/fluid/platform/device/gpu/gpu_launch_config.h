@@ -88,13 +88,13 @@ class GpuLaunchConfig {
  public:
   GpuLaunchConfig() {}
 
-  const int GetThreadNum() const { return GetBlockSize() * GetGridSize(); }
+  size_t GetThreadNum() const { return GetBlockSize() * GetGridSize(); }
 
-  const int GetGridSize() const {
+  size_t GetGridSize() const {
     return block_per_grid.x * block_per_grid.y * block_per_grid.z;
   }
 
-  const int GetBlockSize() const {
+  size_t GetBlockSize() const {
     return thread_per_block.x * thread_per_block.y * thread_per_block.z;
   }
 
