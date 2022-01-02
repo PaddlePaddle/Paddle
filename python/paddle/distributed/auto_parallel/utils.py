@@ -1418,3 +1418,98 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     # Third, print error infomation if we cannot find the original id
     else:
         assert False, "Cannot find the original id in the distributed context"
+
+
+def save_serial_tensors(tensor_dict, directory):
+    path = os.path.join(directory, "tensors.pkl")
+    with open(path, 'wb') as f:
+        pickle.dump(tensor_dict, f)
+
+
+def save_dist_tensors(tensor_dict, directory):
+    path = os.path.join(
+        directory, "tensors_" + str(paddle.distributed.get_rank()) + ".pkl")
+    with open(path, 'wb') as f:
+        pickle.dump(tensor_dict, f)
+
+
+def save_dist_attr(program, directory, dist_context=None):
+    """ 
+    Get distributed attribute of current rank.
+
+    Args:
+        program(Program): main program for training
+    """
+    from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+
+    assert isinstance(program, paddle.fluid.framework.Program)
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
+    dist_attr = {}
+    for var in program.list_vars():
+        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
+        if tensor_dist_attr is None:
+            continue
+        process_mesh = tensor_dist_attr.process_mesh
+        dims_mapping = tensor_dist_attr.dims_mapping
+        dist_attr[var.name] = {
+            "process_shape": process_mesh.topology,
+            "process_group": process_mesh.processes,
+            "dims_mapping": dims_mapping
+        }
+    path = os.path.join(
+        directory, "dist_attr_" + str(paddle.distributed.get_rank()) + ".pkl")
+    with open(path, 'wb') as f:
+        pickle.dump(dist_attr, f)
+    return dist_attr
+
+
+def check_loss(dist_tensor_file_path_list, serial_path, dist_attr_file_path):
+    dist_dict = OrderedDict()
+    with open(dist_attr_file_path, 'rb') as f:
+        dist_attr_dict = pickle.load(f)
+    for file_path in dist_tensor_file_path_list:
+        with open(file_path, 'rb') as f:
+            tensor_dict = pickle.load(f)
+            for step in tensor_dict.keys():
+                if step not in dist_dict.keys():
+                    dist_dict[step] = {}
+                for tensor_name in tensor_dict[step].keys():
+                    if tensor_name not in dist_dict[step].keys():
+                        dist_dict[step][tensor_name] = []
+                    dist_dict[step][tensor_name].append(tensor_dict[step][
+                        tensor_name])
+
+    with open(serial_path, 'rb') as f:
+        serial_dict = pickle.load(f)
+
+    diff_step = None
+    for step in dist_dict.keys():
+        avg_loss = sum(dist_dict[step]["loss"]) / len(dist_dict[step]["loss"])
+        serial_loss = serial_dict[step]["loss"]
+        if not np.allclose(avg_loss, serial_loss):
+            diff_step = step
+            print("The step {} loss is different".format(step))
+            break
+
+    if diff_step is not None:
+        for tensor_name in serial_dict[diff_step].keys():
+            if tensor_name == "loss":
+                continue
+            serial_tensor = serial_dict[diff_step][tensor_name]
+
+            dist_tensor_list = dist_dict[diff_step][tensor_name]
+            print('dist_tensor_list', dist_tensor_list)
+            dist_attr = dist_attr_dict[tensor_name]
+            print('dist_attr', dist_attr)
+            merged_tensor = _merge_parameter_with_dist_attr(dist_tensor_list,
+                                                            dist_attr)
+
+            if not np.allclose(merged_tensor, serial_tensor):
+                print("The tensor {} began to become different.".format(
+                    tensor_name))
+                print('serial_tensor', serial_tensor)
+                print('merged_tensor', merged_tensor)
+                break
+    else:
+        print("loss is the same.")
