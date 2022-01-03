@@ -58,12 +58,13 @@ static mlir::IntegerAttr createI32Attr(mlir::OpBuilder &b,  // NOLINT
   return b.getIntegerAttr(b.getI32Type(), constant);
 }
 
-static mlir::ValueRange cvtValueToValueRange(const mlir::Value &operand) {
-  return mlir::ValueRange(operand);
+static mlir::SmallVector<::mlir::Value, 4> cvtValueToValueRange(
+    const mlir::Value &operand) {
+  return mlir::SmallVector<::mlir::Value, 4>(1, operand);
 }
 
-static mlir::ValueRange concatTwoValueRange(mlir::ValueRange operand_0,
-                                            mlir::ValueRange operand_1) {
+static mlir::SmallVector<::mlir::Value, 4> concatTwoValueRange(
+    mlir::ValueRange operand_0, mlir::ValueRange operand_1) {
   mlir::SmallVector<::mlir::Value, 4> operands;
   operands.append(operand_0.begin(), operand_0.end());
   operands.append(operand_1.begin(), operand_1.end());

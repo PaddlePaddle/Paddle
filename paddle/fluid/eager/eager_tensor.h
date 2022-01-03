@@ -234,8 +234,7 @@ class EagerTensor final {
           auto* framework_tensor =
               var_.GetMutable<paddle::framework::LoDTensor>();
           framework_tensor->Resize(tensor_->dims());
-          framework_tensor->set_layout(
-              pten::TransToFluidDataLayout(tensor_->layout()));
+          framework_tensor->set_layout(tensor_->layout());
           // Contruct framework::Tensor from egr::EagerTensor
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
