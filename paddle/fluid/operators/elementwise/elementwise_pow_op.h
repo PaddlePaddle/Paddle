@@ -31,7 +31,7 @@ struct PowFunctor {
     // when cast to int by default and it is wrong.
     // Use llrint to cast it to the nearest integer, which is 3.
     if (std::is_integral<T>::value) {
-      return std::llrint(std::pow(a, b));
+      return std::pow(transfer_type(a), transfer_type(b));
     }
 #endif
     return std::pow(a, b);
@@ -60,6 +60,11 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
 template <typename T>
 struct PowGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * y * std::pow(transfer_type(x), transfer_type(y - 1));
+    }
+#endif
     return dout * y * std::pow(x, y - 1);
   }
 };
@@ -67,6 +72,12 @@ struct PowGradDX {
 template <typename T>
 struct PowGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * std::log(transfer_type(x)) *
+             std::pow(transfer_type(x), transfer_type(y));
+    }
+#endif
     return dout * std::log(x) * std::pow(x, y);
   }
 };

@@ -18,6 +18,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
+static inline float transfer_type(int value) {
+  return static_cast<float>(value);
+}
+static inline float transfer_type(float value) { return value; }
+static inline double transfer_type(int64_t value) {
+  return static_cast<double>(value);
+}
+static inline double transfer_type(double value) { return value; }
+
 namespace paddle {
 namespace operators {
 
@@ -117,7 +126,7 @@ struct MinFunctor {
 template <typename T>
 struct FMaxFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    return std::fmax(a, b);
+    return std::fmax(transfer_type(a), transfer_type(b));
   }
 };
 
@@ -137,7 +146,7 @@ struct FMaxFunctor<paddle::platform::float16> {
 template <typename T>
 struct FMinFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    return std::fmin(a, b);
+    return std::fmin(transfer_type(a), transfer_type(b));
   }
 };
 
