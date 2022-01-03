@@ -980,10 +980,10 @@ def image_decode_random_crop(x,
     attrs = {"mode": mode,
              "num_threads": num_threads,
              "aspect_ratio_min": aspect_ratio_min,
-             "aspect_ratio_max", aspect_ratio_max,
-             "area_min", area_min
-             "area_max", area_max,
-             "num_attempts", num_attempts}
+             "aspect_ratio_max": aspect_ratio_max,
+             "area_min": area_min,
+             "area_max": area_max,
+             "num_attempts": num_attempts}
 
     helper = LayerHelper("batch_decode_random_crop", **locals())
     out = helper.create_variable(
