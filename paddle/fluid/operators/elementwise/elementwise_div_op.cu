@@ -28,30 +28,30 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
                    const framework::Tensor* out, const framework::Tensor* dout,
                    framework::Tensor* dx, framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+  const auto& dev_ctx = ctx.template device_context<DeviceContext>();
+  const auto place = ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(platform::CUDAPlace());
+    dx->mutable_data<T>(place);
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
-      dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
+      dx->mutable_data<T>(x->dims(), place);
     }
     std::vector<const framework::Tensor*> ins = {dout, out, y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(dev_ctx, axis, ins, dout, dx,
-                                                  dy, DivGradXYFunctor<T, T>());
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
+        dev_ctx, place, axis, ins, dout, dx, dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(platform::CUDAPlace());
+    dx->mutable_data<T>(place);
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
-      dx->mutable_data<T>(x->dims(), platform::CUDAPlace());
+      dx->mutable_data<T>(x->dims(), place);
     }
     std::vector<const framework::Tensor*> ins = {dout, y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, axis, ins, dout, dx,
-                                                DivGradXFunctor<T>());
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
+                                                dx, DivGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
     std::vector<const framework::Tensor*> ins = {dout, out, y};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(dev_ctx, axis, ins, dout, dy,
-                                                 DivGradYFunctor<T>());
+    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+        dev_ctx, place, axis, ins, dout, dy, DivGradYFunctor<T>());
   }
 }
 

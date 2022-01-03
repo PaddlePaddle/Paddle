@@ -2631,25 +2631,26 @@ void ReduceWrapper(const platform::CUDADeviceContext &dev_ctx, int axis,
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
-void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
+void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
+                     const platform::Place &place, int axis,
                      std::vector<const framework::Tensor *> ins,
                      const framework::Tensor *dout, framework::Tensor *dx,
                      framework::Tensor *dy, Functor func) {
   framework::Tensor tmp_dx;
   framework::Tensor tmp_dy;
-  dy->mutable_data<T>(platform::CUDAPlace());
+  dy->mutable_data<T>(place);
   std::vector<framework::Tensor *> outs;
   if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
     outs = {dx, dy};
   } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
-    tmp_dx.mutable_data<T>(dout->dims(), platform::CUDAPlace());
+    tmp_dx.mutable_data<T>(dout->dims(), place);
     outs = {&tmp_dx, dy};
   } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
-    tmp_dy.mutable_data<T>(dout->dims(), platform::CUDAPlace());
+    tmp_dy.mutable_data<T>(dout->dims(), place);
     outs = {dx, &tmp_dy};
   } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
-    tmp_dy.mutable_data<T>(dout->dims(), platform::CUDAPlace());
-    tmp_dx.mutable_data<T>(dout->dims(), platform::CUDAPlace());
+    tmp_dy.mutable_data<T>(dout->dims(), place);
+    tmp_dx.mutable_data<T>(dout->dims(), place);
     outs = {&tmp_dx, &tmp_dy};
   }
 
@@ -2667,16 +2668,17 @@ void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
-void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx, int axis,
+void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx,
+                    const platform::Place &place, int axis,
                     std::vector<const framework::Tensor *> ins,
                     const framework::Tensor *dout, framework::Tensor *dxy,
                     Functor func) {
   framework::Tensor tmp_dxy;
-  dxy->mutable_data<T>(platform::CUDAPlace());
+  dxy->mutable_data<T>(place);
 
   std::vector<framework::Tensor *> outs;
   if (dxy->dims() != dout->dims()) {
-    tmp_dxy.mutable_data<T>(dout->dims(), platform::CUDAPlace());
+    tmp_dxy.mutable_data<T>(dout->dims(), place);
     outs = {&tmp_dxy};
   } else {
     outs = {dxy};

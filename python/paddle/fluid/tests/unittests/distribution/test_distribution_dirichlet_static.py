@@ -104,7 +104,3 @@ class TestDirichlet(unittest.TestCase):
                 scipy.stats.dirichlet.entropy(self.concentration),
                 rtol=RTOL.get(str(self.concentration.dtype)),
                 atol=ATOL.get(str(self.concentration.dtype)))
-
-
-if __name__ == '__main__':
-    unittest.main()
