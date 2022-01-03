@@ -152,7 +152,7 @@ class MatMulV2MKLDNNKernel
       x_bd_dims[x_bd_dims.size() - 2] = x_dims[0];
     } else {
       for (size_t i = 0; i < x_dims.size(); ++i) {
-        x_bd_dims[i] = x_dims[i];
+        x_bd_dims[x_bd_dims.size() - x_dims.size() + i] = x_dims[i];
       }
     }
     if (y_dims.size() == 1) {
@@ -162,7 +162,7 @@ class MatMulV2MKLDNNKernel
       y_bd_dims[y_bd_dims.size() - 2] = y_dims[0];
     } else {
       for (size_t i = 0; i < y_dims.size(); ++i) {
-        y_bd_dims[i] = y_dims[i];
+        y_bd_dims[y_bd_dims.size() - y_dims.size() + i] = y_dims[i];
       }
     }
 
@@ -259,6 +259,16 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
     astream.wait();
   }
 
+  std::vector<int64_t> ExtendDimsWithOnes(const std::vector<int64_t>& dims,
+                                          int new_size) const {
+    std::vector<int64_t> new_dims(new_size, 1);
+    for (size_t i = 0; i < dims.size(); ++i) {
+      new_dims[new_size - dims.size() + i] = dims[i];
+    }
+
+    return new_dims;
+  }
+
   void RunKernel(const ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
@@ -295,8 +305,14 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
     bool trans_y = ctx.Attr<bool>("trans_y");
     auto dout_dims = vectorize(dout->dims());
 
-    int ndims = std::max(x->dims().size(), y->dims().size());
-    ndims = std::max(ndims, 3);
+    size_t ndims = std::max(x->dims().size(), y->dims().size());
+    ndims = std::max<size_t>(ndims, 3);
+
+    if (x_dims.size() != ndims) {
+      x_dims = ExtendDimsWithOnes(x_dims, ndims);
+    } else if (y_dims.size() != ndims) {
+      y_dims = ExtendDimsWithOnes(y_dims, ndims);
+    }
 
     // in broadcasting scenario new memory is required because
     // reduce sum must be calculated upon broadcasted dims
