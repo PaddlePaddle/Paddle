@@ -81,9 +81,9 @@ DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
   return out_meta;
 }
 
-DenseTensorMeta FullLikeInferMeta(const DenseTensorMeta& x_meta,
-                                  DataType dtype,
-                                  DataLayout layout) {
+DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
+                                    DataType dtype,
+                                    DataLayout layout) {
   return {dtype == DataType::UNDEFINED ? x_meta.dtype : dtype,
           x_meta.dims,
           layout == DataLayout::UNDEFINED ? x_meta.layout : layout};

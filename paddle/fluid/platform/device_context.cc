@@ -484,8 +484,29 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitCuBlasContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+  InitCuSparseContext();
   InitCuSolverContext();
 #endif
+}
+
+void CUDAContext::SetStream(gpuStream_t stream) {
+  if (stream_->raw_stream() != stream) {
+    CUDADeviceGuard guard(place_.device);
+    DestoryCuDNNContext();
+    DestoryCuBlasContext();
+#ifndef PADDLE_WITH_HIP
+    DestoryCuSolverContext();
+#endif
+
+    stream_->SetStream(stream);
+
+    InitEigenContext();
+    InitCuBlasContext();
+    InitCuDNNContext();
+#ifndef PADDLE_WITH_HIP
+    InitCuSolverContext();
+#endif
+  }
 }
 
 CUDAContext::~CUDAContext() {
@@ -493,6 +514,7 @@ CUDAContext::~CUDAContext() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+  DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
 }
@@ -609,6 +631,9 @@ rocblas_handle CUDADeviceContext::cublas_handle() const {
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
+}
+cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
+  return context()->CusparseHandle()->GetCusparseHandle();
 }
 #endif
 
@@ -849,6 +874,15 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   return num_entries;
 }
 
+// TODO(jczaja): Replace with C++20 equivalents when applicable
+#ifdef _WIN32
+#define likely(expr) (expr)
+#define unlikely(expr) (expr)
+#else
+#define likely(expr) (__builtin_expect(!!(expr), 1))
+#define unlikely(expr) (__builtin_expect(!!(expr), 0))
+#endif
+
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
@@ -861,7 +895,10 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find ShapeBlob for current mkldnn session id firstly
   auto map_it = pMap->find(sid);
-  if (map_it == pMap->end()) {
+  // (jczaja): After first iteration of model's execution we
+  // should have all elements cached (mostly) so failures are unlikely (less
+  // likely for dynamic shapes)
+  if (unlikely(map_it == pMap->end())) {
     VLOG(2) << "GetBlob: sid=" << sid << ", miss sid\n";
     return nullptr;
   }
@@ -869,7 +906,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current input shape secondly
   auto sBlob_it = sBlob->find(tls().cur_input_shape_str);
-  if (sBlob_it == sBlob->end()) {
+  if (unlikely(sBlob_it == sBlob->end())) {
     VLOG(2) << "GetBlob: sid=" << tls().cur_input_shape_str
             << ", miss input_shape_str\n";
     return nullptr;
@@ -879,7 +916,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   // Find Blob via name
   auto key_it = pBlob->find(name);
 
-  if (key_it == pBlob->end()) {
+  if (unlikely(key_it == pBlob->end())) {
     VLOG(2) << "GetBlob sid=" << sid << ", miss blob=" << name << "\n";
     return nullptr;
   }
