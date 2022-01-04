@@ -59,7 +59,7 @@ void Reduce(const DeviceContext& dev_ctx,
         pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
     // cast x tensor to out_dtype
-    pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
+    pten::CastKernel<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
