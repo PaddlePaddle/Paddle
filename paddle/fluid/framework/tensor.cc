@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
@@ -49,7 +50,8 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   } else {
     size_t base = numel() / meta_.dims[0];
     Tensor dst;
-    dst.storage_ = std::move(copy_intrusive(storage_));
+    dst.storage_ = pten::make_intrusive<paddle::experimental::SharedStorage>(
+        storage_->data_shared());
     dst.meta_.layout = meta_.layout;
     dst.meta_.dtype = meta_.dtype;
     DDim dst_dims = meta_.dims;
@@ -104,6 +106,21 @@ std::vector<Tensor> Tensor::Chunk(int64_t chunks, int64_t axis) const {
   int64_t numel_size = meta_.dims[axis];
   int64_t split_size = (numel_size + chunks - 1) / chunks;
   return Split(split_size, axis);
+}
+
+Tensor& Tensor::ShareDataWith(const Tensor& src) {
+  src.check_memory_size();
+  *this = src;
+  return *this;
+}
+Tensor& Tensor::ShareInplaceVersionCounterWith(const Tensor& src) {
+  PADDLE_ENFORCE_NOT_NULL(
+      inplace_version_counter_,
+      platform::errors::PreconditionNotMet(
+          "Tensor does not hold inplace_version_counter_."));
+
+  inplace_version_counter_ = src.inplace_version_counter_;
+  return *this;
 }
 
 }  // namespace framework

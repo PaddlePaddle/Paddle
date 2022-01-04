@@ -242,7 +242,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
 template <>
 void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
   dst->Resize(framework::vectorize(src->dims()));
-  dst->ShareExternalMemory(src->data<void>(), src->memory_size(),
+  dst->ShareExternalMemory(src->data(), src->memory_size(),
                            GetLiteTargetType(src->place()));
   dst->SetPrecision(GetLitePrecisionType(src->type()));
   paddle::lite::LoD lite_lod;

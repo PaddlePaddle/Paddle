@@ -82,6 +82,12 @@ class Tensor : public pten::DenseTensor {
   using DenseTensor = pten::DenseTensor;
   using DenseTensor::DenseTensor;
 
+  /*! The internal of two tensors share the same memory block. */
+  Tensor& ShareDataWith(const Tensor& src);
+
+  /*! The internal of two tensors share the same inplace version counter. */
+  Tensor& ShareInplaceVersionCounterWith(const Tensor& src);
+
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
   std::vector<Tensor> Split(int64_t split_size, int64_t axis) const;
