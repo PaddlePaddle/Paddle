@@ -30,11 +30,9 @@ USE_INTERCEPTOR(Amplifier);
 
 void Carrier::Init(
     int64_t rank,
-    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-    const std::unordered_set<int64_t>& interceptor_ids) {
+    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
-  interceptor_ids_ = interceptor_ids;
 
   // TODO(fleet_exe dev): thread pool
   thread_num_ = 1;
@@ -45,14 +43,12 @@ void Carrier::Init(
 void Carrier::Init(
     int64_t rank,
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-    const std::unordered_set<int64_t>& interceptor_ids,
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
     framework::Scope* root_scope, framework::Scope* minibatch_scope,
     const std::vector<framework::Scope*>& microbatch_scopes,
     const platform::Place& place) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
-  interceptor_ids_ = interceptor_ids;
   interceptor_id_to_node_ = interceptor_id_to_node;
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
@@ -156,9 +152,7 @@ bool Carrier::Send(const InterceptorMessage& msg) {
   if (src_rank == dst_rank) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
-    int64_t carrier_id = *GlobalMap<int64_t, int64_t>::Get(dst_id);
-    return GlobalMap<int64_t, Carrier>::Get(carrier_id)
-        ->EnqueueInterceptorMessage(msg);
+    return EnqueueInterceptorMessage(msg);
   } else {
     PADDLE_ENFORCE_NOT_NULL(
         msg_bus_.get(),
@@ -192,9 +186,6 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
       loop, platform::errors::Fatal("thread task loop must not null"));
   interceptor->RegisterTaskLoop(loop);
 
-  // TODO(liyurui): Using struct InterceptorID replace int64_t
-  GlobalMap<int64_t, int64_t>::Create(interceptor_id, carrier_id_);
-
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
@@ -220,19 +211,15 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 }
 
 void Carrier::CreateInterceptors() {
-  if (interceptor_ids_.empty()) return;
+  if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
 
   // create each Interceptor
   // no auto init since there is no config
-  for (int64_t interceptor_id : interceptor_ids_) {
-    const auto& task_node_iter = interceptor_id_to_node_.find(interceptor_id);
-    PADDLE_ENFORCE_NE(
-        task_node_iter, interceptor_id_to_node_.end(),
-        platform::errors::NotFound("Can not find task node for interceptor %ld",
-                                   interceptor_id));
-    TaskNode* task_node = task_node_iter->second;
+  for (const auto& item : interceptor_id_to_node_) {
+    int64_t interceptor_id = item.first;
+    TaskNode* task_node = item.second;
 
     PADDLE_ENFORCE_LT(
         task_node->run_at_offset(), task_node->run_per_steps(),
