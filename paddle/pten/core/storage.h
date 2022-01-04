@@ -36,7 +36,12 @@ class Storage : public intrusive_ref_counter<Storage> {
   Storage() = default;
   Storage(const Storage&) = delete;
 
-  /* --------- shared_ptr<Allocation> -------- */
+  /* @jim19930609: Following interfaces will be modified/replaced/removed
+                   as soon as the new Allocation - Allocator design get
+     finalized.
+    */
+
+  /*   --------- shared_ptr<Allocation> -------- */
   // Initialize a Storage with unique Allocation
   explicit Storage(std::shared_ptr<paddle::memory::Allocation>&& data)
       : data_(std::move(data)) {}
@@ -53,6 +58,15 @@ class Storage : public intrusive_ref_counter<Storage> {
 
   const std::shared_ptr<paddle::memory::Allocation> data_shared() const {
     return data_;
+  }
+
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) {
+    data_ = holder;
+  }
+
+  std::shared_ptr<paddle::memory::Allocation> move_data_shared() {
+    return std::move(data_);
   }
 
   virtual void ReallocShared(size_t n) {
