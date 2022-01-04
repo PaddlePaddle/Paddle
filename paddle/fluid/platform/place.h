@@ -121,6 +121,30 @@ struct MLUPlace {
   int device;
 };
 
+struct PluggableDevicePlace {
+  PluggableDevicePlace() {}
+  explicit PluggableDevicePlace(const std::string &dev_type, int d)
+      : device_type(dev_type), device(d) {}
+  explicit PluggableDevicePlace(const std::string &dev_type)
+      : PluggableDevicePlace(dev_type, 0) {}
+  inline int GetDeviceId() const { return device; }
+  inline const std::string &GetDeviceType() const { return device_type; }
+
+  inline bool operator==(const PluggableDevicePlace &o) const {
+    return device_type == o.device_type && device == o.device;
+  }
+  inline bool operator!=(const PluggableDevicePlace &o) const {
+    return !(*this == o);
+  }
+  inline bool operator<(const PluggableDevicePlace &o) const {
+    return std::pair<std::string, int>(device_type, device) <
+           std::pair<std::string, int>(o.device_type, o.device);
+  }
+
+  std::string device_type;
+  int device;
+};
+
 struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
@@ -130,6 +154,7 @@ struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const IPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return true; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 
 struct IsCPUPlace : public boost::static_visitor<bool> {
@@ -141,6 +166,7 @@ struct IsCPUPlace : public boost::static_visitor<bool> {
   bool operator()(const IPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 
 struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
@@ -152,6 +178,7 @@ struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const IPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 
 struct IsXPUPlace : public boost::static_visitor<bool> {
@@ -163,6 +190,7 @@ struct IsXPUPlace : public boost::static_visitor<bool> {
   bool operator()(const IPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 
 struct IsNPUPlace : public boost::static_visitor<bool> {
@@ -174,6 +202,7 @@ struct IsNPUPlace : public boost::static_visitor<bool> {
   bool operator()(const IPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 
 struct IsNPUPinnedPlace : public boost::static_visitor<bool> {
@@ -185,6 +214,7 @@ struct IsNPUPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
   bool operator()(const NPUPinnedPlace &) const { return true; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 
 struct IsMLUPlace : public boost::static_visitor<bool> {
@@ -196,6 +226,7 @@ struct IsMLUPlace : public boost::static_visitor<bool> {
   bool operator()(const IPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
 };
 struct IsIPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
@@ -206,15 +237,28 @@ struct IsIPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
   bool operator()(const NPUPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return false; }
+};
+
+struct IsPluggableDevicePlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const XPUPlace &) const { return false; }
+  bool operator()(const NPUPlace &) const { return false; }
+  bool operator()(const IPUPlace &) const { return false; }
+  bool operator()(const MLUPlace &) const { return false; }
+  bool operator()(const CUDAPlace &) const { return false; }
+  bool operator()(const CUDAPinnedPlace &) const { return false; }
+  bool operator()(const NPUPinnedPlace &) const { return false; }
+  bool operator()(const PluggableDevicePlace &) const { return true; }
 };
 
 class Place : public boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
                                     CUDAPinnedPlace, NPUPinnedPlace, IPUPlace,
-                                    MLUPlace> {
+                                    MLUPlace, PluggableDevicePlace> {
  private:
   using PlaceBase =
       boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace, CUDAPinnedPlace,
-                     NPUPinnedPlace, IPUPlace, MLUPlace>;
+                     NPUPinnedPlace, IPUPlace, MLUPlace, PluggableDevicePlace>;
 
  public:
   Place() = default;
@@ -228,6 +272,8 @@ class Place : public boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
       : PlaceBase(cuda_pinned_place) {}
   Place(const NPUPinnedPlace &npu_pinned_place)  // NOLINT
       : PlaceBase(npu_pinned_place) {}
+  Place(const PluggableDevicePlace &pluggable_device_place)  // NOLINT
+      : PlaceBase(pluggable_device_place) {}
 
   bool operator<(const Place &place) const {
     return PlaceBase::operator<(static_cast<const PlaceBase &>(place));
@@ -239,6 +285,13 @@ class Place : public boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
 
 using PlaceList = std::vector<Place>;
 
+class PlaceHelper {
+ public:
+  static std::string GetDeviceType(const Place &place);
+  static size_t GetDeviceId(const Place &place);
+  static Place CreatePlace(const std::string &dev_type, size_t dev_id = 0);
+};
+
 bool is_gpu_place(const Place &);
 bool is_xpu_place(const Place &);
 bool is_npu_place(const Place &);
@@ -247,6 +300,7 @@ bool is_ipu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool is_npu_pinned_place(const Place &);
+bool is_pluggable_device_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
@@ -329,6 +383,18 @@ struct PlaceVisitorWrapper
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
+    return typename Visitor::result_type();
+#endif
+  }
+
+  typename Visitor::result_type operator()(
+      const PluggableDevicePlace &pluggable_device) const {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+    return visitor_(pluggable_device);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with PluggableDevice. Cannot visit "
+        "PluggableDevice"));
     return typename Visitor::result_type();
 #endif
   }

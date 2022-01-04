@@ -18,6 +18,20 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/event.h"
+#include "paddle/fluid/platform/device/stream.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
+
 namespace paddle {
 namespace memory {
 
@@ -100,7 +114,7 @@ void Copy<platform::NPUPlace, platform::CPUPlace>(platform::NPUPlace dst_place,
                                                   void* dst,
                                                   platform::CPUPlace src_place,
                                                   const void* src, size_t num,
-                                                  aclrtStream stream) {
+                                                  void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetNPUDeviceId(dst_place.device);
@@ -110,7 +124,8 @@ void Copy<platform::NPUPlace, platform::CPUPlace>(platform::NPUPlace dst_place,
 
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:CPU->NPU");
-    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE,
+                             (aclrtStream)stream);
   } else {
     // On NPU, async operation after sync operation is ok, while sync operation
     // after async is not ok, since the async operation may not done.
@@ -128,7 +143,7 @@ void Copy<platform::CPUPlace, platform::NPUPlace>(platform::CPUPlace dst_place,
                                                   void* dst,
                                                   platform::NPUPlace src_place,
                                                   const void* src, size_t num,
-                                                  aclrtStream stream) {
+                                                  void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetNPUDeviceId(src_place.device);
@@ -138,7 +153,8 @@ void Copy<platform::CPUPlace, platform::NPUPlace>(platform::CPUPlace dst_place,
 
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:NPU->CPU");
-    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST,
+                             (aclrtStream)stream);
   } else {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     static_cast<platform::NPUDeviceContext*>(pool.Get(src_place))->Wait();
@@ -153,7 +169,7 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
                                                   void* dst,
                                                   platform::NPUPlace src_place,
                                                   const void* src, size_t num,
-                                                  aclrtStream stream) {
+                                                  void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -163,7 +179,7 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
     if (stream) {
       platform::RecordEvent record_event("NpuMemcpyAsync(same_npu):NPU->NPU");
       platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
-                               stream);
+                               (aclrtStream)stream);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -181,7 +197,7 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
       // TODO(zhiqiu): support peer access?
       platform::RecordEvent record_event("NpuMemcpyPeerAsync:NPU->NPU");
       platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
-                               stream);
+                               (aclrtStream)stream);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -226,7 +242,7 @@ void Copy<platform::NPUPinnedPlace, platform::NPUPinnedPlace>(
 template <>
 void Copy<platform::NPUPinnedPlace, platform::NPUPlace>(
     platform::NPUPinnedPlace dst_place, void* dst, platform::NPUPlace src_place,
-    const void* src, size_t num, aclrtStream stream) {
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetNPUDeviceId(src_place.device);
@@ -236,7 +252,8 @@ void Copy<platform::NPUPinnedPlace, platform::NPUPlace>(
 
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:NPU->NPUPinned");
-    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST,
+                             (aclrtStream)stream);
   } else {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     static_cast<platform::NPUDeviceContext*>(pool.Get(src_place))->Wait();
@@ -249,7 +266,7 @@ void Copy<platform::NPUPinnedPlace, platform::NPUPlace>(
 template <>
 void Copy<platform::NPUPlace, platform::NPUPinnedPlace>(
     platform::NPUPlace dst_place, void* dst, platform::NPUPinnedPlace src_place,
-    const void* src, size_t num, aclrtStream stream) {
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetNPUDeviceId(dst_place.device);
@@ -259,7 +276,8 @@ void Copy<platform::NPUPlace, platform::NPUPinnedPlace>(
 
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:NPUPinned->NPU");
-    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE,
+                             (aclrtStream)stream);
   } else {
     // On NPU, async operation after sync operation is ok, while sync operation
     // after async is not ok, since the async operation may not done.
@@ -312,7 +330,7 @@ inline void SyncCUDAStream() {
 template <>
 void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
-    const void* src, size_t num, gpuStream_t stream) {
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(src_place.device);
@@ -321,9 +339,11 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CPU");
 #ifdef PADDLE_WITH_HIP
-    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToHost, stream);
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToHost,
+                             (gpuStream_t)stream);
 #else
-    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost,
+                             (gpuStream_t)stream);
 #endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:GPU->CPU");
@@ -342,7 +362,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
 template <>
 void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CPUPlace src_place,
-    const void* src, size_t num, gpuStream_t stream) {
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(dst_place.device);
@@ -351,9 +371,11 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CPU->GPU");
 #ifdef PADDLE_WITH_HIP
-    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyHostToDevice, stream);
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyHostToDevice,
+                             (gpuStream_t)stream);
 #else
-    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice,
+                             (gpuStream_t)stream);
 #endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:CPU->GPU");
@@ -372,7 +394,7 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
 template <>
 void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CUDAPlace src_place,
-    const void* src, size_t num, gpuStream_t stream) {
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -382,9 +404,11 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     if (stream) {
       platform::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU");
 #ifdef PADDLE_WITH_HIP
-      platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToDevice, stream);
+      platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToDevice,
+                               (gpuStream_t)stream);
 #else
-      platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
+      platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice,
+                               (gpuStream_t)stream);
 #endif
     } else {
       platform::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU");
@@ -398,7 +422,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     if (stream) {
       platform::RecordEvent record_event("GpuMemcpyPeerAsync:GPU->GPU");
       platform::GpuMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
-                                   num, stream);
+                                   num, (gpuStream_t)stream);
     } else {
       platform::RecordEvent record_event("GpuMemcpyPeerSync:GPU->GPU");
       platform::GpuMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
@@ -440,8 +464,7 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>(
 template <>
 void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
-    platform::CUDAPlace src_place, const void* src, size_t num,
-    gpuStream_t stream) {
+    platform::CUDAPlace src_place, const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
   platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -449,9 +472,11 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned");
 #ifdef PADDLE_WITH_HIP
-    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToHost, stream);
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToHost,
+                             (gpuStream_t)stream);
 #else
-    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost,
+                             (gpuStream_t)stream);
 #endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned");
@@ -467,7 +492,7 @@ template <>
 void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     platform::CUDAPlace dst_place, void* dst,
     platform::CUDAPinnedPlace src_place, const void* src, size_t num,
-    gpuStream_t stream) {
+    void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(dst_place.device);
@@ -476,9 +501,11 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU");
 #ifdef PADDLE_WITH_HIP
-    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyHostToDevice, stream);
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyHostToDevice,
+                             (gpuStream_t)stream);
 #else
-    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice,
+                             (gpuStream_t)stream);
 #endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:CUDAPinned->GPU");
@@ -498,7 +525,7 @@ void Copy<platform::CPUPlace, platform::MLUPlace>(platform::CPUPlace dst_place,
                                                   void* dst,
                                                   platform::MLUPlace src_place,
                                                   const void* src, size_t num,
-                                                  mluStream stream) {
+                                                  void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetMLUDeviceId(src_place.device);
@@ -506,7 +533,7 @@ void Copy<platform::CPUPlace, platform::MLUPlace>(platform::CPUPlace dst_place,
     VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place << " by mlu stream(" << stream << ")";
     platform::RecordEvent record_event("MLUMemcpyD2HAsync:MLU->CPU");
-    platform::MLUMemcpyD2HAsync(dst, src, num, stream);
+    platform::MLUMemcpyD2HAsync(dst, src, num, (mluStream)stream);
   } else {
     VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place;
@@ -520,7 +547,7 @@ void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
                                                   void* dst,
                                                   platform::CPUPlace src_place,
                                                   const void* src, size_t num,
-                                                  mluStream stream) {
+                                                  void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetMLUDeviceId(dst_place.device);
@@ -528,7 +555,7 @@ void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
     VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place << " by mlu stream(" << stream << ")";
     platform::RecordEvent record_event("MLUMemcpyH2DAsync:CPU->MLU");
-    platform::MLUMemcpyH2DAsync(dst, src, num, stream);
+    platform::MLUMemcpyH2DAsync(dst, src, num, (mluStream)stream);
   } else {
     VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place;
@@ -542,7 +569,7 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
                                                   void* dst,
                                                   platform::MLUPlace src_place,
                                                   const void* src, size_t num,
-                                                  mluStream stream) {
+                                                  void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   if (dst_place == src_place) {
@@ -552,7 +579,7 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
               << " to " << dst_place << " by mlu stream(" << stream << ")";
       platform::RecordEvent record_event(
           "MLUMemcpyD2DAsync(same_mlu):MLU->MLU");
-      platform::MLUMemcpyD2DAsync(dst, src, num, stream);
+      platform::MLUMemcpyD2DAsync(dst, src, num, (mluStream)stream);
     } else {
       VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place;
@@ -565,7 +592,7 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
               << " to " << dst_place << " by mlu stream(" << stream << ")";
       platform::RecordEvent record_event("MLUMemcpyPeerAsync:MLU->MLU");
       platform::MLUMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
-                                   num, stream);
+                                   num, (mluStream)stream);
     } else {
       VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place;
@@ -578,5 +605,100 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
 
 #endif  // PADDLE_WITH_MLU
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+template <>
+void Copy<platform::CPUPlace, platform::PluggableDevicePlace>(
+    platform::CPUPlace dst_place, void* dst,
+    platform::PluggableDevicePlace src_place, const void* src, size_t num,
+    void* stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  std::string msg;
+  if (stream) {
+    msg += "MemcpyAsync:";
+  } else {
+    msg += "Memcpy:";
+  }
+  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  msg += src_type + "->" + dst_type;
+  platform::RecordEvent record_event(msg);
+  msg += " " + std::to_string(num) + " Bytes";
+  VLOG(4) << msg;
+
+  platform::DeviceManager::SetDevice(src_place);
+  platform::stream::Stream stream_wrapper(src_place, stream);
+  platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopy(
+      dst, src, num, platform::Device::MemoryCpyKind::DeviceToHost,
+      &stream_wrapper);
+}
+
+template <>
+void Copy<platform::PluggableDevicePlace, platform::CPUPlace>(
+    platform::PluggableDevicePlace dst_place, void* dst,
+    platform::CPUPlace src_place, const void* src, size_t num, void* stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  std::string msg;
+  if (stream) {
+    msg += "MemcpyAsync:";
+  } else {
+    msg += "Memcpy:";
+  }
+  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  msg += src_type + "->" + dst_type;
+  platform::RecordEvent record_event(msg);
+  msg += " " + std::to_string(num) + " Bytes";
+  VLOG(4) << msg;
+
+  platform::DeviceManager::SetDevice(src_place);
+  platform::stream::Stream stream_wrapper(src_place, stream);
+  platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopy(
+      dst, src, num, platform::Device::MemoryCpyKind::HostToDevice,
+      &stream_wrapper);
+}
+
+template <>
+void Copy<platform::PluggableDevicePlace, platform::PluggableDevicePlace>(
+    platform::PluggableDevicePlace dst_place, void* dst,
+    platform::PluggableDevicePlace src_place, const void* src, size_t num,
+    void* stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  std::string msg;
+  if (stream) {
+    msg += "MemcpyAsync:";
+  } else {
+    msg += "Memcpy:";
+  }
+  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  msg += src_type + "->" + dst_type;
+  platform::RecordEvent record_event(msg);
+  msg += " " + std::to_string(num) + " Bytes";
+  VLOG(4) << msg;
+
+  if (src_type == dst_type) {
+    platform::DeviceManager::SetDevice(src_place);
+    platform::stream::Stream stream_wrapper(src_place, stream);
+
+    auto src_id = platform::PlaceHelper::GetDeviceId(src_place);
+    auto dst_id = platform::PlaceHelper::GetDeviceId(dst_place);
+    if (src_id == dst_id) {
+      platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopy(
+          dst, src, num, platform::Device::MemoryCpyKind::DeviceToDevice,
+          &stream_wrapper);
+    } else {
+      platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyPeer(
+          dst_place, dst, src, num, &stream_wrapper);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable("Copy between " + src_type +
+                                               " and " + dst_type +
+                                               " is not supported."));
+  }
+}
+#endif  // PADDLE_WITH_PLUGGABLE_DEVICE
 }  // namespace memory
 }  // namespace paddle

@@ -39,6 +39,9 @@ class PlacePrinter : public boost::static_visitor<> {
   void operator()(const NPUPinnedPlace &p) { os_ << "NPUPinnedPlace"; }
   void operator()(const IPUPlace &p) { os_ << "IPUPlace(" << p.device << ")"; }
   void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
+  void operator()(const PluggableDevicePlace &p) {
+    os_ << "PluggableDevicePlace(" << p.device_type << ": " << p.device << ")";
+  }
 
  private:
   std::ostream &os_;
@@ -78,6 +81,10 @@ bool is_npu_pinned_place(const Place &p) {
   return boost::apply_visitor(IsNPUPinnedPlace(), p);
 }
 
+bool is_pluggable_device_place(const Place &p) {
+  return boost::apply_visitor(IsPluggableDevicePlace(), p);
+}
+
 bool places_are_same_class(const Place &p1, const Place &p2) {
   return p1.which() == p2.which();
 }
@@ -94,6 +101,9 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return BOOST_GET_CONST(NPUPlace, p1) == BOOST_GET_CONST(NPUPlace, p2);
     } else if (is_ipu_place(p1)) {
       return BOOST_GET_CONST(IPUPlace, p1) == BOOST_GET_CONST(IPUPlace, p2);
+    } else if (is_pluggable_device_place(p1)) {
+      return BOOST_GET_CONST(PluggableDevicePlace, p1) ==
+             BOOST_GET_CONST(PluggableDevicePlace, p2);
     } else {
       return BOOST_GET_CONST(CUDAPlace, p1) == BOOST_GET_CONST(CUDAPlace, p2);
     }
@@ -106,6 +116,52 @@ std::ostream &operator<<(std::ostream &os, const Place &p) {
   detail::PlacePrinter printer(os);
   boost::apply_visitor(printer, p);
   return os;
+}
+
+std::string PlaceHelper::GetDeviceType(const Place &place) {
+  if (is_cpu_place(place)) {
+    return "cpu";
+  } else if (is_gpu_place(place)) {
+    return "gpu";
+  } else if (is_npu_place(place)) {
+    return "npu";
+  } else if (is_xpu_place(place)) {
+    return "xpu";
+  } else if (is_pluggable_device_place(place)) {
+    return BOOST_GET_CONST(PluggableDevicePlace, place).GetDeviceType();
+  } else {
+    PADDLE_THROW(platform::errors::Fatal("Unknown device type."));
+  }
+}
+
+size_t PlaceHelper::GetDeviceId(const Place &place) {
+  if (is_cpu_place(place)) {
+    return 0;
+  } else if (is_gpu_place(place)) {
+    return BOOST_GET_CONST(CUDAPlace, place).GetDeviceId();
+  } else if (is_npu_place(place)) {
+    return BOOST_GET_CONST(NPUPlace, place).GetDeviceId();
+  } else if (is_xpu_place(place)) {
+    return BOOST_GET_CONST(XPUPlace, place).GetDeviceId();
+  } else if (is_pluggable_device_place(place)) {
+    return BOOST_GET_CONST(PluggableDevicePlace, place).GetDeviceId();
+  } else {
+    PADDLE_THROW(platform::errors::Fatal("Unknown device type."));
+  }
+}
+
+Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
+  if (dev_type == "cpu") {
+    return platform::CPUPlace();
+  } else if (dev_type == "gpu") {
+    return platform::CUDAPlace(dev_id);
+  } else if (dev_type == "npu") {
+    return platform::NPUPlace(dev_id);
+  } else if (dev_type == "xpu") {
+    return platform::XPUPlace(dev_id);
+  } else {
+    return platform::PluggableDevicePlace(dev_type, dev_id);
+  }
 }
 
 }  // namespace platform
