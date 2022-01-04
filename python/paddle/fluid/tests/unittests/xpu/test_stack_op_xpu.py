@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,13 +25,12 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-@skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
-class TestStackOpBase(XPUOpTest):
+class TestStackBase(XPUOpTest):
     def initDefaultParameters(self):
+        self.dtype = 'float32'
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'float32'
 
     def initParameters(self):
         pass
@@ -43,9 +42,9 @@ class TestStackOpBase(XPUOpTest):
         return x_names
 
     def setUp(self):
+        self.op_type = 'stack'
         self.initDefaultParameters()
         self.initParameters()
-        self.op_type = 'stack'
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -66,54 +65,68 @@ class TestStackOpBase(XPUOpTest):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
+    def test_check_grad(self):
+        if self.dtype == 'int64' or self.dtype == 'int32':
+                pass
+        else:
+            if paddle.is_compiled_with_xpu():
+                paddle.enable_static()
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(place, self.get_x_names(), 'Y')
 
-class TestStackOp1(TestStackOpBase):
+
+class TestStack1(TestStackBase):
     def initParameters(self):
         self.num_inputs = 16
 
 
-class TestStackOp2(TestStackOpBase):
+class TestStack2(TestStackBase):
     def initParameters(self):
         self.num_inputs = 30
 
 
-class TestStackOp3(TestStackOpBase):
+class TestStack3(TestStackBase):
     def initParameters(self):
         self.axis = -1
 
 
-class TestStackOp4(TestStackOpBase):
+class TestStack4(TestStackBase):
     def initParameters(self):
         self.axis = -4
+    
 
-
-class TestStackOp5(TestStackOpBase):
+class TestStackOp5(TestStackBase):
     def initParameters(self):
         self.axis = 1
 
 
-class TestStackOp6(TestStackOpBase):
+class TestStackOp6(TestStackBase):
     def initParameters(self):
         self.axis = 3
 
 
-class TestStackOpint64(TestStackOpBase):
+@skip_check_grad_ci(
+    reason="The stack_grad test is not supported for int64 on XPU.")
+class TestStack7(TestStackBase):
     def initDefaultParameters(self):
+        self.dtype = 'int64'
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'int64'
 
     def initParameters(self):
         self.num_inputs = 16
 
+    def test_check_grad(self):
+        pass
 
-class TestStackOpint(TestStackOpBase):
+
+class TestStack8(TestStackBase):
     def initDefaultParameters(self):
+        self.dtype = 'int32'
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'int'
 
     def initParameters(self):
         self.num_inputs = 16
@@ -121,3 +134,4 @@ class TestStackOpint(TestStackOpBase):
 
 if __name__ == '__main__':
     unittest.main()
+
