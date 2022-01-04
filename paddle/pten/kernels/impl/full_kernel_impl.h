@@ -24,8 +24,8 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename Context, typename T, typename VType>
-void Fill(const Context& context, DenseTensor* tensor, VType val) {
+template <typename T, typename Context, typename VType>
+void FullValue(const Context& context, DenseTensor* tensor, VType val) {
   tensor->mutable_data<T>();
   auto t = pten::EigenVector<T>::Flatten(*tensor);
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(val));
@@ -37,7 +37,7 @@ void FullKernel(const Context& context,
                 const Scalar& val,
                 DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
-  Fill<Context, T>(context, out, val.to<T>());
+  FullValue<T>(context, out, val.to<T>());
 }
 
 template <typename T, typename Context>
@@ -68,7 +68,7 @@ void FullLikeKernel(const Context& context,
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-  Fill<Context, T>(context, out, value);
+  FullValue<T>(context, out, value);
 }
 
 }  // namespace pten

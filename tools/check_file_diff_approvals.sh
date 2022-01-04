@@ -231,14 +231,14 @@ if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 
 HAS_MODIFIED_TENSOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/tensor" || true`
 if [ "${HAS_MODIFIED_TENSOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by jim19930609 and chenwhql for paddle/fluid/memory/tensor.\nIt is being modularized and refactored. Thanks!\n"
-    check_approval 2 22561442 22334008
+    echo_line="You must be approved by jim19930609 or chenwhql for paddle/fluid/framework/tensor. It is being modularized and refactored. Thanks!\n"
+    check_approval 1 22561442 22334008
   fi
 
 HAS_MODIFIED_LOD_TENSOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/lod_tensor" || true`
 if [ "${HAS_MODIFIED_TENSOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by jim19930609 and chenwhql for paddle/fluid/memory/lod_tensor.\nIt is being modularized and refactored. Thanks!\n"
-    check_approval 2 22561442 22334008
+    echo_line="You must be approved by jim19930609 or chenwhql for paddle/fluid/framework/lod_tensor. It is being modularized and refactored. Thanks!\n"
+    check_approval 1 22561442 22334008
   fi
 
 ALLOCSHARED_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -E "*\.(h|cc)" || true`
