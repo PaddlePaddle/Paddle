@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
-namespace general {
+namespace funcs {
 
 using DDim = paddle::framework::DDim;
 
@@ -378,6 +378,5 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     }
   }
 }
-
-}  // namespace general
+}  // namespace funcs
 }  // namespace pten

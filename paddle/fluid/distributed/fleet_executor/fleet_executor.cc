@@ -36,14 +36,15 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
 
 FleetExecutor::~FleetExecutor() {
   root_scope_->DropKids();
-  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
-    GlobalMap<int64_t, Carrier>::Get(item.first)->Release();
+  for (const auto& carrier_id : carrier_ids_) {
+    GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
   }
 }
 
 void FleetExecutor::Init(
-    const framework::ProgramDesc& program_desc, framework::Scope* scope,
-    const platform::Place& place, const std::vector<TaskNode*>& task_nodes,
+    const std::string& carrier_id, const framework::ProgramDesc& program_desc,
+    framework::Scope* scope, const platform::Place& place,
+    const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
   PADDLE_ENFORCE_GT(task_nodes.size(), 0,
                     platform::errors::InvalidArgument(
@@ -58,19 +59,13 @@ void FleetExecutor::Init(
   auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
   runtime_graph_ = std::make_shared<RuntimeGraph>();
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
-  std::unordered_map<int64_t, std::unordered_set<int64_t>>
-      carrier_id_to_interceptor_ids;
-  std::unordered_set<int64_t> interceptor_ids;
   for (auto task_node : task_nodes) {
     task_node->SetUnusedVars(unused_vars);
     int64_t interceptor_id = task_node->task_id();
     interceptor_id_to_task.emplace(interceptor_id, task_node);
-    interceptor_ids.insert(interceptor_id);
   }
-  carrier_id_to_interceptor_ids.emplace(0, interceptor_ids);
   runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
   runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
-  runtime_graph_->SetCarrierIdToInterceptorIds(carrier_id_to_interceptor_ids);
   for (auto& unique_op : ops) {
     unique_op.release();
   }
@@ -87,27 +82,23 @@ void FleetExecutor::Init(
   }
   VLOG(5) << runtime_graph_->DebugString();
   msg_bus_ = std::make_shared<MessageBus>();
-  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
-    GlobalMap<int64_t, Carrier>::Create(item.first, item.first);
-  }
-  InitCarrier();
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier_ids_.insert(carrier_id);
+  GlobalVal<std::string>::Set(carrier_id);
+  // TODO(liyurui): Maybe message bus should be created only once
+  InitCarrier(carrier);
   InitMessageBus();
 
   // Wait for all message bus connected.
   msg_bus_->Barrier();
 }
 
-void FleetExecutor::InitCarrier() {
-  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
-    Carrier* carrier = GlobalMap<int64_t, Carrier>::Get(item.first);
-    PADDLE_ENFORCE_NOT_NULL(carrier, platform::errors::InvalidArgument(
-                                         "Carrier has not been created."));
-    carrier->SetMsgBus(msg_bus_);
-    carrier->Init(exe_desc_.cur_rank(),
-                  runtime_graph_->interceptor_id_to_rank(), item.second,
-                  runtime_graph_->interceptor_id_to_node(), root_scope_,
-                  minibatch_scope_, microbatch_scopes_, place_);
-  }
+void FleetExecutor::InitCarrier(Carrier* carrier) {
+  carrier->SetMsgBus(msg_bus_);
+  carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
+                runtime_graph_->interceptor_id_to_node(), root_scope_,
+                minibatch_scope_, microbatch_scopes_, place_);
 }
 
 void FleetExecutor::InitMessageBus() {
@@ -145,10 +136,9 @@ void FleetExecutor::InitMessageBus() {
   }
 }
 
-void FleetExecutor::Run() {
-  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
-    GlobalMap<int64_t, Carrier>::Get(item.first)->Start();
-  }
+void FleetExecutor::Run(const std::string& carrier_id) {
+  GlobalMap<std::string, Carrier>::Get(carrier_id)->Start();
+  GlobalVal<std::string>::Set(carrier_id);
   for (auto* micro_scop : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
     // some operators may create local scope when running, such as while_op.
