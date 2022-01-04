@@ -117,7 +117,7 @@ class HostRecordNode {
     uint64_t start_ns() { return start_ns_; }
     uint64_t end_ns() { return end_ns_; }
     uint64_t process_id() { return process_id_; }
-    uint64_t thread_id_() { return thread_id_; }
+    uint64_t thread_id() { return thread_id_; }
     uint64_t duration() { return end_ns_ - start_ns_; }
 
     // member function
@@ -166,7 +166,7 @@ class CudaRuntimeRecordNode{
     uint64_t start_ns() { return start_ns_; }
     uint64_t end_ns() { return end_ns_; }
     uint64_t process_id() { return process_id_; }
-    uint64_t thread_id_() { return thread_id_; }
+    uint64_t thread_id() { return thread_id_; }
     uint64_t duration() { return end_ns_ - start_ns_; }
     uint32_t correlation_id() { return correlation_id_; }
     uint32_t callback_id() {return callback_id_; }
@@ -316,8 +316,10 @@ class NodeTrees {
   private:
     std::map<uint64_t, HostRecordNode*> thread_record_trees_map_;
     bool BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes, 
-              const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
-              const std::vector<DeviceRecordNode*>& device_record_nodes);
+                    const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
+                    const std::vector<DeviceRecordNode*>& device_record_nodes);
+    bool BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
+                               std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes);
 
 };
 
