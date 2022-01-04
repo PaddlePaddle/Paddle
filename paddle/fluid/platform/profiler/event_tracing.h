@@ -25,7 +25,8 @@ namespace platform {
 // Chrome Trace Viewer Format: Instant Event
 struct RecordInstantEvent {
   explicit RecordInstantEvent(const char* name,
-                              const EventRole role = EventRole::kOrdinary);
+                              const EventRole role = EventRole::kOrdinary,
+                              uint32_t level = 1);
 };
 
 // CPU event tracing. A trace starts when an object of this clas is created and
@@ -34,13 +35,15 @@ struct RecordInstantEvent {
 class RecordEvent {
  public:
   explicit RecordEvent(const std::string& name,
-                       const EventRole role = EventRole::kOrdinary);
+                       const EventRole role = EventRole::kOrdinary,
+                       uint32_t level = 1);
 
   explicit RecordEvent(const char* name,
-                       const EventRole role = EventRole::kOrdinary);
+                       const EventRole role = EventRole::kOrdinary,
+                       uint32_t level = 1);
 
   RecordEvent(const std::string& name, const EventRole role,
-              const std::string& attr);
+              const std::string& attr, uint32_t level = 1);
 
   // Stop event tracing explicitly before the object goes out of scope.
   // Sometimes it's inconvenient to use RAII
@@ -63,7 +66,6 @@ class RecordEvent {
   // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
   std::string* attr_{nullptr};
-  bool finished_{false};
 };
 
 }  // namespace platform

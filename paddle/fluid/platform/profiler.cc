@@ -64,7 +64,8 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const char *name, const EventRole role) {
+RecordEvent::RecordEvent(const char *name, const EventRole role,
+                         uint32_t level) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -77,12 +78,17 @@ RecordEvent::RecordEvent(const char *name, const EventRole role) {
     OriginalConstruct(name, role, "none");
     return;
   }
+  if (UNLIKELY(HostEventRecorder::GetInstance().NeedTrace(level) == false)) {
+    return;
+  }
+  is_enabled_ = true;
   shallow_copy_name_ = name;
   role_ = role;
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+RecordEvent::RecordEvent(const std::string &name, const EventRole role,
+                         uint32_t level) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -95,13 +101,17 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
     OriginalConstruct(name, role, "none");
     return;
   }
+  if (UNLIKELY(HostEventRecorder::GetInstance().NeedTrace(level) == false)) {
+    return;
+  }
+  is_enabled_ = true;
   name_ = new std::string(name);
   role_ = role;
   start_ns_ = PosixInNsec();
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         const std::string &attr) {
+                         const std::string &attr, uint32_t level) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -114,6 +124,10 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
     OriginalConstruct(name, role, attr);
     return;
   }
+  if (UNLIKELY(HostEventRecorder::GetInstance().NeedTrace(level) == false)) {
+    return;
+  }
+  is_enabled_ = true;
   name_ = new std::string(name);
   start_ns_ = PosixInNsec();
   attr_ = new std::string(attr);
@@ -138,10 +152,11 @@ void RecordEvent::OriginalConstruct(const std::string &name,
 }
 
 void RecordEvent::End() {
-  if (UNLIKELY(finished_)) {
+  if (UNLIKELY(is_enabled_ == false)) {
     return;
   }
-  finished_ = true;
+  // use this flag to avoid double End();
+  is_enabled_ = false;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed_) {
@@ -181,13 +196,17 @@ void RecordEvent::End() {
   delete attr_;
 }
 
-RecordInstantEvent::RecordInstantEvent(const char *name, const EventRole role) {
+RecordInstantEvent::RecordInstantEvent(const char *name, const EventRole role,
+                                       uint32_t level) {
   if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
     return;
   }
+  auto &recorder = HostEventRecorder::GetInstance();
+  if (UNLIKELY(recorder.NeedTrace(level) == false)) {
+    return;
+  }
   auto start_end_ns = PosixInNsec();
-  HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
-                                               role);
+  recorder.RecordEvent(name, start_end_ns, start_end_ns, role);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
