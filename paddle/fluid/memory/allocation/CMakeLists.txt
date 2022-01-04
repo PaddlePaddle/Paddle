@@ -58,6 +58,11 @@ else ()
     set(AllocatorFacadeDeps)
 endif()
 
+if (WITH_PLUGGABLE_DEVICE)
+  cc_library(plug_allocator SRCS plug_allocator.cc DEPS allocator device_manager)
+  set(AllocatorFacadeDeps ${AllocatorFacadeDeps} plug_allocator)
+endif()
+
 if (WITH_GPU)
     nv_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc

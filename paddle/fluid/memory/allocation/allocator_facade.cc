@@ -62,6 +62,11 @@
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#include "paddle/fluid/memory/allocation/plug_allocator.h"
+#include "paddle/fluid/platform/device/device_manager.h"
+#endif
+
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
@@ -187,6 +192,17 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+        auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+        for (const auto& dev_type : device_types) {
+          for (size_t dev_id = 0;
+               dev_id < platform::DeviceManager::VisibleDevicesCount(dev_type);
+               ++dev_id) {
+            InitNaiveBestFitPluggableDeviceAllocator(
+                platform::PluggableDevicePlace(dev_type, dev_id));
+          }
+        }
+#endif
         break;
       }
 
@@ -221,6 +237,18 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_MLU
         for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
+        }
+#endif
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+        auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+        for (const auto& dev_type : device_types) {
+          for (size_t dev_id = 0;
+               dev_id < platform::DeviceManager::VisibleDevicesCount(dev_type);
+               ++dev_id) {
+            InitAutoGrowthPluggableDeviceAllocator(
+                platform::PluggableDevicePlace(dev_type, dev_id),
+                allow_free_idle_chunk);
+          }
         }
 #endif
         break;
@@ -700,6 +728,23 @@ class AllocatorFacadePrivate {
   }
 #endif
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  void InitNaiveBestFitPluggableDeviceAllocator(
+      platform::PluggableDevicePlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+
+  void InitAutoGrowthPluggableDeviceAllocator(platform::PluggableDevicePlace p,
+                                              bool allow_free_idle_chunk) {
+    auto plug_allocator =
+        std::make_shared<paddle::memory::allocation::PluggableDeviceAllocator>(
+            p);
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        plug_allocator, platform::DeviceManager::GetMinChunkSize(p),
+        allow_free_idle_chunk);
+  }
+#endif
+
   void InitSystemAllocators() {
     if (!system_allocators_.empty()) return;
     system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
@@ -768,6 +813,16 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetMLUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::MLUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+    auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < platform::DeviceManager::VisibleDevicesCount(dev_type);
+           dev_id++) {
+        places.emplace_back(platform::PluggableDevicePlace(dev_type, dev_id));
+      }
     }
 #endif
 

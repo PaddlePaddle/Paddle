@@ -20,6 +20,10 @@
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#include "paddle/fluid/platform/device/device_guard.h"
+#include "paddle/fluid/platform/device/device_manager.h"
+#endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -730,6 +734,146 @@ uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+// For PluggableDevice
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+class BuddyAllocatorList {
+ private:
+  explicit BuddyAllocatorList(const std::string &device_type)
+      : device_type_(device_type) {
+    // pluggable device use logical id
+    auto device_count =
+        platform::DeviceManager::VisibleDevicesCount(device_type);
+
+    allocators_.resize(device_count);
+    init_flags_.reserve(device_count);
+    for (size_t i = 0; i < device_count; ++i) {
+      init_flags_.emplace_back(new std::once_flag());
+    }
+  }
+
+  static BuddyAllocatorList *CreateNewInstance(const std::string &device_type) {
+    return new BuddyAllocatorList(device_type);
+  }
+
+ public:
+  static BuddyAllocatorList *Instance(const std::string &device_type) {
+    // DeviceType -> AllocatorList
+    static std::unordered_map<std::string, BuddyAllocatorList *> pool;
+    if (pool.find(device_type) == pool.end()) {
+      pool[device_type] = CreateNewInstance(device_type);
+    }
+    return pool[device_type];
+  }
+
+  BuddyAllocator *Get(int dev_id) {
+    PADDLE_ENFORCE_LT(dev_id, allocators_.size(),
+                      platform::errors::OutOfRange(
+                          "The index exceeds the size of devices, the size of "
+                          "devices is %d, the index is %d",
+                          allocators_.size(), dev_id));
+
+    std::call_once(*init_flags_[dev_id], [this, dev_id] {
+      platform::DeviceManager::SetDevice(device_type_, dev_id);
+      platform::PluggableDevicePlace place(device_type_, dev_id);
+
+      allocators_[dev_id].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::PluggableDeviceAllocator(device_type_, dev_id)),
+          platform::DeviceManager::GetMinChunkSize(place),
+          platform::DeviceManager::GetMaxChunkSize(place),
+          platform::DeviceManager::GetExtraPaddingSize(place),
+          platform::DeviceManager::GetInitAllocSize(place),
+          platform::DeviceManager::GetReallocSize(place)));
+    });
+
+    return allocators_[dev_id].get();
+  }
+
+ private:
+  std::string device_type_;
+  std::vector<std::unique_ptr<std::once_flag>> init_flags_;
+  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
+};
+
+BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
+  VLOG(10) << "GetBuddyAllocator place = " << place;
+  if (platform::is_pluggable_device_place(place)) {
+    return BuddyAllocatorList::Instance(
+               platform::PlaceHelper::GetDeviceType(place))
+        ->Get(platform::PlaceHelper::GetDeviceId(place));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "place must be PluggableDevicePlace"));
+  }
+}
+#endif
+
+template <>
+void *Alloc<platform::PluggableDevicePlace>(
+    const platform::PluggableDevicePlace &place, size_t size) {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  auto *buddy_allocator = GetBuddyAllocator(place);
+  auto *ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    platform::DeviceGuard guard(place);
+    size_t avail, total;
+    platform::DeviceManager::MemoryStats(place, &total, &avail);
+    PADDLE_THROW(platform::errors::ResourceExhausted(
+        "Cannot allocate %s in %s:%d, avaliable %s, total %s, used "
+        "%s. ",
+        string::HumanReadableSize(size), place.GetDeviceType(), place.device,
+        string::HumanReadableSize(avail), string::HumanReadableSize(total),
+        string::HumanReadableSize(total - avail)));
+  } else {
+    if (FLAGS_init_allocated_mem) {
+      platform::DeviceManager::GetDeviceWithPlace(place)->MemorySet(ptr, 0xEF,
+                                                                    size);
+    }
+  }
+  VLOG(10) << "  pointer=" << ptr;
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'PluggableDevicePlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<platform::PluggableDevicePlace>(
+    const platform::PluggableDevicePlace &place, void *p, size_t size) {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetBuddyAllocator(place)->Free(p);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'PluggableDevicePlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::PluggableDevicePlace>(
+    const platform::PluggableDevicePlace &place) {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  return GetBuddyAllocator(place)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'PluggableDevicePlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+size_t Used<platform::PluggableDevicePlace>(
+    const platform::PluggableDevicePlace &place) {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  return GetBuddyAllocator(place)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'PluggableDevicePlace' is not supported in CPU only device."));
 #endif
 }
 

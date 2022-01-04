@@ -35,9 +35,12 @@ namespace detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size, size_t extra_padding_size)
+    size_t max_chunk_size, size_t extra_padding_size, size_t init_alloc_size,
+    size_t realloc_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
+      init_alloc_size_(init_alloc_size),
+      realloc_size_(realloc_size),
       extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
       system_allocator_(std::move(system_allocator)) {}
@@ -224,6 +227,15 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   size_t allocate_bytes = max_chunk_size_;
   size_t index = 0;
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  if (system_allocator_->UseGpu()) {
+    if ((total_used_ + total_free_) == 0) {
+      allocate_bytes = std::max(init_alloc_size_, request_bytes);
+    } else {
+      allocate_bytes = std::max(realloc_size_, request_bytes);
+    }
+  }
+#else
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   allocate_bytes = DeviceAllocateSize(&platform::GpuInitAllocSize,
                                       &platform::GpuReallocSize, request_bytes);
@@ -233,6 +245,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 #elif defined(PADDLE_WITH_MLU)
   allocate_bytes = DeviceAllocateSize(&platform::MLUInitAllocSize,
                                       &platform::MLUReallocSize, request_bytes);
+#endif
 #endif
 
   // Allocate a new block
