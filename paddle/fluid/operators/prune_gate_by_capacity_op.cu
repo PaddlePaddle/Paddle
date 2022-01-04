@@ -31,10 +31,10 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T1, typename T2>
-__global__ void PruneGateByCapacity(const T1* gate_idx_data,
-                                    T1* new_gate_idx_data,
-                                    T2* expert_count_data,
-                                    const int64_t batch_size) {
+__global__ void prune_gate_by_capacity_kernel(const T1* gate_idx_data,
+                                              T1* new_gate_idx_data,
+                                              T2* expert_count_data,
+                                              const int64_t batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size) {
     auto orig_cap =
         platform::CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
@@ -71,7 +71,8 @@ class PruneGateByCapacityFunctor {
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
 
-    PruneGateByCapacity<T1, T2><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    prune_gate_by_capacity_kernel<T1,
+                                  T2><<<blocks, threads, 0, dev_ctx.stream()>>>(
         gate_idx_data, new_gate_idx_data_, expert_count_out_data, batch_size);
   }
 
