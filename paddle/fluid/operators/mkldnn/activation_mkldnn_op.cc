@@ -273,24 +273,12 @@ using HardSwishMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
 
 template <typename T>
-using SigmoidMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_logistic>;
-
-template <typename T>
 using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
     T, dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
 
 template <typename T>
-using TanhMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_tanh>;
-
-template <typename T>
 using TanhMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
     T, dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
-
-template <typename T>
-using SqrtMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_sqrt>;
 
 template <typename T>
 using SqrtMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
@@ -301,16 +289,8 @@ using AbsMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
-using EluMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_elu>;
-
-template <typename T>
 using EluMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
     T, dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
-
-template <typename T>
-using ExpMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_exp>;
 
 template <typename T>
 using ExpMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
@@ -346,7 +326,6 @@ namespace ops = paddle::operators;
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
   __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradUseOutFunctor);           \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradUseOutFunctor);           \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
   __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradUseOutFunctor);              \
   __macro(exp, ExpMKLDNNFunctor, ExpMKLDNNGradUseOutFunctor);
@@ -358,6 +337,8 @@ REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
                                        GeluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradUseOutFunctor);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sqrt, SqrtMKLDNNFunctor,
+                                       SqrtMKLDNNGradUseOutFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

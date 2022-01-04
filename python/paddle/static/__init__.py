@@ -45,6 +45,7 @@ from ..fluid.framework import program_guard  # noqa: F401
 from ..fluid.framework import cpu_places  # noqa: F401
 from ..fluid.framework import cuda_places  # noqa: F401
 from ..fluid.framework import xpu_places  # noqa: F401
+from ..fluid.framework import mlu_places  # noqa: F401
 from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
@@ -103,6 +104,7 @@ __all__ = [     #noqa
            'cuda_places',
            'xpu_places',
            'npu_places',
+           'mlu_places',
            'Variable',
            'create_global_var',
            'accuracy',

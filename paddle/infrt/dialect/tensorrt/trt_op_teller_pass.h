@@ -17,7 +17,6 @@
 
 namespace infrt {
 namespace trt {
-
 /*
  * trtOpTellerPass.
  *
@@ -26,7 +25,7 @@ namespace trt {
  * source func:
  *
  * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()
+ *  %a = "pd.feed"()...
  *  %c = "pd.conv2d"(%a) ...
  *  %d = "pd.conv3d"(%c) ...
  *  %f = "pd.conv2d"(%a) ...
@@ -35,7 +34,7 @@ namespace trt {
  *
  * destination func:
  * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()
+ *  %a = "pd.feed"()...
  *  %c = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     "pd.fetch" %m
@@ -59,6 +58,5 @@ class trtOpTellerPass
   ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
   void runOnFunction() override;
 };
-
 }  // namespace trt
 }  // namespace infrt

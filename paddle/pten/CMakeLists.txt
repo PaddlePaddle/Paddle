@@ -28,9 +28,5 @@ get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
 # keep this message for debug, remove it later if needless
 message(STATUS "All standard pten kernels: ${pten_kernels}")
 set(PTEN_DEPS ${PTEN_DEPS} ${pten_kernels})
-set(PTEN_DEPS ${PTEN_DEPS} math_cpu)
-if(WITH_GPU OR WITH_ROCM)
-  set(PTEN_DEPS ${PTEN_DEPS} math_gpu)
-endif()
 
 cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})

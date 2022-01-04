@@ -152,5 +152,8 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(lu, ops::LUCUDAKernel<float>,
                         ops::LUCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(lu_grad,
+                        ops::LUGradKernel<plat::CUDADeviceContext, float>,
+                        ops::LUGradKernel<plat::CUDADeviceContext, double>);
 
 #endif  // not PADDLE_WITH_HIP
