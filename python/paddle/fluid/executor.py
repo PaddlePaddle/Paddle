@@ -1956,7 +1956,11 @@ class Executor(object):
 
         return ctx
 
-    def _prepare_fleet_executor(self, program=None, scope=None, fleet_opt=None):
+    def _prepare_fleet_executor(self,
+                                carrier_id="",
+                                program=None,
+                                scope=None,
+                                fleet_opt=None):
         from ..distributed.fleet.proto import fleet_executor_desc_pb2
         assert program, "Program for fleet executor should not be None"
         assert fleet_opt, "Configurations for fleet executor should not be None"
@@ -2014,7 +2018,8 @@ class Executor(object):
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program.desc, scope, place, tasks, task_id_to_rank)
+        fleet_exe.init(carrier_id, program.desc, scope, place, tasks,
+                       task_id_to_rank)
         return fleet_exe
 
     def _run_using_fleet_executor(self,
@@ -2023,6 +2028,7 @@ class Executor(object):
                                   feed_var_name="feed",
                                   fetch_var_name="fetch",
                                   fetch_list=None):
+        # TODO(liyurui): Change cache strategy for multi carriers
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_ctx = self._get_ctx_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
@@ -2088,7 +2094,10 @@ class Executor(object):
                 fetch_task.set_program(fetch_program)
 
             cached_ctx = self._prepare_fleet_executor(
-                program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
+                cache_key,
+                program=cached_program,
+                scope=cached_scope,
+                fleet_opt=fleet_opt)
             self._add_ctx_cache(cache_key, cached_ctx)
         if feed:
             # NOTE: don't have to traverse programs in task nodes,
@@ -2107,7 +2116,7 @@ class Executor(object):
                                               lr_sheduler._var_name)
             tensor.set(data, self.place)
 
-        cached_ctx.run()
+        cached_ctx.run(cache_key)
         if fetch_list:
             arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
             tensors = arr._move_to_list()
