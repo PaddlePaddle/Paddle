@@ -71,7 +71,7 @@ class CastOpKernel : public framework::OpKernel<InT> {
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
     // call new kernel
-    pten::Cast<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_out.get());
+    pten::CastKernel<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_out.get());
   }
 };
 

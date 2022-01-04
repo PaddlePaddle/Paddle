@@ -207,14 +207,14 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "Tensors.",
                 vec_true_outs.size(), outs.size()));
         for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          experimental::MovesSharedStorage(
+          experimental::SharesStorage(
               std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl())
                   .get(),
               vec_true_outs.at(j));
         }
       } else {
         auto* true_out = ctx.Output<Tensor>(out_name);
-        experimental::MovesSharedStorage(
+        experimental::SharesStorage(
             std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl())
                 .get(),
             true_out);

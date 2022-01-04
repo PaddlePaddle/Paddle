@@ -98,29 +98,29 @@ void xpu_activation_backward(
 }
 
 template <typename T>
-struct XPUReluFunctor : public BaseActivationFunctor<T> {
+struct XPUAbsFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::relu<XPUType>);
+        ctx, xpu::abs<XPUType>);
   }
 };
 
 template <typename T>
-struct XPUSigmoidFunctor : public BaseActivationFunctor<T> {
+struct XPUAbsGradFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::sigmoid<XPUType>);
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::abs_grad<XPUType>);
   }
 };
 
 template <typename T>
-struct XPUTanhFunctor : public BaseActivationFunctor<T> {
+struct XPUExpFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::tanh<XPUType>);
+        ctx, xpu::exp<XPUType>);
   }
 };
 
@@ -134,11 +134,56 @@ struct XPULogFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct XPUSquareFunctor : public BaseActivationFunctor<T> {
+struct XPUReciprocalFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::square<XPUType>);
+        ctx, xpu::reciprocal<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUReciprocalGradFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::reciprocal_grad<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUReluFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::relu<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUReluGradFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::relu_grad<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUSigmoidFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::sigmoid<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::sigmoid_grad<XPUType>);
   }
 };
 
@@ -152,45 +197,47 @@ struct XPUSqrtFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct XPUAbsFunctor : public BaseActivationFunctor<T> {
+struct XPUSqrtGradFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::abs<XPUType>);
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::sqrt_grad<XPUType>);
   }
 };
 
 template <typename T>
-struct XPUPowFunctor : public BaseActivationFunctor<T> {
+struct XPUSquareFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
-    const auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Output<Tensor>("Out");
-    auto pow_factor = ctx.Attr<float>("factor");
-    const T *x_data = x->data<T>();
-    T *y_data = y->mutable_data<T>(ctx.GetPlace());
-    T *factor_data = nullptr;
+    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::square<XPUType>);
+  }
+};
 
-    auto xpu_context =
-        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&factor_data),
-                                 x->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
-    int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External("XPU constant op return"
-                                   " wrong value[%d %s] in pow op.",
-                                   r, XPUAPIErrorMsg[r]));
-    r = xpu::pow(xpu_context, x_data, factor_data, y_data, x->numel());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("XPU pow op return"
-                                                 " wrong value[%d %s].",
-                                                 r, XPUAPIErrorMsg[r]));
-    if (xpu_context->xpu_stream != nullptr) {
-      xpu_wait(xpu_context->xpu_stream);
-    }
-    xpu_free(factor_data);
+template <typename T>
+struct XPUSquareGradFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::square_grad<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUTanhFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::tanh<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPUTanhGradFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::tanh_grad<XPUType>);
   }
 };
 
@@ -211,51 +258,6 @@ struct XPUHardSwishFunctor : public BaseActivationFunctor<T> {
         platform::errors::External("Not support offset [%f] in XPU", offset));
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::hard_swish<XPUType>);
-  }
-};
-
-template <typename T>
-struct XPUReluGradFunctor : public BaseActivationFunctor<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::relu_grad<XPUType>);
-  }
-};
-
-template <typename T>
-struct XPUTanhGradFunctor : public BaseActivationFunctor<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::tanh_grad<XPUType>);
-  }
-};
-
-template <typename T>
-struct XPUSigmoidGradFunctor : public BaseActivationFunctor<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::sigmoid_grad<XPUType>);
-  }
-};
-
-template <typename T>
-struct XPUSqrtGradFunctor : public BaseActivationFunctor<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::sqrt_grad<XPUType>);
-  }
-};
-
-template <typename T>
-struct XPUSquareGradFunctor : public BaseActivationFunctor<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::square_grad<XPUType>);
   }
 };
 
@@ -328,6 +330,40 @@ struct XPULeakyReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUPowFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    auto pow_factor = ctx.Attr<float>("factor");
+    const T *x_data = x->data<T>();
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+    T *factor_data = nullptr;
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&factor_data),
+                                 x->numel() * sizeof(T)),
+                      XPU_SUCCESS, platform::errors::ResourceExhausted(
+                                       "XPU has no enough memory"));
+    int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU constant op return"
+                                   " wrong value[%d %s] in pow op.",
+                                   r, XPUAPIErrorMsg[r]));
+    r = xpu::pow(xpu_context, x_data, factor_data, y_data, x->numel());
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU pow op return wrong value[%d %s].", r,
+                                   XPUAPIErrorMsg[r]));
+    if (xpu_context->xpu_stream != nullptr) {
+      xpu_wait(xpu_context->xpu_stream);
+    }
+    xpu_free(factor_data);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -340,15 +376,18 @@ namespace ops = paddle::operators;
       act_type##_grad,                                                   \
       ops::XPUActivationGradKernel<ops::grad_functor<float>>);
 
+REGISTER_ACTIVATION_XPU_KERNEL(abs, XPUAbsFunctor, XPUAbsGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, XPUHardSwishFunctor,
+                               XPUHardSwishGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, XPULeakyReluFunctor,
+                               XPULeakyReluGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(reciprocal, XPUReciprocalFunctor,
+                               XPUReciprocalGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(relu, XPUReluFunctor, XPUReluGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, XPUHardSwishFunctor,
-                               XPUHardSwishGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, XPULeakyReluFunctor,
-                               XPULeakyReluGradFunctor)
 
 REGISTER_OP_XPU_KERNEL(
     tanh, ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
@@ -358,11 +397,11 @@ REGISTER_OP_XPU_KERNEL(
     ops::XPUActivationGradKernel<
         ops::XPUTanhGradFunctor<paddle::platform::float16>>);
 
+REGISTER_OP_XPU_KERNEL(exp,
+                       ops::XPUActivationKernel<ops::XPUExpFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(log,
                        ops::XPUActivationKernel<ops::XPULogFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(pow,
                        ops::XPUActivationKernel<ops::XPUPowFunctor<float>>);
-REGISTER_OP_XPU_KERNEL(abs,
-                       ops::XPUActivationKernel<ops::XPUAbsFunctor<float>>);
 
 #endif  // PADDLE_WITH_XPU

@@ -21,8 +21,8 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Flatten(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void Flatten(const Context& dev_ctx,
              const DenseTensor& x,
              int start_axis,
              int stop_axis,
@@ -35,14 +35,14 @@ void Flatten(const ContextT& dev_ctx,
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
 // Output Tensor，
 // is there a more flexible way to deal with this case?
-template <typename T, typename ContextT>
-void FlattenWithXShape(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FlattenWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        int start_axis,
                        int stop_axis,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, out);
+  Flatten<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
   funcs::SetXShape(x, xshape);
 }
 

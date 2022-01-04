@@ -21,8 +21,8 @@
 
 namespace pten {
 
-template <typename ContextT>
-void Reshape(const ContextT& dev_ctx,
+template <typename Context>
+void Reshape(const Context& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,
              DenseTensor* out) {
@@ -36,8 +36,8 @@ void Reshape(const ContextT& dev_ctx,
   out->ResetLoD(x.lod());
 }
 
-template <typename ContextT>
-void ReshapeWithXShape(const ContextT& dev_ctx,
+template <typename Context>
+void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        const ScalarArray& shape,
                        DenseTensor* xshape,

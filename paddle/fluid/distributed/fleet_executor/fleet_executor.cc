@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/global_map.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -27,8 +28,6 @@
 namespace paddle {
 namespace distributed {
 
-std::unique_ptr<Carrier> FleetExecutor::carrier_;
-
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
   PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
@@ -37,13 +36,9 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
 
 FleetExecutor::~FleetExecutor() {
   root_scope_->DropKids();
-  GetCarrier()->Release();
-}
-
-Carrier* FleetExecutor::GetCarrier() {
-  PADDLE_ENFORCE_NOT_NULL(carrier_.get(), platform::errors::NotFound(
-                                              "Carrier has not been created."));
-  return carrier_.get();
+  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
+    GlobalMap<int64_t, Carrier>::Get(item.first)->Release();
+  }
 }
 
 void FleetExecutor::Init(
@@ -63,13 +58,19 @@ void FleetExecutor::Init(
   auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
   runtime_graph_ = std::make_shared<RuntimeGraph>();
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
+  std::unordered_map<int64_t, std::unordered_set<int64_t>>
+      carrier_id_to_interceptor_ids;
+  std::unordered_set<int64_t> interceptor_ids;
   for (auto task_node : task_nodes) {
     task_node->SetUnusedVars(unused_vars);
     int64_t interceptor_id = task_node->task_id();
     interceptor_id_to_task.emplace(interceptor_id, task_node);
+    interceptor_ids.insert(interceptor_id);
   }
+  carrier_id_to_interceptor_ids.emplace(0, interceptor_ids);
   runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
   runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
+  runtime_graph_->SetCarrierIdToInterceptorIds(carrier_id_to_interceptor_ids);
   for (auto& unique_op : ops) {
     unique_op.release();
   }
@@ -86,21 +87,26 @@ void FleetExecutor::Init(
   }
   VLOG(5) << runtime_graph_->DebugString();
   msg_bus_ = std::make_shared<MessageBus>();
-  CreateCarrier();
+  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
+    GlobalMap<int64_t, Carrier>::Create(item.first, item.first);
+  }
   InitCarrier();
   InitMessageBus();
 
-  // refine this? wait all carrier ready
-  // NOTE(wangxi): must add after Carrier::SetMsgBus, for we use
-  // MessageBus::IncreaseBarrierCount when receive barrier msg.
-  GetCarrier()->Barrier();
+  // Wait for all message bus connected.
+  msg_bus_->Barrier();
 }
 
 void FleetExecutor::InitCarrier() {
-  if (!GetCarrier()->IsInit()) {
-    GetCarrier()->SetMsgBus(msg_bus_);
-    GetCarrier()->Init(exe_desc_.cur_rank(), runtime_graph_, root_scope_,
-                       minibatch_scope_, microbatch_scopes_, place_);
+  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
+    Carrier* carrier = GlobalMap<int64_t, Carrier>::Get(item.first);
+    PADDLE_ENFORCE_NOT_NULL(carrier, platform::errors::InvalidArgument(
+                                         "Carrier has not been created."));
+    carrier->SetMsgBus(msg_bus_);
+    carrier->Init(exe_desc_.cur_rank(),
+                  runtime_graph_->interceptor_id_to_rank(), item.second,
+                  runtime_graph_->interceptor_id_to_node(), root_scope_,
+                  minibatch_scope_, microbatch_scopes_, place_);
   }
 }
 
@@ -140,14 +146,9 @@ void FleetExecutor::InitMessageBus() {
 }
 
 void FleetExecutor::Run() {
-  // Run
-  PADDLE_ENFORCE_EQ(
-      GetCarrier()->IsInit(), true,
-      platform::errors::Unavailable("Carrier has not been init yet."));
-  PADDLE_ENFORCE_EQ(
-      msg_bus_->IsInit(), true,
-      platform::errors::Unavailable("MessageBus has not been init yet."));
-  GetCarrier()->Start();
+  for (const auto& item : runtime_graph_->carrier_id_to_interceptor_ids()) {
+    GlobalMap<int64_t, Carrier>::Get(item.first)->Start();
+  }
   for (auto* micro_scop : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
     // some operators may create local scope when running, such as while_op.
