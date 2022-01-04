@@ -289,6 +289,14 @@ class TestMatMulV2MatrixXMatrix5Dx3DTransposeXTransposeYOneDNNOp(
         self.trans_y = True
 
 
+class TestMatMulV2MatrixXMatrix3Dx4DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (1, 1, 32, 16)
+        self.y_shape = (16, 16, 16)
+        self.trans_x = False
+        self.trans_y = False
+
+
 #   BF16 TESTS
 def create_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()

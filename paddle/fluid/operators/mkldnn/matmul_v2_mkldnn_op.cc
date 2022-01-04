@@ -309,17 +309,17 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
       }
     }
 
-    if ((y_dims.size() == x_dims.size()) && y_dims.size() > 2 &&
-        !IsOutputFused(ctx)) {
-      for (size_t i = 0; i < x_dims.size() - 2; ++i) {
+    if (!IsOutputFused(ctx) && x_dims.size() > 2 && y_dims.size() > 2) {
+      for (size_t i = 0; i < x_bd_dims.size() - 2; ++i) {
         PADDLE_ENFORCE_EQ(
-            x_dims[i] == y_dims[i] || x_dims[i] == 1 || y_dims[i] == 1, true,
-            paddle::platform::errors::InvalidArgument(
-                "Tensor dimensions are incorrect for broadcasting."
-                "Dimensions in X and Y must be same or equal to 1, but "
-                "received x_dim[%d]=%d and y_dims[%d]= %d",
-                i, x_dims[i], i, y_dims[i]));
-        out_dims[i] = std::max(x_dims[i], y_dims[i]);
+            x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] == 1 ||
+                y_bd_dims[i] == 1,
+            true, paddle::platform::errors::InvalidArgument(
+                      "Tensor dimensions are incorrect for broadcasting."
+                      "Dimensions in X and Y must be same or equal to 1, but "
+                      "received x_dim[%d]=%d and y_dims[%d]= %d",
+                      i, x_bd_dims[i], i, y_bd_dims[i]));
+        out_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
       }
       out->Resize(make_ddim(out_dims));
     }
@@ -382,11 +382,11 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     dy_tmp->mutable_data<T>(ctx.GetPlace());
   }
 
-  void ReduceSumForMatmulGradOutput(const ExecutionContext& ctx,
-                                    const MKLDNNDeviceContext& dev_ctx,
-                                    const dnnl::engine onednn_engine,
-                                    const Tensor* dx_tmp, Tensor* dx,
-                                    std::vector<int64_t> dx_dims) const {
+  void ReduceSumForMatmulGradOutput(
+      const ExecutionContext& ctx, const MKLDNNDeviceContext& dev_ctx,
+      const dnnl::engine onednn_engine, const Tensor* dx_tmp, Tensor* dx,
+      std::vector<int64_t>& dx_dims,
+      const std::vector<int64_t>& squeezed_dims) const {
     paddle::platform::ReductionMKLDNNHandler<T> handler(
         dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
         ctx.GetPlace(), dx_tmp, dx, dx_dims);
@@ -402,6 +402,9 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     reduction_p->execute(astream, reduction_args);
     astream.wait();
+
+    dx->set_format(paddle::platform::GetMKLDNNFormat(
+        dst_memory_p->get_desc().reshape(squeezed_dims)));
   }
 
   std::vector<int64_t> ExtendDimsWithOnes(const std::vector<int64_t>& dims,
@@ -497,21 +500,21 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     if (x_dims != dx_bd_dims) {
       ReduceSumForMatmulGradOutput(ctx, dev_ctx, onednn_engine, &dx_tmp, dx,
-                                   x_dims);
+                                   x_dims,
+                                   paddle::framework::vectorize(x->dims()));
     } else {
       *dx = std::move(dx_tmp);
     }
     if (y_dims != dy_bd_dims) {
       ReduceSumForMatmulGradOutput(ctx, dev_ctx, onednn_engine, &dy_tmp, dy,
-                                   y_dims);
+                                   y_dims,
+                                   paddle::framework::vectorize(y->dims()));
     } else {
       *dy = std::move(dy_tmp);
     }
 
-    dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    dx->set_format(x->format());
-    dy->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    dy->set_format(y->format());
+    dx->Resize(x->dims());
+    dy->Resize(y->dims());
   }
 
  private:
