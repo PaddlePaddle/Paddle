@@ -65,6 +65,13 @@ PADDLE_CAPI_EXPORT extern void PD_OneDimArraySizeDestroy(
 PADDLE_CAPI_EXPORT extern void PD_TwoDimArraySizeDestroy(
     __pd_take PD_TwoDimArraySize* array);
 
+///
+/// \brief Destroy the PD_Cstr object pointed to by the pointer.
+///
+/// \param[in] cstr pointer to the PD_Cstr object.
+///
+PADDLE_CAPI_EXPORT extern void PD_CstrDestroy(__pd_take PD_Cstr* cstr);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
