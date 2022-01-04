@@ -112,7 +112,6 @@ class Pipeline:
         # try:
         import sys
         import time
-        # try:
         tic = time.time()
         _C_ops.dataloader(self._output_vars, *self._attrs)
         toc = time.time()
@@ -128,3 +127,6 @@ class Pipeline:
     # Python 2 compatable
     def next(self):
         return self.__next__()
+
+    def __del__(self):
+        core._shutdown_dataloader()
