@@ -477,7 +477,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
   PADDLE_ENFORCE_EQ(flag_, true,
                     paddle::platform::errors::PreconditionNotMet(
-                        "Could not parse args and kwargs successfully，"
+                        "Could not parse args and kwargs successfully, "
                         "please check your input first and make"
                         "sure you are on the right way. "
                         "The expected arguments as follow: ("
@@ -528,7 +528,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           return 0;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "Could not parse the first keyword argument successfully，"
+              "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
               "or EagerTensor or framework::Tensor. "
               "Please check your input first and make sure you are on the "
