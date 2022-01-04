@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/infermeta/multiary.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
+
+namespace pten {}  // namespace pten

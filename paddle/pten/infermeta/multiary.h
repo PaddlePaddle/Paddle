@@ -14,8 +14,4 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/infermeta/multiary.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
+namespace pten {}  // namespace pten
