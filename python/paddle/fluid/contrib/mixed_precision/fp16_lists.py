@@ -18,7 +18,9 @@ from ... import core
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_extra_unsupported_fp16_list = {'lookup_table', 'lookup_table_v2'}
+_extra_unsupported_fp16_list = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
 
 
 class AutoMixedPrecisionLists(object):

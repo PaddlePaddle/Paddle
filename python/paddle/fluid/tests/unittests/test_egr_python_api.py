@@ -16,9 +16,10 @@ import paddle.fluid.core as core
 import paddle.fluid.eager.eager_tensor_patch_methods as eager_tensor_patch_methods
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_eager_mode
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
+import copy
 
 
 class EagerScaleTestCase(unittest.TestCase):
@@ -46,13 +47,41 @@ class EagerScaleTestCase(unittest.TestCase):
             grad_data = np.ones([4, 16, 16, 32]).astype('float32')
             grad_eager = paddle.to_tensor(grad_data, 'float32', core.CPUPlace())
 
-            core.eager.retain_grad_for_tensor(data_eager)
+            data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
             self.assertFalse(data_eager.grad._is_initialized())
-            core.eager.run_backward([out_eager], [grad_eager], False)
+            out_eager.backward(grad_eager, False)
             self.assertTrue(data_eager.grad._is_initialized())
             self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
+
+    def test_retain_grad_and_run_backward_raises(self):
+        with _test_eager_guard():
+            paddle.set_device("cpu")
+
+            input_data = np.ones([4, 16, 16, 32]).astype('float32')
+            data_eager = paddle.to_tensor(input_data, 'float32',
+                                          core.CPUPlace(), False)
+
+            grad_data = np.ones([4, 16, 16, 32]).astype('float32')
+            grad_data2 = np.ones([4, 16]).astype('float32')
+            grad_eager = paddle.to_tensor(grad_data, 'float32', core.CPUPlace())
+            grad_eager2 = paddle.to_tensor(grad_data2, 'float32',
+                                           core.CPUPlace())
+
+            data_eager.retain_grads()
+
+            out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
+            self.assertFalse(data_eager.grad._is_initialized())
+            with self.assertRaisesRegexp(
+                    AssertionError,
+                    "The type of grad_tensor must be paddle.Tensor"):
+                out_eager.backward(grad_data, False)
+
+            with self.assertRaisesRegexp(
+                    AssertionError,
+                    "Tensor shape not match, Tensor of grad_tensor /*"):
+                out_eager.backward(grad_eager2, False)
 
 
 class EagerDtypeTestCase(unittest.TestCase):
@@ -192,6 +221,64 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor9.place._equals(place))
         self.assertTrue(np.array_equal(egr_tensor9.numpy(), arr4))
 
+        x = np.random.rand(3, 3).astype('float32')
+        t = paddle.fluid.Tensor()
+        t.set(x, paddle.fluid.CPUPlace())
+        egr_tensor10 = core.eager.EagerTensor(t, place)
+        self.assertEqual(egr_tensor10.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor10.name)
+        self.assertEqual(egr_tensor10.shape, [3, 3])
+        self.assertEqual(egr_tensor10.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor10.stop_gradient, True)
+        self.assertTrue(egr_tensor10.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor10.numpy(), x))
+
+        egr_tensor11 = core.eager.EagerTensor(t, place, "framework_constructed")
+        self.assertEqual(egr_tensor11.persistable, False)
+        self.assertTrue("framework_constructed" in egr_tensor11.name)
+        self.assertEqual(egr_tensor11.shape, [3, 3])
+        self.assertEqual(egr_tensor11.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor11.stop_gradient, True)
+        self.assertTrue(egr_tensor11.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor11.numpy(), x))
+
+        egr_tensor12 = core.eager.EagerTensor(t)
+        self.assertEqual(egr_tensor12.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor12.name)
+        self.assertEqual(egr_tensor12.shape, [3, 3])
+        self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor12.stop_gradient, True)
+        self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
+        self.assertTrue(np.array_equal(egr_tensor12.numpy(), x))
+
+        with self.assertRaisesRegexp(
+                ValueError, "The shape of Parameter should not be None"):
+            eager_param = EagerParamBase(shape=None, dtype="float32")
+
+        with self.assertRaisesRegexp(
+                ValueError, "The dtype of Parameter should not be None"):
+            eager_param = EagerParamBase(shape=[1, 1], dtype=None)
+
+        with self.assertRaisesRegexp(
+                ValueError,
+                "The dimensions of shape for Parameter must be greater than 0"):
+            eager_param = EagerParamBase(shape=[], dtype="float32")
+
+        with self.assertRaisesRegexp(
+                ValueError,
+                "Each dimension of shape for Parameter must be greater than 0, but received /*"
+        ):
+            eager_param = EagerParamBase(shape=[-1], dtype="float32")
+
+        eager_param = EagerParamBase(shape=[1, 1], dtype="float32")
+        self.assertTrue(eager_param.trainable)
+        eager_param.trainable = False
+        self.assertFalse(eager_param.trainable)
+        with self.assertRaisesRegexp(
+                ValueError,
+                "The type of trainable MUST be bool, but the type is /*"):
+            eager_param.trainable = "False"
+
     def test_constructor(self):
         print("Test_constructor")
         paddle.set_device("cpu")
@@ -289,6 +376,104 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
                 self.assertTrue(core.eager._get_expected_place().is_cpu_place())
         core._disable_eager_mode()
+
+
+class EagerParamBaseUsageTestCase(unittest.TestCase):
+    def test_print(self):
+        with _test_eager_guard():
+            linear = paddle.nn.Linear(3, 3, bias_attr=False)
+            print(linear.weight)
+
+    def test_copy(self):
+        with _test_eager_guard():
+            linear = paddle.nn.Linear(1, 3)
+            linear_copy = copy.deepcopy(linear)
+            linear_copy2 = linear.weight._copy_to(core.CPUPlace(), True)
+            self.assertTrue(
+                np.array_equal(linear.weight.numpy(),
+                               linear_copy.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(linear.weight.numpy(), linear_copy2.numpy()))
+
+    def func_fp16_initilaizer(self):
+        paddle.set_default_dtype("float16")
+        linear1 = paddle.nn.Linear(1, 3, bias_attr=False)
+        linear2 = paddle.nn.Linear(
+            1,
+            3,
+            bias_attr=False,
+            weight_attr=paddle.fluid.initializer.Uniform())
+        linear3 = paddle.nn.Linear(
+            1,
+            3,
+            bias_attr=False,
+            weight_attr=paddle.fluid.initializer.TruncatedNormalInitializer())
+        linear4 = paddle.nn.Linear(
+            1,
+            3,
+            bias_attr=False,
+            weight_attr=paddle.fluid.initializer.MSRAInitializer())
+        res = [
+            linear1.weight.numpy(), linear2.weight.numpy(),
+            linear3.weight.numpy(), linear4.weight.numpy()
+        ]
+        paddle.set_default_dtype("float32")
+        return res
+
+    def test_fp16_initializer(self):
+        res1 = list()
+        res2 = list()
+        paddle.seed(102)
+        paddle.framework.random._manual_program_seed(102)
+        with _test_eager_guard():
+            res1 = self.func_fp16_initilaizer()
+        res2 = self.func_fp16_initilaizer()
+
+        for i in range(len(res1)):
+            self.assertTrue(np.array_equal(res1[i], res2[i]))
+
+    def func_layer_helper_base(self, value):
+        base = paddle.fluid.layer_helper_base.LayerHelperBase("test_layer",
+                                                              "test_layer")
+        return base.to_variable(value).numpy()
+
+    def func_base_to_variable(self, value):
+        paddle.fluid.dygraph.base.to_variable(value)
+
+    def test_to_variable(self):
+        value = np.random.rand(4, 16, 16, 32).astype('float32')
+        res1 = None
+        res3 = None
+        with _test_eager_guard():
+            res1 = self.func_layer_helper_base(value)
+            res3 = self.func_base_to_variable(value)
+        res2 = self.func_layer_helper_base(value)
+        res4 = self.func_base_to_variable(value)
+        self.assertTrue(np.array_equal(res1, res2))
+        self.assertTrue(np.array_equal(res3, res4))
+
+    def test_backward_with_single_tensor(self):
+        arr4 = np.random.rand(4, 16, 16, 32).astype('float32')
+        egr_tensor12 = core.eager.EagerTensor(arr4, core.CPUPlace())
+        egr_tensor12.retain_grads()
+        arr = np.ones([4, 16, 16, 32]).astype('float32')
+        self.assertEqual(egr_tensor12.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor12.name)
+        self.assertEqual(egr_tensor12.shape, [4, 16, 16, 32])
+        self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor12.stop_gradient, True)
+        self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
+        self.assertTrue(np.array_equal(egr_tensor12.numpy(), arr4))
+        self.assertTrue(np.array_equal(egr_tensor12.gradient(), None))
+        egr_tensor12.backward()
+        self.assertTrue(np.array_equal(egr_tensor12.gradient(), arr))
+
+
+class EagerGuardTestCase(unittest.TestCase):
+    def test__test_eager_guard(self):
+        tracer = paddle.fluid.dygraph.tracer.Tracer()
+        with _test_eager_guard(tracer):
+            self.assertTrue(_in_eager_mode())
 
 
 if __name__ == "__main__":

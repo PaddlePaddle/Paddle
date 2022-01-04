@@ -59,8 +59,6 @@ class CastOpKernel : public framework::OpKernel<InT> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     auto out_dtype = context.Attr<int>("out_dtype");
-    // todo: not used in_dtype
-    auto in_dtype = context.Attr<int>("in_dtype");
 
     auto& dev_ctx = context.device_context<DeviceContext>();
     out->mutable_data(dev_ctx.GetPlace(),
@@ -71,12 +69,9 @@ class CastOpKernel : public framework::OpKernel<InT> {
 
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
-    auto pt_in_dtype = pten::TransToPtenDataType(
-        static_cast<framework::proto::VarType::Type>(in_dtype));
 
     // call new kernel
-    pten::Cast<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_in_dtype,
-                    pt_out.get());
+    pten::Cast<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_out.get());
   }
 };
 

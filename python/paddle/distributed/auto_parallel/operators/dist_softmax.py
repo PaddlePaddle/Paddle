@@ -39,7 +39,7 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         super(DistributedSoftmaxImpl, self).__init__()
         self._name = name
         self._forward_implemented = False
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc

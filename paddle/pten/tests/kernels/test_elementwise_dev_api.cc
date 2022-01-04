@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/math_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
