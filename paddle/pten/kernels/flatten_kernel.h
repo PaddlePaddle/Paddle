@@ -18,15 +18,15 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Flatten(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void Flatten(const Context& dev_ctx,
              const DenseTensor& x,
              int start_axis,
              int stop_axis,
              DenseTensor* out);
 
-template <typename T, typename ContextT>
-void FlattenWithXShape(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FlattenWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        int start_axis,
                        int stop_axis,
