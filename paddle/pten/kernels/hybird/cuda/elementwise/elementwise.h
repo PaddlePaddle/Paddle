@@ -19,7 +19,11 @@ limitations under the License. */
 
 namespace pten {
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
+template <ElementwiseType ET,
+          typename InT,
+          typename OutT,
+          typename Functor,
+          int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
     const paddle::platform::CUDADeviceContext &cuda_ctx,
     const std::vector<const DenseTensor *> &ins,
@@ -29,18 +33,18 @@ void LaunchElementwiseCudaKernel(
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
-    no_broadcast_flag = ins[0]->dims() == in->dims();
+    no_broadcast_flag &= ins[0]->dims() == in->dims();
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(
+    LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         cuda_ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(
+    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         cuda_ctx, ins, outs, axis, func);
   }
 }

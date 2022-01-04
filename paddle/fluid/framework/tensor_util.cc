@@ -357,6 +357,36 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    auto src_mlu_place = BOOST_GET_CONST(platform::MLUPlace, src_place);
+    auto dst_cpu_place = BOOST_GET_CONST(platform::CPUPlace, dst_place);
+    auto stream =
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_cpu_place, dst_ptr, src_mlu_place, src_ptr, size, stream);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    auto src_cpu_place = BOOST_GET_CONST(platform::CPUPlace, src_place);
+    auto dst_mlu_place = BOOST_GET_CONST(platform::MLUPlace, dst_place);
+    auto stream =
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_mlu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+  }
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    auto src_mlu_place = BOOST_GET_CONST(platform::MLUPlace, src_place);
+    auto dst_mlu_place = BOOST_GET_CONST(platform::MLUPlace, dst_place);
+    auto stream =
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_mlu_place, dst_ptr, src_mlu_place, src_ptr, size, stream);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copying from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 }
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
@@ -526,6 +556,35 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::MLUPlace, src_place), src_ptr, size,
+                 nullptr);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size,
+                 nullptr);
+  }
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::MLUPlace, src_place), src_ptr, size,
+                 nullptr);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 }
 
 template <typename Predicate, typename DevCtx>
@@ -591,6 +650,13 @@ class AnyVisitor : public boost::static_visitor<bool> {
   bool GetResult(const framework::Tensor& out,
                  const platform::XPUPlace& xpu) const {
     return GetResultHelper(out, xpu);
+  }
+
+  bool GetResult(const framework::Tensor& out,
+                 const platform::MLUPlace& mlu) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Not supported on place (%s) ", mlu));
+    return true;
   }
 
   bool GetResult(const framework::Tensor& out,
@@ -822,6 +888,10 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(const platform::NPUPlace& npu) const {
     // TODO(zhiqiu)
+  }
+
+  void VisitorImpl(const platform::MLUPlace& mlu) const {
+    PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {

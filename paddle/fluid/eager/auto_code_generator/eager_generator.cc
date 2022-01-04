@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
@@ -28,6 +29,12 @@
 
 namespace paddle {
 namespace framework {
+
+// To handle append_op at python-level
+std::unordered_map<std::string, std::vector<std::string>>
+    core_ops_returns_info = {};
+std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info =
+    {};
 
 /* --- Static maps to handle corner cases --- */
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
@@ -882,7 +889,7 @@ static std::string GenerateGradNodeCreationContent(
     if (input.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
-          "egr::EagerUtils::unsafe_autograd_meta(%s);\n";
+          "egr::EagerUtils::nullable_autograd_meta(%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
 
@@ -896,7 +903,7 @@ static std::string GenerateGradNodeCreationContent(
     } else {
       const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
           "  egr::AutogradMeta& %s = "
-          "*egr::EagerUtils::unsafe_autograd_meta(%s);\n";
+          "*egr::EagerUtils::nullable_autograd_meta(%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_SINGLE_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
     }
@@ -965,11 +972,16 @@ static std::string GenerateGradNodeCreationContent(
         iter.GetGradInsFwdSlotnameMap();
     for (auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
+      std::string full_reserved = "false";
+      if (fwd_outputs_name_pos_map.find(tensor_wrapper_name) ==
+          fwd_outputs_name_pos_map.end()) {
+        full_reserved = "true";
+      }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "    grad_node->SetTensorWrapper%s(%s);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
-                                  tensor_wrapper_name, tensor_wrapper_name);
+          "    grad_node->SetTensorWrapper%s(%s, %s);\n";
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name, tensor_wrapper_name,
+          full_reserved);
     }
   }
   grad_node_creation_str += "\n";
@@ -993,11 +1005,10 @@ static std::string GenerateGradNodeCreationContent(
           input_position);
 
       const char* ADD_EDGES_TEMPLATE =
-          "    if(%s) grad_node->AddEdges(*%s, %d);\n";
+          "    if(%s) grad_node->AddEdges(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
-
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1007,7 +1018,7 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
-      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(%s, %d);\n";
+      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
@@ -1037,6 +1048,12 @@ static std::string GenerateGradNodeCreationContent(
         "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
     grad_node_creation_str +=
         paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
+
+    VLOG(6) << "Generated Call RetainGradForTensor";
+    const char* RETAIN_GRAD_TEMPLATE =
+        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+    grad_node_creation_str +=
+        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
   }
   VLOG(6) << "Generated SetGradIn/OutMeta";
 
@@ -1109,6 +1126,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   std::string generated_function_body = "";
   std::string dygraph_function_args_str = "";
+  core_ops_args_info[op_type] = {};
+  core_ops_args_info[op_type].resize(in_vars.size());
 
   /* ------ Dygraph forward function generation ------ */
   generated_function_body += "  // Dygraph Forward Pass\n";
@@ -1131,6 +1150,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
     }
+    core_ops_args_info[op_type][input_position] = input_name;
 
     if (input.dispensable()) continue;
 
@@ -1188,25 +1208,27 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (op_passing_outs_map[op_type].count(output_name)) {
       const std::string output_var_name = output_name + "Var";
 
-      // Pass Output from function argument,
+      // Pass Output from function argument(EagerTensor*/vector<EagerTensor*>&),
       // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::vector<egr::EagerTensor>& %s";
+            ", std::vector<egr::EagerTensor*>& %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
 
       } else {
-        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor& %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor* %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
       }
       const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(&%s) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
+
+      core_ops_args_info[op_type].push_back(output_var_name);
 
     } else {
       if (output.duplicable()) {
@@ -1220,6 +1242,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput(%s) },";
         outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
                                                      output_name, outnum);
+        core_ops_args_info[op_type].push_back(outnum);
       } else {
         const char* FWD_OUTS_CONTENT_TEMPLATE =
             "{ \"%s\", "
@@ -1294,12 +1317,16 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   generated_function_body += "\n";
   VLOG(6) << "Converted Output VarBase to EagerTensor(s)";
 
+  // [Generation] Handle core_ops_returns_info
+  core_ops_returns_info[op_type] = return_contents;
+
   // [Generation] ComputeRequireGrad -> GradNodeCreation
   if (!bwd_info.GenerateForwardOnly()) {
     std::string grad_node_creation_body_str =
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
+    // [Generation] Call RetainGradForTensor
     VLOG(6) << "Generated GradNode Creation codes";
   }
 
@@ -1750,6 +1777,7 @@ static std::string GenerateGradNodeHeaderContents(
 
       std::string tensor_wrapper_arg_str;
       std::string tensor_wrapper_body_str;
+      std::string full_reserved_str = "full_reserved";
       if (duplicable_tensors.count(tensor_wrapper_name)) {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
             "const std::vector<egr::EagerTensor>& %s";
@@ -1782,17 +1810,18 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, true /*full_reserved*/);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name);
+            tensor_wrapper_name, full_reserved_str);
       }
-
+      std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "   void SetTensorWrapper%s(%s) {\n     %s\n   }\n";
+          "   void SetTensorWrapper%s(%s, %s) {\n     %s\n   }\n";
       set_tensor_wrappers_str += paddle::string::Sprintf(
           SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name,
-          tensor_wrapper_arg_str, tensor_wrapper_body_str);
+          tensor_wrapper_arg_str, full_reserved_signature_str,
+          tensor_wrapper_body_str);
     }
   }
   VLOG(6) << "Generated TensorWrapper";
@@ -1808,19 +1837,34 @@ static std::string GenerateGradNodeHeaderContents(
 /* --------------------------------- */
 /* --------- FileGeneration --------- */
 /* ---------------------------------- */
-static void GenerateForwardHFile(const std::string& output_dir,
+static std::string GenerateDygraphHFileIncludes() {
+  std::string dygraph_forward_api_includes_str =
+      "#pragma once\n"
+      "#include \"glog/logging.h\"\n"
+      "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
+      "#include \"paddle/pten/api/all.h\"\n"
+      "#include \"paddle/fluid/eager/utils.h\"\n"
+      "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
+
+  dygraph_forward_api_includes_str +=
+      "extern std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_args_info;\n";
+  dygraph_forward_api_includes_str +=
+      "extern std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_returns_info;\n\n";
+
+  return dygraph_forward_api_includes_str;
+}
+
+static void GenerateForwardHFile(const std::string& dygraph_forward_api_path,
                                  const std::string& dygraph_forward_api_str) {
-  std::string dygraph_forward_api_path = output_dir + "/dygraph_forward_api.h";
   std::ofstream forward_header_stream(dygraph_forward_api_path, std::ios::out);
   forward_header_stream << dygraph_forward_api_str;
   forward_header_stream.close();
 }
 
-static void GenerateForwardDygraphFile(const std::string& output_dir,
+static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
                                        const std::string& fwd_function_str) {
-  std::string forwards_dir = output_dir + "/forwards/";
-  std::string forward_cc_filename = "dygraph_forward_functions.cc";
-  std::string forward_cc_path = forwards_dir + forward_cc_filename;
   const char* FORWARD_INCLUDE_TEMPLATE =
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
@@ -1837,11 +1881,8 @@ static void GenerateForwardDygraphFile(const std::string& output_dir,
   forward_cc_stream.close();
 }
 
-static void GenerateNodeHFile(const std::string& output_dir,
+static void GenerateNodeHFile(const std::string& node_h_path,
                               const std::string& grad_node_str) {
-  std::string nodes_dir = output_dir + "/nodes/";
-  std::string node_h_filename = "nodes.h";
-  std::string node_h_path = nodes_dir + node_h_filename;
   std::string node_h_include_str =
       "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
@@ -1853,11 +1894,8 @@ static void GenerateNodeHFile(const std::string& output_dir,
   node_h_stream.close();
 }
 
-static void GenerateNodeCCFile(const std::string& output_dir,
+static void GenerateNodeCCFile(const std::string& node_cc_path,
                                const std::string& grad_function_str) {
-  std::string nodes_dir = output_dir + "/nodes/";
-  std::string node_cc_filename = "nodes.cc";
-  std::string node_cc_path = nodes_dir + node_cc_filename;
   const char* NODE_CC_INCLUDE_TEMPLATE =
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/pten/api/all.h\"\n"
@@ -1875,16 +1913,50 @@ static void GenerateNodeCCFile(const std::string& output_dir,
   node_cc_stream.close();
 }
 
-static std::string GenerateDygraphHFileIncludes() {
-  std::string dygraph_forward_api_includes_str =
-      "#pragma once\n"
-      "#include \"glog/logging.h\"\n"
-      "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
-      "#include \"paddle/pten/api/all.h\"\n"
-      "#include \"paddle/fluid/eager/utils.h\"\n"
-      "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
+static std::string ConvertCoreOpsInfosToString(
+    const std::unordered_map<std::string, std::vector<std::string>>&
+        core_ops_info) {
+  std::string core_ops_returns_info_init_str = "";
+  for (const auto& iter : core_ops_info) {
+    const char* Core_Ops_Returns_TEMPLATE = "{ \"%s\", { %s } },\n";
+    const std::string& op_type = iter.first;
 
-  return dygraph_forward_api_includes_str;
+    std::string returns_str = "";
+    for (const auto& vector_iter : iter.second) {
+      returns_str += "\"" + vector_iter + "\" ,";
+    }
+
+    // Remove trailing ','
+    if (returns_str.size() > 0) returns_str.pop_back();
+    std::string op_type_init_str = paddle::string::Sprintf(
+        Core_Ops_Returns_TEMPLATE, op_type, returns_str);
+    core_ops_returns_info_init_str += op_type_init_str;
+  }
+
+  // Remove trailing ','
+  if (core_ops_returns_info_init_str.size() > 0)
+    core_ops_returns_info_init_str.pop_back();
+
+  return core_ops_returns_info_init_str;
+}
+
+static std::string GenerateCoreOpsReturnsInfo() {
+  const char* Core_Ops_Returns_MAP_TEMPLATE =
+      "std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_args_info = { %s };\n"
+      "std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_returns_info = { %s };\n";
+
+  std::string core_ops_args_info_init_str =
+      ConvertCoreOpsInfosToString(core_ops_args_info);
+  std::string core_ops_returns_info_init_str =
+      ConvertCoreOpsInfosToString(core_ops_returns_info);
+
+  std::string core_ops_info_str = paddle::string::Sprintf(
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_info_init_str,
+      core_ops_returns_info_init_str);
+
+  return core_ops_info_str;
 }
 
 static void DygraphCodeGeneration(const std::string& output_dir) {
@@ -1953,19 +2025,32 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
   }
 
   VLOG(6) << "-------- GenerateDygraphForwardCCFile -------";
-  GenerateForwardDygraphFile(output_dir, fwd_function_str);
+  std::string forward_cc_path =
+      output_dir + "/forwards/dygraph_forward_functions.tmp.cc";
+  fwd_function_str += "\n";
+  fwd_function_str += GenerateCoreOpsReturnsInfo();
+  GenerateForwardDygraphFile(forward_cc_path, fwd_function_str);
 
   VLOG(6) << "-------- GenerateForwardHFile -------";
-  GenerateForwardHFile(output_dir, dygraph_forward_api_str);
+  std::string dygraph_forward_api_path =
+      output_dir + "/dygraph_forward_api.tmp.h";
+  GenerateForwardHFile(dygraph_forward_api_path, dygraph_forward_api_str);
 
   VLOG(6) << "-------- GenerateNodeHFile -------";
-  GenerateNodeHFile(output_dir, grad_node_h_str);
+  std::string node_h_path = output_dir + "/nodes/nodes.tmp.h";
+  GenerateNodeHFile(node_h_path, grad_node_h_str);
 
   VLOG(6) << "-------- GenerateNodeCCFile -------";
-  GenerateNodeCCFile(output_dir, grad_node_cc_str);
+  std::string node_cc_path = output_dir + "/nodes/nodes.tmp.cc";
+  GenerateNodeCCFile(node_cc_path, grad_node_cc_str);
 }
 
 static void PrepareAttrMapForOps() {
+  // Handle "run_program_op"
+  static framework::ProgramDesc fake_prog;
+  operators_with_attrs["run_program"] = {};
+  operators_with_attrs["run_program"]["global_block"] =
+      fake_prog.MutableBlock(0);
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};

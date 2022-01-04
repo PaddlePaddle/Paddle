@@ -14,17 +14,32 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/os_info.h"
 #include <sstream>
-#include "paddle/fluid/platform/device_tracer.h"
+#if defined(__linux__)
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
+#elif defined(_MSC_VER)
+#include <processthreadsapi.h>
+#endif
 
 namespace paddle {
 namespace platform {
 
 ThreadId::ThreadId() {
+  // C++ std tid
   std_tid_ = std::hash<std::thread::id>()(std::this_thread::get_id());
+// system tid
+#if defined(__linux__)
+  sys_tid_ = syscall(SYS_gettid);
+#elif defined(_MSC_VER)
+  sys_tid_ = GetCurrentThreadId();
+#else  // unsupported platforms
+  sys_tid_ = 0;
+#endif
+  // cupti tid
   std::stringstream ss;
   ss << std::this_thread::get_id();
   cupti_tid_ = static_cast<uint32_t>(std::stoull(ss.str()));
-  RecoreCurThreadId(MainTid());  // For DeviceTracer
 }
 
 ThreadIdRegistry::~ThreadIdRegistry() {

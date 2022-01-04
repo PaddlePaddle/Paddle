@@ -170,8 +170,6 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  Carrier& carrier_instance = Carrier::Instance();
-  std::unique_lock<std::mutex> lock(carrier_instance.run);
   VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
           << step_ + 1 << " time.";
   for (auto op : node_->ops()) {
@@ -199,6 +197,7 @@ void ComputeInterceptor::Run() {
     if (is_last_ && (step_ % node_->max_run_times() == 0)) {
       VLOG(3) << "Interceptor " << GetInterceptorId()
               << " is stopping carrier.";
+      // FIXME(wangxi): with multi sink interceptor
       StopCarrier();
     }
   }

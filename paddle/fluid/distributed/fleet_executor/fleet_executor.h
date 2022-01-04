@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
@@ -28,7 +29,6 @@ class Scope;
 
 namespace distributed {
 class RuntimeGraph;
-class Carrier;
 class MessageBus;
 class TaskNode;
 
@@ -54,6 +54,9 @@ class FleetExecutor final {
   framework::Scope* minibatch_scope_;
   platform::Place place_;
   std::vector<framework::Scope*> microbatch_scopes_;
+  // The carriers under FleetExecutor will share message bus,
+  // using shared_ptr to manage lifetime and condition race.
+  std::shared_ptr<MessageBus> msg_bus_;
 };
 
 }  // namespace distributed

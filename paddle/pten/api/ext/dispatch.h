@@ -159,6 +159,73 @@ namespace paddle {
     }                                                                     \
   }()
 
+///////// Floating and Complex and other type Dispatch Marco ///////////
+
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_AND_1_TYPES(                      \
+    SPECIFIED_TYPE, TYPE, NAME, ...)                                       \
+  [&] {                                                                    \
+    const auto& __dtype__ = TYPE;                                          \
+    switch (__dtype__) {                                                   \
+      PD_PRIVATE_CASE_TYPE(                                                \
+          NAME,                                                            \
+          SPECIFIED_TYPE,                                                  \
+          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE>::type, \
+          __VA_ARGS__)                                                     \
+      PD_PRIVATE_CASE_TYPE(                                                \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)           \
+      PD_PRIVATE_CASE_TYPE(                                                \
+          NAME, ::paddle::DataType::FLOAT64, double, __VA_ARGS__)          \
+      PD_PRIVATE_CASE_TYPE(NAME,                                           \
+                           ::paddle::DataType::COMPLEX64,                  \
+                           ::paddle::complex64,                            \
+                           __VA_ARGS__)                                    \
+      PD_PRIVATE_CASE_TYPE(NAME,                                           \
+                           ::paddle::DataType::COMPLEX128,                 \
+                           ::paddle::complex128,                           \
+                           __VA_ARGS__)                                    \
+      default:                                                             \
+        PD_THROW("function " #NAME " is not implemented for data type `",  \
+                 __dtype__,                                                \
+                 "`");                                                     \
+    }                                                                      \
+  }()
+
+///////// Floating and Complex and 2 other type Dispatch Marco ///////////
+
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(                       \
+    SPECIFIED_TYPE1, SPECIFIED_TYPE2, TYPE, NAME, ...)                      \
+  [&] {                                                                     \
+    const auto& __dtype__ = TYPE;                                           \
+    switch (__dtype__) {                                                    \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME,                                                             \
+          SPECIFIED_TYPE1,                                                  \
+          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE1>::type, \
+          __VA_ARGS__)                                                      \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME,                                                             \
+          SPECIFIED_TYPE2,                                                  \
+          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE2>::type, \
+          __VA_ARGS__)                                                      \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)            \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::FLOAT64, double, __VA_ARGS__)           \
+      PD_PRIVATE_CASE_TYPE(NAME,                                            \
+                           ::paddle::DataType::COMPLEX64,                   \
+                           ::paddle::complex64,                             \
+                           __VA_ARGS__)                                     \
+      PD_PRIVATE_CASE_TYPE(NAME,                                            \
+                           ::paddle::DataType::COMPLEX128,                  \
+                           ::paddle::complex128,                            \
+                           __VA_ARGS__)                                     \
+      default:                                                              \
+        PD_THROW("function " #NAME " is not implemented for data type `",   \
+                 __dtype__,                                                 \
+                 "`");                                                      \
+    }                                                                       \
+  }()
+
 ///////// Floating, Integral and Complex Dispatch Marco ///////////
 
 #define PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(TYPE, NAME, ...)  \

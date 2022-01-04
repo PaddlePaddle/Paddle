@@ -385,14 +385,15 @@ class ReshapeKernel {
     // We can't MakePtenDenseTensor for case 2, so we solve this case by
     // creating a temporary tensor here:
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
-                               in->dims(),
-                               pten::TransToPtenDataLayout(in->layout())};
+                               in->dims(), in->layout()};
     auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
         pten::make_intrusive<paddle::experimental::SharedStorage>(
             ctx.GetPlace()),
         std::move(meta));
     pten::DenseTensor *pt_out = nullptr;
-    if (in == out) {
+    if (in != nullptr && out != nullptr && in->Holder() != nullptr &&
+        out->Holder() != nullptr &&
+        in->Holder()->ptr() == out->Holder()->ptr()) {
       pt_out = pt_x.get();
     } else {
       pt_out = pt_out_tmp.get();
@@ -454,8 +455,7 @@ class ReshapeKernel {
     // non-inplace need move all result from pt_out to out, inplace need set
     // result dims.
     if (in != out) {
-      paddle::experimental::MovesSharedStorage(pt_out,
-                                               static_cast<Tensor *>(out));
+      paddle::experimental::SharesStorage(pt_out, static_cast<Tensor *>(out));
     } else {
       out->Resize(pt_out->dims());
     }

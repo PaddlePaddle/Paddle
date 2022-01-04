@@ -253,10 +253,38 @@ class TensorRTEngine {
           infer_engine_,
           platform::errors::InvalidArgument(
               "You should build engine first and then set the context."));
+      // We may see trt warning: Profile 0 has been chosen by another
+      // IExecutionContext...
+      // It's ok. We will set it later.
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
+      if (with_dynamic_shape_) {
+        // need new profile if it's not the first
+        if (cur_profile_num_ > 0) {
+          infer_context_[tid]->setOptimizationProfile(cur_profile_num_);
+        }
+        profile_index_[tid] = cur_profile_num_;
+        ++cur_profile_num_;
+      }
     }
     return infer_context_[tid].get();
   }
+
+  int GetProfileIndex() {
+    if (max_profile_num_ > 1) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      const std::thread::id tid = std::this_thread::get_id();
+      return profile_index_[tid];
+    } else {
+      return 0;
+    }
+  }
+
+  int GetBindingsOffset() {
+    return (binding_num_ / max_profile_num_) * GetProfileIndex();
+  }
+
+  int GetNbBindings() { return binding_num_; }
+
   void ResetContext() {
     std::unique_lock<std::mutex> lock(mutex_);
     const std::thread::id tid = std::this_thread::get_id();
@@ -321,6 +349,9 @@ class TensorRTEngine {
             "on the same GPU architecture;\n2. The Paddle Inference version of "
             "generating serialization file and doing inference are "
             "consistent."));
+
+    binding_num_ = infer_engine_->getNbBindings();
+    GetEngineInfo();
   }
 
   void SetRuntimeBatch(size_t batch_size);
@@ -538,6 +569,19 @@ class TensorRTEngine {
     }
   }
 
+  void SetProfileNum(int num) { max_profile_num_ = num; }
+  void GetEngineInfo() {
+#if IS_TRT_VERSION_GE(8200)
+    std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
+        infer_engine_->createEngineInspector());
+    infer_inspector->setExecutionContext(context());
+    VLOG(3) << infer_inspector->getEngineInformation(
+        nvinfer1::LayerInformationFormat::kJSON);
+#else
+    VLOG(3) << "Inspector needs TensorRT version 8.2 and after.";
+#endif
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -557,6 +601,9 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   int device_id_;
+  int max_profile_num_{1};
+  int cur_profile_num_{0};
+  std::unordered_map<std::thread::id, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
@@ -600,8 +647,9 @@ class TensorRTEngine {
   // For dynamic shape
   bool with_dynamic_shape_{false};
 #if IS_TRT_VERSION_GE(6000)
+  int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  nvinfer1::IOptimizationProfile* optim_profile_;
+  std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;

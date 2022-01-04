@@ -33,8 +33,10 @@ using add_kernel = void (*)(const DeviceContext&,
                             int,
                             DenseTensor*);
 
-using cast_kernel = void (*)(
-    const DeviceContext&, const DenseTensor&, DataType, DataType, DenseTensor*);
+using cast_kernel = void (*)(const DeviceContext&,
+                             const DenseTensor&,
+                             DataType,
+                             DenseTensor*);
 
 using divide_kernel = void (*)(const DeviceContext&,
                                const DenseTensor&,
@@ -50,6 +52,11 @@ using dot_kernel = void (*)(const DeviceContext&,
 using flatten_kernel =
     void (*)(const DeviceContext&, const DenseTensor&, int, int, DenseTensor*);
 
+using empty_kernel = void (*)(const DeviceContext&,
+                              const ScalarArray&,
+                              DenseTensor*);
+
+using empty_like_kernel = void (*)(const DeviceContext&, DenseTensor*);
 using full_kernel = void (*)(const DeviceContext&,
                              const ScalarArray&,
                              const Scalar&,
@@ -71,8 +78,6 @@ using mean_kernel = void (*)(const DeviceContext&,
                              const std::vector<int64_t>&,
                              bool,
                              bool,
-                             DataType,
-                             DataType,
                              DenseTensor*);
 
 using multiply_kernel = void (*)(const DeviceContext&,
@@ -99,7 +104,6 @@ using sum_kernel = void (*)(const DeviceContext&,
                             bool,
                             bool,
                             DataType,
-                            DataType,
                             DenseTensor*);
 
 using subtract_kernel = void (*)(const DeviceContext&,
@@ -107,5 +111,9 @@ using subtract_kernel = void (*)(const DeviceContext&,
                                  const DenseTensor&,
                                  int,
                                  DenseTensor*);
+
+using conj_kernel = void (*)(const DeviceContext&,
+                             const DenseTensor&,
+                             DenseTensor*);
 
 }  // namespace pten

@@ -627,6 +627,8 @@ class Fleet(object):
         """
         self._runtime_handle._init_server(*args, **kwargs)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def load_model(self, path, mode):
         """
         load fleet model from path
@@ -699,6 +701,8 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save(self, dirname, feed=[], fetch=[], **configs):
         inference = True
 
@@ -742,6 +746,8 @@ class Fleet(object):
             self._runtime_handle._save_persistables(
                 executor, dirname, main_program=None, mode=increment_mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -777,6 +783,8 @@ class Fleet(object):
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment, mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
 
@@ -1436,7 +1444,7 @@ class Fleet(object):
         context["role_maker"] = self._role_maker
 
         # Use the auto-parallel's routines instead
-        if self._user_defined_strategy.semi_auto:
+        if self._user_defined_strategy.semi_auto or self._user_defined_strategy.auto_search:
             from ...auto_parallel.parallelizer import AutoParallelizer
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
@@ -1586,13 +1594,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and
-                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and
-                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
