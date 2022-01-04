@@ -165,7 +165,7 @@ class TestMeshgridOp7(unittest.TestCase):
             assert np.array_equal(res_4.shape, [100, 200])
 
 
-class TestMeshgridOp7(unittest.TestCase):
+class TestMeshgridOp8(unittest.TestCase):
     def test_api_with_dygraph_tuple_input(self):
         input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
         input_4 = np.random.randint(0, 100, [200, ]).astype('int32')

@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/bfloat16.h"
-#include <vector>
+#include "paddle/fluid/platform/eigen_ext.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"

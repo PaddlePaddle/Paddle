@@ -15,6 +15,7 @@
 #pragma once
 
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #ifdef _WIN32
 #ifndef NOMINMAX

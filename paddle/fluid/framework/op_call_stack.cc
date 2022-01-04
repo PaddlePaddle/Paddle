@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_call_stack.h"
+
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/attribute.h"
+
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {

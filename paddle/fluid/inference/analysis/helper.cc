@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace inference {

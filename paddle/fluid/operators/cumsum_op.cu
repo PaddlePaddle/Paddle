@@ -16,9 +16,15 @@ limitations under the License. */
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
-#include "cub/cub.cuh"
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/operators/cum_op.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 using Tensor = paddle::framework::Tensor;
 using LoDTensor = paddle::framework::LoDTensor;
@@ -248,7 +254,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     dim3 transpose_grids((width + tile_size - 1) / tile_size,
                          (height + tile_size - 1) / tile_size);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    Tensor tmp;
+    framework::Tensor tmp;
     tmp.Resize(out_dims);
     auto* tmp_data = tmp.mutable_data<T>(context.GetPlace());
     T* next_in_data = out_data;

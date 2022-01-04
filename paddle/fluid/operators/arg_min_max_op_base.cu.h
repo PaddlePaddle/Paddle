@@ -14,9 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 
-#include <cub/cub.cuh>
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include <limits>
 #include <string>
 #include <typeinfo>
@@ -83,22 +89,25 @@ void ComputeFullArg(const platform::CUDADeviceContext& ctx, const Tensor& input,
                     const int64_t n) {
   auto cu_stream = ctx.stream();
   auto ComputeBlockSize = [](int64_t col) {
+    auto block_size = 8;
     if (col > 512)
-      return 1024;
+      block_size = 1024;
     else if (col > 256)
-      return 512;
+      block_size = 512;
     else if (col > 128)
-      return 256;
+      block_size = 256;
     else if (col > 64)
-      return 128;
+      block_size = 128;
     else if (col > 32)
-      return 64;
+      block_size = 64;
     else if (col > 16)
-      return 32;
+      block_size = 32;
     else if (col > 8)
-      return 16;
-    else
-      return 8;
+      block_size = 16;
+#ifdef __HIPCC__
+    block_size = std::min(block_size, 256);
+#endif
+    return block_size;
   };
 
   int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize().x;
@@ -175,12 +184,13 @@ class ArgMinMaxOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dtype = ctx.Attr<int>("dtype");
     if (dtype < 0) {
-      framework::VisitDataType(static_cast<framework::proto::VarType::Type>(
-                                   framework::proto::VarType::INT64),
-                               VisitDataCudaArgMinMaxFunctor<T, Reducer>(ctx));
+      framework::VisitDataTypeTiny(
+          static_cast<framework::proto::VarType::Type>(
+              framework::proto::VarType::INT64),
+          VisitDataCudaArgMinMaxFunctor<T, Reducer>(ctx));
       return;
     }
-    framework::VisitDataType(
+    framework::VisitDataTypeTiny(
         static_cast<framework::proto::VarType::Type>(dtype),
         VisitDataCudaArgMinMaxFunctor<T, Reducer>(ctx));
   }

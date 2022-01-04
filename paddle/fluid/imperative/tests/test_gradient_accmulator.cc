@@ -53,7 +53,7 @@ int TensorddTest(Place place, T t1, T t2) {
                          sizeof(T) * src_data.size());
     paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
                          sizeof(T) * dst_data.size());
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else {
     paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
                          sizeof(T) * src_data.size(), 0);
@@ -74,7 +74,7 @@ int TensorddTest(Place place, T t1, T t2) {
 }
 
 TEST(test_add_functor, add_functor) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace gpu_place(0);
 #endif
   platform::CPUPlace cpu_place;
@@ -88,7 +88,7 @@ TEST(test_add_functor, add_functor) {
   cpu_res = TensorddTest(cpu_place, static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
   gpu_res = TensorddTest(gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
@@ -107,7 +107,7 @@ TEST(test_add_functor, execption) {
   platform::CPUPlace cpu_place;
 
   ASSERT_ANY_THROW(TensorddTest(cpu_place, 1, 0));
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place, 1.0, 0.0));
   ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place,
                                 static_cast<platform::float16>(1.0),
@@ -358,7 +358,7 @@ TEST(test_gradient_accumulator, test_unchange_input) {
   for (auto sort_gradient : {false, true}) {
     TestGradientAccumulatorTestUnchangeInput(platform::CPUPlace(),
                                              sort_gradient);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     TestGradientAccumulatorTestUnchangeInput(platform::CUDAPlace(0),
                                              sort_gradient);
 #endif

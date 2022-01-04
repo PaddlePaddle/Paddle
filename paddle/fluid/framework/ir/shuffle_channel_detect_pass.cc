@@ -30,6 +30,44 @@ namespace ir {
   GET_IR_NODE(reshape2_op);   \
   GET_IR_NODE(reshape2_out);
 
+ShuffleChannelDetectPass::ShuffleChannelDetectPass() {
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Shape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("shape")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+}
+
 void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "shufflechannel_pattern";
   FusePassBase::Init(pattern_name, graph);
@@ -46,7 +84,10 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_NODES;
-
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "The Pass in op compat failed.";
+      return;
+    }
     PADDLE_ENFORCE_GT(
         subgraph.count(x), 0,
         platform::errors::NotFound("Detector did not find input X."));
@@ -60,6 +101,21 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
         BOOST_GET_CONST(std::vector<int>, reshape1_desc->GetAttr("shape"));
     auto reshape2_shape =
         BOOST_GET_CONST(std::vector<int>, reshape2_desc->GetAttr("shape"));
+    // shuffle_channel dosen't change shape
+    auto* block = reshape1_desc->Block();
+    if (block) {
+      auto x_var_name = reshape1_desc->Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+
+      if (x_shape.size() != reshape2_shape.size()) {
+        return;
+      }
+
+      for (size_t i = 0; i < x_shape.size(); i++) {
+        if (x_shape[i] != reshape2_shape[i]) return;
+      }
+    }
 
     int i_c = reshape1_shape[2];
     int o_c = reshape2_shape[1];

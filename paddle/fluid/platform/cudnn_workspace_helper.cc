@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
+
 #include <cstdlib>
 #include <string>
-#include "boost/lexical_cast.hpp"
 
 namespace paddle {
 namespace platform {
 
 static int GetDefaultConvWorkspaceSizeLimitMBImpl() {
   const char *env_str = std::getenv("FLAGS_conv_workspace_size_limit");
-  return env_str ? boost::lexical_cast<int>(std::string(env_str))
+  return env_str ? std::stoi(std::string(env_str))
                  : kDefaultConvWorkspaceSizeLimitMB;
 }
 

@@ -19,6 +19,8 @@ import functools
 
 import paddle.reader
 
+__all__ = []
+
 
 def reader_creator_10(dur):
     def reader():

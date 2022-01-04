@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 
 #include <string>
-#include <utility>
 
 #include "paddle/fluid/platform/profiler.h"
 
@@ -123,7 +122,7 @@ static void TransData(const framework::Tensor *src_item,
                       const platform::DeviceContext &ctx) {
   if (src_item->IsInitialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       TensorCopy(*src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
 #endif
     } else {

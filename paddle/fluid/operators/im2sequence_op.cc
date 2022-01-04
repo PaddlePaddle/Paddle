@@ -192,3 +192,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     im2sequence_grad,
     ops::Im2SequenceGradKernel<paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(
+    im2sequence,
+    ops::Im2SequenceKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    im2sequence_grad,
+    ops::Im2SequenceGradKernel<paddle::platform::CUDADeviceContext, float>);

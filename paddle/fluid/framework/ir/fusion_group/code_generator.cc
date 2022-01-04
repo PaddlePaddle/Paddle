@@ -13,11 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
-#include <sstream>
-#include <unordered_set>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/cuda_resources.h"
-#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
 namespace framework {

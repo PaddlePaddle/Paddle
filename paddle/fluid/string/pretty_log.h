@@ -13,11 +13,11 @@
 // limitations under the License.
 #pragma once
 
-#include <gflags/gflags.h>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <utility>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/string/printf.h"
 

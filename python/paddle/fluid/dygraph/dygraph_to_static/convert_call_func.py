@@ -26,11 +26,13 @@ import types
 import numpy
 import six
 
-from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
+from paddle.fluid.dygraph.container import Sequential
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
@@ -39,6 +41,9 @@ __all__ = ["convert_call"]
 BUILTIN_LIKELY_MODULES = [
     collections, pdb, copy, inspect, re, six, numpy, logging
 ]
+# The api(s) should be considered as plain function and convert
+# them into static layer code.
+PADDLE_NEED_CONVERT_APIS = [Sequential]
 
 translator_logger = TranslatorLogger()
 
@@ -74,9 +79,8 @@ def is_builtin_len(func):
     return False
 
 
-def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith("paddle")
+def is_builtin_zip(func):
+    return is_builtin(func) and func.__name__ == 'zip'
 
 
 def is_unsupported(func):
@@ -88,13 +92,17 @@ def is_unsupported(func):
         for v in m.__dict__.values():
             func_in_dict = func == v
             if isinstance(func_in_dict, (list, numpy.ndarray)):
-                func_in_dict = any(func_in_dict)
+                func_in_dict = numpy.array(func_in_dict).any()
             if func_in_dict:
                 translator_logger.log(
                     2,
                     "Whitelist: {} is part of built-in module and does not have to be transformed.".
                     format(func))
                 return True
+
+    # NOTE: should be placed before `is_paddle_func`
+    if type(func) in PADDLE_NEED_CONVERT_APIS:
+        return False
 
     if is_paddle_func(func):
         translator_logger.log(
@@ -160,7 +168,21 @@ def convert_call(func):
     if is_builtin_len(func):
         return convert_len
 
+    if is_builtin_zip(func):
+        return convert_zip
+
     if is_builtin(func) or is_unsupported(func):
+        return func
+
+    if inspect.isgeneratorfunction(func):
+        # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function. 
+        # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
+        # occasion.
+        number_of_stars = 30
+        translator_logger.warn(
+            "\n\n" + "*" * number_of_stars +
+            "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is."
+            .format(func.__name__) + "\n" + "*" * number_of_stars + "\n\n")
         return func
 
     if inspect.isfunction(func):

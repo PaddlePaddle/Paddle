@@ -14,18 +14,18 @@
 
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 
-#include <memory>
-#include <unordered_set>
-#include <utility>
-
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include <algorithm>
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -41,15 +41,20 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
     dev_ctx_ = reinterpret_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(
           BOOST_GET_CONST(platform::CUDAPlace, place).device);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipEventCreateWithFlags(&event_, hipEventDisableTiming));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
+#endif
       PADDLE_ENFORCE_NOT_NULL(event_, platform::errors::InvalidArgument(
                                           "The cuda envet created is NULL."));
     }
@@ -65,17 +70,21 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 }
 
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_->GetPlace());
     platform::CUDADeviceGuard guard(gpu_place.device);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
+#endif
   }
 #endif
 }
 
 void EagerDeletionOpHandle::InitCUDA() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int dev_id =
       BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
   events_[dev_id] = nullptr;
@@ -101,7 +110,8 @@ void EagerDeletionOpHandle::CallOnce() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  if (vars_.size() != var_infos_.size()) {
+  if (vars_.size() != var_infos_.size() || is_variant_scope_) {
+    vars_.clear();
     CallOnce();
   }
 
@@ -111,6 +121,7 @@ void EagerDeletionOpHandle::RunImpl() {
     auto *var_info = var_infos_[i];
     if (var_info->IsSkippedAllMemoryOptimization() ||
         !var_info->DecreaseRefCnt()) {
+      VLOG(4) << "skip memory optimization with var: " << var_info->Name();
       continue;
     }
 
@@ -142,23 +153,39 @@ void EagerDeletionOpHandle::RunImpl() {
 
 void EagerDeletionOpHandle::ClearGarbages(
     std::deque<std::shared_ptr<memory::Allocation>> *garbages) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
     auto compute_stream = dev_ctx_->stream();
     auto callback_stream =
         reinterpret_cast<StreamGarbageCollector *>(gc_)->stream();
     auto callback_func = [=]() {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipStreamWaitEvent(callback_stream, event_, 0));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamWaitEvent(callback_stream, event_, 0));
+#endif
     };
     gc_->Add(std::move(*garbages), callback_func);
   } else {
 #endif
     gc_->Add(std::move(*garbages));
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
+}
+
+std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
+  std::vector<std::string> var_names;
+  var_names.reserve(var_infos_.size());
+  for (auto &info : var_infos_) {
+    var_names.emplace_back(info->Name());
+  }
+  std::sort(var_names.begin(), var_names.end());
+  return var_names;
 }
 
 }  // namespace details

@@ -16,63 +16,67 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+
+import paddle
+from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
+prog_trans = paddle.jit.ProgramTranslator()
 
 
+@paddle.jit.to_static
 def test_slice_without_control_flow(x):
     # Python slice will not be transformed.
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     a = [x]
-    a[0] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
-    return a
+    a[0] = paddle.full(shape=[2], fill_value=2, dtype="float32")
+    return a[0]
 
 
+@paddle.jit.to_static
 def test_slice_in_if(x):
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     a = []
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(
-            fluid.layers.fill_constant(
-                shape=[1, 2], value=9, dtype="int64"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+
     if x.numpy()[0] > 0:
         a[0] = x
-    out = a[0:]
+
+    a[0] = x + 1
+    out = a[0]
     return out
 
 
-def test_slice_in_while_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
-    iter_num_var = fluid.layers.fill_constant(
-        shape=[1], value=iter_num, dtype="int32")
+@paddle.jit.to_static
+def test_slice_in_while_loop(x, iter_num=3):
+    x = paddle.to_tensor(x)
+    iter_num_var = paddle.full(shape=[1], fill_value=iter_num, dtype="int32")
     a = []
     i = 0
-    # Note: `i < iter_num` can't be supported in dygraph mode now,
-    # but PR22892 is fixing it https://github.com/PaddlePaddle/Paddle/pull/22892.
-    # If PR22892 merged, change `i < iter_num.numpy()[0]` to `i < iter_num`.
-    while i < iter_num_var.numpy()[0]:
+
+    while i < iter_num_var:
         a.append(x)
         i += 1
 
     i = 0
     while i < iter_num_var.numpy()[0]:
-        a[i] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
+        a[i] = paddle.full(shape=[2], fill_value=2, dtype="float32")
         i += 1
     out = a[0:iter_num]
-    return out
+    return out[0]
 
 
-def test_slice_in_for_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+@paddle.jit.to_static
+def test_slice_in_for_loop(x, iter_num=3):
+    x = paddle.to_tensor(x)
     a = []
-    # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
-    iter_num = fluid.layers.fill_constant(
-        shape=[1], value=iter_num, dtype="int32"
+    # Use `paddle.full` so that static analysis can analyze the type of iter_num is Tensor
+    iter_num = paddle.full(
+        shape=[1], fill_value=iter_num, dtype="int32"
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
 
     for i in range(iter_num):
@@ -84,38 +88,57 @@ def test_slice_in_for_loop(x, iter_num):
     return out
 
 
+@paddle.jit.to_static
+def test_set_value(x):
+    x = paddle.to_tensor(x)
+    x[0] = paddle.full(shape=[1], fill_value=2, dtype="float32")
+    x[1:2, 0:1] = 10
+    return x
+
+
+class LayerWithSetValue(paddle.nn.Layer):
+    def __init__(self, input_dim, hidden):
+        super(LayerWithSetValue, self).__init__()
+        self.linear = paddle.nn.Linear(input_dim, hidden)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x = self.linear(x)
+        x[0] = 1
+        return x
+
+
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((3)).astype('int32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.init_input()
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
         self.init_dygraph_func()
+        paddle.disable_static()
+
+    def init_input(self):
+        self.input = np.random.random((3)).astype('int32')
 
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_without_control_flow
 
     def run_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            res = self.dygraph_func(self.input)
-            if isinstance(res, (list, tuple)):
-                res = res[0]
-            return res.numpy()
+        return self._run(to_static=False)
+
+    def _run(self, to_static):
+        prog_trans.enable(to_static)
+        res = self.dygraph_func(self.input)
+        return res.numpy()
 
     def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_list = dygraph_to_static_func(self.dygraph_func)(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=tensor_list[0])
-
-        return static_res[0]
+        return self._run(to_static=True)
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
         self.assertTrue(
             np.allclose(dygraph_res, static_res),
-            msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
+            msg='dygraph_res is {}\nstatic_res is {}'.format(dygraph_res,
                                                              static_res))
 
 
@@ -123,68 +146,116 @@ class TestSliceInIf(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_if
 
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_func(self.dygraph_func)(self.input)
-            static_out = fluid.layers.array_read(
-                tensor_array,
-                i=fluid.layers.fill_constant(
-                    shape=[1], value=0, dtype='int64'))
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=static_out)
-        return numpy_res[0]
-
 
 class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
-    def setUp(self):
-        self.iter_num = 3
-        self.input = np.random.random((3)).astype('int32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        self.init_dygraph_func()
-
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_while_loop
 
-    def run_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            var_res = self.dygraph_func(self.input, self.iter_num)
-            if not isinstance(var_res, list):
-                var_res = [var_res]
-            numpy_res = [ele.numpy() for ele in var_res]
-            return numpy_res
 
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_func(self.dygraph_func)(
-                self.input, self.iter_num)
-            static_outs = []
-            for i in range(self.iter_num):
-                static_outs.append(
-                    fluid.layers.array_read(
-                        tensor_array,
-                        i=fluid.layers.fill_constant(
-                            shape=[1], value=i, dtype='int64')))
-
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=static_outs)
-        return numpy_res
-
-
-class TestSliceInForLoop(TestSliceInWhileLoop):
+class TestSliceInForLoop(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_for_loop
 
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)(
-                self.input, self.iter_num)
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=static_out)
-        return numpy_res
+
+class TestSetValue(TestSliceWithoutControlFlow):
+    def init_input(self):
+        self.input = np.full([3, 4, 5], 5).astype('float32')
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_set_value
+
+
+class TestSetValueWithLayerAndSave(unittest.TestCase):
+    def test_set_value_with_save(self):
+        prog_trans.enable(True)
+        model = LayerWithSetValue(input_dim=10, hidden=1)
+        x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
+        paddle.jit.save(
+            layer=model,
+            path="./layer_use_set_value",
+            input_spec=[x],
+            output_spec=None)
+
+
+class TestSliceSupplementSpecialCase(unittest.TestCase):
+    # unittest for slice index which abs(step)>0. eg: x[::2]
+    def test_static_slice_step(self):
+        paddle.enable_static()
+        array = np.arange(4**3).reshape((4, 4, 4)).astype('int64')
+
+        x = paddle.static.data(name='x', shape=[4, 4, 4], dtype='int64')
+        z1 = x[::2]
+        z2 = x[::-2]
+
+        place = paddle.CPUPlace()
+        prog = paddle.static.default_main_program()
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+
+        out = exe.run(prog, feed={'x': array}, fetch_list=[z1, z2])
+
+        self.assertTrue(np.array_equal(out[0], array[::2]))
+        self.assertTrue(np.array_equal(out[1], array[::-2]))
+
+    def test_static_slice_step_dygraph2static(self):
+        paddle.disable_static()
+
+        array = np.arange(4**2 * 5).reshape((5, 4, 4)).astype('int64')
+        inps = paddle.to_tensor(array)
+
+        def func(inps):
+            return inps[::2], inps[::-2]
+
+        origin_result = func(inps)
+        sfunc = paddle.jit.to_static(
+            func, input_spec=[InputSpec(shape=[None, 4, 4])])
+        static_result = sfunc(inps)
+
+        self.assertTrue(
+            np.array_equal(origin_result[0].numpy(), static_result[0].numpy()))
+        self.assertTrue(
+            np.array_equal(origin_result[1].numpy(), static_result[1].numpy()))
+
+
+class TestPaddleStridedSlice(unittest.TestCase):
+    def test_compare_paddle_strided_slice_with_numpy(self):
+        paddle.disable_static()
+        array = np.arange(5)
+        pt = paddle.to_tensor(array)
+
+        s1 = 3
+        e1 = 1
+        stride1 = -2
+        sl = paddle.strided_slice(
+            pt, axes=[0, ], starts=[s1, ], ends=[e1, ], strides=[stride1, ])
+
+        self.assertTrue(array[s1:e1:stride1], sl)
+
+        array = np.arange(6 * 6).reshape((6, 6))
+        pt = paddle.to_tensor(array)
+        s2 = [8, -1]
+        e2 = [1, -5]
+        stride2 = [-2, -3]
+        sl = paddle.strided_slice(
+            pt, axes=[0, 1], starts=s2, ends=e2, strides=stride2)
+
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[
+                1]:stride2[1]]))
+
+        array = np.arange(6 * 7 * 8).reshape((6, 7, 8))
+        pt = paddle.to_tensor(array)
+        s2 = [7, -1]
+        e2 = [2, -5]
+        stride2 = [-2, -3]
+        sl = paddle.strided_slice(
+            pt, axes=[0, 2], starts=s2, ends=e2, strides=stride2)
+
+        array_slice = array[s2[0]:e2[0]:stride2[0], ::, s2[1]:e2[1]:stride2[1]]
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array_slice),
+            msg="paddle.strided_slice:\n {} \n numpy slice:\n{}".format(
+                sl.numpy(), array_slice))
 
 
 if __name__ == '__main__':

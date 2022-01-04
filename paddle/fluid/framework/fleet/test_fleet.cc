@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <fstream>
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if defined _WIN32 || defined __APPLE__

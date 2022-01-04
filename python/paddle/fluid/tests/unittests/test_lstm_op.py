@@ -16,9 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 from paddle import fluid
-from paddle.fluid.layers import lstm, fill_constant
+from paddle.fluid.layers import lstm as LSTM
+from paddle.fluid.layers import fill_constant
 from paddle.fluid.framework import program_guard, Program
 
 SIGMOID_THRESHOLD_MIN = -40.0
@@ -156,21 +157,21 @@ class LstmUnitTestError(unittest.TestCase):
                 (num_layers, batch_size, hidden_size)).astype('float64')
 
             def test_input_Variable():
-                lstm(np_input, pre_hidden, pre_cell, \
+                LSTM(np_input, pre_hidden, pre_cell, \
                     seq_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
 
             self.assertRaises(TypeError, test_input_Variable)
 
             def test_pre_hidden_Variable():
-                lstm(np_input, np_pre_hidden, pre_cell, \
+                LSTM(np_input, np_pre_hidden, pre_cell, \
                     seq_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
 
             self.assertRaises(TypeError, test_pre_hidden_Variable)
 
             def test_pre_cell_Variable():
-                lstm(np_input, pre_hidden, np_pre_cell, \
+                LSTM(np_input, pre_hidden, np_pre_cell, \
                     seq_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
 
@@ -181,7 +182,7 @@ class LstmUnitTestError(unittest.TestCase):
                     name='error_input',
                     shape=[None, hidden_size * 3],
                     dtype='int32')
-                lstm(error_input, pre_hidden, pre_cell, \
+                LSTM(error_input, pre_hidden, pre_cell, \
                     seq_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
 
@@ -192,7 +193,7 @@ class LstmUnitTestError(unittest.TestCase):
                     name='error_pre_hidden',
                     shape=[None, hidden_size],
                     dtype='int32')
-                lstm(input, error_pre_hidden, pre_cell, \
+                LSTM(input, error_pre_hidden, pre_cell, \
                     seq_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
 
@@ -203,7 +204,7 @@ class LstmUnitTestError(unittest.TestCase):
                     name='error_pre_cell',
                     shape=[None, hidden_size],
                     dtype='int32')
-                lstm(input, pre_hidden, error_pre_cell, \
+                LSTM(input, pre_hidden, error_pre_cell, \
                     seq_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
 
@@ -211,10 +212,14 @@ class LstmUnitTestError(unittest.TestCase):
 
 
 class TestLstmOp(OpTest):
+    def set_is_test(self):
+        self.is_test = False
+
     def set_lod(self):
         self.lod = [[2, 3, 2]]
 
     def set_argument(self):
+        self.set_is_test()
         self.set_lod()
         self.D = 16
 
@@ -268,7 +273,8 @@ class TestLstmOp(OpTest):
             'is_reverse': self.is_reverse,
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
-            'candidate_activation': self.act_cand
+            'candidate_activation': self.act_cand,
+            'is_test': self.is_test
         }
 
     def test_check_output(self):
@@ -299,6 +305,15 @@ class TestLstmOpCase2(TestLstmOp):
 class TestLstmOpCase3(TestLstmOp):
     def set_lod(self):
         self.lod = [[2, 0, 4]]
+
+
+class TestLstmOpInference(TestLstmOp):
+    def set_is_test(self):
+        self.is_test = True
+
+    # avoid checking gradient
+    def test_check_grad(self):
+        pass
 
 
 class TestLstmOpError(unittest.TestCase):

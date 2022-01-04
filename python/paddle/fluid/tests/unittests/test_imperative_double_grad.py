@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
@@ -228,8 +229,6 @@ class TestDygraphDoubleGrad(TestCase):
             x_grad_expected = (i + 2) * (2.0 / float(numel) * (
                 x_np + dx_expected *
                 (x_np > 0) * 2 / float(numel))).astype('float32')
-            print(x_grad_actual)
-            print(x_grad_expected)
             self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     @dygraph_guard
@@ -367,6 +366,39 @@ class TestRaiseNoDoubleGradOp(TestCase):
 
     def test_raise(self):
         self.assertRaises(RuntimeError, self.raise_no_grad_op)
+
+
+class TestDoubleGradResNetBase(TestCase):
+    @dygraph_guard
+    def check_resnet(self):
+        data = np.random.rand(1, 3, 224, 224).astype(np.float32)
+        data = paddle.to_tensor(data)
+        data.stop_gradient = False
+        out = self.model(data)
+        preds = paddle.argmax(out, axis=1)
+        label_onehot = paddle.nn.functional.one_hot(
+            paddle.to_tensor(preds), num_classes=out.shape[1])
+        target = paddle.sum(out * label_onehot, axis=1)
+
+        g = paddle.grad(outputs=target, inputs=out)[0]
+        g_numpy = g.numpy()
+        self.assertEqual(list(g_numpy.shape), list(out.shape))
+
+
+class TestDoubleGradResNet50(TestDoubleGradResNetBase):
+    def setUp(self):
+        self.model = resnet50(pretrained=False)
+
+    def test_main(self):
+        self.check_resnet()
+
+
+class TestDoubleGradResNet101(TestDoubleGradResNetBase):
+    def setUp(self):
+        self.model = resnet101(pretrained=False)
+
+    def test_main(self):
+        self.check_resnet()
 
 
 if __name__ == '__main__':

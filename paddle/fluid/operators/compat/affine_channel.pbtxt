@@ -1,0 +1,19 @@
+type: "affine_channel"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Scale"
+  }
+  inputs {
+    name: "Bias"
+  }
+  attrs {
+    name: "data_layout"
+    type: STRING
+  }
+  outputs {
+    name: "Out"
+  }
+}

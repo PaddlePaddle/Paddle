@@ -29,16 +29,16 @@ static inline int CanonicalAxis(const int axis, const int rank) {
   return axis;
 }
 
-static inline int SizeToAxis(const int axis, const framework::DDim dims) {
-  int size = 1;
+static inline size_t SizeToAxis(const int axis, const framework::DDim dims) {
+  size_t size = 1;
   for (int i = 0; i < axis; i++) {
     size *= dims[i];
   }
   return size;
 }
 
-static inline int SizeFromAxis(const int axis, const framework::DDim dims) {
-  int size = 1;
+static inline size_t SizeFromAxis(const int axis, const framework::DDim dims) {
+  size_t size = 1;
   for (int i = axis; i < dims.size(); i++) {
     size *= dims[i];
   }
@@ -131,8 +131,10 @@ class LogSoftmaxKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    LogSoftmaxFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), X, Out, axis);
+    if (X->numel() != 0) {
+      LogSoftmaxFunctor<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), X, Out, axis);
+    }
   }
 };
 
@@ -183,8 +185,11 @@ class LogSoftmaxGradKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    LogSoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), Out, dOut, dX, axis);
+    if (Out->numel() != 0) {
+      LogSoftmaxGradFunctor<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), Out, dOut, dX,
+          axis);
+    }
   }
 };
 

@@ -16,10 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from scipy.special import expit
+from scipy.special import expit, erf
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
@@ -79,48 +79,6 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
-class TestMKLDNNGeluBf16Dim2(TestActivation):
-    def setUp(self):
-        self.op_type = "gelu"
-        self.dtype = np.uint16
-
-        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
-        out = convert_float_to_uint16(gelu(x, False))
-
-        self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
-
-    def test_check_grad(self):
-        pass
-
-
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
-class TestMKLDNNGeluBf16Dim2Approx(TestActivation):
-    def setUp(self):
-        self.op_type = "gelu"
-        self.dtype = np.uint16
-
-        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
-        out = convert_float_to_uint16(gelu(x, True))
-
-        self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "approximate": True}
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
-
-    def test_check_grad(self):
-        pass
-
-
 class TestMKLDNNTanhDim2(TestTanh):
     def setUp(self):
         super(TestMKLDNNTanhDim2, self).setUp()
@@ -158,6 +116,13 @@ class TestMKLDNNSwishDim2(TestSwish):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+
+class TestMKLDNNHardSwishDim2(TestHardSwish):
+    def setUp(self):
+        super(TestMKLDNNHardSwishDim2, self).setUp()
+
+        self.attrs["use_mkldnn"] = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -324,6 +289,32 @@ class TestMKLDNNSwishDim4(TestSwish):
         self.dtype = np.float32
 
 
+def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
+    return (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
+            scale).astype(x.dtype)
+
+
+class TestMKLDNNHardSwishDim4(TestHardSwish):
+    def setUp(self):
+        super(TestMKLDNNHardSwishDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        threshold = 6.0
+        scale = 6.0
+        offset = 3.0
+        x[np.abs(x + offset) < 0.005] = 0.02
+        x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
+
+        out = ref_hardswish(x, threshold, scale, offset)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
 class TestMKLDNNSigmoidDim4(TestSigmoid):
     def setUp(self):
         super(TestMKLDNNSigmoidDim4, self).setUp()
@@ -333,6 +324,29 @@ class TestMKLDNNSigmoidDim4(TestSigmoid):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNEluDefaultAlpha(TestActivation):
+    def setUp(self):
+        self.op_type = "elu"
+        self.set_alpha()
+
+        x = np.random.random((5, 5, 4)).astype("float32")
+
+        self.inputs = {'X': x}
+        self.attrs = {'use_mkldnn': True, 'alpha': self.alpha}
+        self.outputs = {
+            'Out':
+            np.maximum(0, x) + np.minimum(0, self.alpha * (np.exp(x) - 1))
+        }
+
+    def set_alpha(self):
+        self.alpha = 1.0
+
+
+class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
+    def set_alpha(self):
+        self.alpha = 2.5
 
 
 # Check if primitives already exist in backward

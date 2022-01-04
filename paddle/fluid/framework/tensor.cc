@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -29,17 +31,22 @@ void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
                                        "Tensor holds no memory. "
                                        "Call Tensor::mutable_data firstly."));
+  size_t size = numel() * SizeOfType(type());
+
   PADDLE_ENFORCE_LE(
-      numel() * SizeOfType(type()), memory_size(),
+      size, memory_size(),
       platform::errors::PreconditionNotMet(
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
           "But received  Tensor's dimension is d%, memory's size is %d.",
-          numel() * SizeOfType(type()), memory_size()));
+          size, memory_size()));
 }
 
-Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
+Tensor::Tensor(const proto::VarType::Type& dtype)
+    : type_(dtype),
+      offset_(0),
+      inplace_version_counter_(std::make_shared<TensorInplaceVersion>(0)) {}
 
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
@@ -55,14 +62,7 @@ void* Tensor::mutable_data(const platform::Place& place,
           "The Tensor's shape is [",
           dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(
-        requested_size, size,
-        platform::errors::InvalidArgument(
-            "The requested memory size is less than the memory size of Tensor. "
-            "But received requested memory size is d%, "
-            "memory size of Tensor is %d.",
-            requested_size, size));
+  if (requested_size && (requested_size > size)) {
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
@@ -84,9 +84,43 @@ void* Tensor::mutable_data(const platform::Place& place,
   return mutable_data(place, type_, requested_size);
 }
 
+void* Tensor::mutable_data(const platform::Place& place,
+                           proto::VarType::Type type,
+                           const platform::Stream& stream) {
+  type_ = type;
+  PADDLE_ENFORCE_GE(
+      numel(), 0,
+      platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(), "] now"));
+  size_t size = numel() * SizeOfType(type);
+
+  /* some versions of boost::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + offset_ ||
+      !(platform::is_gpu_place(place) &&
+        memory::InSameStream(holder_, stream))) {
+    holder_.reset();
+    holder_ = memory::AllocShared(place, size, stream);
+    offset_ = 0;
+  }
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 offset_);
+}
+
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();
   *this = src;
+  return *this;
+}
+Tensor& Tensor::ShareInplaceVersionCounterWith(const Tensor& src) {
+  PADDLE_ENFORCE_NOT_NULL(
+      inplace_version_counter_,
+      platform::errors::PreconditionNotMet(
+          "Tensor does not hold inplace_version_counter_."));
+
+  inplace_version_counter_ = src.inplace_version_counter_;
   return *this;
 }
 
@@ -123,6 +157,49 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
+std::vector<Tensor> Tensor::Split(int64_t split_size, int64_t axis) const {
+  check_memory_size();
+  PADDLE_ENFORCE_GE(dims_.size(), 0,
+                    platform::errors::OutOfRange(
+                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      split_size, 0,
+      platform::errors::OutOfRange(
+          "split expects split_size be non-negative, but got split_size is %d",
+          split_size));
+  int64_t numel_size = dims_[axis];
+
+  int64_t num_splits = 1;
+  if (split_size != 0) {
+    num_splits =
+        std::max<int64_t>((numel_size + split_size - 1) / split_size, 1);
+  }
+
+  std::vector<Tensor> splits(num_splits);
+  int64_t last_split_size = split_size - (split_size * num_splits - numel_size);
+
+  for (int64_t i = 0; i < num_splits; ++i) {
+    int64_t length = i < num_splits - 1 ? split_size : last_split_size;
+    splits[i] = Slice(i * split_size, i * split_size + length);
+  }
+  return splits;
+}
+
+std::vector<Tensor> Tensor::Chunk(int64_t chunks, int64_t axis) const {
+  check_memory_size();
+  PADDLE_ENFORCE_GE(dims_.size(), 0,
+                    platform::errors::OutOfRange(
+                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      chunks, 0,
+      platform::errors::OutOfRange(
+          "chunks expects to be greater than 0, but got chunks is %d", chunks));
+
+  int64_t numel_size = dims_[axis];
+  int64_t split_size = (numel_size + chunks - 1) / chunks;
+  return Split(split_size, axis);
+}
+
 Tensor& Tensor::Resize(const DDim& dims) {
   dims_ = dims;
   return *this;
@@ -147,10 +224,12 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
 }
 
 void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                                 const proto::VarType::Type type) {
-  ResetHolder(holder);
+                                 const proto::VarType::Type& type) {
   type_ = type;
+  ResetHolder(holder);
 }
+
+void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 }  // namespace framework
 }  // namespace paddle

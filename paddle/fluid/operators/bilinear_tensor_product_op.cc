@@ -50,9 +50,11 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         y_dims.size(), 2UL,
         platform::errors::InvalidArgument("The input(Y) must be a 2D Tensor."));
-    PADDLE_ENFORCE_EQ(weight_dims.size(), 3UL,
-                      platform::errors::InvalidArgument(
-                          "The input(Weight) must be a 3D tensor."));
+    PADDLE_ENFORCE_EQ(
+        weight_dims.size(), 3UL,
+        platform::errors::InvalidArgument("Expected the input(Weight) is a 3D "
+                                          "tensor. But received %dD tensor.",
+                                          weight_dims.size()));
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], y_dims[0],

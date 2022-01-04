@@ -21,6 +21,8 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
 
+np.random.seed(123)
+
 
 def trilinear_interp_np(input,
                         out_d,
@@ -459,9 +461,9 @@ class TestTrilinearInterpScale1(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 82
-        self.out_h = 60
-        self.out_w = 25
+        self.out_d = 19
+        self.out_h = 15
+        self.out_w = 8
         self.scale = 2.
         self.align_corners = True
         self.align_mode = 1
@@ -471,8 +473,8 @@ class TestTrilinearInterpScale2(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 60
-        self.out_h = 40
+        self.out_d = 30
+        self.out_h = 20
         self.out_w = 25
         self.scale = 1.
         self.align_corners = True
@@ -483,8 +485,8 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 60
-        self.out_h = 40
+        self.out_d = 30
+        self.out_h = 20
         self.out_w = 25
         self.scale = 1.5
         self.align_corners = True
@@ -495,8 +497,8 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 11]
-        self.out_d = 60
-        self.out_h = 40
+        self.out_d = 30
+        self.out_h = 20
         self.out_w = 25
         self.scale = 0.0
         self.align_corners = False

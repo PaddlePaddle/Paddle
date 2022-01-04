@@ -21,7 +21,9 @@ from paddle.static import Program, program_guard
 import unittest
 import paddle.fluid.core as core
 import sys
-
+import warnings
+import paddle.utils.deprecated as deprecated
+from paddle import _C_ops
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
 
@@ -138,7 +140,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
         x = paddle.to_tensor(a)
         y = paddle.to_tensor(b)
-        res = core.ops.elementwise_mul(x, y)
+        res = _C_ops.elementwise_mul(x, y)
 
         # expected
         expected = LOWEST_WARNING_POSTION
@@ -148,6 +150,45 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
         # testting
         self.assertGreater(expected, captured)
+
+    def test_tensor_gradient(self):
+        paddle.__version__ = '2.1.0'
+
+        x = paddle.to_tensor(5., stop_gradient=False)
+        y = paddle.pow(x, 4.0)
+        y.backward()
+
+        with warnings.catch_warnings(record=True) as w:
+            grad = x.gradient()
+            assert (
+                'API "paddle.fluid.dygraph.varbase_patch_methods.gradient" is '
+                'deprecated since 2.1.0') in str(w[-1].message)
+
+    def test_softmax_with_cross_entropy(self):
+        paddle.__version__ = '2.0.0'
+
+        data = np.random.rand(128).astype("float32")
+        label = np.random.rand(1).astype("int64")
+        data = paddle.to_tensor(data)
+        label = paddle.to_tensor(label)
+        linear = paddle.nn.Linear(128, 100)
+        x = linear(data)
+
+        with warnings.catch_warnings(record=True) as w:
+            out = paddle.nn.functional.softmax_with_cross_entropy(
+                logits=x, label=label)
+            assert (
+                'API "paddle.nn.functional.loss.softmax_with_cross_entropy" is '
+                'deprecated since 2.0.0') in str(w[-1].message)
+
+    def test_deprecated_error(self):
+        paddle.__version__ = '2.1.0'
+
+        @deprecated(since="2.1.0", level=2)
+        def deprecated_error_func():
+            pass
+
+        self.assertRaises(RuntimeError, deprecated_error_func)
 
 
 if __name__ == '__main__':

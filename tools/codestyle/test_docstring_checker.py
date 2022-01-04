@@ -38,7 +38,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert len(got) == 1
         assert 'W9001' == got[0][0]
 
-    def test_one_line(self):
+    def test_one_line_1(self):
         func_node = astroid.extract_node('''
         def test(): 
             """get news"""

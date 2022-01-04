@@ -13,10 +13,8 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen_base.h"
+
 #include <fstream>
-#include <iostream>
-#include <sstream>
-#include <vector>
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"  // for posix_memalign
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"

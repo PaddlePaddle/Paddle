@@ -95,4 +95,6 @@ class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()

@@ -13,7 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/hopv.h"
-#include <memory>
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 

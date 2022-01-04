@@ -23,6 +23,7 @@ from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
+
 class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
@@ -112,6 +113,99 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestTransposeOpBool(TestTransposeOp):
+    def test_check_grad(self):
+        pass
+
+
+class TestTransposeOpBool1D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (100, )
+        self.axis = (0, )
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool2D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (3, 40)
+        self.axis = (1, 0)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool3D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (3, 4, 10)
+        self.axis = (0, 2, 1)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool4D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5)
+        self.axis = (0, 2, 3, 1)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool5D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.axis = (4, 2, 3, 1, 0)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool6D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6, 1)
+        self.axis = (4, 2, 3, 1, 0, 5)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool7D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 2, 3, 2, 4, 3)
+        self.axis = (0, 1, 3, 2, 4, 5, 6)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool8D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
+        self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
@@ -125,9 +219,9 @@ class TestTransposeOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_Variable_check)
 
             def test_x_dtype_check():
-                # the Input(x)'s dtype must be one of [float16, float32, float64, int32, int64]
+                # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
                 x1 = fluid.layers.data(
-                    name='x1', shape=[10, 5, 3], dtype='bool')
+                    name='x1', shape=[10, 5, 3], dtype='int8')
                 fluid.layers.transpose(x1, perm=[1, 0, 2])
 
             self.assertRaises(TypeError, test_x_dtype_check)
@@ -151,6 +245,7 @@ class TestTransposeOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_each_elem_value_check)
 
+
 class TestTransposeApi(unittest.TestCase):
     def test_static_out(self):
         paddle.enable_static()
@@ -161,10 +256,11 @@ class TestTransposeApi(unittest.TestCase):
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             x_np = np.random.random([2, 3, 4]).astype("float32")
-            result1, result2 = exe.run(feed={"x": x_np}, fetch_list=[x_trans1, x_trans2])
+            result1, result2 = exe.run(feed={"x": x_np},
+                                       fetch_list=[x_trans1, x_trans2])
             expected_result1 = np.transpose(x_np, [1, 0, 2])
             expected_result2 = np.transpose(x_np, (2, 1, 0))
-            
+
             np.testing.assert_array_equal(result1, expected_result1)
             np.testing.assert_array_equal(result2, expected_result2)
 
@@ -184,6 +280,7 @@ class TestTransposeApi(unittest.TestCase):
         # This is an old test before 2.0 API so we enable static again after
         # dygraph test
         paddle.enable_static()
+
 
 class TestTAPI(unittest.TestCase):
     def test_out(self):
@@ -249,6 +346,78 @@ class TestTAPI(unittest.TestCase):
                 paddle.t(x)
 
             self.assertRaises(ValueError, test_x_dimension_check)
+
+
+class TestMoveAxis(unittest.TestCase):
+    def test_moveaxis1(self):
+        x_np = np.random.randn(2, 3, 4, 5, 7)
+        expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])
+        paddle.enable_static()
+        with paddle.static.program_guard(fluid.Program()):
+            x = paddle.static.data("x", shape=[2, 3, 4, 5, 7], dtype='float64')
+            out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
+
+            exe = paddle.static.Executor()
+            out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
+
+        self.assertEqual(np.array_equal(out_np, expected), True)
+
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
+        out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
+        self.assertEqual(out.shape, [4, 2, 5, 7, 3])
+        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        paddle.enable_static()
+
+    def test_moveaxis2(self):
+        x_np = np.random.randn(2, 3, 5)
+        expected = np.moveaxis(x_np, -2, -1)
+        paddle.enable_static()
+        with paddle.static.program_guard(fluid.Program()):
+            x = paddle.static.data("x", shape=[2, 3, 5], dtype='float64')
+            out = x.moveaxis(-2, -1)
+
+            exe = paddle.static.Executor()
+            out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
+
+        self.assertEqual(np.array_equal(out_np, expected), True)
+
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
+        out = x.moveaxis(-2, -1)
+        self.assertEqual(out.shape, [2, 5, 3])
+        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        paddle.enable_static()
+
+    def test_error(self):
+        x = paddle.randn([2, 3, 4, 5])
+        # src must have the same number with dst
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [1, 0], [2])
+
+        # each element of src must be unique
+        with self.assertRaises(ValueError):
+            paddle.moveaxis(x, [1, 1], [0, 2])
+
+        # each element of dst must be unique
+        with self.assertRaises(ValueError):
+            paddle.moveaxis(x, [0, 1], [2, 2])
+
+        # each element of src must be integer
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [0.5], [1])
+
+        # each element of dst must be integer
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [0], [1.5])
+
+        # each element of src must be in the range of [-4, 3)
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [-10, 1], [2, 3])
+
+        # each element of dst must be in the range of [-4, 3)
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [2, 1], [10, 3])
 
 
 if __name__ == '__main__':

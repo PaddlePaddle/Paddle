@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shape_op.h"
+#include "paddle/fluid/platform/complex.h"
 
 REGISTER_OP_CUDA_KERNEL(
     shape, paddle::operators::ShapeKernel<bool>,
-    paddle::operators::ShapeKernel<int>,
+    paddle::operators::ShapeKernel<int>, paddle::operators::ShapeKernel<int8_t>,
+    paddle::operators::ShapeKernel<uint8_t>,
     paddle::operators::ShapeKernel<int64_t>,
     paddle::operators::ShapeKernel<float>,
     paddle::operators::ShapeKernel<double>,
-    paddle::operators::ShapeKernel<paddle::platform::float16>);
+    paddle::operators::ShapeKernel<paddle::platform::float16>,
+    paddle::operators::ShapeKernel<paddle::platform::complex<float>>,
+    paddle::operators::ShapeKernel<paddle::platform::complex<double>>);

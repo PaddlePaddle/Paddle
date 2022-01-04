@@ -21,6 +21,7 @@ import sys
 import os.path as osp
 import shutil
 import requests
+import subprocess
 import hashlib
 import tarfile
 import zipfile
@@ -61,44 +62,6 @@ WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
 DOWNLOAD_RETRY_LIMIT = 3
 
-nlp_models = OrderedDict((
-    ('RoBERTa-zh-base',
-     'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_ext_L-12_H-768_A-12.tar.gz'
-     ),
-    ('RoBERTa-zh-large',
-     'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_large_ext_L-24_H-1024_A-16.tar.gz'
-     ),
-    ('ERNIE-v2-en-base',
-     'https://ernie.bj.bcebos.com/ERNIE_Base_en_stable-2.0.0.tar.gz'),
-    ('ERNIE-v2-en-large',
-     'https://ernie.bj.bcebos.com/ERNIE_Large_en_stable-2.0.0.tar.gz'),
-    ('XLNet-cased-base',
-     'https://xlnet.bj.bcebos.com/xlnet_cased_L-12_H-768_A-12.tgz'),
-    ('XLNet-cased-large',
-     'https://xlnet.bj.bcebos.com/xlnet_cased_L-24_H-1024_A-16.tgz'),
-    ('ERNIE-v1-zh-base',
-     'https://baidu-nlp.bj.bcebos.com/ERNIE_stable-1.0.1.tar.gz'),
-    ('ERNIE-v1-zh-base-max-len-512',
-     'https://ernie.bj.bcebos.com/ERNIE_1.0_max-len-512.tar.gz'),
-    ('BERT-en-uncased-large-whole-word-masking',
-     'https://bert-models.bj.bcebos.com/wwm_uncased_L-24_H-1024_A-16.tar.gz'),
-    ('BERT-en-cased-large-whole-word-masking',
-     'https://bert-models.bj.bcebos.com/wwm_cased_L-24_H-1024_A-16.tar.gz'),
-    ('BERT-en-uncased-base',
-     'https://bert-models.bj.bcebos.com/uncased_L-12_H-768_A-12.tar.gz'),
-    ('BERT-en-uncased-large',
-     'https://bert-models.bj.bcebos.com/uncased_L-24_H-1024_A-16.tar.gz'),
-    ('BERT-en-cased-base',
-     'https://bert-models.bj.bcebos.com/cased_L-12_H-768_A-12.tar.gz'),
-    ('BERT-en-cased-large',
-     'https://bert-models.bj.bcebos.com/cased_L-24_H-1024_A-16.tar.gz'),
-    ('BERT-multilingual-uncased-base',
-     'https://bert-models.bj.bcebos.com/multilingual_L-12_H-768_A-12.tar.gz'),
-    ('BERT-multilingual-cased-base',
-     'https://bert-models.bj.bcebos.com/multi_cased_L-12_H-768_A-12.tar.gz'),
-    ('BERT-zh-base',
-     'https://bert-models.bj.bcebos.com/chinese_L-12_H-768_A-12.tar.gz'), ))
-
 
 def is_url(path):
     """
@@ -116,7 +79,7 @@ def get_weights_path_from_url(url, md5sum=None):
     Args:
         url (str): download url
         md5sum (str): md5 sum of download package
-    
+
     Returns:
         str: a local path to save downloaded weights.
 
@@ -155,7 +118,12 @@ def _get_unique_endpoints(trainer_endpoints):
     return unique_endpoints
 
 
-def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
+def get_path_from_url(url,
+                      root_dir,
+                      md5sum=None,
+                      check_exist=True,
+                      decompress=True,
+                      method='get'):
     """ Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
@@ -166,7 +134,9 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
         root_dir (str): root dir for downloading, it should be
                         WEIGHTS_HOME or DATASET_HOME
         md5sum (str): md5 sum of download package
-    
+        decompress (bool): decompress zip or tar file. Default is `True`
+        method (str): which download method to use. Support `wget` and `get`. Default is `get`.
+
     Returns:
         str: a local path to save downloaded models & weights & datasets.
     """
@@ -176,33 +146,100 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
     fullpath = _map_path(url, root_dir)
-    # Mainly used to solve the problem of downloading data from different 
-    # machines in the case of multiple machines. Different ips will download 
+    # Mainly used to solve the problem of downloading data from different
+    # machines in the case of multiple machines. Different ips will download
     # data, and the same ip will only download data once.
     unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints[:])
     if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):
         logger.info("Found {}".format(fullpath))
     else:
         if ParallelEnv().current_endpoint in unique_endpoints:
-            fullpath = _download(url, root_dir, md5sum)
+            fullpath = _download(url, root_dir, md5sum, method=method)
         else:
             while not os.path.exists(fullpath):
                 time.sleep(1)
 
     if ParallelEnv().current_endpoint in unique_endpoints:
-        if tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath):
+        if decompress and (tarfile.is_tarfile(fullpath) or
+                           zipfile.is_zipfile(fullpath)):
             fullpath = _decompress(fullpath)
 
     return fullpath
 
 
-def _download(url, path, md5sum=None):
+def _get_download(url, fullname):
+    # using requests.get method
+    fname = osp.basename(fullname)
+    try:
+        req = requests.get(url, stream=True)
+    except Exception as e:  # requests.exceptions.ConnectionError
+        logger.info("Downloading {} from {} failed with exception {}".format(
+            fname, url, str(e)))
+        return False
+
+    if req.status_code != 200:
+        raise RuntimeError("Downloading from {} failed with code "
+                           "{}!".format(url, req.status_code))
+
+    # For protecting download interupted, download to
+    # tmp_fullname firstly, move tmp_fullname to fullname
+    # after download finished
+    tmp_fullname = fullname + "_tmp"
+    total_size = req.headers.get('content-length')
+    with open(tmp_fullname, 'wb') as f:
+        if total_size:
+            with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
+                for chunk in req.iter_content(chunk_size=1024):
+                    f.write(chunk)
+                    pbar.update(1)
+        else:
+            for chunk in req.iter_content(chunk_size=1024):
+                if chunk:
+                    f.write(chunk)
+    shutil.move(tmp_fullname, fullname)
+
+    return fullname
+
+
+def _wget_download(url, fullname):
+    # using wget to download url
+    tmp_fullname = fullname + "_tmp"
+    # –user-agent
+    command = 'wget -O {} -t {} {}'.format(tmp_fullname, DOWNLOAD_RETRY_LIMIT,
+                                           url)
+    subprc = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _ = subprc.communicate()
+
+    if subprc.returncode != 0:
+        raise RuntimeError(
+            '{} failed. Please make sure `wget` is installed or {} exists'.
+            format(command, url))
+
+    shutil.move(tmp_fullname, fullname)
+
+    return fullname
+
+
+_download_methods = {
+    'get': _get_download,
+    'wget': _wget_download,
+}
+
+
+def _download(url, path, md5sum=None, method='get'):
     """
     Download from url, save to path.
 
     url (str): download url
     path (str): download to given path
+    md5sum (str): md5 sum of download package
+    method (str): which download method to use. Support `wget` and `get`. Default is `get`.
+
     """
+    assert method in _download_methods, 'make sure `{}` implemented'.format(
+        method)
+
     if not osp.exists(path):
         os.makedirs(path)
 
@@ -210,6 +247,7 @@ def _download(url, path, md5sum=None):
     fullname = osp.join(path, fname)
     retry_cnt = 0
 
+    logger.info("Downloading {} from {}".format(fname, url))
     while not (osp.exists(fullname) and _md5check(fullname, md5sum)):
         if retry_cnt < DOWNLOAD_RETRY_LIMIT:
             retry_cnt += 1
@@ -217,29 +255,9 @@ def _download(url, path, md5sum=None):
             raise RuntimeError("Download from {} failed. "
                                "Retry limit reached".format(url))
 
-        logger.info("Downloading {} from {}".format(fname, url))
-
-        req = requests.get(url, stream=True)
-        if req.status_code != 200:
-            raise RuntimeError("Downloading from {} failed with code "
-                               "{}!".format(url, req.status_code))
-
-        # For protecting download interupted, download to
-        # tmp_fullname firstly, move tmp_fullname to fullname
-        # after download finished
-        tmp_fullname = fullname + "_tmp"
-        total_size = req.headers.get('content-length')
-        with open(tmp_fullname, 'wb') as f:
-            if total_size:
-                with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
-                    for chunk in req.iter_content(chunk_size=1024):
-                        f.write(chunk)
-                        pbar.update(1)
-            else:
-                for chunk in req.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-        shutil.move(tmp_fullname, fullname)
+        if not _download_methods[method](url, fullname):
+            time.sleep(1)
+            continue
 
     return fullname
 
@@ -284,70 +302,61 @@ def _decompress(fname):
 
 
 def _uncompress_file_zip(filepath):
-    files = zipfile.ZipFile(filepath, 'r')
-    file_list = files.namelist()
+    with zipfile.ZipFile(filepath, 'r') as files:
+        file_list = files.namelist()
 
-    file_dir = os.path.dirname(filepath)
+        file_dir = os.path.dirname(filepath)
 
-    if _is_a_single_file(file_list):
-        rootpath = file_list[0]
-        uncompressed_path = os.path.join(file_dir, rootpath)
+        if _is_a_single_file(file_list):
+            rootpath = file_list[0]
+            uncompressed_path = os.path.join(file_dir, rootpath)
+            files.extractall(file_dir)
 
-        for item in file_list:
-            files.extract(item, file_dir)
+        elif _is_a_single_dir(file_list):
+            # `strip(os.sep)` to remove `os.sep` in the tail of path
+            rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
+                os.sep)[-1]
+            uncompressed_path = os.path.join(file_dir, rootpath)
 
-    elif _is_a_single_dir(file_list):
-        rootpath = os.path.splitext(file_list[0])[0].split(os.sep)[-1]
-        uncompressed_path = os.path.join(file_dir, rootpath)
+            files.extractall(file_dir)
+        else:
+            rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
+            uncompressed_path = os.path.join(file_dir, rootpath)
+            if not os.path.exists(uncompressed_path):
+                os.makedirs(uncompressed_path)
+            files.extractall(os.path.join(file_dir, rootpath))
 
-        for item in file_list:
-            files.extract(item, file_dir)
-
-    else:
-        rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
-        uncompressed_path = os.path.join(file_dir, rootpath)
-        if not os.path.exists(uncompressed_path):
-            os.makedirs(uncompressed_path)
-        for item in file_list:
-            files.extract(item, os.path.join(file_dir, rootpath))
-
-    files.close()
-
-    return uncompressed_path
+        return uncompressed_path
 
 
 def _uncompress_file_tar(filepath, mode="r:*"):
-    files = tarfile.open(filepath, mode)
-    file_list = files.getnames()
+    with tarfile.open(filepath, mode) as files:
+        file_list = files.getnames()
 
-    file_dir = os.path.dirname(filepath)
+        file_dir = os.path.dirname(filepath)
 
-    if _is_a_single_file(file_list):
-        rootpath = file_list[0]
-        uncompressed_path = os.path.join(file_dir, rootpath)
-        for item in file_list:
-            files.extract(item, file_dir)
-    elif _is_a_single_dir(file_list):
-        rootpath = os.path.splitext(file_list[0])[0].split(os.sep)[-1]
-        uncompressed_path = os.path.join(file_dir, rootpath)
-        for item in file_list:
-            files.extract(item, file_dir)
-    else:
-        rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
-        uncompressed_path = os.path.join(file_dir, rootpath)
-        if not os.path.exists(uncompressed_path):
-            os.makedirs(uncompressed_path)
+        if _is_a_single_file(file_list):
+            rootpath = file_list[0]
+            uncompressed_path = os.path.join(file_dir, rootpath)
+            files.extractall(file_dir)
+        elif _is_a_single_dir(file_list):
+            rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
+                os.sep)[-1]
+            uncompressed_path = os.path.join(file_dir, rootpath)
+            files.extractall(file_dir)
+        else:
+            rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
+            uncompressed_path = os.path.join(file_dir, rootpath)
+            if not os.path.exists(uncompressed_path):
+                os.makedirs(uncompressed_path)
 
-        for item in file_list:
-            files.extract(item, os.path.join(file_dir, rootpath))
+            files.extractall(os.path.join(file_dir, rootpath))
 
-    files.close()
-
-    return uncompressed_path
+        return uncompressed_path
 
 
 def _is_a_single_file(file_list):
-    if len(file_list) == 1 and file_list[0].find(os.sep) < -1:
+    if len(file_list) == 1 and file_list[0].find(os.sep) < 0:
         return True
     return False
 

@@ -46,17 +46,16 @@ class GeluOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx)) {
+        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -86,17 +85,16 @@ class GeluGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx)) {
+        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -110,16 +108,19 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     AddAttr<bool>("use_cudnn",
                   "(bool, default false) Only used in cudnn kernel, need "
                   "install cudnn")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Gelu Activation Operator. 
 

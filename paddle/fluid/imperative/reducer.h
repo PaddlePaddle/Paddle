@@ -13,65 +13,74 @@
 // limitations under the License.
 
 #pragma once
-
+#include <ThreadPool.h>
 #include <algorithm>
 #include <iostream>
+#include <map>
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/fluid/memory/memory.h"
 
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/imperative/all_reduce.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/cuda_resource_pool.h"
-#endif
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/for_range.h"
+
+namespace paddle {
+namespace platform {
+class DeviceContext;
+
+}  // namespace platform
+
+namespace imperative {
+class ParallelContext;
+class VarBase;
+class VariableWrapper;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
-template <typename T>
-void ConcatTensorsForAllReduce(
-    const platform::CUDADeviceContext& context,
-    const std::vector<framework::Tensor>& dense_tensors_,
-    framework::Variable* p_dense_contents) {
-  operators::math::ConcatFunctor<platform::CUDADeviceContext, T>
-      concat_functor_;
-  concat_functor_(context, dense_tensors_, 0,
-                  p_dense_contents->GetMutable<framework::LoDTensor>());
-}
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 
 template <typename T>
-void SplitTensorsForAllReduce(const platform::CUDADeviceContext& context,
-                              framework::Variable* p_dense_contents,
-                              std::vector<framework::Tensor>* p_dense_tensors) {
-  auto* in = p_dense_contents->GetMutable<framework::LoDTensor>();
-  std::vector<framework::Tensor*> outs;
-  std::vector<const framework::Tensor*> shape_refer;
-
-  outs.reserve(p_dense_tensors->size());
-  shape_refer.reserve(p_dense_tensors->size());
-
-  for (auto& tensor : *p_dense_tensors) {
-    outs.emplace_back(&tensor);
-    shape_refer.emplace_back(&tensor);
+struct DivNRanksFunctor {
+  DivNRanksFunctor(int64_t nranks, T* output)
+      : nranks_(nranks), output_(output) {}
+  HOSTDEVICE void operator()(size_t idx) const {
+    output_[idx] /= static_cast<T>(nranks_);
   }
-  // Sometimes direct copies will be faster
-  if (p_dense_tensors->size() < 10) {
-    operators::StridedMemcpyWithAxis0<T>(context, *in, shape_refer, &outs);
-  } else {
-    operators::math::SplitFunctor<platform::CUDADeviceContext, T>
-        split_functor_;
-    split_functor_(context, *in, shape_refer, 0, &outs);
+  int64_t nranks_;
+  T* output_;
+};
+
+template <typename Dex>
+struct DivNRanksForAllReduce {
+  framework::Tensor* in_;
+  int64_t nranks_;
+  const platform::DeviceContext& ctx_;
+  DivNRanksForAllReduce(framework::Tensor* in, int64_t nranks,
+                        const platform::DeviceContext& ctx)
+      : in_(in), nranks_(nranks), ctx_(ctx) {}
+
+  template <typename T>
+  void apply() const {
+    T* data = in_->mutable_data<T>(ctx_.GetPlace());
+    platform::ForRange<Dex> for_range(static_cast<const Dex&>(ctx_),
+                                      static_cast<size_t>(in_->numel()));
+    DivNRanksFunctor<T> functor(nranks_, data);
+    for_range(functor);
   }
-}
+};
 
 class Group {
  public:
@@ -99,10 +108,16 @@ class Group {
   framework::proto::VarType::Type dtype_;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::CUDADeviceContext& context);
+  void ConcatTensors(const platform::DeviceContext& context);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::CUDADeviceContext& context);
+  void SplitTensors(const platform::DeviceContext& context);
+
+  // use it in CUDA
+  void DivNRanks(framework::Tensor* tensor, int64_t nranks,
+                 const platform::DeviceContext& context);
+
+  void DivNRanks(const platform::DeviceContext& context, int64_t nranks);
 
   friend std::ostream& operator<<(std::ostream&, const Group&);
 };
@@ -120,7 +135,7 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits);
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars);
 
   virtual ~Reducer() {}
 
@@ -129,48 +144,38 @@ class Reducer {
   void InitializeDenseGroups(const std::vector<size_t>& variable_indices_,
                              Group* p_group);
 
-  void PrepareForBackward();
+  void PrepareDeps(const std::unordered_set<GradOpNode*>& init_nodes);
 
-  void AddDistHook(VariableWrapper* var_warpper, size_t var_index);
+  void PrepareForBackward(
+      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs);
 
-  void MarkVariableReady(size_t var_index, VariableWrapper* var_warpper);
+  void AddDistHook(size_t var_index);
+
+  void MarkVarReady(const size_t var_index, const bool is_used_var);
 
   void MarkGroupReady(size_t group_index);
 
-  void FinalizeBackward();
+  void FusedAllReduceSchedule(const int run_order, Group& group,  // NOLINT
+                              const int curr_group_index);
 
-  void ReleaseReducer();
+  void FinalizeBackward();
 
   std::vector<std::vector<size_t>> RebuildGruops();
 
-  void CreateGroupEvents(int group_num);
-
-  // Reducer Singleton
-  static std::shared_ptr<Reducer> SetInstance(
-      const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
-      const std::vector<std::vector<size_t>>& group_indices,
-      const std::vector<bool>& is_sparse_gradient,
-      std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits) {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::imperative::Reducer(
-          vars, group_indices, is_sparse_gradient, parallel_ctx,
-          group_size_limits));
-    }
-    return s_instance_;
+  inline bool NeedRebuildGroup() {
+    return !has_rebuilt_group_ && !find_unused_vars_each_step_;
   }
 
-  static std::shared_ptr<Reducer> GetInstance() {
-    PADDLE_ENFORCE_EQ(
-        s_instance_ != NULL, true,
-        platform::errors::InvalidArgument("Reducer is not initialized."));
-    return s_instance_;
-  }
+  void ProcessUnusedDenseVars();
+
+  bool HasGrad(size_t var_index);
+
+  void TraverseBackwardGraph(
+      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs);
 
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
-  static std::shared_ptr<Reducer> s_instance_;
   std::vector<Group> groups_;
   size_t next_group_ = 0;
   platform::Place place_;
@@ -179,17 +184,50 @@ class Reducer {
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
   std::vector<VariableLocator> variable_locators_;
 
-  // Following variables are to help sync stream
-  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-  std::shared_ptr<platform::CudaEventObject> comm_enent_;
-  cudaStream_t compute_stream_;
-  cudaStream_t comm_stream_;
+  int nrings_ = 1;
+  int64_t nranks_ = -1;
 
   // Following variables are to help rebuild group
-  bool has_rebuilt_group_{false};
+  // TODO(shenliang03): Support rebuild in the future.
+  bool has_rebuilt_group_{true};
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
+
+  // Following variables are to help unused vars
+  std::unordered_map<GradOpNode*, size_t> node_deps_;
+  std::unordered_map<VariableWrapper*, size_t> var_index_map_;
+  std::vector<size_t> unused_vars_;
+  bool has_marked_unused_vars_{false};
+  bool find_unused_vars_each_step_{false};
+  bool find_unused_vars_once_{true};
+  bool groups_need_finalize_{false};
+#ifdef PADDLE_WITH_XPU_BKCL
+  // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
+  std::unique_ptr<::ThreadPool> comm_pool_{nullptr};
+  uint32_t comm_op_count_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+#endif
+
+  // grad_need_hooks_ is used to mark whether gradient synchronization is
+  // required across process. The default value is false. When backward()
+  // is called, grad_need_hooks_ will be assigned to true during preparation
+  // of backward and revert to false while finalizing backward.
+  bool grad_need_hooks_{false};
+
+  // it just for checking hook, each parameter can only trigger one hook
+  std::vector<bool> vars_marked_ready_;
+
+  // Following variables are to help control flow.
+  // local_used_vars_ uses 0/1 to indicate whether the
+  // var is used in iteration. After the end of the
+  // iteration, global_used_vars_ is obtained synchronously
+  // globally. Choose whether to update the local
+  // gradient according to the global_used_vars_.
+  std::vector<int> local_used_vars_;
+  // global_used_vars_ is used in comm stream to avoid wait
+  framework::Variable global_used_vars_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

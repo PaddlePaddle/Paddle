@@ -676,10 +676,61 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
   PrettyLogDetail("---    quantized %d reshape ops", quantize_reshape_count);
 }
 
+void CPUQuantizePass::QuantizeSlice(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::Slice slice_pattern{pattern, name_scope_};
+  slice_pattern();
+
+  int quantize_slice_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize slice op";
+    GET_IR_NODE_FROM_SUBGRAPH(slice_op, slice_op, slice_pattern);
+
+    // skip if should not be quantized
+    if (!platform::HasOpINT8DataType(slice_op->Op())) {
+      LogQuantizationDisabled(slice_op);
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, slice_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, slice_pattern);
+
+    // skip if prev op and next op is not quantized
+    if (!IsOpDequantized(prev_op) && !IsOpQuantized(next_op)) {
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(slice_in, slice_in, slice_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(slice_out, slice_out, slice_pattern);
+
+    if (!AreScalesPresentForNodes({slice_out})) {
+      LogCannotQuantizeOp(slice_op);
+      return;
+    }
+
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(slice_out, &is_input_unsigned);
+    QuantizeInput(g, slice_op, slice_in, "Input", input_scale,
+                  is_input_unsigned);
+
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(slice_out, &is_output_unsigned);
+    DequantizeOutput(g, slice_op, slice_out, "Out", output_scale,
+                     is_output_unsigned);
+
+    ++quantize_slice_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_slice_count);
+
+  PrettyLogDetail("---    quantized %d slice ops", quantize_slice_count);
+}
+
 void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::Matmul matmul_pattern{pattern, name_scope_};
+  patterns::MatmulWithInputOps matmul_pattern{pattern, name_scope_};
   matmul_pattern();
 
   int quantize_matmul_count = 0;
@@ -770,7 +821,8 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
 
-    if (!AreScalesPresentForNodes({elementwise_add_x, elementwise_add_y})) {
+    if (!AreScalesPresentForNodes(
+            {elementwise_add_x, elementwise_add_y, elementwise_add_out})) {
       LogCannotQuantizeOp(elementwise_add_op);
       return;
     }
@@ -793,16 +845,12 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
     QuantizeInput(g, elementwise_add_op, elementwise_add_y, "Y", input_y_scale,
                   is_y_unsigned, "Scale_y");
 
-    // if quantization scale is missing for output tensor, return fp32 data
-    if (AreScalesPresentForNodes({elementwise_add_out})) {
-      bool is_output_unsigned{false};
-      auto output_scale =
-          GetScaleValueForNode(elementwise_add_out, &is_output_unsigned);
-      DequantizeOutput(g, elementwise_add_op, elementwise_add_out, "Out",
-                       output_scale, is_output_unsigned, "Scale_out");
-    } else {
-      elementwise_add_op->Op()->SetAttr("force_fp32_output", true);
-    }
+    bool is_output_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(elementwise_add_out, &is_output_unsigned);
+
+    DequantizeOutput(g, elementwise_add_op, elementwise_add_out, "Out",
+                     output_scale, is_output_unsigned, "Scale_out");
 
     ++quantize_elementwise_add_count;
   };
@@ -835,7 +883,7 @@ void CPUQuantizePass::QuantizeFusionGru(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(weight_x, weight_x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(out, out, pattern);
 
-    if (!AreScalesPresentForNodes({x, weight_h, weight_x})) {
+    if (!AreScalesPresentForNodes({x, weight_x})) {
       LogCannotQuantizeOp(op);
       return;
     }
@@ -947,6 +995,64 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
   PrettyLogDetail("---    quantized %d multi_gru ops", quantize_count);
 }
 
+void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::FusionLSTM pattern{gpd.mutable_pattern(), name_scope_};
+  pattern();
+
+  int quantize_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize fusion_lstm op";
+    GET_IR_NODE_FROM_SUBGRAPH(op, op, pattern);
+
+    // skip if should not be quantized
+    if (!platform::HasOpINT8DataType(op->Op())) {
+      LogQuantizationDisabled(op);
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(weight_h, weight_h, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(weight_x, weight_x, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(hidden, hidden, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cell, cell, pattern);
+
+    // Starting from here there maybe issues
+    if (!AreScalesPresentForNodes({x, weight_x})) {
+      LogCannotQuantizeOp(op);
+      return;
+    }
+
+    bool is_x_unsigned{false};
+    auto input_x_scale = GetScaleValueForNode(x, &is_x_unsigned);
+
+    double input_x_shift{128.};
+    if (is_x_unsigned) input_x_shift = 0.;
+
+    QuantizeInput(g, op, x, "X", input_x_scale, is_x_unsigned, "Scale_data",
+                  input_x_shift, "Shift_data");
+
+    auto weight_scale_tensor = GetScaleTensorForNode(weight_x);
+    EigenVectorArrayMap eigen_tensor{weight_scale_tensor.data<double>(),
+                                     weight_scale_tensor.numel()};
+    eigen_tensor *= static_cast<double>(S8_MAX);
+    std::vector<float> scale_weights{
+        weight_scale_tensor.data<double>(),
+        weight_scale_tensor.data<double>() + weight_scale_tensor.numel()};
+
+    op->Op()->SetAttr("Scale_weights", scale_weights);
+    // return fp32 data
+    op->Op()->SetAttr("force_fp32_output", true);
+
+    ++quantize_count;
+  };
+  gpd(graph, handler);
+  AddStatis(quantize_count);
+
+  PrettyLogDetail("---    quantized %d fusion_lstm ops", quantize_count);
+}
+
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE_NOT_NULL(
@@ -968,6 +1074,8 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeElementwiseAdd(graph);
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
+  QuantizeFusionLSTM(graph);
+  QuantizeSlice(graph);
 }
 
 }  // namespace ir

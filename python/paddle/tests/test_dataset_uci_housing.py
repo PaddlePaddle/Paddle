@@ -19,7 +19,7 @@ import tempfile
 import shutil
 import cv2
 
-from paddle.text.datasets import *
+from paddle.text.datasets import UCIHousing, WMT14
 
 
 class TestUCIHousingTrain(unittest.TestCase):

@@ -31,7 +31,7 @@ limitations under the License. */
 #endif  // _WIN32
 
 #include <algorithm>
-#include "gflags/gflags.h"
+#include "paddle/fluid/platform/flags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);
 DECLARE_uint64(initial_cpu_memory_in_mb);
@@ -42,7 +42,8 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
+PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory, true,
+                            "If set, allocate cpu pinned memory.");
 
 namespace paddle {
 namespace platform {
@@ -54,7 +55,9 @@ size_t CpuTotalPhysicalMemory() {
   mib[1] = HW_MEMSIZE;
   int64_t size = 0;
   size_t len = sizeof(size);
-  if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
+  if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) {
+    return static_cast<size_t>(size);
+  }
   return 0L;
 #elif defined(_WIN32)
   MEMORYSTATUSEX sMeminfo;
@@ -104,6 +107,23 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
+size_t NPUPinnedMaxAllocSize() {
+  // For distributed systems, it requires configuring and limiting
+  // the fraction of memory to use.
+  return FLAGS_fraction_of_cuda_pinned_memory_to_use * CpuTotalPhysicalMemory();
+}
+
+size_t NPUPinnedMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 64 KB.
+  return 1 << 16;
+}
+
+size_t NPUPinnedMaxChunkSize() {
+  // Allow to allocate the maximum chunk size is roughly 1/256 of NPU_PINNED
+  // memory.
+  return NPUPinnedMaxAllocSize() / 256;
+}
+
 #ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
@@ -130,6 +150,8 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
     case avx512_mic_4ops:
       return true && MayIUse(avx512_mic) && cpu.has(Cpu::tAVX512_4FMAPS) &&
              cpu.has(Cpu::tAVX512_4VNNIW);
+    case avx512_bf16:
+      return true && cpu.has(Cpu::tAVX512_BF16);
     case isa_any:
       return true;
   }
@@ -141,7 +163,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
     return true;
   } else {
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW)
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
     int reg[4];
     cpuid(reg, 0);
     int nIds = reg[0];
@@ -172,6 +194,13 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
         unsigned int avx512vl_mask = (1 << 31);
         return ((reg[1] & avx512f_mask) && (reg[1] & avx512dq_mask) &&
                 (reg[1] & avx512bw_mask) && (reg[1] & avx512vl_mask));
+      }
+      // EAX = 7, ECX = 1
+      cpuid(reg, 0x00010007);
+      if (cpu_isa == avx512_bf16) {
+        // AVX512BF16: EAX Bit 5
+        int avx512bf16_mask = (1 << 5);
+        return (reg[0] & avx512bf16_mask) != 0;
       }
     }
 #endif

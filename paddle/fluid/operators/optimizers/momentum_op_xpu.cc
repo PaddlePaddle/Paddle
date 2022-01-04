@@ -44,10 +44,10 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     auto grad = ctx.Input<framework::Tensor>("Grad");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::momentum(
-        dev_ctx.x_context(), param->data<float>(), velocity->data<float>(),
-        grad->data<float>(), lr, use_nesterov, mu, param_out->numel(),
-        param_out->data<float>(), velocity_out->data<float>());
+    int r = xpu::momentum(dev_ctx.x_context(), param->data<float>(),
+                          velocity->data<float>(), grad->data<float>(),
+                          param_out->data<float>(), velocity_out->data<float>(),
+                          param_out->numel(), lr, use_nesterov, mu);
     if (r == xpu::Error_t::INVALID_PARAM) {
       PADDLE_ENFORCE_EQ(
           r, xpu::Error_t::SUCCESS,

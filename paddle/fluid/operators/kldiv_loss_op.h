@@ -19,10 +19,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 using Array1 = Eigen::DSizes<int64_t, 1>;
 
 template <typename T>
@@ -64,9 +60,9 @@ class KLDivLossKernel : public framework::OpKernel<T> {
     const int n = input->dims()[0];
 
     loss->mutable_data<T>(ctx.GetPlace());
-    auto input_t = EigenVector<T>::Flatten(*input);
-    auto target_t = EigenVector<T>::Flatten(*target);
-    auto loss_t = EigenVector<T>::Flatten(*loss);
+    auto input_t = framework::EigenVector<T>::Flatten(*input);
+    auto target_t = framework::EigenVector<T>::Flatten(*target);
+    auto loss_t = framework::EigenVector<T>::Flatten(*loss);
     auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>());
     if ("none" == reduction) {
       loss_t.device(place) = output;
@@ -101,10 +97,10 @@ class KLDivLossGradKernel : public framework::OpKernel<T> {
 
     input_grad->mutable_data<T>(ctx.GetPlace());
 
-    auto target_t = EigenVector<T>::Flatten(*target);
+    auto target_t = framework::EigenVector<T>::Flatten(*target);
 
-    auto input_grad_t = EigenVector<T>::Flatten(*input_grad);
-    auto loss_grad_t = EigenVector<T>::Flatten(*loss_grad);
+    auto input_grad_t = framework::EigenVector<T>::Flatten(*input_grad);
+    auto loss_grad_t = framework::EigenVector<T>::Flatten(*loss_grad);
 
     auto loss_grad_expand = loss_grad_t.broadcast(Array1(expand));
     auto grad_t = target_t * loss_grad_expand;

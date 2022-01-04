@@ -130,6 +130,8 @@ struct Active {
   typedef T (*ActGrad)(T, T);
 };
 
+#ifdef PADDLE_WITH_CUDA
+
 static DEVICE Active<float>::Act kActFloat[] = {
     &forward::Sigmoid<float>, &forward::SigmoidV2<float>,
     &forward::Relu<float>,    &forward::Tanh<float>,
@@ -170,6 +172,99 @@ inline DEVICE double activation(double a, double b, int index) {
   return kActGradDouble[index](a, b);
 }
 }  // namespace backward
+
+#else  // PADDLE_WITH_CUDA
+
+// Note(qili93): The above implementing not work in HIP
+// It will throw compile error when calling detail::forward::lstm<T>()
+// Which used ActivationType in lstm_kernel.h, compile error is:
+// lstm_gpu_kernel.h:33:17: error: unsupported indirect call to function
+// <unknown>
+
+// To-do(qili93): fix this after HIP issue fixed:
+// https://github.com/ROCm-Developer-Tools/HIP/issues/2186
+
+namespace forward {
+inline DEVICE float activation(float a, int index) {
+  switch (index) {
+    case 0:
+      return Sigmoid<float>(a);
+    case 1:
+      return SigmoidV2<float>(a);
+    case 2:
+      return Relu<float>(a);
+    case 3:
+      return Tanh<float>(a);
+    case 4:
+      return TanhV2<float>(a);
+    case 5:
+      return Identity<float>(a);
+    default:
+      return 0.0f;
+  }
+}
+
+inline DEVICE double activation(double a, int index) {
+  switch (index) {
+    case 0:
+      return Sigmoid<double>(a);
+    case 1:
+      return SigmoidV2<double>(a);
+    case 2:
+      return Relu<double>(a);
+    case 3:
+      return Tanh<double>(a);
+    case 4:
+      return TanhV2<double>(a);
+    case 5:
+      return Identity<double>(a);
+    default:
+      return 0.0f;
+  }
+}
+}  // namespace forward
+
+namespace backward {
+inline DEVICE float activation(float a, float b, int index) {
+  switch (index) {
+    case 0:
+      return Sigmoid<float>(a, b);
+    case 1:
+      return Sigmoid<float>(a, b);
+    case 2:
+      return Relu<float>(a, b);
+    case 3:
+      return Tanh<float>(a, b);
+    case 4:
+      return Tanh<float>(a, b);
+    case 5:
+      return Identity<float>(a, b);
+    default:
+      return 0.0f;
+  }
+}
+
+inline DEVICE double activation(double a, double b, int index) {
+  switch (index) {
+    case 0:
+      return Sigmoid<double>(a, b);
+    case 1:
+      return Sigmoid<double>(a, b);
+    case 2:
+      return Relu<double>(a, b);
+    case 3:
+      return Tanh<double>(a, b);
+    case 4:
+      return Tanh<double>(a, b);
+    case 5:
+      return Identity<double>(a, b);
+    default:
+      return 0.0f;
+  }
+}
+}  // namespace backward
+
+#endif  // PADDLE_WITH_CUDA
 
 #ifdef __AVX__
 namespace forward {

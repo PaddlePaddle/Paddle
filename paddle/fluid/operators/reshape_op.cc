@@ -15,7 +15,13 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/pten_utils.h"
 
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/manipulation.h"
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -185,6 +191,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 framework::make_ddim(shape), i, shape[i]));
       }
 
+      // NOTE all non-zero values will be converted to True (include negative
+      // value)
       capacity *= (shape[i] ? shape[i] : in_dims[i]);
       output_shape[i] =
           (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
@@ -222,15 +230,31 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 in_dims, in_size, framework::make_ddim(shape), capacity));
       }
     }
+
+    // support reshape with zero-input(input tensor with product(shape) == 0)
+    // by now we require that if the input tensor is zero shape, the target
+    // shape of output must be zero
+    if (in_size == 0) {
+      PADDLE_ENFORCE_LE(
+          capacity, in_size,
+          platform::errors::InvalidArgument(
+              "The 'shape' in ReshapeOp is invalid. "
+              "The input tensor X's shape = [%s], X's capacity = %d."
+              "But the target shape of Out is [%s],  the "
+              "capacity of 'Out' is %d.",
+              in_dims, in_size, framework::make_ddim(shape), capacity));
+    }
+
     return framework::make_ddim(output_shape);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -269,6 +293,10 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -334,9 +362,10 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -345,55 +374,91 @@ class ReshapeKernel {
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
+    // framework::DDim out_dims = out->dims();
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
 
-    framework::DDim out_dims = out->dims();
+    // we can't MakePtenDenseTensor by out, because the out of reshape may have
+    // multiple states, some can MakePtenDenseTensor but other's cannot:
+    // 1. out tensor is not initialized
+    // 2. out tensor is input (complete inplace)
+    // 3. out tensor is view of input
+    // We can't MakePtenDenseTensor for case 2, so we solve this case by
+    // creating a temporary tensor here:
+    pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
+                               in->dims(), in->layout()};
+    auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            ctx.GetPlace()),
+        std::move(meta));
+    pten::DenseTensor *pt_out = nullptr;
+    if (in != nullptr && out != nullptr && in->Holder() != nullptr &&
+        out->Holder() != nullptr &&
+        in->Holder()->ptr() == out->Holder()->ptr()) {
+      pt_out = pt_x.get();
+    } else {
+      pt_out = pt_out_tmp.get();
+    }
 
     auto list_new_shape_tensor =
         ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
+    pten::ScalarArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
-      auto new_shape = get_new_shape(list_new_shape_tensor);
-      out_dims = ReshapeOp::ValidateShape(new_shape, in->dims());
-
-    } else {
-      auto *shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
-                               : nullptr;
-
-      if (shape_tensor) {
-        auto *shape_data = shape_tensor->data<int>();
-        framework::Tensor cpu_shape_tensor;
-        if (platform::is_gpu_place(shape_tensor->place()) ||
-            platform::is_xpu_place(shape_tensor->place())) {
-          TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                         &cpu_shape_tensor);
-          shape_data = cpu_shape_tensor.data<int>();
+      std::vector<pten::DenseTensor> pt_vec_shape;
+      for (auto &tensor : list_new_shape_tensor) {
+        if (platform::is_gpu_place(tensor->place()) ||
+            platform::is_xpu_place(tensor->place())) {
+          framework::Tensor temp;
+          TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+          pt_vec_shape.push_back(
+              std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
+        } else {
+          pt_vec_shape.push_back(
+              std::move(*(paddle::experimental::MakePtenDenseTensor(*tensor))));
         }
-        auto shape =
-            std::vector<int>(shape_data, shape_data + shape_tensor->numel());
-        out_dims = ReshapeOp::ValidateShape(shape, in->dims());
       }
+      pt_scalar_shape = pten::ScalarArray(pt_vec_shape);
+    } else if (shape_tensor) {
+      std::unique_ptr<pten::DenseTensor> pt_shape;
+      if (platform::is_gpu_place(shape_tensor->place()) ||
+          platform::is_xpu_place(shape_tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*shape_tensor, platform::CPUPlace(), &temp);
+        pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
+      } else {
+        pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);
+      }
+      pt_scalar_shape = pten::ScalarArray(*pt_shape.get());
+    } else {
+      auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
+      pt_scalar_shape = pten::ScalarArray(shape_attr);
     }
-
-    out->Resize(out_dims);
-    out->mutable_data(ctx.GetPlace(), in->type());
-
+    if (platform::is_cpu_place(ctx.GetPlace())) {
+      auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+      pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+      pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+    }
+#endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
-      auto &dev_ctx =
-          ctx.template device_context<paddle::platform::XPUDeviceContext>();
-      xpu::memcpy_device(
-          dev_ctx.x_context(), out->data<void>(), in->data<void>(),
-          in->numel() * paddle::framework::SizeOfType(in->type()));
-    } else {
-#endif
-      framework::TensorCopy(
-          *in, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
-#ifdef PADDLE_WITH_XPU
+      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+      pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
     }
 #endif
-    out->Resize(out_dims);
+    // non-inplace need move all result from pt_out to out, inplace need set
+    // result dims.
+    if (in != out) {
+      paddle::experimental::SharesStorage(pt_out, static_cast<Tensor *>(out));
+    } else {
+      out->Resize(pt_out->dims());
+    }
   }
 };
 
@@ -454,6 +519,20 @@ class Reshape2Op : public ReshapeOp {
     ctx->ShareLoD("X", /*->*/ "XShape");
 
     ReshapeOp::InferShape(ctx);
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    std::string shape;
+    auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    if (multi_inputs.size() > 0) {
+      shape = "ShapeTensor";
+    } else if (ctx.HasInput("Shape")) {
+      shape = "Shape";
+    } else {
+      shape = "shape";
+    }
+    return framework::KernelSignature("reshape", {"X"}, {shape}, {"Out"});
   }
 };
 
@@ -530,9 +609,10 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -626,24 +706,27 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2, float, ops::ReshapeKernel, double, ops::ReshapeKernel, int8_t,
     ops::ReshapeKernel, uint8_t, ops::ReshapeKernel, int, ops::ReshapeKernel,
     int64_t, ops::ReshapeKernel, bool, ops::ReshapeKernel,
-    paddle::platform::bfloat16, ops::ReshapeKernel, paddle::platform::complex64,
-    ops::ReshapeKernel, paddle::platform::complex128, ops::ReshapeKernel);
+    paddle::platform::bfloat16, ops::ReshapeKernel,
+    paddle::platform::complex<float>, ops::ReshapeKernel,
+    paddle::platform::complex<double>, ops::ReshapeKernel);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2_grad, float, ops::ReshapeGradKernel, double,
     ops::ReshapeGradKernel, int, ops::ReshapeGradKernel, uint8_t,
     ops::ReshapeGradKernel, int64_t, ops::ReshapeGradKernel, bool,
-    ops::ReshapeGradKernel, paddle::platform::complex64, ops::ReshapeGradKernel,
-    paddle::platform::complex128, ops::ReshapeGradKernel);
+    ops::ReshapeGradKernel, paddle::platform::bfloat16, ops::ReshapeGradKernel,
+    paddle::platform::complex<float>, ops::ReshapeGradKernel,
+    paddle::platform::complex<double>, ops::ReshapeGradKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2_grad_grad, float, ops::ReshapeDoubleGradKernel, double,
     ops::ReshapeDoubleGradKernel, int, ops::ReshapeDoubleGradKernel, uint8_t,
     ops::ReshapeDoubleGradKernel, int64_t, ops::ReshapeDoubleGradKernel, bool,
-    ops::ReshapeDoubleGradKernel, paddle::platform::complex64,
-    ops::ReshapeDoubleGradKernel, paddle::platform::complex128,
+    ops::ReshapeDoubleGradKernel, paddle::platform::bfloat16,
+    ops::ReshapeDoubleGradKernel, paddle::platform::complex<float>,
+    ops::ReshapeDoubleGradKernel, paddle::platform::complex<double>,
     ops::ReshapeDoubleGradKernel);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
                                 uint8_t, ops::ReshapeKernel, int64_t,
@@ -661,22 +744,23 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                 uint8_t, ops::ReshapeKernel, int64_t,
                                 ops::ReshapeKernel, plat::float16,
                                 ops::ReshapeKernel, bool, ops::ReshapeKernel,
-                                plat::complex64, ops::ReshapeKernel,
-                                plat::complex128, ops::ReshapeKernel);
+                                plat::complex<float>, ops::ReshapeKernel,
+                                plat::complex<double>, ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(
     reshape2_grad, float, ops::ReshapeGradKernel, double,
     ops::ReshapeGradKernel, int, ops::ReshapeGradKernel, uint8_t,
     ops::ReshapeGradKernel, int64_t, ops::ReshapeGradKernel, plat::float16,
-    ops::ReshapeGradKernel, bool, ops::ReshapeGradKernel, plat::complex64,
-    ops::ReshapeGradKernel, plat::complex128, ops::ReshapeGradKernel);
+    ops::ReshapeGradKernel, bool, ops::ReshapeGradKernel, plat::complex<float>,
+    ops::ReshapeGradKernel, plat::complex<double>, ops::ReshapeGradKernel);
 
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(
     reshape2_grad_grad, float, ops::ReshapeDoubleGradKernel, double,
     ops::ReshapeDoubleGradKernel, int, ops::ReshapeDoubleGradKernel, uint8_t,
     ops::ReshapeDoubleGradKernel, int64_t, ops::ReshapeDoubleGradKernel,
     plat::float16, ops::ReshapeDoubleGradKernel, bool,
-    ops::ReshapeDoubleGradKernel, plat::complex64, ops::ReshapeDoubleGradKernel,
-    plat::complex128, ops::ReshapeDoubleGradKernel);
+    ops::ReshapeDoubleGradKernel, plat::complex<float>,
+    ops::ReshapeDoubleGradKernel, plat::complex<double>,
+    ops::ReshapeDoubleGradKernel);
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -684,14 +768,14 @@ REGISTER_OP_XPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
                                int64_t, ops::ReshapeKernel, plat::float16,
                                ops::ReshapeKernel, bool, ops::ReshapeKernel,
-                               plat::complex64, ops::ReshapeKernel,
-                               plat::complex128, ops::ReshapeKernel);
+                               plat::complex<float>, ops::ReshapeKernel,
+                               plat::complex<double>, ops::ReshapeKernel);
 REGISTER_OP_XPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel, plat::float16,
                                ops::ReshapeGradKernel, bool,
-                               ops::ReshapeGradKernel, plat::complex64,
-                               ops::ReshapeGradKernel, plat::complex128,
+                               ops::ReshapeGradKernel, plat::complex<float>,
+                               ops::ReshapeGradKernel, plat::complex<double>,
                                ops::ReshapeGradKernel);
 #endif

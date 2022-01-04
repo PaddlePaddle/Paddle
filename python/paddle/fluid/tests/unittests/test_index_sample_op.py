@@ -92,9 +92,9 @@ class TestCase4(TestIndexSampleOp):
         """
         For int64 index type
         """
-        self.x_shape = (10, 100)
+        self.x_shape = (10, 128)
         self.x_type = "float64"
-        self.index_shape = (10, 10)
+        self.index_shape = (10, 64)
         self.index_type = "int64"
 
 

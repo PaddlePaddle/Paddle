@@ -16,7 +16,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 
 namespace paddle {
@@ -178,6 +177,9 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Bias", this->Input("Bias"));
     op->SetInput("SavedMean", this->Output("SavedMean"));
     op->SetInput("SavedVariance", this->Output("SavedVariance"));
+    if (this->HasOutput("ReserveSpace")) {
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+    }
 
     // used when setting use_global_stats True during training
     if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {

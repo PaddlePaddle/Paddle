@@ -20,7 +20,7 @@ import paddle
 from paddle.io import Dataset
 from paddle.utils import try_import
 
-__all__ = ["DatasetFolder", "ImageFolder"]
+__all__ = []
 
 
 def has_valid_extension(filename, extensions):
@@ -28,11 +28,14 @@ def has_valid_extension(filename, extensions):
 
     Args:
         filename (str): path to a file
-        extensions (tuple of str): extensions to consider (lowercase)
+        extensions (list[str]|tuple[str]): extensions to consider
 
     Returns:
         bool: True if the filename ends with one of given extensions
     """
+    assert isinstance(extensions,
+                      (list, tuple)), ("`extensions` must be list or tuple.")
+    extensions = tuple([x.lower() for x in extensions])
     return filename.lower().endswith(extensions)
 
 
@@ -73,7 +76,7 @@ class DatasetFolder(Dataset):
     Args:
         root (string): Root directory path.
         loader (callable|optional): A function to load a sample given its path.
-        extensions (tuple[str]|optional): A list of allowed extensions.
+        extensions (list[str]|tuple[str]|optional): A list of allowed extensions.
             both extensions and is_valid_file should not be passed.
         transform (callable|optional): A function/transform that takes in
             a sample and returns a transformed version.
@@ -111,6 +114,9 @@ class DatasetFolder(Dataset):
                 return data_dir
 
             temp_dir = make_fake_dir()
+            # temp_dir is root dir
+            # temp_dir/class_1/img1_1.jpg
+            # temp_dir/class_2/img2_1.jpg
             data_folder = DatasetFolder(temp_dir)
 
             for items in data_folder:
@@ -134,7 +140,7 @@ class DatasetFolder(Dataset):
                                is_valid_file)
         if len(samples) == 0:
             raise (RuntimeError(
-                "Found 0 files in subfolders of: " + self.root + "\n"
+                "Found 0 directories in subfolders of: " + self.root + "\n"
                 "Supported extensions are: " + ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader
@@ -223,7 +229,7 @@ class ImageFolder(Dataset):
     Args:
         root (string): Root directory path.
         loader (callable, optional): A function to load a sample given its path.
-        extensions (tuple[string], optional): A list of allowed extensions.
+        extensions (list[str]|tuple[str], optional): A list of allowed extensions.
             both extensions and is_valid_file should not be passed.
         transform (callable, optional): A function/transform that takes in
             a sample and returns a transformed version.

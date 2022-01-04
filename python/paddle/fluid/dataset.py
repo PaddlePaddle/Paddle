@@ -74,6 +74,8 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
+        self.psgpu = None
 
     def set_pipe_command(self, pipe_command):
         """
@@ -92,6 +94,23 @@ class DatasetBase(object):
 
         """
         self.proto_desc.pipe_command = pipe_command
+
+    def set_so_parser_name(self, so_parser_name):
+        """
+        Set so parser name of current dataset
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_so_parser_name("./abc.so")
+
+        Args:
+            pipe_command(str): pipe command
+
+        """
+        self.proto_desc.so_parser_name = so_parser_name
 
     def set_rank_offset(self, rank_offset):
         """
@@ -251,9 +270,11 @@ class DatasetBase(object):
                 slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
                 slot_var.type = "uint64"
+            elif var.dtype == core.VarDesc.VarType.INT32:
+                slot_var.type = "uint32"
             else:
                 raise ValueError(
-                    "Currently, fluid.dataset only supports dtype=float32 and dtype=int64"
+                    "Currently, fluid.dataset only supports dtype=float32, dtype=int32 and dtype=int64"
                 )
 
     def set_hdfs_config(self, fs_name, fs_ugi):
@@ -299,6 +320,20 @@ class DatasetBase(object):
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_readers()
+
+    def _set_use_ps_gpu(self, psgpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = True
+        # if not defined heterps with paddle, users will not use psgpu
+        if not core._is_compiled_with_heterps():
+            self.use_ps_gpu = False
+        elif self.use_ps_gpu:
+            self.psgpu = psgpu
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -361,6 +396,8 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
+        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+            self.dataset = core.Dataset("SlotRecordDataset")
 
     @deprecated(
         since="2.0.0",
@@ -391,7 +428,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     @deprecated(
@@ -400,7 +440,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     @deprecated(
@@ -673,16 +716,43 @@ class InMemoryDataset(DatasetBase):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
-    @deprecated(
-        since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset.load_into_memory")
-    def load_into_memory(self):
+    def set_date(self, date):
         """
-        Load data into memory
+        :api_attr: Static Graph
+
+        Set training date for pull sparse parameters, saving and loading model. Only used in psgpu
+
+        Args:
+            date(str): training date(format : YYMMDD). eg.20211111
 
         Examples:
             .. code-block:: python
 
+                import paddle.fluid as fluid
+
+                dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+                dataset.set_date("20211111")
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_date(year, month, day)
+
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.load_into_memory")
+    def load_into_memory(self, is_shuffle=False):
+        """
+        Load data into memory
+
+         Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
+
+        Examples:
+            .. code-block:: python
+
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -690,7 +760,11 @@ class InMemoryDataset(DatasetBase):
               dataset.load_into_memory()
         """
         self._prepare_to_run()
-        self.dataset.load_into_memory()
+        if not self.use_ps_gpu:
+            self.dataset.load_into_memory()
+        elif core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.load_into_memory(is_shuffle)
 
     @deprecated(
         since="2.0.0",
@@ -705,6 +779,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -729,6 +804,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -749,6 +825,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -771,6 +848,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -784,8 +862,12 @@ class InMemoryDataset(DatasetBase):
             thread_num(int): shuffle thread num. Default is 12.
 
         """
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
             if self.trainer_num == -1:
                 self.trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
@@ -797,14 +879,23 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
         self.dataset.global_shuffle(thread_num)
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
         if self.merge_by_lineid:
             self.dataset.merge_by_lineid()
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
 
     @deprecated(
         since="2.0.0",
@@ -818,6 +909,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -877,6 +969,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -917,6 +1010,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -930,12 +1024,24 @@ class InMemoryDataset(DatasetBase):
         import numpy as np
         local_data_size = self.dataset.get_shuffle_data_size()
         local_data_size = np.array([local_data_size])
+        print('global shuffle local_data_size: ', local_data_size)
         if fleet is not None:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce_worker(local_data_size,
-                                                global_data_size)
+            if not isinstance(fleet, PSLib):
+                global_data_size = fleet.util.all_reduce(local_data_size)
+            else:
+                fleet._role_maker.all_reduce_worker(local_data_size,
+                                                    global_data_size)
             return global_data_size[0]
         return local_data_size[0]
+
+    def _set_heter_ps(self, enable_heter_ps=False):
+        """
+        Set heter ps mode
+        user no need to call this function.
+        """
+        self.dataset.set_heter_ps(enable_heter_ps)
 
 
 class QueueDataset(DatasetBase):

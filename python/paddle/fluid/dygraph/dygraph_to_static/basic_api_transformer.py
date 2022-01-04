@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import astor
-import gast
+from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
@@ -33,10 +33,11 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.root = wrapper_root.node
         self.class_node_dict = {}
 
-        self.name_to_tensor_shape = {}
-
     def transform(self):
+        to_tensor_transformer = ToTensorTransformer(self.root)
+        to_tensor_transformer.transform()
         self.visit(self.root)
+
         return self.wrapper_root
 
     def visit_Assign(self, node):
@@ -62,11 +63,6 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-        # Replace API `to_variable` with `fluid.layers.assign`
-        if is_to_variable(node):
-            node = to_assign_node(node)
-            return node
-
         func_name = astor.to_source(gast.gast_to_ast(node.func))
 
         if self._is_dygraph_forward(func_name):
@@ -102,6 +98,29 @@ class BasicApiTransformer(gast.NodeTransformer):
         return False
 
 
+class ToTensorTransformer(gast.NodeTransformer):
+    """
+    Class to transform paddle.to_tensor and paddle.to_variable to paddle.assign
+    """
+
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST
+        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
+        self.root = node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def visit_Call(self, node):
+        assert isinstance(node, gast.Call)
+        if is_to_variable(node):
+            node = to_assign_node(node)
+        self.generic_visit(node)
+        return node
+
+
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     api_name = utils.ast_to_source_code(node.func).strip()
@@ -116,14 +135,14 @@ def is_to_variable(node):
 
 
 def to_assign_node(node):
-    # Transform dygraph api `fluid.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.nn.functional.assign`.
+    # Transform dygraph api `fluid.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
     # NOTE:
     #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
     #   but api `assign` only supports {float32, float64, int32, int64, bool};
     #   2. If the input of api `assign` is numpy.ndarray, its size cannot be greater than 1024 * 1024.
 
     assert isinstance(node, gast.Call)
-    assign_api = gast.parse('paddle.nn.functional.assign').body[0].value
+    assign_api = gast.parse('paddle.assign').body[0].value
     node.func = assign_api
 
     if node.args:
@@ -132,7 +151,7 @@ def to_assign_node(node):
     else:
         for idx, kw in enumerate(node.keywords):
             if kw.arg == 'value' or kw.arg == 'data':
-                node.keywords[idx].arg = 'input'
+                node.keywords[idx].arg = 'x'
                 node.keywords = [node.keywords[idx]]
                 node.args = []
                 break

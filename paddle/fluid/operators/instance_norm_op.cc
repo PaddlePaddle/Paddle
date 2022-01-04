@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -31,6 +32,13 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
                  "InstanceNorm");
 
   const auto x_dims = ctx->GetInputDim("X");
+  PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
+                    platform::errors::PreconditionNotMet(
+                        "The Input variable X(%s) has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function.",
+                        ctx->Inputs("X").front()));
   PADDLE_ENFORCE_GE(
       x_dims.size(), 2,
       platform::errors::InvalidArgument(
@@ -141,11 +149,13 @@ void InstanceNormOpMaker::Make() {
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddOutput("SavedVariance",
             "Variance of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddComment(R"DOC(
 Instance Normalization.
 
@@ -701,3 +711,20 @@ REGISTER_OP_CPU_KERNEL(
                                       float>,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                       double>);
+
+REGISTER_OP_VERSION(instance_norm)
+    .AddCheckpoint(
+        R"ROC(
+      Change dispensable of attribute from False to True in instance_norm.
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .ModifyAttr(
+                "Bias",
+                "The arg 'dispensable' of Input 'Bias' is changed: from "
+                "'False' to 'True'.",
+                true)
+            .ModifyAttr(
+                "Scale",
+                "The arg 'dispensable' of Input 'Scale' is changed: from "
+                "'False' to 'True'.",
+                true));

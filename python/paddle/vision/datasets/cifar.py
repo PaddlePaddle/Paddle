@@ -24,7 +24,7 @@ import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Cifar10', 'Cifar100']
+__all__ = []
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
@@ -47,11 +47,10 @@ class Cifar10(Dataset):
 
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
         mode(str): 'train', 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+        transform(callable): transform to perform on image, None for no transform.
+        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
         backend(str, optional): Specifies which type of image to be returned: 
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
@@ -141,11 +140,10 @@ class Cifar10(Dataset):
             names = (each_item.name for each_item in f
                      if self.flag in each_item.name)
 
+            names = sorted(list(names))
+
             for name in names:
-                if six.PY2:
-                    batch = pickle.load(f.extractfile(name))
-                else:
-                    batch = pickle.load(f.extractfile(name), encoding='bytes')
+                batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
                 labels = batch.get(
@@ -180,11 +178,10 @@ class Cifar100(Cifar10):
 
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
         mode(str): 'train', 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+        transform(callable): transform to perform on image, None for no transform.
+        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
         backend(str, optional): Specifies which type of image to be returned: 
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,

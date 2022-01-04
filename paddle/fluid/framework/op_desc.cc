@@ -14,27 +14,19 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_desc.h"
 
-#include <algorithm>
-#include <functional>
-#include <mutex>  // NOLINT
 #include <string>
-#include <unordered_map>
-#include <utility>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {
 
-class OpDesc;
-class BlockDesc;
 class CompileTimeInferShapeContext : public InferShapeContext {
  public:
   CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
@@ -208,7 +200,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) override {
+      const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(arg_names.size());
@@ -220,7 +212,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) override {
+      const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(arg_names.size());
@@ -360,6 +352,8 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  // The record of original_id_ is only for auto parallel.
+  original_id_ = op_desc.original_id_;
   need_update_ = true;
 }
 
@@ -453,6 +447,16 @@ void OpDesc::SetOutput(const std::string &param_name,
                        const std::vector<std::string> &args) {
   need_update_ = true;
   this->outputs_[param_name] = args;
+}
+
+void OpDesc::RemoveOutput(const std::string &name) {
+  outputs_.erase(name);
+  need_update_ = true;
+}
+
+void OpDesc::RemoveInput(const std::string &name) {
+  inputs_.erase(name);
+  need_update_ = true;
 }
 
 bool OpDesc::HasProtoAttr(const std::string &name) const {
@@ -712,6 +716,10 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
   void operator()(const std::vector<int64_t> &v) const {
     VectorToRepeated(v, attr_->mutable_longs());
+  }
+
+  void operator()(const std::vector<double> &v) const {
+    VectorToRepeated(v, attr_->mutable_float64s());
   }
 
   void operator()(boost::blank) const {

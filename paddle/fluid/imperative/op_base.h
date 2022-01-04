@@ -15,14 +15,17 @@
 #pragma once
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace imperative {
@@ -47,6 +50,10 @@ class OpBase {
   }
 
   const framework::AttributeMap& Attrs() const { return attrs_; }
+
+  const framework::AttributeMap& DefaultAttrsMap() const {
+    return *default_attrs_;
+  }
 
   const framework::OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
@@ -97,6 +104,10 @@ class OpBase {
 
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
 
+  void SetDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
+    default_attrs_ = &default_attrs;
+  }
+
   void SetAttr(const std::string& name, const framework::Attribute& v) {
     attrs_[name] = v;
   }
@@ -108,14 +119,23 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() { return attrs_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name) > 0; }
+  const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
+
+  bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
+  }
 
   const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
-    PADDLE_ENFORCE_NE(
-        it, attrs_.end(),
-        platform::errors::NotFound("can not find attribute [%s]", name));
-    return it->second;
+    if (it != attrs_.end()) {
+      return it->second;
+    } else {
+      auto it_default = default_attrs_->find(name);
+      PADDLE_ENFORCE_NE(
+          it_default, default_attrs_->end(),
+          platform::errors::NotFound("can not find attribute [%s]", name));
+      return it_default->second;
+    }
   }
 
   template <typename T>
@@ -154,13 +174,30 @@ class OpBase {
                   const NameVarMap<VarBase>& ins,
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
+
+  static pten::KernelContext* GetKernelContext() { return &pt_kernel_context_; }
+
+  bool HasVoidFunctionPostHook() const {
+    return !void_function_post_hooks_.empty();
+  }
+
+  void AddVoidFunctionPostHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_function_post_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>&
+  GetVoidFunctionPostHooks() const {
+    return void_function_post_hooks_;
+  }
 
  private:
   static const std::string& UnknownOpType() {
@@ -172,11 +209,14 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
+  const framework::AttributeMap* default_attrs_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
-
-  std::weak_ptr<InteriorVarHookPipeline> pre_hooks_;
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  static pten::KernelContext pt_kernel_context_;
+  std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 
 class GradOpNode {
@@ -227,6 +267,22 @@ class GradOpNode {
     }
   }
 
+  void SetInplaceGradNameMap(
+      const std::map<std::string, std::string>& inplace_input_map) {
+    for (auto& pair : inplace_input_map) {
+      VLOG(10) << "Set mapping relationship ("
+               << framework::GradVarName(pair.first) << ", "
+               << framework::GradVarName(pair.second)
+               << ") for Inplace grad node.";
+      inplace_grad_name_map_[framework::GradVarName(pair.first)] =
+          framework::GradVarName(pair.second);
+    }
+  }
+
+  const std::map<std::string, std::string>& InplaceGradNameMap() const {
+    return inplace_grad_name_map_;
+  }
+
   const std::vector<std::shared_ptr<GradOpNode>>& GradPendingNodes() const {
     return grad_pending_nodes_;
   }
@@ -237,6 +293,9 @@ class GradOpNode {
  private:
   std::vector<OpBase> ops_;
   std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes_;
+  // Mapping relationship between grad output and grad input of the grad node of
+  // Inplace op.
+  std::map<std::string, std::string> inplace_grad_name_map_;
 };
 
 }  // namespace imperative

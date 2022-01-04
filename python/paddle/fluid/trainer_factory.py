@@ -22,12 +22,12 @@ from paddle.fluid.log_helper import get_logger
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, HeterBoxTrainer
-from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, PSGPUTrainer, HeterPipelineTrainer
+from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT, HeterSection
 from .framework import Variable
 from multiprocessing import Process, Manager
 
-__all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
+__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
 
 class TrainerFactory(object):
@@ -49,13 +49,17 @@ class TrainerFactory(object):
             device_worker = Hogwild()
             trainer._set_device_worker(device_worker)
         else:
-            trainer_class = opt_info["trainer"]
-            device_worker_class = opt_info["device_worker"]
+            trainer_class = opt_info.get("trainer", "MultiTrainer")
+            device_worker_class = opt_info.get("device_worker", "Hogwild")
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 
             # for debug tools
             if opt_info is not None:
+                if opt_info.get("trainers") is not None:
+                    trainer._set_trainers(opt_info["trainers"])
+                if opt_info.get("trainer_id") is not None:
+                    trainer._set_trainer_id(opt_info["trainer_id"])
                 if opt_info.get("dump_slot") is not None:
                     trainer._set_dump_slot(opt_info["dump_slot"])
                 if opt_info.get("mpi_rank") is not None:
@@ -95,6 +99,10 @@ class TrainerFactory(object):
                     trainer._set_use_cvm(opt_info["use_cvm"])
                 if opt_info.get("no_cvm") is not None:
                     trainer._set_no_cvm(opt_info["no_cvm"])
+                if opt_info.get(
+                        "scale_sparse_gradient_with_batch_size") is not None:
+                    trainer._set_scale_sparse_grad_with_batch_size(opt_info[
+                        "scale_sparse_gradient_with_batch_size"])
                 if opt_info.get("scale_datanorm") is not None:
                     trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:

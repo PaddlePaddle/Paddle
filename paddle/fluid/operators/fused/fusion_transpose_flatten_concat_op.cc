@@ -40,7 +40,9 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
     const size_t n = ins.size();
     PADDLE_ENFORCE_GT(n, 0,
                       platform::errors::InvalidArgument(
-                          "Input tensors dim size should greater than 0."));
+                          "The size of Inputs(X)'s dimension should be greater "
+                          " than 0, but received %d.",
+                          n));
 
     std::vector<int> trans_axis =
         ctx->Attrs().Get<std::vector<int>>("trans_axis");

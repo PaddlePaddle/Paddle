@@ -26,24 +26,6 @@ from decorator_helper import prog_scope
 paddle.enable_static()
 
 
-class TestMulGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
-            x = layers.create_parameter(dtype="float64", shape=[2, 8], name='x')
-            y = layers.create_parameter(dtype="float64", shape=[8, 4], name='y')
-            z = layers.mul(x=x, y=y)
-            gradient_checker.grad_check([x, y], z, place=place)
-
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
 class TestSliceOpDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         self.config()
@@ -116,66 +98,6 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
-
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestMulDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        x_shape = [7, 11]
-        y_shape = [11, 9]
-        eps = 0.005
-        dtype = np.float64
-
-        x = layers.data('x', x_shape, False, dtype)
-        x.persistable = True
-        y = layers.data('y', y_shape, False, dtype)
-        y.persistable = True
-        out = layers.mul(x, y)
-        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
-        y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
-
-        gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
-
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestMatmulDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        eps = 0.005
-        x_shapes = [[2], [2, 3], [2, 4, 3], [2, 3, 4, 5], [2, 3, 4]]
-        y_shapes = [[2], [3, 2], [2, 4, 5], [2, 3, 3, 5], [4, 3]]
-        transpose_xs = [False, True, True, False, False]
-        transpose_ys = [False, True, False, True, False]
-        dtype = np.float64
-        typename = "float64"
-        for i, (x_shape, y_shape, transpose_x, transpose_y) \
-            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys)):
-            x = layers.create_parameter(
-                dtype=typename, shape=x_shape, name='x{}'.format(i))
-            y = layers.create_parameter(
-                dtype=typename, shape=y_shape, name='y{}'.format(i))
-            out = layers.matmul(
-                x, y, transpose_x, transpose_y, name='out{}'.format(i))
-
-            x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
-            y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
-            gradient_checker.double_grad_check(
-                [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -450,6 +372,104 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x1, x2], out, x_init=[x1_arr, x2_arr], place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        input_NCHW = fluid.layers.data(
+            name="input_NCHW",
+            shape=[2, 3, 5, 5],
+            append_batch_size=False,
+            dtype="float32")
+
+        input_NCHW.persistable = True
+        y = layers.pool2d(input_NCHW, pool_size=2, pool_type="avg")
+        x_arr = np.random.uniform(-1, 1, [2, 3, 5, 5]).astype(np.float32)
+
+        gradient_checker.double_grad_check(
+            [input_NCHW], y, x_init=x_arr, place=place, eps=0.05)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestAvgPool2DDoubleGradCheckCase2(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        input_NHWC = fluid.layers.data(
+            name="input_NHWC",
+            shape=[2, 5, 5, 3],
+            append_batch_size=False,
+            dtype="float32")
+
+        input_NHWC.persistable = True
+        y = layers.pool2d(
+            input_NHWC, pool_size=2, pool_type="avg", data_format="NHWC")
+        x_arr = np.random.uniform(-1, 1, [2, 5, 5, 3]).astype(np.float32)
+
+        gradient_checker.double_grad_check(
+            [input_NHWC], y, x_init=x_arr, place=place, eps=0.05)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestAvgPool2DDoubleGradCheckCase3(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        input_NCHW = fluid.layers.data(
+            name="input_NCHW",
+            shape=[2, 3, 5, 5],
+            append_batch_size=False,
+            dtype="float32")
+
+        input_NCHW.persistable = True
+        y = layers.pool2d(
+            input_NCHW, pool_size=2, pool_type="avg", pool_padding=[1, 1])
+        x_arr = np.random.uniform(-1, 1, [2, 3, 5, 5]).astype(np.float32)
+
+        gradient_checker.double_grad_check(
+            [input_NCHW], y, x_init=x_arr, place=place, eps=0.05)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        input_NCHW = fluid.layers.data(
+            name="input_NCHW",
+            shape=[2, 3, 5, 5],
+            append_batch_size=False,
+            dtype="float32")
+
+        input_NCHW.persistable = True
+        y = layers.pool2d(input_NCHW, pool_size=[4, 4], pool_type="avg")
+        x_arr = np.random.uniform(-1, 1, [2, 3, 5, 5]).astype(np.float32)
+
+        gradient_checker.double_grad_check(
+            [input_NCHW], y, x_init=x_arr, place=place, eps=0.05)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]

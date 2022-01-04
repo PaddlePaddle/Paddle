@@ -134,7 +134,7 @@ TEST(BeamSearch, CPU) {
                  paddle::platform::CPUPlace>();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(BeamSearch, GPU) {
   TestBeamSearch<paddle::platform::CUDADeviceContext,
                  paddle::platform::CUDAPlace>();

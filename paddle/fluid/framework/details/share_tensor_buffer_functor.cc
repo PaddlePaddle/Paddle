@@ -15,11 +15,8 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -27,6 +24,7 @@ namespace framework {
 class Scope;
 class Tensor;
 class Variable;
+
 namespace ir {
 class MemOptVarInfo;
 }  // namespace ir
@@ -37,35 +35,18 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// TODO(zjl): support SelectedRows
-static inline const Tensor &GetTensorFromVar(const Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor."));
-  }
-}
-
-static inline Tensor *GetMutableTensorFromVar(Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor."));
-  }
-}
-
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, bool share_dims)
+    const std::vector<std::string> &out_var_names, const bool &is_variant_scope,
+    bool share_dims_and_dtype)
     : scope_(scope),
       scope_idx_(scope_idx),
       op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names),
-      share_dims_(share_dims) {
+      is_variant_scope_(is_variant_scope),
+      share_dims_and_dtype_(share_dims_and_dtype) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size(),
                     platform::errors::PreconditionNotMet(
                         "The number of input variables and output variables "
@@ -128,12 +109,13 @@ void ShareTensorBufferFunctor::CallOnce() {
 }
 
 void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
-  if (!exec_scope_) {
+  if (!exec_scope_ || is_variant_scope_) {
     PADDLE_ENFORCE_NOT_NULL(exec_scope,
                             platform::errors::InvalidArgument(
                                 "The given execution scope should not be NULL "
                                 "if the cached scope is NULL."));
     exec_scope_ = exec_scope;
+    in_out_vars_.clear();
     CallOnce();
   } else {
     PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
@@ -165,12 +147,14 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
       // NOTE(zhiqiu): In the case of inplace addto, if the operator of
       // the in_out_vars is skipped during running, we should set the dims of
       // output as the same as input.
-      if (share_dims_) {
+      if (share_dims_and_dtype_) {
         out_tensor->Resize(in_tensor.dims());
+        out_tensor->ShareDataTypeWith(in_tensor);
       }
 
       VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
-              << in_var_info->Name() << " -> " << out_var_names_[i];
+              << in_var_info->Name() << " -> " << out_var_names_[i]
+              << " share_dims_and_dtype = " << share_dims_and_dtype_;
     }
   }
 }

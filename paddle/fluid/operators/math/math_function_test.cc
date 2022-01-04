@@ -208,6 +208,7 @@ void GemvTest(int m, int n, bool trans) {
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   }
+  delete cpu_place;
 }
 
 TEST(math_function, gemv) {
@@ -274,6 +275,7 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   for (int i = 0; i < mat_c_mkl.numel(); ++i) {
     EXPECT_FLOAT_EQ(CREF[i], CMKL[i]);
   }
+  delete cpu_place;
 }
 
 TEST(math_function, gemm_warp) {

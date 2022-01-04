@@ -28,22 +28,12 @@ from paddle import framework
 from paddle.device import get_device, get_cudnn_version
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.fluid.dygraph import Layer, LayerList
+from paddle.nn import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
-
-__all__ = [
-    'RNNCellBase',
-    'SimpleRNNCell',
-    'LSTMCell',
-    'GRUCell',
-    'RNN',
-    'BiRNN',
-    'SimpleRNN',
-    'LSTM',
-    'GRU',
-]
+from paddle import _C_ops
+__all__ = []
 
 
 def split_states(states, bidirectional=False, state_components=1):
@@ -342,6 +332,10 @@ class SimpleRNNCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(SimpleRNNCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (hidden_size, input_size),
@@ -389,6 +383,12 @@ class SimpleRNNCell(RNNCellBase):
     @property
     def state_shape(self):
         return (self.hidden_size, )
+
+    def extra_repr(self):
+        s = '{input_size}, {hidden_size}'
+        if self.activation is not "tanh":
+            s += ', activation={activation}'
+        return s.format(**self.__dict__)
 
 
 class LSTMCell(RNNCellBase):
@@ -441,7 +441,7 @@ class LSTMCell(RNNCellBase):
 
     Inputs:
         - **inputs** (Tensor): shape `[batch_size, input_size]`, the input, corresponding to :math:`x_t` in the formula.
-        - **states** (tuple, optional): a tuple of two tensors, each of shape `[batch_size, hidden_size]`, the previous hidden state, corresponding to :math:`h_{t-1}, c_{t-1}` in the formula. When states is None, zero state is used. Defaults to None.
+        - **states** (list|tuple, optional): a list/tuple of two tensors, each of shape `[batch_size, hidden_size]`, the previous hidden state, corresponding to :math:`h_{t-1}, c_{t-1}` in the formula. When states is None, zero state is used. Defaults to None.
 
     Returns:
         - **outputs** (Tensor): shape `[batch_size, hidden_size]`, the output, corresponding to :math:`h_{t}` in the formula.
@@ -484,6 +484,10 @@ class LSTMCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(LSTMCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (4 * hidden_size, input_size),
@@ -539,6 +543,9 @@ class LSTMCell(RNNCellBase):
         to :math:`h_{t-1}` and :math:`c_{t-1}` separately.
         """
         return ((self.hidden_size, ), (self.hidden_size, ))
+
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
 
 
 class GRUCell(RNNCellBase):
@@ -628,6 +635,10 @@ class GRUCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(GRUCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (3 * hidden_size, input_size),
@@ -683,6 +694,9 @@ class GRUCell(RNNCellBase):
         to the shape of :math:`h_{t-1}`.
         """
         return (self.hidden_size, )
+
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
 
 
 class RNN(Layer):
@@ -960,7 +974,7 @@ class RNNBase(LayerList):
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
                                      fluid.default_startup_program()):
-                with framework.no_grad():
+                with paddle.no_grad():
                     self._helper.append_op(
                         type="coalesce_tensor",
                         inputs={"Input": self._all_weights},
@@ -977,39 +991,50 @@ class RNNBase(LayerList):
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
-        out = self._helper.create_variable_for_type_inference(inputs.dtype)
-        state = [
-            self._helper.create_variable_for_type_inference(inputs.dtype)
-            for i in range(self.state_components)
-        ]
-        reserve = self._helper.create_variable_for_type_inference(
-            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        inputs = {
-            'Input': inputs,
-            'WeightList': self._all_weights,
-            'PreState': initial_states,
-            'SequenceLength': sequence_length
-        }
-        attrs = {
-            'dropout_prob': self.dropout,
-            'is_bidirec': self.num_directions == 2,
-            'input_size': self.input_size,
-            'hidden_size': self.hidden_size,
-            'num_layers': self.num_layers,
-            'mode': self.mode,
-            'is_test': not self.training
-        }
+        if fluid.framework.in_dygraph_mode():
+            _, _, out, state = _C_ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, self.state_components, 'dropout_prob',
+                self.dropout, 'is_bidirec', self.num_directions == 2,
+                'input_size', self.input_size, 'hidden_size', self.hidden_size,
+                'num_layers', self.num_layers, 'mode', self.mode, 'is_test',
+                not self.training)
+        else:
+            out = self._helper.create_variable_for_type_inference(inputs.dtype)
+            state = [
+                self._helper.create_variable_for_type_inference(inputs.dtype)
+                for i in range(self.state_components)
+            ]
+            reserve = self._helper.create_variable_for_type_inference(
+                dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        outputs = {
-            'Out': out,
-            'State': state,
-            'Reserve': reserve,
-            'DropoutState': self._dropout_state,
-        }
+            inputs = {
+                'Input': inputs,
+                'WeightList': self._all_weights,
+                'PreState': initial_states,
+                'SequenceLength': sequence_length
+            }
+            attrs = {
+                'dropout_prob': self.dropout,
+                'is_bidirec': self.num_directions == 2,
+                'input_size': self.input_size,
+                'hidden_size': self.hidden_size,
+                'num_layers': self.num_layers,
+                'mode': self.mode,
+                'is_test': not self.training
+            }
 
-        self._helper.append_op(
-            type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+            outputs = {
+                'Out': out,
+                'State': state,
+                'Reserve': reserve,
+                'DropoutState': self._dropout_state,
+            }
+
+            self._helper.append_op(
+                type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+
         out = paddle.tensor.transpose(out,
                                       [1, 0, 2]) if not self.time_major else out
         return out, tuple(state) if len(state) > 1 else state[0]
@@ -1020,17 +1045,18 @@ class RNNBase(LayerList):
         if initial_states is None:
             state_shape = (self.num_layers * self.num_directions, -1,
                            self.hidden_size)
-            if self.state_components == 1:
-                initial_states = paddle.fluid.layers.fill_constant_batch_size_like(
+            initial_states = tuple([
+                paddle.fluid.layers.fill_constant_batch_size_like(
                     inputs, state_shape, dtype, 0, batch_index, 1)
-            else:
-                initial_states = tuple([
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1)
-                    for _ in range(self.state_components)
-                ])
+                for _ in range(self.state_components)
+            ])
+        else:
+            initial_states = [initial_states] if isinstance(
+                initial_states, paddle.static.Variable) else initial_states
 
-        if self.could_use_cudnn:
+        if self.could_use_cudnn and (
+                not paddle.device.is_compiled_with_rocm() or
+                sequence_length is None):
             # Add CPU kernel and dispatch in backend later
             return self._cudnn_impl(inputs, initial_states, sequence_length)
 
@@ -1052,6 +1078,16 @@ class RNNBase(LayerList):
         final_states = concat_states(final_states, self.num_directions == 2,
                                      self.state_components)
         return outputs, final_states
+
+    def extra_repr(self):
+        main_str = '{input_size}, {hidden_size}'
+        if self.num_layers != 1:
+            main_str += ', num_layers={num_layers}'
+        if self.time_major != False:
+            main_str += ', time_major={time_major}'
+        if self.dropout != 0:
+            main_str += ', dropout={dropout}'
+        return main_str.format(**self.__dict__)
 
 
 class SimpleRNN(RNNBase):
@@ -1099,14 +1135,16 @@ class SimpleRNN(RNNBase):
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Inputs:s
+    Inputs:
         - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
         - **initial_states** (Tensor, optional): the initial state. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
 
     Returns:
+
         - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
-        - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        
+        - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 
     Variables:
         - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.
@@ -1215,12 +1253,14 @@ class LSTM(RNNBase):
 
     Inputs:
         - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
-        - **initial_states** (tuple, optional): the initial state, a tuple of (h, c), the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
+        - **initial_states** (list|tuple, optional): the initial state, a list/tuple of (h, c), the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whos time step index are not less than the valid length are treated as paddings.
 
     Returns:
-        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1. 
-        - **final_states** (tuple): the final state, a tuple of two tensors, h and c. The shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        
+        - **final_states** (tuple): the final state, a tuple of two tensors, h and c. The shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 
     Variables:
         - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.
@@ -1324,8 +1364,10 @@ class GRU(RNNBase):
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whos time step index are not less than the valid length are treated as paddings.
 
     Returns:
+
         - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
-        - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        
+        - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 
     Variables:
         - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.

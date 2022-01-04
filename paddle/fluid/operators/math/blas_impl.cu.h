@@ -17,7 +17,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 
@@ -32,33 +32,33 @@ template <>
 struct CUBlas<float> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSgemm(args...));
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSaxpy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSaxpy(args...));
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSscal(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSscal(args...));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasScopy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasScopy(args...));
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemv(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSgemv(args...));
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasSgemmStridedBatched(args...));
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -82,7 +82,7 @@ struct CUBlas<float> {
     VLOG(5) << "use_tensor_op_math: "
             << (dev_ctx->tensor_core_available() ? "True" : "False");
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemmEx(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSgemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc));
     });
@@ -94,25 +94,33 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasStrsm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasStrsm(args...));
   }
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSgetrfBatched(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSgetrfBatched(args...));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSgetriBatched(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSgetriBatched(args...));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasSmatinvBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRS_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasSgetrsBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void TRSM_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasStrsmBatched(args...));
   }
 };
 
@@ -120,33 +128,33 @@ template <>
 struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDgemm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDgemm(args...));
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDaxpy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDaxpy(args...));
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDscal(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDscal(args...));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDcopy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDcopy(args...));
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDgemv(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDgemv(args...));
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasDgemmStridedBatched(args...));
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -162,25 +170,33 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDtrsm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDtrsm(args...));
   }
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDgetrfBatched(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDgetrfBatched(args...));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDgetriBatched(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDgetriBatched(args...));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasDmatinvBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRS_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDgetrsBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void TRSM_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasDtrsmBatched(args...));
   }
 };
 
@@ -193,7 +209,7 @@ struct CUBlas<platform::float16> {
                    const float16 *alpha, const float16 *A, int lda,
                    const float16 *B, int ldb, const float16 *beta, float16 *C,
                    int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasHgemm(handle, transa, transb, m, n, k,
                                        reinterpret_cast<const __half *>(alpha),
                                        reinterpret_cast<const __half *>(A), lda,
@@ -213,7 +229,7 @@ struct CUBlas<platform::float16> {
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasHgemmStridedBatched(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasHgemmStridedBatched(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const __half *>(alpha),
         reinterpret_cast<const __half *>(A), lda, strideA,
@@ -248,7 +264,7 @@ struct CUBlas<platform::float16> {
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, computeType, algo));
     });
@@ -260,14 +276,14 @@ struct CUBlas<platform::float16> {
 };
 
 template <>
-struct CUBlas<platform::complex64> {
-  using complex64 = platform::complex64;
-
+struct CUBlas<platform::complex<float>> {
   static void GEMV(cublasHandle_t handle, cublasOperation_t transa, int m,
-                   int n, const complex64 *alpha, const complex64 *A, int lda,
-                   const complex64 *B, int ldb, const complex64 *beta,
-                   complex64 *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCgemv(
+                   int n, const platform::complex<float> *alpha,
+                   const platform::complex<float> *A, int lda,
+                   const platform::complex<float> *B, int ldb,
+                   const platform::complex<float> *beta,
+                   platform::complex<float> *C, int ldc) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasCgemv(
         handle, transa, m, n, reinterpret_cast<const cuFloatComplex *>(alpha),
         reinterpret_cast<const cuFloatComplex *>(A), lda,
         reinterpret_cast<const cuFloatComplex *>(B), ldb,
@@ -275,18 +291,30 @@ struct CUBlas<platform::complex64> {
         reinterpret_cast<cuFloatComplex *>(C), ldc));
   }
 
+  static void AXPY(cublasHandle_t handle, int n,
+                   const platform::complex<float> *alpha,
+                   const platform::complex<float> *X, const int incX,
+                   platform::complex<float> *Y, const int incY) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasCaxpy(
+        handle, n, reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(X), incX,
+        reinterpret_cast<cuFloatComplex *>(Y), incY));
+  }
+
   static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
                                  cublasOperation_t transa,
                                  cublasOperation_t transb, int m, int n, int k,
-                                 const complex64 *alpha, const complex64 *A,
-                                 int lda, long long int strideA,  // NOLINT
-                                 const complex64 *B,              // NOLINT
-                                 int ldb, long long int strideB,  // NOLINT
-                                 const complex64 *beta, complex64 *C, int ldc,
+                                 const platform::complex<float> *alpha,
+                                 const platform::complex<float> *A, int lda,
+                                 long long int strideA,              // NOLINT
+                                 const platform::complex<float> *B,  // NOLINT
+                                 int ldb, long long int strideB,     // NOLINT
+                                 const platform::complex<float> *beta,
+                                 platform::complex<float> *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCgemmStridedBatched(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasCgemmStridedBatched(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const cuFloatComplex *>(alpha),
         reinterpret_cast<const cuFloatComplex *>(A), lda, strideA,
@@ -301,16 +329,31 @@ struct CUBlas<platform::complex64> {
 
   static void GEMM(cublasHandle_t handle, cublasOperation_t transa,
                    cublasOperation_t transb, int m, int n, int k,
-                   const complex64 *alpha, const complex64 *A, int lda,
-                   const complex64 *B, int ldb, const complex64 *beta,
-                   complex64 *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCgemm(
+                   const platform::complex<float> *alpha,
+                   const platform::complex<float> *A, int lda,
+                   const platform::complex<float> *B, int ldb,
+                   const platform::complex<float> *beta,
+                   platform::complex<float> *C, int ldc) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasCgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const cuFloatComplex *>(alpha),
         reinterpret_cast<const cuFloatComplex *>(A), lda,
         reinterpret_cast<const cuFloatComplex *>(B), ldb,
         reinterpret_cast<const cuFloatComplex *>(beta),
         reinterpret_cast<cuFloatComplex *>(C), ldc));
+  }
+
+  static void TRSM(cublasHandle_t handle, cublasSideMode_t side,
+                   cublasFillMode_t uplo, cublasOperation_t transa,
+                   cublasDiagType_t diag, int m, int n,
+                   const paddle::platform::complex<float> *alpha,
+                   const paddle::platform::complex<float> *A, int lda,
+                   paddle::platform::complex<float> *B, int ldb) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasCtrsm(
+        handle, side, uplo, transa, diag, m, n,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A), lda,
+        reinterpret_cast<cuFloatComplex *>(B), ldb));
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -335,7 +378,7 @@ struct CUBlas<platform::complex64> {
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, computeType, algo));
     });
@@ -344,17 +387,31 @@ struct CUBlas<platform::complex64> {
         "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
   }
+
+  static void TRSM_BATCH(cublasHandle_t handle, cublasSideMode_t side,
+                         cublasFillMode_t uplo, cublasOperation_t transa,
+                         cublasDiagType_t diag, int m, int n,
+                         const paddle::platform::complex<float> *alpha,
+                         const paddle::platform::complex<float> **A, int lda,
+                         paddle::platform::complex<float> **B, int ldb,
+                         int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasCtrsmBatched(
+        handle, side, uplo, transa, diag, m, n,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex **>(A), lda,
+        reinterpret_cast<cuFloatComplex **>(B), ldb, batch_size));
+  }
 };
 
 template <>
-struct CUBlas<platform::complex128> {
-  using complex128 = platform::complex128;
-
+struct CUBlas<platform::complex<double>> {
   static void GEMV(cublasHandle_t handle, cublasOperation_t transa, int m,
-                   int n, const complex128 *alpha, const complex128 *A, int lda,
-                   const complex128 *B, int ldb, const complex128 *beta,
-                   complex128 *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZgemv(
+                   int n, const platform::complex<double> *alpha,
+                   const platform::complex<double> *A, int lda,
+                   const platform::complex<double> *B, int ldb,
+                   const platform::complex<double> *beta,
+                   platform::complex<double> *C, int ldc) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasZgemv(
         handle, transa, m, n, reinterpret_cast<const cuDoubleComplex *>(alpha),
         reinterpret_cast<const cuDoubleComplex *>(A), lda,
         reinterpret_cast<const cuDoubleComplex *>(B), ldb,
@@ -362,18 +419,30 @@ struct CUBlas<platform::complex128> {
         reinterpret_cast<cuDoubleComplex *>(C), ldc));
   }
 
+  static void AXPY(cublasHandle_t handle, int n,
+                   const platform::complex<double> *alpha,
+                   const platform::complex<double> *X, const int incX,
+                   platform::complex<double> *Y, const int incY) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasZaxpy(
+        handle, n, reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(X), incX,
+        reinterpret_cast<cuDoubleComplex *>(Y), incY));
+  }
+
   static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
                                  cublasOperation_t transa,
                                  cublasOperation_t transb, int m, int n, int k,
-                                 const complex128 *alpha, const complex128 *A,
-                                 int lda, long long int strideA,  // NOLINT
-                                 const complex128 *B,             // NOLINT
-                                 int ldb, long long int strideB,  // NOLINT
-                                 const complex128 *beta, complex128 *C, int ldc,
+                                 const platform::complex<double> *alpha,
+                                 const platform::complex<double> *A, int lda,
+                                 long long int strideA,               // NOLINT
+                                 const platform::complex<double> *B,  // NOLINT
+                                 int ldb, long long int strideB,      // NOLINT
+                                 const platform::complex<double> *beta,
+                                 platform::complex<double> *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZgemmStridedBatched(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasZgemmStridedBatched(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const cuDoubleComplex *>(alpha),
         reinterpret_cast<const cuDoubleComplex *>(A), lda, strideA,
@@ -388,16 +457,45 @@ struct CUBlas<platform::complex128> {
 
   static void GEMM(cublasHandle_t handle, cublasOperation_t transa,
                    cublasOperation_t transb, int m, int n, int k,
-                   const complex128 *alpha, const complex128 *A, int lda,
-                   const complex128 *B, int ldb, const complex128 *beta,
-                   complex128 *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZgemm(
+                   const platform::complex<double> *alpha,
+                   const platform::complex<double> *A, int lda,
+                   const platform::complex<double> *B, int ldb,
+                   const platform::complex<double> *beta,
+                   platform::complex<double> *C, int ldc) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasZgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const cuDoubleComplex *>(alpha),
         reinterpret_cast<const cuDoubleComplex *>(A), lda,
         reinterpret_cast<const cuDoubleComplex *>(B), ldb,
         reinterpret_cast<const cuDoubleComplex *>(beta),
         reinterpret_cast<cuDoubleComplex *>(C), ldc));
+  }
+
+  static void TRSM(cublasHandle_t handle, cublasSideMode_t side,
+                   cublasFillMode_t uplo, cublasOperation_t transa,
+                   cublasDiagType_t diag, int m, int n,
+                   const paddle::platform::complex<double> *alpha,
+                   const paddle::platform::complex<double> *A, int lda,
+                   paddle::platform::complex<double> *B, int ldb) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasZtrsm(
+        handle, side, uplo, transa, diag, m, n,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A), lda,
+        reinterpret_cast<cuDoubleComplex *>(B), ldb));
+  }
+
+  static void TRSM_BATCH(cublasHandle_t handle, cublasSideMode_t side,
+                         cublasFillMode_t uplo, cublasOperation_t transa,
+                         cublasDiagType_t diag, int m, int n,
+                         const paddle::platform::complex<double> *alpha,
+                         const paddle::platform::complex<double> **A, int lda,
+                         paddle::platform::complex<double> **B, int ldb,
+                         int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasZtrsmBatched(
+        handle, side, uplo, transa, diag, m, n,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex **>(A), lda,
+        reinterpret_cast<cuDoubleComplex **>(B), ldb, batch_size));
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -422,7 +520,7 @@ struct CUBlas<platform::complex128> {
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, computeType, algo));
     });
@@ -517,9 +615,9 @@ template <>
 template <>
 inline void Blas<platform::CUDADeviceContext>::GEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    platform::complex64 alpha, const platform::complex64 *A,
-    const platform::complex64 *B, platform::complex64 beta,
-    platform::complex64 *C) const {
+    platform::complex<float> alpha, const platform::complex<float> *A,
+    const platform::complex<float> *B, platform::complex<float> beta,
+    platform::complex<float> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -547,16 +645,16 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  CUBlas<platform::complex64>::GEMM_EX(
+  CUBlas<platform::complex<float>>::GEMM_EX(
       &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B, CUDA_C_32F, ldb, A,
       CUDA_C_32F, lda, &c_beta, C, CUDA_C_32F, N, CUDA_C_32F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
   context_.CublasCall([&](cublasHandle_t handle) {
-    CUBlas<platform::complex64>::GEMM(handle, cuTransB, cuTransA, N, M, K,
-                                      &c_alpha, h_B, ldb, h_A, lda, &c_beta,
-                                      h_C, N);
+    CUBlas<platform::complex<float>>::GEMM(handle, cuTransB, cuTransA, N, M, K,
+                                           &c_alpha, h_B, ldb, h_A, lda,
+                                           &c_beta, h_C, N);
   });
 #endif  // CUDA_VERSION >= 8000
 }
@@ -565,9 +663,9 @@ template <>
 template <>
 inline void Blas<platform::CUDADeviceContext>::GEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    platform::complex128 alpha, const platform::complex128 *A,
-    const platform::complex128 *B, platform::complex128 beta,
-    platform::complex128 *C) const {
+    platform::complex<double> alpha, const platform::complex<double> *A,
+    const platform::complex<double> *B, platform::complex<double> beta,
+    platform::complex<double> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -596,16 +694,16 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  CUBlas<platform::complex128>::GEMM_EX(
+  CUBlas<platform::complex<double>>::GEMM_EX(
       &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B, CUDA_C_64F, ldb, A,
       CUDA_C_64F, lda, &c_beta, C, CUDA_C_64F, N, CUDA_C_64F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
   context_.CublasCall([&](cublasHandle_t handle) {
-    CUBlas<platform::complex128>::GEMM(handle, cuTransB, cuTransA, N, M, K,
-                                       &c_alpha, h_B, ldb, h_A, lda, &c_beta,
-                                       h_C, N);
+    CUBlas<platform::complex<double>>::GEMM(handle, cuTransB, cuTransA, N, M, K,
+                                            &c_alpha, h_B, ldb, h_A, lda,
+                                            &c_beta, h_C, N);
   });
 #endif  // CUDA_VERSION >= 8000
 }
@@ -738,7 +836,7 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
           handle, cuTransB, cuTransA, N, M, K, &alpha, B, fp, ldb, strideB, A,
           fp, lda, strideA, &beta, C, fp, ldc, strideC, batchCount, fp, algo));
     });
@@ -840,6 +938,44 @@ void Blas<platform::CUDADeviceContext>::BatchedMatInv(int n, const T **a,
                                                       int batch_size) const {
   context_.CublasCall([&](cublasHandle_t handle) {
     CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRS(
+    CBLAS_TRANSPOSE trans, int n, int nrhs, const T **a, int lda, int *ipiv,
+    T **b, int ldb, int *info, int batch_size) const {
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  cublasOperation_t cuTrans =
+      (trans == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRS_BATCH(handle, cuTrans, n, nrhs, a, lda, ipiv, b, ldb, info,
+                           batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedTRSM(
+    CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA, CBLAS_DIAG diag,
+    int M, int N, T alpha, const T **A, int lda, T **B, int ldb,
+    int batch_size) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  cublasSideMode_t cuSide =
+      (side == CblasLeft) ? CUBLAS_SIDE_RIGHT : CUBLAS_SIDE_LEFT;
+  cublasFillMode_t cuUplo =
+      (uplo == CblasLower) ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasDiagType_t cuDiag =
+      (diag == CblasUnit) ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::TRSM_BATCH(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M,
+                          &alpha, A, lda, B, ldb, batch_size);
   });
 }
 

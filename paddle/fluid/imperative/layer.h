@@ -25,17 +25,19 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
+#include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-
+#include "paddle/pten/include/core.h"
 namespace paddle {
 namespace framework {
 class Variable;
@@ -45,8 +47,8 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-class OpBase;
 class GradOpNode;
+class OpBase;
 class VariableWrapper;
 
 class ThreadSafeNameSet {
@@ -107,6 +109,11 @@ class VarBase {
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
 
+  void SetGradVarBase(const VarBase& grad_var) {
+    MutableGradVarBase()->CopyFrom(grad_var, true);
+    MutableGradVarBase()->SharedVar()->SetIsEmpty(false);
+  }
+
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       if (auto grad_var_wrapper = var_->GetGradVar()) {
@@ -137,6 +144,8 @@ class VarBase {
     return grad_var_->MutableVar();
   }
 
+  bool IsLeaf() const { return var_->IsLeaf(); }
+
   void SetOverridedStopGradient(bool stop_gradient) {
     var_->SetOverridedStopGradient(stop_gradient);
     if (grad_var_) {
@@ -146,15 +155,17 @@ class VarBase {
 
   bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
 
-  bool IsLeaf() const { return var_->IsLeaf(); }
-
   void InnerSetOverridedStopGradient(bool stop_gradient) {
-    if (var_->InnerOverridedStopGradient() == -1) {
+    if (InnerOverridedStopGradient() == -1) {
       var_->InnerSetOverridedStopGradient(stop_gradient);
       if (grad_var_) {
         grad_var_->InnerSetOverridedStopGradient(stop_gradient);
       }
     }
+  }
+
+  int InnerOverridedStopGradient() const {
+    return var_->InnerOverridedStopGradient();
   }
 
   void SetPersistable(bool persistable) { var_->SetPersistable(persistable); }
@@ -201,9 +212,22 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  size_t ElementSize() const { return framework::SizeOfType(var_->DataType()); }
+
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    var_->SetForwardDataType(data_type);
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return var_->ForwardDataType();
+  }
+
   const platform::Place Place() const { return var_->Place(); }
 
-  void ClearGradient();
+  void ClearGradient(bool set_to_zero = true);
+
+  void _GradientSetEmpty(bool is_empty = true);
+  bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
@@ -211,6 +235,30 @@ class VarBase {
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
   void BumpInplaceVersion();
+
+  void _CopyGradientFrom(const imperative::VarBase& src);
+
+  /* Hook related method: now only used for GradVarBase */
+  bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
+
+  int64_t AddVariableWrapperHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    return var_->AddVariableWrapperHook(
+        std::forward<std::shared_ptr<VariableWrapperHook>>(hook));
+  }
+
+  bool RemoveVariableWrapperHook(const int64_t& hook_id) {
+    return var_->RemoveVariableWrapperHook(hook_id);
+  }
+
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>&
+  GetVariableWrapperHooks() const {
+    return var_->GetVariableWrapperHooks();
+  }
+
+  void AddVoidHook(std::shared_ptr<std::function<void()>>&& hook) {
+    var_->AddVoidHook(
+        std::forward<std::shared_ptr<std::function<void()>>>(hook));
+  }
 
  private:
   /**
@@ -235,20 +283,13 @@ class VarBase {
   static ThreadSafeNameSet name_set_;
 };
 
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual std::vector<std::shared_ptr<VarBase>> Forward(
-      const std::vector<std::shared_ptr<VarBase>>& inputs) {
-    return {};
-  }
-};
-
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place);
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
+
+void ClearNoNeedBufferInputs(OpBase* op);
 
 }  // namespace imperative
 }  // namespace paddle

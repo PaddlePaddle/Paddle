@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/analysis/passes/adjust_cudnn_workspace_size_pass.h"
 
+#include "paddle/fluid/inference/analysis/argument.h"
+
 namespace paddle {
 namespace inference {
 namespace analysis {

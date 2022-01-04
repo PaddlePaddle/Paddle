@@ -25,25 +25,6 @@ class LayerNormOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("X").size(), 1,
-        platform::errors::InvalidArgument(
-            "input of layer_norm op converter should be 1, got %d",
-            op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(op_desc.Input("Bias").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Bias of layer_norm op converter should be 1, got %d",
-                          op_desc.Input("Bias").size()));  // Bias is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("Scale").size(), 1,
-        platform::errors::InvalidArgument(
-            "Scale of layer_norm op converter should be 1, got %d",
-            op_desc.Input("Scale").size()));  // Scale is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Output("Y").size(), 1,
-        platform::errors::InvalidArgument(
-            "output of layer_norm op converter should be 1, got %d",
-            op_desc.Input("Y").size()));
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
@@ -65,13 +46,6 @@ class LayerNormOpConverter : public OpConverter {
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
 
-    int input_num = 1;
-    for (int i = 0; i < X->getDimensions().nbDims; i++) {
-      input_num *= X->getDimensions().d[i];
-    }
-    std::vector<int64_t> mean_shape{input_num};
-    std::vector<int64_t> variance_shape{input_num};
-
     std::unique_ptr<framework::LoDTensor> bias_tensor(
         new framework::LoDTensor());
     std::unique_ptr<framework::LoDTensor> scale_tensor(
@@ -87,10 +61,33 @@ class LayerNormOpConverter : public OpConverter {
     auto* bias_data = bias_tensor->mutable_data<float>(platform::CPUPlace());
     auto* scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());
 
-    plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
-        bias_data, bias_tensor->numel(), scale_data, scale_tensor->numel(),
-        begin_norm_axis, eps, mean_shape, variance_shape);
-    nvinfer1::IPluginLayer* layernorm_layer = engine_->AddPlugin(&X, 1, plugin);
+    nvinfer1::ILayer* layernorm_layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+      int input_num = 1;
+      for (int i = begin_norm_axis; i < X->getDimensions().nbDims; i++) {
+        input_num *= X->getDimensions().d[i];
+      }
+      std::vector<int64_t> mean_shape{input_num};
+      std::vector<int64_t> variance_shape{input_num};
+      plugin::LayerNormPluginDynamic* plugin =
+          new plugin::LayerNormPluginDynamic(bias_data, bias_tensor->numel(),
+                                             scale_data, scale_tensor->numel(),
+                                             begin_norm_axis, eps, mean_shape,
+                                             variance_shape);
+      layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
+    } else {
+      int input_num = 1;
+      for (int i = begin_norm_axis - 1; i < X->getDimensions().nbDims; i++) {
+        input_num *= X->getDimensions().d[i];
+      }
+      std::vector<int64_t> mean_shape{input_num};
+      std::vector<int64_t> variance_shape{input_num};
+      plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
+          bias_data, bias_tensor->numel(), scale_data, scale_tensor->numel(),
+          begin_norm_axis, eps, mean_shape, variance_shape);
+      layernorm_layer = engine_->AddPlugin(
+          &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
+    }
 
     auto output_name = op_desc.Output("Y").front();
     engine_->SetWeights(op_desc.Input("Bias").front(), std::move(bias_tensor));

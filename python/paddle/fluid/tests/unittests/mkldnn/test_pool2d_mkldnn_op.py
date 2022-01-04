@@ -92,6 +92,15 @@ class TestAvgPoolAdaptive2(TestAvgPoolAdaptive):
         self.shape = [2, 3, 6, 6]
 
 
+class TestAvgPoolAdaptive3(TestAvgPoolAdaptive):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+
+    def init_shape(self):
+        self.shape = [1, 3, 16, 16]
+
+
 class TestAsymPad(TestPool2D_Op):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -112,9 +121,6 @@ class TestAsymPad(TestPool2D_Op):
 
     def init_kernel_type(self):
         self.use_mkldnn = True
-
-    def init_global_pool(self):
-        self.global_pool = False
 
     def init_data_type(self):
         self.dtype = np.float32

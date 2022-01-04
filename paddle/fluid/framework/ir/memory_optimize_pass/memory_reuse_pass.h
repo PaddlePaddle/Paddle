@@ -31,6 +31,7 @@
 namespace paddle {
 namespace framework {
 class VarDesc;
+
 namespace details {
 class ComputationOpHandle;
 class ShareTensorBufferOpHandle;
@@ -111,6 +112,8 @@ class MemoryReusePass : public Pass {
   virtual void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
                                      details::VarHandle *in_var,
                                      details::VarHandle *out_var) const;
+
+  bool SupportApplyProgramViaGraph() const override { return false; }
 
  private:
   VarDesc *GetVarDesc(const details::VarHandle &var) const;

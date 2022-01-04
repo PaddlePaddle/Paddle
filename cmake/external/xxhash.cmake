@@ -21,10 +21,7 @@ set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 set(XXHASH_REPOSITORY  ${GIT_URL}/Cyan4973/xxHash.git)
 set(XXHASH_TAG         v0.6.5)
 
-cache_third_party(extern_xxhash
-    REPOSITORY    ${XXHASH_REPOSITORY}
-    TAG           ${XXHASH_TAG}
-    DIR           XXHASH_SOURCE_DIR)
+INCLUDE_DIRECTORIES(${XXHASH_INCLUDE_DIR})
 
 IF(APPLE)
   SET(BUILD_CMD sed -i \"\" "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
@@ -32,14 +29,24 @@ ELSEIF(UNIX)
   SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
 ENDIF()
 
+if (WIN32)
+  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
+  set(XXHASH_CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4710 /wd4711")
+  set(XXHASH_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4710 /wd4711")
+else()
+  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
+  set(XXHASH_CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  set(XXHASH_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+endif ()
+
 if(WIN32)
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
-      "${XXHASH_DOWNLOAD_CMD}"
+      GIT_REPOSITORY   ${XXHASH_REPOSITORY}
+      GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND   ""
       PATCH_COMMAND    ""
       CONFIGURE_COMMAND
@@ -52,31 +59,32 @@ if(WIN32)
                       -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
                       -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
                       -DBUILD_SHARED_LIBS=OFF
+                      -DCMAKE_CXX_FLAGS=${XXHASH_CMAKE_CXX_FLAGS}
+                      -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                      -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                      -DCMAKE_C_FLAGS=${XXHASH_CMAKE_C_FLAGS}
+                      -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                      -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                       ${OPTIONAL_CACHE_ARGS}
       TEST_COMMAND      ""
+      BUILD_BYPRODUCTS ${XXHASH_LIBRARIES}
   )
 else()
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      "${XXHASH_DOWNLOAD_CMD}"
+      GIT_REPOSITORY   ${XXHASH_REPOSITORY}
+      GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND    ""
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE   1
       BUILD_COMMAND     ${BUILD_CMD}
       INSTALL_COMMAND   make PREFIX=${XXHASH_INSTALL_DIR} install
       TEST_COMMAND      ""
+      BUILD_BYPRODUCTS  ${XXHASH_LIBRARIES}
   )
 endif()
-
-if (WIN32)
-  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
-else()
-  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
-endif ()
-INCLUDE_DIRECTORIES(${XXHASH_INCLUDE_DIR})
 
 add_library(xxhash STATIC IMPORTED GLOBAL)
 set_property(TARGET xxhash PROPERTY IMPORTED_LOCATION ${XXHASH_LIBRARIES})

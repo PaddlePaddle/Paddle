@@ -17,8 +17,6 @@
 #include <string>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -26,10 +24,10 @@ namespace ir {
 /*
  * Fuse Reshape->Transpose->MatMul when MatMul uses mkldnn.
  */
-class Graph;
 
 class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
  public:
+  ReshapeTransposeMatmulMkldnnFusePass();
   virtual ~ReshapeTransposeMatmulMkldnnFusePass() {}
 
  protected:
@@ -38,6 +36,7 @@ class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
 
   void Fuse(Graph* graph, bool with_reshape_xshape,
             bool with_transpose_xshape) const;
+  std::string op_name_;
 };
 }  // namespace ir
 }  // namespace framework

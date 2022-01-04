@@ -324,6 +324,7 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         bs = len(data)
         dy_x_data = np.array([x[0].reshape(3, 224, 224)
                               for x in data]).astype('float32')
+        dy_x_data = dy_x_data / 255.0
         y_data = np.array([x[1] for x in data]).astype('int64').reshape(bs, 1)
         img = to_variable(dy_x_data)
         label = to_variable(y_data)

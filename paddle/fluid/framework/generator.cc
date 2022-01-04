@@ -15,23 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
-
-#include <deque>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   static int64_t num_cuda_devices = -1;
   static std::once_flag num_devices_init_flag;
@@ -39,7 +33,7 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
   static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
 
   std::call_once(num_devices_init_flag, []() {
-    num_cuda_devices = paddle::platform::GetCUDADeviceCount();
+    num_cuda_devices = paddle::platform::GetGPUDeviceCount();
     cuda_device_flags.resize(num_cuda_devices);
     default_cuda_generators.resize(num_cuda_devices);
   });
@@ -67,6 +61,43 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
           << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
   return default_cpu_generator;
+}
+
+using RNGMap = std::unordered_map<std::string, std::shared_ptr<Generator>>;
+
+static RNGMap& GetRandomSeedGeneratorMap() {
+  static auto random_seed_generator_map = RNGMap();
+  return random_seed_generator_map;
+}
+
+const std::shared_ptr<Generator>& SetRandomSeedGenerator(
+    const std::string& name, uint64_t seed) {
+  auto& rng_map = GetRandomSeedGeneratorMap();
+  auto iter = rng_map.find(name);
+  PADDLE_ENFORCE_EQ(iter == rng_map.end(), true,
+                    platform::errors::AlreadyExists(
+                        "%s RandomSeedGenerator is already exist", name));
+
+  auto generator = std::make_shared<Generator>(seed);
+  bool emplace_success = rng_map.emplace(name, generator).second;
+  PADDLE_ENFORCE_EQ(
+      emplace_success, true,
+      platform::errors::PermissionDenied(
+          "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
+          name));
+  return rng_map[name];
+}
+
+const std::shared_ptr<Generator>& GetRandomSeedGenerator(
+    const std::string& name) {
+  auto& rng_map = GetRandomSeedGeneratorMap();
+  auto iter = rng_map.find(name);
+  PADDLE_ENFORCE_EQ(iter != rng_map.end(), true,
+                    platform::errors::NotFound(
+                        "%s RandomSeedGenerator is not found, please "
+                        "use `set_random_seed_generator` to set rng first",
+                        name));
+  return iter->second;
 }
 
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
@@ -162,18 +193,15 @@ uint64_t Generator::Random64() {
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
     uint64_t increament_offset) {
-  uint64_t cur_offset = this->state_.thread_offset;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::lock_guard<std::mutex> lock(this->mu_);
-
+  uint64_t cur_offset = this->state_.thread_offset;
   this->state_.thread_offset += increament_offset;
-
+  return std::make_pair(this->state_.current_seed, cur_offset);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Increment Offset only support in CUDA place"));
 #endif
-  return std::make_pair(static_cast<int>(this->state_.current_seed),
-                        cur_offset);
 }
 
 void Generator::SetIsInitPy(bool is_init_py) {

@@ -116,11 +116,14 @@ void testVol2col() {
   for (int i = 0; i < 12; ++i) {
     EXPECT_EQ(in_ptr[i], col_2_vol[i]);
   }
+
+  delete place;
+  delete context;
 }
 
 TEST(math, vol2col) {
   testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   testVol2col<paddle::platform::CUDADeviceContext,
               paddle::platform::CUDAPlace>();
 #endif  // PADDLE_WITH_CUDA

@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.framework import core
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 def gather_numpy(x, index, axis):
@@ -182,6 +183,7 @@ class TestGatherOp4(TestGatherOp1):
         self.index_type = "int64"
         self.axis = [0]
         self.axis_type = "int32"
+        self.attrs = {'overwrite': False}
 
 
 class API_TestGather(unittest.TestCase):
@@ -246,6 +248,47 @@ class API_TestDygraphGather(unittest.TestCase):
         self.assertTrue(np.allclose(output_np, expected_output))
         paddle.enable_static()
 
+    def test_zero_index(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[1, 2], [3, 4]])
+        index = paddle.to_tensor(np.array([]).astype('int64'))
+        for axis in range(len(x.shape)):
+            out = paddle.gather(x, index, axis)
+            expected_shape = list(x.shape)
+            expected_shape[axis] = 0
+            self.assertEqual(list(out.shape), expected_shape)
+        paddle.enable_static()
+
+    def test_large_data(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(226862, 256).astype("float32")
+        index = np.random.randint(0, 22682, size=(11859027))
+
+        def test_dygraph():
+            with fluid.dygraph.guard():
+                gpu_out = paddle.gather(
+                    paddle.to_tensor(x), paddle.to_tensor(index))
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape)
+                out_t = paddle.gather(x_t, index_t)
+                feed = {x_t.name: x, index_t.name: index}
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+
 
 class TestGathertError(unittest.TestCase):
     def test_error1(self):
@@ -274,10 +317,10 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype)
 
-            def test_axis_dtype():
+            def test_axis_dtype1():
                 paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+            self.assertRaises(TypeError, test_axis_dtype1)
 
     def test_error2(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -308,4 +351,5 @@ class TestCheckOutType(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

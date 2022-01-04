@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 

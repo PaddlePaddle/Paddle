@@ -15,32 +15,24 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
+#include <cmath>
+#include <iostream>
 #include <limits>
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
+
 #ifdef PADDLE_WITH_HIP
-#define CUDA_VERSION 10000
 #include <hip/hip_runtime.h>
 #endif
-
-#ifdef __GNUC__
-#define PADDLE_GNUC_VER (__GNUC__ * 10 + __GNUC_MINOR__)
-#else
-#define PADDLE_GNUC_VER 0
-#endif  // __GNUC__
-
-#ifdef __clang__
-#define PADDLE_CLANG_VER (__clang_major__ * 10 + __clang_minor__)
-#else
-#define PADDLE_CLANG_VER 0
-#endif  // __clang__
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 7050
 #define PADDLE_CUDA_FP16
 #include <cuda_fp16.h>
 #endif
+
 #ifdef __HIPCC__
 #define PADDLE_CUDA_FP16
 #include <hip/hip_fp16.h>
@@ -54,17 +46,15 @@ limitations under the License. */
 
 #define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
 
-namespace paddle {
-namespace platform {
-
-// Forward declare float16 for eigen.h
-struct float16;
-
-}  // namespace platform
-}  // namespace paddle
-
-#include "paddle/fluid/platform/hostdevice.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
 
 namespace paddle {
 namespace platform {
@@ -72,7 +62,7 @@ namespace platform {
 // Use PADDLE_ALIGNED(2) to ensure that each float16 will be allocated
 // and aligned at least on a 2-byte boundary, which leads to efficient
 // memory access of float16 struct and also makes float16 compatible
-// with CUDA half, ARM float16_t, and Eigen::half data types.
+// with CUDA half, ARM float16_t data types.
 struct PADDLE_ALIGN(2) float16 {
  public:
   uint16_t x;
@@ -89,8 +79,8 @@ struct PADDLE_ALIGN(2) float16 {
 // Constructors
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit float16(const half& h) {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
-#if CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else
     x = h.x;
@@ -98,8 +88,6 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
   }
 #endif  // PADDLE_CUDA_FP16
-
-  HOSTDEVICE inline explicit float16(const Eigen::half& h) : x(h.x) {}
 
 #ifdef PADDLE_WITH_NATIVE_FP16
   // __fp16 is a native half precision data type for arm cpu,
@@ -110,9 +98,8 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
 
   HOSTDEVICE inline explicit float16(float val) {
-#if ((defined(PADDLE_CUDA_FP16)) &&                       \
-     ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300) || \
-      (defined(__HIP_DEVICE_COMPILE__))))
+#if defined(PADDLE_CUDA_FP16) && \
+    (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
     half tmp = __float2half(val);
     x = *reinterpret_cast<uint16_t*>(&tmp);
 
@@ -154,7 +141,7 @@ struct PADDLE_ALIGN(2) float16 {
 // Assignment operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline float16& operator=(const half& rhs) {
-#if CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&rhs))->x;
 #else
     x = rhs.x;
@@ -162,11 +149,6 @@ struct PADDLE_ALIGN(2) float16 {
     return *this;
   }
 #endif
-
-  HOSTDEVICE inline float16& operator=(const Eigen::half& rhs) {
-    x = rhs.x;
-    return *this;
-  }
 
 #ifdef PADDLE_WITH_NATIVE_FP16
   HOSTDEVICE inline float16& operator=(const float16_t& rhs) {
@@ -232,8 +214,8 @@ struct PADDLE_ALIGN(2) float16 {
 
 // Conversion opertors
 #ifdef PADDLE_CUDA_FP16
-  HOSTDEVICE inline explicit operator half() const {
-#if CUDA_VERSION >= 9000
+  HOSTDEVICE inline half to_half() const {
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
     __half_raw h;
     h.x = x;
     return half(h);
@@ -245,22 +227,15 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // PADDLE_CUDA_FP16
 
-  HOSTDEVICE inline explicit operator Eigen::half() const {
-    Eigen::half h;
-    h.x = x;
-    return h;
-  }
-
 #ifdef PADDLE_WITH_NATIVE_FP16
   HOSTDEVICE inline explicit operator float16_t() const {
     return *reinterpret_cast<const float16_t*>(this);
   }
 #endif
 
-  HOSTDEVICE inline explicit operator float() const {
-#if (defined(PADDLE_CUDA_FP16) &&                         \
-     ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300) || \
-      (defined(__HIP_DEVICE_COMPILE__))))
+  HOSTDEVICE inline operator float() const {
+#if defined(PADDLE_CUDA_FP16) && \
+    (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
     half tmp = *reinterpret_cast<const half*>(this);
     return __half2float(tmp);
 
@@ -327,7 +302,7 @@ struct PADDLE_ALIGN(2) float16 {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
 
-  HOSTDEVICE inline explicit operator double() const {
+  HOSTDEVICE inline operator double() const {
     return static_cast<double>(static_cast<float>(*this));
   }
 
@@ -367,60 +342,57 @@ struct PADDLE_ALIGN(2) float16 {
 // CUDA 7.5 and 8.0 do not. The arithmetic operators defined here are
 // for users to write similar CUDA code in CUDA 7.5 and 8.0 as in
 // CUDA 9.0 regarding the half data type.
-// xuan[TODO] change for rocm
-#if defined(PADDLE_CUDA_FP16) && CUDA_VERSION < 9000
+// ROCM has built-in arithmetic operators as not defined
+// __HIP_NO_HALF_OPERATORS__
+#if defined(PADDLE_CUDA_FP16) && !defined(__HIPCC__) && CUDA_VERSION < 9000
 DEVICE inline half operator+(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hadd(a, b);
 #else
   float res = static_cast<float>(float16(a)) + static_cast<float>(float16(b));
-  return half(float16(res));
+  return float16(res).to_half();
 #endif
 }
 
 DEVICE inline half operator-(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hsub(a, b);
 #else
   float res = static_cast<float>(float16(a)) - static_cast<float>(float16(b));
-  return half(float16(res));
+  return float16(res).to_half();
 #endif
 }
 
 DEVICE inline half operator*(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hmul(a, b);
 #else
   float res = static_cast<float>(float16(a)) * static_cast<float>(float16(b));
-  return half(float16(res));
+  return float16(res).to_half();
 #endif
 }
 
 DEVICE inline half operator/(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   float num = __half2float(a);
   float denom = __half2float(b);
   return __float2half(num / denom);
 #else
   float res = static_cast<float>(float16(a)) / static_cast<float>(float16(b));
-  return half(float16(res));
+  return float16(res).to_half();
 #endif
 }
 
 DEVICE inline half operator-(const half& a) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hneg(a);
 #else
   float res = -static_cast<float>(float16(a));
-  return half(float16(res));
+  return float16(res).to_half();
 #endif
 }
 
+#ifndef PADDLE_WITH_HIP  // not defined __HIP_NO_HALF_OPERATORS__
 DEVICE inline half& operator+=(half& a, const half& b) {  // NOLINT
   a = a + b;
   return a;
@@ -440,10 +412,10 @@ DEVICE inline half& operator/=(half& a, const half& b) {  // NOLINT
   a = a / b;
   return a;
 }
+#endif
 
 DEVICE inline bool operator==(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __heq(a, b);
 #else
   return static_cast<float>(float16(a)) == static_cast<float>(float16(b));
@@ -451,8 +423,7 @@ DEVICE inline bool operator==(const half& a, const half& b) {
 }
 
 DEVICE inline bool operator!=(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hne(a, b);
 #else
   return static_cast<float>(float16(a)) != static_cast<float>(float16(b));
@@ -460,8 +431,7 @@ DEVICE inline bool operator!=(const half& a, const half& b) {
 }
 
 DEVICE inline bool operator<(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hlt(a, b);
 #else
   return static_cast<float>(float16(a)) < static_cast<float>(float16(b));
@@ -469,8 +439,7 @@ DEVICE inline bool operator<(const half& a, const half& b) {
 }
 
 DEVICE inline bool operator<=(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hle(a, b);
 #else
   return static_cast<float>(float16(a)) <= static_cast<float>(float16(b));
@@ -478,8 +447,7 @@ DEVICE inline bool operator<=(const half& a, const half& b) {
 }
 
 DEVICE inline bool operator>(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hgt(a, b);
 #else
   return static_cast<float>(float16(a)) > static_cast<float>(float16(b));
@@ -487,8 +455,7 @@ DEVICE inline bool operator>(const half& a, const half& b) {
 }
 
 DEVICE inline bool operator>=(const half& a, const half& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hge(a, b);
 #else
   return static_cast<float>(float16(a)) >= static_cast<float>(float16(b));
@@ -499,55 +466,99 @@ DEVICE inline bool operator>=(const half& a, const half& b) {
 
 // Arithmetic operators for float16 on GPU
 #if defined(PADDLE_CUDA_FP16)
+// HIPCC has compile error if call __device__ function __hadd, __hsub, etc.
+// in __host__ __device__ function
+#if defined(__HIPCC__)
+DEVICE inline float16 operator+(const float16& a, const float16& b) {
+  return float16(__hadd(a.to_half(), b.to_half()));
+}
+HOST inline float16 operator+(const float16& a, const float16& b) {
+  return float16(static_cast<float>(a) + static_cast<float>(b));
+}
+#else
 HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return float16(__hadd(half(a), half(b)));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hadd(a.to_half(), b.to_half()));
 #else
   return float16(static_cast<float>(a) + static_cast<float>(b));
 #endif
 }
+#endif
 
+#if defined(__HIPCC__)
+DEVICE inline float16 operator-(const float16& a, const float16& b) {
+  return float16(__hsub(a.to_half(), b.to_half()));
+}
+HOST inline float16 operator-(const float16& a, const float16& b) {
+  return float16(static_cast<float>(a) - static_cast<float>(b));
+}
+#else
 HOSTDEVICE inline float16 operator-(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return float16(__hsub(half(a), half(b)));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hsub(a.to_half(), b.to_half()));
 #else
   return float16(static_cast<float>(a) - static_cast<float>(b));
 #endif
 }
+#endif
 
+#if defined(__HIPCC__)
+DEVICE inline float16 operator*(const float16& a, const float16& b) {
+  return float16(__hmul(a.to_half(), b.to_half()));
+}
+HOST inline float16 operator*(const float16& a, const float16& b) {
+  return float16(static_cast<float>(a) * static_cast<float>(b));
+}
+#else
 HOSTDEVICE inline float16 operator*(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return float16(__hmul(half(a), half(b)));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hmul(a.to_half(), b.to_half()));
 #else
   return float16(static_cast<float>(a) * static_cast<float>(b));
 #endif
 }
+#endif
 
+#if defined(__HIPCC__)
+DEVICE inline float16 operator/(const float16& a, const float16& b) {
+  return float16(__hdiv(a.to_half(), b.to_half()));
+}
+HOST inline float16 operator/(const float16& a, const float16& b) {
+  return float16(static_cast<float>(a) / static_cast<float>(b));
+}
+#else
 HOSTDEVICE inline float16 operator/(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   // TODO(kexinzhao): check which cuda version starts to support __hdiv
-  float num = __half2float(half(a));
-  float denom = __half2float(half(b));
+  float num = __half2float(a.to_half());
+  float denom = __half2float(b.to_half());
   return float16(num / denom);
 #else
   return float16(static_cast<float>(a) / static_cast<float>(b));
 #endif
 }
+#endif
 
+#if defined(__HIPCC__)
+DEVICE inline float16 operator-(const float16& a) {
+  return float16(__hneg(a.to_half()));
+}
+HOST inline float16 operator-(const float16& a) {
+  float16 res;
+  res.x = a.x ^ 0x8000;
+  return res;
+}
+#else
 HOSTDEVICE inline float16 operator-(const float16& a) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return float16(__hneg(half(a)));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hneg(a.to_half()));
 #else
   float16 res;
   res.x = a.x ^ 0x8000;
   return res;
 #endif
 }
+#endif
 
 HOSTDEVICE inline float16& operator+=(float16& a, const float16& b) {  // NOLINT
   a = a + b;
@@ -569,59 +580,109 @@ HOSTDEVICE inline float16& operator/=(float16& a, const float16& b) {  // NOLINT
   return a;
 }
 
+// HIPCC has compile error if call __device__ function __heq, __hne, etc.
+// in __host__ __device__ function
+#if defined(__HIPCC__)
+DEVICE inline bool operator==(const float16& a, const float16& b) {
+  return __heq(a.to_half(), b.to_half());
+}
+HOST inline bool operator==(const float16& a, const float16& b) {
+  return static_cast<float>(a) == static_cast<float>(b);
+}
+#else  // __HIPCC__
 HOSTDEVICE inline bool operator==(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return __heq(half(a), half(b));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __heq(a.to_half(), b.to_half());
 #else
   return static_cast<float>(a) == static_cast<float>(b);
 #endif
 }
+#endif  // __HIPCC__
 
+#if defined(__HIPCC__)
+DEVICE inline bool operator!=(const float16& a, const float16& b) {
+  return __hne(a.to_half(), b.to_half());
+}
+HOST inline bool operator!=(const float16& a, const float16& b) {
+  return static_cast<float>(a) != static_cast<float>(b);
+}
+#else  // __HIPCC__
 HOSTDEVICE inline bool operator!=(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return __hne(half(a), half(b));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hne(a.to_half(), b.to_half());
 #else
   return static_cast<float>(a) != static_cast<float>(b);
 #endif
 }
+#endif  // __HIPCC__
 
+#if defined(__HIPCC__)
+DEVICE inline bool operator<(const float16& a, const float16& b) {
+  return __hlt(a.to_half(), b.to_half());
+}
+HOST inline bool operator<(const float16& a, const float16& b) {
+  return static_cast<float>(a) < static_cast<float>(b);
+}
+#else  // __HIPCC__
 HOSTDEVICE inline bool operator<(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return __hlt(half(a), half(b));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hlt(a.to_half(), b.to_half());
 #else
   return static_cast<float>(a) < static_cast<float>(b);
 #endif
 }
+#endif  // __HIPCC__
 
+#if defined(__HIPCC__)
+DEVICE inline bool operator<=(const float16& a, const float16& b) {
+  return __hle(a.to_half(), b.to_half());
+}
+HOST inline bool operator<=(const float16& a, const float16& b) {
+  return static_cast<float>(a) <= static_cast<float>(b);
+}
+#else  // __HIPCC__
 HOSTDEVICE inline bool operator<=(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return __hle(half(a), half(b));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hle(a.to_half(), b.to_half());
 #else
   return static_cast<float>(a) <= static_cast<float>(b);
 #endif
 }
+#endif  // __HIPCC__
 
+#if defined(__HIPCC__)
+DEVICE inline bool operator>(const float16& a, const float16& b) {
+  return __hgt(a.to_half(), b.to_half());
+}
+HOST inline bool operator>(const float16& a, const float16& b) {
+  return static_cast<float>(a) > static_cast<float>(b);
+}
+#else  // __HIPCC__
 HOSTDEVICE inline bool operator>(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return __hgt(half(a), half(b));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hgt(a.to_half(), b.to_half());
 #else
   return static_cast<float>(a) > static_cast<float>(b);
 #endif
 }
+#endif  // __HIPCC__
 
+#if defined(__HIPCC__)
+DEVICE inline bool operator>=(const float16& a, const float16& b) {
+  return __hge(a.to_half(), b.to_half());
+}
+HOST inline bool operator>=(const float16& a, const float16& b) {
+  return static_cast<float>(a) >= static_cast<float>(b);
+}
+#else  // __HIPCC__
 HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
-#if ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-     (defined(__HIP_DEVICE_COMPILE__)))
-  return __hge(half(a), half(b));
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hge(a.to_half(), b.to_half());
 #else
   return static_cast<float>(a) >= static_cast<float>(b);
 #endif
 }
+#endif  // __HIPCC__
 
 // Arithmetic operators for float16 on ARMv8.2-A CPU
 #elif defined(PADDLE_WITH_NATIVE_FP16)
@@ -881,15 +942,20 @@ HOSTDEVICE inline float16 raw_uint16_to_float16(uint16_t a) {
   return res;
 }
 
+// HIPCC has compile error if call __device__ function __hisnan in __host__
+// __device__ function
+#if defined(PADDLE_CUDA_FP16) && defined(__HIPCC__)
+DEVICE inline bool(isnan)(const float16& a) { return __hisnan(a.to_half()); }
+HOST inline bool(isnan)(const float16& a) { return (a.x & 0x7fff) > 0x7c00; }
+#else
 HOSTDEVICE inline bool(isnan)(const float16& a) {
-#if (defined(PADDLE_CUDA_FP16) &&                         \
-     ((defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530) || \
-      (defined(__HIP_DEVICE_COMPILE__))))
-  return __hisnan(half(a));
+#if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hisnan(a.to_half());
 #else
   return (a.x & 0x7fff) > 0x7c00;
 #endif
 }
+#endif
 
 HOSTDEVICE inline bool(isinf)(const float16& a) {
   return (a.x & 0x7fff) == 0x7c00;
@@ -897,6 +963,15 @@ HOSTDEVICE inline bool(isinf)(const float16& a) {
 
 HOSTDEVICE inline bool(isfinite)(const float16& a) {
   return !((isnan)(a)) && !((isinf)(a));
+}
+
+HOSTDEVICE inline float16(abs)(const float16& a) {
+#if defined(PADDLE_CUDA_FP16) && \
+    (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530))
+  return float16(::fabs(static_cast<float>(a)));
+#else
+  return float16(std::abs(static_cast<float>(a)));
+#endif
 }
 
 inline std::ostream& operator<<(std::ostream& os, const float16& a) {
@@ -1003,106 +1078,9 @@ struct numeric_limits<paddle::platform::float16> {
   }
 };
 
+HOSTDEVICE inline paddle::platform::float16 abs(
+    const paddle::platform::float16& a) {
+  return paddle::platform::abs(a);
+}
+
 }  // namespace std
-
-namespace Eigen {
-
-using float16 = paddle::platform::float16;
-
-template <>
-struct NumTraits<float16> : GenericNumTraits<float16> {
-  enum {
-    IsSigned = true,
-    IsInteger = false,
-    IsComplex = false,
-    RequireInitialization = false
-  };
-
-  HOSTDEVICE static inline float16 epsilon() {
-    return paddle::platform::raw_uint16_to_float16(0x0800);
-  }
-  HOSTDEVICE static inline float16 dummy_precision() { return float16(1e-2f); }
-  HOSTDEVICE static inline float16 highest() {
-    return paddle::platform::raw_uint16_to_float16(0x7bff);
-  }
-  HOSTDEVICE static inline float16 lowest() {
-    return paddle::platform::raw_uint16_to_float16(0xfbff);
-  }
-  HOSTDEVICE static inline float16 infinity() {
-    return paddle::platform::raw_uint16_to_float16(0x7c00);
-  }
-  HOSTDEVICE static inline float16 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_float16(0x7c01);
-  }
-};
-
-namespace numext {
-
-template <>
-HOSTDEVICE inline bool(isnan)(const float16& a) {
-  return (paddle::platform::isnan)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isinf)(const float16& a) {
-  return (paddle::platform::isinf)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isfinite)(const float16& a) {
-  return (paddle::platform::isfinite)(a);
-}
-
-template <>
-HOSTDEVICE inline float16 exp(const float16& a) {
-  return float16(::expf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 erf(const float16& a) {
-  return float16(::erff(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 log(const float16& a) {
-  return float16(::logf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 tanh(const float16& a) {
-  return float16(::tanhf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 sqrt(const float16& a) {
-  return float16(::sqrtf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 ceil(const float16& a) {
-  return float16(::ceilf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 floor(const float16& a) {
-  return float16(::floorf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 round(const float16& a) {
-  return float16(::roundf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline float16 pow(const float16& a, const float16& b) {
-  return float16(::powf(static_cast<float>(a), static_cast<float>(b)));
-}
-
-template <>
-HOSTDEVICE inline float16 abs(const float16& a) {
-  return float16(::fabs(static_cast<float>(a)));
-}
-
-}  // namespace numext
-
-}  // namespace Eigen

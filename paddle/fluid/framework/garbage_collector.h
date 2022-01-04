@@ -22,6 +22,9 @@
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -47,6 +50,10 @@ class GarbageCollector {
 
   template <typename Container, typename Callback>
   void Add(Container &&objs, Callback &&callback);
+
+  void DirectClearCallback(const std::function<void()> &callback) {
+    ClearCallback(callback);
+  }
 
  protected:
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
@@ -76,7 +83,17 @@ class XPUGarbageCollector : public GarbageCollector {
 };
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_IPU
+class IPUGarbageCollector : public GarbageCollector {
+ public:
+  IPUGarbageCollector(const platform::IPUPlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class UnsafeFastGPUGarbageCollector : public GarbageCollector {
  public:
   UnsafeFastGPUGarbageCollector(const platform::CUDAPlace &place,
@@ -106,14 +123,86 @@ class StreamGarbageCollector : public GarbageCollector {
 
   void Wait() const override;
 
-  cudaStream_t stream() const;
+  gpuStream_t stream() const;
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
 
  private:
-  cudaStream_t stream_;
-  std::unique_ptr<platform::StreamCallbackManager> callback_manager_;
+  gpuStream_t stream_;
+  std::unique_ptr<platform::StreamCallbackManager<gpuStream_t>>
+      callback_manager_;
+};
+
+class CUDAPinnedGarbageCollector : public GarbageCollector {
+ public:
+  CUDAPinnedGarbageCollector(const platform::CUDAPinnedPlace &place,
+                             size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+class NPUDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  NPUDefaultStreamGarbageCollector(const platform::NPUPlace &place,
+                                   size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class NPUUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  NPUUnsafeFastGarbageCollector(const platform::NPUPlace &place,
+                                size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+class MLUDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  MLUDefaultStreamGarbageCollector(const platform::MLUPlace &place,
+                                   size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class MLUUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  MLUUnsafeFastGarbageCollector(const platform::MLUPlace &place,
+                                size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+class MLUStreamGarbageCollector : public GarbageCollector {
+ public:
+  MLUStreamGarbageCollector(const platform::MLUPlace &place,
+                            size_t max_memory_size);
+
+  ~MLUStreamGarbageCollector();
+
+  void Wait() const override;
+
+  mluStream stream() const;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+
+ private:
+  mluStream stream_;
+  std::unique_ptr<platform::StreamCallbackManager<mluStream>> callback_manager_;
 };
 #endif
 

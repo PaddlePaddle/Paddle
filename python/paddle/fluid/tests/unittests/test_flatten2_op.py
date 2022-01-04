@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 from op_test import OpTest
 
 
@@ -46,7 +47,7 @@ class TestFlattenOp(OpTest):
         self.attrs = {"axis": self.axis}
 
 
-class TestFlattenOp(TestFlattenOp):
+class TestFlattenOp1(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.axis = 0
@@ -69,6 +70,20 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.new_shape = (36, 16)
 
 
+class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
+    def execute_api(self, x, axis=1):
+        return fluid.layers.flatten(x, axis=axis)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(
+                name="x", shape=[-1, 3, -1, -1], dtype='float32')
+            out = self.execute_api(x, axis=2)
+        self.assertTrue((-1, -1) == out.shape)
+
+
 class TestFlatten2OpError(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -81,7 +96,7 @@ class TestFlatten2OpError(unittest.TestCase):
         self.assertRaises(TypeError, test_Variable)
 
         def test_type():
-            # dtype must be float32, float64, int8, int32, int64.
+            # dtype must be float32, float64, int8, int32, int64, uint8.
             x2 = fluid.layers.data(
                 name='x2', shape=[3, 2, 4, 5], dtype='float16')
             fluid.layers.flatten(x2, axis=1)

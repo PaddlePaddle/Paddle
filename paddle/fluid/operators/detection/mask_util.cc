@@ -15,9 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/detection/mask_util.h"
 #include <math.h>
 #include <stdlib.h>
-#include <algorithm>
-#include <limits>
-#include <utility>
 #include "paddle/fluid/memory/memory.h"
 
 namespace paddle {

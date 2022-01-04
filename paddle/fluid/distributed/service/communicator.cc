@@ -13,26 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/communicator.h"
+
 #include <google/protobuf/text_format.h>
-#include "paddle/fluid/distributed/table/table.h"
 
-#include <gflags/gflags.h>
-#include <paddle/fluid/framework/program_desc.h>
-
-#include <algorithm>
-#include <chrono>  // NOLINT
-#include <map>
-#include <thread>  // NOLINT
-#include <unordered_set>
-
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/framework/variable_helper.h"
+#include "gflags/gflags.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
+
+#define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
+#define STEP_COUNTER "@PS_STEP_COUNTER@"
 
 namespace paddle {
 namespace distributed {
@@ -49,7 +39,7 @@ inline double GetCurrentUS() {
 Communicator::Communicator() {}
 
 void Communicator::init_gflag(const std::string &gflags) {
-  VLOG(0) << "Init With Gflags:" << gflags;
+  VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
@@ -61,11 +51,11 @@ void Communicator::init_gflag(const std::string &gflags) {
   flags.insert(it, "exe default");
   char *flags_ptr[flags.size()];
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = (char *)(flags[i].c_str());
+    flags_ptr[i] = (char *)(flags[i].c_str());  // NOLINT
   }
   int params_cnt = flags.size();
   char **params_ptr = &(flags_ptr[0]);
-  ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
 std::once_flag Communicator::init_flag_;
@@ -98,12 +88,25 @@ void Communicator::InitBrpcClient(
     servers_ = host_sign_list.size();
     _ps_env = paddle::distributed::PaddlePSEnvironment();
     _ps_env.set_ps_servers(&host_sign_list, servers_);
-    _worker_ptr = std::shared_ptr<paddle::distributed::PSClient>(
+    _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
         paddle::distributed::PSClientFactory::create(_ps_param));
     _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
                            trainer_id_);
   }
   return;
+}
+
+std::vector<uint64_t> Communicator::GetClientInfo() {
+  std::vector<uint64_t> res = _ps_env.get_client_info();
+  for (auto rr : res) {
+    VLOG(2) << "Communicator::GetClientInfo " << rr;
+  }
+  return res;
+}
+
+int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
+  int node = host_sign_list.size();
+  return _ps_env.set_ps_clients(host_sign_list.data(), node);
 }
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
@@ -141,6 +144,11 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     LoDTensor *tensor = var->GetMutable<LoDTensor>();
     VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
+
+    float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
+    VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
+            << table_id << " Temp_data[0] " << temp_recv_data[0]
+            << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       LoDTensor *temp_tensor =
@@ -222,7 +230,7 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = (DownpourBrpcClosure *)done;
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
             ret = -1;
@@ -259,7 +267,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = (DownpourBrpcClosure *)done;
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_SPARSE_PARAM) != 0) {
             ret = -1;
@@ -287,17 +295,29 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
-                 [&](int id) { return static_cast<uint64_t>(id); });
+                 [&](int64_t id) { return static_cast<uint64_t>(id); });
 
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
   }
 
+  // TODO(wangguanqun): padding_idx is not ignored, this is a bug.
+  // if padding_idx == padding in datareader, the server will core.
+  /*
+  for (size_t i = 0; i < tensor->rows().size(); ++i) {
+    uint64_t real_id = static_cast<uint64_t>(tensor->rows()[i]);
+    if (real_id != 0) {
+      sparse_push_keys.push_back(real_id);
+      push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
+    }
+  }
+  */
+
   ++_async_call_num;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
         int ret = 0;
-        auto *closure = (DownpourBrpcClosure *)done;
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PUSH_SPARSE_TABLE) != 0) {
             ret = -1;
@@ -330,9 +350,11 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
-  auto status = _worker_ptr->pull_sparse((float **)push_g_vec.data(), table_id,
-                                         sparse_push_keys.data(),
-                                         sparse_push_keys.size());
+  bool training = true;
+
+  auto status = _worker_ptr->pull_sparse(
+      (float **)push_g_vec.data(), table_id,  // NOLINT
+      sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
   return;
 }
@@ -346,18 +368,18 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       VLOG(1) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
-    BarrierWithTable(1);
-  } else {
-    BarrierWithTable(1);
-    for (auto &iter : recv_varname_to_ctx) {
-      auto &table_id = iter.first;
-      auto &varnames = iter.second;
-      RpcRecvDense(varnames, table_id, recv_scope_);
-      VLOG(1) << "pull dense param to table " << table_id
-              << " from 0' trainer done";
-    }
   }
-  BarrierWithTable(1);
+  return;
+}
+
+void Communicator::PullDense(const RecvCtxMap &recv_varname_to_ctx) {
+  for (auto &iter : recv_varname_to_ctx) {
+    auto &table_id = iter.first;
+    auto &varnames = iter.second;
+    RpcRecvDense(varnames, table_id, recv_scope_);
+    VLOG(1) << "pull dense param to table " << table_id
+            << " from 0' trainer done";
+  }
   return;
 }
 
@@ -375,6 +397,38 @@ void Communicator::RpcProfilerControl() {
       do_server_profiler_ = false;
     }
   }
+}
+
+void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
+                                  Scope *send_scope) {
+  if (batches == 0) {
+    return;
+  }
+  platform::RecordEvent record_event("Communicator->SendGlobalStep");
+  auto &table_id = ctx.table_id;
+  size_t request_call_num = _worker_ptr->get_server_nums();
+
+  auto &var_name = STEP_COUNTER;
+  auto *out_var = send_scope->Var(var_name);
+  auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+  auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
+  data[0] = static_cast<int64_t>(batches);
+  VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num, [this, request_call_num](void *done) {
+        int ret = 0;
+        auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
+        for (size_t i = 0; i < request_call_num; ++i) {
+          if (closure->check_response(i, PS_PUSH_GLOBAL_STEP) != 0) {
+            ret = -1;
+            break;
+          }
+        }
+        closure->set_promise_value(ret);
+      });
+  auto status = _worker_ptr->push_global_step(table_id, data, closure);
+  status.wait();
+  return;
 }
 
 void AsyncCommunicator::RecvThread() {
@@ -465,10 +519,16 @@ void AsyncCommunicator::SendByCommunicator() {
 
       for (size_t i = 0; i < var_nums; i++) {
         auto &var_name = varnames[i];
-        MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
+        if (var_name == STEP_COUNTER) {
+          MergeVars<int64_t>(var_name, vars[i], send_scope_.get(), 1);
+        } else {
+          MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
+        }
       }
 
-      if (ctx.is_sparse) {
+      if (ctx.is_tensor_table) {
+        SendGlobalStep(ctx, merged_var_num, send_scope_.get());
+      } else if (ctx.is_sparse) {
         PADDLE_ENFORCE_EQ(
             varnames.size(), 1,
             platform::errors::InvalidArgument(
@@ -490,6 +550,13 @@ void AsyncCommunicator::SendByCommunicator() {
   }
   for (auto &task : tasks) {
     task.wait();
+  }
+  return;
+}
+
+void AsyncCommunicator::PushDensePostProcessing() {
+  if (independent_recv_) {
+    grad_num_.fetch_add(1, std::memory_order_relaxed);
   }
   return;
 }
@@ -574,11 +641,13 @@ void AsyncCommunicator::Start() {
 }
 
 void AsyncCommunicator::Stop() {
-  VLOG(1) << "Communicator stop";
+  VLOG(1) << "Communicator stop begin";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
+    _worker_ptr->finalize_worker();
+    VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
       recv_thread_->join();
@@ -599,8 +668,18 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
       platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
   auto table_name = var_tables[0];
-  if (send_varname_to_ctx_.find(table_name) == send_varname_to_ctx_.end())
+  if (send_varname_to_ctx_.find(table_name) == send_varname_to_ctx_.end()) {
     return false;
+  }
+  if (table_name == STEP_COUNTER) {
+    VLOG(3) << "send step_counter into queue";
+    auto tmp_var = std::make_shared<Variable>();
+    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    tensor->Resize(framework::make_ddim({1}));
+    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    out_d[0] = 1;
+    send_varname_to_queue_[table_name]->Push(tmp_var);
+  }
   return true;
 }
 
@@ -738,6 +817,7 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
+  platform::RecordEvent record_event("GeoCommunicator->Send");
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -839,7 +919,7 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
 
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    if (!ctx.is_sparse) return;
+    if (!ctx.is_sparse) continue;
     auto &varname = ctx.origin_varnames[0];
     auto &table_id = ctx.table_id;
     auto param = varname.substr(0, varname.size() - 5);
@@ -853,12 +933,12 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
     BarrierWithTable(1);
-    VLOG(0) << "push dense param to table " << table_id
+    VLOG(1) << "push dense param to table " << table_id
             << " from 0' trainer done";
   } else {
     BarrierWithTable(1);
     RpcRecvDense(varnames, table_id, recv_scope_);
-    VLOG(0) << "push dense param to table " << table_id
+    VLOG(1) << "pull dense param to table " << table_id
             << " from 0' trainer done";
   }
 
@@ -869,6 +949,10 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
     auto *old_var = old_scope_->Var(t);
     old_var->GetMutable<framework::LoDTensor>();
     framework::CopyVariable(*global_var, old_var);
+    // init pserver_scope_
+    auto *pserver_var = pserver_scope_->Var(t);
+    pserver_var->GetMutable<framework::LoDTensor>();
+    framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
 }
@@ -952,20 +1036,20 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
 }
 
 void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
-  VLOG(0) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
+  VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
   if (trainer_id_ == 0) {
     RpcSendSparseParam(var_name, table_id, *recv_scope_);
     BarrierWithTable(1);
-    VLOG(0) << "push sparse param to table " << table_id
+    VLOG(1) << "push sparse param to table " << table_id
             << " from 0' trainer done";
   } else {
     BarrierWithTable(1);
     RpcRecvSparse(var_name, table_id, recv_scope_);
-    VLOG(0) << "push dense param to table " << table_id
+    VLOG(1) << "pull sparse param to table " << table_id
             << " from 0' trainer done";
   }
 
-  VLOG(0) << "Init Sparse " << var_name << " : table " << table_id << " done.";
+  VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " done.";
   auto *global_var = recv_scope_->FindVar(var_name);
   auto *var = old_scope_->Var(var_name);
   framework::CopyVariable(*global_var, var);
@@ -974,6 +1058,7 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {
@@ -1056,7 +1141,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   ++_async_call_num;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [this](void *done) {
     int ret = 0;
-    auto *closure = (DownpourBrpcClosure *)done;
+    auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
     if (closure->check_response(0, PS_PUSH_SPARSE_TABLE) != 0) {
       ret = -1;
     }

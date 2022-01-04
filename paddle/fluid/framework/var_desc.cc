@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/var_desc.h"
+
+#include "glog/logging.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -114,6 +117,10 @@ proto::VarType::Type VarDesc::GetDataType() const {
   return tensor_desc().data_type();
 }
 
+size_t VarDesc::ElementSize() const {
+  return framework::SizeOfType(GetDataType());
+}
+
 std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
   std::vector<proto::VarType::TensorDesc> descs = tensor_descs();
   std::vector<proto::VarType::Type> res;
@@ -207,6 +214,10 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().lod_tensor().tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.type().tensor_array().tensor();
+    case proto::VarType::STRINGS:
+      return desc_.type().strings();
+    case proto::VarType::VOCAB:
+      return desc_.type().vocab();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Getting 'tensor_desc' is not supported by the %s type variable.",
@@ -247,6 +258,10 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_lod_tensor()->mutable_tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.mutable_type()->mutable_tensor_array()->mutable_tensor();
+    case proto::VarType::STRINGS:
+      return desc_.mutable_type()->mutable_strings();
+    case proto::VarType::VOCAB:
+      return desc_.mutable_type()->mutable_vocab();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Getting 'mutable_tensor_desc' is not "
@@ -276,6 +291,46 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
           "Getting 'tensor_descs' is not supported by the %s type variable.",
           this->Name()));
   }
+}
+
+std::vector<std::string> VarDesc::AttrNames() const {
+  std::vector<std::string> retv;
+  retv.reserve(attrs_.size());
+  for (auto &attr : attrs_) {
+    retv.push_back(attr.first);
+  }
+  return retv;
+}
+
+void VarDesc::RemoveAttr(const std::string &name) { attrs_.erase(name); }
+
+void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
+  // NOTICE(sandyhouse): pybind11 will take the empty list in python as
+  // the std::vector<int> type in C++; so we have to change the attr's type
+  // here if we meet this issue
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  if (attr_type == proto::AttrType::INTS &&
+      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
+    // Find current attr via attr name and set the correct attribute value
+    this->attrs_[name] = std::vector<int>();
+    return;
+  }
+  bool valid = attr_type == proto::AttrType::INT ||
+               attr_type == proto::AttrType::STRING ||
+               attr_type == proto::AttrType::INTS;
+  PADDLE_ENFORCE_EQ(valid, true, platform::errors::InvalidArgument(
+                                     "The value for attr (%s) must be "
+                                     "one of list or int or string.",
+                                     name));
+
+  this->attrs_[name] = v;
+}
+
+Attribute VarDesc::GetAttr(const std::string &name) const {
+  auto it = attrs_.find(name);
+  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
+                                          "Attribute %s is not found.", name));
+  return it->second;
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

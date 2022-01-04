@@ -17,7 +17,9 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
 namespace operators {
@@ -114,6 +116,11 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("entry",
                          "(std::string, default "
                          ") for entry attribute.")
+        .SetDefault("none");
+
+    AddAttr<std::string>("table_class",
+                         "(std::string, default "
+                         ") for table_class.")
         .SetDefault("none");
 
     AddAttr<std::vector<std::string>>(
@@ -221,6 +228,22 @@ REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>,
-                       ops::LookupTableKernel<int8_t>);
+                       ops::LookupTableKernel<int8_t>,
+                       ops::LookupTableKernel<int16_t>,
+                       ops::LookupTableKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
-                       ops::LookupTableGradKernel<double>);
+                       ops::LookupTableGradKernel<double>,
+                       ops::LookupTableGradKernel<paddle::platform::bfloat16>);
+
+/* ==========================  register checkpoint ===========================*/
+
+REGISTER_OP_VERSION(lookup_table)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade lookup_table add 1 attribute [entry_config].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "entry_config",
+            "(std::string) embedding sparse feature entry config.", ""));
+
+/* ========================================================================== */

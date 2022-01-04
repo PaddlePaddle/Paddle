@@ -61,6 +61,9 @@ def create_test_class(op_type, typename, callback):
 
 
 for _type_name in {'float32', 'float64', 'int32', 'int64'}:
+    if _type_name == 'float64' and core.is_compiled_with_rocm():
+        _type_name = 'float32'
+
     create_test_class('less_than', _type_name, lambda _a, _b: _a < _b)
     create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b)
     create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)
@@ -93,6 +96,21 @@ def create_paddle_case(op_type, callback):
                                fetch_list=[out])
             self.assertEqual((res == self.real_result).all(), True)
 
+        def test_api_float(self):
+            if self.op_type == "equal":
+                paddle.enable_static()
+                with program_guard(Program(), Program()):
+                    x = fluid.data(name='x', shape=[4], dtype='int64')
+                    y = fluid.data(name='y', shape=[1], dtype='int64')
+                    op = eval("paddle.%s" % (self.op_type))
+                    out = op(x, y)
+                    exe = fluid.Executor(self.place)
+                    res, = exe.run(feed={"x": self.input_x,
+                                         "y": 1.0},
+                                   fetch_list=[out])
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((res == self.real_result).all(), True)
+
         def test_dynamic_api(self):
             paddle.disable_static()
             x = paddle.to_tensor(self.input_x)
@@ -101,6 +119,47 @@ def create_paddle_case(op_type, callback):
             out = op(x, y)
             self.assertEqual((out.numpy() == self.real_result).all(), True)
             paddle.enable_static()
+
+        def test_dynamic_api_int(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(self.input_x)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, 1)
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_float(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(self.input_x)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, 1.0)
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_assert(self):
+            def test_dynamic_api_string(self):
+                if self.op_type == "equal":
+                    paddle.disable_static()
+                    x = paddle.to_tensor(self.input_x)
+                    op = eval("paddle.%s" % (self.op_type))
+                    out = op(x, "1.0")
+                    paddle.enable_static()
+
+            self.assertRaises(TypeError, test_dynamic_api_string)
+
+        def test_dynamic_api_bool(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(self.input_x)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, True)
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
 
         def test_broadcast_api_1(self):
             paddle.enable_static()
@@ -113,6 +172,71 @@ def create_paddle_case(op_type, callback):
                 exe = paddle.static.Executor(self.place)
                 input_x = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(np.int32)
                 input_y = np.arange(0, 6).reshape((1, 2, 3)).astype(np.int32)
+                real_result = callback(input_x, input_y)
+                res, = exe.run(feed={"x": input_x,
+                                     "y": input_y},
+                               fetch_list=[out])
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_broadcast_api_2(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.static.data(name='x', shape=[1, 2, 3], dtype='int32')
+                y = paddle.static.data(
+                    name='y', shape=[1, 2, 1, 3], dtype='int32')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                input_x = np.arange(0, 6).reshape((1, 2, 3)).astype(np.int32)
+                input_y = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(np.int32)
+                real_result = callback(input_x, input_y)
+                res, = exe.run(feed={"x": input_x,
+                                     "y": input_y},
+                               fetch_list=[out])
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_broadcast_api_3(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.static.data(name='x', shape=[5], dtype='int32')
+                y = paddle.static.data(name='y', shape=[3, 1], dtype='int32')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                input_x = np.arange(0, 5).reshape((5)).astype(np.int32)
+                input_y = np.array([5, 3, 2]).reshape((3, 1)).astype(np.int32)
+                real_result = callback(input_x, input_y)
+                res, = exe.run(feed={"x": input_x,
+                                     "y": input_y},
+                               fetch_list=[out])
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_bool_api_4(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.static.data(name='x', shape=[3, 1], dtype='bool')
+                y = paddle.static.data(name='y', shape=[3, 1], dtype='bool')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                input_x = np.array([True, False, True]).astype(np.bool)
+                input_y = np.array([True, True, False]).astype(np.bool)
+                real_result = callback(input_x, input_y)
+                res, = exe.run(feed={"x": input_x,
+                                     "y": input_y},
+                               fetch_list=[out])
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_bool_broadcast_api_4(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.static.data(name='x', shape=[3, 1], dtype='bool')
+                y = paddle.static.data(name='y', shape=[1], dtype='bool')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                input_x = np.array([True, False, True]).astype(np.bool)
+                input_y = np.array([True]).astype(np.bool)
                 real_result = callback(input_x, input_y)
                 res, = exe.run(feed={"x": input_x,
                                      "y": input_y},

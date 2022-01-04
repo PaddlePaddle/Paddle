@@ -40,7 +40,7 @@ static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
 }
 
 static void InitMultiGPUOpVarMap() {
-  int dev_count = platform::GetCUDADeviceCount();
+  int dev_count = platform::GetGPUDeviceCount();
   PADDLE_ENFORCE_GT(dev_count, 0,
                     platform::errors::NotFound(
                         "cuda device must > 0, now dev_count=%d", dev_count));
@@ -82,9 +82,15 @@ __device__ __forceinline__ void PrintNanInfKernel(const T* value,
   }
   __syncthreads;
 
+#ifdef __HIPCC__
+  if (true && hipThreadIdx_x == 0) {
+    printf("In block %d, there has %u,%u,%u nan,inf,num\n", hipBlockIdx_x,
+           nan_count, inf_count, num_count);
+#else
   if (true && threadIdx.x == 0) {
     printf("In block %d, there has %u,%u,%u nan,inf,num\n", blockIdx.x,
            nan_count, inf_count, num_count);
+#endif
     PADDLE_ENFORCE(false, "===ERROR: in %s find nan or inf===", debug_info);
   }
 }
@@ -117,7 +123,11 @@ __global__ void CheckNanInfKernel(const T* value, const size_t numel,
 template <>
 template <typename T>
 void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
-    typename std::enable_if<std::is_floating_point<T>::value>::type*) const {
+    typename std::enable_if<
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
+    const {
   int print_num = 3;
 
   auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
@@ -150,9 +160,15 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
                             "op_var2gpu_str, but now failed",
                             op_var));
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+#ifdef __HIPCC__
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
+                         hipMemcpyHostToDevice, dev_ctx->stream()));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
                           cudaMemcpyHostToDevice, dev_ctx->stream()));
+#endif
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,
@@ -164,12 +180,23 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
     }
   }
 
+#ifdef __HIPCC__
+  // HIP will throw GPU memory access fault if threads > 256
+  const size_t threads = 256;
+#else
   const size_t threads = 1024;
+#endif
   size_t blocks =
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
+#ifdef __HIPCC__
+  hipLaunchKernelGGL(CheckNanInfKernel, dim3(blocks), dim3(threads), 0,
+                     dev_ctx->stream(), tensor_.data<T>(), tensor_.numel(),
+                     print_num, gpu_str_ptr);
+#else
   CheckNanInfKernel<<<blocks, threads, 0, dev_ctx->stream()>>>(
       tensor_.data<T>(), tensor_.numel(), print_num, gpu_str_ptr);
+#endif
 }
 
 template <>

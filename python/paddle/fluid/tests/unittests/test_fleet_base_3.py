@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
-class TestFleetBase(unittest.TestCase):
+class TestFleetBase_1(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"

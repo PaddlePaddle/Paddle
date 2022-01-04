@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -26,7 +26,7 @@ template <typename T>
 class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
@@ -36,7 +36,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
-    cudaStream_t stream = nullptr;
+    gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
@@ -46,7 +46,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
     if (root == comm->rank()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
@@ -59,7 +59,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
             static_cast<framework::Tensor*>(out));
       }
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
                                        dtype, root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "

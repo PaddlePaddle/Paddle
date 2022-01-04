@@ -35,7 +35,7 @@ class SoftmaxGradFunctor {
                   framework::Tensor* x_grad);
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 class SoftmaxCUDNNFunctor {
  public:

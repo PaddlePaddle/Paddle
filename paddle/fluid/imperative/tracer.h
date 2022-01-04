@@ -16,12 +16,14 @@
 
 #include <atomic>
 #include <future>  // NOLINT
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "ThreadPool.h"
+#include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -29,6 +31,12 @@
 
 namespace paddle {
 namespace imperative {
+
+enum class AmpLevel;
+
+using GarbageCollectorMap =
+    std::map<platform::Place,
+             std::unique_ptr<paddle::framework::GarbageCollector>>;
 
 class UniqueNameGenerator {
  public:
@@ -57,10 +65,12 @@ class Tracer {
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward);
+               const platform::Place& place, bool trace_bacward,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs);
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
@@ -92,15 +102,21 @@ class Tracer {
 
   platform::Place ExpectedPlace() const { return expected_place_; }
 
-  void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
+  void SetExpectedPlace(platform::Place place);
 
   bool HasGrad() const { return has_grad_; }
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
-  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+  void SetAmpLevel(AmpLevel level) {
+    VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
+    amp_level_ = level;
+  }
 
-  bool IsAutoCastEnabled() const { return enable_autocast_; }
+  AmpLevel GetAmpLevel() const { return amp_level_; }
+
+  paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
+      const platform::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
@@ -108,13 +124,19 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool has_grad_{true};
-  bool enable_autocast_{false};
+  GarbageCollectorMap gcs_;
+  static thread_local bool has_grad_;
+  AmpLevel amp_level_{AmpLevel::O0};
 };
 
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place);
+
+void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
 
 }  // namespace imperative
 }  // namespace paddle

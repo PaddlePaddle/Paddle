@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 
 #include <unordered_map>
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -144,28 +142,56 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Out");
 }
 
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // (jczaja): oneDNN is supporting only unchangable in size pool window
+  auto src_tz = paddle::framework::vectorize(ctx.Input<Tensor>("X")->dims());
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  if ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+      (src_tz[src_tz.size() - 2] % ksize[0] == 0))
+    return true;
+
+  // Exhustive check
+  auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
+  auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
+  auto OH = static_cast<double>(ksize[0]);
+  auto OW = static_cast<double>(ksize[1]);
+
+  auto SH = static_cast<int>(floor((IH * 2.0) / OH) - floor(IH / OH));
+  auto SW = static_cast<int>(floor((IW * 2.0) / OW) - floor(IW / OW));
+  auto KH = static_cast<int>(ceil((IH * 2.0) / OH) - floor(IH / OH));
+  auto KW = static_cast<int>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+
+  auto PH = (SH * (static_cast<int>(OH) - 1) + KH - static_cast<int>(IH));
+  auto PW = (SW * (static_cast<int>(OW) - 1) + KW - static_cast<int>(IW));
+  // If there is additional padding needed then
+  // this is situation that oneDNN cannot comply with
+  // paddlepaddle reference implementation
+  return (PH == 0) && (PW == 0);
+}
+
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type) && CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
@@ -205,21 +231,21 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
-
-  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                  library_);
@@ -305,7 +331,8 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
@@ -314,17 +341,20 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "use_quantizer",
       "(bool, default false) "
       "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
+      .InEnum({"float32", "int8", "bfloat16"})
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -335,7 +365,8 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
 
   AddAttr<std::string>(
       "padding_algorithm",
@@ -433,6 +464,20 @@ Example:
 )DOC");
 }
 
+template <typename T>
+class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("pool2d_grad_grad");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
   std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
@@ -509,7 +554,8 @@ void Pool3dOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
@@ -518,7 +564,8 @@ void Pool3dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
@@ -649,7 +696,10 @@ REGISTER_OPERATOR(
     pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
+REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
+                  ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
+                  ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
@@ -657,6 +707,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad_grad,
+    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(
     pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,

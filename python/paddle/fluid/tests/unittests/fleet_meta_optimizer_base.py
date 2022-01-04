@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 import paddle
 from paddle import fluid
@@ -25,6 +26,23 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
+        self._debug = False
+
+    def debug_program(self, main_prog, startup_prog):
+        if not self._debug: return
+
+        main_prog_ops = main_prog.global_block().ops
+        startup_prog_ops = startup_prog.global_block().ops
+
+        main_prog_op_types = [op.type for op in main_prog_ops]
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+
+        print("=== debug program and ops in func [{}] ==="
+              .format(inspect.stack()[1].function))
+        print(main_prog)
+        print(main_prog_op_types)
+        print(startup_prog)
+        print(startup_prog_op_types)
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
@@ -48,6 +66,52 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
+        return avg_cost, strategy
+
+    def pp_net(self, main_prog, startup_prog, pp_degree=2):
+        def fc_block(input_x):
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            fc_3 = paddle.fluid.layers.fc(input=fc_2, size=64, act='tanh')
+            return fc_3
+
+        with fluid.program_guard(main_prog, startup_prog):
+            with fluid.unique_name.guard():
+                role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+                fleet.init(role)
+                with fluid.device_guard("gpu:0"):
+                    input_x = paddle.fluid.layers.data(
+                        name="x", shape=[32], dtype='float32')
+                    input_y = paddle.fluid.layers.data(
+                        name="y", shape=[1], dtype='int64')
+
+                for stage_idx in range(pp_degree):
+                    with fluid.device_guard("gpu:" + str(stage_idx)):
+                        input_x = fc_block(input_x)
+
+                with fluid.device_guard("gpu:" + str(pp_degree - 1)):
+                    prediction = paddle.fluid.layers.fc(input=[input_x],
+                                                        size=2,
+                                                        act='softmax')
+                    cost = paddle.fluid.layers.cross_entropy(
+                        input=prediction, label=input_y)
+                    avg_cost = paddle.fluid.layers.mean(x=cost)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        return avg_cost, strategy
+
+    def boundary_net(self, main_prog, startup_prog):
+        with fluid.program_guard(main_prog, startup_prog):
+            fleet.init(is_collective=True)
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            with paddle.static.device_guard('gpu:0'):
+                linear = fluid.Linear(4, 8, bias_attr=False)
+                out = linear(x)
+            with paddle.static.device_guard('gpu:1'):
+                linear = fluid.Linear(8, 5, bias_attr=False)
+                out = linear(out)
+                avg_cost = paddle.mean(out)
+            strategy = fleet.DistributedStrategy()
         return avg_cost, strategy
 
     def optimizer(self,
@@ -88,6 +152,21 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 "custom_white_list": ['softmax'],
                 "custom_black_list": ['tanh'],
             }
+        elif name == 'pure_fp16':
+            strategy.amp = True
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "decr_every_n_nan_or_inf": 2,
+                "incr_every_n_steps": 1000,
+                "incr_ratio": 2.0,
+                "use_dynamic_loss_scaling": True,
+                "decr_ratio": 0.5,
+                "custom_white_list": ['softmax'],
+                "custom_black_list": ['tanh'],
+                "use_pure_fp16": True,
+                "use_fp16_guard": False,
+            }
+
         elif name == 'dgc':
             strategy.dgc = True
             strategy.dgc_configs = {
@@ -131,6 +210,24 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
         elif name == "sharding":
             strategy.sharding = True
-            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
+            }
+        elif name == "recompute-offload":
+            strategy.recompute = True
+            strategy.recompute_configs = {
+                "checkpoints": ["fc_0.tmp_2", "fc_1.tmp_2"],
+                "enable_offload": True,
+                "checkpoint_shape": [256]
+            }
+        elif name == "pipeline":
+            strategy.pipeline = True
+            strategy.pipeline_configs = {
+                "schedule_mode": "1F1B",
+                "micro_batch_size": 2,
+                "accumulate_steps": 4,
+            }
         else:
             raise NotImplementedError()

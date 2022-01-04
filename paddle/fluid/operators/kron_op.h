@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
-#if __NVCC__
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "thrust/device_vector.h"
 #endif
 
@@ -84,7 +84,7 @@ struct KronOpFunctor {
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> d_stride_x(ndims);
     thrust::device_vector<int64_t> d_stride_y(ndims);
     thrust::device_vector<int64_t> d_stride_out(ndims);
@@ -173,10 +173,68 @@ struct KronGradElemFunctor {
 };
 
 template <typename T>
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
+struct KronGradElemFunctor<platform::complex<T>> {
+  KronGradElemFunctor(const platform::complex<T>* dout,
+                      const platform::complex<T>* A,
+                      const platform::complex<T>* B,
+                      platform::complex<T>* dout_a,
+                      platform::complex<T>* dout_b, const int64_t* stride_dout,
+                      const int64_t* stride_a, const int64_t* stride_b,
+                      const int64_t* shape_b, const int64_t numel_a,
+                      const int64_t numel_b, const int ndims)
+      : dout_(dout),
+        A_(A),
+        B_(B),
+        dout_a_(dout_a),
+        dout_b_(dout_b),
+        stride_dout_(stride_dout),
+        stride_a_(stride_a),
+        stride_b_(stride_b),
+        shape_b_(shape_b),
+        numel_a_(numel_a),
+        numel_b_(numel_b),
+        ndims_(ndims) {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+  HOSTDEVICE void operator()(int64_t idx) {
+    int64_t index = idx;
+    int64_t index_a = 0;
+    int64_t index_b = 0;
+    for (int i = 0; i < ndims_; i++) {
+      auto pos_i = index / stride_dout_[i];
+      index = index % stride_dout_[i];
+      auto pos_ai = pos_i / shape_b_[i];
+      auto pos_bi = pos_i % shape_b_[i];
+      index_a += stride_a_[i] * pos_ai;
+      index_b += stride_b_[i] * pos_bi;
+    }
+
+    if (dout_a_) {
+      size_t index_out_a = index_a * numel_b_ + index_b;
+      dout_a_[index_out_a] =
+          dout_[idx] *
+          platform::complex<T>(B_[index_b].real, -B_[index_b].imag);
+    }
+    if (dout_b_) {
+      size_t index_out_b = index_b * numel_a_ + index_a;
+      dout_b_[index_out_b] =
+          dout_[idx] *
+          platform::complex<T>(A_[index_a].real, -A_[index_a].imag);
+    }
+  }
+
+ private:
+  const platform::complex<T>* dout_;
+  const platform::complex<T>* A_;
+  const platform::complex<T>* B_;
+  platform::complex<T>* dout_a_;
+  platform::complex<T>* dout_b_;
+  const int64_t* stride_dout_;
+  const int64_t* stride_a_;
+  const int64_t* stride_b_;
+  const int64_t* shape_b_;
+  const int64_t numel_a_;
+  const int64_t numel_b_;
+  const int ndims_;
 };
 
 template <typename DeviceContext, typename T>
@@ -201,7 +259,7 @@ struct KronGradOpFunctor {
     const int64_t* p_stride_y = nullptr;
     const int64_t* p_stride_dout = nullptr;
     const int64_t* p_shape_y = nullptr;
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> d_stride_x(ndims);
     thrust::device_vector<int64_t> d_stride_y(ndims);
     thrust::device_vector<int64_t> d_stride_dout(ndims);
@@ -244,17 +302,15 @@ struct KronGradOpFunctor {
     for_range(func);
 
 // reduce_sum along aixs 1
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-          dout_x, dx, {1}, static_cast<T>(0), cub::Sum(), IdentityFunctor<T>(),
-          stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
     }
     if (dy) {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-          dout_y, dy, {1}, static_cast<T>(0), cub::Sum(), IdentityFunctor<T>(),
-          stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
     }
 #else
     auto* place = dev_ctx.eigen_device();

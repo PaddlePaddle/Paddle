@@ -13,10 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/framework/ir/squared_mat_sub_fuse_pass.h"
+
 #include <string>
-#include <unordered_set>
-#include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -299,7 +298,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   return last_out_var;
 }
 
-static int BuildFusion(Graph* graph, const std::string& name_scope) {
+static int BuildFusion(Graph* graph, const std::string& name_scope,
+                       const SquaredMatSubFusePass* pass) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -321,6 +321,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     LOG(INFO) << "handle sqaure mat sub fuse";
+    if (!pass->IsAcceptable(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     auto& fused_pattern = gpd.pattern();
 
     auto* matx = retrieve_node(name_scope + "/x", subgraph, fused_pattern);
@@ -369,14 +374,112 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;
   };
-
   gpd(graph, handler);
   return fusion_count;
 }
 
+SquaredMatSubFusePass::SquaredMatSubFusePass() {
+  AddOpCompat(OpCompat("square"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumEQ(1.0f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("trans_y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_sub"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+
+  AddOpCompat(OpCompat("fill_constant"))
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("dtype")
+      .IsNumGE(0)
+      .IsNumLE(25)
+      .End()
+      .AddAttr("shape")
+      .End()
+      // type:float，there is no restriction
+      .AddAttr("value")
+      .End()
+      .AddAttr("str_value")
+      .IsStringEQ("")
+      .IsOptional()
+      .End();
+}
+
+// to use IsCompat
+bool SquaredMatSubFusePass::IsAcceptable(
+    const GraphPatternDetector::subgraph_t& subgraph, Graph* g) const {
+  return IsCompat(subgraph, g);
+}
+
 void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-  int fusion_count = BuildFusion(graph, name_scope_);
+  int fusion_count = BuildFusion(graph, name_scope_, this);
   AddStatis(fusion_count);
 }
 
@@ -389,10 +492,10 @@ REGISTER_PASS(squared_mat_sub_fuse_pass,
 REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("square", 0)
-            .EQ("elementwise_mul", 0)
-            .EQ("elementwise_sub", 0)
-            .EQ("fill_constant", 1)
+            .LE("elementwise_mul", 1)
+            .LE("elementwise_sub", 1)
+            .LE("fill_constant", 2)
             .EQ("fusion_squared_mat_sub", 0));

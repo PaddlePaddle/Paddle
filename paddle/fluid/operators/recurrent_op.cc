@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
-#include <algorithm>
 
 namespace paddle {
 namespace framework {
@@ -161,7 +160,9 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   }
   PADDLE_ENFORCE_GE(seq_len, 0,
                     platform::errors::InvalidArgument(
-                        "RecurrentOp gets invalid sequence length."));
+                        "RecurrentOp gets invalid sequence length. Expected "
+                        "seq_len >= 0. Received seq_len = %d",
+                        seq_len));
   return seq_len;
 }
 
@@ -209,17 +210,12 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
   auto *program = block->Program();
-  auto ctx = executor.Prepare(
-      *program, block->ID(), Attr<std::vector<std::string>>(
-                                 kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
+  auto ctx = executor.Prepare(*program, block->ID(),
+                              Attr<std::vector<std::string>>(
+                                  kSkipEagerDeletionVars), /*skip_ref_cnt_vars*/
+                              true);
 
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lock(mutex);
   StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
-  // TODO(gfwm2013) Function CreateStepScopes would make segmentation fault in
-  // multithreading in eval process, so we use a mutex before function
-  // CreateStepScopes to make sure that the computing process is correct. This
-  // problem will fix in next pull request.
   for (size_t i = 0; i < seq_len; ++i) {
     size_t seq_offset = reverse ? seq_len - i - 1 : i;
     VLOG(3) << "Recurrent operate at the time step " << seq_offset;
@@ -254,16 +250,6 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     // Link inside::output -> outside::output
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
     executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
-    if (i > 0) {
-      LinkTensorWithCallback(scope, Outputs(kOutputs), cur_scope,
-                             Outputs(kOutputs),
-                             [&](const framework::LoDTensor &src_tensor,
-                                 framework::LoDTensor *dst_tensor) {
-                               framework::Tensor src_slice =
-                                   src_tensor.Slice(seq_offset, seq_offset + 1);
-                               dst_tensor->ShareDataWith(src_slice);
-                             });
-    }
 
     // Linked now, execute!
     executor.RunPreparedContext(ctx.get(), &cur_scope,
@@ -283,6 +269,14 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
             // early.
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
+    } else {
+      LinkTensorWithCallback(
+          cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
+          [&](const framework::LoDTensor &src_tensor,
+              framework::LoDTensor *dst_tensor) {
+            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
+            framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
+          });
     }
 
     scopes.ForwardNext();
@@ -292,6 +286,11 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
 StepScopes RecurrentOp::CreateStepScopes(const platform::DeviceContext &dev_ctx,
                                          const framework::Scope &scope,
                                          size_t seq_len) const {
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lock(mutex);
+  // TODO(baoachun) Function CreateStepScopes may lead to segmentation
+  // fault in multithreading in eval process. The performance drop of
+  // adding mutex need to be fixed.
   auto *var = scope.FindVar(Output(kStepScopes));
   PADDLE_ENFORCE_NOT_NULL(var, platform::errors::InvalidArgument(
                                    "RecurrentOp gets empty StepScopes var"));

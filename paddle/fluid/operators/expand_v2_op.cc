@@ -66,6 +66,9 @@ class ExpandV2Op : public framework::OperatorWithKernel {
         out_shape[i] = -1;
       } else if (expand_shape[i] == -1) {
         out_shape[i] = x_dims[i];
+      } else if (expand_shape[i] == -2) {
+        // We use -2 to represent the element in expand_shape is a var.
+        out_shape[i] = -1;
       } else {
         PADDLE_ENFORCE_GT(
             expand_shape[i], 0,
@@ -86,9 +89,17 @@ class ExpandV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -127,6 +138,16 @@ class ExpandV2OpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(expand_times).");
     AddAttr<std::vector<int>>("shape", "The expanded shape for each dimension.")
         .SetDefault({});
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Expand the input to the given shape. The rank of X
 should be in [1, 6] and size of 'shape' must be in [1, 6] also.
@@ -174,7 +195,7 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
 
     for (size_t i = 0; i < expand_shape.size(); ++i) {
-      if (expand_shape[i] == -1 || x_dim_vec[i] == -1) {
+      if (expand_shape[i] < 0 || x_dim_vec[i] == -1) {
         continue;
       } else {
         if (ctx->IsRuntime()) {
@@ -197,9 +218,17 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -275,3 +304,21 @@ REGISTER_OP_CPU_KERNEL(
     ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+REGISTER_OP_CUDA_KERNEL(
+    expand_v2, ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::float16>,
+    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, bool>);
+REGISTER_OP_CUDA_KERNEL(
+    expand_v2_grad,
+    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::float16>,
+    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

@@ -221,7 +221,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
-    def test_generator_uniform_random_static(self):
+    def test_generator_uniform_random_static_1(self):
         fluid.disable_dygraph()
 
         gen = paddle.seed(123123143)
@@ -255,7 +255,7 @@ class TestGeneratorSeed(unittest.TestCase):
                 self.assertTrue(np.allclose(out1_res2, out2_res2))
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
-    def test_generator_randint_dygraph(self):
+    def test_generator_randint_dygraph_1(self):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
@@ -405,7 +405,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
-    def test_generator_randperm_static(self):
+    def test_generator_randperm_static_1(self):
 
         fluid.disable_dygraph()
 

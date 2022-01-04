@@ -55,6 +55,16 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
           "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
+
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0), true,
+        platform::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but recieved %d. Input's shape is [%s].",
+            x_dims[i], x_dims));
+  }
+
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -157,7 +167,8 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain && this->CanMKLDNNBeUsed(ctx)) {
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -246,13 +257,16 @@ void BatchNormOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_with_relu",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
                 "variance. In inference or test mode, set use_global_stats "
@@ -294,8 +308,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     bool global_stats = test_mode || use_global_stats;
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
@@ -330,6 +343,12 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     variance_out->mutable_data<T>(ctx.GetPlace());
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
+
+    // input dimension is 2 and the format is NCHW. The input can be regarded
+    // as NHWC format
+    if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
+      data_layout = DataLayout::kNHWC;
+    }
 
     if (!global_stats) {
       // saved_xx is use just in this batch of data
@@ -463,11 +482,9 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
                  "BatchNormGrad");
 
   // check output
-  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                 framework::GradVarName("X"), "BatchNormGrad");
-
   const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
   const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
+  const bool has_x_grad = ctx->HasOutput(framework::GradVarName("X"));
 
   PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad), true,
                     platform::errors::NotFound(
@@ -495,11 +512,13 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]);
 
-  ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
   if (has_scale_grad) {
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+  }
+  if (has_x_grad) {
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
 }
 
@@ -524,17 +543,17 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain && this->CanMKLDNNBeUsed(ctx)) {
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
-      library);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
 }
 
 framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
@@ -574,15 +593,16 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     // SavedVariance have been reverted in forward operator
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    use_global_stats = is_test || use_global_stats;
 
     // batch_norm with inplace as false will take X as grad input, which
     // is same as cuDNN batch_norm backward calculation, batch_norm
@@ -593,23 +613,21 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     if (ctx.HasInput("Y")) {
       x = ctx.Input<Tensor>("Y");
       is_inplace = true;
-      PADDLE_ENFORCE_EQ(d_x, d_y,
-                        platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD not inplace in inplace mode"));
+      // if the input of batch norm is stop_gradient, d_x is null.
+      if (d_x) {
+        PADDLE_ENFORCE_EQ(d_x, d_y,
+                          platform::errors::InvalidArgument(
+                              "X@GRAD and Y@GRAD not inplace in inplace mode"));
+      }
     } else {
       x = ctx.Input<Tensor>("X");
       is_inplace = false;
-      PADDLE_ENFORCE_NE(d_x, d_y,
-                        platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+      if (d_x) {
+        PADDLE_ENFORCE_NE(
+            d_x, d_y, platform::errors::InvalidArgument(
+                          "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+      }
     }
-
-    PADDLE_ENFORCE_EQ(
-        is_test, false,
-        platform::errors::InvalidArgument(
-            "`is_test = True` CANNOT be used in train program. If "
-            "you want to use global status in pre_train model, "
-            "please set `use_global_stats = True`"));
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -632,8 +650,16 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
+    // input dimension is 2 and the format is NCHW. The input can be regarded as
+    // NHWC format
+    if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
+      data_layout = DataLayout::kNHWC;
+    }
+
     // init output
-    d_x->mutable_data<T>(ctx.GetPlace());
+    if (d_x) {
+      d_x->mutable_data<T>(ctx.GetPlace());
+    }
 
     const T *mean_data = saved_mean->data<T>();
     const T *inv_var_data = saved_inv_variance->data<T>();
@@ -677,7 +703,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       d_scale_arr.setZero();
     }
 
-    if ((N * sample_size) == 1 && !use_global_stats) {
+    if (d_x && (N * sample_size) == 1 && !use_global_stats) {
       framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
       return;
     }
@@ -722,8 +748,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
-                                 sample_size, N * C);
 
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
@@ -738,19 +762,24 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
         }
 
-        if (!use_global_stats) {
-          for (int nc = 0; nc < N * C; ++nc) {
-            int c = nc % C;
-            d_x_arr.col(nc) =
-                scale_inv_var_nhw(c) *
-                (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
-                 (x_arr.col(nc) - mean_arr[c]) *
-                     dy_mul_x_sub_mean_mul_invstd_sum_arr(c) * inv_var_arr(c));
-          }
-        } else {
-          for (int nc = 0; nc < N * C; ++nc) {
-            int c = nc % C;
-            d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
+        if (d_x) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
+                                   sample_size, N * C);
+          if (!use_global_stats) {
+            for (int nc = 0; nc < N * C; ++nc) {
+              int c = nc % C;
+              d_x_arr.col(nc) =
+                  scale_inv_var_nhw(c) *
+                  (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
+                   (x_arr.col(nc) - mean_arr[c]) *
+                       dy_mul_x_sub_mean_mul_invstd_sum_arr(c) *
+                       inv_var_arr(c));
+            }
+          } else {
+            for (int nc = 0; nc < N * C; ++nc) {
+              int c = nc % C;
+              d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
+            }
           }
         }
         break;
@@ -769,8 +798,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
-                                 N * sample_size);
 
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
           dy_sum_arr += d_y_arr.col(nhw);
@@ -783,17 +810,21 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
         }
 
-        if (!use_global_stats) {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) =
-                scale_inv_var_nhw *
-                (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
-                 (x_arr.col(nhw) - mean_arr) *
-                     dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
-          }
-        } else {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
+        if (d_x) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
+                                   N * sample_size);
+          if (!use_global_stats) {
+            for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+              d_x_arr.col(nhw) =
+                  scale_inv_var_nhw *
+                  (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
+                   (x_arr.col(nhw) - mean_arr) *
+                       dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
+            }
+          } else {
+            for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+              d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
+            }
           }
         }
         break;
@@ -820,7 +851,8 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
   }
 
   // used when setting use_global_stats True during training
-  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats")) ||
+      BOOST_GET_CONST(bool, this->GetAttr("is_test"))) {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }

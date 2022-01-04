@@ -25,6 +25,7 @@
 namespace paddle {
 namespace framework {
 class LoDTensor;
+
 namespace ir {
 class Node;
 }  // namespace ir

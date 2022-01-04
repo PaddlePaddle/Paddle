@@ -11,11 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -25,50 +25,74 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct SameDimsElemwiseSub<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    SubRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                              x->numel());
-    for_range(functor);
-  }
-};
-
-template <>
-struct SameDimsElemwiseSub<platform::CUDADeviceContext, platform::float16> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    auto size = x->numel();
-    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
-                              PADDLE_CUDA_THREAD_SIZE,
-                          1);
-    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-    const half* x2 =
-        reinterpret_cast<const half*>(x->data<platform::float16>());
-    const half* y2 =
-        reinterpret_cast<const half*>(y->data<platform::float16>());
-    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-    SameDimsElemwiseSubCUDAKernel<<<
-        grid_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x2, y2, z2, size);
-  }
-};
-
-template <typename T>
 static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
                                                        int64_t size, T* dx,
                                                        T* dy) {
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   while (col < size) {
-    dx[col] = dout[col];
+    if (dx != nullptr) {
+      dx[col] = dout[col];
+    }
     dy[col] = -dout[col];
     col += blockDim.x * gridDim.x;
+  }
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  auto* dout_data = dout->data<T>();
+  // dx
+  if (dx != nullptr) {
+    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    if (dx->dims() == dout->dims()) {
+      if (dx_data != dout_data) {
+        framework::TensorCopy(
+            *dout, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dx);
+      }
+    } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(*dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+      }
+      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
+      gpuStream_t stream = ctx.cuda_device_context().stream();
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    }
+  }
+  // dy
+  if (dy != nullptr) {
+    auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    if (dy->dims() == dout->dims()) {
+      if (dy_data != dout_data) {
+        dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
+        auto size = dy->numel();
+        dim3 grid_size = dim3(
+            (size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
+        SimpleElemwiseSubGradCUDAKernel<T><<<
+            grid_size, block_size, 0,
+            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+            dout->data<T>(), size, nullptr,
+            dy->mutable_data<T>(ctx.GetPlace()));
+      }
+    } else {
+      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
+      gpuStream_t stream = ctx.cuda_device_context().stream();
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+          *dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+    }
   }
 }
 
@@ -80,10 +104,10 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
-      dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<
       T><<<grid_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
@@ -103,9 +127,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -115,9 +139,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::complex64>,
+                                  paddle::platform::complex<float>>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::complex128>);
+                                  paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad_grad,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -129,6 +153,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         int64_t>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex64>,
+                                        paddle::platform::complex<float>>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex128>);
+                                        paddle::platform::complex<double>>);

@@ -1658,20 +1658,20 @@ class TestLayer(LayerTest):
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
-            def cond(i):
+            def cond1(i):
                 return layers.less_than(i, ten)
 
-            def body(i):
+            def body1(i):
                 return i + 1
 
-            dy_ret = layers.while_loop(cond, body, [i])
+            dy_ret = layers.while_loop(cond1, body1, [i])
             with self.assertRaises(ValueError):
                 j = layers.fill_constant(shape=[1], dtype='int64', value=0)
 
                 def body2(i):
                     return i + 1, i + 2
 
-                layers.while_loop(cond, body2, [j])
+                layers.while_loop(cond1, body2, [j])
 
         self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
 
@@ -3320,6 +3320,30 @@ class TestBook(LayerTest):
             dy_res_value = dy_res.numpy()
         self.assertTrue(np.array_equal(static_res, dy_res_value))
 
+    def test_dice_loss(self):
+        num_classes = 4
+        eps = 1e-6
+        input_np = np.random.rand(2, 3, num_classes).astype('float32')
+        label_np = np.random.randint(0, num_classes, [2, 3, 1], dtype=np.int64)
+
+        with self.static_graph():
+            input_ = layers.data(
+                name="input", shape=[None, 3, num_classes], dtype="float32")
+            label_ = layers.data(
+                name="label", shape=[None, 3, 1], dtype="int64")
+            output = layers.dice_loss(input_, label_, eps)
+            static_res = self.get_static_graph_result(
+                feed={'input': input_np,
+                      'label': label_np},
+                fetch_list=[output])[0]
+
+        with self.dynamic_graph():
+            input_ = base.to_variable(input_np)
+            label_ = base.to_variable(label_np)
+            dy_res = layers.dice_loss(input_, label_, eps)
+            dy_res_value = dy_res.numpy()
+        self.assertTrue(np.array_equal(static_res, dy_res_value))
+
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -3716,6 +3740,36 @@ class TestLayerTrainingAttribute(unittest.TestCase):
         self.assertTrue(net.training)
         net.eval()
         self.assertFalse(net.training)
+
+
+class MyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(MyLayer, self).__init__()
+        self._linear = paddle.nn.Linear(1, 1)
+        self._dropout = paddle.nn.Dropout(p=0.5)
+
+    def forward(self, input):
+        temp = self._linear(input)
+        temp = self._dropout(temp)
+        return temp
+
+
+class MySuperLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(MySuperLayer, self).__init__()
+        self._mylayer = MyLayer()
+
+    def forward(self, input):
+        temp = self._mylayer(input)
+        return temp
+
+
+class TestSubLayerCount(unittest.TestCase):
+    def test_sublayer(self):
+        with fluid.dygraph.guard():
+            mySuperlayer = MySuperLayer()
+            self.assertTrue(len(mySuperlayer.sublayers()) == 3)
+            self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
 
 
 if __name__ == '__main__':

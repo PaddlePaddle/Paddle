@@ -46,6 +46,7 @@ extern bool HasCUDADriver();
  * include all needed cuda driver functions
  **/
 #define ROCM_ROUTINE_EACH(__macro)                            \
+  __macro(hipDriverGetVersion);                               \
   __macro(hipGetErrorString);                                 \
   __macro(hipModuleLoadData);                                 \
   __macro(hipModuleGetFunction);                              \
@@ -55,6 +56,7 @@ extern bool HasCUDADriver();
   __macro(hipModuleLaunchKernel);                             \
   __macro(hipLaunchKernel);                                   \
   __macro(hipGetDevice);                                      \
+  __macro(hipGetDeviceCount);                                 \
   __macro(hipDevicePrimaryCtxGetState)
 
 ROCM_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCM_WRAP);

@@ -62,5 +62,12 @@ class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):
         self.data_type = "int8"
 
 
+class TestDequantizeMaxAbsOpInt16(TestDequantizeMaxAbsOp):
+    def set_args(self):
+        self.num_bits = 16
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "int16"
+
+
 if __name__ == "__main__":
     unittest.main()

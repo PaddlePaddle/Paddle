@@ -18,6 +18,8 @@ from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
 
+__all__ = []
+
 
 class DatasetBase(object):
     """ Base dataset class. """
@@ -31,6 +33,8 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
+        self.psgpu = None
 
     def init(self,
              batch_size=1,
@@ -212,6 +216,20 @@ class DatasetBase(object):
         self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
 
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
+        # if not defined heterps with paddle, users will not use psgpu
+        if not core._is_compiled_with_heterps():
+            self.use_ps_gpu = 0
+        elif self.use_ps_gpu:
+            self.psgpu = core.PSGPU()
+
     def _finish_to_run(self):
         self.dataset.destroy_readers()
 
@@ -236,6 +254,71 @@ class DatasetBase(object):
 
     def _dynamic_adjust_after_train(self):
         pass
+
+    def _check_use_var_with_data_generator(self, var_list, data_generator_class,
+                                           test_file):
+        """
+         Var consistency insepection of use_var_list and data_generator data.
+
+        Examples:
+            .. code-block:: python
+
+              # required: skiptest
+              import paddle
+              from dataset_generator import CTRDataset
+              dataset = paddle.distributed.fleet.DatasetBase()
+              generator_class = CTRDataset()
+              dataset._check_use_var_with_data_generator([data, label], generator_class, "data/part-00000")
+
+        Args:
+            var_list(list): variable list
+            data_generator_class(class): data_generator class
+            test_file(str): local test file path
+        """
+
+        f = open(test_file, "r")
+        var_len = len(var_list)
+
+        while True:
+            line = f.readline()
+            if line:
+                line_iter = data_generator_class.generate_sample(line)
+                for user_parsed_line in line_iter():
+                    data_gen_len = len(user_parsed_line)
+                    if var_len != data_gen_len:
+                        raise ValueError(
+                            "var length mismatch error: var_list = %s vs data_generator = %s"
+                            % (var_len, data_gen_len))
+
+                    for i, ele in enumerate(user_parsed_line):
+                        if len(ele[1]) == 0:
+                            raise ValueError(
+                                "var length error: var %s's length in data_generator is 0"
+                                % ele[0])
+
+                        if var_list[
+                                i].dtype == core.VarDesc.VarType.FP32 and not all(
+                                    isinstance(ele, float) for ele in ele[1]):
+                            raise TypeError(
+                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-float value, which is %s \n"
+                                "Please check if order of var_list and data_generator are aligned. \n"
+                                "Please check if var's type in data_generator is correct."
+                                % (ele[0], "float", ele[1]))
+
+                        if (var_list[i].dtype == core.VarDesc.VarType.INT64 or
+                                var_list[i].dtype == core.VarDesc.VarType.INT32
+                            ) and not all(
+                                isinstance(ele, int) for ele in ele[1]):
+                            raise TypeError(
+                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
+                                "Please check if order of var_list and data_generator are aligned. \n"
+                                "Please check if var's type in data_generator is correct."
+                                % (ele[0], "int", ele[1]))
+
+            else:
+                break
+
+        f.close()
 
 
 class InMemoryDataset(DatasetBase):
@@ -529,12 +612,18 @@ class InMemoryDataset(DatasetBase):
 
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def _set_queue_num(self, queue_num):
@@ -659,11 +748,56 @@ class InMemoryDataset(DatasetBase):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
-    def load_into_memory(self):
+    def set_date(self, date):
+        """
+        :api_attr: Static Graph
+
+        Set training date for pull sparse parameters, saving and loading model. Only used in psgpu
+
+        Args:
+            date(str): training date(format : YYMMDD). eg.20211111
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                paddle.enable_static()
+
+                dataset = paddle.distributed.InMemoryDataset()
+                slots = ["slot1", "slot2", "slot3", "slot4"]
+                slots_vars = []
+                for slot in slots:
+                    var = paddle.static.data(
+                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                    slots_vars.append(var)
+                dataset.init(
+                    batch_size=1,
+                    thread_num=2,
+                    input_type=1,
+                    pipe_command="cat",
+                    use_var=slots_vars)
+                dataset.set_date("20211111")
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_date(year, month, day)
+
+    def tdm_sample(self, tree_name, tree_path, tdm_layer_counts,
+                   start_sample_layer, with_hierachy, seed, id_slot):
+        self.dataset.tdm_sample(tree_name, tree_path, tdm_layer_counts,
+                                start_sample_layer, with_hierachy, seed,
+                                id_slot)
+
+    def load_into_memory(self, is_shuffle=False):
         """
         :api_attr: Static Graph
         
         Load data into memory
+
+        Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
             .. code-block:: python
@@ -689,7 +823,11 @@ class InMemoryDataset(DatasetBase):
                 dataset.load_into_memory()
         """
         self._prepare_to_run()
-        self.dataset.load_into_memory()
+        if not self.use_ps_gpu:
+            self.dataset.load_into_memory()
+        elif core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.load_into_memory(is_shuffle)
 
     def preload_into_memory(self, thread_num=None):
         """

@@ -259,7 +259,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
              "in format (height, width, scale)");
     AddInput("Anchors",
              "(Tensor) Bounding box anchors from anchor_generator_op "
-             "is in shape (A, H, W, 4).");
+             "is in shape (H, W, A, 4).");
     AddInput("Variances",
              "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
@@ -303,6 +303,13 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);
 REGISTER_OP_VERSION(generate_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Incompatible upgrade of output [RpnRoisLod])ROC",
+        paddle::framework::compatible::OpVersionDesc().DeleteOutput(
+            "RpnRoisLod",
+            "Delete RpnRoisLod due to incorrect output name and "
+            "it is not used in object detection models yet."))
     .AddCheckpoint(
         R"ROC(
               Upgrade generate_proposals add a new output [RpnRoisNum])ROC",

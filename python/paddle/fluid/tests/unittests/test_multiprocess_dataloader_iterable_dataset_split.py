@@ -58,7 +58,7 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
 
             rets = []
             for d in dataloader:
-                rets.append(d[0].numpy()[0][0])
+                rets.append(d.numpy()[0][0])
 
             assert tuple(sorted(rets)) == tuple(range(0, 10))
 
@@ -102,7 +102,7 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
 
             rets = []
             for d in dataloader:
-                rets.append(d[0].numpy()[0][0])
+                rets.append(d.numpy()[0][0])
 
             assert tuple(sorted(rets)) == tuple(range(0, 10))
 

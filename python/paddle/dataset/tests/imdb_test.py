@@ -18,6 +18,8 @@ import paddle.dataset.imdb
 import unittest
 import re
 
+__all__ = []
+
 TRAIN_POS_PATTERN = re.compile(r"aclImdb/train/pos/.*\.txt$")
 TRAIN_NEG_PATTERN = re.compile(r"aclImdb/train/neg/.*\.txt$")
 TRAIN_PATTERN = re.compile(r"aclImdb/train/.*\.txt$")

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import pickle
+import shutil
 import unittest
 import numpy as np
 import paddle
@@ -94,6 +95,38 @@ class LinerNetWithLabel(paddle.nn.Layer):
         return out, avg_loss
 
 
+class LinerNetWithPruneInput(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinerNetWithPruneInput, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @declarative(input_spec=[
+        InputSpec(
+            shape=[None, 784], dtype='float32', name="image"), InputSpec(
+                shape=[None, 1], dtype='int64', name="label")
+    ])
+    def forward(self, x, label):
+        out = self._linear(x)
+        loss = fluid.layers.cross_entropy(out, label)
+        avg_loss = fluid.layers.mean(loss)
+        return out
+
+
+class LinerNetWithUselessInput(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinerNetWithUselessInput, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @declarative(input_spec=[
+        InputSpec(
+            shape=[None, 784], dtype='float32', name="image"), InputSpec(
+                shape=[None, 1], dtype='int64', name="label")
+    ])
+    def forward(self, x, label):
+        out = self._linear(x)
+        return out
+
+
 class LinearNetReturnLoss(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super(LinearNetReturnLoss, self).__init__()
@@ -118,6 +151,22 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
             [None, 8], dtype='float32'), InputSpec(
                 [None, 8], dtype='float32')
     ])
+    def forward(self, x, y):
+        x_out = self._linear1(x)
+        y_out = self._linear2(y)
+        loss = fluid.layers.mean(x_out + y_out)
+        return x_out, y_out, loss
+
+
+class LinearNetMultiInput1(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetMultiInput1, self).__init__()
+        self._linear1 = Linear(in_size, out_size)
+        self._linear2 = Linear(in_size, out_size)
+
+    @declarative(input_spec=(InputSpec(
+        [None, 8], dtype='float32'), InputSpec(
+            [None, 8], dtype='float32')))
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
@@ -186,6 +235,16 @@ class LinearNetWithDictInput(paddle.nn.Layer):
         out = self._linear(img['img'])
         # not return loss to avoid prune output
         loss = paddle.nn.functional.cross_entropy(out, label['label'])
+        return out
+
+
+class LinearNetWithDictInputNoPrune(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithDictInputNoPrune, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    def forward(self, img):
+        out = self._linear(img['img'] + img['img2'])
         return out
 
 
@@ -340,15 +399,6 @@ class TestJitSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
-    def test_jit_load_model_incomplete(self):
-        model_path = "test_jit_save_load.remove_variables/model"
-        self.train_and_save_model(model_path)
-        # remove `.pdiparams`	
-        var_path = model_path + INFER_PARAMS_SUFFIX
-        os.remove(var_path)
-        with self.assertRaises(ValueError):
-            paddle.jit.load(model_path)
-
     def test_jit_load_no_path(self):
         path = "test_jit_save_load.no_path/model_path"
         with self.assertRaises(ValueError):
@@ -410,6 +460,30 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
         self.assertEqual(len(loaded_net._input_spec()), 1)
 
 
+class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
+    def test_dict_input(self):
+        net = LinearNetWithDictInputNoPrune(8, 8)
+
+        path = "test_jit_save_load_with_dict_input_no_prune/model"
+        # prune inputs
+        paddle.jit.save(
+            layer=net,
+            path=path,
+            input_spec=[{
+                'img': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img'),
+                'img2': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img2')
+            }])
+
+        img = paddle.randn(shape=[4, 8], dtype='float32')
+        img2 = paddle.randn(shape=[4, 8], dtype='float32')
+        loaded_net = paddle.jit.load(path)
+        loaded_out = loaded_net(img, img2)
+
+        self.assertEqual(len(loaded_net._input_spec()), 2)
+
+
 class TestSaveLoadWithInputSpec(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -467,6 +541,42 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         model_path = "multi_inout.output_spec2/model"
         output_spec = net.forward.outputs[:1]
         paddle.jit.save(net, model_path, [input_x], output_spec=output_spec)
+        # 2. load again
+        infer_layer2 = paddle.jit.load(model_path)
+        # 3. predict
+        pred_xx = infer_layer2(x)
+
+        # 4. assert pred_x == pred_xx
+        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+
+    def test_multi_in_out1(self):
+        net = LinearNetMultiInput1(8, 8)
+
+        model_path = "multi_inout1.output_spec1/model"
+        # 1. check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 2)
+        input_x = net.forward.inputs[0]
+        input_y = net.forward.inputs[1]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_y.shape == (-1, 8))
+
+        # 2. prune loss
+        output_spec = net.forward.outputs[:2]
+        paddle.jit.save(net, model_path, output_spec=output_spec)
+
+        # 3. load to infer
+        infer_layer = paddle.jit.load(model_path)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        y = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        # 4. predict
+        pred_x, pred_y = infer_layer(x, y)
+
+        # 1. prune y and loss
+        model_path = "multi_inout1.output_spec2/model"
+        output_spec = net.forward.outputs[:1]
+        paddle.jit.save(net, model_path, (input_x, ), output_spec=output_spec)
         # 2. load again
         infer_layer2 = paddle.jit.load(model_path)
         # 3. predict
@@ -626,15 +736,23 @@ class TestJitSaveMultiCases(unittest.TestCase):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-    def verify_inference_correctness(self, layer, model_path, with_label=False):
+    def verify_inference_correctness(self,
+                                     layer,
+                                     model_path,
+                                     with_label_and_loss=False,
+                                     with_label=False):
         layer.eval()
         loaded_layer = paddle.jit.load(model_path)
         loaded_layer.eval()
         # inference & compare
         x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
-        if with_label:
+        if with_label_and_loss:
             y = paddle.to_tensor(np.random.random((1, 1)).astype('int64'))
             pred, _ = layer(x, y)
+            pred = pred.numpy()
+        elif with_label:
+            y = paddle.to_tensor(np.random.random((1, 1)).astype('int64'))
+            pred = layer(x, y)
             pred = pred.numpy()
         else:
             pred = layer(x).numpy()
@@ -713,7 +831,8 @@ class TestJitSaveMultiCases(unittest.TestCase):
             ],
             output_spec=[out])
 
-        self.verify_inference_correctness(layer, model_path, True)
+        self.verify_inference_correctness(
+            layer, model_path, with_label_and_loss=True)
 
     def test_prune_to_static_no_train(self):
         layer = LinerNetWithLabel(784, 1)
@@ -731,7 +850,36 @@ class TestJitSaveMultiCases(unittest.TestCase):
             ],
             output_spec=output_spec)
 
-        self.verify_inference_correctness(layer, model_path, True)
+        self.verify_inference_correctness(
+            layer, model_path, with_label_and_loss=True)
+
+    def test_prune_input_to_static_no_train(self):
+        layer = LinerNetWithPruneInput(784, 1)
+
+        model_path = "test_prune_input_to_static_no_train/model"
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 784], dtype='float32', name="image")
+            ])
+
+        self.verify_inference_correctness(layer, model_path, with_label=True)
+
+    def test_prune_useless_input_to_static_no_train(self):
+        layer = LinerNetWithUselessInput(784, 1)
+
+        model_path = "test_prune_useless_input_to_static_no_train/model"
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 784], dtype='float32', name="image")
+            ])
+
+        self.verify_inference_correctness(layer, model_path, with_label=True)
 
     def test_no_prune_input_spec_name_warning(self):
         layer = LinearNetWithInputSpec(784, 1)
@@ -863,6 +1011,18 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
             paddle.jit.save(
                 layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
 
+    def test_parse_name(self):
+        model_path_inference = "jit_save_load_parse_name/model"
+        IMAGE_SIZE = 224
+        layer = LinearNet(IMAGE_SIZE, 1)
+        inps = paddle.randn([1, IMAGE_SIZE])
+        layer(inps)
+        paddle.jit.save(layer, model_path_inference)
+        paddle.jit.save(layer, model_path_inference + '_v2')
+        load_net = paddle.jit.load(model_path_inference)
+
+        self.assertFalse(hasattr(load_net, 'v2'))
+
 
 class LayerSaved(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
@@ -918,6 +1078,48 @@ class LayerLoadFinetune(paddle.nn.Layer):
         return y
 
 
+class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_save_load_finetune_load(self):
+        model_path = "test_jit_save_load_save_without_running/model"
+        IMAGE_SIZE = 224
+        inps0 = paddle.randn([1, IMAGE_SIZE])
+        inps1 = paddle.randn([2, IMAGE_SIZE])
+        # Use new namespace
+        with unique_name.guard():
+            layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
+        #save
+        paddle.jit.save(
+            layer_save,
+            model_path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, IMAGE_SIZE], dtype='float32')
+            ])
+        result_00 = layer_save(inps0)
+        result_01 = layer_save(inps1)
+        #load and save without running
+        with unique_name.guard():
+            layer_load = paddle.jit.load(model_path)
+            paddle.jit.save(
+                layer_load,
+                model_path,
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, IMAGE_SIZE], dtype='float32')
+                ])
+        #reload
+        layer_reload = paddle.jit.load(model_path)
+        result_10 = layer_reload(inps0)
+        result_11 = layer_reload(inps1)
+
+        self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
+        self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
+
+
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -952,6 +1154,171 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
 
 
+# NOTE(weixin): When there are multiple test functions in an 
+# `unittest.TestCase`, functions will affect each other, 
+# and there is a risk of random failure. 
+# So divided into three TestCase: TestJitSaveLoadFunctionCase1, 
+# TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
+class TestJitSaveLoadFunctionCase1(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_static_function(self):
+        @paddle.jit.to_static
+        def fun(inputs):
+            return paddle.tanh(inputs)
+
+        path = 'test_jit_save_load_function_1/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function_input_spec(self):
+        @paddle.jit.to_static(input_spec=[
+            InputSpec(
+                shape=[None, 6], dtype='float32', name='x'),
+        ])
+        def fun(inputs):
+            return paddle.nn.functional.relu(inputs)
+
+        path = 'test_jit_save_load_function_2/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun, path)
+        load_func = paddle.jit.load(path)
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function_function(self):
+        def fun(inputs):
+            return paddle.tanh(inputs)
+
+        path = 'test_jit_save_load_function_3/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(
+            fun,
+            path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 6], dtype='float32', name='x'),
+            ])
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        func = paddle.jit.to_static(
+            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])])
+        path = 'test_jit_save_load_function_with_params_case1/func'
+        paddle.jit.save(func, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+
+
+class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            @paddle.jit.to_static(input_spec=[InputSpec(shape=[-1, 5])])
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+
+        path = 'test_jit_save_load_function_with_params_case2/func'
+        paddle.jit.save(layer.anothor_forward, path)
+        origin_result = layer.anothor_forward(inps)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+
+        self.assertTrue(
+            np.array_equal(origin_result.numpy(), load_result.numpy()))
+
+
+class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            @paddle.jit.to_static
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        path = 'test_jit_save_load_function_with_params_case3/func'
+        paddle.jit.save(layer.anothor_forward, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+
+
 class TestJitSaveLoadDataParallel(unittest.TestCase):
     def verify_inference_correctness(self, layer, path):
         layer.eval()
@@ -984,6 +1351,106 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
         paddle.jit.save(layer, path)
 
         self.verify_inference_correctness(layer, path)
+
+
+class InputSepcLayer(paddle.nn.Layer):
+    '''
+    A layer with InputSpec to test InputSpec compatibility
+    '''
+
+    @paddle.jit.to_static(input_spec=[
+        InputSpec(
+            shape=[None, 8], dtype='float32', name='x'), InputSpec(
+                shape=[None, 1], dtype='float64', name='y')
+    ])
+    def forward(self, x, y):
+        return x, y
+
+
+class TestInputSpecCompatibility(unittest.TestCase):
+    def _assert_input_spec_layer_return(self, expect_layer, test_layer):
+        input_x = paddle.uniform([8, 8], dtype='float32')
+        input_y = paddle.uniform([8, 1], dtype='float64')
+        expected_result = expect_layer(input_x, input_y)
+        test_result = test_layer(input_x, input_y)
+        np.testing.assert_allclose(expected_result[0].numpy(),
+                                   test_result[0].numpy())
+        np.testing.assert_allclose(expected_result[1].numpy(),
+                                   test_result[1].numpy())
+
+    def test_jit_save_compatible_input_sepc(self):
+        layer = InputSepcLayer()
+        save_dir = "jit_save_compatible_input_spec"
+        path = save_dir + "/model"
+
+        paddle.jit.save(layer=layer, path=path)
+        no_input_spec_layer = paddle.jit.load(path)
+        self._assert_input_spec_layer_return(layer, no_input_spec_layer)
+        shutil.rmtree(save_dir)
+
+        paddle.jit.save(
+            layer=layer,
+            path=path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 8], dtype='float32', name='x'), InputSpec(
+                        shape=[None, 1], dtype='float64', name='y')
+            ])
+        same_input_spec_layer = paddle.jit.load(path)
+        self._assert_input_spec_layer_return(layer, same_input_spec_layer)
+        shutil.rmtree(save_dir)
+
+        paddle.jit.save(
+            layer=layer,
+            path=path,
+            input_spec=[
+                InputSpec(
+                    shape=[8, 8], dtype='float32'), InputSpec(
+                        shape=[8, -1], dtype='float64')
+            ])
+        compatible_input_spec_layer = paddle.jit.load(path)
+        self._assert_input_spec_layer_return(layer, compatible_input_spec_layer)
+        shutil.rmtree(save_dir)
+
+    def test_jit_save_incompatible_input_sepc(self):
+        layer = InputSepcLayer()
+        save_dir = "jit_save_compatible_input_spec"
+        path = save_dir + "/model"
+
+        with self.assertRaises(ValueError):
+            # type mismatch
+            paddle.jit.save(
+                layer=layer,
+                path=path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 8], dtype='float64'), InputSpec(
+                            shape=[None, 1], dtype='float64')
+                ])
+
+        with self.assertRaises(ValueError):
+            # shape len mismatch
+            paddle.jit.save(
+                layer=layer,
+                path=path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 8, 1], dtype='float32'), InputSpec(
+                            shape=[None, 1], dtype='float64')
+                ])
+
+        with self.assertRaises(ValueError):
+            # shape mismatch
+            paddle.jit.save(
+                layer=layer,
+                path=path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 8], dtype='float32'), InputSpec(
+                            shape=[None, 2], dtype='float64')
+                ])
+        if os.path.exists(save_dir):
+            shutil.rmtree(save_dir)
 
 
 if __name__ == '__main__':

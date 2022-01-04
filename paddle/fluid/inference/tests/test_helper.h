@@ -27,6 +27,21 @@ limitations under the License. */
 
 DECLARE_bool(use_mkldnn);
 
+namespace paddle {
+bool gpu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kGPU;
+}
+bool xpu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kXPU;
+}
+bool npu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kNPU;
+}
+bool cpu_place_used(const paddle::PaddlePlace& place) {
+  return place == paddle::PaddlePlace::kCPU;
+}
+}  // namespace paddle
+
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, T lower, T upper) {
@@ -156,7 +171,7 @@ void TestInference(const std::string& dirname,
   if (paddle::platform::is_cpu_place(place)) {
     state = paddle::platform::ProfilerState::kCPU;
   } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     state = paddle::platform::ProfilerState::kAll;
     // The default device_id of paddle::platform::CUDAPlace is 0.
     // Users can get the device_id using:

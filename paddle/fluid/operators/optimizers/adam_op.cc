@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/adam_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/optimizers/adamw_op.h"
 
 namespace paddle {
 namespace operators {
@@ -121,7 +123,8 @@ framework::OpKernelType AdamOp::GetExpectedKernelType(
 framework::OpKernelType AdamOp::GetKernelTypeForVar(
     const std::string &var_name, const framework::Tensor &tensor,
     const framework::OpKernelType &expected_kernel_type) const {
-  if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
+  if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
+      var_name == "SkipUpdate") {
     return expected_kernel_type;
   } else {
     return framework::OpKernelType(expected_kernel_type.data_type_,
@@ -150,12 +153,24 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "as beta2, this has a higher priority than attr(beta2), the "
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
+    AddInput("EpsilonTensor",
+             "(Tensor<float32>, optional) If provided, Adam will use this "
+             "as epsilon, this has a higher priority than attr(epsilon), the "
+             "shape of this tensor MUST BE [1].")
+        .AsDispensable();
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
+    AddInput("SkipUpdate", "(Tensor<bool>, optional), Skip the update or not.")
+        .AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
     AddOutput("Moment2Out", "(Tensor) Output second moment");
     AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
     AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -183,6 +198,17 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                      "inner_op_parallelism is larger then 0, sparse update "
                      "will run in multithread mode")
         .SetDefault(1000);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+    // TODO(zhiqiu): We could set Beta1PowOut and Beta2PowOut
+    // as dispensable since they are not used when use_global_beta_pow is true.
+    AddAttr<bool>("use_global_beta_pow",
+                  "(bool, default false) "
+                  "Whether to use global beta_pow for whole model instead of "
+                  "creating beta_pow for each parameter.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Adam Optimizer.
@@ -205,11 +231,71 @@ $$
 )DOC");
   }
 };
+
+class AdamWOpMaker : public AdamOpMaker {
+ public:
+  void Make() {
+    AdamOpMaker::Make();
+    AddAttr<float>("lr_ratio",
+                   "(float, default 1.0) "
+                   "layerwise learning rate decay")
+        .SetDefault(1.0f);
+    AddAttr<float>("coeff",
+                   "(float, default 0.01) "
+                   "coeff of the weight decay")
+        .SetDefault(0.01f);
+    AddAttr<bool>("with_decay",
+                  "(bool, default false) "
+                  "whether to do weight decay")
+        .SetDefault(false);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
+
+REGISTER_OP_WITHOUT_GRADIENT(adamw, ops::AdamWOp, ops::AdamWOpMaker);
+
 REGISTER_OP_CPU_KERNEL(
     adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(adam)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam add 1 attribute [multi_precision].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "multi_precision",
+            "(bool) Whether to use multi-precision during weight updating.",
+            false))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 dispensable input [EpsilonTensor].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "EpsilonTensor",
+            "If provided, Adam will use this as epsilon, "
+            "this has a higher priority than attr(epsilon). "
+            "For better performance in npu kernel. "))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 attribute [use_global_beta_pow].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_global_beta_pow",
+            "If true, Adam will use global beta_pow for whole model "
+            "instead of creating beta_pow for each parameter."
+            "In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be "
+            "used in adam op, "
+            "and beta_pow will be updated after all adam op in the model.",
+            false))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 dispensable input [SkipUpdate].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "SkipUpdate", "If the value is true, Adam will skip the update."));

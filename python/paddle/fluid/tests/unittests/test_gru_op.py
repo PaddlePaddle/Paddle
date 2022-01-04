@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 import math
 import functools
-from op_test import OpTest
-from test_lstm_op import ACTIVATION
+from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
 from paddle import fluid
 from paddle.fluid import Program, program_guard
 
@@ -106,6 +106,9 @@ class TestGRUOp(OpTest):
     def set_confs(self):
         pass
 
+    def set_is_test(self):
+        self.is_test = False
+
     def setUp(self):
         self.op_type = "gru"
         self.lod = [[2, 4, 3]]
@@ -118,6 +121,7 @@ class TestGRUOp(OpTest):
         self.dtype = 'float64'
         self.origin_mode = False
         self.set_confs()
+        self.set_is_test()
 
         T = sum(self.lod[0])
         N = len(self.lod[0])
@@ -153,7 +157,8 @@ class TestGRUOp(OpTest):
             'activation': self.act_state,
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
-            'origin_mode': self.origin_mode
+            'origin_mode': self.origin_mode,
+            'is_test': self.is_test
         }
 
     def test_check_output(self):
@@ -227,6 +232,21 @@ class TestGRUOpReverseOriginMode(TestGRUOp):
     def set_confs(self):
         self.is_reverse = True
         self.origin_mode = True
+
+
+class TestGRUOpInference(TestGRUOp):
+    def set_is_test(self):
+        self.is_test = True
+
+    def test_check_output(self):
+        new_outputs = {}
+        new_outputs['Hidden'] = self.outputs['Hidden']
+        self.outputs = new_outputs
+        super(TestGRUOpInference, self).test_check_output()
+
+    # avoid checking gradient
+    def test_check_grad(self):
+        pass
 
 
 class TestGruOpError(unittest.TestCase):

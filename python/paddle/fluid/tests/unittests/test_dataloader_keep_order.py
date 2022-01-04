@@ -77,7 +77,11 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
     def get_places(self):
         place_list = [fluid.cpu_places(1), fluid.cpu_places(4)]
         if fluid.is_compiled_with_cuda():
-            place_list.extend([fluid.cuda_places(0), fluid.cuda_places([0, 1])])
+            if os.name == "nt":
+                place_list.extend([fluid.cuda_places(0)])
+            else:
+                place_list.extend(
+                    [fluid.cuda_places(0), fluid.cuda_places([0, 1])])
         return place_list
 
     def test_main(self):

@@ -18,23 +18,39 @@ if(NOT LINUX)
   return()
 endif()
 
-if(XPU_SDK_ROOT)
-  set(LITE_WITH_XPU ON)
-  include_directories("${XPU_SDK_ROOT}/XTDK/include")
-  include_directories("${XPU_SDK_ROOT}/XTCL/include")
+if (LITE_WITH_XPU)
   add_definitions(-DLITE_SUBGRAPH_WITH_XPU)
-  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/shlib/")
-  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/runtime/shlib/")
+  IF(WITH_AARCH64)
+    SET(XPU_SDK_ENV "kylin_aarch64")
+  ELSEIF(WITH_SUNWAY)
+    SET(XPU_SDK_ENV "deepin_sw6_64")
+  ELSEIF(WITH_BDCENTOS)
+    SET(XPU_SDK_ENV "bdcentos_x86_64")
+  ELSEIF(WITH_UBUNTU)
+    SET(XPU_SDK_ENV "ubuntu_x86_64")
+  ELSEIF(WITH_CENTOS)
+    SET(XPU_SDK_ENV "centos7_x86_64")
+  ELSE ()
+    SET(XPU_SDK_ENV "ubuntu_x86_64")
+  ENDIF()
+endif()
+
+if (LITE_WITH_NNADAPTER)
+  add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER) 
+  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    add_definitions(-DLITE_SUBGRAPH_WITH_NPU)
+    set(NPU_SDK_ROOT "/usr/local/Ascend/ascend-toolkit/latest" CACHE STRING "default NPU SDK ROOT")
+  endif()
 endif()
 
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
-  set(LITE_SOURCES_DIR ${THIRD_PARTY_PATH}/lite)
+  set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 68e64e0eb74cdd13383ae78caf889973499ebd14)
+    set(LITE_GIT_TAG 4ab64daecc11fbf74fffdc6a4733f388472e7d5d)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -57,15 +73,20 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DWITH_TESTING=OFF
                            -DLITE_BUILD_EXTRA=ON
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DXPU_SDK_URL=${XPU_BASE_URL}
+                           -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
+                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
-      PREFIX              ${LITE_SOURCES_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
+      PREFIX              ${LITE_PREFIX_DIR}
+      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
@@ -98,7 +119,12 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_STATIC_CUDA=OFF
                            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DXPU_SDK_URL=${XPU_BASE_URL}
+                           -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
+                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
 
     ExternalProject_Add(
@@ -106,8 +132,9 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
         GIT_TAG             ${LITE_GIT_TAG}
-        PREFIX              ${LITE_SOURCES_DIR}
+        PREFIX              ${LITE_PREFIX_DIR}
         UPDATE_COMMAND      ""
+        PATCH_COMMAND       sed -i "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?" ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
         BUILD_COMMAND       ${LITE_BUILD_COMMAND}
         INSTALL_COMMAND     ""
         CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -134,6 +161,11 @@ endif()
 if (WITH_ARM)
   if(LITE_WITH_XPU)
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
+  elseif(LITE_WITH_NNADAPTER)
+    message("Enable LITE_WITH_NNADAPTER")
+    if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+      set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.nnadapter)
+    endif()
   else()
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
   endif()
@@ -145,6 +177,10 @@ message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
 message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
 include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
+if(LITE_WITH_XPU)
+  include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xdnn/include/)
+  include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xre/include/)
+endif()
 
 function(external_lite_libs alias path)
   add_library(${alias} SHARED IMPORTED GLOBAL)
@@ -157,6 +193,17 @@ endfunction()
 
 external_lite_libs(lite_full_static ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
 set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
+
+if (LITE_WITH_NNADAPTER)
+  set(LITE_NNADAPTER_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
+  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+    set(LITE_DEPS lite_full_static lite_nnadapter)
+    set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+  endif()
+else()
+  set(LITE_DEPS lite_full_static)
+endif()
 
 add_definitions(-DPADDLE_WITH_LITE)
 add_definitions(-DLITE_WITH_LOG)

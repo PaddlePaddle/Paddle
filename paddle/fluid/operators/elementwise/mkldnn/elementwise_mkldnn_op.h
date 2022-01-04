@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
 #include <unordered_map>
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -26,9 +26,9 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::stream;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::stream;
 
 template <typename T, dnnl::algorithm BINARY_OP>
 class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
@@ -45,23 +45,43 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_x = ctx.Attr<float>("Scale_x");
     float scale_y = ctx.Attr<float>("Scale_y");
     float scale_o = ctx.Attr<float>("Scale_out");
-
     int axis = ctx.Attr<int>("axis");
 
-    platform::BinaryMKLDNNHandler<T> handler(
-        BINARY_OP, axis, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z,
-        scale_x, scale_y, scale_o, ctx.OutputName("Out"));
+    platform::BinaryMKLDNNHandler<T> handler(BINARY_OP, axis, mkldnn_engine,
+                                             ctx.GetPlace(), x, y, z, scale_x,
+                                             scale_y, scale_o);
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
-
-    // For Inplace src and and dst are the same memory object
-    const auto dst_memory =
-        x->IsSharedBufferWith(*z) ? src_x_memory : handler.AcquireDstMemory(z);
+    // (jczaja) For Inplace src and dst should be the same memory object.
+    // So x should share buffer with z. But UT mechanics is testing inplace
+    // execution for this op not checking that x can be bradcasted to match in
+    // shape y tensor.
+    // This is wrong as when x is to be broadcasted then z(out) will match the
+    // shape of y which is bigger than x. Hence if x is smaller in shape than z
+    // and they share a buffer (of
+    // shape x) then this buffer is not big enough to hold result of elementwise
+    // operation.
+    const bool reuse_x_memopry =
+        x->numel() == z->numel() && x->IsSharedBufferWith(*z);
+    std::shared_ptr<dnnl::memory> dst_memory = nullptr;
+    if (reuse_x_memopry) {
+      dst_memory = src_x_memory;
+      // NOTE(chenfeiyu): when the output reuses memory from other tensor rather
+      // than allocate its own, it's still need to take care of its data type.
+      // Unfortunately, paddle's operator only infers the output' shape, but not
+      // the data type. mutable_data<T> takes care of allocation and data type
+      // normally, but if the memory is already allocated and there is no need
+      // to re-allocate, it just set the data type. So this it added there to
+      // get the right data type.
+      z->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dst_memory = handler.AcquireDstMemory(z);
+    }
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC_0, *src_x_memory},
@@ -75,5 +95,20 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     z->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
+
+inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
+                                                     const Tensor* y) {
+  const auto src_tz = framework::vectorize(x->dims());
+  const auto dst_tz = framework::vectorize(y->dims());
+
+  size_t j = 0;
+  std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
+  for (size_t i = 0; i < src_tz.size(); ++i) {
+    dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+    if (j == dst_tz.size()) break;
+  }
+
+  return dst_tz_ex;
+}
 }  // namespace operators
 }  // namespace paddle

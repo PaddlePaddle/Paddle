@@ -24,6 +24,9 @@ REGISTER_OP_CUDA_KERNEL(conv2d_transpose,
 REGISTER_OP_CUDA_KERNEL(conv2d_transpose_grad,
                         ops::GemmConvTransposeGradKernel<CUDA, float>,
                         ops::GemmConvTransposeGradKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(conv2d_transpose_grad_grad,
+                        ops::GemmConvTransposeGradKernel<CUDA, float>,
+                        ops::GemmConvTransposeGradKernel<CUDA, double>);
 
 // conv3d
 REGISTER_OP_CUDA_KERNEL(conv3d_transpose,

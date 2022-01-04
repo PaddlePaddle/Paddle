@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
+from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
+from paddle.fluid import program_guard
 from . import core
 import collections
 import copy
@@ -25,6 +27,7 @@ from . import unique_name
 from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
+import warnings
 __all__ = [
     'append_backward',
     'gradients',
@@ -45,7 +48,7 @@ class ProgramStats(object):
         input_names = []
         for name in self.var_op_deps:
             if len(self.var_op_deps[name]["var_as_output_ops"]) == 0 and \
-                len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
+                    len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
                 if self.block.var(name).persistable:
                     continue
                 input_names.append(name)
@@ -98,7 +101,31 @@ class ProgramStats(object):
                 max_op_idx = max(max_op_idx, idx)
         if min_op_idx >= max_op_idx:
             return False, min_op_idx, max_op_idx
+
         return True, min_op_idx, max_op_idx
+
+    def _update_segment_start(self, min_idx, pre_segment_end_idx):
+        """
+        persist vars of amp-related cast should be included in recompute segment
+        """
+
+        def is_amp_cast(op):
+            return op.desc.type() == 'cast' and self.block.var(
+                op.desc.input_arg_names()[0]).persistable
+
+        idx_ = min_idx - 1
+        updated_min_idx = min_idx
+        while idx_ > pre_segment_end_idx:
+            if is_amp_cast(self.ops[idx_]):
+                _logger.info("found amp-cast op: {}, : {}".format(self.ops[
+                    idx_].desc.type(), self.ops[idx_].desc.input_arg_names()[
+                        0]))
+                updated_min_idx = idx_
+                idx_ -= 1
+            else:
+                break
+
+        return updated_min_idx
 
     def build_stats(self):
         for i, op in enumerate(self.ops):
@@ -130,7 +157,7 @@ class ProgramStats(object):
         sorted_checkpoints = []
         for name in checkpoints_name:
             if name not in self.var_op_deps:
-                _logger.debug(
+                _logger.info(
                     "Recompute Optimizer: deleted %s from checkpoints, because it is not used in paddle program."
                     % name)
             elif self.var_op_deps[name]["var_as_output_ops"] == []:
@@ -148,9 +175,13 @@ class ProgramStats(object):
             return
 
         op_idx = 0
-        while (op_idx < len(self.ops)):
+        while op_idx < len(self.ops):
             op = self.ops[op_idx]
             if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # already insert seed op before dropout
+            if op.input('Seed') is not None and len(op.input('Seed')) == 1:
                 op_idx += 1
                 continue
             # add a seed op so that the two dropout op can generate same output
@@ -164,12 +195,25 @@ class ProgramStats(object):
                 persistable=False,
                 stop_gradient=False)
             seed = 0 if op.attr("fix_seed") is False else int(op.attr("seed"))
+
+            op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+            )
+            op_device = ""
+            if op.desc.has_attr(op_device_attr_name):
+                op_device = op.desc.attr(op_device_attr_name)
+
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory,
+            # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
-                attrs={'seed': seed})
+                attrs={
+                    'seed': seed,
+                    'op_device': op_device,
+                    'force_cpu': True
+                })
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
@@ -191,7 +235,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         return []
     result_descs = []
     op_role_attr_name = \
-            core.op_proto_and_checker_maker.kOpRoleAttrName()
+        core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
         if isinstance(desc, framework.Operator):
@@ -208,6 +252,8 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
+            if desc.has_attr('op_device'):
+                new_op_desc._set_attr('op_device', desc.attr('op_device'))
             result_descs.append(new_op_desc)
     return result_descs
 
@@ -227,6 +273,8 @@ def _add_descs_to_block(descs, block):
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
+        if desc.has_attr('op_device'):
+            new_op_desc._set_attr('op_device', desc.attr('op_device'))
         result_descs.append(new_op_desc)
     return result_descs
 
@@ -328,6 +376,10 @@ def _infer_var_data_type_shape_(grad_var_name, block):
         grad_var.set_dtype(fwd_var.dtype())
         grad_var.set_shape(fwd_var.shape())
     else:
+        # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
+        warnings.warn(
+            "Set grad var: {} dtype to default FP32, since we can't find its related forward var".
+            format(grad_var_name))
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
 
@@ -365,7 +417,9 @@ def _strip_grad_suffix_(name):
     """
     name = cpt.to_text(name)
     pos = name.find(core.grad_var_suffix())
-    return name[:pos] if pos != -1 else name
+    new_name = name[:pos] if pos != -1 else name
+    new_pos = name.rfind('grad/')
+    return new_name[new_pos + 5:] if new_pos != -1 else new_name
 
 
 def _append_grad_suffix_(name):
@@ -376,21 +430,29 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
-                                     op_idx):
+def _accumulate_gradients_by_sum_op_(var_name,
+                                     renamed_vars,
+                                     pending_sum_ops,
+                                     op_idx,
+                                     op_device=""):
     """
     Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
     if op_idx not in pending_sum_ops.keys():
         pending_sum_ops[op_idx] = []
     pending_sum_ops[op_idx].append(
-        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
-                         {"Out": [var_name]}, {"use_mkldnn": False}))
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]}, {
+            "Out": [var_name]
+        }, {"use_mkldnn": False,
+            "op_device": op_device}))
     renamed_vars[var_name] = [var_name]
 
 
-def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
-                                      op_idx):
+def _accumulate_gradients_by_add_ops_(var_name,
+                                      renamed_vars,
+                                      pending_sum_ops,
+                                      op_idx,
+                                      op_device=""):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
@@ -407,7 +469,8 @@ def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
         pending_sum_ops[op_idx].append(
             _create_op_desc_("grad_add", {"X": [x_name],
                                           "Y": [y_name]}, {"Out": [out_name]},
-                             {"use_mkldnn": False}))
+                             {"use_mkldnn": False,
+                              "op_device": op_device}))
     renamed_vars[var_name] = [var_name]
 
 
@@ -418,30 +481,38 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
-    _MAX_ADD_NUM_ = core.globals()['FLAGS_max_inplace_grad_add']
+    _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
     pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
+    var_device = collections.defaultdict(str)
     for idx, op_desc in enumerate(op_descs):
+        op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+        )
+        op_device = ""
+        if op_desc.has_attr(op_device_attr_name):
+            op_device = op_desc.attr(op_device_attr_name)
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
                     _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
-                                                     pending_sum_ops, idx)
+                                                     pending_sum_ops, idx,
+                                                     var_device[var_name])
                 else:
                     _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
-                                                      pending_sum_ops, idx)
+                                                      pending_sum_ops, idx,
+                                                      var_device[var_name])
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
             for arg_idx, var_name in enumerate(arg_names):
                 if "@GRAD" not in var_name:
                     continue
-                #if "@RENAME@" in var_name:
+                # if "@RENAME@" in var_name:
                 #    continue
                 if var_name == core.empty_var_name(
                 ) or var_name in op_desc.input_arg_names():
@@ -480,21 +551,24 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                         ] + arg_names[arg_idx:]
 
                     new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
-                               str(var_rename_count[var_name])
+                        str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
+                    # record the latest device
+                    var_device[var_name] = op_device
 
     for var_name, inputs in six.iteritems(renamed_vars):
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
-                                                 pending_sum_ops, len(op_descs))
+                _accumulate_gradients_by_sum_op_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
             else:
-                _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
-                                                  pending_sum_ops,
-                                                  len(op_descs))
+                _accumulate_gradients_by_add_ops_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
 
     # sum_op descs are sorted according to their insert position
     for key, value in collections.OrderedDict(
@@ -677,9 +751,6 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
     return not_need_op_descs_set
 
 
-from .proto import framework_pb2
-
-
 def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
     proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
@@ -739,20 +810,31 @@ def _append_backward_ops_with_checkpoints_(
             if name not in program_stat.var_op_deps:
                 break
             op_idx = program_stat.var_op_deps[name]["var_as_output_ops"]
+            # only count the last generate op
             for idx in op_idx:
                 max_op_idx = max(max_op_idx, idx)
         if max_op_idx > 0:
             segments.append([0, max_op_idx + 1])
     else:
         start_idx = 0
+        pre_segment_end_idx = -1
         while True:
             if start_idx >= len(checkpoints_name) - 1:
                 break
+            # min_idx: checkpoint_1' s input op
+            # max_idx: checkpoint_2' s output op
             flag, min_idx, max_idx = program_stat.is_subgraph(
                 [checkpoints_name[start_idx]],
                 [checkpoints_name[start_idx + 1]])
             if flag:
+                # max_idx + 1 since the exact and used segment end idx is max_idx
+                min_idx = program_stat._update_segment_start(
+                    min_idx, pre_segment_end_idx)
                 segments.append([min_idx, max_idx + 1])
+            else:
+                _logger.info("Could not recompute op range [{}] - [{}] ".format(
+                    min_idx, max_idx + 1))
+
             start_idx += 1
 
     if segments != [] and segments[0][0] != 0:
@@ -760,12 +842,29 @@ def _append_backward_ops_with_checkpoints_(
     else:
         recompute_segments = segments
 
+    for i, (idx1, idx2) in enumerate(recompute_segments):
+        _logger.info("recompute segment[{}]".format(i))
+        _logger.info("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
+        ), ops[idx1].desc.input_arg_names()))
+        _logger.info("segment end op: [{}]: [{}]".format(ops[
+            idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
+        _logger.info("recompute segment[{}]".format(i))
+        _logger.info("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
+        ), ops[idx1].desc.input_arg_names()))
+        _logger.info("segment end op: [{}]: [{}]".format(ops[
+            idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
+
     # 2) go through all forward ops and induct all variables that will be hold in memory
     vars_should_be_hold = []
     # a. variables that are used across segments will be held in memory
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
+
+    cross_vars = set(vars_should_be_hold) - set(checkpoints_name)
+    _logger.info("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
+    len(cross_vars), cross_vars))
+
     # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
@@ -779,9 +878,8 @@ def _append_backward_ops_with_checkpoints_(
     vars_in_memory = vars_should_be_hold + checkpoints_name
 
     max_calculated_op_position = len(ops)
+    device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
     if recompute_segments == []:
-        # if there is no recompute segment, add backward ops like
-        # _append_backward_ops_ function
         gap_ops = ops[0:max_calculated_op_position]
         for op in reversed(gap_ops):
             if op.has_attr("sub_block"):
@@ -790,12 +888,16 @@ def _append_backward_ops_with_checkpoints_(
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            # Set device for grad_op according to forward Op
+            if op.desc.has_attr(device_attr_name):
+                op_device = op.desc.attr(device_attr_name)
+                for op_desc in grad_op_desc:
+                    op_desc._set_attr(device_attr_name, op_device)
             added_descs = _add_descs_to_block(grad_op_desc, local_block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
 
     for i, segment in enumerate(recompute_segments[::-1]):
-        # add grad op for ops not in any segments
         gap_ops = ops[segment[1]:max_calculated_op_position]
         max_calculated_op_position = segment[0]
         for op in reversed(gap_ops):
@@ -805,6 +907,11 @@ def _append_backward_ops_with_checkpoints_(
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            # Set device for grad_op according to forward Op
+            if op.desc.has_attr(device_attr_name):
+                op_device = op.desc.attr(device_attr_name)
+                for op_desc in grad_op_desc:
+                    op_desc._set_attr(device_attr_name, op_device)
             added_descs = _add_descs_to_block(grad_op_desc, local_block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
@@ -827,6 +934,17 @@ def _append_backward_ops_with_checkpoints_(
                     continue
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
+
+                    # we should create the rename var in subprog, otherwise its VarType will be BOOL
+                    ref_var = block.program.global_block().var(name)
+                    block.create_var(
+                        name=var_name_dict[name],
+                        shape=ref_var.shape,
+                        dtype=ref_var.dtype,
+                        type=ref_var.type,
+                        persistable=ref_var.persistable,
+                        stop_gradient=ref_var.stop_gradient)
+
         # 3.a. add ops in current recompute_segment as forward recomputation ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
                                                   vars_in_memory)
@@ -839,10 +957,17 @@ def _append_backward_ops_with_checkpoints_(
         # added_descs should be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
-        # 3.c. add backward ops of current recomputation ops
+        # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            # Set device for grad_op according to forward Op
+            if op_desc.has_attr(device_attr_name):
+                op_device = op_desc.attr(device_attr_name)
+                for g_op_desc in grad_op_desc:
+                    g_op_desc._set_attr(device_attr_name, op_device)
+
             for key in var_name_dict:
                 _rename_arg_(grad_op_desc, key, var_name_dict[key])
             grad_op_descs.extend(grad_op_desc)
@@ -926,7 +1051,8 @@ def _append_backward_ops_(block,
                           grad_to_var,
                           callbacks=None,
                           input_grad_names_set=None,
-                          op_path_dict=None):
+                          op_path_dict=None,
+                          distop_context=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -949,7 +1075,7 @@ def _append_backward_ops_(block,
             val(list) the op path of block(index)
     """
     if callbacks is not None:
-        assert (isinstance(callbacks, list))
+        assert (isinstance(callbacks, (list, tuple)))
         for cb in callbacks:
             if not hasattr(cb, '__call__'):
                 raise ValueError("'callback' must be a callable object.")
@@ -983,6 +1109,11 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+        # Build the mapping between the forward op and bacckward op (Only for auto parallel)
+        if distop_context is not None:
+            for op_desc in grad_op_desc:
+                assert op_desc.id() not in distop_context.grad_op_id_to_op_id
+                distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1067,10 +1198,16 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
+        # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
+        if distop_context is not None:
+            if op_desc.id() in distop_context.grad_op_id_to_op_id:
+                distop_context.grad_op_id_to_op_id[new_op_desc.id(
+                )] = distop_context.grad_op_id_to_op_id[op_desc.id()]
+                distop_context.grad_op_id_to_op_id.pop(op_desc.id())
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
-            assert (isinstance(callbacks, list))
+            assert (isinstance(callbacks, (list, tuple)))
             for cb in callbacks:
                 cb(block=target_block, context=grad_to_var)
 
@@ -1277,7 +1414,8 @@ def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
                     callbacks=None,
-                    checkpoints=None):
+                    checkpoints=None,
+                    distop_context=None):
     """
     :api_attr: Static Graph
 
@@ -1293,7 +1431,7 @@ def append_backward(loss,
 
     Parameters:
         loss(Tensor): The loss Tensor of the network.
-        parameter_list(list[Tensor|str], optional): List of Parameters or Parameter.names
+        parameter_list(list[Tensor|str]|tuple[Tensor|str], optional): List/Tuple of Parameters or Parameter.names
                                            that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
@@ -1304,7 +1442,7 @@ def append_backward(loss,
                                be automatically added into this set.
                                If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
-        callbacks(list[callable object], optional): List of callback functions.
+        callbacks(list[callable object]|tuple[callable object], optional): List/Tuple of callback functions.
                                                The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
@@ -1390,7 +1528,7 @@ def append_backward(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
-        check_type(callbacks, 'callbacks', list,
+        check_type(callbacks, 'callbacks', (list, tuple),
                    'paddle.static.append_backward')
 
     program = loss.block.program
@@ -1468,12 +1606,14 @@ def append_backward(loss,
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
+        is_recompute = False
         if checkpoints != None and \
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
+            is_recompute = True
             program_stat, checkpoint_names, \
-            vars_should_be_hold, \
-            recompute_segments = \
+                vars_should_be_hold, \
+                recompute_segments = \
                 _append_backward_ops_with_checkpoints_(
                     root_block,
                     op_path,
@@ -1490,7 +1630,8 @@ def append_backward(loss,
                 grad_to_var,
                 callbacks,
                 input_grad_names_set=input_grad_names_set,
-                op_path_dict=op_path_dict)
+                op_path_dict=op_path_dict,
+                distop_context=distop_context, )
 
     grad_info_map = dict()
 
@@ -1565,7 +1706,10 @@ def append_backward(loss,
             attr_val.extend(g.op.attr(op_role_var_attr_name))
         g.op._set_attr(op_role_var_attr_name, attr_val)
 
-    return params_and_grads
+    if is_recompute:
+        return params_and_grads, checkpoint_names
+    else:
+        return params_and_grads
 
 
 def _as_list(x):
@@ -1710,7 +1854,7 @@ def _find_op_path_(block,
         # TODO(liym27): Consider special types of ops.
         for i, op in reversed(list(enumerate(block.ops))):
             if relevant_op_flags[i] == False \
-                    and _some_in_set_(op.desc.output_arg_names(),output_names):
+                    and _some_in_set_(op.desc.output_arg_names(), output_names):
                 relevant_op_flags[i] = True
 
     op_path = [
@@ -1731,9 +1875,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Tensor|list[Tensor]): The target Tensors
-        inputs(Tensor|list[Tensor]): The input Tensors
-        target_gradients (Tensor|list[Tensor], optional): The gradient Tensors
+        targets(Tensor|list[Tensor]|tuple[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]|tuple[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensors
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1866,13 +2010,13 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
     :api_attr: Static Graph
-    
+
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets (Tensor|list[Tensor]): The target Tensors.
-        inputs (Tensor|list[Tensor]): The input Tensors.
-        target_gradients (Tensor|list[Tensor], optional): The gradient Tensor
+        targets (Tensor|list[Tensor]|tuple[Tensor]): The target Tensors.
+        inputs (Tensor|list[Tensor]|tuple[Tensor]): The input Tensors.
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1900,12 +2044,81 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = paddle.static.gradients([y], x)
             print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
-    check_type(targets, 'targets', (framework.Variable, list),
+    check_type(targets, 'targets', (framework.Variable, list, tuple),
                'paddle.static.gradients')
-    check_type(inputs, 'inputs', (framework.Variable, list),
+    check_type(inputs, 'inputs', (framework.Variable, list, tuple),
                'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
-        framework.Variable, list, type(None)), 'paddle.static.gradients')
+        framework.Variable, list, tuple, type(None)), 'paddle.static.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
+
+
+@framework.static_only
+def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
+    """
+    :api_attr: Static Graph
+
+    Backpropagate the gradients of the program and apply the gradients with the given optimizer.
+
+    Args:
+        program (Program): The input program.
+        optimizer (Optimizer): The optimizer to apply the gradients.
+        inputs (Tensor|list[Tensor]|tuple[Tensor], optional): The input Tensors.
+            If None, the inputs will be created from the input variables in the given program. Default:None.
+        outputs (Tensor|list[Tensor]|tuple[Tensor], optional): The output Tensors.
+            If None, the outputs will be created from the output variables in the given program. Default: None.
+
+    Return:
+        tuple: tuple (optimize_ops, params_grads), A list of operators appended
+            by gradients_with_optimizer and a list of (param, grad) variable pairs, param is
+            ``Parameter``, grad is the gradient value corresponding to the parameter.
+            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
+            ``fetch_list`` before run, see details in ``Executor``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            img = static.data(name='image', shape=[None, 784])
+            pred = static.nn.fc(x=img, size=10, activation='relu')
+            loss = paddle.mean(pred)
+            opt_ops, pram_grads = paddle.fluid.backward.gradients_with_optimizer(static.default_main_program(), opt)
+            print(opt_ops)
+
+    """
+    check_type(program, 'program', paddle.fluid.Program,
+               'paddle.static.gradients_with_optimizer')
+    check_type(optimizer, 'optimizer', paddle.optimizer.Optimizer,
+               'paddle.static.gradients_with_optimizer')
+
+    if inputs is None or outputs is None:
+        in_set = set()
+        out_set = set()
+        for block in program.blocks:
+            for op in block.ops:
+                for name in op.input_arg_names:
+                    in_set.add(block.vars[name])
+                for name in op.output_arg_names:
+                    out_set.add(block.vars[name])
+        if inputs is None:
+            inputs = list(in_set.difference(out_set))
+        if outputs is None:
+            outputs = list(out_set.difference(in_set))
+
+    grads = gradients(outputs, inputs)
+
+    with program_guard(program, None):
+        pram_grads = [(pram, grad) for pram, grad in zip(inputs, grads)
+                      if isinstance(pram, paddle.fluid.framework.Parameter) and
+                      grad is not None]
+
+        optimize_ops = optimizer.apply_gradients(pram_grads)
+
+    return optimize_ops, pram_grads

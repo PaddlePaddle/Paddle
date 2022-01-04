@@ -70,6 +70,12 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
+        # test static computation graph: boolean
+        x_data = np.random.choice([True, False], size=[200])
+        y_data = np.random.choice([True, False], size=[200])
+        res = self._run_static_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+
         # test dynamic computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
@@ -85,6 +91,12 @@ class TestMultiplyApi(unittest.TestCase):
         # test dynamic computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+
+        # test dynamic computation graph: boolean
+        x_data = np.random.choice([True, False], size=[200])
+        y_data = np.random.choice([True, False], size=[200])
         res = self._run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 

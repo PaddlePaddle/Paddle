@@ -20,11 +20,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace paddle {
 namespace framework {
@@ -161,15 +161,15 @@ class OpInfoMap {
     }
   }
 
-  const std::unordered_map<std::string, OpInfo>& map() const { return map_; }
+  const paddle::flat_hash_map<std::string, OpInfo>& map() const { return map_; }
 
-  std::unordered_map<std::string, OpInfo>* mutable_map() { return &map_; }
+  paddle::flat_hash_map<std::string, OpInfo>* mutable_map() { return &map_; }
 
   std::vector<std::string> GetUseDefaultGradOpDescMakerOps() const;
 
  private:
   OpInfoMap() = default;
-  std::unordered_map<std::string, OpInfo> map_;
+  paddle::flat_hash_map<std::string, OpInfo> map_;
 
   DISABLE_COPY_AND_ASSIGN(OpInfoMap);
 };

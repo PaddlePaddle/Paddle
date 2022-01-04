@@ -13,13 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
-#include <string>
-#include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {

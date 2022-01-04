@@ -23,34 +23,10 @@ namespace math {
 
 template <typename T>
 class MatrixInverseFunctor<platform::CPUDeviceContext, T> {
-  using Matrix =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-  using EigenMatrixMap = Eigen::Map<Matrix>;
-  using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
-
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& a, framework::Tensor* a_inv) {
-    const auto& mat_dims = a.dims();
-    const int rank = mat_dims.size();
-    int n = mat_dims[rank - 1];
-    int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
-
-    const T* a_ptr = a.data<T>();
-    T* a_inv_ptr = a_inv->mutable_data<T>(context.GetPlace());
-
-    for (int i = 0; i < batch_size; ++i) {
-      ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
-      EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
-      Eigen::PartialPivLU<Matrix> lu;
-      lu.compute(mat);
-
-      const T min_abs_pivot = lu.matrixLU().diagonal().cwiseAbs().minCoeff();
-      PADDLE_ENFORCE_GT(
-          min_abs_pivot, static_cast<T>(0),
-          platform::errors::InvalidArgument("Input is not invertible."));
-      mat_inv.noalias() = lu.inverse();
-    }
+    compute_inverse_eigen<platform::CPUDeviceContext, T>(context, a, a_inv);
   }
 };
 

@@ -12,26 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import conll05
-from . import imdb
-from . import imikolov
-from . import movielens
-from . import uci_housing
-from . import wmt14
-from . import wmt16
+from .conll05 import Conll05st  # noqa: F401
+from .imdb import Imdb  # noqa: F401
+from .imikolov import Imikolov  # noqa: F401
+from .movielens import Movielens  # noqa: F401
+from .uci_housing import UCIHousing  # noqa: F401
+from .wmt14 import WMT14  # noqa: F401
+from .wmt16 import WMT16  # noqa: F401
 
-from .conll05 import *
-from .imdb import *
-from .imikolov import *
-from .movielens import *
-from .uci_housing import *
-from .wmt14 import *
-from .wmt16 import *
-
-__all__ = conll05.__all__ \
-          + imdb.__all__ \
-          + imikolov.__all__ \
-          + movielens.__all__ \
-          + uci_housing.__all__ \
-          + wmt14.__all__ \
-          + wmt16.__all__
+__all__ = []

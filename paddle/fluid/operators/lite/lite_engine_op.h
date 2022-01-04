@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
@@ -83,7 +83,7 @@ class LiteEngineOp : public framework::OperatorBase {
               << engine_->GetInputNames()[i] << ")";
       inference::lite::utils::TensorCopy(&dst_t, &src_t, *ctx, zero_copy_);
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
           static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
@@ -101,7 +101,7 @@ class LiteEngineOp : public framework::OperatorBase {
               << engine_->GetOutputNames()[i] << ")";
       inference::lite::utils::TensorCopy(dst_t, &src_t, *ctx, zero_copy_);
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
           static_cast<const platform::CUDADeviceContext *>(ctx)->stream());

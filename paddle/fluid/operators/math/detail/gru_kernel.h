@@ -42,7 +42,7 @@ class gru_resetOutput {
           (*value_reset_output + *value_reset_bias) * (*value_reset_gate);
     }
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU reset output
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -65,7 +65,7 @@ class gru_resetOutput {
     }
   }
 #endif
-#endif
+#endif  // @} End Group GRU reset output
 };
 
 template <typename T>
@@ -84,7 +84,7 @@ class gru_finalOutput {
                       ((*value_update_gate) * (*value_frame_state));
     }
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU final output
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -107,7 +107,7 @@ class gru_finalOutput {
     }
   }
 #endif
-#endif
+#endif  // @} End Group GRU final output
 };
 }  // namespace forward
 
@@ -137,7 +137,7 @@ class gru_stateGrad {
                                      *value_frame_state, act_input);
     }
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU state grad
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -170,7 +170,7 @@ class gru_stateGrad {
     }
   }
 #endif
-#endif
+#endif  // @} End Group GRU state grad
 };
 
 template <typename T>
@@ -187,7 +187,7 @@ class gru_resetGrad {
     *grad_reset_gate =
         activation(*grad_reset_gate, *value_reset_gate, act_gate);
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU reset grad
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -206,7 +206,7 @@ class gru_resetGrad {
         activation(*grad_reset_gate, *value_reset_gate, act_gate);
   }
 #endif
-#endif
+#endif  // @} End Group GRU reset grad
 };
 template <typename T>
 class gru {
@@ -230,7 +230,7 @@ class gru {
                                   *value_reset_gate, act_gate);
     *grad_reset_output = (*value_reset_gate) * (*grad_frame_state);
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU CPU
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -261,7 +261,7 @@ class gru {
     *grad_reset_output = _mm256_mul_ps(*value_reset_gate, *grad_frame_state);
   }
 #endif
-#endif
+#endif  // @} End Group GRU CPU
 };
 
 }  // namespace backward

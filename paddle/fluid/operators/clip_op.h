@@ -25,7 +25,7 @@ namespace operators {
 using framework::Tensor;
 using platform::Transform;
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename UnaryOperation>
 __global__ void ClipCudaKernel(const T* input, T* out, int num,
                                UnaryOperation op) {
@@ -54,7 +54,7 @@ class ClipGradFunctor {
  public:
   explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T& x, const T& y) const {
-    return (y > min_ && y < max_) ? x : 0;
+    return (y > min_ && y < max_) ? x : static_cast<T>(0);
   }
 
  private:
@@ -79,7 +79,7 @@ class ClipKernel : public framework::OpKernel<T> {
     }
     max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = static_cast<T>(context.Attr<float>("min"));
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
@@ -95,7 +95,7 @@ class ClipKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "max should be greater than or equal to min. "
                           "But received min = %f, max = %f",
-                          min, max));
+                          static_cast<float>(min), static_cast<float>(max)));
 
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
@@ -105,7 +105,7 @@ class ClipKernel : public framework::OpKernel<T> {
       const T* x_data = x->data<T>();
       int64_t numel = x->numel();
       if (platform::is_gpu_place(context.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
         int threads = 256;
         int blocks = (numel + threads - 1) / threads;
         ClipCudaKernel<T, ClipFunctor<T>><<<
@@ -156,7 +156,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
     }
     max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = static_cast<T>(context.Attr<float>("min"));
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");

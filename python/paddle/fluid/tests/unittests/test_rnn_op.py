@@ -47,8 +47,10 @@ class TestRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
-        self.dtype = np.float64
-        self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array(
+            [12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.is_bidirec = False
         self.mode = "LSTM"
@@ -78,11 +80,20 @@ class TestRNNOp(OpTest):
             num_layers=self.num_layers,
             time_major=True,
             direction=direction,
-            dropout=self.dropout)
+            dropout=self.dropout,
+            dtype=self.dtype)
 
         flat_w = get_params_for_net(rnn1)
         output, (last_hidden, last_cell) = rnn1(
             input, sequence_length=self.sequence_length)
+
+        if core.is_compiled_with_rocm():
+
+            def rocm_rnn_get_place():
+                places = [core.CUDAPlace(0)]
+                return places
+
+            self._get_places = rocm_rnn_get_place
 
         init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
                            hidden_size)).astype(self.dtype)
@@ -155,6 +166,36 @@ class TestRNNOp4(TestRNNOp):
         self.is_test = True
         self.sequence_length = None
         self.is_bidirec = True
+
+
+class TestRNNOp5(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+
+
+class TestRNNOp6(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+
+
+class TestRNNOp7(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+        self.is_test = True
+
+
+class TestRNNOp8(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+        self.sequence_length = None
+
+
+class TestRNNOp9(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 3
 
 
 if __name__ == '__main__':

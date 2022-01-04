@@ -22,7 +22,7 @@ class DataGenerator(object):
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
-    with paddle.fluid.dataset should inherit this class.
+    with paddle.fluid.dataset should inherit this class
     """
 
     def __init__(self):
@@ -43,17 +43,14 @@ class DataGenerator(object):
         This is necessary only if a user wants to define generator_batch
         
         Example:
-
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
-
                     def generate_sample(self, line):
                         def local_iter():
                             int_words = [int(x) for x in line.split()]
                             yield ("words", int_words)
                         return local_iter
-
                     def generate_batch(self, samples):
                         def local_iter():
                             for s in samples:
@@ -68,17 +65,14 @@ class DataGenerator(object):
         '''
         This function generator data from memory, it is usually used for
         debug and benchmarking
-
         Example:
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
-
                     def generate_sample(self, line):
                         def local_iter():
                             yield ("words", [1, 2, 3, 4])
                         return local_iter
-
                 mydata = MyData()
                 mydata.run_from_memory()
         '''
@@ -105,22 +99,18 @@ class DataGenerator(object):
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
-
         Example:
         
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
-
                     def generate_sample(self, line):
                         def local_iter():
                             int_words = [int(x) for x in line.split()]
                             yield ("words", [int_words])
                         return local_iter
-
                 mydata = MyData()
                 mydata.run_from_stdin()
-
         '''
         batch_samples = []
         for line in sys.stdin:
@@ -144,10 +134,8 @@ class DataGenerator(object):
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the datafeed,and
         updating proto_info information.
-
         Args:
             line(str): the output of the process() function rewritten by user.
-
         Returns:
             Return a string data that can be read directly by the datafeed.
         '''
@@ -158,10 +146,8 @@ class DataGenerator(object):
         '''
         This function needs to be overridden by the user to process the 
         original data row into a list or tuple.
-
         Args:
             line(str): the original data row
-
         Returns:
             Returns the data processed by the user.
               The data format is list or tuple: 
@@ -171,24 +157,19 @@ class DataGenerator(object):
             For example:
             [("words", [1926, 08, 17]), ("label", [1])]
               or (("words", [1926, 08, 17]), ("label", [1]))
-
         Note:
             The type of feasigns must be in int or float. Once the float
             element appears in the feasign, the type of that slot will be
             processed into a float.
-
         Example:
-
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
-
                     def generate_sample(self, line):
                         def local_iter():
                             int_words = [int(x) for x in line.split()]
                             yield ("words", [int_words])
                         return local_iter
-
         '''
         raise NotImplementedError(
             "Please rewrite this function to return a list or tuple: " +
@@ -201,25 +182,19 @@ class DataGenerator(object):
         It is usually used as batch processing when a user wants to
         do preprocessing on a batch of samples, e.g. padding according to
         the max length of a sample in the batch
-
         Args:
             samples(list tuple): generated sample from generate_sample
-
         Returns:
             a python generator, the same format as return value of generate_sample
-
         Example:
-
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
-
                     def generate_sample(self, line):
                         def local_iter():
                             int_words = [int(x) for x in line.split()]
                             yield ("words", int_words)
                         return local_iter
-
                     def generate_batch(self, samples):
                         def local_iter():
                             for s in samples:
@@ -244,22 +219,18 @@ class MultiSlotStringDataGenerator(DataGenerator):
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
         and updating proto_info information.
-
         The input line will be in this format:
             >>> [(name, [str(feasign), ...]), ...]
             >>> or ((name, [str(feasign), ...]), ...)
         The output will be in this format:
             >>> [ids_num id1 id2 ...] ...
-
         For example, if the input is like this:
             >>> [("words", ["1926", "08", "17"]), ("label", ["1"])]
             >>> or (("words", ["1926", "08", "17"]), ("label", ["1"]))
         the output will be:
             >>> 3 1234 2345 3456 1 1
-
         Args:
             line(str): the output of the process() function rewritten by user.
-
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
@@ -285,7 +256,6 @@ class MultiSlotDataGenerator(DataGenerator):
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
         and updating proto_info information.
-
         The input line will be in this format:
             >>> [(name, [feasign, ...]), ...] 
             >>> or ((name, [feasign, ...]), ...)
@@ -301,10 +271,8 @@ class MultiSlotDataGenerator(DataGenerator):
             >>> 3 1234 2345 3456 1 1
         the proto_info will be:
             >>> [("words", "uint64"), ("label", "uint64")]
-
         Args:
             line(str): the output of the process() function rewritten by user.
-
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''

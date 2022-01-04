@@ -101,14 +101,18 @@ class UnStackGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Y")).size(), 0,
                       platform::errors::InvalidArgument(
-                          "Number of Inputs(Y@Grad) must be larger than 0"));
+                          "The Inputs(Y@Grad) of unstack operator are empty."));
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output", "X",
                    "UnStackGrad");
     auto input_dims = ctx->GetInputsDim(framework::GradVarName("Y"));
     for (size_t i = 1; i < input_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(input_dims[i], input_dims[0],
-                        platform::errors::InvalidArgument(
-                            "Dims of all Inputs(Y@Grad) must be the same"));
+      PADDLE_ENFORCE_EQ(
+          input_dims[i], input_dims[0],
+          platform::errors::InvalidArgument(
+              "The dimensions of all Inputs(Y@Grad) must be the same,"
+              "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
+              "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
+              i, input_dims[i], i - 1, input_dims[0]));
     }
 
     int axis = ctx->Attrs().Get<int>("axis");

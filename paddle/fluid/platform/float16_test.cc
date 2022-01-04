@@ -8,27 +8,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/platform/float16.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 
 TEST(float16, conversion_cpu) {
-  // Explicit conversion from Eigen::half
-  EXPECT_EQ(float16(Eigen::half(1.0f)).x, 0x3c00);
-  EXPECT_EQ(float16(Eigen::half(0.5f)).x, 0x3800);
-  EXPECT_EQ(float16(Eigen::half(0.33333f)).x, 0x3555);
-  EXPECT_EQ(float16(Eigen::half(0.0f)).x, 0x0000);
-  EXPECT_EQ(float16(Eigen::half(-0.0f)).x, 0x8000);
-  EXPECT_EQ(float16(Eigen::half(65504.0f)).x, 0x7bff);
-  EXPECT_EQ(float16(Eigen::half(65536.0f)).x, 0x7c00);
-
   // Conversion from float
   EXPECT_EQ(float16(1.0f).x, 0x3c00);
   EXPECT_EQ(float16(0.5f).x, 0x3800);
@@ -62,8 +54,6 @@ TEST(float16, conversion_cpu) {
   float16 v_assign;
   v_assign = float16(0);
   EXPECT_EQ(v_assign.x, 0x0000);
-  v_assign = Eigen::half(1.0f);
-  EXPECT_EQ(v_assign.x, 0x3c00);
   v_assign = 0.5f;
   EXPECT_EQ(v_assign.x, 0x3800);
   v_assign = 0.33333;
@@ -74,7 +64,6 @@ TEST(float16, conversion_cpu) {
   EXPECT_EQ(v_assign.x, 0x3c00);
 
   // Conversion operator
-  EXPECT_EQ(Eigen::half(float16(1.0f)).x, 0x3c00);
   EXPECT_EQ(static_cast<float>(float16(0.5f)), 0.5f);
   EXPECT_NEAR(static_cast<double>(float16(0.33333)), 0.33333, 0.0001);
   EXPECT_EQ(static_cast<int>(float16(-1)), -1);

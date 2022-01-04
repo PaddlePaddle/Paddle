@@ -88,7 +88,7 @@ class TestElementwiseOpGradGrad {
         auto dst_place = BOOST_GET_CONST(platform::CPUPlace, place_);
         memory::Copy(dst_place, dst, src_place, src, bytes);
       } else if (platform::is_gpu_place(place_)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto dst_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
@@ -126,8 +126,14 @@ class TestElementwiseOpGradGrad {
       }
       auto *out_ptr = cpu_out.data<T>();
       size_t numel = static_cast<size_t>(framework::product(dims_));
+#ifdef PADDLE_WITH_HIP
+      auto is_equal = std::equal(
+          out_ptr, out_ptr + numel, expected_outs_[out_name].data(),
+          [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
+#else
       auto is_equal =
           std::equal(out_ptr, out_ptr + numel, expected_outs_[out_name].data());
+#endif
       if (!is_equal) {
         all_equal = false;
         break;

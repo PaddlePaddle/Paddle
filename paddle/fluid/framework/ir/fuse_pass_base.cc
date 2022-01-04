@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include <unordered_map>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -52,6 +53,8 @@ void FusePassBase::AddStatis(int count_of_fused) const {
   auto& info =
       graph_->Get<std::unordered_map<std::string, int>>(kFuseStatisAttr);
   info[repr_] = count_of_fused;
+  if (count_of_fused > 0)
+    LOG(INFO) << "---  detected " << count_of_fused << " subgraphs";
 }
 
 FuseOptions FusePassBase::FindFuseOption(const Node& node1,

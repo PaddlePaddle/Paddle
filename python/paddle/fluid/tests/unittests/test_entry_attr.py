@@ -14,21 +14,24 @@
 
 from __future__ import print_function
 
+import paddle
+paddle.enable_static()
+
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
+from paddle.distributed import ProbabilityEntry, CountFilterEntry, ShowClickEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
     def base(self):
         with self.assertRaises(NotImplementedError):
-            import paddle.fluid.entry_attr as entry
-            base = entry.EntryAttr()
-            base.to_attr()
+            from paddle.distributed.entry_attr import EntryAttr
+            base = EntryAttr()
+            base._to_attr()
 
     def probability_entry(self):
         prob = ProbabilityEntry(0.5)
-        ss = prob.to_attr()
+        ss = prob._to_attr()
         self.assertEqual("probability_entry:0.5", ss)
 
         with self.assertRaises(ValueError):
@@ -39,7 +42,7 @@ class EntryAttrChecks(unittest.TestCase):
 
     def countfilter_entry(self):
         counter = CountFilterEntry(20)
-        ss = counter.to_attr()
+        ss = counter._to_attr()
         self.assertEqual("count_filter_entry:20", ss)
 
         with self.assertRaises(ValueError):
@@ -47,6 +50,11 @@ class EntryAttrChecks(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             counter2 = CountFilterEntry(-1)
+
+    def showclick_entry(self):
+        showclick = ShowClickEntry("show", "click")
+        ss = showclick._to_attr()
+        self.assertEqual("show_click_entry:show:click", ss)
 
     def spaese_layer(self):
         prog = fluid.Program()
@@ -61,7 +69,7 @@ class EntryAttrChecks(unittest.TestCase):
                     lod_level=1,
                     append_batch_size=False)
                 prob = ProbabilityEntry(0.5)
-                emb = fluid.contrib.layers.sparse_embedding(
+                emb = paddle.static.nn.sparse_embedding(
                     input=input,
                     size=[100, 10],
                     is_test=False,
@@ -93,6 +101,9 @@ class TestEntryAttrs(EntryAttrChecks):
 
     def test_counter(self):
         self.countfilter_entry()
+
+    def test_showclick(self):
+        self.showclick_entry()
 
     def test_spaese_embedding_layer(self):
         self.spaese_layer()

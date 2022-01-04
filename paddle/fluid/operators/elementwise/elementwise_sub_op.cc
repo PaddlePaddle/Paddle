@@ -17,8 +17,13 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+
+namespace paddle {
+namespace platform {
+template <typename T>
+struct complex;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -36,33 +41,6 @@ struct CPUPlace;
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SameDimsElemwiseSub<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VSUB(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseSub<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x - eigen_y;
-  }
-};
 class ElementwiseSubOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Sub"; }
@@ -129,9 +107,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -139,9 +117,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex64>,
+                                  paddle::platform::complex<float>>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex128>);
+                                  paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad_grad,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
@@ -153,6 +131,15 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex64>,
+                                        paddle::platform::complex<float>>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex128>);
+                                        paddle::platform::complex<double>>);
+
+REGISTER_OP_VERSION(elementwise_sub)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_sub.",
+            1.0f));

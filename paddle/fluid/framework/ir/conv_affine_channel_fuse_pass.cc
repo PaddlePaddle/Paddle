@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,8 @@
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
 
 #include <cmath>
-#include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -98,6 +94,78 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   }
 }
 
+ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("affine_channel"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("data_layout")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+}
+
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -120,23 +188,39 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "ConvAffineChannelFusePass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "handle ConvAffineChannel fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
 
-    // Create eltwise_y (conv bias) variable
-    VarDesc eltwise_y_in_desc(
-        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
-    eltwise_y_in_desc.SetPersistable(true);
-    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
-    auto* eltwise_y_in_tensor =
-        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_affine_channel_fuse_pass is enabled, "
+                                 "it's wrong if data_format of conv is not "
+                                 "NCHW.";
+    }
 
-    // Get affine_channel bias
+    // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
         scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
 
+    // Create eltwise_y (conv bias) variable
+    VarDesc eltwise_y_in_desc(
+        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+    // Set shape && datatype manually
+    eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetDataType(ac_bias_tensor->type());
+    eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());
+    eltwise_y_in_desc.SetPersistable(true);
+
     // Initialize eltwise_y
+    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
+    auto* eltwise_y_in_tensor =
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
     std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
                 eltwise_y_in_tensor->numel(), 0.0f);
@@ -153,6 +237,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetType("elementwise_add");
     desc.SetAttr("axis", 1);
     desc.SetAttr("use_mkldnn", conv->Op()->GetAttrIfExists<bool>("use_mkldnn"));
+
     auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
     GraphSafeRemoveNodes(graph, {ac_scale, ac_bias, affine_channel});
@@ -166,6 +251,76 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_ac_count);
+}
+
+ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("affine_channel"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("data_layout")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
 }
 
 void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -190,9 +345,21 @@ void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING)
+          << "ConvEltwiseAddAffineChannelFusePass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "handle ConvBN fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_eltwiseadd_affine_channel_fuse_pass is "
+                                 "enabled, it's wrong if data_format of conv "
+                                 "is not NCHW.";
+    }
     // OPERATORS
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_ac_pattern);
     // BIAS inputs
@@ -244,5 +411,5 @@ REGISTER_PASS_CAPABILITY(conv_eltwiseadd_affine_channel_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("affine_channel", 0));

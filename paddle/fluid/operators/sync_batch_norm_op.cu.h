@@ -19,14 +19,20 @@ limitations under the License. */
 #include <cmath>
 #include <string>
 #include <vector>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/norm_utils.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -180,18 +186,12 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
           x_d, N, H * W * D, C, stats);
     }
 
-    Tensor c_g_st;
-    auto *c_g_st_d = c_g_st.mutable_data<BatchNormParamType<T>>(
-        {2 * C + 1}, platform::CPUPlace());
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-    memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
-
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *comm = dev_ctx.nccl_comm();
     if (comm) {
       int dtype = platform::ToNCCLDataType(mean_out->type());
       // In-place operation
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
     }
@@ -460,12 +460,12 @@ void SyncBatchNormGradFunctor(
         dy_d, x_d, saved_mean, N, fsize, C, stats);
   }
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto *comm = dev_ctx.nccl_comm();
   if (comm) {
     int dtype = platform::ToNCCLDataType(scale->type());
     // In-place operation
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
         comm, stream));
   }

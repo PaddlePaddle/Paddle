@@ -930,7 +930,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
 
             para_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdparams'))
+                os.path.join('saved_dy', 'emb_dy.pdparams'), return_numpy=True)
             para_state_dict['weight'] = np.expand_dims(
                 para_state_dict['weight'], axis=-1)
 

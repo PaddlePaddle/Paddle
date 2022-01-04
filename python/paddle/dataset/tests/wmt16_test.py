@@ -17,6 +17,8 @@ from __future__ import print_function
 import paddle.dataset.wmt16
 import unittest
 
+__all__ = []
+
 
 class TestWMT16(unittest.TestCase):
     def checkout_one_sample(self, sample):

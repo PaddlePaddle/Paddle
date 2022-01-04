@@ -41,9 +41,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
-#include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+
+namespace paddle {
+namespace distributed {
+class PSClient;
+struct CommContext;
+}  // namespace distributed
+}  // namespace paddle
 
 DECLARE_bool(communicator_is_sgd_optimizer);
 
@@ -63,31 +68,62 @@ class BlockingQueue {
   }
 
   bool Push(const T &elem) {
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      queue_.push_back(elem);
-    }
-    cv_.notify_one();
+    std::unique_lock<std::mutex> lock(mutex_);
+    WaitForWrite(lock);
+
+    queue_.push_back(elem);
+
+    Notify();
     return true;
+  }
+  bool WaitForWrite(std::unique_lock<std::mutex> &lock) {  // NOLINT
+    while (FullUnlocked()) {
+      if (empty_waiters_ != 0) {
+        empty_cond_.notify_one();
+      }
+      full_waiters_++;
+      full_cond_.wait(lock);
+      full_waiters_--;
+    }
+    return true;
+  }
+  bool WaitForRead(std::unique_lock<std::mutex> &lock) {  // NOLINT
+    while (EmptyUnlocked()) {
+      if (full_waiters_ != 0) {
+        full_cond_.notify_one();
+      }
+      empty_waiters_++;
+      empty_cond_.wait(lock);
+      empty_waiters_--;
+    }
+    return true;
+  }
+  bool EmptyUnlocked() { return queue_.empty(); }
+
+  bool FullUnlocked() { return queue_.size() >= capacity_; }
+  void Notify() {
+    if (empty_waiters_ != 0 && (!EmptyUnlocked())) {
+      empty_cond_.notify_one();
+    }
+    if (full_waiters_ != 0 && (!FullUnlocked())) {
+      full_cond_.notify_one();
+    }
   }
 
   bool Push(T &&elem) {
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      queue_.emplace_back(std::move(elem));
-    }
-    cv_.notify_one();
+    std::unique_lock<std::mutex> lock(mutex_);
+    WaitForWrite(lock);
+    queue_.emplace_back(std::move(elem));
+
+    Notify();
     return true;
   }
-
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [=] { return !queue_.empty(); });
+    WaitForRead(lock);
     T rc(std::move(queue_.front()));
     queue_.pop_front();
-    cv_.notify_one();
+    Notify();
     return rc;
   }
 
@@ -102,11 +138,14 @@ class BlockingQueue {
   }
 
  private:
+  int empty_waiters_ = 0;
+  int full_waiters_ = 0;
+  std::condition_variable empty_cond_;
+  std::condition_variable full_cond_;
   const size_t capacity_;
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
-  std::condition_variable cv_;
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -194,10 +233,10 @@ class Communicator {
   Communicator();
 
   explicit Communicator(const std::map<std::string, std::string> &envs_) {
-    VLOG(0) << "Communicator Init Envs";
+    VLOG(3) << "Communicator Init Envs";
     for (auto &iter : envs_) {
       envs[iter.first] = iter.second;
-      VLOG(0) << iter.first << ": " << iter.second;
+      VLOG(3) << iter.first << ": " << iter.second;
     }
     barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
     trainer_id_ = std::stoi(envs.at("trainer_id"));
@@ -206,6 +245,11 @@ class Communicator {
 
   virtual void InitBrpcClient(const std::string &dist_desc,
                               const std::vector<std::string> &host_sign_list);
+
+  virtual std::vector<uint64_t> GetClientInfo();
+
+  virtual int SetClients(std::vector<uint64_t> &host_sign_list);  // NOLINT
+
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,
                             int table_id, Scope *scope);
@@ -223,11 +267,17 @@ class Communicator {
   // 6. recv sparse param
   virtual void RpcRecvSparse(const std::string &varname, int table_id,
                              Scope *scope);
+  // 7. send gloabl step
+  virtual void SendGlobalStep(const CommContext &ctx, int batches,
+                              Scope *send_scope);
 
   virtual ~Communicator() {}
   virtual void RpcProfilerControl();
 
   virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
+
+  // note: only for pull dense param first before training
+  virtual void PullDense(const RecvCtxMap &recv_varname_to_ctx);
 
   virtual void Start() = 0;
 
@@ -250,6 +300,17 @@ class Communicator {
   virtual void BarrierWithTable(uint32_t barrier_type) {
     auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
     rets.wait();
+    int status = rets.get();
+    PADDLE_ENFORCE_EQ(status, 0,
+                      platform::errors::InvalidArgument(
+                          "The ret status must be 0 when barrier with table"));
+  }
+
+  virtual void CreateC2CConnection(int pserver_timeout_ms,
+                                   int pserver_connect_timeout_ms,
+                                   int max_retry) {
+    _worker_ptr->create_client2client_connection(
+        pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
   virtual void BarrierTriggerDecrement() {}
@@ -298,11 +359,13 @@ class Communicator {
 
   PSClient *GetPsClient() { return _worker_ptr.get(); }
 
-  std::shared_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
-    return _worker_ptr;
+  std::unique_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
+    return std::move(_worker_ptr);
   }
 
-  std::shared_ptr<PSClient> _worker_ptr;  // pointer to worker
+  RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
+
+  std::unique_ptr<PSClient> _worker_ptr;  // pointer to worker
 
  protected:
   bool running_ = false;
@@ -376,8 +439,6 @@ class AsyncCommunicator : public Communicator {
 
   virtual void SendByCommunicator();
 
-  virtual void SendGlobalStep(int batches) {}
-
   virtual void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
@@ -389,6 +450,8 @@ class AsyncCommunicator : public Communicator {
   virtual void BarrierRecv() {}
 
   virtual void BarrierWeakUp() {}
+
+  void PushDensePostProcessing();
 
  protected:
   std::unordered_map<std::string,
@@ -430,7 +493,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
 
-    VLOG(0) << "HalfAsyncCommunicator Initialized";
+    VLOG(1) << "HalfAsyncCommunicator Initialized";
   }
 
   void MainThread() override;
@@ -475,7 +538,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
 
-    VLOG(0) << "SyncCommunicator Initialized";
+    VLOG(1) << "SyncCommunicator Initialized";
   }
 
   void BarrierSend();
@@ -498,14 +561,15 @@ class GeoCommunicator : public AsyncCommunicator {
                 Scope *recv_scope) override;
 
   void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
-  void InitDense(std::vector<std::string> &varnames, int table_id);
+  void InitDense(std::vector<std::string> &varnames, int table_id);  // NOLINT
   void InitSparse(const std::string &var_name, int table_id);
 
   void SendDense(const CommContext &send_ctx);
   void RecvDense(const CommContext &send_ctx);
 
   std::vector<int64_t> MergeSparseIds(const std::string &varname);
-  void SendSparse(const std::string &varname, std::vector<int64_t> &sparse_ids,
+  void SendSparse(const std::string &varname,
+                  std::vector<int64_t> &sparse_ids,  // NOLINT
                   int table_id, int ep_idx);
   void RecvSparse(const std::string &varname, int table_id, int ep_idx);
 
@@ -519,15 +583,13 @@ class GeoCommunicator : public AsyncCommunicator {
     // id_queue's size
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_queue_size_ = max_merge_var_num_;
-    VLOG(0) << "GeoCommunicator Initialized";
+    VLOG(1) << "GeoCommunicator Initialized";
   }
 
   void Send(const std::vector<std::string> &var_names,
             const framework::Scope &scope) override;
 
   void SendByCommunicator() { return; }
-
-  void SendGlobalStep(int batches) override { return; }
 
   void RecvByCommunicator() override { return; }
 

@@ -309,7 +309,9 @@ REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
 REGISTER_OP_VERSION(cudnn_lstm)
     .AddCheckpoint(
         R"ROC(
-              Upgrade cudnn_lstm add a new input [WeightList] and modify input [W] to dispensable.)ROC",
+              Upgrade cudnn_lstm add new inputs [WeightList, SequenceLength], modify the input [W] to dispensable, delete the input [Cache].
+              Upgrade cudnn_lstm add new outputs [StateOut, Reserve, LastC, LastH], delete output [last_c, last_h].
+              Upgrade cudnn_lstm modify the attr [seed] default value to 0, delete the attr [max_len].)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput(
                 "WeightList",
@@ -318,6 +320,26 @@ REGISTER_OP_VERSION(cudnn_lstm)
             .NewInput("SequenceLength",
                       "When the input data is padding, set this parameter. "
                       "SequenceLength is dispensable.")
+            .ModifyInput("W",
+                         "The new LSTM use WeightList instead of W. The W "
+                         "concatenate all the weight to one Tensor.")
+            .DeleteInput("Cache",
+                         "The new LSTM use the Reserve Output to store the "
+                         "data of dropout.")
             .NewOutput("StateOut", "Store the global drop state when training")
             .NewOutput("Reserve",
-                       "A temporary output Tensor to store the reserve_data"));
+                       "A temporary output Tensor to store the reserve_data")
+            .DeleteOutput(
+                "last_c",
+                "Modify the name of the output from 'last_c' to 'LastC'.")
+            .NewOutput("LastC", "The cell state of the last step.")
+            .DeleteOutput(
+                "last_h",
+                "Modify the name of the output from 'last_h' to 'LastH'.")
+            .NewOutput("LastH", "The hidden state of the last step.")
+            .ModifyAttr("seed",
+                        "Set the default value of seed from '-1' to '0'.", 0)
+            .DeleteAttr("max_len",
+                        "The length of Inputs is achieved form the input data "
+                        "which is difficult to know the information in "
+                        "advance."));

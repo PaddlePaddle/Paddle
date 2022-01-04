@@ -14,13 +14,13 @@
 
 # TODO: define specitial functions used in computer vision task 
 
-from ...fluid.dygraph import layers
+from .. import Layer
 from .. import functional
 
-__all__ = ['PixelShuffle']
+__all__ = []
 
 
-class PixelShuffle(layers.Layer):
+class PixelShuffle(Layer):
     """
     
     PixelShuffle Layer    
@@ -79,3 +79,11 @@ class PixelShuffle(layers.Layer):
     def forward(self, x):
         return functional.pixel_shuffle(x, self._upscale_factor,
                                         self._data_format, self._name)
+
+    def extra_repr(self):
+        main_str = 'upscale_factor={}'.format(self._upscale_factor)
+        if self._data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str

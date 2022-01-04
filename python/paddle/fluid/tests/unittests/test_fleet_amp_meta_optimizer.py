@@ -93,6 +93,21 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('cast', ops)
         self.assertIn('check_finite_and_unscale', ops)
 
+    def test_pure_fp16_optimizer(self):
+        """ test pure fp16 """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'pure_fp16')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+
+        params = train_prog.all_parameters()
+        for param in train_prog.all_parameters():
+            self.assertEqual(param.dtype, fluid.core.VarDesc.VarType.FP16)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('cast', ops)
+        self.assertIn('check_finite_and_unscale', ops)
+
     def test_amp_distributed_optimizer(self):
         """ test amp when distributed """
         train_prog, startup_prog = fluid.Program(), fluid.Program()

@@ -39,8 +39,14 @@ import numpy as np
 if six.PY3:
     import subprocess
     import sys
+    import os
+    interpreter = sys.executable
+    # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
+    # will be the C++ execubable on Windows
+    if sys.platform == 'win32' and 'python.exe' not in interpreter:
+        interpreter = sys.exec_prefix + os.sep + 'python.exe'
     import_cv2_proc = subprocess.Popen(
-        [sys.executable, "-c", "import cv2"],
+        [interpreter, "-c", "import cv2"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     out, err = import_cv2_proc.communicate()
@@ -58,11 +64,7 @@ import os
 import tarfile
 import six.moves.cPickle as pickle
 
-__all__ = [
-    "load_image_bytes", "load_image", "resize_short", "to_chw", "center_crop",
-    "random_crop", "left_right_flip", "simple_transform", "load_and_transform",
-    "batch_images_from_tar"
-]
+__all__ = []
 
 
 def _check_cv2():
@@ -97,8 +99,8 @@ def batch_images_from_tar(data_file,
     :rtype: string
     """
     batch_dir = data_file + "_batch"
-    out_path = "%s/%s" % (batch_dir, dataset_name)
-    meta_file = "%s/%s.txt" % (batch_dir, dataset_name)
+    out_path = "%s/%s_%s" % (batch_dir, dataset_name, os.getpid())
+    meta_file = "%s/%s_%s.txt" % (batch_dir, dataset_name, os.getpid())
 
     if os.path.exists(out_path):
         return meta_file

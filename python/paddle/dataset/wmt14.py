@@ -30,11 +30,7 @@ import paddle.dataset.common
 import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
-__all__ = [
-    'train',
-    'test',
-    'get_dict',
-]
+__all__ = []
 
 URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
                 'cslm_joint_paper/data/dev+test.tgz')
@@ -118,6 +114,7 @@ def reader_creator(tar_file, file_name, dict_size):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(dict_size):
     """
@@ -138,6 +135,7 @@ def train(dict_size):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(dict_size):
     """
@@ -158,6 +156,7 @@ def test(dict_size):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def gen(dict_size):
     return reader_creator(
@@ -168,6 +167,7 @@ def gen(dict_size):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_dict(dict_size, reverse=True):
     # if reverse = False, return dict = {'a':'001', 'b':'002', ...}
@@ -183,6 +183,7 @@ def get_dict(dict_size, reverse=True):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)

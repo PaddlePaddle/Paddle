@@ -27,6 +27,7 @@ from paddle.distributed.fleet import fleet
 from test_dist_sparse_load_ps0 import SparseLoadOp
 
 
+@unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase2(SparseLoadOp):
     def test_2ps_0_load(self):
         # init No.1 server env

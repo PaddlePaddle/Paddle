@@ -73,7 +73,14 @@ class ConditionalOp : public framework::OperatorBase {
                                 ips[0]->numel()));
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      framework::LoDTensor cpu_tensor;
+      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
+      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      res = cpu_tensor.data<bool>()[0];
+#endif
+    } else if (platform::is_npu_place(ips[0]->place())) {
+#ifdef PADDLE_WITH_ASCEND_CL
       framework::LoDTensor cpu_tensor;
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
@@ -110,7 +117,8 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars,
                                       "Vars that would not be deleted when "
                                       "garbage collection strategy enables")
-        .SetDefault(std::vector<std::string>());
+        .SetDefault(std::vector<std::string>())
+        .AsExtra();
     AddComment(R"DOC(Conditional block operator
 
 If `is_scalar_condition` is True, the conditional variable (Cond) is a scalar,

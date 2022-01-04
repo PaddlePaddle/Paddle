@@ -13,17 +13,80 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
-
 #include <string>
-#include <vector>
 
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+FCFusePass::FCFusePass() {
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumMatch<int>([](int axis) -> bool {
+        if (axis == -1 || axis >= 1) {
+          return true;
+        }
+        return false;
+      })
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("fc"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("W")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("in_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("activation_type")
+      .IsStringIn({"relu", ""})
+      .End();
+}
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -54,6 +117,10 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
 
     VLOG(4) << "handle FC fuse";
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
@@ -63,6 +130,32 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
+
+    // Only support 2D-Tensor as weight for FC
+    std::vector<int64_t> w_shape = w->Var()->GetShape();
+    size_t w_rank = w_shape.size();
+    if (w_rank != 2) return;
+
+    // axis of elementwise_add should be -1 or x_num_col_dims
+    auto x_num_col_dims =
+        BOOST_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims"));
+    auto axis = BOOST_GET_CONST(int, elementwise_add->Op()->GetAttr("axis"));
+    if (axis != -1 && axis != x_num_col_dims) return;
+
+    // Shape of bias should be [1, out_size] or [out_size]
+    std::vector<int64_t> b_shape = bias->Var()->GetShape();
+    if (b_shape.size() == 1) {
+      if (b_shape[0] != w_shape[1]) {
+        return;
+      }
+    } else if (b_shape.size() == 2) {
+      if (b_shape[0] != 1 || b_shape[1] != w_shape[1]) {
+        return;
+      }
+    } else {
+      return;
+    }
+
     Node* relu = nullptr;
     Node* relu_out = nullptr;
     if (with_relu) {
@@ -73,7 +166,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     }
 
     // Create an FC Node.
-    OpDesc desc;
+    OpDesc desc(mul->Op()->Block());
     desc.SetType("fc");
 
     // Set inputs of fc
@@ -149,6 +242,23 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
         desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
 
+    auto* elementwise_add_op_desc = elementwise_add->Op();
+    // if we can find out_threshold in elementwise_add, then set it as the
+    // out_thrshold of fc
+    auto out_threshold_attr =
+        elementwise_add_op_desc->GetNullableAttr("out_threshold");
+    if (out_threshold_attr.which()) {
+      VLOG(4) << "setting out_threshold: "
+              << BOOST_GET_CONST(float, out_threshold_attr);
+      desc.SetAttr("out_threshold", out_threshold_attr);
+    }
+    desc.Flush();
+
+    if (!IsCompat(desc)) {
+      LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+      return;
+    }
+
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     if (with_relu) {
       GraphSafeRemoveNodes(
@@ -187,6 +297,6 @@ REGISTER_PASS_CAPABILITY(fc_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("relu", 0)
             .EQ("fc", 0));

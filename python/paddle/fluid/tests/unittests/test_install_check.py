@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import paddle
-import paddle.fluid as fluid
+import os
 
 
 class TestInstallCheck(unittest.TestCase):
     def test_paddle_fluid(self):
-        fluid.install_check.run_check()
+        paddle.fluid.install_check.run_check()
 
     def test_paddle_utils(self):
         paddle.utils.run_check()
+
+
+def TestInt():
+    return 100
+
+
+def TestString():
+    return os.getcwd()
 
 
 if __name__ == '__main__':

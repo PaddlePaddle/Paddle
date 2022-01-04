@@ -1,11 +1,8 @@
 /* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +13,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -75,7 +73,8 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -88,7 +87,8 @@ class MatMulKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
@@ -227,8 +227,11 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
-    head_number = context.Attr<int>("head_number");
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+    if (context.HasAttr("head_number")) {
+      head_number = context.Attr<int>("head_number");
+    }
 #endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
@@ -324,6 +327,14 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+
+  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,
@@ -343,6 +354,43 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
             "Ranks of shape_%s and axis_%s attributes of MatMulOp "
             "must be equal.",
             input_name, input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative, 1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name, num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i, dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name, i, dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+    // if "-1" is present then one of reshape dims must be infered
+    auto it_negative = std::find(shape.begin(), shape.end(), -1);
+    if (it_negative != shape.end()) {
+      int64_t dim_product = 1;
+      for (int i = 0; i < dim.size(); i++) {
+        dim_product *= dim.at(i);
+      }
+
+      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                              std::multiplies<int>());
+      int index = std::distance(shape.begin(), it_negative);
+      shape[index] = dim_product / shape_product;
+    }
+
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -361,7 +409,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -561,7 +610,8 @@ class MatMulOp : public framework::OperatorWithKernel {
                     DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     int head_number = context->Attrs().Get<int>("head_number");
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     if (context->IsRuntime()) {
@@ -581,7 +631,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
                       platform::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
-                          "but received X's shape: [%s],"
+                          "but received X's shape: [%s], "
                           "Y's shape: [%s].",
                           dim_x, dim_y));
 #endif
@@ -641,6 +691,47 @@ class MatMulOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument("reshape_out supported rank is 3, "
                                             "received %d",
                                             reshape_out_size));
+
+      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
+      // -1);
+      // PADDLE_ENFORCE_LE(num_negative, 1,
+      //                   platform::errors::InvalidArgument(
+      //                       "The max number of -1 in fused_reshape_Out is 1 "
+      //                       "but received %d.",
+      //                       num_negative));
+
+      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
+      // if (it_zero != reshape_out.end()) {
+      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
+      //     if (reshape_out[i] == 0) {
+      //       PADDLE_ENFORCE_LT(
+      //           i, ddim_out.size(),
+      //           platform::errors::InvalidArgument(
+      //               "The index of 0 in fused_reshape_Out ",
+      //               "should be less than output dim size, ",
+      //               "but the index is %d and output dim size is %d", i,
+      //               ddim_out.size()));
+      //       reshape_out[i] = ddim_out.at(i);
+      //     }
+      //   }
+      // }
+
+      // if "-1" is present then one of reshape dims must be infered
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+      if (it != reshape_out.end()) {
+        int index = std::distance(reshape_out.begin(), it);
+
+        auto ddim_out_vec = framework::vectorize(ddim_out);
+
+        int ddim_out_product =
+            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
+                            std::multiplies<int>());
+        int reshape_out_product = std::accumulate(
+            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
+
+        reshape_out[index] = ddim_out_product / reshape_out_product;
+      }
+
       framework::DDim shape_out =
           ddim_out.transpose(transpose_out).reshape(reshape_out);
       context->SetOutputDim("Out", shape_out);
@@ -659,8 +750,8 @@ class MatMulOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    using dnnl::memory;
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -701,71 +792,81 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_X",
                               R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_Y",
                               R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_X",
                               R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_Y",
                               R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     /* int8 parameters */
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_y",
                    "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_out",
                    "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
 
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
 #endif
     AddComment(R"DOC(
 MatMul Operator.
-
-
 This operator is used to perform (batched) matrix multiplication
 over the last two dimensions of the input tensors `X` and `Y`.
-
 If a transpose flag is specified, the last two dimensions of the
 tensor are transposed. If the tensor is rank-1 of shape [D], then
 for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
 in transposed form, whereas for `Y` it is the opposite: It is treated
 as [D, 1] in nontransposed form and as [1, D] in transposed form.
-
 Examples without transpose:
 - X: [K], Y: [K] => Out: [1]
 - X: [K], Y: [K, N] => Out: [N]
@@ -773,10 +874,8 @@ Examples without transpose:
 - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
-
 Example of matrix multiplication with head_number of H
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
-
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
 - When the rank of the input data is less than or equal to 3, it
@@ -787,10 +886,8 @@ The differences are:
 - We add `head_number` attribute, which is used to multiple two matrixes head
   by head, and eventually concatenates the output of several (head_number)
   small matrixes multiplication.
-
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input `X`.
-
 )DOC");
   }
 };
@@ -817,6 +914,21 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     if (context->HasOutput(y_grad_name)) {
       context->SetOutputDim(y_grad_name, y_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -915,7 +1027,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
@@ -932,3 +1044,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
+
+REGISTER_OP_VERSION(matmul)
+    .AddCheckpoint(
+        R"ROC(Register matmul for adding the attribute of
+       fused_reshape_Y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "fused_reshape_Y",
+            "In order to support the function of fused the input Y "
+            " and input X into the input X when "
+            "using the operator of matmul, and get raw shape of input Y.",
+            std::vector<int>{}));

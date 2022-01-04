@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/framework/threadpool.h"
 
+#include <thread>
+
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_int32(io_threadpool_size, 100,

@@ -184,7 +184,7 @@ class DataNormOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -232,7 +232,8 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddInput("X", "The input tensor");
     AddInput("BatchSize",
              "BatchSize is a 1-dimensional tensor of size C "
@@ -390,7 +391,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
       }
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown storage order: %d", data_layout));
+            "Unknown storage order: %d, please use NCHW or NHWC", data_layout));
     }
   }
 };
@@ -483,18 +484,17 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
 #endif
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -701,7 +701,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
       }
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown storage order: %s", data_layout_str));
+            "Unknown storage order: %s, please use NCHW or NHWC",
+            data_layout_str));
     }
   }
 };

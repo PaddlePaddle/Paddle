@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
-#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace operators {
@@ -27,27 +26,28 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X",
-                   "check_finite_and_unscale");
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
-                   "check_finite_and_unscale");
-    PADDLE_ENFORCE_EQ(
-        ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
-        platform::errors::InvalidArgument(
-            "The input(X) and output(Out) should have same size in "
-            "Operator(check_finite_and_unscale), size of input(X) is %d "
-            "and size of output(Out) is %d.",
-            ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
-    auto x_dims = ctx->GetInputsDim("X");
-    ctx->SetOutputsDim("Out", x_dims);
+    if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
+      PADDLE_ENFORCE_EQ(
+          ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
+          platform::errors::InvalidArgument(
+              "The input(X) and output(Out) should have same size in "
+              "Operator(check_finite_and_unscale), size of input(X) is %d "
+              "and size of output(Out) is %d.",
+              ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
+      auto x_dims = ctx->GetInputsDim("X");
+      ctx->SetOutputsDim("Out", x_dims);
+    }
     ctx->SetOutputDim("FoundInfinite", {1});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    auto dtype = framework::proto::VarType::FP32;
+    if (ctx.MultiInputVar("X").size() >= 1) {
+      dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    }
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 
@@ -61,6 +61,12 @@ class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Scale",
              "(Tensor) 1-dim tensor, the scale of check_finite_and_unscale "
              "operator.");
+#ifdef PADDLE_WITH_ASCEND_CL
+    AddInput("FloatStatus",
+             "(Tensor) 1-dim tensor of shape [8], allocated by "
+             "alloc_float_status op")
+        .AsDispensable();
+#endif
     AddOutput("Out",
               "(Tensors) The scaled output tensor of "
               "check_finite_and_unscale operator.")

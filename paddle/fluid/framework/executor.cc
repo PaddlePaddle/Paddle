@@ -13,33 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
-#include <deque>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
-#include "paddle/fluid/framework/transfer_scope_cache.h"
-#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/executor_gc_helper.h"
 
 DECLARE_bool(benchmark);
 DECLARE_bool(use_mkldnn);
@@ -86,18 +72,18 @@ Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_);
+  ClearMKLDNNCache(place_, this);
 #endif
 }
 
 void Executor::Close() {
-#ifdef PADDLE_WITH_DISTRIBUTE
-  // TODO(typhoonzero): complete message will need to use real trainer_id,
-  // except 0.
-  auto client =
-      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
-  client->SendComplete();
-#endif
+  // #ifdef PADDLE_WITH_DISTRIBUTE
+  //   // TODO(typhoonzero): complete message will need to use real trainer_id,
+  //   // except 0.
+  //   auto client =
+  //       paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+  //   client->SendComplete();
+  // #endif
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
@@ -116,14 +102,18 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
+
+        VLOG(3) << "Initialize Variable " << var->Name();
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+                << " global, which pointer is " << ptr << " type is "
+                << static_cast<int>(var->GetType());
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+                << " locally, which pointer is " << ptr << "Variable Type "
+                << static_cast<int>(var->GetType());
       }
     }
   } else {
@@ -139,7 +129,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 std::shared_ptr<TrainerBase> Executor::InitForDataset(
     const ProgramDesc& main_program, const std::string& trainer_desc_str,
     Scope* scope, Dataset* dataset) {
-  VLOG(3) << "Start to RunFromDataset in executor";
+  VLOG(3) << "Start to InitForDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
   PADDLE_ENFORCE_EQ(success, true,
@@ -183,6 +173,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
                      keep_kid_scopes);
@@ -308,6 +301,9 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
   bool has_fetch_ops =
@@ -445,7 +441,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
   std::unique_ptr<GarbageCollector> gc;
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
     if (platform::is_gpu_place(place_)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
@@ -468,6 +464,46 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
+    } else if (platform::is_ipu_place(place_)) {
+#ifdef PADDLE_WITH_IPU
+      gc.reset(new IPUGarbageCollector(
+          BOOST_GET_CONST(platform::IPUPlace, place_), max_memory_size));
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
+#endif
+    } else if (platform::is_npu_place(place_)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for NPU.";
+        gc.reset(new NPUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Please set FLAGS_fast_eager_deletion_mode=true to use "
+            "GarbageCollector on NPU."));
+        // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
+        VLOG(4) << "Use default stream gc for NPU.";
+        gc.reset(new NPUDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
+#endif
+    } else if (platform::is_mlu_place(place_)) {
+#ifdef PADDLE_WITH_MLU
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new MLUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+      } else {
+        gc.reset(new MLUDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
+#endif
     }
   }
 
@@ -479,21 +515,35 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     }
   }
 
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  auto callback = [scope, local_scope, keep_kids]() {
+    if (local_scope != scope) {
+      VLOG(4) << "Delete scope: " << local_scope;
+      scope->DeleteScope(local_scope);
+    } else {
+      if (!keep_kids) {
+        VLOG(4) << "Drop kids: " << scope;
+        // By default, we should delete all kid scopes after run executor
+        // because
+        // some operators may create local scope when running, such as while_op.
+        // But when while_op also create a local executor to run it's sub block,
+        // the sub scopes it created should not be dropped immediately, because
+        // while_grad_op will use some variables created during while_op run, so
+        // we need to keep the kids and wait for the outer executor to drop
+        // them.
 
-  if (local_scope != scope) {
-    scope->DeleteScope(local_scope);
-  } else {
-    if (!keep_kids) {
-      // By default, we should delete all kid scopes after run executor because
-      // some operators may create local scope when running, such as while_op.
-      // But when while_op also create a local executor to run it's sub block,
-      // the sub scopes it created should not be dropped immediately, because
-      // while_grad_op will use some variables created during while_op run, so
-      // we need to keep the kids and wait for the outer executor to drop them.
-
-      scope->DropKids();
+        scope->DropKids();
+      }
+      VLOG(4) << "Keep kids: " << scope;
     }
+  };
+
+  if (gc) {
+    VLOG(4) << "Async deleting scope";
+    gc->DirectClearCallback(callback);
+  } else {
+    VLOG(4) << "Sync deleting scope";
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    callback();
   }
 }
 
@@ -557,7 +607,6 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
 #else
   LOG(WARNING)
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";

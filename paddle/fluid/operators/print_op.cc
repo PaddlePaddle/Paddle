@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 
 namespace paddle {
@@ -173,3 +174,11 @@ REGISTER_OPERATOR(print, ops::PrintOp, ops::PrintOpProtoAndCheckMaker,
                   ops::PrintOpGradientMaker<paddle::framework::OpDesc>,
                   ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
                   ops::PrintOpInferShape, ops::PrintOpVarTypeInference);
+
+REGISTER_OP_VERSION(print)
+    .AddCheckpoint(
+        R"ROC(Upgrade print add a new attribute [print_tensor_layout] to "
+             "contorl whether to print tensor's layout.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "print_tensor_layout", "Whether to print the tensor's layout.",
+            true));

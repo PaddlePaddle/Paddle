@@ -18,9 +18,11 @@ import unittest
 
 import numpy as np
 import paddle.fluid.core as core
+import paddle
 import os
 import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+from parallel_executor_test_base import DeviceType
 
 
 def simple_fc_net(use_feed):
@@ -76,10 +78,13 @@ class TestMNIST(TestParallelExecutorBase):
 
     def _compare_reduce_and_allreduce(self,
                                       model,
-                                      use_cuda,
+                                      use_device,
                                       delta1=1e-6,
                                       delta2=1e-4):
-        if use_cuda and not core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
+            return
+
+        if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
             return
 
         img, label = self._init_data()
@@ -88,14 +93,14 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_reduce=False)
 
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_reduce=True)
 
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
@@ -104,8 +109,11 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEqual(loss[0], loss[1], delta=delta2)
 
     # simple_fc
-    def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def check_simple_fc_convergence(self, use_device, use_reduce=False):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
+            return
+
+        if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
             return
 
         img, label = self._init_data()
@@ -114,23 +122,26 @@ class TestMNIST(TestParallelExecutorBase):
             simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_reduce=use_reduce)
 
     def test_simple_fc(self):
-        # use_cuda
-        self.check_simple_fc_convergence(True)
-        self.check_simple_fc_convergence(False)
+        # use_device
+        self.check_simple_fc_convergence(DeviceType.CUDA)
+        self.check_simple_fc_convergence(DeviceType.CPU)
+        self.check_simple_fc_convergence(DeviceType.XPU)
 
     def test_simple_fc_with_new_strategy(self):
-        # use_cuda, use_reduce
+        # use_device, use_reduce
         # NOTE: the computation result of nccl_reduce is non-deterministic,
         # related issue: https://github.com/NVIDIA/nccl/issues/157
-        self._compare_reduce_and_allreduce(simple_fc_net, True, 1e-5, 1e-2)
-        self._compare_reduce_and_allreduce(simple_fc_net, False, 1e-5, 1e-2)
+        self._compare_reduce_and_allreduce(simple_fc_net, DeviceType.CUDA, 1e-5,
+                                           1e-2)
+        self._compare_reduce_and_allreduce(simple_fc_net, DeviceType.CPU, 1e-5,
+                                           1e-2)
 
-    def check_simple_fc_parallel_accuracy(self, use_cuda):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def check_simple_fc_parallel_accuracy(self, use_device):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         img, label = self._init_data()
@@ -139,13 +150,13 @@ class TestMNIST(TestParallelExecutorBase):
             method=simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_parallel_executor=True)
 
         self.assertAlmostEquals(
@@ -156,33 +167,38 @@ class TestMNIST(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy(True)
-        self.check_simple_fc_parallel_accuracy(False)
+        self.check_simple_fc_parallel_accuracy(DeviceType.CUDA)
+        self.check_simple_fc_parallel_accuracy(DeviceType.CPU)
 
-    def check_batchnorm_fc_convergence(self, use_cuda, use_fast_executor):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def check_batchnorm_fc_convergence(self, use_device, use_fast_executor):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
-
+        if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
+            return
         img, label = self._init_data()
 
         self.check_network_convergence(
             fc_with_batchnorm,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_fast_executor=use_fast_executor)
 
     def test_batchnorm_fc(self):
-        for use_cuda in (False, True):
+        for use_device in (DeviceType.CPU, DeviceType.CUDA):
             for use_fast_executor in (False, True):
-                self.check_batchnorm_fc_convergence(use_cuda, use_fast_executor)
+                self.check_batchnorm_fc_convergence(use_device,
+                                                    use_fast_executor)
 
     def test_batchnorm_fc_with_new_strategy(self):
         # NOTE: the computation result of nccl_reduce is non-deterministic,
         # related issue: https://github.com/NVIDIA/nccl/issues/157
-        self._compare_reduce_and_allreduce(fc_with_batchnorm, True, 1e-5, 1e-2)
-        self._compare_reduce_and_allreduce(fc_with_batchnorm, False, 1e-5, 1e-2)
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, DeviceType.CUDA,
+                                           1e-5, 1e-2)
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, DeviceType.CPU,
+                                           1e-5, 1e-2)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

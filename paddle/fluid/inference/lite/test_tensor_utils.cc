@@ -115,7 +115,7 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   // Copy to LoDTensor.
   framework::LoDTensor lod_tensor_n;
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     platform::GpuStreamSync(
         static_cast<const platform::CUDADeviceContext&>(ctx).stream());
@@ -151,7 +151,7 @@ TEST(LiteEngineOp, TensorCopyAsync) {
   auto* ctx_cpu =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   test_tensor_copy(*ctx_cpu);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto* ctx_gpu =
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
   test_tensor_copy(*ctx_gpu);
@@ -162,7 +162,7 @@ TEST(LiteEngineOp, TensorShare) {
   auto* ctx_cpu =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   test_tensor_share(*ctx_cpu);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto* ctx_gpu =
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
   test_tensor_share(*ctx_gpu);

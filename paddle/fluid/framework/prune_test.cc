@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"

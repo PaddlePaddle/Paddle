@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -81,6 +82,7 @@ class TensorInplaceVersion {
   bool IsUnique() const { return inplace_version_ == 0; }
   void Bump() { ++inplace_version_; }
   uint32_t CurrentVersion() const { return inplace_version_; }
+  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
  private:
   uint32_t inplace_version_;
@@ -90,9 +92,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format_tag format() const { return format_; }
+  inline dnnl::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format_tag format) {
+  inline void set_format(const dnnl::memory::format_tag format) {
     format_ = format;
   }
 
@@ -106,25 +108,20 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
  public:
-  template <typename T, size_t D, int MajorType, typename IndexType>
-  friend struct EigenTensor;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenMatrix;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenVector;
-
- public:
-  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
+  Tensor()
+      : type_(proto::VarType::FP32),
+        offset_(0),
+        inplace_version_counter_(std::make_shared<TensorInplaceVersion>(0)) {}
 
   explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
+  const void* data() const;
+
   template <typename T>
   T* data();
 
@@ -145,6 +142,9 @@ class Tensor {
                      size_t requested_size = 0);
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
+
+  void* mutable_data(const platform::Place& place, proto::VarType::Type type,
+                     const platform::Stream& stream);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -171,6 +171,9 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
 
+  /*! The internal of two tensors share the same inplace version counter. */
+  Tensor& ShareInplaceVersionCounterWith(const Tensor& src);
+
   /**
    * @brief  Return a sub-tensor of the given tensor.
    *
@@ -180,6 +183,22 @@ class Tensor {
    *                        The index number begins from 0.
    */
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
+
+  /**
+   * @brief  Return a tensor list of the given tensor.
+   *
+   * @param[in] split_size  The size of tensor to be split along axis.
+   * @param[in] axis        The axis along which to split.
+   */
+  std::vector<Tensor> Split(int64_t split_size, int64_t axis) const;
+
+  /**
+   * @brief  Return a tensor list of the given tensor.
+   *
+   * @param[in] chunks   The number of tensor to be split along axis.
+   * @param[in] axis     The axis along which to split.
+   */
+  std::vector<Tensor> Chunk(int64_t chunks, int64_t axis) const;
 
   const platform::Place& place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -196,6 +215,24 @@ class Tensor {
             "Tensor not initialized yet when Tensor::type() is called."));
     return type_;
   }
+
+  /**
+   * [Add method get the saved type of tensor]
+   *
+   * After the introduction of complex number calculations, Ops that support
+   * complex number calculations generally support type promotion, such as
+   * x(float32) + y(complex64) = out(complex64), then the type of the grad
+   * tensor should be dout(complex64), dx(float32), dy (complex64), but the
+   * type of dx to be recognized to be float32 by the grad Op relay on the type
+   * of forward tensor x. But many of our ops have registered InplaceInferer,
+   * covering the tensor memory of x with out, so as to save storage.
+   *
+   * In this case, the dim and type information recorded by x still exist,
+   * but because x becomes an uninitialized tensor, The type of x record cannot
+   * be obtained with x.type(), but the type is still valid here, so we
+   * add saved_type(), This method SHOULD NOT be called by general scenarios.
+   */
+  proto::VarType::Type saved_type() const { return type_; }
 
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
@@ -214,8 +251,13 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
-    type_ = tensor.type_;
+    // NOTE(chenfeiyu): when sharing buffer, by definition only holder
+    // to the memory allocation and offset should be shared. Shape,
+    // data type, layout, and other metadata associated with a Tensor
+    // should not be copied.
   }
+
+  void ShareDataTypeWith(const Tensor& tensor) { type_ = tensor.type_; }
 
   bool IsSharedBufferWith(const Tensor& src) const {
     return holder_ && holder_ == src.Holder();
@@ -223,6 +265,7 @@ class Tensor {
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
+  void set_offset(size_t offset) { offset_ = offset; }
 
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);
@@ -231,9 +274,12 @@ class Tensor {
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                           const proto::VarType::Type type);
+                           const proto::VarType::Type& type);
+
+  void set_type(const proto::VarType::Type& type);
+
   TensorInplaceVersion& InplaceVersionCounter() {
-    return inplace_version_counter_;
+    return *inplace_version_counter_;
   }
 
  private:
@@ -271,7 +317,7 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
-  TensorInplaceVersion inplace_version_counter_;
+  std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 };
 
 }  // namespace framework

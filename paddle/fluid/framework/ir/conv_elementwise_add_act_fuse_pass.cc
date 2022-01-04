@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
 
-#include <string>
-
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -51,6 +48,60 @@ framework::proto::OpDesc PrepareOpDesc(
   return *desc.Proto();
 }
 
+ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_act_fuse";
   FusePassBase::Init(pattern_name, graph);
@@ -66,6 +117,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
@@ -109,6 +164,6 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("relu", 0)
             .EQ("identity", 0));

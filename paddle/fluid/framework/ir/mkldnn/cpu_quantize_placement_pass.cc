@@ -42,6 +42,10 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
+    if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
+      return;
+    }
+
     if (op->Op()->HasAttr("mkldnn_data_type") ||
         op->Op()->HasProtoAttr("mkldnn_data_type")) {
       // use_quantizer is no longer used

@@ -275,6 +275,13 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                              paddle::operators::math::SigmoidFunctor<T>>(
         ctx, paddle::operators::math::MulFunctor<T>(),
         paddle::operators::math::SigmoidFunctor<T>(), in_x, in_y, outputs);
+  } else if (funcs_str == "gelu,elementwise_add") {
+    // Z = Unary(Binary(X, Y))
+    RunUnaryCompoundFunctors<DeviceContext, T,
+                             paddle::operators::math::GeluFunctor<T>,
+                             paddle::operators::math::AddFunctor<T>>(
+        ctx, paddle::operators::math::GeluFunctor<T>(),
+        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s has not been implemented.", funcs_str));
@@ -373,6 +380,16 @@ static void RunGradFunctors(
         ctx, paddle::operators::math::MulGradFunctor<T>(),
         paddle::operators::math::SigmoidFunctor<T>(),
         paddle::operators::math::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "gelu_grad,elementwise_add_grad") {
+    // The backward of Z = Unary(Binary(X, Y))
+    RunUnaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::GeluGradFunctor<T>,
+        paddle::operators::math::AddFunctor<T>,
+        paddle::operators::math::AddGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::GeluGradFunctor<T>(),
+        paddle::operators::math::AddFunctor<T>(),
+        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

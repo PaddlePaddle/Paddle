@@ -25,6 +25,7 @@ import six
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.fluid import compiler
 from paddle.fluid import Program, program_guard
 
@@ -49,7 +50,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         """Setup."""
         #self.dtype = np.float32
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.N = 8
         self.C = 16
         self.H = 32
@@ -91,7 +92,10 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward)
-                bn = fluid.layers.cast(bn, 'float64')
+                if core.is_compiled_with_rocm():
+                    bn = fluid.layers.cast(bn, 'float32')
+                else:
+                    bn = fluid.layers.cast(bn, 'float64')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 if not sync_bn:
@@ -121,7 +125,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         bn_fetches = exe.run(program=main,
@@ -141,7 +145,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         for nm in fetch_names:
@@ -242,6 +246,100 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
                 if isinstance(sublayer, paddle.nn.BatchNorm2D):
                     self.assertEqual(
                         isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
+
+
+class TestConvertSyncBatchNormCast1(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        class Net(nn.Layer):
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv1 = nn.Conv2D(3, 5, 3)
+                self.bn = []
+                bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
+                self.bn.append(bn)
+
+            def forward(self, x):
+                x = self.conv1(x)
+                for bn in self.bn:
+                    x = bn(x)
+                return x
+
+        model = nn.Sequential()
+        model.add_sublayer('net1', Net())
+        model.add_sublayer('net2', Net())
+        compare_model = nn.Sequential()
+        compare_model.add_sublayer('net1', Net())
+        compare_model.add_sublayer('net2', Net())
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        self.assertEqual(len(compare_model.sublayers()), len(model.sublayers()))
+
+
+class TestConvertSyncBatchNormCase2(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+
+            class SyBNNet(paddle.nn.Layer):
+                def __init__(self, in_ch=3, out_ch=3, dirate=1):
+                    super(SyBNNet, self).__init__()
+                    self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(
+                            out_ch,
+                            weight_attr=paddle.ParamAttr(
+                                regularizer=paddle.regularizer.L2Decay(0.))))
+                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(
+                            out_ch, data_format='NDHWC'))
+
+                def forward(self, x):
+                    x = self.bn_s1(x)
+                    out = paddle.sum(paddle.abs(self.bn_s2(x)))
+                    return out
+
+            class BNNet(paddle.nn.Layer):
+                def __init__(self, in_ch=3, out_ch=3, dirate=1):
+                    super(BNNet, self).__init__()
+                    self.bn_s1 = paddle.nn.BatchNorm3D(
+                        out_ch,
+                        weight_attr=paddle.ParamAttr(
+                            regularizer=paddle.regularizer.L2Decay(0.)))
+                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(
+                            out_ch, data_format='NDHWC'))
+
+                def forward(self, x):
+                    x = self.bn_s1(x)
+                    out = paddle.sum(paddle.abs(self.bn_s2(x)))
+                    return out
+
+            bn_model = BNNet()
+            sybn_model = SyBNNet()
+            np.random.seed(10)
+            data = np.random.random([3, 3, 3, 3, 3]).astype('float32')
+            x = paddle.to_tensor(data)
+            bn_out = bn_model(x)
+            sybn_out = sybn_model(x)
+            self.assertTrue(
+                np.allclose(bn_out.numpy(), sybn_out.numpy()),
+                "Output has diff. \n" + "\nBN     " + str(bn_out.numpy()) + "\n"
+                + "Sync BN " + str(sybn_out.numpy()))
+
+
+class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
+    def test_errors(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10, data_format='CN')
+            data = np.random.random([3, 3, 3]).astype('float32')
+            x = paddle.to_tensor(data)
+            self.assertRaises(ValueError, my_sync_batch_norm, x)
 
 
 if __name__ == '__main__':

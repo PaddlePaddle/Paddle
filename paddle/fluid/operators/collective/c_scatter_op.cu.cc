@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_scatter_op.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -26,7 +26,7 @@ template <typename T>
 class CScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
@@ -53,7 +53,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
             "The ring_id (%d) for c_scatter_op must be non-negative.",
             ring_id));
 
-    cudaStream_t stream = nullptr;
+    gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
@@ -66,7 +66,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor temp;
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
     if (root_id == comm->rank()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root_id, comm->comm(), stream));
 
@@ -74,7 +74,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<framework::Tensor*>(&temp));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
     }
 

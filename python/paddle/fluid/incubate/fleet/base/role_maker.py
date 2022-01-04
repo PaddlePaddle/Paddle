@@ -383,7 +383,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of worker
         """
         if self._check_role_generation():
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
         return 0
 
     def _server_num(self):
@@ -391,30 +391,30 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of server
         """
         if self._check_role_generation():
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
 
     def worker_index(self):
         """
         return the index of worker
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return int(self._rank / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / 2
+            return int(self._get_size() / 2)
 
     def server_index(self):
         """
         return the index of server
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return int(self._rank / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
 
     def _all_reduce(self, input, output, mode="sum"):
         """
@@ -591,7 +591,7 @@ class GeneralRoleMaker(RoleMakerBase):
     """
 
     def __init__(self, **kwargs):
-        super(RoleMakerBase, self).__init__()
+        super(GeneralRoleMaker, self).__init__()
         self._role_is_generated = False
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
@@ -599,6 +599,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._init_timeout_seconds = kwargs.get("init_timeout_seconds", 3600)
         self._run_timeout_seconds = kwargs.get("run_timeout_seconds", 9999999)
         ip_port = kwargs.get("http_ip_port", "")
+        self._use_ps_gpu = kwargs.get("use_ps_gpu", False)
         self._http_ip_port = []
         self._http_server = None
         # if ip_port is not empty, it will use http instead of hdfs
@@ -611,6 +612,7 @@ class GeneralRoleMaker(RoleMakerBase):
             # set running status of http server
             self._http_server_d["running"] = False
         self._iface = self.__get_default_iface()
+        self._iface = "" if self._iface == "lo" else self._iface
         # this environment variable can be empty
         self._prefix = os.getenv("SYS_JOB_ID", "")
 
@@ -666,6 +668,18 @@ class GeneralRoleMaker(RoleMakerBase):
                                             self._hdfs_name, self._hdfs_ugi)
                     gloo.init()
                     self._node_type_comm = gloo
+                    if self._use_ps_gpu:
+                        Gloo_strategy = fluid.core.GlooParallelStrategy()
+                        Gloo_strategy.rank = current_id
+                        Gloo_strategy.rank_num = len(worker_endpoints)
+                        Gloo_strategy.ip_address = self._http_ip_port[0]
+                        Gloo_strategy.ip_port = int(self._http_ip_port[1])
+                        Default_init_timeout_seconds = 3600
+                        Default_run_timeout_seconds = 9999999
+                        Gloo_strategy.init_seconds = Default_init_timeout_seconds
+                        Gloo_strategy.run_seconds = Default_run_timeout_seconds
+                        Gloo = fluid.core.GlooParallelContext(Gloo_strategy)
+                        Gloo.init()
                 else:
                     self._all_comm = MockBarrier()
             elif training_role == "PSERVER":
@@ -1026,11 +1040,17 @@ class HeterRoleMaker(GeneralRoleMaker):
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(worker_endpoints),
-                          self._hdfs_path.rstrip("/") + "/trainer",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+
+                gloo.set_rank(current_id)
+                gloo.set_size(len(worker_endpoints))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
+                gloo.set_hdfs_store(
+                    self._hdfs_path.rstrip("/") + "/trainer", self._hdfs_name,
+                    self._hdfs_ugi)
+                gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "XPU":
                 role = Role.XPU
@@ -1038,10 +1058,17 @@ class HeterRoleMaker(GeneralRoleMaker):
                 self._node_type = 2
                 self._cur_endpoint = xpu_endpoints[current_id]
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(xpu_endpoints),
-                          self._hdfs_path.rstrip("/") + "/xpu", self._hdfs_name,
-                          self._hdfs_ugi, self._iface, self._prefix)
+
+                gloo.set_rank(current_id)
+                gloo.set_size(len(xpu_endpoints))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
+                gloo.set_hdfs_store(
+                    self._hdfs_path.rstrip("/") + "/xpu", self._hdfs_name,
+                    self._hdfs_ugi)
+                gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
                 role = Role.SERVER
@@ -1057,30 +1084,47 @@ class HeterRoleMaker(GeneralRoleMaker):
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(eplist),
-                          self._hdfs_path.rstrip("/") + "/pserver",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                gloo.set_rank(current_id)
+                gloo.set_size(len(eplist))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
+                gloo.set_hdfs_store(
+                    self._hdfs_path.rstrip("/") + "/pserver", self._hdfs_name,
+                    self._hdfs_ugi)
+                gloo.init()
                 self._node_type_comm = gloo
 
             if training_role == "TRAINER" or training_role == "XPU":
                 gloo = fluid.core.Gloo()
                 heter_list = worker_endpoints + xpu_endpoints
-                gloo.init(
-                    heter_list.index(self._cur_endpoint),
-                    len(heter_list),
+
+                gloo.set_rank(heter_list.index(self._cur_endpoint))
+                gloo.set_size(len(heter_list))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
+                gloo.set_hdfs_store(
                     self._hdfs_path.rstrip("/") + "/heter", self._hdfs_name,
-                    self._hdfs_ugi, self._iface, self._prefix)
+                    self._hdfs_ugi)
+                gloo.init()
                 self._heter_comm = gloo
 
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist + xpu_endpoints
-            gloo.init(
-                all_list.index(self._cur_endpoint),
-                len(all_list),
+
+            gloo.set_rank(all_list.index(self._cur_endpoint))
+            gloo.set_size(len(all_list))
+            gloo.set_prefix(self._prefix)
+            gloo.set_iface(self._iface)
+            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                     self._run_timeout_seconds)
+            gloo.set_hdfs_store(
                 self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
-                self._hdfs_ugi, self._iface, self._prefix)
+                self._hdfs_ugi)
+            gloo.init()
 
             self._all_comm = gloo
             self._trainers_num = trainers_num

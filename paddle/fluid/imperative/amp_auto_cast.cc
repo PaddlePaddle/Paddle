@@ -16,7 +16,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "paddle/fluid/imperative/tracer.h"
 
@@ -25,9 +24,38 @@ namespace imperative {
 
 class VarBase;
 
+AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
+    : tracer_(tracer) {
+  pre_amp_level_ = tracer_->GetAmpLevel();
+
+  if (pre_amp_level_ != level) {
+    tracer_->SetAmpLevel(level);
+  }
+}
+
+AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
-      block_ops_(new std::unordered_set<std::string>()) {}
+      block_ops_(new std::unordered_set<std::string>()),
+      unsupported_fp16_ops_(new std::unordered_set<std::string>()) {
+  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  auto fp16_dtype = framework::proto::VarType::FP16;
+  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
+    bool supported = false;
+    for (auto& kernel_type : it->second) {
+      if ((platform::is_gpu_place(kernel_type.first.place_) ||
+           platform::is_xpu_place(kernel_type.first.place_)) &&
+          kernel_type.first.data_type_ == fp16_dtype) {
+        supported = true;
+      }
+    }
+    if (!supported) {
+      unsupported_fp16_ops_->insert(it->first);
+    }
+  }
+}
+
 AmpOperators::~AmpOperators() {}
 
 AmpOperators& AmpOperators::Instance() {
@@ -35,12 +63,37 @@ AmpOperators& AmpOperators::Instance() {
   return instance;
 }
 
-std::shared_ptr<std::unordered_set<std::string>> AmpOperators::GetAllowOps() {
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableAllowOps() {
   return allow_ops_;
 }
 
-std::shared_ptr<std::unordered_set<std::string>> AmpOperators::GetBlockOps() {
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableBlockOps() {
   return block_ops_;
+}
+
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableUnsupportedFp16Ops() {
+  return unsupported_fp16_ops_;
+}
+
+std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
+  os << "allow ops: ";
+  auto allow_ops = ops.GetMutableAllowOps();
+  std::copy((*allow_ops).begin(), (*allow_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  os << "\n";
+  os << "block ops: ";
+  auto block_ops = ops.GetMutableBlockOps();
+  std::copy((*block_ops).begin(), (*block_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  os << "\n";
+  os << "unsupported fp16 ops: ";
+  auto unsupported_fp16_ops = ops.GetMutableUnsupportedFp16Ops();
+  std::copy((*unsupported_fp16_ops).begin(), (*unsupported_fp16_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  return os;
 }
 
 inline std::string GetDtypeStr(
@@ -50,7 +103,8 @@ inline std::string GetDtypeStr(
 
 inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
   if (platform::is_gpu_place(var->Place()) ||
-      platform::is_cuda_pinned_place(var->Place())) {
+      platform::is_cuda_pinned_place(var->Place()) ||
+      platform::is_xpu_place(var->Place())) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (var->DataType() == framework::proto::VarType::FP32 ||
         var->DataType() == framework::proto::VarType::FP16) {
@@ -74,7 +128,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, false);
+    AutoCastGuard guard(tracer, AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 
@@ -100,7 +154,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToFP32(
 }
 
 static inline framework::proto::VarType::Type GetPromoteType(
-    const NameVarBaseMap& ins) {
+    const std::string& op_type, const NameVarBaseMap& ins) {
   auto dst_type = framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& var : pair.second) {
@@ -110,56 +164,131 @@ static inline framework::proto::VarType::Type GetPromoteType(
       }
     }
   }
+
+  // NOTE(juncai): moving_average_abs_max_scale only consider the
+  // dtype of input(X)
+  if (op_type == "moving_average_abs_max_scale") {
+    for (const auto& pair : ins) {
+      if (pair.first == "X" &&
+          pair.second.front()->DataType() == framework::proto::VarType::FP16) {
+        dst_type = framework::proto::VarType::FP16;
+      }
+    }
+  }
+
   return dst_type;
 }
 
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins) {
-  NameVarBaseMap new_ins = {};
-  if (AmpOperators::Instance().GetAllowOps()->count(op_type)) {
-    for (const auto& pair : ins) {
+  NameVarBaseMap new_ins(ins);
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+    for (auto& pair : new_ins) {
+      // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
+      if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+           op_type == "sync_batch_norm") &&
+          pair.first != "X") {
+        continue;
+      }
+
+      if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+        if (pair.first == "LnScale" || pair.first == "LnBias" ||
+            pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+            pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+          continue;
+        }
+      }
+
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
-      for (const auto& var : pair.second) {
-        auto new_var = CastToFP16(var);
-        new_ins[pair.first].emplace_back(new_var);
+      for (auto& var : pair.second) {
+        var = CastToFP16(var);
       }
     }
     return new_ins;
-  } else if (AmpOperators::Instance().GetBlockOps()->count(op_type)) {
-    for (const auto& pair : ins) {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
-      for (const auto& var : pair.second) {
-        auto new_var = CastToFP32(var);
-        new_ins[pair.first].emplace_back(new_var);
+      for (auto& var : pair.second) {
+        var = CastToFP32(var);
       }
     }
     return new_ins;
   } else {
-    auto dst_type = GetPromoteType(ins);
+    auto dst_type = GetPromoteType(op_type, ins);
 
-    for (const auto& pair : ins) {
+    // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
+    if (dst_type == framework::proto::VarType::FP16 &&
+        AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
+            op_type)) {
+      dst_type = framework::proto::VarType::FP32;
+    }
+    for (auto& pair : new_ins) {
+      // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
+      if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+           op_type == "sync_batch_norm") &&
+          pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+        continue;
+      }
+      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
+          dst_type == framework::proto::VarType::FP32) {
+        if (pair.first != "LnScale" && pair.first != "LnBias" &&
+            pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&
+            pair.first != "Ln1Scale" && pair.first != "Ln1Bias") {
+          continue;
+        }
+      }
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
               << framework::DataTypeToString(dst_type);
-      for (const auto& var : pair.second) {
-        // NOTE(zhiqiu): Conv + BN always occur together, we needn't
-        // cast X of batch_norm to FP32, which is produced by conv as FP16 type.
-        if (op_type == "batch_norm" && pair.first == "X" &&
-            dst_type == framework::proto::VarType::FP32) {
-          new_ins[pair.first].emplace_back(var);
-          continue;
-        }
-        auto new_var = dst_type == framework::proto::VarType::FP32
-                           ? CastToFP32(var)
-                           : CastToFP16(var);
-        new_ins[pair.first].emplace_back(new_var);
+      for (auto& var : pair.second) {
+        var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
+                                                           : CastToFP16(var));
       }
     }
     return new_ins;
   }
-  return ins;
+  return new_ins;
+}
+
+NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
+                                  const NameVarBaseMap& ins) {
+  NameVarBaseMap new_ins(ins);
+  auto dst_type = framework::proto::VarType::FP16;
+  if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
+      AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    dst_type = framework::proto::VarType::FP32;
+  }
+  for (auto& pair : new_ins) {
+    // NOTE: The run_program OP only has FP32 kernel. In dy2stat pure fp16
+    // training, we have correctly cast the inputs of run_program OP before,
+    // so here should avoid casting for run_program OP.
+    if (op_type == "run_program") {
+      continue;
+    }
+
+    if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+         op_type == "sync_batch_norm") &&
+        pair.first != "X") {
+      continue;
+    }
+    if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+      if (pair.first == "LnScale" || pair.first == "LnBias" ||
+          pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+          pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+        continue;
+      }
+    }
+    VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+            << GetDtypeStr(*pair.second.cbegin()) << " to "
+            << framework::DataTypeToString(dst_type);
+    for (auto& var : pair.second) {
+      var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
+                                                         : CastToFP16(var));
+    }
+  }
+  return new_ins;
 }
 
 }  // namespace imperative

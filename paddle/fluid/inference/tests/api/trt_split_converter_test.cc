@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -23,6 +23,9 @@ namespace inference {
 
 TEST(TensorRT, split_converter) {
   std::string model_dir = FLAGS_infer_model + "/split_converter";
+  std::string opt_cache_dir = model_dir + "/_opt_cache";
+  delete_cache_files(opt_cache_dir);
+
   AnalysisConfig config;
   int batch_size = 4;
   config.EnableUseGpu(100, 0);

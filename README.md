@@ -1,4 +1,3 @@
-﻿
 <p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
@@ -8,8 +7,8 @@
 English | [简体中文](./README_cn.md)
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](https://paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -22,23 +21,21 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v1.8](https://github.com/PaddlePaddle/Paddle/tree/release/1.8)
+### Latest PaddlePaddle Release: [v2.2](https://github.com/PaddlePaddle/Paddle/tree/release/2.2)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
 ### Install Latest Stable Release:
 ```
-# Linux CPU
+# CPU
 pip install paddlepaddle
-# Linux GPU cuda10cudnn7
+# GPU
 pip install paddlepaddle-gpu
-# Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.8.5.post97
 
 ```
-It is recommended to read [this doc](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/install/index_en.html) on our website.
+For more information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
-Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 12 hours to train models online per day. If you can insist on that for five consecutive days, then you will receive an extra 48 hours. [Click here to start](http://ai.baidu.com/support/news?action=detail&id=981).
+Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 8 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
 
 ## FOUR LEADING TECHNOLOGIES
 
@@ -49,14 +46,13 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 
 -  **Support Ultra-Large-Scale Training of Deep Neural Networks**
 
-    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billions of features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved the real-time model updating with more than 1 trillion parameters.
+    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billion features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved real-time model updating with more than 1 trillion parameters.
      [Click here to learn more](https://github.com/PaddlePaddle/Fleet)
 
 
-- **Accelerated High-Performance Inference over Ubiquitous Deployments**
+- **High-Performance Inference Engines for Comprehensive Deployment Enviroments**
 
-    PaddlePaddle is not only compatible with other open-source frameworks for models training, but also works well on the ubiquitous developments, varying from platforms to devices. More specifically, PaddlePaddle accelerates the inference procedure with the fastest speed-up. Note that, a recent breakthrough of inference speed has been made by PaddlePaddle on Huawei's Kirin NPU, through the hardware/software co-optimization.
-     [Click here to learn more](https://github.com/PaddlePaddle/Paddle-Lite)
+   PaddlePaddle is not only compatible with models trained in 3rd party open-source frameworks , but also offers complete inference products for various production scenarios. Our inference product line includes [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html): Native inference library for high-performance server and cloud inference; [Paddle Serving](https://github.com/PaddlePaddle/Serving): A service-oriented framework suitable for distributed and pipeline productions; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite): Ultra-Lightweight inference engine for mobile and IoT environments; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs): A frontend inference engine for browser and mini-apps. Furthermore, by great amounts of optimization with leading hardware in each scenario, Paddle inference engines outperform most of the other mainstream frameworks.
      
      
 - **Industry-Oriented Models and Libraries with Open Source Repositories**
@@ -67,38 +63,35 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 
 ## Documentation
 
-We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html) and
-[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html) documentation.
+We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) and
+[Chinese](https://www.paddlepaddle.org.cn/documentation/docs/zh/guide/index_cn.html) documentation.
 
-- [Basic Deep Learning Models](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/basics/index_en.html#basic-deep-learning-models)
+- [Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
 
   You might want to start from how to implement deep learning basics with PaddlePaddle.
 
-
-- [User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/user_guides/index_en.html)
-
-  You might have got the hang of Beginner’s Guide, and wish to model practical problems and build your original networks.
-  
-  
-- [Advanced User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_usage/index_en.html)
+- [Practice](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
 
   So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator. 
-
 
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)
 
    Our new API enables much shorter programs.
 
-
-- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.8/advanced_usage/development/contribute_to_paddle/index_en.html)
+- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/08_contribution/index_en.html)
 
    We appreciate your contributions!
 
 ## Communication
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 796771754 (PaddlePaddle).
-- [Forums](http://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
+- QQ discussion group: 441226485 (PaddlePaddle).
+- [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
+    
+## Courses
+
+- [Server Deployments](https://aistudio.baidu.com/aistudio/course/introduce/19084): Courses intorducing high performance server deployments via local and remote services.
+- [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): Courses intorducing edge deployments from mobile, IoT to web and applets.   
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).

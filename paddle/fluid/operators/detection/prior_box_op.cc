@@ -98,7 +98,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_input_type)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       auto input_image_type = ctx.Input<framework::Tensor>("Image")->type();

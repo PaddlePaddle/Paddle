@@ -40,5 +40,19 @@ class TestIncrement(unittest.TestCase):
             self.assertEqual((output.numpy() == expected_result).all(), True)
 
 
+class TestInplaceApiWithDataTransform(unittest.TestCase):
+    def test_increment(self):
+        if fluid.core.is_compiled_with_cuda():
+            paddle.enable_static()
+            with paddle.fluid.device_guard("gpu:0"):
+                x = paddle.fluid.layers.fill_constant([1], "float32", 0)
+            with paddle.fluid.device_guard("cpu"):
+                x = paddle.increment(x)
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            a, = exe.run(paddle.static.default_main_program(), fetch_list=[x])
+            paddle.disable_static()
+            self.assertEqual(a[0], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

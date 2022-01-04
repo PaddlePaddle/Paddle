@@ -55,10 +55,26 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   // We get all the vars from local_scope instead of the ProgramDesc.
   // Because there exists the case that new parameter variables are not added to
   // the program in the analysis pass.
+  bool reserve_cpu_weights = false;
+  bool with_dynamic_shape = false;
+  if (argument->Has("max_input_shape") && argument->Has("min_input_shape") &&
+      argument->Has("optim_input_shape")) {
+    with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
+                          argument->min_input_shape().size() > 0 &&
+                          argument->optim_input_shape().size() > 0);
+  }
+  with_dynamic_shape =
+      with_dynamic_shape || (argument->Has("tensorrt_tuned_dynamic_shape") &&
+                             argument->tensorrt_tuned_dynamic_shape());
+  if (with_dynamic_shape) {
+    reserve_cpu_weights = true;
+  }
   for (auto &var_name : all_vars) {
     if (std::count(repetitive_params.begin(), repetitive_params.end(),
                    var_name)) {
-      scope->EraseVars({var_name});
+      if (!reserve_cpu_weights) {
+        scope->EraseVars({var_name});
+      }
       continue;
     }
     auto *var = scope->FindLocalVar(var_name);

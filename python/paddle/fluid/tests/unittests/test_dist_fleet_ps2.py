@@ -157,8 +157,8 @@ class TestPSPassWithBow(unittest.TestCase):
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-            "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
         os.environ["TRAINING_ROLE"] = "PSERVER"
 
         role = role_maker.PaddleCloudRoleMaker()
@@ -167,31 +167,20 @@ class TestPSPassWithBow(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
+
+        configs = {}
+        configs['__emb__'] = {
+            "table_parameters.__emb__.accessor.embed_sgd_param.name":
+            "SparseNaiveSGDRule",
+            "table_parameters.__emb__.accessor.embedx_sgd_param.name":
+            "SparseAdamSGDRule",
+        }
+        strategy.sparse_table_configs = configs
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
 
-        model_dir = tempfile.mkdtemp()
-
-        with self.assertRaises(ValueError):
-            fleet.init_server(os.path.join(model_dir, "temp"), "xxxx")
-
-        with self.assertRaises(ValueError):
-            fleet.init_server(os.path.join(model_dir, "temp"))
-
         fleet.init_server()
-
-        from paddle.fluid.communicator import LargeScaleKV
-        kv = LargeScaleKV()
-
-        kv.save("__emb__.block0",
-                os.path.join(model_dir, "__emb__", "__emb__.block0"))
-
-        kv.size("__emb__.block0")
-
-        fluid.framework.switch_main_program(fluid.Program())
-        fleet.init_server(model_dir)
-        shutil.rmtree(model_dir)
 
 
 if __name__ == '__main__':

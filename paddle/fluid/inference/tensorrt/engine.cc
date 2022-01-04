@@ -18,16 +18,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <string>
 
+#include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-namespace plugin {
-class PluginTensorRT;
-}  // namespace plugin
 
 int TensorRTEngine::runtime_batch_ = 1;
 
@@ -36,17 +34,18 @@ void TensorRTEngine::InitNetwork() {
   infer_builder_.reset(createInferBuilder(&logger_));
 
   if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
-    infer_networkv2_.reset(infer_builder_->createNetworkV2(
+    infer_network_.reset(infer_builder_->createNetworkV2(
         1U << static_cast<int>(
             nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
-    infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-    infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-    optim_profile_ = infer_builder_->createOptimizationProfile();
-#endif
   } else {
-    infer_network_.reset(infer_builder_->createNetwork());
+    infer_network_.reset(infer_builder_->createNetworkV2(0U));
   }
+
+  infer_builder_config_.reset(infer_builder_->createBuilderConfig());
+  // optim_profile_ = infer_builder_->createOptimizationProfile();
+  optim_profiles_.resize(max_profile_num_);
+  for (int i = 0; i < max_profile_num_; i++)
+    optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
 void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
@@ -58,6 +57,7 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
 #if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
+    GetEngineInfo();
 #endif
   }
   SetRuntimeBatch(batch_size);
@@ -75,12 +75,12 @@ void TensorRTEngine::FreezeNetwork() {
                               "Call InitNetwork first to initialize network."));
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
-  infer_builder_->setMaxWorkspaceSize(max_workspace_);
+  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
-#if IS_TRT_VERSION_GE(5000)
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
-    infer_builder_->setFp16Mode(support_fp16);
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
                    "FP16 speed up, use FP32 instead.";
@@ -88,23 +88,18 @@ void TensorRTEngine::FreezeNetwork() {
       LOG(INFO) << "Run Paddle-TRT FP16 mode";
     }
   }
-#else
-  if (enable_fp16)
-    LOG(INFO) << "Using FP16 in Paddle-TRT must ensure that the version of TRT "
-                 "is at least 5."
-                 "So, use FP32 to run.";
-#endif
-  bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
 
+  bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
   if (enable_int8) {
-    infer_builder_->setInt8Mode(true);
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
+
     if (calibrator_) {
-      infer_builder_->setInt8Calibrator(calibrator_);
+      infer_builder_config_->setInt8Calibrator(calibrator_);
     } else {
-      infer_builder_->setInt8Calibrator(nullptr);
+      infer_builder_config_->setInt8Calibrator(nullptr);
 
 #if IS_TRT_VERSION_GE(5000)
-      infer_builder_->setStrictTypeConstraints(true);
       for (auto &quant_range : quant_dynamic_range_) {
         auto tensor = quant_range.first;
         float range = quant_range.second;
@@ -118,6 +113,7 @@ void TensorRTEngine::FreezeNetwork() {
           all_t.insert(layer->getOutput(j));
         }
       }
+
       for (int i = 0; i < network()->getNbInputs(); i++) {
         all_t.insert(network()->getInput(i));
       }
@@ -129,6 +125,7 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
+
 #if IS_TRT_VERSION_GE(5122)
       auto is_layer_int8 = [&](nvinfer1::ILayer *layer) -> bool {
         for (int j = 0; j < layer->getNbInputs(); j++) {
@@ -142,12 +139,6 @@ void TensorRTEngine::FreezeNetwork() {
         }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
-          if (temp_out->isNetworkOutput()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ") is set to float32 because its output("
-                    << temp_out->getName() << ") is the output of the network.";
-            return false;
-          }
           if (!temp_out->dynamicRangeIsSet()) {
             VLOG(1) << "Layer(Name: " << layer->getName()
                     << ") is set to float32 because its output("
@@ -161,11 +152,20 @@ void TensorRTEngine::FreezeNetwork() {
       // and outputs have scales,
       // this layer's precision and output type are set to float32.
       // This step has no effect if this layer is fused during TRT optimization.
+      int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
+          ++layers_no_int8;
         }
+      }
+      // Disable int8 or build engine failed if all layers aren't int8
+      if (layers_no_int8 == network()->getNbLayers()) {
+        nvinfer1::BuilderFlags flags = infer_builder_config_->getFlags();
+        flags = flags & ~(1U << static_cast<int>(nvinfer1::BuilderFlag::kINT8));
+        // reset flags
+        infer_builder_config_->setFlags(flags);
       }
 #else
       LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
@@ -176,49 +176,103 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+  if (use_dla_) {
+    if (!enable_int8 && !enable_fp16) {
+      LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
+                      "set float32, so DLA is not used.";
+    } else if (infer_builder_->getNbDLACores() == 0) {
+      LOG(WARNING)
+          << "TensorRT DLA is set by config, but your device does not have "
+             "DLA, so DLA is not used.";
+    } else {
+      if (dla_core_ < 0 || dla_core_ >= infer_builder_->getNbDLACores()) {
+        dla_core_ = 0;
+        LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
+                     << infer_builder_->getNbDLACores() << ", but got "
+                     << dla_core_ << ", so use use 0 as default.";
+      }
+      infer_builder_config_->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+      infer_builder_config_->setDLACore(dla_core_);
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+      LOG(INFO) << "TensorRT DLA enabled in FreezeNetwork(), DLACore "
+                << dla_core_;
+    }
+  }
+
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
-    for (auto &input : min_input_shape_) {
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
-          Vec2TRT_Dims(input.second, input.first, true));
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
-          Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
-          Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
-    }
-    infer_builder_config_->addOptimizationProfile(optim_profile_);
-    infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
-    if (enable_int8) {
-      // Due to a bug of TRT, we must set precision BuilderFlag to kFP16 before
-      // kINT8 here to perform INT8 inference.
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
-    }
-    if (WithFp16()) {
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
-      if (disable_trt_plugin_fp16()) {
-        LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
-                     "disabled the fp16 mode of TRT Plugin,\n"
-                  << "you can reopen it with "
-                     "'config.SetDynamicShapeInfo(min_shape, max_shape, "
-                     "opt_shape, false /*disable_trt_plugin_fp16*/)'";
-      }
-    }
-    infer_engine_.reset(infer_builder_->buildEngineWithConfig(
-        *network(), *infer_builder_config_));
+    for (int i = 0; i < max_profile_num_; i++) {
+      for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+        // trt6 will check all_of input > 0
+        if (!(std::all_of(input.second.begin(), input.second.end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(max_input_shape_[input.first].begin(),
+                          max_input_shape_[input.first].end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(optim_input_shape_[input.first].begin(),
+                          optim_input_shape_[input.first].end(),
+                          [](int x) { return x > 0; }))) {
+          continue;
+        }
 #endif
-  } else {
-    infer_engine_.reset(infer_builder_->buildCudaEngine(*network()));
+        VLOG(4) << "TRT dynamic_shape set " << input.first
+                << " min: " << Vec2Str(input.second)
+                << ", max: " << Vec2Str(max_input_shape_[input.first])
+                << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
+
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
+            Vec2TRT_Dims(input.second, input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
+            Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
+            Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+      }
+      infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
+    }
+    if (WithFp16() && disable_trt_plugin_fp16()) {
+      LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
+                   "disabled the fp16 mode of TRT Plugin,\n"
+                << "you can reopen it with "
+                   "'config.SetDynamicShapeInfo(min_shape, max_shape, "
+                   "opt_shape, false /*disable_trt_plugin_fp16*/)'";
+    }
+#endif
   }
+#if IS_TRT_VERSION_GE(8200)
+  infer_builder_config_->setProfilingVerbosity(
+      nvinfer1::ProfilingVerbosity::kDETAILED);
+#endif
+
+#if IS_TRT_VERSION_LT(8000)
+  infer_engine_.reset(infer_builder_->buildEngineWithConfig(
+      *network(), *infer_builder_config_));
+#else
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
+      *network(), *infer_builder_config_));
+  infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+  infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
+                                                     ihost_memory_->size()));
+#endif
+
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_, platform::errors::Fatal(
                          "Build TensorRT cuda engine failed! Please recheck "
                          "you configurations related to paddle-TensorRT."));
+
+  binding_num_ = infer_engine_->getNbBindings();
+  // reset status for dynamic shape clone
+  if (max_profile_num_ > 1) {
+    infer_context_.clear();
+    cur_profile_num_ = 0;
+  }
+
+  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
@@ -325,11 +379,25 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
 
-nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPlugin(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
-  return network()->addPluginExt(inputs, num_inputs, *plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    plugin::PluginTensorRTV2Ext *plugin) {
+  owned_plugin_v2ext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::IPluginV2IOExt *plugin) {
+  owned_plugin_v2ioext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
 void TensorRTEngine::freshDeviceId() {
@@ -339,7 +407,7 @@ void TensorRTEngine::freshDeviceId() {
                     platform::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
                         device_id_, count));
-  cudaSetDevice(device_id_);
+  platform::SetDeviceId(device_id_);
 }
 
 }  // namespace tensorrt

@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include <string>
-#include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -39,30 +37,19 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   }
 }
 
-struct CastDataLayout {
-  CastDataLayout(const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis, const framework::Tensor& in,
-                 framework::Tensor* out)
-      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
-  const framework::Tensor in_;
-  framework::Tensor* out_;
-  const platform::DeviceContext* ctx_;
-  const std::vector<int> axis_;
+template <typename T>
+void CastDataLayout::apply() {
+  auto place = ctx_->GetPlace();
 
-  template <typename T>
-  void apply() {
-    auto place = ctx_->GetPlace();
-
-    if (platform::is_cpu_place(place)) {
-      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
-      trans4(*context, in_, out_, axis_);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Unsupported data layout cast from CPU to GPU."));
-    }
+  if (platform::is_cpu_place(place)) {
+    operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+    auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+    trans4(*context, in_, out_, axis_);
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Unsupported data layout cast from CPU to GPU."));
   }
-};
+}
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type, const Tensor& in,
@@ -102,21 +89,21 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::reorder;
 
-void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
+void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
   switch (type) {
-    case mkldnn::memory::data_type::f32:
+    case dnnl::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
-    case mkldnn::memory::data_type::s8:
+    case dnnl::memory::data_type::s8:
       return platform::to_void_cast(tensor.data<int8_t>());
-    case mkldnn::memory::data_type::u8:
+    case dnnl::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
-    case mkldnn::memory::data_type::s32:
+    case dnnl::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
-    case mkldnn::memory::data_type::bf16:
+    case dnnl::memory::data_type::bf16:
       return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
     default:
       PADDLE_THROW(
@@ -145,7 +132,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
-                                    platform::Place place) {
+                                    platform::Place place, bool always_copy) {
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
                     platform::errors::InvalidArgument(
                         "Input tensor format is invalid. Input tensor should "
@@ -179,13 +166,11 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  if (in_format != out_format) {
+  if ((in_format != out_format) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
-    std::string key =
-        platform::CreateKey(*dev_ctx, in_tz, in_format, out_format, in_type);
 
-    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
-                                           cpu_engine, key);
+    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type,
+                                           cpu_engine);
 
     auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
     auto reorder_dst_memory_p =
@@ -193,7 +178,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
-    mkldnn::stream astream(cpu_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     platform::RecordEvent record_reorder("ext_reorder",
                                          platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);

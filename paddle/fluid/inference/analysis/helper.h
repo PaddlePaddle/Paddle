@@ -25,7 +25,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -183,29 +182,34 @@ static bool PathExists(const std::string &path) {
 }
 
 static std::string GetDirRoot(const std::string &path) {
-  char sep = '/';
+  char sep_1 = '/', sep_2 = '\\';
 
-#ifdef _WIN32
-  sep = '\\';
-#endif
-
-  size_t i = path.rfind(sep, path.length());
-  if (i != std::string::npos) {
-    return (path.substr(0, i));
+  size_t i_1 = path.rfind(sep_1, path.length());
+  size_t i_2 = path.rfind(sep_2, path.length());
+  if (i_1 != std::string::npos && i_2 != std::string::npos) {
+    return path.substr(0, std::max(i_1, i_2));
+  } else if (i_1 != std::string::npos) {
+    return path.substr(0, i_1);
+  } else if (i_2 != std::string::npos) {
+    return path.substr(0, i_2);
   }
   return path;
 }
 
-static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
-  std::string opt_cache_dir = model_root + "/_opt_cache/";
-  if (!PathExists(opt_cache_dir)) {
+static void MakeDirIfNotExists(const std::string &path) {
+  if (!PathExists(path)) {
     PADDLE_ENFORCE_NE(
-        MKDIR(opt_cache_dir.c_str()), -1,
+        MKDIR(path.c_str()), -1,
         platform::errors::PreconditionNotMet(
             "Can not create optimize cache directory: %s, Make sure you "
             "have permission to write",
-            opt_cache_dir));
+            path));
   }
+}
+
+static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
+  std::string opt_cache_dir = model_root + "/_opt_cache/";
+  MakeDirIfNotExists(opt_cache_dir);
   return opt_cache_dir;
 }
 
@@ -244,7 +248,7 @@ static std::string GetTrtEngineSerializedData(
   if (FileExists(trt_serialized_path)) {
     VLOG(3) << "Trt serialized file: " << trt_serialized_path
             << "is found here";
-    std::ifstream infile(trt_serialized_path, std::ios::in);
+    std::ifstream infile(trt_serialized_path, std::ios::binary);
     std::stringstream buffer;
     buffer << infile.rdbuf();
     std::string trt_engine_serialized_data(buffer.str());
@@ -256,7 +260,7 @@ static std::string GetTrtEngineSerializedData(
 static void SaveTrtEngineSerializedDataToFile(
     const std::string &trt_serialized_path,
     const std::string &engine_serialized_data) {
-  std::ofstream outfile(trt_serialized_path);
+  std::ofstream outfile(trt_serialized_path, std::ios::binary);
   outfile << engine_serialized_data;
   outfile.close();
 }

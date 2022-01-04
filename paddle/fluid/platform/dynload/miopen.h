@@ -16,9 +16,20 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <miopen/miopen.h>
+#include <miopen/version.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
+
+#define MIOPEN_VERSION                                       \
+  (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 10 + \
+   MIOPEN_VERSION_PATCH)  // NOLINT
+
+// MIOPEN only support NCHW, just for compatibility with CUDNN API
+typedef enum {
+  MIOPEN_TENSOR_NCHW = 0,
+  MIOPEN_TENSOR_NHWC = 1,
+} miopenTensorFormat_t;
 
 namespace paddle {
 namespace platform {
@@ -44,6 +55,8 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
       return "MIOPEN_STATUS_INTERNAL_ERROR";
     case miopenStatusNotImplemented:
       return "MIOPEN_STATUS_NOT_IMPLEMENTED";
+    case miopenStatusUnsupportedOp:
+      return "MIOPEN_STATUS_UNSUPPORTED_OP";
     case miopenStatusUnknownError:
     default:
       return "MIOPEN_STATUS_UNKNOWN_ERROR";
@@ -70,6 +83,8 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
  * include all needed miopen functions in HPPL
  **/
 #define MIOPEN_DNN_ROUTINE_EACH(__macro)                  \
+  __macro(miopenGetVersion);                              \
+  __macro(miopenOpTensor);                                \
   __macro(miopenSet4dTensorDescriptor);                   \
   __macro(miopenSetTensorDescriptor);                     \
   __macro(miopenInitConvolutionNdDescriptor);             \
@@ -80,6 +95,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenGetTensorDescriptor);                     \
   __macro(miopenCreateTensorDescriptor);                  \
   __macro(miopenDestroyTensorDescriptor);                 \
+  __macro(miopenGetTensorDescriptorSize);                 \
   __macro(miopenSet2dPoolingDescriptor);                  \
   __macro(miopenGet2dPoolingDescriptor);                  \
   __macro(miopenGetPoolingNdForwardOutputDim);            \
@@ -100,6 +116,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenActivationBackward);                      \
   __macro(miopenConvolutionBackwardWeights);              \
   __macro(miopenConvolutionForward);                      \
+  __macro(miopenConvolutionForwardBias);                  \
   __macro(miopenConvolutionBackwardBias);                 \
   __macro(miopenConvolutionForwardGetWorkSpaceSize);      \
   __macro(miopenConvolutionBackwardDataGetWorkSpaceSize); \
@@ -107,12 +124,18 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenPoolingForward);                          \
   __macro(miopenPoolingBackward);                         \
   __macro(miopenSoftmaxBackward);                         \
+  __macro(miopenSoftmaxBackward_V2);                      \
   __macro(miopenSoftmaxForward);                          \
+  __macro(miopenSoftmaxForward_V2);                       \
   __macro(miopenCreateDropoutDescriptor);                 \
+  __macro(miopenDestroyDropoutDescriptor);                \
+  __macro(miopenRestoreDropoutDescriptor);                \
   __macro(miopenDropoutGetStatesSize);                    \
   __macro(miopenSetDropoutDescriptor);                    \
   __macro(miopenCreateRNNDescriptor);                     \
+  __macro(miopenDestroyRNNDescriptor);                    \
   __macro(miopenSetRNNDescriptor);                        \
+  __macro(miopenSetRNNDescriptor_V2);                     \
   __macro(miopenGetRNNParamsSize);                        \
   __macro(miopenGetRNNWorkspaceSize);                     \
   __macro(miopenGetRNNTrainingReserveSize);               \
@@ -120,8 +143,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenRNNBackwardData);                         \
   __macro(miopenRNNBackwardWeights);                      \
   __macro(miopenRNNForwardInference);                     \
-  __macro(miopenDestroyDropoutDescriptor);                \
-  __macro(miopenDestroyRNNDescriptor);
+  __macro(miopenGetTensorNumBytes);
 
 MIOPEN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 

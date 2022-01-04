@@ -16,9 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +69,7 @@ class GridSampleOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
@@ -96,7 +95,8 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default true) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(true);
+        .SetDefault(true)
+        .AsExtra();
 
     AddAttr<bool>(
         "align_corners",
@@ -190,7 +190,7 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
@@ -237,3 +237,11 @@ REGISTER_OP_CPU_KERNEL(
     grid_sampler_grad,
     ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(grid_sampler)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade grid_sampler add a new attribute [mode].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "mode", "In order to specify interpolation mode", "bilinear"));

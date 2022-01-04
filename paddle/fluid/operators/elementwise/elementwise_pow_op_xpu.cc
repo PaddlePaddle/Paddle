@@ -23,9 +23,11 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 class ElementwisePowXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T>(ctx, xpu::pow<float>);
+    XPUElementwise<T, XPUType>(ctx, xpu::broadcast_pow<XPUType>);
   }
 };
 
@@ -35,6 +37,8 @@ class ElementwisePowXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     elementwise_pow,
-    ops::ElementwisePowXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::ElementwisePowXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::ElementwisePowXPUKernel<paddle::platform::XPUDeviceContext,
+                                 paddle::platform::float16>);
 
 #endif

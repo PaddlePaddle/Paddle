@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -26,7 +26,8 @@ template <typename T>
 class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 2703
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
         rid, 0,
@@ -39,13 +40,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The peer (%d) for recv_v2 op must be non-negative.", peer));
 
-    auto out = ctx.Output<framework::LoDTensor>("Out");
-    auto out_dims = out->dims();
-    int data_type = ctx.Attr<int>("dtype");
-    framework::proto::VarType::Type type =
-        framework::proto::VarType::Type(data_type);
-
-    cudaStream_t stream = nullptr;
+    gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -54,32 +49,41 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-
     PADDLE_ENFORCE_LT(
         peer, comm->nranks(),
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
+
+    int data_type = ctx.Attr<int>("dtype");
+    framework::proto::VarType::Type type =
+        framework::proto::VarType::Type(data_type);
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
-    // Recv the number of elements to receive first
-    int numel = 0;
-    int *numel_ptr = nullptr;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&numel_ptr, sizeof(int)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::ncclRecv(static_cast<void *>(numel_ptr), 1, ncclInt,
-                                    peer, comm->comm(), stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(&numel, numel_ptr, sizeof(int), cudaMemcpyDeviceToHost));
-
-    int rest_numel = 1;
-    for (int i = 1; i < out_dims.size(); ++i) {
-      rest_numel = rest_numel * out_dims[i];
+    auto *out_var = ctx.OutputVar("Out");
+    if (out_var->IsType<framework::LoDTensorArray>()) {
+      auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
+      for (size_t idx = 0; idx < out_array->size(); ++idx) {
+        VLOG(3) << "LodTensorArray: idx(" << idx << ")";
+        auto out = &out_array->at(idx);
+        auto out_dims = out->dims();
+        out->mutable_data<T>(out_dims, place, 0);
+        auto numel = out->numel();
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+            out->data<T>(), numel, dtype, peer, comm->comm(), stream));
+        VLOG(3) << "rank " << comm->rank() << " recv "
+                << framework::product(out_dims) << " from " << peer;
+      }
+      return;
     }
-    out_dims[0] = numel / rest_numel;
-    out->mutable_data<T>(out_dims, place);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+    auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out_dims = out->dims();
+    auto numel = out->numel();
+
+    out->mutable_data<T>(out_dims, place);
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv "
             << framework::product(out->dims()) << " from " << peer;

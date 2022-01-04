@@ -44,7 +44,7 @@ inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
 }
 
 template <typename T>
-static inline T BBoxArea(const T* box, bool normalized) {
+static inline T BBoxArea(const T* box, bool pixel_offset) {
   if (box[2] < box[0] || box[3] < box[1]) {
     // If coordinate values are is invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
@@ -52,11 +52,11 @@ static inline T BBoxArea(const T* box, bool normalized) {
   } else {
     const T w = box[2] - box[0];
     const T h = box[3] - box[1];
-    if (normalized) {
-      return w * h;
-    } else {
+    if (pixel_offset) {
       // If coordinate values are not within range [0, 1].
       return (w + 1) * (h + 1);
+    } else {
+      return w * h;
     }
   }
 }
@@ -77,6 +77,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int max_level = context.Attr<int>("max_level");
     const int refer_level = context.Attr<int>("refer_level");
     const int refer_scale = context.Attr<int>("refer_scale");
+    const bool pixel_offset = context.Attr<bool>("pixel_offset");
     const int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
@@ -84,7 +85,8 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
                         platform::errors::InvalidArgument(
                             "DistributeFpnProposalsOp needs LoD "
-                            "with one level."));
+                            "with one level. But received level is %d",
+                            fpn_rois->lod().size()));
     }
 
     std::vector<size_t> fpn_rois_lod;
@@ -107,7 +109,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       const T* rois_data = fpn_rois_slice.data<T>();
       for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
         // get the target level of current rois
-        T roi_scale = std::sqrt(BBoxArea(rois_data, false));
+        T roi_scale = std::sqrt(BBoxArea(rois_data, pixel_offset));
         int tgt_lvl = std::floor(std::log2(roi_scale / refer_scale + (T)1e-6) +
                                  refer_level);
         tgt_lvl = std::min(max_level, std::max(tgt_lvl, min_level));

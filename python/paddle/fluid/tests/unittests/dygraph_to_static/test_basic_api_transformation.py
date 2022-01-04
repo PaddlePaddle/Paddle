@@ -17,7 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import inspect
-import gast
+from paddle.utils import gast
 
 import paddle
 import paddle.fluid as fluid
@@ -30,6 +30,10 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
 
 SEED = 2020
 np.random.seed(SEED)
+
+# TODO(zhhsplendid): This test is old so that use a static graph style
+# mark it as TODO, to refactoring the code of this file.
+paddle.enable_static()
 
 
 def dyfunc_to_variable(x):
@@ -54,11 +58,25 @@ def dyfunc_to_tensor(x):
     return res3
 
 
+def dyfunc_int_to_tensor(x):
+    res = paddle.to_tensor(3)
+    return res
+
+
+def dyfunc_float_to_tensor(x):
+    return paddle.to_tensor(2.0)
+
+
+def dyfunc_bool_to_tensor(x):
+    return paddle.to_tensor(True)
+
+
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.test_funcs = [
-            dyfunc_to_tensor, dyfunc_to_variable, dyfunc_to_variable_2,
+            dyfunc_to_tensor, dyfunc_bool_to_tensor, dyfunc_int_to_tensor,
+            dyfunc_float_to_tensor, dyfunc_to_variable, dyfunc_to_variable_2,
             dyfunc_to_variable_3
         ]
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(

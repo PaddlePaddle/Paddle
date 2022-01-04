@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
-#include <memory>
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 DECLARE_double(local_exe_sub_scope_limit);
 

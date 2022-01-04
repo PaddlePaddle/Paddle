@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <exception>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -107,7 +108,7 @@ class ExceptionHolder {
     type_ = kNone;
   }
 
-  // NOTE: currently in PE, multiple exceptions may occured  in multiple
+  // NOTE: currently in PE, multiple exceptions may occurred  in multiple
   // threads, and the exception that occur later will overwrite that
   // occur earlier, but what we want should be the first triggered exception.
   // However, EOF exception is lower priority exception and can be overwritten,

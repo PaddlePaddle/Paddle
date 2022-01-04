@@ -109,7 +109,31 @@ class OpConverter {
           it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
     }
-
+    if (op_desc.Type() == "depthwise_conv2d_transpose") {
+      it = Registry<OpConverter>::Global().Lookup("conv2d_transpose");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
+    if (op_desc.Type() == "transpose2") {
+      it = Registry<OpConverter>::Global().Lookup("transpose");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
+    if (op_desc.Type() == "flatten2") {
+      it = Registry<OpConverter>::Global().Lookup("flatten");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
+    // reshape2 == reshape
+    if (op_desc.Type() == "reshape2") {
+      it = Registry<OpConverter>::Global().Lookup("reshape");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
     if (!it) {
       it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }

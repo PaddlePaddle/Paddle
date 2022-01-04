@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/histogram_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
@@ -81,6 +81,13 @@ class HistogramCUDAKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const int input_numel = input->numel();
 
+    int64_t* out_data = output->mutable_data<int64_t>(context.GetPlace());
+    math::SetConstant<platform::CUDADeviceContext, int64_t>()(
+        context.template device_context<platform::CUDADeviceContext>(), output,
+        static_cast<int64_t>(0));
+
+    if (input_data == nullptr) return;
+
     T output_min = static_cast<T>(minval);
     T output_max = static_cast<T>(maxval);
 
@@ -125,11 +132,6 @@ class HistogramCUDAKernel : public framework::OpKernel<T> {
             "the minimum and maximum values of the data are used. "
             "But received max is %d, min is %d",
             maxval, minval));
-
-    int64_t* out_data = output->mutable_data<int64_t>(context.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, int64_t>()(
-        context.template device_context<platform::CUDADeviceContext>(), output,
-        static_cast<int64_t>(0));
 
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();

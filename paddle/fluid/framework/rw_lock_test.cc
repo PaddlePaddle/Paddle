@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/rw_lock.h"
+
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
-#include <vector>
 
 namespace f = paddle::framework;
 

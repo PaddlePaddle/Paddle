@@ -13,28 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
-#include <condition_variable>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
 
-#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
-
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/service/env.h"
-#include "paddle/fluid/distributed/service/ps_client.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
-#include "paddle/fluid/distributed/service/service.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace distributed {
+class DownpourBrpcClosure;
+class PSClient;
+class PSServer;
+}  // namespace distributed
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -77,6 +78,7 @@ void GetDownpourSparseTableProto(
   common_proto->set_table_name("MergedDense");
   common_proto->set_trainer_num(1);
   common_proto->set_sync(false);
+  common_proto->set_entry("none");
   common_proto->add_params("Param");
   common_proto->add_dims(10);
   common_proto->add_initializers("uniform_random&0&-1.0&1.0");
@@ -94,7 +96,7 @@ void GetDownpourSparseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -124,7 +126,7 @@ void GetDownpourSparseTableProto(
       server_proto->mutable_downpour_server_param();
   ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
-  server_service_proto->set_service_class("PsService");
+  server_service_proto->set_service_class("BrpcPsService");
   server_service_proto->set_server_class("BrpcPsServer");
   server_service_proto->set_client_class("BrpcPsClient");
   server_service_proto->set_start_server_port(0);
@@ -155,7 +157,10 @@ void RunServer() {
   _ps_env.set_ps_servers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
-  pserver_ptr_->configure(server_proto, _ps_env, 0);
+  std::vector<framework::ProgramDesc> empty_vec;
+  framework::ProgramDesc empty_prog;
+  empty_vec.push_back(empty_prog);
+  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
   pserver_ptr_->start(ip_, port_);
 }
 
@@ -207,8 +212,8 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   LOG(INFO) << "Run pull_sparse_param";
-  auto pull_status = worker_ptr_->pull_sparse(fea_value_ptr.data(), 0,
-                                              fea_keys.data(), fea_keys.size());
+  auto pull_status = worker_ptr_->pull_sparse(
+      fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
     fea_values.data()[idx] *= 2.0;
@@ -222,7 +227,8 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::PS_PUSH_SPARSE_PARAM) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
             ret = -1;
             break;
           }
@@ -235,7 +241,7 @@ void RunBrpcPushSparse() {
   push_status.wait();
 
   auto pull_param_status = worker_ptr_->pull_sparse(
-      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
+      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_param_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
@@ -249,7 +255,8 @@ void RunBrpcPushSparse() {
         int ret = 0;
         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
         for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(i, paddle::PS_PUSH_SPARSE_TABLE) != 0) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
             ret = -1;
             break;
           }
@@ -268,7 +275,7 @@ void RunBrpcPushSparse() {
   push_grad_status.wait();
 
   auto pull_update_status = worker_ptr_->pull_sparse(
-      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
+      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {

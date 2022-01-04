@@ -13,14 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
-using FeedType = LoDTensor;
+using FeedType = boost::variant<LoDTensor, Strings>;
 using FeedList = std::vector<FeedType>;
 
 using FetchType = boost::variant<LoDTensor, LoDTensorArray>;
@@ -38,6 +41,13 @@ inline bool data_is_lod_tensor(const FetchType &data) {
 
 inline bool data_is_lod_tensor_array(const FetchType &data) {
   if (data.type() == typeid(LoDTensorArray)) {
+    return true;
+  }
+  return false;
+}
+
+inline bool data_is_string_tensor(const FeedType &data) {
+  if (data.type() == typeid(Strings)) {
     return true;
   }
   return false;

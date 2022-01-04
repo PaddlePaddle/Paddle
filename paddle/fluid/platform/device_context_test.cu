@@ -23,7 +23,7 @@ TEST(Device, Init) {
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::CUDAPlace;
 
-  int count = paddle::platform::GetCUDADeviceCount();
+  int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
@@ -36,13 +36,23 @@ TEST(Device, CUDADeviceContext) {
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::CUDAPlace;
 
-  int count = paddle::platform::GetCUDADeviceCount();
+  int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
+#ifdef PADDLE_WITH_HIP
+    miopenHandle_t cudnn_handle = device_context->cudnn_handle();
+#else
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
+#endif
     ASSERT_NE(nullptr, cudnn_handle);
+#ifdef PADDLE_WITH_HIP
+    rocblas_handle cublas_handle = device_context->cublas_handle();
+#else
+    cublasHandle_t cublas_handle = device_context->cublas_handle();
+#endif
+    ASSERT_NE(nullptr, cublas_handle);
     delete device_context;
   }
 }
@@ -60,7 +70,7 @@ TEST(Device, DeviceContextPool) {
   ASSERT_EQ(cpu_dev_ctx2, cpu_dev_ctx1);
 
   std::vector<Place> gpu_places;
-  int count = paddle::platform::GetCUDADeviceCount();
+  int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; ++i) {
     auto dev_ctx = pool.Get(CUDAPlace(i));
     ASSERT_NE(dev_ctx, nullptr);

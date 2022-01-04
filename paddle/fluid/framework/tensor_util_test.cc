@@ -58,7 +58,7 @@ TEST(TensorCopy, Tensor) {
   }
   EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     Tensor src_tensor;
     Tensor gpu_tensor;
@@ -149,7 +149,7 @@ TEST(TensorFromVector, Tensor) {
     delete cpu_place;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     paddle::framework::Tensor cpu_tensor;
@@ -224,7 +224,7 @@ TEST(TensorToVector, Tensor) {
       EXPECT_EQ(src_ptr[i], dst[i]);
     }
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     paddle::framework::Tensor gpu_tensor;
@@ -234,6 +234,61 @@ TEST(TensorToVector, Tensor) {
 
     std::vector<int> dst;
     paddle::framework::TensorToVector<int>(gpu_tensor, gpu_ctx, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
+  }
+#endif
+}
+
+TEST(TensorToVector, Tensor_bool) {
+  {
+    paddle::framework::Tensor src;
+    bool* src_ptr =
+        src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
+    for (int i = 0; i < 3 * 3; ++i) {
+      src_ptr[i] = static_cast<bool>(i % 2);
+    }
+
+    paddle::platform::CPUPlace place;
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(src, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_ptr[i], dst[i]);
+    }
+  }
+#ifdef PADDLE_WITH_CUDA
+  {
+    std::vector<bool> src_vec = {
+        false, true, false, true, false, true, false, true, false,
+    };
+    paddle::framework::Tensor gpu_tensor;
+    paddle::platform::CUDAPlace place;
+    paddle::platform::CUDADeviceContext gpu_ctx(place);
+    paddle::framework::TensorFromVector<bool>(src_vec, gpu_ctx, &gpu_tensor);
+
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(gpu_tensor, gpu_ctx, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  {
+    std::vector<bool> src_vec = {
+        false, true, false, true, false, true, false, true, false,
+    };
+    paddle::framework::Tensor npu_tensor;
+    paddle::platform::NPUPlace place(0);
+    paddle::platform::NPUDeviceContext npu_ctx(place);
+    paddle::framework::TensorFromVector<bool>(src_vec, npu_ctx, &npu_tensor);
+
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(npu_tensor, npu_ctx, &dst);
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_vec[i], dst[i]);
@@ -264,7 +319,7 @@ TEST(TensorFromDLPack, Tensor) {
     }
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     paddle::framework::Tensor cpu_tensor;
@@ -430,7 +485,7 @@ TEST(Tensor, FromAndToStream) {
     EXPECT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     Tensor gpu_tensor;
     gpu_tensor.Resize({2, 3});

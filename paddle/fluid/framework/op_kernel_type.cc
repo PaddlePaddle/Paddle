@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 

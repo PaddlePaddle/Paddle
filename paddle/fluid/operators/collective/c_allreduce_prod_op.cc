@@ -37,14 +37,19 @@ class CAllReduceProdOpMaker : public CAllReduceOpMaker {
   std::string GetName() const override { return "Prod"; }
 };
 
+DECLARE_INPLACE_OP_INFERER(AllreduceProdInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_prod, ops::CAllReduceOp,
-                             ops::CAllReduceProdOpMaker);
+REGISTER_OPERATOR(
+    c_allreduce_prod, ops::CAllReduceOp, ops::CAllReduceProdOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::AllreduceProdInplaceInferer)
 
 REGISTER_OP_CPU_KERNEL(c_allreduce_prod,
                        ops::CAllReduceOpCPUKernel<ops::kRedProd, float>,

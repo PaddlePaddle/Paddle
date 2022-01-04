@@ -57,6 +57,8 @@ void BindFleetWrapper(py::module* m) {
       .def("get_cache_threshold", &framework::FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &framework::FleetWrapper::CacheShuffle)
       .def("save_cache", &framework::FleetWrapper::SaveCache)
+      .def("save_multi_table_one_path",
+           &framework::FleetWrapper::SaveMultiTableOnePath)
       .def("save_model_with_whitelist",
            &framework::FleetWrapper::SaveWithWhitelist)
       .def("load_model", &framework::FleetWrapper::LoadModel)
@@ -74,6 +76,8 @@ void BindFleetWrapper(py::module* m) {
       .def("shrink_sparse_table", &framework::FleetWrapper::ShrinkSparseTable)
       .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable)
       .def("print_table_stat", &framework::FleetWrapper::PrintTableStat)
+      .def("set_file_num_one_shard",
+           &framework::FleetWrapper::SetFileNumOneShard)
       .def("client_flush", &framework::FleetWrapper::ClientFlush)
       .def("load_from_paddle_model",
            &framework::FleetWrapper::LoadFromPaddleModel)
@@ -87,6 +91,7 @@ void BindFleetWrapper(py::module* m) {
       .def("save_model_one_table", &framework::FleetWrapper::SaveModelOneTable)
       .def("save_model_one_table_with_prefix",
            &framework::FleetWrapper::SaveModelOneTablePrefix)
+      .def("set_date", &framework::FleetWrapper::SetDate)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);

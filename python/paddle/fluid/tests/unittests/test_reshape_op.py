@@ -250,8 +250,11 @@ class TestReshapeAPI(unittest.TestCase):
     def _set_paddle_api(self):
         self.fill_constant = paddle.fluid.layers.fill_constant
         self.data = paddle.static.data
-        self.reshape = paddle.reshape
         self.to_tensor = paddle.to_tensor
+        self._executed_api()
+
+    def _executed_api(self):
+        self.reshape = paddle.reshape
 
     def _set_fluid_api(self):
         self.fill_constant = fluid.layers.fill_constant
@@ -319,6 +322,30 @@ class TestReshapeAPI(unittest.TestCase):
 
         assert np.array_equal(out_1.numpy(), input.reshape(shape))
         assert np.array_equal(out_2.numpy(), input.reshape([5, 10]))
+        assert np.array_equal(out_3.numpy(), input.reshape(shape))
+
+
+class TestStaticReshape_(TestReshapeAPI):
+    def _executed_api(self):
+        self.reshape = paddle.reshape_
+
+    def test_imperative(self):
+        self._set_paddle_api()
+        input = np.random.random([2, 25]).astype("float32")
+        shape = [2, 5, 5]
+        with fluid.dygraph.guard():
+            x = self.to_tensor(input)
+            positive_five = self.fill_constant([1], "int32", 5)
+
+            out_1 = self.reshape(x, shape)
+
+            out_2 = self.reshape(x, shape=[positive_five, 10])
+
+            shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
+            out_3 = self.reshape(x, shape=shape_tensor)
+
+        assert np.array_equal(out_1.numpy(), input.reshape(shape))
+        assert np.array_equal(out_2.numpy(), input.reshape(shape))
         assert np.array_equal(out_3.numpy(), input.reshape(shape))
 
 
@@ -397,12 +424,18 @@ class TestReshapeOpError(unittest.TestCase):
         self._test_errors()
 
 
-class API_TestDygraphReshape(unittest.TestCase):
+class TestDygraphReshapeAPI(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.reshape = paddle.reshape
+
     def test_out(self):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("int32")
         input = paddle.to_tensor(input_1)
-        output = paddle.reshape(x=input, shape=[5, 10])
+        output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
         self.assertTrue(np.allclose(expected_out, out_np))
@@ -411,7 +444,7 @@ class API_TestDygraphReshape(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("uint8")
         input = paddle.to_tensor(input_1)
-        output = paddle.reshape(x=input, shape=[5, 10])
+        output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
         self.assertTrue(np.allclose(expected_out, out_np))
@@ -420,10 +453,29 @@ class API_TestDygraphReshape(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("float32")
         input = paddle.to_tensor(input_1)
-        output = paddle.reshape(x=input, shape=[5, 10])
+        output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
         self.assertTrue(np.allclose(expected_out, out_np))
+
+
+class TestDygraphReshapeInplaceAPI(TestDygraphReshapeAPI):
+    def executed_api(self):
+        self.reshape = paddle.reshape_
+
+
+class TestReshapeZeroTensor(unittest.TestCase):
+    def test_reshape_zero_tensor_success(self):
+        zero_tensor = paddle.zeros([0, 2, 3])
+        # since we use "0" as the dimension copy semantically in reshape, 
+        # we need to copy the 0 dim in the src tensor in order to make a successful zero tensor reshape
+        zero_tensor = zero_tensor.reshape([0, 6])
+        self.assertTrue(list(zero_tensor.shape) == [0, 6])
+
+    def test_reshape_zero_tensor_error(self):
+        zero_tensor = paddle.zeros([0, 2, 3])
+        with self.assertRaises(ValueError):
+            zero_tensor.reshape([2, 3])
 
 
 if __name__ == "__main__":

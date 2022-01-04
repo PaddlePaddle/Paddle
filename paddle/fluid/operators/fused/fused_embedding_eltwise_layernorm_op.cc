@@ -25,11 +25,13 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_EQ(context->Inputs("Ids").size(),
-                      context->Inputs("Embs").size(),
-                      platform::errors::InvalidArgument(
-                          "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
-                          "the same size"));
+    PADDLE_ENFORCE_EQ(
+        context->Inputs("Ids").size(), context->Inputs("Embs").size(),
+        platform::errors::InvalidArgument(
+            "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
+            "the same size, but received the size of input Ids = %d,"
+            " the size of input Embs = %d",
+            context->Inputs("Ids").size(), context->Inputs("Embs").size()));
     PADDLE_ENFORCE_GE(context->Inputs("Embs").size(), 2UL,
                       platform::errors::InvalidArgument(
                           "Input Embs of EmbeddingEltWiseLayerNormOp should "
@@ -77,7 +79,8 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           embs_dims[i][1], hidden,
           platform::errors::InvalidArgument(
-              "The Emb first dim size(%d) shoule equal to hidden (%d).",
+              "The second dimension size(%d) of the Embedding should be "
+              "equal to the hidden's size(%d)",
               embs_dims[i][1], hidden));
     }
 

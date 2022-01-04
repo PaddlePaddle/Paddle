@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -396,8 +396,8 @@ class BoxWrapper {
       const std::string& model_path) {
     if (nullptr != s_instance_) {
       VLOG(3) << "Begin InitializeGPU";
-      std::vector<cudaStream_t*> stream_list;
-      for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+      std::vector<gpuStream_t*> stream_list;
+      for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
         platform::CUDADeviceContext* context =
             dynamic_cast<platform::CUDADeviceContext*>(
@@ -416,7 +416,7 @@ class BoxWrapper {
         slot_name_omited_in_feedpass_.insert(slot_name);
       }
       slot_vector_ = slot_vector;
-      keys_tensor.resize(platform::GetCUDADeviceCount());
+      keys_tensor.resize(platform::GetGPUDeviceCount());
     }
   }
 
@@ -542,8 +542,12 @@ class BoxWrapper {
       auto* gpu_data = gpu_tensor.data<T>();
       auto len = gpu_tensor.numel();
       data->resize(len);
+#ifdef PADDLE_WITH_HIP
+      hipMemcpy(data->data(), gpu_data, sizeof(T) * len, hipMemcpyDeviceToHost);
+#else
       cudaMemcpy(data->data(), gpu_data, sizeof(T) * len,
                  cudaMemcpyDeviceToHost);
+#endif
     }
     static inline std::pair<int, int> parse_cmatch_rank(uint64_t x) {
       // first 32 bit store cmatch and second 32 bit store rank
@@ -819,7 +823,7 @@ class BoxWrapper {
   }
 
  private:
-  static cudaStream_t stream_list_[8];
+  static gpuStream_t stream_list_[8];
   static std::shared_ptr<boxps::BoxPSBase> boxps_ptr_;
   boxps::PSAgentBase* p_agent_ = nullptr;
   // TODO(hutuxian): magic number, will add a config to specify

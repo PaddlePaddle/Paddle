@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -713,3 +714,16 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
                        ops::GenerateProposalLabelsKernel<float>,
                        ops::GenerateProposalLabelsKernel<double>);
+
+REGISTER_OP_VERSION(generate_proposal_labels)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade of output [MaxOverlapWithGT])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewOutput(
+            "MaxOverlapWithGT",
+            "The maxoverlap between output RoIs and ground-truth."))
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade generate_proposal_labels add a new input [MaxOverlap])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "MaxOverlap", "MaxOverlap is dispensable."));

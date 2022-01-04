@@ -13,19 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/brpc_utils.h"
-#include <limits>
-#include <memory>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
-class Scope;
 class Variable;
+class LoDTensor;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -88,7 +84,7 @@ void SerializeLodTensor(framework::Variable* var,
                         const platform::DeviceContext& ctx, VarMsg* var_msg,
                         butil::IOBuf* iobuf) {
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-  var_msg->set_type(::paddle::LOD_TENSOR);
+  var_msg->set_type(::paddle::distributed::LOD_TENSOR);
   const framework::LoD lod = tensor->lod();
   if (lod.size() > 0) {
     var_msg->set_lod_level(lod.size());
@@ -135,30 +131,18 @@ void SerializeSelectedRows(framework::Variable* var,
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
 
-  var_msg->set_type(::paddle::SELECTED_ROWS);
+  var_msg->set_type(::paddle::distributed::SELECTED_ROWS);
   var_msg->set_slr_height(slr->height());
 
   auto* var_data = var_msg->mutable_data();
   var_data->clear();
   var_data->resize(rows->size() * sizeof(int64_t));
   char* data_ptr = const_cast<char*>(var_data->data());
-
-  if (platform::is_cpu_place(tensor->place())) {
-    memcpy(data_ptr, &(*rows)[0], rows->size() * sizeof(int64_t));
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), data_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 &(*rows)[0], rows->size() * sizeof(int64_t), stream);
-#endif
-  }
+  memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
   var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
-
   // IO Buffer
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
@@ -194,9 +178,9 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
        ++recv_var_index) {
     const auto& msg = multi_msg.var_messages(recv_var_index);
     auto* var = scope->Var(msg.varname());
-    if (msg.type() == ::paddle::LOD_TENSOR) {
+    if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
-    } else if (msg.type() == ::paddle::SELECTED_ROWS) {
+    } else if (msg.type() == ::paddle::distributed::SELECTED_ROWS) {
       DeserializeSelectedRows(var, msg, io_buffer_itr, ctx);
     }
   }
@@ -215,9 +199,9 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     PADDLE_ENFORCE_NE(var, nullptr,
                       platform::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
-    if (msg.type() == ::paddle::LOD_TENSOR) {
+    if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
-    } else if (msg.type() == ::paddle::SELECTED_ROWS) {
+    } else if (msg.type() == ::paddle::distributed::SELECTED_ROWS) {
       DeserializeSelectedRows(var, msg, io_buffer_itr, ctx);
     }
   }
@@ -277,8 +261,8 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
   auto* slr = var->GetMutable<framework::SelectedRows>();
   framework::Tensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
-  std::vector<int64_t> tmp_rows(msg.slr_height());
-  memcpy(&tmp_rows[0], msg.data().data(), msg.slr_height() * sizeof(int64_t));
+  std::vector<int64_t> tmp_rows(msg.dims()[0]);
+  memcpy(tmp_rows.data(), msg.data().data(), msg.dims()[0] * sizeof(int64_t));
   slr->set_rows(tmp_rows);
   std::vector<int> vec_dim;
   for (auto& x : msg.dims()) {
@@ -308,6 +292,33 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
     delete[] temp_ptr;
 #endif
   }
+}
+
+std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
+  // There are usually two forms of IP address: ip(int) / ip (hostname)
+  // If there're some problem with DNS, or ip triggers the bug of Brpc
+  // We will try to get the IP address of the domain name manually again
+  std::string ip_port = ip + ":" + std::to_string(port);
+  struct hostent* hp = NULL;
+  hp = gethostbyname(ip.c_str());
+
+  if (NULL == hp) {
+    LOG(ERROR) << "Brpc Start failed, ip_port= " << ip_port
+               << " , Error infomation: " << hstrerror(h_errno);
+  }
+
+  int i = 0;
+  char* int_ip = NULL;
+
+  while (hp->h_addr_list[i] != NULL) {
+    int_ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
+    VLOG(3) << "Brpc Get host by name, host:" << ip << " -> ip: " << int_ip;
+    break;
+  }
+
+  std::string str_ip = int_ip;
+  std::string int_ip_port = str_ip + ":" + std::to_string(port);
+  return int_ip_port;
 }
 
 }  // namespace distributed

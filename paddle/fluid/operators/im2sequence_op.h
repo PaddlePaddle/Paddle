@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -157,7 +158,7 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
 
     auto x_v = framework::EigenVector<T>::Flatten(*d_x);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    x_v.device(place) = x_v.constant(0.0);
+    EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(place, x_v, 0.0);
 
     auto in_dim = in->dims();
     int batch_size = in_dim[0];

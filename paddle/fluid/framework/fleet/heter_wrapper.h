@@ -25,6 +25,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_PSLIB
 #include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -86,9 +87,9 @@ class HeterWrapper {
 
   framework::proto::VarType::Type ToVarType(VariableMessage::Type type);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
-                           platform::Place place, cudaStream_t stream);
+                           platform::Place place, gpuStream_t stream);
 #endif
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
                            platform::Place place);

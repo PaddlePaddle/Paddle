@@ -17,6 +17,8 @@ import socket
 from contextlib import closing
 from six import string_types
 
+__all__ = []
+
 
 def wait_server_ready(endpoints):
     """
@@ -24,7 +26,7 @@ def wait_server_ready(endpoints):
     port readiness.
     
     Args:
-    endpoints (list): endpoints string list, like:
+    endpoints (list|tuple): endpoints string list, like:
     ["127.0.0.1:8080", "127.0.0.1:8081"]
     
     Examples:
@@ -41,6 +43,10 @@ def wait_server_ready(endpoints):
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as sock:
                 sock.settimeout(2)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                if hasattr(socket, 'SO_REUSEPORT'):
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
                 result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                 if result != 0:
                     all_ok = False

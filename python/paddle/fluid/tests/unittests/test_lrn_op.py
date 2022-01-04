@@ -323,6 +323,12 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_dim)
 
+            def test_shape():
+                x = paddle.rand(shape=[0, 0, 2, 3], dtype="float32")
+                paddle.nn.functional.local_response_norm(x, size=5)
+
+            self.assertRaises(ValueError, test_shape)
+
 
 class TestLocalResponseNormCAPI(unittest.TestCase):
     def setUp(self):

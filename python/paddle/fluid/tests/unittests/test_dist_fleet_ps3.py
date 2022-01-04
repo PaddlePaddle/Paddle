@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
+import os
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-import paddle
 
+import paddle
 paddle.enable_static()
+
+import paddle.fluid as fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
 
 # For Net
 base_lr = 0.2
@@ -64,7 +65,7 @@ class TestPSPassWithBow(unittest.TestCase):
             return avg_cost
 
         is_distributed = False
-        is_sparse = True
+        is_sparse = False
 
         # query
         q = fluid.layers.data(
@@ -159,18 +160,24 @@ class TestPSPassWithBow(unittest.TestCase):
             "127.0.0.1:36007"
         ]
 
-        role = role_maker.UserDefinedRoleMaker(
+        role = fleet.UserDefinedRoleMaker(
             current_id=0,
-            role=role_maker.Role.SERVER,
+            role=role_maker.Role.WORKER,
             worker_num=2,
             server_endpoints=endpoints)
 
         fleet.init(role)
         loss, acc, _ = self.net()
         optimizer = fluid.optimizer.SGD(base_lr)
-        strategy = StrategyFactory.create_geo_strategy(20)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": False}
+
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
+
+        fleet.shrink(10)
 
 
 if __name__ == '__main__':

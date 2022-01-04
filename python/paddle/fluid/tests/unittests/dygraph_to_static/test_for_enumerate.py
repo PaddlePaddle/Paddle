@@ -20,6 +20,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.static import InputSpec
 
 program_translator = ProgramTranslator()
 
@@ -159,6 +160,7 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
 def for_iter_var(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
+
     for x in x_array:
         z = z + x
     return z
@@ -221,6 +223,124 @@ def for_enumerate_var_with_nested_range(x_array):
     return x
 
 
+# 16. for iter var[idx]
+@paddle.jit.to_static
+def for_iter_var_idx(x_array):
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+
+    for x in x_array[0:]:
+        z = z + x
+    return z
+
+
+# 17. for a,b,c in z: (a, b, c) is a tuple
+@paddle.jit.to_static
+def for_tuple_as_iter_var(x_array):
+    x = paddle.to_tensor(x_array)
+    z = paddle.to_tensor(np.array([[1, 2, 3], [1, 2, 3], [1, 2, 3]]))
+
+    a_result = paddle.zeros([3])
+    b_result = paddle.zeros([3])
+    c_result = paddle.zeros([3])
+
+    for a, b, c in z:
+        a_result += a
+        b_result += b
+        c_result += c
+
+    return a_result, b_result, c_result
+
+
+# 18. for t in enumerate(collection): t is tuple of (idx, element)
+@paddle.jit.to_static
+def for_tuple_as_enumerate_iter(x_array):
+    x = paddle.to_tensor(x_array)
+    x_list = [x, x, x]
+
+    a_result = paddle.zeros([5])
+
+    for t in enumerate(x_list):
+        a_result += t[1]
+
+    return a_result
+
+
+# 19. for i, (a, b, c, d, e) in enumerate(collection): (a, b, c, d, e) is a tuple
+@paddle.jit.to_static
+def for_tuple_as_enumerate_value(x_array):
+    x = paddle.to_tensor(x_array)
+    x_list = [x, x, x]
+
+    a_result = paddle.zeros([1])
+    b_result = paddle.zeros([1])
+    c_result = paddle.zeros([1])
+    d_result = paddle.zeros([1])
+    e_result = paddle.zeros([1])
+
+    for i, (a, b, c, d, e) in enumerate(x_list):
+        a_result += a
+        b_result += b
+        c_result += c
+        d_result += d
+        e_result += e
+
+    return a_result
+
+
+# 20. test for function in a class
+class ForwardContainsForLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(ForwardContainsForLayer, self).__init__()
+        self.high = 5
+        self.low = 3
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        # just for test case, x is useless in this method
+        y = paddle.zeros([10, 2, 3])
+        z = []
+        for i in range(self.high - self.low):
+            z.append(y[i].clone())
+        return z
+
+
+# 21. for original list 
+@paddle.jit.to_static
+def for_original_list():
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    for x in [1, 2, 3]:
+        z = z + x
+    return z
+
+
+# 22. for original tuple
+@paddle.jit.to_static
+def for_original_tuple():
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    for x in (1, 2, 3):
+        z = z + x
+    return z
+
+
+# 23. for zip error
+@paddle.jit.to_static(
+    input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])])
+def for_zip_error(x, y):
+    for i, j in zip(x, y):
+        a = i + j
+    return x + y
+
+
+# 24. for zip
+@paddle.jit.to_static(
+    input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])])
+def for_zip(x, y):
+    for i, j in zip(x, y):
+        a = i + j
+    return x + y
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -250,15 +370,22 @@ class TestTransformBase(unittest.TestCase):
 class TestTransform(TestTransformBase):
     def transformed_result_compare(self):
         dy_outs = self.get_dygraph_output()
-        if not isinstance(dy_outs, tuple):
+        if not isinstance(dy_outs, (tuple, list)):
             dy_outs = (dy_outs, )
 
         st_outs = self.get_static_output()
-        if not isinstance(st_outs, tuple):
+        if not isinstance(st_outs, (tuple, list)):
             st_outs = (st_outs, )
 
         for x, y in zip(dy_outs, st_outs):
             self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+
+
+class TestTransformForOriginalList(TestTransform):
+    def _run(self, to_static):
+        program_translator.enable(to_static)
+        with fluid.dygraph.guard():
+            return self.dygraph_func()
 
 
 class TestTransformError(TestTransformBase):
@@ -323,7 +450,7 @@ class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
         self.dygraph_func = for_enumerate_var_numpy_with_break
 
 
-class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
+class TestForEnumerateVarNumpyWithContinue(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_continue
 
@@ -333,7 +460,7 @@ class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
         self.dygraph_func = for_enumerate_var_numpy_with_start_break
 
 
-class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
+class TestForEnumerateVarNumpyWithStartAndContinue(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_start_continue
 
@@ -341,6 +468,11 @@ class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
 class TestForIterVar(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_iter_var
+
+
+class TestForIterVarIdx(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_iter_var_idx
 
 
 class TestForEnumerateVar(TestForIterVarNumpy):
@@ -361,6 +493,51 @@ class TestForIterVarList(TestForInRange):
 class TestForEnumerateVarList(TestForInRange):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_list
+
+
+class TestForTupleAsIterVar(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_tuple_as_iter_var
+
+
+class TestForTupleAsEnumerateIter(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_tuple_as_enumerate_iter
+
+
+class TestForTupleAsEnumerateValue(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_tuple_as_enumerate_value
+
+
+class TestForwardContainsForLayer(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = ForwardContainsForLayer()
+
+
+class TestForOriginalList(TestTransformForOriginalList):
+    def set_test_func(self):
+        self.dygraph_func = for_original_list
+
+    def test_transformed_result_compare(self):
+        self.transformed_result_compare()
+
+
+class TestForOriginalTuple(TestTransformForOriginalList):
+    def set_test_func(self):
+        self.dygraph_func = for_original_tuple
+
+    def test_transformed_result_compare(self):
+        self.transformed_result_compare()
+
+
+class TestForZip(unittest.TestCase):
+    def test_for_zip_error(self):
+        with self.assertRaises(RuntimeError):
+            paddle.jit.save(for_zip_error, './for_zip_error')
+
+    def test_for_zip(self):
+        paddle.jit.save(for_zip, './for_zip')
 
 
 if __name__ == '__main__':

@@ -55,6 +55,8 @@ extern void *cublas_dso_handle;
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
   __macro(cublasDaxpy_v2);                \
+  __macro(cublasCaxpy_v2);                \
+  __macro(cublasZaxpy_v2);                \
   __macro(cublasSscal_v2);                \
   __macro(cublasDscal_v2);                \
   __macro(cublasScopy_v2);                \
@@ -73,6 +75,8 @@ extern void *cublas_dso_handle;
   __macro(cublasDgeam);                   \
   __macro(cublasStrsm_v2);                \
   __macro(cublasDtrsm_v2);                \
+  __macro(cublasCtrsm_v2);                \
+  __macro(cublasZtrsm_v2);                \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \
@@ -82,12 +86,18 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemmBatched);            \
   __macro(cublasCgemmBatched);            \
   __macro(cublasZgemmBatched);            \
+  __macro(cublasStrsmBatched);            \
+  __macro(cublasDtrsmBatched);            \
+  __macro(cublasCtrsmBatched);            \
+  __macro(cublasZtrsmBatched);            \
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
   __macro(cublasDgetriBatched);           \
   __macro(cublasSmatinvBatched);          \
-  __macro(cublasDmatinvBatched);
+  __macro(cublasDmatinvBatched);          \
+  __macro(cublasSgetrsBatched);           \
+  __macro(cublasDgetrsBatched);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 

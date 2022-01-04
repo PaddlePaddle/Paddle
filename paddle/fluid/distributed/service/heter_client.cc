@@ -13,24 +13,47 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/string/split.h"
 
 DECLARE_int32(rpc_deadline);
+DECLARE_int32(pserver_timeout_ms);
+
 namespace paddle {
 namespace distributed {
 
-DEFINE_int32(pserver_timeout_ms, 10800000, "pserver request server timeout_ms");
-
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
 bool HeterClient::is_initialized_ = false;
+
+int GetMicroId(const platform::DeviceContext& ctx,
+               const framework::Scope* scope) {
+  framework::Variable* var = scope->FindVar("microbatch_id");
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+                    platform::errors::InvalidArgument(
+                        "the type of micro id shoulde be LoDTensor."));
+  auto micro_id = -1;
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  if (platform::is_cpu_place(tensor->place())) {
+    auto data = reinterpret_cast<const float*>(tensor->data<void>());
+    micro_id = static_cast<int>(data[0]);
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    std::vector<char> temp;
+    temp.resize(tensor->numel() * framework::SizeOfType(tensor->type()));
+    char* temp_ptr = temp.data();
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    memory::Copy(platform::CPUPlace(), temp_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * framework::SizeOfType(tensor->type()),
+                 stream);
+    float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
+    micro_id = static_cast<int>(temp_ptr_float[0]);
+#endif
+  }
+  return micro_id;
+}
 
 void HeterClient::MainThread() {
   while (running_) {
@@ -41,7 +64,7 @@ void HeterClient::MainThread() {
 void HeterClient::Stop() {
   running_ = false;
   if (!is_initialized_) {
-    VLOG(0) << "HeterClient is not inited, do nothing";
+    VLOG(3) << "HeterClient is not inited, do nothing";
   } else {
     if (main_thread_) {
       auto status = StopHeterWorker();
@@ -49,8 +72,25 @@ void HeterClient::Stop() {
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
-    VLOG(1) << "HeterClient Stop Done";
+    VLOG(3) << "HeterClient Stop Done";
   }
+}
+
+void HeterClient::FinalizeWorker() {
+  running_ = false;
+  if (!is_initialized_) {
+    VLOG(3) << "HeterClient is not inited, do nothing";
+  } else {
+    if (main_thread_) {
+      main_thread_->join();
+      main_thread_.reset(nullptr);
+    }
+    VLOG(3) << "HeterClient Stop Done";
+  }
+}
+
+std::future<int32_t> HeterClient::StopHeterWorker() {
+  return SendCmd(-1, PS_STOP_SERVER, {});
 }
 
 void HeterClient::RpcProfilerControl() {
@@ -73,52 +113,84 @@ void HeterClient::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
-  options.timeout_ms = pserver_timeout_ms;
+  options.timeout_ms = FLAGS_pserver_timeout_ms;
 
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
     xpu_channels_[i].reset(new brpc::Channel());
     if (xpu_channels_[i]->Init(xpu_list_[i].c_str(), "", &options) != 0) {
-      VLOG(0) << "HeterServer channel init fail";
+      VLOG(0) << "HeterClient channel init fail. Try Again";
+      auto ip_port = paddle::string::Split(xpu_list_[i], ':');
+      std::string ip = ip_port[0];
+      int port = std::stoi(ip_port[1]);
+      std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+      if (xpu_channels_[i]->Init(int_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
+      }
+    }
+  }
+  previous_xpu_channels_.resize(previous_xpu_list_.size());
+  for (size_t i = 0; i < previous_xpu_list_.size(); ++i) {
+    previous_xpu_channels_[i].reset(new brpc::Channel());
+    if (previous_xpu_channels_[i]->Init(previous_xpu_list_[i].c_str(), "",
+                                        &options) != 0) {
+      VLOG(0) << "HeterClient channel init fail. Try Again";
+      auto ip_port = paddle::string::Split(previous_xpu_list_[i], ':');
+      std::string ip = ip_port[0];
+      int port = std::stoi(ip_port[1]);
+      std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+      if (previous_xpu_channels_[i]->Init(int_ip_port.c_str(), "", &options) !=
+          0) {
+        LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
+      }
     }
   }
 }
 
 void HeterClient::SendAndRecvAsync(
-    const std::vector<std::string>& ep, const platform::DeviceContext& ctx,
-    const framework::Scope& scope, const std::string& message_name,
+    const platform::DeviceContext& ctx, const framework::Scope& scope,
+    const std::string& message_name,
     const std::vector<std::string>& send_var_name,
-    const std::vector<std::string>& recv_var_name) {
+    const std::vector<std::string>& recv_var_name, const std::string& mode) {
   platform::RecordEvent record_event("HeterClient->SendAndRecvAsync");
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
   const std::string message_name_val = message_name;
   const std::vector<std::string> send_var_name_val = send_var_name;
   const std::vector<std::string> recv_var_name_val = recv_var_name;
-
-  VLOG(3) << "GRPCClient::SendAndRecv Begin, message_name: "
+  VLOG(3) << "BRPCClient::SendAndRecv Begin, message_name: "
           << message_name_val;
-  // Todo: get correct channel
-  int num = trainer_id_ % xpu_channels_.size();
+  brpc::Channel* channel = nullptr;
+  distributed::MultiVarMsg request;
+  OnHeterRpcDone* closure = new OnHeterRpcDone([p_ctx, p_scope](void* done) {
+    auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
+    PADDLE_ENFORCE_NE(
+        closure->cntl.Failed(), true,
+        platform::errors::Unimplemented(
+            "HeterClient::SendAndRecv meets brpc error, error message is %s",
+            closure->cntl.ErrorText()));
 
-  brpc::Controller cntl;
-  cntl.set_timeout_ms(pserver_timeout_ms);
-  distributed::MultiVarMsg request, response;
-  auto& request_io_buffer = cntl.request_attachment();
-  ::paddle::PsService_Stub stub(xpu_channels_[num].get());
+    VLOG(4) << "call heter_worker success";
+  });
+  closure->cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
+  auto& request_io_buffer = closure->cntl.request_attachment();
   distributed::SerializeToMultiVarMsgAndIOBuf(
       message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
-  stub.SendAndRecvVariable(&cntl, &request, &response, NULL);
-  PADDLE_ENFORCE_NE(
-      cntl.Failed(), true,
-      platform::errors::Unimplemented(
-          "HeterClient::SendAndRecv meets brpc error, error message is %s",
-          cntl.ErrorText()));
-  VLOG(4) << "call heter_worker success";
-  auto& response_io_buffer = cntl.response_attachment();
-  distributed::DeserializeFromMultiVarMsgAndIOBuf(response, &response_io_buffer,
-                                                  ctx, p_scope);
+
+  int micro_id = GetMicroId(ctx, p_scope);
+  auto minibatch_id = micro_id / 10;
+  // select channel according to micro id
+  if (mode == "forward") {
+    int num = minibatch_id % xpu_channels_.size();
+    channel = xpu_channels_[num].get();
+  } else if (mode == "backward") {
+    int num = minibatch_id % previous_xpu_channels_.size();
+    channel = previous_xpu_channels_[num].get();
+  }
+  ::paddle::distributed::PsService_Stub stub(channel);
+  stub.SendAndRecvVariable(&closure->cntl, &request, &closure->response,
+                           closure);
 }
 
 std::future<int32_t> HeterClient::SendCmd(
@@ -147,9 +219,9 @@ std::future<int32_t> HeterClient::SendCmd(
     for (const auto& param : params) {
       closure->request(i)->add_params(param);
     }
-    ::paddle::PsService_Stub rpc_stub(xpu_channels_[i].get());
+    ::paddle::distributed::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
-        pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
+        FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }

@@ -13,9 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/framework/ir/seqpool_cvm_concat_fuse_pass.h"
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
+
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -51,6 +52,52 @@ static void GetConcatNodes(ir::Graph* graph, std::vector<Node*>* concat_nodes) {
   gpd(graph, handler);
 }
 }  // anonymous namespace
+
+SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
+  AddOpCompat(OpCompat("sequence_pool"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("MaxIndex")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddAttr("pooltype")
+      .IsStringEQ("SUM")
+      .End()
+      .AddAttr("pad_value")
+      .End();
+  AddOpCompat(OpCompat("cvm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("CVM")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddAttr("use_cvm")
+      .IsBoolEQ(true)
+      .End();
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(1)
+      .End();
+}
 
 void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("seqpool_cvm_concat_fuse", graph);
@@ -152,3 +199,9 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(seqpool_cvm_concat_fuse_pass,
               paddle::framework::ir::SeqPoolCVMConcatFusePass);
+REGISTER_PASS_CAPABILITY(seqpool_cvm_concat_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("sequence_pool", 0)
+            .EQ("cvm", 0)
+            .EQ("concat", 0));

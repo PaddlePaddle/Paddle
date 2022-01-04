@@ -53,6 +53,19 @@ TEST(test_operator_version, test_operator_version) {
           framework::compatible::OpVersionDesc()
               .NewInput("X2", "The second input.")
               .NewOutput("Y2", "The second output."));
+
+  REGISTER_OP_VERSION(op_name_0__)
+      .AddCheckpoint(
+          R"ROC(
+        Incompatible upgrade of attribute [height], input [X2] and output [Y2]
+      )ROC",
+          framework::compatible::OpVersionDesc()
+              .DeleteAttr("height",
+                          "Parameters deleted due to interface alignment.")
+              .ModifyInput("X2", "Modify input due to interface alignment.")
+              .ModifyOutput("Y2", "Modify output due to interface alignment.")
+              .DeleteInput("X2", "Delete input due to interface alignment.")
+              .DeleteOutput("Y2", "Delete output due to interface alignment."));
 }
 
 TEST(test_pass_op_version_checker, test_pass_op_version_checker) {

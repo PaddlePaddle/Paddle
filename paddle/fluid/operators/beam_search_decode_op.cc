@@ -45,9 +45,15 @@ struct BeamSearchDecodeFunctor {
         id_tensor_(id_tensor),
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
+    tensor_on_npu_ = false;
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
-      tensor_on_gpu_ = true;
+    if (platform::is_gpu_place(step_ids_origin_[0].place()) ||
+        platform::is_npu_place(step_ids_origin_[0].place())) {
+      if (platform::is_gpu_place(step_ids_origin_[0].place())) {
+        tensor_on_gpu_ = true;
+      } else {
+        tensor_on_npu_ = true;
+      }
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
@@ -55,7 +61,9 @@ struct BeamSearchDecodeFunctor {
       for (auto& step_id : step_ids_origin_) {
         framework::LoDTensor out;
         if (step_id.numel() > 0) {
-          dev_ctx->Wait();
+          if (tensor_on_gpu_) {
+            dev_ctx->Wait();
+          }
           framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
@@ -64,8 +72,13 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
-      tensor_on_gpu_ = true;
+    if (platform::is_gpu_place(step_scores_origin_[0].place()) ||
+        platform::is_npu_place(step_scores_origin_[0].place())) {
+      if (platform::is_gpu_place(step_scores_origin_[0].place())) {
+        tensor_on_gpu_ = true;
+      } else {
+        tensor_on_npu_ = true;
+      }
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
@@ -73,7 +86,9 @@ struct BeamSearchDecodeFunctor {
       for (auto& step_score : step_scores_origin_) {
         framework::LoDTensor out;
         if (step_score.numel() > 0) {
-          dev_ctx->Wait();
+          if (tensor_on_gpu_) {
+            dev_ctx->Wait();
+          }
           framework::TensorCopy(step_score, platform::CPUPlace(), *dev_ctx,
                                 &out);
           dev_ctx->Wait();
@@ -89,6 +104,7 @@ struct BeamSearchDecodeFunctor {
   void apply() const;
 
   bool tensor_on_gpu_;
+  bool tensor_on_npu_;
   size_t beam_size_;
   int end_id_;
   // TODO(Superjomn) Here might result serious performance issue in the
@@ -105,8 +121,8 @@ struct BeamSearchDecodeFunctor {
 template <typename T>
 void BeamSearchDecodeFunctor::apply() const {
   BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
-  // Check if the tensor is on GPU. If so, use the CPU copy instead
-  if (tensor_on_gpu_) {
+  // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
+  if (tensor_on_gpu_ || tensor_on_npu_) {
     beam_search_decoder.Backtrace(step_ids_, step_scores_, id_tensor_,
                                   score_tensor_);
   } else {

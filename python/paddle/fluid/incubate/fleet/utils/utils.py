@@ -34,9 +34,12 @@ __all__ = [
     "graphviz"
 ]
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 persistable_vars_out_fn = "vars_persistable.log"
 all_vars_out_fn = "vars_all.log"

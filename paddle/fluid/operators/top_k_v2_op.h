@@ -61,12 +61,12 @@ static void FullTopK(Type input_height, Type input_width, int input_dim,
     std::vector<std::pair<T, Type>> col_vec;
     col_vec.reserve(input_width);
     if (input_dim == 1) {
-      auto e_input = EigenVector<T>::Flatten(*input);
+      auto e_input = framework::EigenVector<T>::Flatten(*input);
       for (Type j = 0; j < input_width; ++j) {
         col_vec.emplace_back(std::pair<T, Type>(e_input(j), j));
       }
     } else {
-      auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
+      auto e_input = framework::EigenMatrix<T>::Reshape(*input, input_dim - 1);
       for (Type j = 0; j < input_width; ++j) {
         col_vec.emplace_back(std::pair<T, Type>(e_input(i, j), j));
       }
@@ -142,14 +142,15 @@ static void FullTopKAssign(const Type& input_height, const Type& input_width,
 #endif
   for (Type i = 0; i < input_height; ++i) {
     if (input_dim == 1) {
-      auto e_input = EigenVector<T>::Flatten(*input);
-      auto e_indices = EigenVector<Type>::Flatten(*indices);
+      auto e_input = framework::EigenVector<T>::Flatten(*input);
+      auto e_indices = framework::EigenVector<Type>::Flatten(*indices);
       for (Type j = 0; j < k; ++j) {
         output_data[i * input_width + e_indices(j)] = e_input(j);
       }
     } else {
-      auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
-      auto e_indices = EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
+      auto e_input = framework::EigenMatrix<T>::Reshape(*input, input_dim - 1);
+      auto e_indices =
+          framework::EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
       for (Type j = 0; j < k; ++j) {
         output_data[i * input_width + e_indices(i, j)] = e_input(i, j);
       }

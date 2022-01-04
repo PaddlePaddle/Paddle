@@ -42,6 +42,19 @@ class DropoutOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Seed") {
+      VLOG(10) << "var_name:" << var_name
+               << " does not need to transform in dropout op";
+      return expected_kernel_type;
+    }
+
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -51,9 +64,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Seed",
              "The seed of dropout op, it has higher priority than the attr "
              "fix_seed and seed")
-        .AsDispensable();
+        .AsDispensable()
+        .AsExtra();
     AddOutput("Out", "The output of dropout op.");
-    AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddOutput("Mask", "The random sampled dropout mask.")
+        .AsIntermediate()
+        .AsExtra();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
@@ -72,8 +88,9 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
-        .SetDefault(false);
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
@@ -117,10 +134,6 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
-                      platform::errors::InvalidArgument(
-                          "GradOp is only callable when is_test is false"));
-
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "DropoutGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "DropoutGrad");

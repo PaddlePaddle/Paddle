@@ -17,32 +17,12 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include <boost/preprocessor/arithmetic/div.hpp>
-#include <boost/preprocessor/arithmetic/mod.hpp>
-#include <boost/preprocessor/comparison/greater.hpp>
-#include <boost/preprocessor/comparison/greater_equal.hpp>
-#include <boost/preprocessor/control/if.hpp>
-#include <boost/preprocessor/repetition/repeat.hpp>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
-
-#define TILE_TEMPLATE(z, n, data) \
-  case n + 1: {                   \
-    Tile<n + 1>(context);         \
-    break;                        \
-  }
-#define REP_TILE_TEMPLATE(n) BOOST_PP_REPEAT(n, TILE_TEMPLATE, ~)
-#define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define TILE_GRAD_CASE(n)                                        \
-  case n: {                                                      \
-    TileBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
-    break;                                                       \
-  }
-#define TILE_GRAD_TEMPLATE(z, n, data) BOOST_PP_IF(COND(n), TILE_GRAD_CASE(n), )
-#define REP_TILE_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, TILE_GRAD_TEMPLATE, ~)
 
 namespace paddle {
 namespace operators {
@@ -52,7 +32,9 @@ inline std::vector<int> get_repeat_times(
     auto* repeat_tensor = ctx.Input<framework::LoDTensor>("RepeatTimes");
     auto* repeat_data = repeat_tensor->data<int>();
     framework::Tensor cpu_repeat_tensor;
-    if (platform::is_gpu_place(repeat_tensor->place())) {
+    if (platform::is_gpu_place(repeat_tensor->place()) ||
+        platform::is_xpu_place(repeat_tensor->place()) ||
+        platform::is_npu_place(repeat_tensor->place())) {
       TensorCopySync(*repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
       repeat_data = cpu_repeat_tensor.data<int>();
     }
@@ -68,7 +50,9 @@ inline std::vector<int> get_repeat_times(
     std::vector<int> vec_repeat_times;
     for (size_t i = 0; i < list_repeat_times_tensor.size(); ++i) {
       auto tensor = list_repeat_times_tensor[i];
-      if (platform::is_gpu_place(tensor->place())) {
+      if (platform::is_gpu_place(tensor->place()) ||
+          platform::is_xpu_place(tensor->place()) ||
+          platform::is_npu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_repeat_times.push_back(*temp.data<int32_t>());
@@ -122,7 +106,26 @@ class TileKernel : public framework::OpKernel<T> {
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, repeat_times_size));
     rank = std::max(rank, repeat_times_size);
-    switch (rank) { REP_TILE_TEMPLATE(MAX_RANK_SUPPORTED) }
+    switch (rank) {
+      case 1:
+        Tile<1>(context);
+        break;
+      case 2:
+        Tile<2>(context);
+        break;
+      case 3:
+        Tile<3>(context);
+        break;
+      case 4:
+        Tile<4>(context);
+        break;
+      case 5:
+        Tile<5>(context);
+        break;
+      case 6:
+        Tile<6>(context);
+        break;
+    }
   }
 
  protected:
@@ -155,7 +158,7 @@ class TileKernel : public framework::OpKernel<T> {
             "'repeat_times' for tile op must match after promotion.",
             vec_in_dims.size(), repeat_times.size()));
     auto* out0 = context.Output<Tensor>("Out");
-    Eigen::DSizes<int, Rank> bcast_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       bcast_dims[i] = repeat_times[i];
     }
@@ -175,9 +178,11 @@ class TileKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      To32BitIndex(y).device(place) = To32BitIndex(x).broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      y.device(place) = x.broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                   bcast_dims);
     }
   }
 };
@@ -240,7 +245,31 @@ class TileGradKernel : public framework::OpKernel<T> {
                             "must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
-      switch (dims) { REP_TILE_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
+      switch (dims) {
+        case 1:
+          TileBackward<1>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 2:
+          TileBackward<2>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 3:
+          TileBackward<3>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 4:
+          TileBackward<4>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 5:
+          TileBackward<5>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 6:
+          TileBackward<6>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
+      }
     }
   }
 
@@ -255,21 +284,20 @@ class TileGradKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims * 2> reshape_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims> reduce_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
 
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims)
-            .sum(reduce_dims)
-            .reshape(x_grad.dimensions());
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

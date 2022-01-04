@@ -55,7 +55,7 @@ void AddFetchListToBlockDesc(framework::proto::BlockDesc* block,
 void serialize_params(std::string* str, framework::Scope* scope,
                       const std::vector<std::string>& params) {
   std::ostringstream os;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
@@ -106,7 +106,7 @@ void CreateTensor(framework::Scope* scope, const std::string& name,
   tensor->Resize(dims);
   platform::Place place;
   if (in_cuda) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     place = platform::CUDAPlace(0);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

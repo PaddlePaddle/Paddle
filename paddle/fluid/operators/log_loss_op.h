@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,9 +41,8 @@ class LogLossKernel : public framework::OpKernel<T> {
     auto loss = EigenVector<T>::Flatten(*loss_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    loss.device(place) = (-(label * (prediction + epsilon).log()) -
-                          ((static_cast<T>(1) - label) *
-                           (static_cast<T>(1) - prediction + epsilon).log()));
+    EigenLogLoss<std::decay_t<decltype(place)>, T>::Eval(
+        place, loss, prediction, label, epsilon);
   }
 };
 
@@ -64,9 +64,8 @@ class LogLossGradKernel : public framework::OpKernel<T> {
     if (dpred) {
       dpred->mutable_data<T>(ctx.GetPlace());
       auto dx = framework::EigenVector<T>::Flatten(*dpred);
-      dx.device(place) = dl * (-(label / (prediction + epsilon)) +
-                               ((static_cast<T>(1) - label) /
-                                (static_cast<T>(1) - prediction + epsilon)));
+      EigenLogLossGrad<std::decay_t<decltype(place)>, T>::Eval(
+          place, dx, dl, prediction, label, epsilon);
     }
   }
 };

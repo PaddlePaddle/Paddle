@@ -22,6 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
+#if defined(__HIPCC__) || defined(__NVCC__)
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -124,6 +128,26 @@ inline void UpdateKsize(std::vector<T>* ksize,
   }
 }
 
+inline int getReduceNum(const framework::Tensor& input,
+                        const framework::Tensor* output,
+                        const std::string data_format,
+                        std::vector<int>* reduce_dim) {
+  // data_format only can be NCHW
+  bool channel_last = (data_format == "NHWC");
+  if (channel_last) {
+    return 0;
+  }
+  int reduce_num = 0;
+  const int output_height = output->dims()[2];
+  const int output_width = output->dims()[3];
+  if ((output_height == 1) && (output_width == 1)) {
+    reduce_dim->push_back(2);
+    reduce_dim->push_back(3);
+    reduce_num = input.dims()[2] * input.dims()[3];
+  }
+  return reduce_num;
+}
+
 template <typename DeviceContext, typename T>
 class PoolKernel : public framework::OpKernel<T> {
  public:
@@ -164,7 +188,6 @@ class PoolKernel : public framework::OpKernel<T> {
     if (global_pooling) {
       UpdateKsize(&ksize, data_dims);
     }
-
     auto& dev_ctx = context.template device_context<DeviceContext>();
     switch (ksize.size()) {
       case 2: {
@@ -174,15 +197,35 @@ class PoolKernel : public framework::OpKernel<T> {
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
           pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, true, false, out);
+                         true, false, out, pool_process);
 
         } else if (pooling_type == "avg") {
-          paddle::operators::math::Pool2dFunctor<
-              DeviceContext, paddle::operators::math::AvgPool<T>, T>
-              pool2d_forward;
-          paddle::operators::math::AvgPool<T> pool_process;
-          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, exclusive, adaptive, out);
+          std::vector<int> reduce_dim;
+          int reduce_num = getReduceNum(*in_x, out, data_format, &reduce_dim);
+          if (reduce_num > 0 &&
+              adaptive) {  // for adaptive_avg_pool2d && output_size == 1
+#if defined(__HIPCC__) || defined(__NVCC__)
+            auto stream = dev_ctx.stream();
+            TensorReduceFunctorImpl<T, T, kps::AddFunctor,
+                                    kps::DivideFunctor<T>>(
+                *in_x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim,
+                stream);
+#else  // for cpu
+            paddle::operators::math::Pool2dFunctor<
+                DeviceContext, paddle::operators::math::AvgPool<T>, T>
+                pool2d_forward;
+            paddle::operators::math::AvgPool<T> pool_process;
+            pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings,
+                           data_format, exclusive, adaptive, out, pool_process);
+#endif
+          } else {  // avgpool_2d or  adaptive_avg_pool2d && output_size != 1
+            paddle::operators::math::Pool2dFunctor<
+                DeviceContext, paddle::operators::math::AvgPool<T>, T>
+                pool2d_forward;
+            paddle::operators::math::AvgPool<T> pool_process;
+            pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings,
+                           data_format, exclusive, adaptive, out, pool_process);
+          }
         }
       } break;
       case 3: {
@@ -192,7 +235,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
           pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, true, false, out);
+                         true, false, out, pool_process);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
@@ -200,7 +243,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
           pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, exclusive, adaptive, out);
+                         exclusive, adaptive, out, pool_process);
         }
       } break;
       default: {
@@ -273,8 +316,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, data_format, pool_process, exclusive,
-                            adaptive, in_x_grad);
+                            paddings, data_format, exclusive, adaptive,
+                            in_x_grad, pool_process);
           }
         } break;
         case 3: {
@@ -289,8 +332,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, data_format, pool_process, exclusive,
-                            adaptive, in_x_grad);
+                            paddings, data_format, exclusive, adaptive,
+                            in_x_grad, pool_process);
           }
         } break;
         default: {
@@ -298,6 +341,20 @@ class PoolGradKernel : public framework::OpKernel<T> {
               "Pool op only supports 2D and 3D input."));
         }
       }
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class PoolGradGradKernel : public PoolKernel<DeviceContext, T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    std::string pooling_type = context.Attr<std::string>("pooling_type");
+    if (pooling_type == "max") {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Pool op grad grad only supports avgpool."));
+    } else {
+      PoolKernel<DeviceContext, T>::Compute(context);
     }
   }
 };

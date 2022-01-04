@@ -38,12 +38,6 @@ class PReluOp : public framework::OperatorWithKernel {
                             "But recevied alpha's size: %d.",
                             product(ctx->GetInputDim("Alpha"))));
     } else if (mode == "channel") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), x_dim[1],
-                        platform::errors::InvalidArgument(
-                            "For mode 'channel', size of weight Alpha must be "
-                            "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[1]: %d",
-                            product(ctx->GetInputDim("Alpha")), x_dim[1]));
       auto x_rank = x_dim.size();
       PADDLE_ENFORCE_GE(x_rank, 2,
                         platform::errors::InvalidArgument(
@@ -51,6 +45,33 @@ class PReluOp : public framework::OperatorWithKernel {
                             "equal or larger than 2. But recevied X's "
                             "rank: %d",
                             x_rank));
+      const std::string data_format_str =
+          ctx->Attrs().Get<std::string>("data_format");
+      PADDLE_ENFORCE_EQ(data_format_str == "NCHW" || data_format_str == "NHWC",
+                        true,
+                        platform::errors::InvalidArgument(
+                            "For mode 'channel', data_format must be one of "
+                            "NCHW and NHWC. But recevied data_format: %s",
+                            data_format_str));
+      if (data_format_str == "NCHW") {
+        PADDLE_ENFORCE_EQ(
+            product(ctx->GetInputDim("Alpha")) == x_dim[1], true,
+            platform::errors::InvalidArgument(
+                "For mode 'channel', size of weight Alpha must be "
+                "equal to the number of channels of input(x). But "
+                "recevied alpha's size: %d, x_dim[1]: %d",
+                product(ctx->GetInputDim("Alpha")), x_dim[1]));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            product(ctx->GetInputDim("Alpha")) == x_dim[x_rank - 1], true,
+            platform::errors::InvalidArgument(
+                "For mode 'channel', size of weight Alpha must be "
+                "equal to the number of channels of input(x). But "
+                "recevied alpha's size: %d, x_dim[%d]: %d",
+                product(ctx->GetInputDim("Alpha")), x_rank - 1,
+                x_dim[x_rank - 1]));
+      }
+
     } else if (mode == "element") {
       auto alpha_dim = ctx->GetInputDim("Alpha");
       auto alpha_rank = alpha_dim.size();
@@ -95,9 +116,17 @@ class PReluOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -126,6 +155,24 @@ There are modes:
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
+    AddAttr<std::string>("data_format",
+                         "Data format that specifies the layout of input")
+        .SetDefault("NCHW");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false)
+        .AsExtra();
   }
 };
 
@@ -153,9 +200,17 @@ class PReluGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

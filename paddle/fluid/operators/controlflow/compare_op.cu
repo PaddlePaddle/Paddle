@@ -13,12 +13,49 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/compare_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
-REGISTER_COMPARE_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
-REGISTER_COMPARE_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
-REGISTER_COMPARE_KERNEL(greater_than, CUDA,
-                        paddle::operators::GreaterThanFunctor);
-REGISTER_COMPARE_KERNEL(greater_equal, CUDA,
-                        paddle::operators::GreaterEqualFunctor);
-REGISTER_COMPARE_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
-REGISTER_COMPARE_KERNEL(not_equal, CUDA, paddle::operators::NotEqualFunctor);
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
+namespace paddle {
+namespace operators {
+
+template <typename Functor, typename InverseFunctor>
+class CompareOpKernel<platform::CUDADeviceContext, Functor, InverseFunctor>
+    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
+ public:
+  using InT = typename Functor::ELEM_TYPE;
+  using OutT = bool;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto functor = Functor();
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+
+    int axis = PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
+        cuda_ctx, ins, &outs, axis, functor);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+#define REGISTER_CUDA_COMPARE_KERNEL(op_type, func)                            \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      op_type,                                                                 \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<bool>, void>,    \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<int>, void>,     \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<int64_t>, void>, \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<float>, void>,   \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<double>, void>);
+
+REGISTER_CUDA_COMPARE_KERNEL(equal, EqualFunctor)
+REGISTER_CUDA_COMPARE_KERNEL(not_equal, NotEqualFunctor)
+REGISTER_CUDA_COMPARE_KERNEL(less_than, LessThanFunctor)
+REGISTER_CUDA_COMPARE_KERNEL(less_equal, LessEqualFunctor)
+REGISTER_CUDA_COMPARE_KERNEL(greater_than, GreaterThanFunctor)
+REGISTER_CUDA_COMPARE_KERNEL(greater_equal, GreaterEqualFunctor)
+#undef REGISTER_CUDA_COMPARE_KERNEL

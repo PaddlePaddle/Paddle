@@ -14,12 +14,14 @@
 
 from __future__ import print_function
 import warnings
-from ...fluid.framework import Variable, in_dygraph_mode
+from ...fluid.framework import in_dygraph_mode
+from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.layers import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle import _C_ops
 
-__all__ = ['one_hot', 'embedding']
+__all__ = []
 
 
 def one_hot(x, num_classes, name=None):
@@ -86,8 +88,8 @@ def one_hot(x, num_classes, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.one_hot_v2(x, 'depth', num_classes,
-                                   'allow_out_of_range', False)
+        return _C_ops.one_hot_v2(x, 'depth', num_classes, 'allow_out_of_range',
+                                 False)
     else:
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'one_hot_v2')
         helper = LayerHelper("one_hot_v2", **locals())
@@ -148,9 +150,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizers does not support sparse update,
-            such as :ref:`api_optimizer_AdadeltaOptimizer` , :ref:`api_optimizer_AdamaxOptimizer` ,
-            :ref:`api_optimizer_DecayedAdagradOptimizer` , :ref:`api_optimizer_FtrlOptimizer` ,
-            :ref:`api_optimizer_LambOptimizer` and :ref:`api_optimizer_LarsMomentumOptimizer` .
+            such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these cases, sparse must be False. Default: False.
         padding_idx(int|long|None): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
@@ -197,7 +197,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             weight.shape[0], weight.shape[0]))
 
     if in_dygraph_mode():
-        return core.ops.lookup_table_v2(
+        return _C_ops.lookup_table_v2(
             weight, x, 'is_sparse', sparse, 'is_distributed', False,
             'remote_prefetch', False, 'padding_idx', padding_idx)
     else:

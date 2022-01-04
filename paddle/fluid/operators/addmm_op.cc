@@ -119,7 +119,7 @@ class AddMMOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
 
@@ -144,7 +144,8 @@ class AddMMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), The output tensor of addmm op.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<float>("Alpha", "coefficient of x*y.").SetDefault(1.0f);
     AddAttr<float>("Beta", "coefficient of input.").SetDefault(1.0f);
     AddComment(R"DOC(

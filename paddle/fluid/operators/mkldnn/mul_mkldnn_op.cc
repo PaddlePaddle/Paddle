@@ -33,18 +33,17 @@ using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
 using framework::Tensor;
-using mkldnn::inner_product_forward;
-using mkldnn::memory;
-using mkldnn::prop_kind;
-using mkldnn::stream;
+using dnnl::inner_product_forward;
+using dnnl::memory;
+using dnnl::prop_kind;
+using dnnl::stream;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
 template <typename XT, typename YT, typename OT>
 class MulPrimitiveFactory {
  public:
-  explicit MulPrimitiveFactory(const mkldnn::engine &engine)
-      : engine_(engine) {}
+  explicit MulPrimitiveFactory(const dnnl::engine &engine) : engine_(engine) {}
 
   inner_product_forward CreateMulPrimitive(const Tensor *x_input,
                                            const Tensor *y_input,
@@ -99,17 +98,17 @@ class MulPrimitiveFactory {
                           const memory::desc &dst_desc, void *src_data,
                           const std::vector<float> &scale) {
     auto mask = scale.size() > 1 ? 1 : 0;
-    mkldnn::primitive_attr attr;
+    dnnl::primitive_attr attr;
     attr.set_output_scales(mask, scale);
 
     auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = memory(dst_desc, engine_);
 
-    auto reorder_pd = mkldnn::reorder::primitive_desc(src_mem, dst_mem, attr);
+    auto reorder_pd = dnnl::reorder::primitive_desc(src_mem, dst_mem, attr);
 
-    auto reorder = mkldnn::reorder(reorder_pd);
+    auto reorder = dnnl::reorder(reorder_pd);
 
-    mkldnn::stream astream(engine_);
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
@@ -132,9 +131,9 @@ class MulPrimitiveFactory {
                             scale_y);
   }
 
-  mkldnn::primitive_attr CreateMulAttr(const ExecutionContext &ctx,
-                                       bool force_fp32_output) {
-    mkldnn::primitive_attr mul_attr;
+  dnnl::primitive_attr CreateMulAttr(const ExecutionContext &ctx,
+                                     bool force_fp32_output) {
+    dnnl::primitive_attr mul_attr;
 
     auto scale_y_data = ctx.Attr<std::vector<float>>("scale_y");
     auto scale_x_data = ctx.Attr<float>("scale_x");
@@ -184,10 +183,10 @@ class MulPrimitiveFactory {
   }
 
   void Execute() {
-    mkldnn::stream astream(engine_);
-    (*mul_).execute(astream, {{MKLDNN_ARG_SRC, *x_input_},
-                              {MKLDNN_ARG_WEIGHTS, *y_input_},
-                              {MKLDNN_ARG_DST, *output_}});
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    (*mul_).execute(astream, {{DNNL_ARG_SRC, *x_input_},
+                              {DNNL_ARG_WEIGHTS, *y_input_},
+                              {DNNL_ARG_DST, *output_}});
     astream.wait();
   }
 
@@ -268,10 +267,9 @@ class MulPrimitiveFactory {
     auto dst_mem = dst_data ? memory(dst_desc, engine_, dst_data)
                             : memory(dst_desc, engine_);
 
-    auto reorder = mkldnn::reorder(src_mem, dst_mem);
+    auto reorder = dnnl::reorder(src_mem, dst_mem);
 
-    mkldnn::stream astream(engine_);
-
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
@@ -290,11 +288,11 @@ class MulPrimitiveFactory {
     return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
   }
 
-  const mkldnn::engine &engine_;
-  boost::optional<memory> x_input_;
-  boost::optional<memory> y_input_;
-  boost::optional<memory> output_;
-  boost::optional<inner_product_forward> mul_;
+  const dnnl::engine &engine_;
+  paddle::optional<memory> x_input_;
+  paddle::optional<memory> y_input_;
+  paddle::optional<memory> output_;
+  paddle::optional<inner_product_forward> mul_;
   static constexpr bool is_int8_ =
       std::is_same<XT, int8_t>::value || std::is_same<XT, uint8_t>::value;
 };
@@ -304,7 +302,7 @@ template <typename XT, typename YT, typename OT>
 std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
-    const mkldnn::engine &mkldnn_engine) {
+    const dnnl::engine &mkldnn_engine) {
   std::string key = platform::CreateKey(
       dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
       input_y->type(), framework::vectorize(input_y->dims()),
@@ -328,7 +326,7 @@ inner_product_forward GetMulPrimitive(const MKLDNNDeviceContext &dev_ctx,
                                       const ExecutionContext &ctx,
                                       const Tensor *input_x,
                                       const Tensor *input_y, Tensor *output,
-                                      const mkldnn::engine &mkldnn_engine) {
+                                      const dnnl::engine &mkldnn_engine) {
   constexpr bool is_int8 =
       std::is_same<XT, int8_t>::value || std::is_same<XT, uint8_t>::value;
   bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -355,7 +353,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
                           "Operator DNNL Mul must use CPUPlace"));
     platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto &mkldnn_engine = dev_ctx.GetEngine();
+    auto &mkldnn_engine = dev_ctx.GetEngine();
 
     const Tensor *x = ctx.Input<Tensor>("X");
     const Tensor *y = ctx.Input<Tensor>("Y");

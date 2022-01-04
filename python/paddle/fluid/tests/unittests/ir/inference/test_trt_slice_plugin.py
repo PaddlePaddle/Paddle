@@ -56,7 +56,10 @@ class SlicePluginTRTTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            atol = 1e-5
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
+                atol = 1e-3
+            self.check_output_with_option(use_gpu[i], atol)
 
 
 #negative starts && ends
@@ -80,6 +83,20 @@ class SlicePluginTRTTestFp16(SlicePluginTRTTest):
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+        self.enable_trt = True
+
+
+class StaticSlicePluginTRTTestFp16(SlicePluginTRTTest):
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False)
+        self.enable_trt = True
+
+
+class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
         self.enable_trt = True
 
 

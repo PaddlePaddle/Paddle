@@ -27,6 +27,20 @@ class DistOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Dist");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Dist");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Dist");
+
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+
+    PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) has not been initialized properly. The "
+                          "shape of Input(X) = [%s].",
+                          x_dims));
+    PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(Y) has not been initialized properly. The "
+                          "shape of Input(Y) = [%s].",
+                          y_dims));
     ctx->SetOutputDim("Out", {1});
   }
 };

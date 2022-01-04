@@ -14,30 +14,41 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace stream {
 
-constexpr unsigned int kDefaultFlag = cudaStreamDefault;
-
-bool CUDAStream::Init(const Place& place, const Priority& priority) {
+bool CUDAStream::Init(const Place& place, const Priority& priority,
+                      const StreamFlag& flag) {
   PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;
   CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
   if (priority == Priority::kHigh) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, -1));
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
+        &stream_, static_cast<unsigned int>(flag), -1));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
+        &stream_, static_cast<unsigned int>(flag), -1));
+#endif
   } else if (priority == Priority::kNormal) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, 0));
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
+        &stream_, static_cast<unsigned int>(flag), 0));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
+        &stream_, static_cast<unsigned int>(flag), 0));
+#endif
   }
-  callback_manager_.reset(new StreamCallbackManager(stream_));
-  VLOG(3) << "CUDAStream Init stream: " << stream_
-          << ", priority: " << static_cast<int>(priority);
+  callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+  VLOG(3) << "GPUStream Init stream: " << stream_
+          << ", priority: " << static_cast<int>(priority)
+          << ", flag:" << static_cast<int>(flag);
   return true;
 }
 
@@ -45,13 +56,28 @@ void CUDAStream::Destroy() {
   CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
   Wait();
   WaitCallback();
-  if (stream_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+  if (stream_ && owned_stream_) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
+#endif
   }
   stream_ = nullptr;
 }
 
 void CUDAStream::Wait() const {
+#ifdef PADDLE_WITH_HIP
+  hipError_t e_sync = hipSuccess;
+#if !defined(_WIN32)
+  e_sync = hipStreamSynchronize(stream_);
+#else
+  while (e_sync = hipStreamQuery(stream_)) {
+    if (e_sync == hipErrorNotReady) continue;
+    break;
+  }
+#endif
+#else
   cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
   e_sync = cudaStreamSynchronize(stream_);
@@ -61,10 +87,60 @@ void CUDAStream::Wait() const {
     break;
   }
 #endif
+#endif  // PADDLE_WITH_HIP
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+  PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
 }
 
+// Note: Can only be used under thread_local semantics.
+void CUDAStream::SetStream(gpuStream_t stream) {
+  if (owned_stream_ && stream_) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
+#endif
+  }
+  owned_stream_ = false;
+  stream_ = stream;
+  callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+}
+
+CUDAStream* get_current_stream(int deviceId) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (deviceId == -1) {
+    deviceId = platform::GetCurrentDeviceId();
+  }
+
+  auto& pool = platform::DeviceContextPool::Instance();
+
+  platform::Place device = CUDAPlace(deviceId);
+
+  auto stream = static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+                    ->context()
+                    ->Stream()
+                    .get();
+  return stream;
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
+  return nullptr;
+#endif
+}
+
+CUDAStream* set_current_stream(CUDAStream* stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto& device = stream->GetPlace();
+  auto& pool = platform::DeviceContextPool::Instance();
+  return static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+      ->context()
+      ->SetStream(stream);
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
+  return nullptr;
+#endif
+}
 }  // namespace stream
 }  // namespace platform
 }  // namespace paddle

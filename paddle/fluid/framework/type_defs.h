@@ -17,11 +17,13 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace framework {
@@ -33,18 +35,28 @@ class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
-using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
+using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
-using Attribute =
+using Attribute = boost::variant<
+    boost::blank, int, float, std::string, std::vector<int>, std::vector<float>,
+    std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
+    std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
+
+using AttributeMap = std::unordered_map<std::string, Attribute>;
+
+#ifdef PADDLE_WITH_ASCEND_CL
+using NPUAttribute =
     boost::variant<boost::blank, int, float, std::string, std::vector<int>,
                    std::vector<float>, std::vector<std::string>, bool,
                    std::vector<bool>, BlockDesc*, int64_t,
-                   std::vector<BlockDesc*>, std::vector<int64_t>>;
+                   std::vector<BlockDesc*>, std::vector<int64_t>,
+                   std::vector<double>, std::vector<std::vector<int64_t>>>;
 
-using AttributeMap = std::unordered_map<std::string, Attribute>;
+using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
+#endif
 
 using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
@@ -60,7 +72,9 @@ using DygraphGradOpMakerFN =
         const std::string& /*op_type*/,
         const imperative::NameVarBaseMap& /*var_base_map_in*/,
         const imperative::NameVarBaseMap& /*var_base_map_out*/,
-        const framework::AttributeMap& /*attributes*/)>;
+        const framework::AttributeMap& /*attributes*/,
+        const framework::AttributeMap& /*default attributes*/,
+        const std::map<std::string, std::string>& /*inplace_map*/)>;
 
 using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;
@@ -69,6 +83,11 @@ using InferShapeFN = std::function<void(InferShapeContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
 using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;
+
+// tuple(input_names, attr_names, output_names)
+using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
+                                   paddle::SmallVector<std::string>,
+                                   paddle::SmallVector<std::string>>;
 
 }  // namespace framework
 }  // namespace paddle

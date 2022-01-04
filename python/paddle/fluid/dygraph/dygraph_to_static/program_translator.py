@@ -15,12 +15,11 @@
 from __future__ import print_function
 
 import collections
-import gast
+from paddle.utils import gast
 import inspect
 import six
 import textwrap
 import threading
-import warnings
 import weakref
 
 from paddle.fluid import framework
@@ -40,10 +39,11 @@ from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_progr
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import input_specs_compatible
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec, _hash_spec_names
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
@@ -145,14 +145,13 @@ class CacheKey(object):
     """
     Cached key for ProgramCache.
     """
-
     __slots__ = [
         'function_spec', 'input_args_with_spec', 'input_kwargs_with_spec',
-        'class_instance'
+        'class_instance', 'kwargs', '_spec_names_id'
     ]
 
     def __init__(self, function_spec, input_args_with_spec,
-                 input_kwargs_with_spec, class_instance):
+                 input_kwargs_with_spec, class_instance, **kwargs):
         """
         Initializes a cache key.
 
@@ -161,11 +160,16 @@ class CacheKey(object):
             input_args_with_spec(list[InputSpec]): actual input args with some arguments replaced by InputSpec.
             input_kwargs_with_spec(list[{string:InputSpec}]): actual input kwargs with some arguments replaced by InputSpec.
             class_instance(object): a instance of class `Layer`.
+            **kwargs(dict): manage other arguments used for better scalability
         """
         self.function_spec = function_spec
         self.input_args_with_spec = input_args_with_spec
         self.input_kwargs_with_spec = input_kwargs_with_spec
         self.class_instance = class_instance
+        # NOTE: `kwargs` is usually not considered as basic member for `__hash__`
+        self.kwargs = kwargs
+        self._spec_names_id = _hash_spec_names(input_args_with_spec,
+                                               input_kwargs_with_spec)
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -195,7 +199,7 @@ class CacheKey(object):
         return hash((id(self.function_spec),
                      make_hashable(self.input_args_with_spec, error_msg),
                      make_hashable(self.input_kwargs_with_spec, error_msg),
-                     self.class_instance))
+                     self._spec_names_id, self.class_instance))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -235,13 +239,14 @@ class StaticFunction(object):
 
     """
 
-    def __init__(self, function, input_spec=None):
+    def __init__(self, function, input_spec=None, **kwargs):
         """
         Initializes a `StaticFunction`.
 
         Args:
             function(callable): A function or method that will be converted into static program.
             input_spec(list[InputSpec]): list of InputSpec to specify the `shape/dtype/name` information for each input argument, default None.
+            **kwargs(dict): other arguments like `build_strategy` et.al.
         """
         # save the instance `self` while decorating a method of class.
         if inspect.ismethod(function):
@@ -257,6 +262,26 @@ class StaticFunction(object):
         self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
         self._program_trans = ProgramTranslator()
+        self._kwargs = kwargs
+        self._training = True
+
+    def train(self):
+        if isinstance(self._class_instance,
+                      layers.Layer) and self._class_instance.training == False:
+            raise RuntimeError(
+                "Failed to switch train mode. {} is a Layer's method, "
+                "please use Layer.train() to switch train mode.".format(
+                    self.dygraph_function))
+        self._training = True
+
+    def eval(self):
+        if isinstance(self._class_instance,
+                      layers.Layer) and self._class_instance.training == True:
+            raise RuntimeError(
+                "Failed to switch eval mode. {} is a Layer's method, "
+                "please use Layer.eval() to switch eval mode.".format(
+                    self.dygraph_function))
+        self._training = False
 
     def __get__(self, instance, owner):
         """
@@ -313,7 +338,7 @@ class StaticFunction(object):
             # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
             # will show up **only once**. StaticFunction.__call__ will run many times, it is appropriate to
             # display this warning message only once.
-            warnings.warn(
+            logging_utils.warn(
                 "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
                 "ProgramTranslator.enable(True)")
@@ -336,6 +361,8 @@ class StaticFunction(object):
             # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
                 partial_program_layer.training = self._class_instance.training
+            else:
+                partial_program_layer.training = self._training
 
             # 4. return outputs.
             try:
@@ -395,7 +422,8 @@ class StaticFunction(object):
 
         # 2. generate cache key
         cache_key = CacheKey(self._function_spec, input_args_with_spec,
-                             input_kwargs_with_spec, self._class_instance)
+                             input_kwargs_with_spec, self._class_instance,
+                             **self._kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
@@ -450,15 +478,45 @@ class StaticFunction(object):
                 out_foo = decorated_foo(paddle.rand([10]), paddle.rand([10]))
                 print(decorated_foo.concrete_program)
         """
+        return self.concrete_program_specify_input_spec(input_spec=None)
+
+    def concrete_program_specify_input_spec(self, input_spec=None):
+        """
+        Returns recent ConcreteProgram instance of decorated function while
+        specifying input_spec. If the self._function_spec already has
+        input_spce, it will check the compatibility of input input_spec and
+        the self._function_spec.input_spec. If input input_spec=None, then
+        this method uses self._function_spec.input_spec
+
+        args:
+            input_spec (list[InputSpec], optional): Describes the input of
+                the translate function.
+        """
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         if cached_program_len == 0:
-            input_spec = self._function_spec.input_spec
-            has_input_spec = (input_spec is not None and len(input_spec) > 0)
+            desired_input_spec = input_spec
+            if self._function_spec.input_spec is not None:
+                if input_spec is not None and not input_specs_compatible(
+                        flatten(input_spec),
+                        flatten(self._function_spec.input_spec)):
+                    raise ValueError(
+                        "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".
+                        format(input_spec, self._function_spec.input_spec))
+                # NOTE(chenweihang): we should always translated program based on the `input_spec`
+                # decorated on forward if it is valid
+                desired_input_spec = self._function_spec.input_spec
+                if input_spec is not None:
+                    logging_utils.warn(
+                        "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".
+                        format(desired_input_spec, input_spec))
+
+            has_input_spec = (desired_input_spec is not None)
             if has_input_spec:
-                concrete_program, _ = self.get_concrete_program(*input_spec)
+                concrete_program, _ = self.get_concrete_program(
+                    *desired_input_spec)
                 return concrete_program
             else:
                 raise ValueError(
@@ -517,28 +575,6 @@ class StaticFunction(object):
         return self._function_spec
 
 
-# Flag that indicates whether running code under `@declarative`
-_in_declarative_mode_ = False
-
-
-def in_declarative_mode():
-    """
-    Return a bool value that indicates whether running code under `@declarative`
-
-    """
-    return _in_declarative_mode_
-
-
-@signature_safe_contextmanager
-def _switch_declarative_mode_guard_(is_declarative=True):
-
-    global _in_declarative_mode_
-    original_val = _in_declarative_mode_
-    _in_declarative_mode_ = is_declarative
-    yield
-    _in_declarative_mode_ = original_val
-
-
 def _verify_init_in_dynamic_mode(class_instance):
     """
     Verifies the instance is initialized in dynamic mode.
@@ -556,7 +592,7 @@ class ConcreteProgram(object):
 
     __slots__ = [
         'inputs', 'outputs', 'main_program', "startup_program", "parameters",
-        "function"
+        "function", 'kwargs'
     ]
 
     def __init__(self,
@@ -565,18 +601,20 @@ class ConcreteProgram(object):
                  parameters,
                  function,
                  main_program,
-                 startup_program=None):
+                 startup_program=None,
+                 **kwargs):
         self.inputs = inputs
         self.outputs = outputs
         self.main_program = main_program
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
+        self.kwargs = kwargs
 
     @staticmethod
     @switch_to_static_graph
-    def from_func_spec(func_spec, input_spec, input_kwargs_spec,
-                       class_instance):
+    def from_func_spec(func_spec, input_spec, input_kwargs_spec, class_instance,
+                       **kwargs):
         """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
@@ -600,13 +638,14 @@ class ConcreteProgram(object):
         startup_program.random_seed = framework.default_startup_program(
         ).random_seed
 
+        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
                 inputs = func_spec.to_static_inputs_with_spec(input_spec,
                                                               main_program)
-                kwargs = func_spec.to_static_inputs_with_spec(input_kwargs_spec,
-                                                              main_program)
+                _kwargs = func_spec.to_static_inputs_with_spec(
+                    input_kwargs_spec, main_program)
                 if class_instance:
                     inputs = tuple([class_instance] + list(inputs))
 
@@ -619,8 +658,8 @@ class ConcreteProgram(object):
                         class_instance, False)), param_guard(
                             get_buffers(class_instance, False)):
                     try:
-                        if kwargs:
-                            outputs = static_func(*inputs, **kwargs)
+                        if _kwargs:
+                            outputs = static_func(*inputs, **_kwargs)
                         else:
                             outputs = static_func(*inputs)
                     except BaseException as e:
@@ -645,7 +684,8 @@ class ConcreteProgram(object):
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
             main_program=main_program,
-            startup_program=startup_program)
+            startup_program=startup_program,
+            **kwargs)
 
 
 def _extract_indeed_params_buffers(class_instance):
@@ -665,6 +705,7 @@ class ProgramCache(object):
     """
 
     def __init__(self):
+        # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
 
     def _build_once(self, cache_key):
@@ -672,16 +713,17 @@ class ProgramCache(object):
             func_spec=cache_key.function_spec,
             input_spec=cache_key.input_args_with_spec,
             input_kwargs_spec=cache_key.input_kwargs_with_spec,
-            class_instance=cache_key.class_instance)
+            class_instance=cache_key.class_instance,
+            **cache_key.kwargs)
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
-
-        if item not in self._caches:
-            self._caches[item] = self._build_once(item)
+        item_id = hash(item)
+        if item_id not in self._caches:
+            self._caches[item_id] = self._build_once(item)
             # Note: raise warnings if number of traced program is more than `max_tracing_count`
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
@@ -690,18 +732,19 @@ class ProgramCache(object):
                     "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
                     format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
 
-        return self._caches[item]
+        return self._caches[item_id]
 
     def get_program(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
                 "Input item's type should be FunctionSpec, but received %s" %
                 type_name(item))
-        if item not in self._caches:
+        item_id = hash(item)
+        if item_id not in self._caches:
             raise RuntimeError(
                 "Failed to find program for input item, please decorate input function by `@paddle.jit.to_static`."
             )
-        return self._caches[item]
+        return self._caches[item_id]
 
     def last(self):
         assert len(
@@ -859,7 +902,7 @@ class ProgramTranslator(object):
         if not self.enable_to_static:
             # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
             # will show up **only once**.
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."

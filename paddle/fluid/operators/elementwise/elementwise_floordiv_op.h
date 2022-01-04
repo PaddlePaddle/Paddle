@@ -15,46 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
-#ifdef __CUDA_ARCH__
-    if (b == 0) {
-      printf("Error: Divide by zero encounter in floor_divide\n");
-      asm("trap;");
-    }
-#else
-    if (b == 0)
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Divide by zero encounter in floor_divide"));
-#endif
-    return static_cast<T>(std::trunc(a / b));
-  }
-};
-
-template <typename T>
-struct InverseFloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
-#ifdef __CUDA_ARCH__
-    if (a == 0) {
-      printf("Error: Divide by zero encounter in floor_divide\n");
-      asm("trap;");
-    }
-#else
-    if (a == 0)
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Divide by zero encounter in floor_divide"));
-#endif
-    return static_cast<T>(std::trunc(b / a));
-  }
-};
 
 template <typename DeviceContext, typename T>
 void elementwise_floor_div(const framework::ExecutionContext &ctx,

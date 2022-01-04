@@ -28,20 +28,15 @@
 # TODO: define normalization api  
 
 import six
-#from ...fluid.dygraph.nn import InstanceNorm
 
-from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import BatchNorm  # noqa: F401
+from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
-#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
-
-from ...fluid.dygraph import layers
 from ...framework import get_default_dtype, set_default_dtype
 from ...fluid.framework import in_dygraph_mode
 
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
+from ..initializer import Constant
+from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid import core, dygraph_utils
 
@@ -50,17 +45,15 @@ from ..functional import batch_norm, layer_norm, instance_norm
 import numpy as np
 import numbers
 import warnings
-from ...fluid.dygraph.base import no_grad
+from ...framework import no_grad
 from .. import functional as F
+from paddle import _C_ops
+from .. import Layer
 
-__all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1D',
-    'BatchNorm2D', 'BatchNorm3D', 'InstanceNorm1D', 'InstanceNorm2D',
-    'InstanceNorm3D', 'SyncBatchNorm', 'LocalResponseNorm'
-]
+__all__ = []
 
 
-class _InstanceNormBase(layers.Layer):
+class _InstanceNormBase(Layer):
     """
     This class is based class for InstanceNorm1D, 2d, 3d. 
 
@@ -82,6 +75,7 @@ class _InstanceNormBase(layers.Layer):
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._num_features = num_features
 
         if weight_attr != False and bias_attr != False:
             self.scale = self.create_parameter(
@@ -107,6 +101,10 @@ class _InstanceNormBase(layers.Layer):
         return instance_norm(
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
+    def extra_repr(self):
+        return 'num_features={}, epsilon={}'.format(self._num_features,
+                                                    self._epsilon)
+
 
 class InstanceNorm1D(_InstanceNormBase):
     r"""
@@ -118,13 +116,13 @@ class InstanceNorm1D(_InstanceNormBase):
 
     ..  math::
         
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
+        \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -190,13 +188,13 @@ class InstanceNorm2D(_InstanceNormBase):
 
     ..  math::
         
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
+        \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -260,13 +258,13 @@ class InstanceNorm3D(_InstanceNormBase):
 
     ..  math::
         
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
+        \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -319,7 +317,7 @@ class InstanceNorm3D(_InstanceNormBase):
                 len(input.shape)))
 
 
-class GroupNorm(layers.Layer):
+class GroupNorm(Layer):
     """
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
@@ -341,8 +339,8 @@ class GroupNorm(layers.Layer):
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 4-D tensor with shape: (batch, num_features, height, weight).
-        - output: 4-D tensor with same shape as input x.
+        - x: Tensor with shape: (batch, num_features, *).
+        - output: The same shape as input x.
 
     Returns:
         None
@@ -378,7 +376,7 @@ class GroupNorm(layers.Layer):
         self._num_channels = num_channels
         self._num_groups = num_groups
         if data_format != 'NCHW':
-            raise ValueError("unsupported data layout:" + data_layout)
+            raise ValueError("unsupported data layout:" + data_format)
 
         param_shape = [self._num_channels]
 
@@ -433,8 +431,12 @@ class GroupNorm(layers.Layer):
 
         return self._helper.append_activation(group_norm_out, None)
 
+    def extra_repr(self):
+        return 'num_groups={}, num_channels={}, epsilon={}'.format(
+            self._num_groups, self._num_channels, self._epsilon)
 
-class LayerNorm(layers.Layer):
+
+class LayerNorm(Layer):
     r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
@@ -449,15 +451,15 @@ class LayerNorm(layers.Layer):
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
+        \mu & = \frac{1}{H}\sum_{i=1}^{H} x_i
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
+        \sigma & = \sqrt{\frac{1}{H}\sum_{i=1}^{H}{(x_i - \mu)^2} + \epsilon}
 
-        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
+        y & = f(\frac{g}{\sigma}(x - \mu) + b)
 
     - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
     - :math:`H`: the number of hidden units in a layers
-    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`\epsilon`: the small value added to the variance to prevent division by zero.
     - :math:`g`: the trainable scale parameter.
     - :math:`b`: the trainable bias parameter.
 
@@ -537,8 +539,12 @@ class LayerNorm(layers.Layer):
             bias=self.bias,
             epsilon=self._epsilon)
 
+    def extra_repr(self):
+        return 'normalized_shape={}, epsilon={}'.format(self._normalized_shape,
+                                                        self._epsilon)
 
-class _BatchNormBase(layers.Layer):
+
+class _BatchNormBase(Layer):
     """
     BatchNorm base .
     """
@@ -550,26 +556,34 @@ class _BatchNormBase(layers.Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
+                 use_global_stats=None,
                  name=None):
         super(_BatchNormBase, self).__init__()
         self._num_features = num_features
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._use_global_stats = use_global_stats
 
         if get_default_dtype() == 'float16':
-            set_default_dtype('float32')
+            self._dtype = 'float32'
+        else:
+            self._dtype = get_default_dtype()
 
         param_shape = [num_features]
 
         # create parameter
         if weight_attr == False:
             self.weight = self.create_parameter(
-                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0))
             self.weight.stop_gradient = True
         else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
+                dtype=self._dtype,
                 default_initializer=Constant(1.0))
             self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
@@ -577,12 +591,16 @@ class _BatchNormBase(layers.Layer):
             self.bias = self.create_parameter(
                 attr=None,
                 shape=param_shape,
+                dtype=self._dtype,
                 default_initializer=Constant(0.0),
                 is_bias=True)
             self.bias.stop_gradient = True
         else:
             self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True)
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True)
             self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
         moving_mean_name = None
@@ -593,6 +611,7 @@ class _BatchNormBase(layers.Layer):
             moving_variance_name = name + "_variance"
 
         self._mean = self.create_parameter(
+            dtype=self._dtype,
             attr=ParamAttr(
                 name=moving_mean_name,
                 initializer=Constant(0.0),
@@ -602,6 +621,7 @@ class _BatchNormBase(layers.Layer):
         self._mean.stop_gradient = True
 
         self._variance = self.create_parameter(
+            dtype=self._dtype,
             attr=ParamAttr(
                 name=moving_variance_name,
                 initializer=Constant(1.0),
@@ -642,44 +662,53 @@ class _BatchNormBase(layers.Layer):
             training=self.training,
             momentum=self._momentum,
             epsilon=self._epsilon,
-            data_format=self._data_format)
+            data_format=self._data_format,
+            use_global_stats=self._use_global_stats)
+
+    def extra_repr(self):
+        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
+            self._num_features, self._momentum, self._epsilon)
+        if self._data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str
 
 
 class BatchNorm1D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    When use_global_stats = False, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
     .. math::
-        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
-        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global \ mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The normalization function formula is as follows:
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -694,6 +723,7 @@ class BatchNorm1D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -720,6 +750,19 @@ class BatchNorm1D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCL',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm1D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
@@ -739,37 +782,36 @@ class BatchNorm2D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    When use_global_stats = False, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - 
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
     .. math::
-        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
-        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global \ mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The normalization function formula is as follows:
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -784,6 +826,7 @@ class BatchNorm2D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -827,37 +870,36 @@ class BatchNorm3D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    When use_global_stats = False, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
     .. math::
-        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
-        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global \ mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The normalization function formula is as follows:
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -872,6 +914,7 @@ class BatchNorm3D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -896,6 +939,19 @@ class BatchNorm3D(_BatchNormBase):
 
           print(batch_norm_out)
     """
+
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCDHW',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm3D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
 
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
@@ -930,33 +986,33 @@ class SyncBatchNorm(_BatchNormBase):
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
     - :math:`x` : whole mini-batch data in all gpus
     - :math:`m` : the size of the whole mini-batch data
 
     When model in evaluation mode, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance, 
     which usually got from the pre-trained model). Global statistics calculated as follows:
 
     .. math::
-        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
-        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global \ mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The formula of normalization is as follows:
  
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\eps}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\eps` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable scale parameter vector
-    - :math:`\\beta` : trainable shift parameter vector 
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable scale parameter vector
+    - :math:`\beta` : trainable shift parameter vector 
 
     Note:
         If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
@@ -1009,9 +1065,20 @@ class SyncBatchNorm(_BatchNormBase):
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, name)
+                             bias_attr, data_format, None, name)
+
+    def _check_data_format(self):
+        if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
+            self._data_format = 'NCHW'
+        elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
+            )
 
     def forward(self, x):
+        self._check_data_format()
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
@@ -1026,7 +1093,7 @@ class SyncBatchNorm(_BatchNormBase):
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
-            sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
 
@@ -1096,11 +1163,12 @@ class SyncBatchNorm(_BatchNormBase):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            if layer._weight_attr != None and not isinstance(layer._weight_attr,
-                                                             bool):
+            if layer._weight_attr != None and not isinstance(
+                    layer._weight_attr,
+                    bool) and layer._weight_attr.name != None:
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
-            if layer._bias_attr != None and not isinstance(layer._weight_attr,
-                                                           bool):
+            if layer._bias_attr != None and not isinstance(
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
@@ -1115,14 +1183,14 @@ class SyncBatchNorm(_BatchNormBase):
             layer_output._mean = layer._mean
             layer_output._variance = layer._variance
 
-        for name, sublayer in layer.named_sublayers():
+        for name, sublayer in layer.named_children():
             layer_output.add_sublayer(name,
                                       cls.convert_sync_batchnorm(sublayer))
         del layer
         return layer_output
 
 
-class LocalResponseNorm(layers.Layer):
+class LocalResponseNorm(Layer):
     """
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
@@ -1180,3 +1248,12 @@ class LocalResponseNorm(layers.Layer):
         out = F.local_response_norm(input, self.size, self.alpha, self.beta,
                                     self.k, self.data_format, self.name)
         return out
+
+    def extra_repr(self):
+        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
+            self.size, self.alpha, self.beta, self.k)
+        if self.data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self.data_format)
+        if self.name is not None:
+            main_str += ', name={}'.format(self.name)
+        return main_str

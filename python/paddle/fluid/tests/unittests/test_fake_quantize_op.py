@@ -166,12 +166,14 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         accum[0] = 1
         state = np.zeros(1).astype("float32")
         state[0] = 1
+        x = np.random.random((8, 16, 7, 7)).astype("float32")
         self.inputs = {
-            'X': np.random.random((8, 16, 7, 7)).astype("float32"),
+            'X': x,
             'InAccum': accum,
             'InState': state,
         }
 
+        out = x
         out_accum = np.zeros(1).astype("float32")
         out_state = np.zeros(1).astype("float32")
         out_scale = np.zeros(1).astype("float32")
@@ -180,6 +182,7 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         out_state[0] = self.attrs['moving_rate'] * state[0] + 1
         out_scale = out_accum / out_state
         self.outputs = {
+            'Out': out,
             'OutAccum': out_accum,
             'OutState': out_state,
             'OutScale': out_scale,

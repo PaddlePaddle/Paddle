@@ -15,7 +15,6 @@
 #pragma once
 
 #include <arpa/inet.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -24,6 +23,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "gflags/gflags.h"
 
 namespace paddle {
 namespace distributed {
@@ -39,7 +39,7 @@ struct PSHost {
 
   // |---ip---|---port---|--rank--|
   // |-32bit--|--20bit---|--12bit-|
-  // for pslib
+
   uint64_t serialize_to_uint64() {
     uint64_t host_label = 0;
     host_label = inet_addr(ip.c_str());
@@ -55,7 +55,7 @@ struct PSHost {
     rank = host_label & rank_label_mask;
     port = (host_label >> 12) & port_label_mask;
     uint32_t ip_addr = (host_label >> 32);
-    ip = inet_ntoa(*(in_addr *)&ip_addr);
+    ip = inet_ntoa(*(in_addr *)&ip_addr);  // NOLINT
   }
 
   std::string to_string() {
@@ -108,7 +108,7 @@ struct PSHost {
 
 class PSEnvironment {
  public:
-  explicit PSEnvironment() {}
+  explicit PSEnvironment() {}  // NOLINT
   virtual ~PSEnvironment() {}
 
   virtual int32_t set_ps_servers(uint64_t *host_sign_list, int node_num) {
@@ -144,8 +144,8 @@ class PSEnvironment {
 
   virtual std::vector<uint64_t> get_client_info() {
     std::vector<uint64_t> client_info;
-    for (auto &i : _ps_client_sign_set) {
-      client_info.push_back(i);
+    for (auto &i : _ps_client_list) {
+      client_info.push_back(i.serialize_to_uint64());
     }
     return client_info;
   }
@@ -161,33 +161,30 @@ class PSEnvironment {
     return {};
   }
 
+  virtual void set_trainers(int trainers) { trainers_ = trainers; }
+
+  virtual int get_trainers() { return trainers_; }
+
  protected:
-  //注册一个host
-  virtual int32_t registe_ps_host(const std::string &ip, uint32_t port,
-                                  int32_t rank, std::vector<PSHost> &host_list,
-                                  std::unordered_set<uint64_t> &sign_set) {
+  //注册一个host //  NOLINT
+  virtual int32_t registe_ps_host(
+      const std::string &ip, uint32_t port, int32_t rank,
+      std::vector<PSHost> &host_list,            // NOLINT
+      std::unordered_set<uint64_t> &sign_set) {  // NOLINT
     PSHost host;
     host.ip = ip;
     host.port = port;
     host.rank = rank;
-    if (sign_set.count(rank) > 0) {
-      LOG(WARNING) << "ps-host :" << host.ip << ":" << host.port
-                   << ", rank:" << host.rank
-                   << " already register, ignore register";
-    } else {
+
+    if (sign_set.count(rank) == 0) {
       host_list.push_back(host);
       sign_set.insert(rank);
     }
-    // if (sign_set.count(host.serialize_to_uint64()) > 0) {
-    //   LOG(WARNING) << "ps-host :" << host.ip << ":" << host.port
-    //                << ", rank:" << host.rank
-    //                << " already register, ignore register";
-    // } else {
-    //   host_list.push_back(host);
-    //   sign_set.insert(host.serialize_to_uint64());
-    // }
+
     return 0;
   }
+
+  int trainers_ = 0;
 
   std::vector<PSHost> _ps_client_list;
   std::unordered_set<uint64_t> _ps_client_sign_set;  // for unique filter
@@ -198,7 +195,7 @@ class PSEnvironment {
 
 class PaddlePSEnvironment : public PSEnvironment {
  public:
-  explicit PaddlePSEnvironment() {}
+  explicit PaddlePSEnvironment() {}  // NOLINT
   virtual ~PaddlePSEnvironment() {}
 
   virtual int32_t set_ps_servers(uint64_t *host_sign_list, int node_num) {
@@ -253,7 +250,7 @@ class PaddlePSEnvironment : public PSEnvironment {
     return 0;
   }
 
-  virtual int32_t set_ps_clients(std::vector<std::string> *host_sign_list,
+  virtual int32_t set_ps_clients(const std::vector<std::string> *host_sign_list,
                                  int node_num) {
     _ps_client_list.clear();
     _ps_client_sign_set.clear();
@@ -268,6 +265,7 @@ class PaddlePSEnvironment : public PSEnvironment {
     std::sort(
         _ps_client_list.begin(), _ps_client_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
+    VLOG(1) << "env.set_ps_clients done\n";
     return 0;
   }
 

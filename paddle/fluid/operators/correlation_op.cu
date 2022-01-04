@@ -16,30 +16,46 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
+#ifdef __HIPCC__
+#define __syncwarp() __all(1)
+#endif
+
 namespace paddle {
 namespace operators {
 
+#ifdef __HIPCC__
+#define THREADS_PER_BLOCK 64
+#else
 #define THREADS_PER_BLOCK 32
+#endif
 #define FULL_MASK 0xffffffff
 
 using framework::Tensor;
-using DataLayout = framework::DataLayout;
 
 template <typename T>
 __forceinline__ __device__ T warpReduceSum(T val) {
   for (int offset = 16; offset > 0; offset /= 2) {
+#ifdef __HIPCC__
+    val += __shfl_down(val, offset);
+#else
     val += __shfl_down_sync(FULL_MASK, val, offset);
+#endif
   }
   return val;
 }
 
 template <typename T>
 __forceinline__ __device__ T blockReduceSum(T val) {
+#ifdef __HIPCC__
+  static __shared__ T shared[64];
+#else
   static __shared__ T shared[32];
+#endif
   int lane = threadIdx.x % warpSize;
   int wid = threadIdx.x / warpSize;
 
   val = warpReduceSum(val);
+  __syncthreads();
   if (lane == 0) shared[wid] = val;
 
   __syncthreads();

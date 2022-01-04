@@ -70,7 +70,8 @@ class TestOperator(unittest.TestCase):
             set([
                 "x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var",
                 "use_mkldnn", "scale_x", "scale_y", "scale_out",
-                "force_fp32_output", "op_namescope", "op_callstack", "op_device"
+                "force_fp32_output", "op_namescope", "op_callstack",
+                "op_device", "with_quant_attr"
             ]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)
@@ -80,6 +81,8 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.attr("y_num_col_dims"), 1)
         self.assertEqual(mul_op.idx, 0)
         self.assertEqual(mul_out.op, mul_op)
+        mul_op.desc.remove_input("X")
+        self.assertEqual(mul_op.input_names, ["Y"])
 
     def test_mult_input(self):
         program = Program()

@@ -41,15 +41,24 @@ class ScatterOp : public framework::OperatorWithKernel {
     auto ref_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputDim("Ids").size(), 1,
-        platform::errors::InvalidArgument("Update Ids should be 1-D."));
+        platform::errors::InvalidArgument(
+            "The size of Input(Ids)'s shape should be equal to 1, but "
+            "received the rank of Input(Ids) is %d.",
+            ctx->GetInputDim("Ids").size()));
     PADDLE_ENFORCE_EQ(
         ref_dims.size(), updates_dims.size(),
         platform::errors::InvalidArgument(
-            "Rerence and Updates should have the same shape size."));
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
-                      ctx->GetInputDim("Ids")[0],
-                      platform::errors::InvalidArgument(
-                          "Updates and Ids should have same batch-size."));
+            "Input(X) and Input(Updates) should have the same shape size, "
+            "but received the size of Input(x)'s shape is %d, the size of "
+            "Input(Updates)'s shape is %d.",
+            ref_dims.size(), updates_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputDim("Updates")[0], ctx->GetInputDim("Ids")[0],
+        platform::errors::InvalidArgument(
+            "Input(Updates) and Input(Ids) should have same batch-size, but"
+            " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
+            "batch-size is %d.",
+            ctx->GetInputDim("Updates")[0], ctx->GetInputDim("Ids")[0]));
     ctx->SetOutputDim("Out", ref_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -138,9 +147,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterGradNoNeedBufferVarsInferer,
                                     "Updates");
 
 DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ScatterGradInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -151,8 +157,7 @@ REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
                   ops::ScatterGradMaker<paddle::imperative::OpBase>,
                   ops::ScatterInplaceInferer);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
-                  ops::ScatterGradNoNeedBufferVarsInferer,
-                  ops::ScatterGradInplaceInferer);
+                  ops::ScatterGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>,
                        ops::ScatterOpKernel<double>, ops::ScatterOpKernel<int>,
                        ops::ScatterOpKernel<int64_t>);

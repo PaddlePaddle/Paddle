@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <set>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -200,7 +198,8 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
                                       "Users should not set this manually.")
-        .SetDefault(std::vector<std::string>());
+        .SetDefault(std::vector<std::string>())
+        .AsExtra();
     AddComment(R"DOC(
 )DOC");
   }

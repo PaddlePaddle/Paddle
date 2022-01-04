@@ -26,10 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sampler.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -45,7 +41,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext &context,
-                    Sampler *sampler) {
+                    Sampler *sampler, Tensor *sample_labels) {
   auto label = context.Input<Tensor>("Label");
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
@@ -53,7 +49,6 @@ void PrepareSamples(const framework::ExecutionContext &context,
   std::vector<int> custom_neg_classes =
       context.Attr<std::vector<int>>("custom_neg_classes");
 
-  auto sample_labels = context.Output<Tensor>("SampleLabels");
   auto sample_labels_dims = sample_labels->dims();
   int64_t *sample_labels_data =
       sample_labels->mutable_data<int64_t>(context.GetPlace());
@@ -86,6 +81,7 @@ class NCEKernel : public framework::OpKernel<T> {
     int seed = context.Attr<int>("seed");
     int num_total_classes = context.Attr<int>("num_total_classes");
     int num_neg_samples = context.Attr<int>("num_neg_samples");
+    bool is_test = context.Attr<bool>("is_test");
 
     Sampler *sampler;
     switch (sampler_type) {
@@ -143,8 +139,29 @@ class NCEKernel : public framework::OpKernel<T> {
       }
     }
 
-    PrepareSamples<DeviceContext, T>(context, sampler);
-    auto sample_labels = context.Output<Tensor>("SampleLabels");
+    std::vector<int64_t> sample_out_dims;
+    auto label = context.Input<Tensor>("Label");
+    Tensor *sample_labels;
+    Tensor *sample_out;
+    Tensor sample_labels_tmp, sample_out_tmp;
+    if (is_test) {
+      // set dims of output(SampleOut)
+      int num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
+      sample_out_dims.push_back((context.Input<Tensor>("Input"))->dims()[0]);
+      sample_out_dims.push_back(
+          (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
+
+      sample_labels = &sample_labels_tmp;
+      sample_labels->Resize(framework::make_ddim(sample_out_dims));
+
+      sample_out = &sample_out_tmp;
+      sample_out->Resize(framework::make_ddim(sample_out_dims));
+    } else {
+      sample_labels = context.Output<Tensor>("SampleLabels");
+      sample_out = context.Output<Tensor>("SampleLogits");
+    }
+
+    PrepareSamples<DeviceContext, T>(context, sampler, sample_labels);
     const int64_t *sample_labels_data = sample_labels->data<int64_t>();
 
     for (int x = 0; x < sample_labels->numel(); x++) {
@@ -156,9 +173,7 @@ class NCEKernel : public framework::OpKernel<T> {
                             x, sample_labels_data[x]));
     }
 
-    auto sample_out = context.Output<Tensor>("SampleLogits");
     T *sample_out_data = sample_out->mutable_data<T>(context.GetPlace());
-    auto label = context.Input<Tensor>("Label");
     auto sample_weight = context.Input<Tensor>("SampleWeight");
     const T *sample_weight_data = nullptr;
     if (sample_weight != nullptr) {
@@ -187,80 +202,14 @@ class NCEKernel : public framework::OpKernel<T> {
     // forward mul
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
 
-    // for remote prefetch
-    auto remote_prefetch = context.Attr<bool>("remote_prefetch");
-    auto epmap = context.Attr<std::vector<std::string>>("epmap");
-
-    if (remote_prefetch && !epmap.empty()) {
-      // if epmap is not empty, then the parameter will be fetched from remote
-      // parameter
-      // server
-
-      std::vector<int64_t> labels;
-      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-        labels.push_back(sample_labels_data[i]);
-      }
-      std::set<T> st(labels.begin(), labels.end());
-      labels.assign(st.begin(), st.end());
-
-      framework::Scope &local_scope = context.scope().NewScope();
-
-      auto table_names = context.Attr<std::vector<std::string>>("table_names");
-
-      auto *ids = local_scope.Var("Ids@Prefetch");
-      auto *x_tensor = ids->GetMutable<framework::LoDTensor>();
-      x_tensor->mutable_data<int64_t>(
-          framework::make_ddim({static_cast<int64_t>(labels.size()), 1}),
-          context.GetPlace());
-      // copy.
-      std::memcpy(x_tensor->data<int64_t>(), labels.data(),
-                  labels.size() * sizeof(int64_t));
-
-      std::vector<int> w_dims = paddle::framework::vectorize<int>(
-          context.Input<Tensor>("Weight")->dims());
-      w_dims[0] = static_cast<int>(labels.size());
-
-      auto *w_tensor = local_scope.Var("Weight@Prefetch")
-                           ->GetMutable<framework::LoDTensor>();
-      w_tensor->Resize(framework::make_ddim(w_dims));
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-      auto weight = context.InputNames("Weight").front();
-      operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
-                                       weight, false, table_names, epmap,
-                                       context, local_scope);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "paddle is not compiled with distribute support, can not do "
-          "parameter prefetch!"));
-#endif
-
-      auto weight_mat = EigenMatrix<T>::From(
-          (local_scope.Var("Weight@Prefetch")->Get<framework::LoDTensor>()));
-      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-        std::vector<int64_t>::iterator it =
-            std::find(labels.begin(), labels.end(), sample_labels_data[i]);
-        int idx = std::distance(labels.begin(), it);
-
-        Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
-            (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
-             weight_mat.chip(idx, 0))
-                .sum();
-        sample_out_data[i] += result(0);
-        sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
-      }
-      context.scope().DeleteScope(&local_scope);
-    } else {
-      auto weight_mat =
-          EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-        Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
-            (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
-             weight_mat.chip(sample_labels_data[i], 0))
-                .sum();
-        sample_out_data[i] += result(0);
-        sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
-      }
+    auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
+    for (int64_t i = 0; i < sample_labels->numel(); ++i) {
+      Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+          (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
+           weight_mat.chip(sample_labels_data[i], 0))
+              .sum();
+      sample_out_data[i] += result(0);
+      sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
     }
 
     // forward cost

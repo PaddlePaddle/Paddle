@@ -15,37 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VDIV(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-// use default div function for int32/int64 type because of divison zero
-// checking.
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
-  }
-};
 
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
@@ -134,9 +109,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -144,9 +119,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex64>,
+                                  paddle::platform::complex<float>>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex128>);
+                                  paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad_grad,
@@ -159,6 +134,15 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex64>,
+                                        paddle::platform::complex<float>>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex128>);
+                                        paddle::platform::complex<double>>);
+
+REGISTER_OP_VERSION(elementwise_div)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_div for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_div.",
+            1.0f));

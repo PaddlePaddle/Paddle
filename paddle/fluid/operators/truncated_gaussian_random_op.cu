@@ -12,25 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include <limits>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-struct TruncatedNormal {
+struct GPUTruncatedNormal {
   T mean, std;
   T a_normal_cdf;
   T b_normal_cdf;
   unsigned int seed;
   T numeric_min;
 
-  __host__ __device__ TruncatedNormal(T mean, T std, T numeric_min, int seed)
+  __host__ __device__ GPUTruncatedNormal(T mean, T std, T numeric_min, int seed)
       : mean(mean), std(std), seed(seed), numeric_min(numeric_min) {
     a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
     b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
@@ -94,7 +97,7 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
     int64_t size = tensor->numel();
 
     int device_id =
@@ -103,17 +106,17 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
+      int64_t gen_offset = size * seed_offset.second;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(data),
           TruncatedNormalOffset<T>(mean, std, std::numeric_limits<T>::min(),
                                    seed_offset.first, gen_offset));
     } else {
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          TruncatedNormal<T>(mean, std, std::numeric_limits<T>::min(), seed));
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GPUTruncatedNormal<T>(
+                            mean, std, std::numeric_limits<T>::min(), seed));
     }
   }
 };

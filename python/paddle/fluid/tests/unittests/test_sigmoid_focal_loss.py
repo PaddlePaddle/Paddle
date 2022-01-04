@@ -42,8 +42,10 @@ def test_static(place,
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        logit = paddle.fluid.data(name='logit', shape=logit_np.shape, dtype='float64')
-        label = paddle.fluid.data(name='label', shape=label_np.shape, dtype='float64')
+        logit = paddle.fluid.data(
+            name='logit', shape=logit_np.shape, dtype='float64')
+        label = paddle.fluid.data(
+            name='label', shape=label_np.shape, dtype='float64')
         feed_dict = {"logit": logit_np, "label": label_np}
 
         normalizer = None

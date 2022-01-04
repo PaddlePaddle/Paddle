@@ -77,7 +77,7 @@ void OpTester::Run() {
     if (platform::is_cpu_place(place_)) {
       platform::EnableProfiler(platform::ProfilerState::kCPU);
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::EnableProfiler(platform::ProfilerState::kAll);
       platform::SetDeviceId(config_.device_id);
 #else
@@ -142,7 +142,8 @@ OpTester::GetOpProtoAttrNames() {
       framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
       framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
       framework::OpProtoAndCheckerMaker::OpNamescopeAttrName(),
-      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName()};
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName(),
+      framework::OpProtoAndCheckerMaker::OpWithQuantAttrName()};
   for (int i = 0; i != proto.attrs_size(); ++i) {
     const auto &attr = proto.attrs(i);
     if (!Has(skipped_attrs, attr.name())) {

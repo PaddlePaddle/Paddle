@@ -39,28 +39,49 @@ struct Layers {
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
-                  bool use_cudnn = false) {
+                  int groups = 1, std::vector<int> strides = {1, 1},
+                  std::vector<int> paddings = {0, 0},
+                  std::string padding_algorithm = "EXPLICIT",
+                  std::vector<int> dilations = {1, 1},
+                  std::string data_format = "NCHW", bool use_cudnn = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d");
     op->SetInput("Input", {input->Name()});
     op->SetInput("Filter", {filter->Name()});
     op->SetInput("Bias", {bias->Name()});
-    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("Output", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr("groups", groups);
+    op->SetAttr("strides", strides);
+    op->SetAttr("paddings", paddings);
+    op->SetAttr("padding_algorithm", padding_algorithm);
+    op->SetAttr("dilations", dilations);
+    op->SetAttr("data_format", data_format);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
   }
 
-  VarDesc* conv2d_transpose(VarDesc* input, VarDesc* filter, VarDesc* bias) {
+  VarDesc* conv2d_transpose(VarDesc* input, VarDesc* filter, VarDesc* bias,
+                            int groups = 1, std::vector<int> strides = {1, 1},
+                            std::vector<int> paddings = {0, 0},
+                            std::string padding_algorithm = "EXPLICIT",
+                            std::vector<int> dilations = {1, 1},
+                            std::string data_format = "NCHW") {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d_transpose");
     op->SetInput("Input", {input->Name()});
     op->SetInput("Filter", {filter->Name()});
     op->SetInput("Bias", {bias->Name()});
-    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("Output", {out->Name()});
+    op->SetAttr("groups", groups);
+    op->SetAttr("strides", strides);
+    op->SetAttr("paddings", paddings);
+    op->SetAttr("padding_algorithm", padding_algorithm);
+    op->SetAttr("dilations", dilations);
+    op->SetAttr("data_format", data_format);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
@@ -81,15 +102,31 @@ struct Layers {
     return out;
   }
 
-  VarDesc* pool2d(VarDesc* x, bool use_cudnn) {
+  VarDesc* pool2d(VarDesc* x, bool use_cudnn,
+                  const AttributeMap* attrs = nullptr) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("pool2d");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("unsqueeze2");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
     return out;
   }
 
@@ -178,18 +215,26 @@ struct Layers {
   }
 
   VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
-               int x_num_col_dims = 1) {
+               int x_num_col_dims = 1, int y_num_col_dims = 1,
+               bool use_mkldnn = false) {
     AttributeMap attrs;
-    attrs["x_num_col_dims"] = 1;
+    attrs["x_num_col_dims"] = x_num_col_dims;
+    attrs["y_num_col_dims"] = y_num_col_dims;
+    attrs["use_mkldnn"] = use_mkldnn;
     return binary_op("mul", x, y, out, &attrs);
   }
 
-  VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
-    return binary_op("elementwise_add", x, y, out);
+  VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
+                           int axis = -1, bool use_mkldnn = false) {
+    AttributeMap attrs;
+    attrs["axis"] = axis;
+    attrs["use_mkldnn"] = use_mkldnn;
+    return binary_op("elementwise_add", x, y, out, &attrs);
   }
 
-  VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
-    return binary_op("elementwise_mul", x, y, out);
+  VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
+                           const AttributeMap* attrs = nullptr) {
+    return binary_op("elementwise_mul", x, y, out, attrs);
   }
 
   VarDesc* dropout(VarDesc* x, float dropout_prob,
@@ -248,13 +293,30 @@ struct Layers {
     return outs;
   }
 
-  VarDesc* matmul(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr) {
+  VarDesc* matmul(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr,
+                  bool transpose_x = false, bool transpose_y = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("matmul");
     op->SetInput("X", {x->Name()});
     op->SetInput("Y", {y->Name()});
     op->SetOutput("Out", {out->Name()});
+    op->SetAttr("transpose_X", transpose_x);
+    op->SetAttr("transpose_Y", transpose_y);
+    op->SetAttr("alpha", 1.0f);
+    return out;
+  }
+
+  VarDesc* matmul_v2(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr,
+                     bool trans_x = false, bool trans_y = false) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("matmul_v2");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("trans_x", trans_x);
+    op->SetAttr("trans_y", trans_y);
     return out;
   }
 

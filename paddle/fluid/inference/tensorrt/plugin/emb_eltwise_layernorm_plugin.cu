@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 
 namespace paddle {
@@ -33,14 +32,31 @@ namespace plugin {
 
 template <typename T>
 EmbEltwiseLayernormPluginDynamicImpl<
-    T>::~EmbEltwiseLayernormPluginDynamicImpl() {
-  this->terminate();
-}
+    T>::~EmbEltwiseLayernormPluginDynamicImpl() {}
 
 inline half fp32tofp16(float x) { return static_cast<half>(x); }
 
 template <typename T>
+void EmbEltwiseLayernormPluginDynamicImpl<T>::shareGPUData(
+    const EmbEltwiseLayernormPluginDynamicImplBase *anthor) {
+  auto *ptr =
+      dynamic_cast<const EmbEltwiseLayernormPluginDynamicImpl<T> *>(anthor);
+  if (!ptr->is_initialized_) {
+    return;
+  }
+  embs_gpu_ = ptr->embs_gpu_;
+  scale_gpu_ = ptr->scale_gpu_;
+  bias_gpu_ = ptr->bias_gpu_;
+  int input_num = embs_.size();
+  in_ptr_tensor_.Resize({input_num});
+  emb_ptr_tensor_.ShareDataWith(ptr->emb_ptr_tensor_);
+}
+
+template <typename T>
 int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
+  if (is_initialized_) {
+    return 0;
+  }
   embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
     if (embs_[i]) {
@@ -77,13 +93,12 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
   int input_num = embs_.size();
   in_ptr_tensor_.Resize({input_num});
   emb_ptr_tensor_.Resize({input_num});
-
   cudaGetDevice(&device_id_);
   auto emb_ptr_gpu_d =
       emb_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
   cudaMemcpy(emb_ptr_gpu_d, embs_gpu_.data(), sizeof(uintptr_t) * input_num,
              cudaMemcpyHostToDevice);
-
+  is_initialized_ = true;
   return 0;
 }
 
@@ -111,26 +126,20 @@ template <typename T>
 int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto id_dims = input_desc[0].dims;
   int batch = id_dims.d[0];
   int seq_len = id_dims.d[1];
   int input_num = embs_.size();
-
+  cudaGetDevice(&device_id_);
   auto in_ptr_gpu_d =
       in_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
   auto emb_ptr_gpu_d =
       emb_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
 
-  auto new_input_ptr = reinterpret_cast<uintptr_t>(inputs[0]);
-
-  if (old_input_ptr_ != new_input_ptr) {
-    old_input_ptr_ = new_input_ptr;
-
-    cudaMemcpyAsync(in_ptr_gpu_d, reinterpret_cast<const void *>(inputs),
-                    sizeof(uintptr_t) * input_num, cudaMemcpyHostToDevice,
-                    stream);
-  }
+  cudaMemcpyAsync(in_ptr_gpu_d, reinterpret_cast<const void *>(inputs),
+                  sizeof(uintptr_t) * input_num, cudaMemcpyHostToDevice,
+                  stream);
 
   auto out_type = output_desc[0].type;
 
@@ -164,17 +173,19 @@ template class EmbEltwiseLayernormPluginDynamicImpl<float>;
 template class EmbEltwiseLayernormPluginDynamicImpl<half>;
 #endif
 
-int EmbEltwiseLayernormPluginDynamic::initialize() {
+int EmbEltwiseLayernormPluginDynamic::initialize() TRT_NOEXCEPT {
   impl_->initialize();
 
   return 0;
 }
 
-void EmbEltwiseLayernormPluginDynamic::terminate() { impl_->terminate(); }
+void EmbEltwiseLayernormPluginDynamic::terminate() TRT_NOEXCEPT {
+  impl_->terminate();
+}
 
 nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {  // NOLINT
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {  // NOLINT
   PADDLE_ENFORCE_EQ(output_index, 0,
                     platform::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
@@ -182,18 +193,16 @@ nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic::getOutputDimensions(
                         "but it's (%d)",
                         output_index));
   nvinfer1::DimsExprs ret;
-  ret.nbDims = 5;
+  ret.nbDims = 3;
   ret.d[0] = inputs[0].d[0];
   ret.d[1] = inputs[0].d[1];
   ret.d[2] = expr_builder.constant(hidden_size_);
-  ret.d[3] = expr_builder.constant(1);
-  ret.d[4] = expr_builder.constant(1);
   return ret;
 }
 
 bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -241,7 +250,8 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       index, 0, platform::errors::InvalidArgument(
                     "The EmbEltwiseLayernorm Plugin only has one input, so the "
@@ -256,7 +266,7 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
 int EmbEltwiseLayernormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   impl_->enqueue(input_desc, output_desc, inputs, outputs, workspace, stream);
   return cudaGetLastError() != cudaSuccess;
 }

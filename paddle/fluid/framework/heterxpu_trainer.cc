@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
     (defined PADDLE_WITH_PSLIB)
@@ -50,11 +51,11 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
     platform::CUDAPlace place = platform::CUDAPlace(num);
     platform::CUDADeviceGuard guard(place.device);
     cudaStream_t stream;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
     copy_streams_.push_back(stream);
     places_.push_back(place);
     cudaEvent_t event;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
     events_.push_back(event);
 #endif
@@ -103,7 +104,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
   //   platform::CUDAPlace place = platform::CUDAPlace(num);
   //   platform::CUDADeviceGuard guard(place.device);
   //   cudaStream_t stream;
-  //   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+  //   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
   //   copy_streams_.push_back(stream);
   //   places_.push_back(place);
   // }
@@ -156,7 +157,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
     }
   }
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
   cudaEventSynchronize(event);
 #endif
 }
@@ -286,7 +287,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 #ifdef PADDLE_WITH_CUDA
       auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::CUDADeviceGuard guard(dev_id);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
 #endif
       object_pool_.Push(context);
@@ -440,7 +441,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
 #ifdef PADDLE_WITH_CUDA
     auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     platform::CUDADeviceGuard guard(dev_id);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
 #endif
   }
@@ -460,7 +461,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
 #endif
     }
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventRecord(context->event_, copy_streams_[context->place_num_]));
     while (cudaEventQuery(context->event_) != cudaSuccess) {
       VLOG(3) << "wait for kernel";
@@ -480,7 +481,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
 #ifdef PADDLE_WITH_CUDA
   auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(place));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(context->event_, dev_ctx->stream()));
   // cudaEventSynchronize(context->event_);
   {

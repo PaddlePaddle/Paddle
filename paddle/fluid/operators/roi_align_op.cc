@@ -175,6 +175,10 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
                  "If <=0, then grid points are adaptive to roi_width "
                  "and pooled_w, likewise for height")
         .SetDefault(-1);
+    AddAttr<bool>("aligned",
+                  "(bool, default False),"
+                  "If true, pixel shift it by -0.5 for align more perfectly")
+        .SetDefault(false);
     AddComment(R"DOC(
 **RoIAlign Operator**
 
@@ -235,7 +239,21 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_VERSION(roi_align)
     .AddCheckpoint(
         R"ROC(
-              Upgrade roi_align add a new input [RoisNum])ROC",
+              Incompatible upgrade of input [RpnRoisLod])ROC",
+        paddle::framework::compatible::OpVersionDesc().DeleteInput(
+            "RpnRoisLod",
+            "Delete RpnRoisLod due to incorrect input name and "
+            "it is not used in object detection models yet."))
+    .AddCheckpoint(
+        R"ROC(
+             Upgrade roi_align add a new input [RoisNum])ROC",
         paddle::framework::compatible::OpVersionDesc().NewInput(
             "RoisNum",
-            "The number of RoIs in each image. RoisNum is dispensable."));
+            "The number of RoIs in each image. RoisNum is dispensable."))
+    .AddCheckpoint(
+        R"ROC(
+             Upgrade roi_align add a new input [aligned])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "aligned",
+            "If true, pixel shift it by -0.5 for align more perfectly.",
+            false));

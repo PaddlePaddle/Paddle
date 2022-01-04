@@ -130,3 +130,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::ErfGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ErfGradKernel<paddle::platform::CPUDeviceContext,
                        paddle::platform::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    erf, ops::ErfKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ErfKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ErfKernel<paddle::platform::CUDADeviceContext,
+                   paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    erf_grad, ops::ErfGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ErfGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ErfGradKernel<paddle::platform::CUDADeviceContext,
+                       paddle::platform::float16>);

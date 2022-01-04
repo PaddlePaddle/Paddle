@@ -14,10 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
-#include <memory>
-#include <vector>
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/operators/math/math_function.h"
 
 TEST(selected_rows_functor, cpu_add) {

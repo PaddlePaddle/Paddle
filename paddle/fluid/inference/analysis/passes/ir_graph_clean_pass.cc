@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
-#include <algorithm>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"

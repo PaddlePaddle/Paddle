@@ -29,4 +29,10 @@ no_check_set_white_list = [
     'update_loss_scaling',
     'cudnn_lstm',
     'rnn',
+    'fusion_lstm',
+    'softmax_with_cross_entropy',
+    'svd',
+    'eigh',
+    'eigvalsh',
+    'class_center_sample',
 ]

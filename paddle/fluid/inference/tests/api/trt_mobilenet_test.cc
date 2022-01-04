@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -47,6 +47,24 @@ TEST(AnalysisPredictor, use_gpu) {
   }
 }
 
+TEST(AnalysisPredictor, collect_shape_range) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
+  config.CollectShapeRangeInfo("shape_range.pbtxt");
+
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+
+  std::vector<PaddleTensor> outputs;
+  for (auto &input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+    predictor->ClearIntermediateTensor();
+  }
+}
+
 }  // namespace inference
 }  // namespace paddle
 
@@ -57,6 +75,8 @@ TEST(PredictorPool, use_gpu) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.EnableTensorRtEngine();
+  config.Exp_DisableTensorRtOPs({"fc"});
+  config.EnableTensorRtDLA(0);
   services::PredictorPool pred_pool(config, 1);
 
   auto predictor = pred_pool.Retrive(0);

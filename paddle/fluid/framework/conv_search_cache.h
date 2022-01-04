@@ -16,7 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +33,20 @@ class ConvSearchCache {
     static ConvSearchCache instance;
     return instance;
   }
-
+#ifdef PADDLE_WITH_HIP
+  AlgorithmsCache<miopenConvFwdAlgorithm_t>* GetForward() {
+    return &forward_cache_;
+  }
+  AlgorithmsCache<miopenConvBwdDataAlgorithm_t>* GetBackwardData() {
+    return &backward_data_cache_;
+  }
+  AlgorithmsCache<miopenConvBwdWeightsAlgorithm_t>* GetBackwardFilter() {
+    return &backward_filter_cache_;
+  }
+  AlgorithmsCache<miopenConvFwdAlgorithm_t>* GetConvFusion() {
+    return &fusion_forward_cache_;
+  }
+#else
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetForward() {
     return &forward_cache_;
   }
@@ -45,6 +59,7 @@ class ConvSearchCache {
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetConvFusion() {
     return &fusion_forward_cache_;
   }
+#endif
 
  private:
   ConvSearchCache() {}
@@ -52,10 +67,17 @@ class ConvSearchCache {
   ConvSearchCache(const ConvSearchCache&) {}
   ConvSearchCache& operator=(const ConvSearchCache&) {}
 
+#ifdef PADDLE_WITH_HIP
+  AlgorithmsCache<miopenConvFwdAlgorithm_t> forward_cache_;
+  AlgorithmsCache<miopenConvBwdDataAlgorithm_t> backward_data_cache_;
+  AlgorithmsCache<miopenConvBwdWeightsAlgorithm_t> backward_filter_cache_;
+  AlgorithmsCache<miopenConvFwdAlgorithm_t> fusion_forward_cache_;
+#else
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
   AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> backward_data_cache_;
   AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> backward_filter_cache_;
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t> fusion_forward_cache_;
+#endif
 };
 
 }  // namespace framework

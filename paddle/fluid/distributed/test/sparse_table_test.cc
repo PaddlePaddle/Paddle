@@ -55,9 +55,14 @@ TEST(CommonSparseTable, SGD) {
 
   // pull parameters for create and check
   std::vector<uint64_t> init_keys = {0, 1, 2, 3, 4};
+  std::vector<uint32_t> init_fres = {1, 1, 1, 1, 1};
+
   std::vector<float> init_values;
   init_values.resize(init_keys.size() * emb_dim);
-  table->pull_sparse(init_values.data(), init_keys.data(), init_keys.size());
+
+  std::vector<float> pull_values(init_values.size());
+  auto value = PullSparseValue(init_keys, init_fres, emb_dim);
+  table->pull_sparse(init_values.data(), value);
 
   // for check
   std::vector<float> total_gradients;
@@ -100,7 +105,8 @@ TEST(CommonSparseTable, SGD) {
 
   std::vector<float> pull_values;
   pull_values.resize(init_keys.size() * emb_dim);
-  table->pull_sparse(pull_values.data(), init_keys.data(), init_keys.size());
+  table->pull_sparse(init_values.data(), value);
+
   for (size_t i = 0; i < init_values.size(); ++i) {
     auto update_val = init_values[i] - 1.0 * total_gradients[i];
     ASSERT_TRUE(abs(update_val - pull_values[i]) < 1e-5);
@@ -148,9 +154,13 @@ TEST(CommonSparseTable, Adam) {
 
   // pull parameters for create and check
   std::vector<uint64_t> init_keys = {0, 1, 2, 3, 4};
+  std::vector<uint32_t> init_fres = {1, 1, 1, 1, 1};
+
   std::vector<float> init_values;
   init_values.resize(init_keys.size() * emb_dim);
-  table->pull_sparse(init_values.data(), init_keys.data(), init_keys.size());
+
+  auto value = PullSparseValue(init_keys, init_fres, emb_dim);
+  table->pull_sparse(init_values.data(), value);
 
   // push gradient
   std::vector<std::vector<uint64_t>> trainer_keys;

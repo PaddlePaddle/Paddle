@@ -13,19 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
-#include <memory>
-#include <utility>
-#include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/device_code.h"
+namespace paddle {
+namespace platform {
+class DeviceCodePool;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("fusion_group_pass", graph);

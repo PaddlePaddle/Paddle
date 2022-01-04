@@ -16,14 +16,13 @@ from __future__ import print_function
 
 import os
 import unittest
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+
 from test_dist_fleet_base import TestFleetBase
 from dist_fleet_simnet_bow import train_network
-import paddle
-
 paddle.enable_static()
 
 
@@ -43,7 +42,9 @@ class TestDistGeoCtr_2x2(TestFleetBase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -56,7 +57,7 @@ class TestDistGeoCtr_2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
@@ -73,16 +74,15 @@ class TestGeoSgdTranspiler(unittest.TestCase):
         is_sparse = True
         is_distribute = False
 
-        strategy = StrategyFactory.create_geo_strategy(5)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"k_steps": 100, "launch_barrier": False}
 
         avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
 
         optimizer = fluid.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
-
-        pserver_startup_program = fleet.startup_program
-        pserver_mian_program = fleet.main_program
 
 
 if __name__ == "__main__":

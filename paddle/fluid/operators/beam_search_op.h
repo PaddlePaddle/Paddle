@@ -51,11 +51,11 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(
         selected_ids,
         platform::errors::NotFound(
-            "Output(selected_scores) of BeamSearchOp is not found."));
+            "Output(selected_ids) of BeamSearchOp is not found."));
     PADDLE_ENFORCE_NOT_NULL(
         selected_scores,
         platform::errors::NotFound(
-            "Output(parent_idx) of BeamSearchOp is not found."));
+            "Output(selected_scores) of BeamSearchOp is not found."));
 
     math::BeamSearchFunctor<DeviceContext, T> alg;
     alg(context.template device_context<DeviceContext>(), pre_ids, pre_scores,

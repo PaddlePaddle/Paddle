@@ -14,30 +14,30 @@
 
 from __future__ import print_function
 import unittest
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 import seresnext_net
 import paddle.fluid.core as core
 
 
 class TestResnetWithReduceBase(TestParallelExecutorBase):
-    def _compare_reduce_and_allreduce(self, use_cuda, delta2=1e-5):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def _compare_reduce_and_allreduce(self, use_device, delta2=1e-5):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             seresnext_net.model,
-            feed_dict=seresnext_net.feed_dict(use_cuda),
-            iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(use_cuda),
-            use_cuda=use_cuda,
+            feed_dict=seresnext_net.feed_dict(use_device),
+            iter=seresnext_net.iter(use_device),
+            batch_size=seresnext_net.batch_size(use_device),
+            use_device=use_device,
             use_reduce=False,
             optimizer=seresnext_net.optimizer)
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             seresnext_net.model,
-            feed_dict=seresnext_net.feed_dict(use_cuda),
-            iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(use_cuda),
-            use_cuda=use_cuda,
+            feed_dict=seresnext_net.feed_dict(use_device),
+            iter=seresnext_net.iter(use_device),
+            batch_size=seresnext_net.batch_size(use_device),
+            use_device=use_device,
             use_reduce=True,
             optimizer=seresnext_net.optimizer)
 
@@ -46,25 +46,25 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
 
-        if not use_cuda:
+        if not use_device:
             return
 
         all_reduce_first_loss_seq, all_reduce_last_loss_seq = self.check_network_convergence(
             seresnext_net.model,
-            feed_dict=seresnext_net.feed_dict(use_cuda),
-            iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(use_cuda),
-            use_cuda=use_cuda,
+            feed_dict=seresnext_net.feed_dict(use_device),
+            iter=seresnext_net.iter(use_device),
+            batch_size=seresnext_net.batch_size(use_device),
+            use_device=use_device,
             use_reduce=False,
             optimizer=seresnext_net.optimizer,
             enable_sequential_execution=True)
 
         reduce_first_loss_seq, reduce_last_loss_seq = self.check_network_convergence(
             seresnext_net.model,
-            feed_dict=seresnext_net.feed_dict(use_cuda),
-            iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(use_cuda),
-            use_cuda=use_cuda,
+            feed_dict=seresnext_net.feed_dict(use_device),
+            iter=seresnext_net.iter(use_device),
+            batch_size=seresnext_net.batch_size(use_device),
+            use_device=use_device,
             use_reduce=True,
             optimizer=seresnext_net.optimizer,
             enable_sequential_execution=True)
@@ -87,7 +87,8 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
 
 class TestResnetWithReduceCPU(TestResnetWithReduceBase):
     def test_seresnext_with_reduce(self):
-        self._compare_reduce_and_allreduce(use_cuda=False, delta2=1e-3)
+        self._compare_reduce_and_allreduce(
+            use_device=DeviceType.CPU, delta2=1e-3)
 
 
 if __name__ == '__main__':

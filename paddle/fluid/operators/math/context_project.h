@@ -19,11 +19,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
-
 #include "paddle/fluid/operators/math/im2col.h"
 
 namespace paddle {
 namespace operators {
+
 namespace math {
 
 using Tensor = framework::Tensor;

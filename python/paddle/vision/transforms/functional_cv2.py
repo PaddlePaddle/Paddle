@@ -15,6 +15,7 @@
 from __future__ import division
 
 import sys
+import math
 import numbers
 import warnings
 import collections
@@ -32,6 +33,8 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
+__all__ = []
+
 
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``numpy.ndarray`` to paddle.Tensor.
@@ -40,7 +43,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -48,7 +51,7 @@ def to_tensor(pic, data_format='CHW'):
 
     """
 
-    if not data_format in ['CHW', 'HWC']:
+    if data_format not in ['CHW', 'HWC']:
         raise ValueError('data_format should be CHW or HWC. Got {}'.format(
             data_format))
 
@@ -135,8 +138,8 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Args:
         img (np.array): Image to be padded.
         padding (int|list|tuple): Padding on each border. If a single int is provided this
-            is used to pad all borders. If tuple of length 2 is provided this is the padding
-            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            is used to pad all borders. If list/tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a list/tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
@@ -391,7 +394,8 @@ def adjust_hue(img, hue_factor):
     cv2 = try_import('cv2')
 
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError('hue_factor is not in [-0.5, 0.5].'.format(hue_factor))
+        raise ValueError('hue_factor:{} is not in [-0.5, 0.5].'.format(
+            hue_factor))
 
     dtype = img.dtype
     img = img.astype(np.uint8)
@@ -407,13 +411,18 @@ def adjust_hue(img, hue_factor):
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 
 
-def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
+def rotate(img,
+           angle,
+           interpolation='nearest',
+           expand=False,
+           center=None,
+           fill=0):
     """Rotates the image by angle.
 
     Args:
         img (np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to cv2.INTER_NEAREST.
             when use cv2 backend, support method are as following: 
             - "nearest": cv2.INTER_NEAREST, 
@@ -434,15 +443,70 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
 
     """
     cv2 = try_import('cv2')
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
 
-    rows, cols = img.shape[0:2]
+    h, w = img.shape[0:2]
     if center is None:
-        center = (cols / 2, rows / 2)
+        center = (w / 2.0, h / 2.0)
     M = cv2.getRotationMatrix2D(center, angle, 1)
+
+    if expand:
+
+        def transform(x, y, matrix):
+            (a, b, c, d, e, f) = matrix
+            return a * x + b * y + c, d * x + e * y + f
+
+        # calculate output size
+        xx = []
+        yy = []
+
+        angle = -math.radians(angle)
+        expand_matrix = [
+            round(math.cos(angle), 15),
+            round(math.sin(angle), 15),
+            0.0,
+            round(-math.sin(angle), 15),
+            round(math.cos(angle), 15),
+            0.0,
+        ]
+
+        post_trans = (0, 0)
+        expand_matrix[2], expand_matrix[5] = transform(
+            -center[0] - post_trans[0], -center[1] - post_trans[1],
+            expand_matrix)
+        expand_matrix[2] += center[0]
+        expand_matrix[5] += center[1]
+
+        for x, y in ((0, 0), (w, 0), (w, h), (0, h)):
+            x, y = transform(x, y, expand_matrix)
+            xx.append(x)
+            yy.append(y)
+        nw = math.ceil(max(xx)) - math.floor(min(xx))
+        nh = math.ceil(max(yy)) - math.floor(min(yy))
+
+        M[0, 2] += (nw - w) * 0.5
+        M[1, 2] += (nh - h) * 0.5
+
+        w, h = int(nw), int(nh)
+
     if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.warpAffine(img, M, (cols, rows))[:, :, np.newaxis]
+        return cv2.warpAffine(
+            img,
+            M, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)[:, :, np.newaxis]
     else:
-        return cv2.warpAffine(img, M, (cols, rows))
+        return cv2.warpAffine(
+            img,
+            M, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)
 
 
 def to_grayscale(img, num_output_channels=1):

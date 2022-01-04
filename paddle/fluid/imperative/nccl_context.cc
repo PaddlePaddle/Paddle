@@ -14,176 +14,115 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/imperative/all_reduce.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#endif
+
+#ifdef PADDLE_WITH_NCCL
+#include <nccl.h>
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 namespace paddle {
 namespace imperative {
-#if defined(PADDLE_WITH_NCCL)
-void NCCLParallelContext::RecvNCCLID(const std::string &ep,
-                                     ncclUniqueId *nccl_id) {
-  auto addr = paddle::string::Split(ep, ':');
-  PADDLE_ENFORCE_EQ(
-      addr.size(), 2UL,
-      platform::errors::InvalidArgument(
-          "The endpoint should contain host and port, but got %s.", ep));
-  std::string host = addr[0];
-  int port = std::stoi(addr[1]);
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
-  int server_fd, new_socket;
-  struct sockaddr_in address;
-  int addrlen = sizeof(address);
-  char buffer[1024] = {0};
-  int opt = 0;
-  // creating socket fd
-  if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Create server file descriptor failed."));
-  }
-
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-    PADDLE_THROW(platform::errors::Unavailable("Set socket options failed."));
-  }
-
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(port);
-
-  int try_times = 0;
-  int retry_time = 0;
-  while (true) {
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-      retry_time = 3 * (try_times + 1);
-      LOG(WARNING) << "Socket bind worker " << ep
-                   << (try_times < 9
-                           ? " failed, try again after " +
-                                 std::to_string(retry_time) + " seconds."
-                           : " failed, try again after " +
-                                 std::to_string(retry_time) +
-                                 " seconds. Bind on endpoint " + ep +
-                                 " failed. Please confirm whether the "
-                                 "communication port or GPU card is occupied.");
-      std::this_thread::sleep_for(std::chrono::seconds(retry_time));
-      ++try_times;
-      continue;
-    }
-    break;
-  }
-
-  VLOG(3) << "listening on: " << ep;
-  if (listen(server_fd, 3) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Listen on server file descriptor failed."));
-  }
-
-  if ((new_socket =
-           accept(server_fd, reinterpret_cast<struct sockaddr *>(&address),
-                  reinterpret_cast<socklen_t *>(&addrlen))) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Accept the new socket file descriptor failed."));
-  }
-
-  if (read(new_socket, buffer, 1024) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Read from socket failed."));
-  }
-
-  VLOG(3) << "recevived the ncclUniqueId";
-  memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
-
-  VLOG(3) << "closing the socket server: " << ep;
-  close(server_fd);
-}
-
-void NCCLParallelContext::SendNCCLID(const std::string &ep,
-                                     ncclUniqueId *nccl_id) {
-  auto addr = paddle::string::Split(ep, ':');
-  PADDLE_ENFORCE_EQ(
-      addr.size(), 2UL,
-      platform::errors::InvalidArgument(
-          "The endpoint should contain host and port, but got %s.", ep));
-  std::string host = addr[0];
-  int port = std::stoi(addr[1]);
-  // struct sockaddr_in address;
-  int sock = 0;
-  struct sockaddr_in serv_addr;
-  char buffer[1024] = {0};
-
-  memcpy(buffer, nccl_id, NCCL_UNIQUE_ID_BYTES);
-  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Create socket failed."));
-  }
-
-  memset(&serv_addr, '0', sizeof(serv_addr));
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(port);
-
-  char *ip = NULL;
-  struct hostent *hp;
-  if ((hp = gethostbyname(host.c_str())) == NULL) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Fail to get host by name %s.", host));
-  }
-  int i = 0;
-  while (hp->h_addr_list[i] != NULL) {
-    ip = inet_ntoa(*(struct in_addr *)hp->h_addr_list[i]);
-    VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
-    break;
-  }
-  if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Open address %s failed.", ep));
-  }
-
-  int try_times = 0;
-  int retry_time = 0;
-  while (true) {
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      retry_time = 3 * (try_times + 1);
-      LOG(WARNING)
-          << "Socket connect worker " << ep
-          << (try_times < 9
-                  ? " failed, try again after " + std::to_string(retry_time) +
-                        " seconds."
-                  : " failed, try again after " + std::to_string(retry_time) +
-                        " seconds. Maybe that some process is occupied the "
-                        "GPUs of this node now, and you should kill those "
-                        "process manually.");
-      std::this_thread::sleep_for(std::chrono::seconds(retry_time));
-      ++try_times;
-      continue;
-    }
-    VLOG(3) << "sending the ncclUniqueId to " << ep;
-    send(sock, buffer, NCCL_UNIQUE_ID_BYTES, 0);
-    break;
-  }
-  close(sock);
-}
-
-void NCCLParallelContext::BcastNCCLId(ncclUniqueId *nccl_id, int root) {
+void NCCLParallelContext::BcastNCCLId(
+    std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
+    int root, int server_fd) {
   if (strategy_.local_rank_ == root) {
-    for (auto ep : strategy_.trainer_endpoints_) {
-      if (ep != strategy_.current_endpoint_) SendNCCLID(ep, nccl_id);
+    std::vector<std::string> other_trainers;
+    for (auto &ep : strategy_.trainer_endpoints_) {
+      if (ep != strategy_.current_endpoint_) {
+        other_trainers.push_back(ep);
+      }
     }
+    platform::SendBroadCastCommID(other_trainers, &nccl_ids);
   } else {
-    RecvNCCLID(strategy_.current_endpoint_, nccl_id);
+    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
+                                  &nccl_ids);
   }
 }
 
 void NCCLParallelContext::Init() {
-  for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
-    ncclUniqueId nccl_id;
-    if (strategy_.local_rank_ == 0) {
-      // generate the unique ncclid on the root worker
-      platform::dynload::ncclGetUniqueId(&nccl_id);
-      BcastNCCLId(&nccl_id, 0);
-    } else {
-      BcastNCCLId(&nccl_id, 0);
+  int server_fd = -1;
+
+  std::vector<ncclUniqueId> nccl_ids;
+  nccl_ids.resize(strategy_.nrings_);
+
+  if (strategy_.local_rank_ == 0) {
+    // generate the unique ncclid on the root worker
+    for (size_t i = 0; i < nccl_ids.size(); ++i) {
+      platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
     }
-    int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  } else {
+    // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
+    // on rank0.
+    server_fd = platform::SocketServer::GetInstance(strategy_.current_endpoint_)
+                    .socket();
+  }
+  BcastNCCLId(nccl_ids, 0, server_fd);
+
+  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
             << " ring id: " << ring_id;
-
     // it will assign nccl_comm in CUDADeviceContext within ring_id
-    platform::NCCLCommContext::Instance().CreateNCCLComm(
-        &nccl_id, strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
+    platform::NCCLCommContext::Instance().CreateComm(
+        &nccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, gpu_id,
+        ring_id);
+
+    compute_events_.emplace_back(
+        platform::CudaEventResourcePool::Instance().New(
+            BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+    comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+        BOOST_GET_CONST(platform::CUDAPlace, place_).device));
   }
+}
+
+void NCCLParallelContext::InitWithRingID(int ring_id) {
+  int server_fd = -1;
+  std::vector<ncclUniqueId> nccl_ids;
+  nccl_ids.resize(1);
+
+  if (strategy_.local_rank_ == 0) {
+    // generate the unique ncclid on the root worker
+    platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
+  } else {
+    // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
+    // on rank0.
+    server_fd = platform::SocketServer::GetInstance(strategy_.current_endpoint_)
+                    .socket();
+  }
+  BcastNCCLId(nccl_ids, 0, server_fd);
+
+  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
+          << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
+          << " ring id: " << ring_id;
+  // it will assign nccl_comm in CUDADeviceContext within ring_id
+  platform::NCCLCommContext::Instance().CreateComm(
+      &nccl_ids[0], strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
+
+  compute_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+      BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+  comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+      BOOST_GET_CONST(platform::CUDAPlace, place_).device));
 }
 
 void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -193,22 +132,87 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
       platform::is_gpu_place(place_), true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place_);
-  cudaStream_t stream = nullptr;
-  if (use_calc_stream) {
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-    stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
-  } else {
-    stream = comm->stream();
-  }
-  AllReduce(src, dst, strategy_, stream);
+  AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
 }
 
-paddle::platform::CUDADeviceContext *NCCLParallelContext::GetDeviceContext(
+void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
+  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  const auto &place = src_tensor->place();
+  platform::NCCLComm *comm =
+      platform::NCCLCommContext::Instance().Get(ring_id, place);
+  gpuStream_t stream = comm->stream();
+
+  void *src_ptr = src_tensor->data<void>();
+  auto nccl_dtype = platform::ToNCCLDataType(src_tensor->type());
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+      src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
+}
+
+paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
     int ring_id) {
-  return platform::NCCLCommContext::Instance()
-      .Get(ring_id, place_)
-      ->dev_context();
+  return static_cast<platform::DeviceContext *>(
+      platform::NCCLCommContext::Instance()
+          .Get(ring_id, place_)
+          ->dev_context());
+}
+
+void NCCLParallelContext::WaitCompute(int ring_id) {
+  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
+                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
+                    platform::errors::OutOfRange(
+                        "ring id must < compute events size,"
+                        "but got ring id = %d, compute events size = %d",
+                        ring_id, compute_events_.size()));
+
+  auto compute_stream = static_cast<platform::CUDADeviceContext *>(
+                            platform::DeviceContextPool::Instance().Get(place_))
+                            ->stream();
+  auto comm_stream =
+      platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
+  auto event = compute_events_[ring_id].get();
+
+// compute_stream-->event-->comm_stream
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
+#endif
+}
+
+void NCCLParallelContext::WaitComm(int ring_id) {
+  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
+                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
+                    platform::errors::OutOfRange(
+                        "ring id must < comm events size,"
+                        "but got ring id = %d, comm events size = %d",
+                        ring_id, comm_events_.size()));
+
+  auto compute_stream = static_cast<platform::CUDADeviceContext *>(
+                            platform::DeviceContextPool::Instance().Get(place_))
+                            ->stream();
+  auto comm_stream =
+      platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
+  auto event = comm_events_[ring_id].get();
+
+// comm_stream-->event-->compute_stream
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));
+#endif
+}
+
+void NCCLParallelContext::SynchronizeCompute() {
+  auto *compute_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place_));
+  compute_dev_ctx->Wait();
 }
 
 #endif

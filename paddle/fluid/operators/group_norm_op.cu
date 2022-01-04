@@ -12,9 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/fluid/operators/group_norm_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -136,7 +144,8 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
+
     const int W =
         (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                           : x_dims[x_dims.size() - 2]);
@@ -163,10 +172,21 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
-
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
+#ifdef __HIPCC__
+    int block_size = std::max(std::min(256, imsize), 64);
+#else
     int block_size = std::min(1024, imsize);
+#endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
@@ -217,10 +237,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(
     d_bias_data += dval;
     d_scale_data += val * dval;
   }
-  CudaAtomicAddWithWarp(&d_mean[bid * groups + gid], d_mean_data);
-  CudaAtomicAddWithWarp(&d_var[bid * groups + gid], d_var_data);
-  if (flags & kHasScale) CudaAtomicAddWithWarp(&d_scale[ccid], d_scale_data);
-  if (flags & kHasBias) CudaAtomicAddWithWarp(&d_bias[ccid], d_bias_data);
+  CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
+  CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
+  if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+  if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 }
 
 template <typename T, int flags>
@@ -295,7 +315,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
     const int W =
         (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                           : x_dims[x_dims.size() - 2]);
@@ -337,10 +357,22 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
 
+#ifdef __HIPCC__
+    int block_size = std::max(std::min(256, imsize), 64);
+#else
     int block_size = std::min(1024, imsize);
+#endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     int flags =

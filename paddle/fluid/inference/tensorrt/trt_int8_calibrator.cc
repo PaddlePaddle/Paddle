@@ -13,14 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+
 #include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
 // set the batch size before constructing the thread to execute engine
-int TRTInt8Calibrator::getBatchSize() const { return batch_size_; }
+int TRTInt8Calibrator::getBatchSize() const TRT_NOEXCEPT { return batch_size_; }
 
 TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers, int batch_size,
@@ -83,7 +85,7 @@ bool TRTInt8Calibrator::setBatch(
           engine_name_, it.first));
     }
     const auto& d = dataptr->second;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice));
   }
 
@@ -93,7 +95,7 @@ bool TRTInt8Calibrator::setBatch(
 }
 
 bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
-                                 int num_bindings) {
+                                 int num_bindings) TRT_NOEXCEPT {
   VLOG(4) << "get batch: " << engine_name_;
   std::unique_lock<std::mutex> lk(mut_);
   // The consumer has just finished processing a data.
@@ -129,14 +131,15 @@ void TRTInt8Calibrator::setDone() {
   cond_.notify_all();
 }
 
-const void* TRTInt8Calibrator::readCalibrationCache(size_t& length) {
+const void* TRTInt8Calibrator::readCalibrationCache(size_t& length)
+    TRT_NOEXCEPT {
   if (calibration_table_.empty()) return nullptr;
   length = calibration_table_.size();
   return calibration_table_.data();
 }
 
 void TRTInt8Calibrator::writeCalibrationCache(const void* ptr,
-                                              std::size_t length) {
+                                              std::size_t length) TRT_NOEXCEPT {
   calibration_table_ = std::string((const char*)ptr, length);
   VLOG(4) << "Got calibration data for " << engine_name_ << " " << ptr
           << " length=" << length;

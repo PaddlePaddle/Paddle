@@ -167,7 +167,7 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
 
         self.append_gradients(tmp_3)
 
-        self.num_fused_ops = 4
+        self.num_fused_ops = 3
         self.fetch_list = [tmp_3, self.grad(tmp_0)]
 
 

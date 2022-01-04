@@ -45,6 +45,7 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
 };
 
 template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
+template struct DequantizeFunctor<platform::CUDADeviceContext, int16_t>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -52,4 +53,5 @@ template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_abs_max,
-                        ops::DequantizeMaxAbsKernel<CUDA, int8_t>);
+                        ops::DequantizeMaxAbsKernel<CUDA, int8_t>,
+                        ops::DequantizeMaxAbsKernel<CUDA, int16_t>);

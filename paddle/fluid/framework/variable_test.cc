@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/variable.h"
+
 #include "gtest/gtest.h"
 
 namespace paddle {

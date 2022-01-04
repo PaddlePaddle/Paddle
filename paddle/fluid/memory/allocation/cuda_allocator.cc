@@ -13,12 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include <string>
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -29,8 +37,8 @@ void CUDAAllocator::FreeImpl(Allocation* allocation) {
       BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
-  platform::RecordedCudaFree(allocation->ptr(), allocation->size(),
-                             place_.device);
+  platform::RecordedGpuFree(allocation->ptr(), allocation->size(),
+                            place_.device);
   delete allocation;
 }
 
@@ -38,14 +46,15 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
 
   void* ptr;
-  auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
-  if (LIKELY(result == cudaSuccess)) {
+  auto result = platform::RecordedGpuMalloc(&ptr, size, place_.device);
+  if (LIKELY(result == gpuSuccess)) {
     return new Allocation(ptr, size, platform::Place(place_));
   }
 
   size_t avail, total, actual_avail, actual_total;
-  bool is_limited = platform::RecordedCudaMemGetInfo(
+  bool is_limited = platform::RecordedGpuMemGetInfo(
       &avail, &total, &actual_avail, &actual_total, place_.device);
+  size_t allocated = total - avail;
 
   std::string err_msg;
   if (is_limited) {
@@ -60,13 +69,14 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
-      "Cannot allocate %s memory on GPU %d, "
+      "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
       "available memory is only %s.\n\n"
       "Please check whether there is any other process using GPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
       "2. If no, please decrease the batch size of your model. %s\n\n",
       place_.device, string::HumanReadableSize(size), place_.device,
-      string::HumanReadableSize(avail), place_.device, err_msg));
+      string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
+      place_.device, err_msg));
 }
 
 }  // namespace allocation

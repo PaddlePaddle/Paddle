@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +45,8 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
+        platform::errors::InvalidArgument(
+            "The polygon_box_transform operator needs to be executed on GPU."));
     auto* in = ctx.Input<Tensor>("Input");
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();

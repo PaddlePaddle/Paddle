@@ -85,7 +85,7 @@ class OverflowV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(string::Sprintf(R"DOC(
 Overflow %s operator.
 
-$$Out = %s(X)$$
+$$Out = any(X)$$
 
 Check whether each element of X is Inf or Nan, return the bool result of each
 element of X as a tensor.

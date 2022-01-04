@@ -15,10 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/flatten_op.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     flatten, ops::FlattenKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::FlattenKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int64_t>);
@@ -26,12 +28,14 @@ REGISTER_OP_CUDA_KERNEL(
     flatten_grad,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     flatten2, ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, double>,
+    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int64_t>);
@@ -39,6 +43,7 @@ REGISTER_OP_CUDA_KERNEL(
     flatten2_grad,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
@@ -47,7 +52,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       float>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      plat::float16>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       double>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      uint8_t>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       int8_t>,
@@ -58,7 +67,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
                                           float>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          plat::float16>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
                                           double>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          uint8_t>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
                                           int>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,

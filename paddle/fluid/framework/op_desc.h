@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -65,6 +66,9 @@ class OpDesc {
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
+  void RemoveOutput(const std::string &name);
+
+  void RemoveInput(const std::string &name);
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
@@ -121,6 +125,16 @@ class OpDesc {
 
   const VariableNameMap &Outputs() const { return outputs_; }
 
+  VariableNameMap *MutableInputs() {
+    this->need_update_ = true;
+    return &this->inputs_;
+  }
+
+  VariableNameMap *MutableOutputs() {
+    this->need_update_ = true;
+    return &this->outputs_;
+  }
+
   AttributeMap *MutableAttrMap() {
     this->need_update_ = true;
     return &this->attrs_;
@@ -140,6 +154,11 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
+  // The Id() and OrignalId() are only used for auto parallel.
+  uint64_t Id() const { return id_; }
+  uint64_t OriginalId() const { return original_id_; }
+  void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
@@ -151,8 +170,16 @@ class OpDesc {
     return ret_val;
   }
 
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks are usually constructed in a single thread
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    // Must start from one
+    return ++uid;
+  }
+
   proto::OpDesc desc_;
-  BlockDesc *block_;  // not_own
+  BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names
   VariableNameMap inputs_;
   // output arg name => output variable names
@@ -162,6 +189,14 @@ class OpDesc {
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
+
+  // Note: the id_ is unique (only for auto parallel).
+  uint64_t id_ = GenerateId();
+  // Note: the orignal_id_ is used for referring to the original OpDesc
+  // that the current OpDesc is built from (only for auto parallel).
+  // The default original_id_ is same as the id_, which means the
+  // current OpDesc is not built from the other one.
+  uint64_t original_id_ = id_;
 };
 }  // namespace framework
 }  // namespace paddle

@@ -22,11 +22,11 @@ import numpy as np
 
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers.nn import topk
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 import paddle
+from paddle import _C_ops
 
-__all__ = ['Metric', 'Accuracy', 'Precision', 'Recall', 'Auc', 'accuracy']
+__all__ = []
 
 
 def _is_numpy_(var):
@@ -182,7 +182,7 @@ class Accuracy(Metric):
     Encapsulates accuracy metric logic.
 
     Args:
-        topk (int|tuple(int)): Number of top elements to look at
+        topk (int|list[int]|tuple[int]): Number of top elements to look at
             for computing accuracy. Default is (1,).
         name (str, optional): String name of the metric instance. Default
             is `acc`.
@@ -222,7 +222,7 @@ class Accuracy(Metric):
           transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
           train_dataset = MNIST(mode='train', transform=transform)
 
-          model = paddle.Model(paddle.vision.LeNet(), input, label)
+          model = paddle.Model(paddle.vision.models.LeNet(), input, label)
           optim = paddle.optimizer.Adam(
               learning_rate=0.001, parameters=model.parameters())
           model.prepare(
@@ -243,7 +243,7 @@ class Accuracy(Metric):
 
     def compute(self, pred, label, *args):
         """
-        Compute the top-k (maxinum value in `topk`) indices.
+        Compute the top-k (maximum value in `topk`) indices.
 
         Args:
             pred (Tensor): The predicted value is a Tensor with dtype
@@ -253,7 +253,7 @@ class Accuracy(Metric):
                 [batch_size, d0, ..., num_classes] in one hot representation.
                 
         Return:
-            Tensor: Correct mask, a tensor with shape [batch_size, topk].
+            Tensor: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
         """
         pred = paddle.argsort(pred, descending=True)
         pred = paddle.slice(
@@ -277,7 +277,7 @@ class Accuracy(Metric):
         returns the accuracy of current step.
         
         Args:
-            correct: Correct mask, a tensor with shape [batch_size, topk].
+            correct: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
 
         Return:
             Tensor: the accuracy of current step.
@@ -797,15 +797,15 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
         if total is None:
             total = _varbase_creator(dtype="int32")
 
-        topk_out, topk_indices = topk(input, k=k)
-        _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
-                                       total)
+        topk_out, topk_indices = paddle.topk(input, k=k)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
+                                     total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'accuracy')
-    topk_out, topk_indices = topk(input, k=k)
+    topk_out, topk_indices = paddle.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
         correct = helper.create_variable_for_type_inference(dtype="int32")

@@ -28,37 +28,30 @@
 namespace paddle {
 namespace distributed {
 
+class DenseOptimizer;
+
 class CommonDenseTable : public DenseTable {
  public:
-  explicit CommonDenseTable() {}
+  CommonDenseTable() {}
   virtual ~CommonDenseTable() {}
-  virtual int32_t initialize() override;
-  virtual int32_t initialize_shard() override { return 0; }
+  int32_t initialize() override;
+  int32_t initialize_shard() override { return 0; }
   virtual void create_initializer(const std::string& attr,
                                   const std::string& name);
   virtual int32_t initialize_value();
   virtual int32_t initialize_optimizer();
-  virtual int32_t pull_dense(float* pull_values, size_t num) override;
-  virtual int32_t push_dense_param(const float* values, size_t num) override;
-  virtual int32_t push_dense(const float* values, size_t num) override;
-  virtual int32_t pour() override;
+  int32_t pull_dense(float* pull_values, size_t num) override;
+  int32_t push_dense_param(const float* values, size_t num) override;
+  int32_t push_dense(const float* values, size_t num) override;
+  int32_t pour() override;
+  int32_t set_global_lr(float* lr) override;
 
-  int32_t load(const std::string& path, const std::string& param) override {
-    VLOG(0) << "Dense table may load by "
-               "paddle.distributed.fleet.init_server";
-    return 0;
-  }
+  int32_t load(const std::string& path, const std::string& param) override;
+  int32_t save(const std::string& path, const std::string& param) override;
 
-  int32_t save(const std::string& path, const std::string& param) override {
-    VLOG(0)
-        << "Dense table may be saved by "
-           "paddle.distributed.fleet.save_persistables/save_inference_model";
-    return 0;
-  }
-
-  virtual int32_t flush() override { return 0; }
-  virtual int32_t shrink() override { return 0; }
-  virtual void clear() override { return; }
+  int32_t flush() override { return 0; }
+  int32_t shrink(const std::string& param) override { return 0; }
+  void clear() override { return; }
 
  protected:
   int32_t _push_dense(const float* values, size_t num);
@@ -74,6 +67,9 @@ class CommonDenseTable : public DenseTable {
   ReservoirValue<float> pull_reservoir_;
   std::unordered_map<std::string, Initializer*> initializers_;
   std::unordered_map<std::string, int> names_index_;
+  int total_dim_ = 0;
+  int fixed_len_params_dim_ = 0;    // used for save/load
+  std::vector<int> param_col_ids_;  // used for save/load
 };
 
 }  // namespace distributed

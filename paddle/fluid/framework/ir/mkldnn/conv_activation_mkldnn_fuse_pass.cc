@@ -49,6 +49,11 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle " + conv_type() + "+" + activation_type() + " fuse";
+
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "conv_activation_mkldnn_fuse_pass op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
                               conv_activation_pattern);  // Filter
     GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out,
@@ -64,7 +69,15 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     desc->SetOutput("Output",
                     std::vector<std::string>({activation_out->Name()}));
 
-    desc->SetAttr("fuse_activation", activation_type());
+    if (activation_type() == "gelu" &&
+        activation->Op()->HasAttr("approximate")) {
+      bool approximate =
+          BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"));
+      std::string type = approximate ? "_tanh" : "_erf";
+      desc->SetAttr("fuse_activation", "gelu" + type);
+    } else {
+      desc->SetAttr("fuse_activation", activation_type());
+    }
 
     // MKLDNN ops use alpha and beta as activation parameters but paddle ops are
     // not generalized
@@ -83,6 +96,13 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     desc->SetAttr("fuse_beta",
                   activation->Op()->GetAttrIfExists<float>("beta"));
 
+    if (activation_type() == "hard_sigmoid") {
+      desc->SetAttr("fuse_alpha",
+                    activation->Op()->GetAttrIfExists<float>("slope"));
+      desc->SetAttr("fuse_beta",
+                    activation->Op()->GetAttrIfExists<float>("offset"));
+    }
+
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 
     PADDLE_ENFORCE_GT(subgraph.count(conv_input), 0UL,
@@ -95,6 +115,153 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_activation_count);
+}
+
+ConvActivationFusePass::ConvActivationFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      // IsStringIn({"EXPLICIT", "SAME", "VALID"}), MobileNetV2 has no this
+      // attribute
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
+      .AddAttr("data_format")
+      .IsOptional()
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+Conv2DLeakyReLUFusePass::Conv2DLeakyReLUFusePass() {
+  AddOpCompat(OpCompat("leaky_relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // float, default=0.02
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End();
+}
+Conv2DReLU6FusePass::Conv2DReLU6FusePass() {
+  AddOpCompat(OpCompat("relu6"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // default = 6.0f
+      .AddAttr("threshold")
+      .IsType<float>()
+      .End();
+}
+Conv2DSwishFusePass::Conv2DSwishFusePass() {
+  AddOpCompat(OpCompat("swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("beta")
+      .IsType<float>()
+      .End();
+}
+Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
+  AddOpCompat(OpCompat("hard_swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // float, optional, default=6.0
+      .AddAttr("threshold")
+      .IsOptional()
+      .IsType<float>()
+      .End()
+      // float, optional, default=6.0
+      .AddAttr("scale")
+      .IsOptional()
+      .IsType<float>()
+      .End()
+      // float, optional, default=3.0
+      .AddAttr("offset")
+      .IsOptional()
+      .IsType<float>()
+      .End();
+}
+
+Conv2DHardSigmoidFusePass::Conv2DHardSigmoidFusePass() {
+  AddOpCompat(OpCompat("hard_sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // optional, default=0.2
+      .AddAttr("slope")
+      .IsOptional()
+      .IsType<float>()
+      .End()
+      // optional, default=0.5
+      .AddAttr("offset")
+      .IsOptional()
+      .IsType<float>()
+      .End();
+}
+
+Conv2DGeluFusePass::Conv2DGeluFusePass() {
+  AddOpCompat(OpCompat("gelu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("approximate")
+      .IsType<bool>()
+      .End();
 }
 
 }  // namespace ir
@@ -135,3 +302,27 @@ REGISTER_PASS_CAPABILITY(conv_swish_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .EQ("swish", 0));
+
+REGISTER_PASS(conv_hard_swish_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DHardSwishFusePass);
+REGISTER_PASS_CAPABILITY(conv_hard_swish_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("hard_swish", 0));
+
+REGISTER_PASS(conv_hard_sigmoid_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DHardSigmoidFusePass);
+REGISTER_PASS_CAPABILITY(conv_hard_sigmoid_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("hard_sigmoid", 0));
+
+REGISTER_PASS(conv_gelu_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DGeluFusePass);
+REGISTER_PASS_CAPABILITY(conv_gelu_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("gelu", 0));

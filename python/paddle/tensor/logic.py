@@ -12,43 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import to_tensor
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
-from ..fluid.framework import in_dygraph_mode
-from paddle.common_ops_import import *
+from ..fluid.framework import in_dygraph_mode, Variable
 from ..framework import VarBase as Tensor
 
 # TODO: define logic functions of a tensor  
-from ..fluid.layers import is_empty  #DEFINE_ALIAS
-from ..fluid.layers import isfinite  #DEFINE_ALIAS
-from ..fluid.layers import logical_and  #DEFINE_ALIAS
-from ..fluid.layers import logical_not  #DEFINE_ALIAS
-from ..fluid.layers import logical_or  #DEFINE_ALIAS
-from ..fluid.layers import logical_xor  #DEFINE_ALIAS
-from ..fluid.layers import reduce_all  #DEFINE_ALIAS
-from ..fluid.layers import reduce_any  #DEFINE_ALIAS
+from ..fluid.layers import is_empty  # noqa: F401
+from ..fluid.layers import logical_and  # noqa: F401
+from ..fluid.layers import logical_not  # noqa: F401
+from ..fluid.layers import logical_or  # noqa: F401
+from ..fluid.layers import logical_xor  # noqa: F401
 
-__all__ = [
-    'equal',
-    'equal_all',
-    'greater_equal',
-    'greater_than',
-    'is_empty',
-    'isfinite',
-    'less_equal',
-    'less_than',
-    'logical_and',
-    'logical_not',
-    'logical_or',
-    'logical_xor',
-    'not_equal',
-    'allclose',
-    'is_tensor'
-    #       'isnan'
-]
+from paddle.common_ops_import import core
+from paddle import _C_ops
+from paddle.tensor.creation import full
+
+__all__ = []
 
 
 def equal_all(x, y, name=None):
@@ -58,8 +40,8 @@ def equal_all(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -79,6 +61,8 @@ def equal_all(x, y, name=None):
           result2 = paddle.equal_all(x, z)
           print(result2) # result2 = [False ]
     """
+    if in_dygraph_mode():
+        return _C_ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -141,10 +125,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        rtol_tensor = to_tensor(rtol, dtype='float64')
-        atol_tensor = to_tensor(atol, dtype='float64')
-        return core.ops.allclose(x, y, rtol_tensor, atol_tensor, 'equal_nan',
-                                 equal_nan)
+        return _C_ops.allclose(x, y, 'rtol',
+                               str(rtol), 'atol',
+                               str(atol), 'equal_nan', equal_nan)
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
@@ -153,26 +136,11 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     check_type(equal_nan, 'equal_nan', bool, 'allclose')
 
     helper = LayerHelper("allclose", **locals())
-    rtol_var = helper.create_global_variable(
-        name=fluid.unique_name.generate('rtol'),
-        persistable=True,
-        dtype='float64',
-        shape=[1])
-    helper.set_variable_initializer(
-        rtol_var, initializer=fluid.initializer.ConstantInitializer(rtol))
-    atol_var = helper.create_variable(
-        name=fluid.unique_name.generate('atol'),
-        persistable=True,
-        dtype='float64',
-        shape=[1])
-    helper.set_variable_initializer(
-        atol_var, initializer=fluid.initializer.ConstantInitializer(atol))
-
     out = helper.create_variable_for_type_inference(dtype='bool')
 
-    inputs = {'Input': x, 'Other': y, 'Rtol': rtol_var, 'Atol': atol_var}
+    inputs = {'Input': x, 'Other': y}
     outputs = {'Out': out}
-    attrs = {'equal_nan': equal_nan}
+    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
     helper.append_op(
         type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
 
@@ -188,8 +156,8 @@ def equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -207,13 +175,20 @@ def equal(x, y, name=None):
           result1 = paddle.equal(x, y)
           print(result1)  # result1 = [True False False]
     """
-    if in_dygraph_mode():
-        return core.ops.equal(x, y)
+    if not isinstance(y, (int, bool, float, Variable)):
+        raise TypeError(
+            "Type of input args must be float, bool, int or Tensor, but received type {}".
+            format(type(y)))
+    if not isinstance(y, Variable):
+        y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
-    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
-                             "equal")
-    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
-                             "equal")
+    if in_dygraph_mode():
+        return _C_ops.equal(x, y)
+
+    check_variable_and_dtype(
+        x, "x", ["bool", "float32", "float64", "int32", "int64"], "equal")
+    check_variable_and_dtype(
+        y, "y", ["bool", "float32", "float64", "int32", "int64"], "equal")
     helper = LayerHelper("equal", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
     out.stop_gradient = True
@@ -232,8 +207,8 @@ def greater_equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -250,11 +225,13 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        return core.ops.greater_equal(x, y)
+        return _C_ops.greater_equal(x, y)
 
-    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+    check_variable_and_dtype(x, "x",
+                             ["bool", "float32", "float64", "int32", "int64"],
                              "greater_equal")
-    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+    check_variable_and_dtype(y, "y",
+                             ["bool", "float32", "float64", "int32", "int64"],
                              "greater_equal")
     helper = LayerHelper("greater_equal", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -276,8 +253,8 @@ def greater_than(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -294,11 +271,13 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        return core.ops.greater_than(x, y)
+        return _C_ops.greater_than(x, y)
 
-    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+    check_variable_and_dtype(x, "x",
+                             ["bool", "float32", "float64", "int32", "int64"],
                              "greater_than")
-    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+    check_variable_and_dtype(y, "y",
+                             ["bool", "float32", "float64", "int32", "int64"],
                              "greater_than")
     helper = LayerHelper("greater_than", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -320,8 +299,8 @@ def less_equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -339,12 +318,12 @@ def less_equal(x, y, name=None):
             print(result1)  # result1 = [True True False]
     """
     if in_dygraph_mode():
-        return core.ops.less_equal(x, y)
+        return _C_ops.less_equal(x, y)
 
-    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
-                             "less_equal")
-    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
-                             "less_equal")
+    check_variable_and_dtype(
+        x, "x", ["bool", "float32", "float64", "int32", "int64"], "less_equal")
+    check_variable_and_dtype(
+        y, "y", ["bool", "float32", "float64", "int32", "int64"], "less_equal")
     helper = LayerHelper("less_equal", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
     out.stop_gradient = True
@@ -363,8 +342,8 @@ def less_than(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -382,12 +361,12 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        return core.ops.less_than(x, y)
+        return _C_ops.less_than(x, y)
 
-    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
-                             "less_than")
-    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
-                             "less_than")
+    check_variable_and_dtype(
+        x, "x", ["bool", "float32", "float64", "int32", "int64"], "less_than")
+    check_variable_and_dtype(
+        y, "y", ["bool", "float32", "float64", "int32", "int64"], "less_than")
     helper = LayerHelper("less_than", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
     out.stop_gradient = True
@@ -406,8 +385,8 @@ def not_equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -425,12 +404,12 @@ def not_equal(x, y, name=None):
             print(result1)  # result1 = [False True True]
     """
     if in_dygraph_mode():
-        return core.ops.not_equal(x, y)
+        return _C_ops.not_equal(x, y)
 
-    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
-                             "not_equal")
-    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
-                             "not_equal")
+    check_variable_and_dtype(
+        x, "x", ["bool", "float32", "float64", "int32", "int64"], "not_equal")
+    check_variable_and_dtype(
+        y, "y", ["bool", "float32", "float64", "int32", "int64"], "not_equal")
     helper = LayerHelper("not_equal", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
     out.stop_gradient = True
@@ -467,3 +446,214 @@ def is_tensor(x):
             
     """
     return isinstance(x, Tensor)
+
+
+def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
+    if in_dygraph_mode():
+        op = getattr(_C_ops, op_name)
+        if binary_op:
+            return op(x, y)
+        else:
+            return op(x)
+
+    check_variable_and_dtype(
+        x, "x", ["bool", "uint8", "int8", "int16", "int32", "int64"], op_name)
+    if y is not None:
+        check_variable_and_dtype(
+            y, "y", ["bool", "uint8", "int8", "int16", "int32", "int64"],
+            op_name)
+    if out is not None:
+        check_type(out, "out", Variable, op_name)
+
+    helper = LayerHelper(op_name, **locals())
+    if binary_op:
+        assert x.dtype == y.dtype
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if binary_op:
+        helper.append_op(
+            type=op_name, inputs={"X": x,
+                                  "Y": y}, outputs={"Out": out})
+    else:
+        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def bitwise_and(x, y, out=None, name=None):
+    """
+    ${comment}
+    
+    Args:
+        x (Tensor): ${x_comment}
+        y (Tensor): ${y_comment}
+        out(Tensor): ${out_comment}
+
+    Returns:
+        Tensor: ${out_comment}
+        
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_and(x, y)
+            print(res)  # [0, 2, 1]
+    """
+    return _bitwise_op(
+        op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def bitwise_or(x, y, out=None, name=None):
+    """
+    ${comment}
+    
+    Args:
+        x (Tensor): ${x_comment}
+        y (Tensor): ${y_comment}
+        out(Tensor): ${out_comment}
+
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_or(x, y)
+            print(res)  # [-1, -1, -3]
+    """
+    return _bitwise_op(
+        op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def bitwise_xor(x, y, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Tensor): ${x_comment}
+        y (Tensor): ${y_comment}
+        out(Tensor): ${out_comment}
+
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_xor(x, y)
+            print(res) # [-1, -3, -4]
+    """
+    return _bitwise_op(
+        op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def bitwise_not(x, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(Tensor):  ${x_comment}
+        out(Tensor): ${out_comment}
+    
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            res = paddle.bitwise_not(x)
+            print(res) # [4, 0, -2]
+    """
+
+    return _bitwise_op(
+        op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
+
+
+@templatedoc()
+def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(Tensor): ${input_comment}.
+        y(Tensor): ${other_comment}.
+        rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan(equalnantype, optional): ${equal_nan_comment}.
+        name (str, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: ${out_comment}.
+
+    Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64.
+        TypeError: The data type of ``y`` must be one of float32, float64.
+        TypeError: The type of ``rtol`` must be float.
+        TypeError: The type of ``atol`` must be float.
+        TypeError: The type of ``equal_nan`` must be bool.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          x = paddle.to_tensor([10000., 1e-07])
+          y = paddle.to_tensor([10000.1, 1e-08])
+          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [True, False]
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True, False]
+
+          x = paddle.to_tensor([1.0, float('nan')])
+          y = paddle.to_tensor([1.0, float('nan')])
+          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [True, False]
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True, True]
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.isclose(x, y, 'rtol',
+                              str(rtol), 'atol',
+                              str(atol), 'equal_nan', equal_nan)
+
+    check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
+    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
+    check_type(rtol, 'rtol', float, 'isclose')
+    check_type(atol, 'atol', float, 'isclose')
+    check_type(equal_nan, 'equal_nan', bool, 'isclose')
+
+    helper = LayerHelper("isclose", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+
+    inputs = {'Input': x, 'Other': y}
+    outputs = {'Out': out}
+    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
+    helper.append_op(
+        type='isclose', inputs=inputs, outputs=outputs, attrs=attrs)
+    return out

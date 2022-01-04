@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/roll_op.h"
+
 #include <memory>
 #include <vector>
+
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -36,12 +40,24 @@ class RollOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto shifts = ctx->Attrs().Get<std::vector<int64_t>>("shifts");
 
-    PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
-                      platform::errors::InvalidArgument(
-                          "Attr(dims).size() should be equl to "
-                          "Attr(shifts).size(). But received "
-                          "Attr(dims).size() = %d, Attr(shifts).size() = %d",
-                          dims.size(), shifts.size()));
+    if (!ctx->HasInput("ShiftsTensor")) {
+      if (dims.size() != 0) {
+        PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
+                          platform::errors::InvalidArgument(
+                              "When dims.size() != 0, dims.size() "
+                              "should be equal to "
+                              "shifts.size(). But received "
+                              "dims.size() = %d, shifts.size() = %d",
+                              dims.size(), shifts.size()));
+      } else {
+        PADDLE_ENFORCE_EQ(shifts.size(), 1,
+                          platform::errors::InvalidArgument(
+                              "When dims.size() == 0, shifts.size() "
+                              "should be equal to 1, But received "
+                              "shifts.size() = %d",
+                              shifts.size()));
+      }
+    }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     auto type = ctx->GetInputsVarType("X")[0];
@@ -91,10 +107,14 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
                                   "The number of places by which the elements "
                                   "of the tensor are shifted.")
         .SetDefault({});
+    AddInput("ShiftsTensor",
+             "The number of places by which the elements of the tensor "
+             "are shifted.")
+        .AsDispensable();
     AddAttr<std::vector<int64_t>>(
         "axis",
         "Axis along which to roll. It must have the same size "
-        "with shifts.")
+        "with shifts or size == 0")
         .SetDefault({});
     AddComment(R"DOC(
     Roll the tensor along the given dimension(s). 
@@ -115,6 +135,9 @@ class RollGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("roll_grad");
     op->SetInput("X", this->Input("X"));
+    if (this->HasInput("ShiftsTensor")) {
+      op->SetInput("ShiftsTensor", this->Input("ShiftsTensor"));
+    }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
@@ -135,9 +158,37 @@ REGISTER_OP_CPU_KERNEL(
     roll, ops::RollKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RollKernel<paddle::platform::CPUDeviceContext, double>,
     ops::RollKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex<float>>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RollGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::RollGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<double>>);
+
+REGISTER_OP_VERSION(roll)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("axis",
+                     "(std::vector<int64_t>) Axis along which to roll. "
+                     "It must have the same size with shifts, or size = 0.",
+                     std::vector<int64_t>())
+            .DeleteAttr("dims",
+                        "(std::vector<int64_t>) Dims along which to roll. "
+                        "It must have the same size with shifts, or size = 0."))
+    .AddCheckpoint(
+        R"ROC(Upgrade roll add a dispensable input "ShiftsTensor".)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "ShiftsTensor",
+            "The number of places by which the elements of"
+            "the tensor are shifted."));

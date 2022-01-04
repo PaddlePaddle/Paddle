@@ -19,6 +19,12 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#endif
 
 DECLARE_bool(use_pinned_memory);
 
@@ -56,7 +62,7 @@ TEST(CPUAllocator, LockMem) {
   TestAllocator(&a, 0);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(GPUAllocator, Alloc) {
   paddle::memory::detail::GPUAllocator a(0);
   TestAllocator(&a, 2048);
@@ -77,7 +83,35 @@ TEST(GPUAllocator, AllocFailure) {
     allocator.Alloc(&index, alloc_size);
     ASSERT_TRUE(false);
   } catch (paddle::memory::allocation::BadAlloc&) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::GpuGetLastError());
+  }
+}
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+TEST(NPUAllocator, Alloc) {
+  paddle::memory::detail::NPUAllocator a(0);
+  TestAllocator(&a, 1 << 20);
+  TestAllocator(&a, 1);
+}
+#endif
+
+#ifdef PADDLE_WITH_MLU
+TEST(MLUAllocator, Alloc) {
+  paddle::memory::detail::MLUAllocator a(0);
+  TestAllocator(&a, 2048);
+  TestAllocator(&a, 0);
+}
+
+TEST(MLUAllocator, AllocFailure) {
+  paddle::memory::detail::MLUAllocator allocator(0);
+  size_t index;
+  size_t alloc_size = (static_cast<size_t>(1) << 40);  // Very large number
+  try {
+    allocator.Alloc(&index, alloc_size);
+    ASSERT_TRUE(false);
+  } catch (paddle::memory::allocation::BadAlloc&) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetLastError());
   }
 }
 #endif

@@ -15,11 +15,7 @@
 #include "paddle/fluid/string/piece.h"
 
 #include <string.h>
-
 #include <algorithm>
-#include <iosfwd>
-#include <stdexcept>
-
 #define CHAR_POINTER_CMP(a, b) \
   do {                         \
     if (!a && !b) return 0;    \

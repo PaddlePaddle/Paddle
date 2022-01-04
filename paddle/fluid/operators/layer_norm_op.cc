@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/layer_norm_op.h"
+
 #include <memory>
 #include <string>
 
@@ -101,30 +102,12 @@ class LayerNormOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    // By default, the type of the scale, bias, mean,
-    // and var tensors should both be float. (For float or float16 input tensor)
-    // or double (For double input tensor).
-    auto ln_param_type = framework::proto::VarType::FP32;
-    if (input_data_type == framework::proto::VarType::FP64) {
-      ln_param_type = framework::proto::VarType::FP64;
-    }
-    if (ctx.HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Scale")->type(),
-                        platform::errors::InvalidArgument(
-                            "Scale input should be of float type"));
-    }
-    if (ctx.HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Bias")->type(),
-                        platform::errors::InvalidArgument(
-                            "Bias input should be of float type"));
-    }
-
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -178,16 +161,19 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
 
     AddComment(R"DOC(
 Assume feature vectors exist on dimensions

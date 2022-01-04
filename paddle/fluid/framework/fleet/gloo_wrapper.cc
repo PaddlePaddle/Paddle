@@ -14,7 +14,16 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 
 namespace gloo {
+namespace transport {
+class Device;
+}  // namespace transport
+}  // namespace gloo
+
+namespace gloo {
 namespace rendezvous {
+
+class HTTPStore;
+class Store;
 
 constexpr int kNodeSize = 136;
 
@@ -62,6 +71,18 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     }
   }
   paddle::framework::fs_mv(tmp, path);
+  auto start = std::chrono::steady_clock::now();
+  while (paddle::framework::fs_exists(path) == false) {
+    VLOG(0) << "HdfsStore::set fs_mv retrying...";
+    paddle::framework::fs_mv(tmp, path);
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - start);
+    if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
+      PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
+          "fs_mv failed, tmp: %s, path: %s", tmp, path));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
+  }
 #endif
 }
 
@@ -131,6 +152,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
   auto start = std::chrono::steady_clock::now();
   std::vector<bool> check_key_status(keys.size(), false);
   while (!Check(keys, &check_key_status)) {
+    VLOG(0) << "HdfsStore::wait checking repeatedly...";
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
@@ -200,6 +222,8 @@ void ParallelConnectContext::connectFullMesh(
   // Create pairs
   auto transportContext = dev->createContext(rank, size);
   transportContext->setTimeout(getTimeout());
+  VLOG(0) << "transportContext timeout: " << getTimeout().count()
+          << ", curr rank: " << rank;
   for (int i = 0; i < size; i++) {
     if (i == rank) {
       continue;
@@ -216,6 +240,7 @@ void ParallelConnectContext::connectFullMesh(
 
   std::vector<std::shared_ptr<std::thread>> connect_threads(thread_num_);
   // Connect every pair
+  VLOG(0) << "connect_thread_num: " << thread_num_ << ", size: " << size;
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i].reset(new std::thread(
         [&store, &transportContext, total_add_size, this](
@@ -229,24 +254,33 @@ void ParallelConnectContext::connectFullMesh(
             store.wait({key}, getTimeout());
 
             std::vector<char> allAddrs;
-            auto max_retry_times = 5;
+            auto max_retry_times = 10;
             // Connect to other side of this pair
 
             while (max_retry_times > 0) {
               allAddrs = store.get(key);
-
               VLOG(3) << "store get all address size: " << allAddrs.size()
                       << " except: " << total_add_size;
               if (allAddrs.size() == static_cast<size_t>(total_add_size)) {
                 break;
               }
 
+              sleep(5);
               --max_retry_times;
             }
-
             auto addr = extractAddress(allAddrs, i);
+            if (addr.empty()) {
+              VLOG(0) << "peer address is null";
+            }
+            Impl impl_;
+            memcpy(&impl_, addr.data(), sizeof(impl_));
+            struct sockaddr_in* sa = (struct sockaddr_in*)&(impl_.ss);
+            std::string ip = getCharIpAddr(sa->sin_addr.s_addr);
+            VLOG(0) << "peer " << i << " ip addr: " << ip
+                    << ", port: " << sa->sin_port;
             transportContext->getPair(i)->connect(addr);
           }
+          VLOG(0) << "peer connected success";
         },
         i, connect_threads.size()));
   }
@@ -255,6 +289,7 @@ void ParallelConnectContext::connectFullMesh(
   }
   device_ = dev;
   transportContext_ = std::move(transportContext);
+  VLOG(0) << "ParallelConnectContext::connectFullMesh() is over";
 }
 #endif
 }  // namespace rendezvous
@@ -272,11 +307,13 @@ void GlooWrapper::Init() {
   attr.iface = iface_;
   std::shared_ptr<gloo::rendezvous::HdfsStore> file_store = nullptr;
   std::shared_ptr<gloo::rendezvous::HTTPStore> http_store = nullptr;
-  auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
-  context->setTimeout(run_timeout_);
   auto dev = gloo::transport::tcp::CreateDevice(attr);
+
   switch (store_type_) {
     case GlooStoreType::HDFS: {
+      auto context = std::make_shared<gloo::rendezvous::ParallelConnectContext>(
+          rank_, size_);
+      context->setTimeout(run_timeout_);
       std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
       cmd += " -D fs.default.name=" + hdfs_name_;
       cmd += " -D hadoop.job.ugi=" + hdfs_ugi_;
@@ -286,22 +323,25 @@ void GlooWrapper::Init() {
       auto prefix_store =
           std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, *file_store);
       context->connectFullMesh(*prefix_store, dev);
+      context_ = std::move(context);
       break;
     }
     case GlooStoreType::HTTP: {
+      auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
+      context->setTimeout(run_timeout_);
       http_store = std::make_shared<gloo::rendezvous::HTTPStore>(
           http_ip_, http_port_, prefix_ + "_" + http_scope_, rank_);
       http_store->SetTimeoutSeconds(init_timeout_.count());
       context->connectFullMesh(*http_store, dev);
       http_store->Finalize();
       VLOG(3) << "after calling http_store->Finalize.";
+      context_ = std::move(context);
       break;
     }
     default:
       LOG(ERROR) << "unknown store type " << store_type_;
       exit(-1);
   }
-  context_ = std::move(context);
 #endif
   is_initialized_ = true;
   VLOG(3) << "gloo initialized done.";

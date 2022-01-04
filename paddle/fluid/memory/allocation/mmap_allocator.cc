@@ -22,6 +22,9 @@
 #include <random>
 #include <string>
 
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -56,7 +59,7 @@ std::string GetIPCName() {
 #endif
   handle += "_";
   handle += std::to_string(rd());
-  return std::move(handle);
+  return handle;
 }
 
 std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(

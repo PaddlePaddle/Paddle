@@ -13,7 +13,7 @@
 // limitations under the License.
 
 syntax = "proto2";
-package paddle;
+package paddle.distributed;
 option cc_generic_services = true;
 option cc_enable_arenas = true;
 
@@ -47,6 +47,18 @@ enum PsCmdID {
   PS_PUSH_SPARSE_PARAM = 26;
   PS_START_PROFILER = 27;
   PS_STOP_PROFILER = 28;
+  PS_PUSH_GLOBAL_STEP = 29;
+  PS_PULL_GRAPH_LIST = 30;
+  PS_GRAPH_SAMPLE_NEIGHBORS = 31;
+  PS_GRAPH_SAMPLE_NODES = 32;
+  PS_GRAPH_GET_NODE_FEAT = 33;
+  PS_GRAPH_CLEAR = 34;
+  PS_GRAPH_ADD_GRAPH_NODE = 35;
+  PS_GRAPH_REMOVE_GRAPH_NODE = 36;
+  PS_GRAPH_SET_NODE_FEAT = 37;
+  PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER = 38;
+  PS_GRAPH_USE_NEIGHBORS_SAMPLE_CACHE = 39;
+  PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG = 40;
 }
 
 message PsRequestMessage {

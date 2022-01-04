@@ -15,7 +15,7 @@
 # TODO: define the initializers of Kaiming functions in neural network
 from ...fluid.initializer import MSRAInitializer
 
-__all__ = ['KaimingUniform', 'KaimingNormal']
+__all__ = []
 
 
 class KaimingNormal(MSRAInitializer):
@@ -33,7 +33,7 @@ class KaimingNormal(MSRAInitializer):
 
     .. math::
 
-        \sqrt{\\frac{2.0}{fan\_in}}
+        \sqrt{\frac{2.0}{fan\_in}}
 
     Args:
         fan_in (float32|None): fan_in for Kaiming normal Initializer. If None, it is\
@@ -75,7 +75,7 @@ class KaimingUniform(MSRAInitializer):
 
     .. math::
 
-        x = \sqrt{\\frac{6.0}{fan\_in}}
+        x = \sqrt{\frac{6.0}{fan\_in}}
 
     Args:
         fan_in (float32|None): fan_in for Kaiming uniform Initializer. If None, it is\

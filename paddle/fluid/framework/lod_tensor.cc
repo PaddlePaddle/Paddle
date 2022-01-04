@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
+
 #include <stdint.h>
-#include <algorithm>
+
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -265,6 +266,21 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
   }
   // the 3st field, Tensor
   TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+}
+
+void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext *dev_ctx;
+  auto place = tensor.place();
+  dev_ctx = pool.Get(place);
+  SerializeToStream(os, tensor, *dev_ctx);
+}
+
+void DeserializeFromStream(std::istream &os, LoDTensor *tensor) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext *dev_ctx;
+  dev_ctx = pool.Get(platform::CPUPlace());
+  DeserializeFromStream(os, tensor, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,

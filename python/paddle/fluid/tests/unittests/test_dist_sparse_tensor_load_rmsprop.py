@@ -36,7 +36,7 @@ class TestSparseLoadProgramRmsprop(TestSparseLoadProgram):
         scope, train_program, startup_program, loss = self.net()
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
-                optimizer = fluid.optimizer.RMSProp(1e-3)
+                optimizer = fluid.optimizer.SGD(1e-3)
                 optimizer = fleet.distributed_optimizer(optimizer,
                                                         self.strategy)
                 optimizer.minimize(loss)

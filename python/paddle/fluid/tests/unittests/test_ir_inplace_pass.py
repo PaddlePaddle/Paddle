@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 
 
 def fc_with_batchnorm(use_feed):
@@ -58,7 +58,7 @@ class TestIrInplace(TestParallelExecutorBase):
             fc_with_batchnorm,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=True,
+            use_device=DeviceType.CUDA,
             use_ir_memory_optimize=ir_memory_optimize,
             enable_inplace=enable_inplace)
 

@@ -53,7 +53,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   FetchResultType Run(const std::vector<std::string>& fetch_tensors,
                       bool return_merged) override;
 
-  void DropLocalExeScopes();
+  void DropLocalExeScopes(bool need_wait = true);
 
   bool NeedCreateLocalExeScope();
 
@@ -64,6 +64,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   bool DropScopeOrNot() const;
 
+  bool is_initialized_{false};
   size_t drop_scope_counter_{0};
   ExecutionStrategy strategy_;
   std::unique_ptr<SSAGraphExecutor> underlying_executor_;

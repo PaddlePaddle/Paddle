@@ -199,15 +199,30 @@ struct Argument {
   DECL_ARGUMENT_FIELD(disable_trt_plugin_fp16, CloseTrtPluginFp16, bool);
 
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_dla, TensorRtUseDLA, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_dla_core, TensorRtDLACore, int);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_disabled_ops, TensorRtDisabledOPs,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
+                      TensorRtShapeRangeInfoPath, std::string);
+  DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape, TensorRtTunedDynamicShape,
+                      bool);
+  DECL_ARGUMENT_FIELD(tensorrt_allow_build_at_runtime,
+                      TensorRtAllowBuildAtRuntime, bool);
+
+  DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
+  DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_max_batch_size, DlnneMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
 
   DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
                       std::vector<std::string>);
@@ -218,6 +233,28 @@ struct Argument {
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
   DECL_ARGUMENT_FIELD(xpu_l3_workspace_size, XpuL3WorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
+  DECL_ARGUMENT_FIELD(xpu_autotune, XpuAutotune, bool);
+  DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
+  DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
+  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+
+  DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
+  DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir, NNAdapterModelCacheDir,
+                      std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_device_names, NNAdapterDeviceNames,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(nnadapter_context_properties, NNAdapterContextProperties,
+                      std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_buffer,
+                      NNAdapterSubgraphPartitionConfigBuffer, std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_path,
+                      NNAdapterSubgraphPartitionConfigPath, std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_model_cache_token, NNAdapterModelCacheToken,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(nnadapter_model_cache_buffer, NNAdapterModelCacheBuffer,
+                      std::vector<std::vector<char>>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
@@ -235,6 +272,14 @@ struct Argument {
   // Only used in paddle-lite subgraph.
   DECL_ARGUMENT_FIELD(cpu_math_library_num_threads, CpuMathLibraryNumThreads,
                       int);
+
+  // ipu related
+  DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
+  DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
+  DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
+  DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
+  DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
+  DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
 
  private:
   std::unordered_set<std::string> valid_fields_;

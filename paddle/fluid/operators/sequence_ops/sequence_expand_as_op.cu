@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -62,7 +62,7 @@ static __global__ void sequence_expand_as_grad_kernel(
 }
 
 template <typename T>
-struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
+struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
   void operator()(
       const platform::CUDADeviceContext &context, const LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/

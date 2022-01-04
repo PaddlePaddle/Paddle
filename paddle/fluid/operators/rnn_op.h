@@ -230,7 +230,7 @@ template <typename T>
 void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
                                   Tensor* x, Tensor* y, Tensor* mask,
                                   const float& dropout_prob,
-                                  const int& seed_number, const bool& is_test,
+                                  const int& seed_number, bool is_test,
                                   bool* is_has_reset) {
   if (is_test) {
     return;
@@ -816,7 +816,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              Tensor* dropout_mask, const int& num_layers, const int& gate_num,
              const int& input_size, const int& hidden_size,
              const bool& is_bidirec, const std::string& cell_type,
-             const float& dropout_prob, const bool& is_test, const int& seed,
+             const float& dropout_prob, bool is_test, const int& seed,
              Tensor* reserve_data) {
   const int& direction_num = is_bidirec ? 2 : 1;
   const auto& init_h_dims = init_h->dims();
@@ -952,18 +952,22 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const float& dropout_prob = ctx.Attr<float>("dropout_prob");
     const std::string& mode = ctx.Attr<std::string>("mode");
-    const bool& is_test = ctx.Attr<bool>("is_test");
     const int& seed = ctx.Attr<int>("seed");
+    bool is_test = ctx.HasAttr("is_test") ? ctx.Attr<bool>("is_test") : false;
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
     const Tensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
     }
-    if (!dropout_mask->IsInitialized()) {
-      dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+    if (dropout_mask->IsInitialized()) {
+      if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
     }
+    dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
 
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, uint8_t> ones;
+    ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
     int gate_num = 4;
@@ -978,7 +982,7 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     } else if (is_rnn_relu(ctx)) {
       gate_num = 1;
       RnnFunc<
-          SimpleRNNCell<T, ReluFunctor, math::detail::ActivationType::kReLU>,
+          SimpleRNNCell<T, ReluCPUFunctor, math::detail::ActivationType::kReLU>,
           Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, pre_state[0], nullptr, sequence_length,
           state[0], nullptr, output, dropout_mask, num_layers, gate_num,
@@ -1808,7 +1812,8 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   const int& num_layers = context.Attr<int>("num_layers");
   const bool& is_bidirec = context.Attr<bool>("is_bidirec");
   const float& dropout_prob = context.Attr<float>("dropout_prob");
-  const bool& is_test = context.Attr<bool>("is_test");
+  bool is_test =
+      context.HasAttr("is_test") ? context.Attr<bool>("is_test") : false;
 
   // get the input_size, batch_size, time_step, hidden_size
   const int& time_step = input->dims()[0];

@@ -18,14 +18,12 @@ import unittest
 import time
 import argparse
 import os
-import six
 import sys
 import subprocess
 import traceback
 import functools
 import pickle
 from contextlib import closing
-from six import string_types
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
@@ -37,7 +35,6 @@ class TestCollectiveRunnerBase(object):
             "get model should be implemented by child class.")
 
     def wait_server_ready(self, endpoints):
-        assert not isinstance(endpoints, string_types)
         while True:
             all_ok = True
             not_ready_endpoints = []
@@ -47,6 +44,11 @@ class TestCollectiveRunnerBase(object):
                         socket.socket(socket.AF_INET,
                                       socket.SOCK_STREAM)) as sock:
                     sock.settimeout(2)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if hasattr(socket, 'SO_REUSEPORT'):
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
+                                        1)
+
                     result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                     if result != 0:
                         all_ok = False
@@ -115,10 +117,7 @@ class TestCollectiveRunnerBase(object):
         out = exe.run(train_prog,
                       feed={'tindata': indata},
                       fetch_list=[result.name])
-        if six.PY2:
-            print(pickle.dumps(out))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out))
+        sys.stdout.buffer.write(pickle.dumps(out))
 
 
 def runtime_main(test_class, col_type, sub_type):
@@ -221,7 +220,7 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "GLOG_v": "0",
+            "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1"
         }
         required_envs.update(need_envs)
@@ -274,6 +273,11 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "identity":
+            need_result1 = input1
+            need_result2 = input2
+            self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
+            self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]
@@ -284,5 +288,31 @@ class TestDistBase(unittest.TestCase):
             need_result2 = np.concatenate((tmp20, tmp21), axis=1)
             self.assertTrue(np.allclose(tr0_out, need_result1))
             self.assertTrue(np.allclose(tr1_out, need_result2))
+        elif col_type == "concat":
+            need_result = np.concatenate((input1, input2), axis=1)
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "split":
+            need_result1 = np.split(input1, 2, axis=1)[0]
+            need_result2 = np.split(input2, 2, axis=1)[1]
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv_array":
+            need_result1 = np.array([[0, 1, 2]])
+            need_result2 = np.array([[3, 4, 5]])
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0][0], need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0][1], need_result2, rtol=1e-05, atol=1e-05))
         else:
             pass

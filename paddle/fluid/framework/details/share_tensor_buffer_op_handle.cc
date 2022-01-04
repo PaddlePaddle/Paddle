@@ -15,12 +15,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
 
 #include <string>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -69,10 +64,10 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
     ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, bool share_dims)
+    const std::vector<std::string> &out_var_names, bool share_dims_and_dtype)
     : OpHandleBase(node),
       functor_(scope, scope_idx, op_type, in_var_infos, out_var_names,
-               share_dims) {}
+               is_variant_scope_, share_dims_and_dtype) {}
 
 std::unordered_map<std::string, std::string>
 ShareTensorBufferOpHandle::ReusedVars() const {
@@ -84,12 +79,13 @@ void ShareTensorBufferOpHandle::AddReuseVarPair(
   functor_.AddReuseVarPair(in_var_info, out_var_name);
 }
 
-void ShareTensorBufferOpHandle::SetShareDims(bool share_dims) {
-  functor_.SetShareDims(share_dims);
+void ShareTensorBufferOpHandle::SetShareDimsAndDtype(
+    bool share_dims_and_dtype) {
+  functor_.SetShareDimsAndDtype(share_dims_and_dtype);
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int dev_id =
       BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
   events_[dev_id] = nullptr;

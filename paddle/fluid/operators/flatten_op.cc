@@ -55,9 +55,17 @@ class FlattenOp : public framework::OperatorWithKernel {
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
-        outer *= in_dims[i];
+        if (in_dims[i] == -1 || outer == -1) {
+          outer = -1;
+        } else {
+          outer *= in_dims[i];
+        }
       } else {
-        inner *= in_dims[i];
+        if (in_dims[i] == -1 || inner == -1) {
+          inner = -1;
+        } else {
+          inner *= in_dims[i];
+        }
       }
     }
     std::vector<int32_t> out_shape(2);
@@ -69,9 +77,9 @@ class FlattenOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -93,6 +101,14 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
                  "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
                  "input tensor is (d_0, d_1, ... d_n).")
         .SetDefault(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
     AddComment(R"DOC(
 Flatten Operator
 
@@ -131,9 +147,9 @@ class FlattenGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -180,8 +196,8 @@ class Flatten2Op : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", "Out");
     }
-
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
+    if (!ctx->HasOutput("XShape")) return;
+    // OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
     std::vector<int64_t> xshape_dims(in_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < in_dims.size(); ++i) {
@@ -189,6 +205,13 @@ class Flatten2Op : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -199,7 +222,8 @@ class Flatten2OpMaker : public FlattenOpMaker {
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 
@@ -235,9 +259,9 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -273,8 +297,8 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", "Out");
     }
-
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
+    if (!ctx->HasOutput("XShape")) return;
+    // OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
     std::vector<int64_t> xshape_dims(in_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < in_dims.size(); ++i) {
@@ -296,7 +320,11 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
       out_shape.push_back(in_dims[i]);
     }
     for (int i = start_axis; i <= stop_axis; i++) {
-      outer *= in_dims[i];
+      if (in_dims[i] == -1 || outer == -1) {
+        outer = -1;
+      } else {
+        outer *= in_dims[i];
+      }
     }
     out_shape.push_back(outer);
     for (int i = stop_axis + 1; i < in_dims_size; i++) {
@@ -304,6 +332,18 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
     }
 
     return out_shape;
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasOutput("XShape")) {
+      return framework::KernelSignature("flatten_with_xshape", {"X"},
+                                        {"start_axis", "stop_axis"},
+                                        {"Out", "XShape"});
+    } else {
+      return framework::KernelSignature("flatten", {"X"},
+                                        {"start_axis", "stop_axis"}, {"Out"});
+    }
   }
 };
 
@@ -349,7 +389,8 @@ Case 2:
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 
@@ -429,6 +470,7 @@ REGISTER_OPERATOR(flatten_contiguous_range_grad,
 REGISTER_OP_CPU_KERNEL(
     flatten, ops::FlattenKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FlattenKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int64_t>);
@@ -436,12 +478,14 @@ REGISTER_OP_CPU_KERNEL(
     flatten_grad,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     flatten2, ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, double>,
+    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
@@ -449,6 +493,7 @@ REGISTER_OP_CPU_KERNEL(
     flatten2_grad,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
@@ -458,6 +503,8 @@ REGISTER_OP_CPU_KERNEL(
                                       float>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
                                       double>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      uint8_t>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
                                       int8_t>,
@@ -469,6 +516,8 @@ REGISTER_OP_CPU_KERNEL(
                                           float>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
                                           double>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          uint8_t>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
                                           int>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/is_test_pass.h"
-#include <string>
-#include <utility>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -35,7 +35,7 @@ void IsTestPass::ApplyImpl(ir::Graph* graph) const {
                   "hard_shrink", "hard_sigmoid", "relu6",
                   "soft_relu",   "swish",        "thresholded_relu",
                   "log",         "square",       "softplus",
-                  "softsign"};
+                  "softsign",    "silu",         "mish"};
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();

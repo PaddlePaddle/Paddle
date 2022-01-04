@@ -14,8 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -33,7 +36,7 @@ namespace memory {
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * \brief   Copy memory from one place to another place.
@@ -51,8 +54,48 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
  */
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          cudaStream_t stream);
-
+          gpuStream_t stream);
 #endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+/**
+ * \brief   Copy memory from one place to another place.
+ *
+ * \param[in]  DstPlace Destination allocation place (CPU or NPU).
+ * \param[in]  dst      Destination memory address.
+ * \param[in]  SrcPlace Source allocation place (CPU or NPU).
+ * \param[in]  src      Source memory address.
+ * \param[in]  num      memory size in bytes to copy.
+ * \param[in]  stream   NPU stream.
+ *
+ * \note    For NPU memory copy, NPU stream need to be specified
+ *          for asynchronously memory copy.
+ *
+ */
+template <typename DstPlace, typename SrcPlace>
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
+          aclrtStream stream);
+#endif
+
+#ifdef PADDLE_WITH_MLU
+/**
+ * \brief   Copy memory from one place to another place.
+ *
+ * \param[in]  DstPlace Destination allocation place (CPU or MLU).
+ * \param[in]  dst      Destination memory address.
+ * \param[in]  SrcPlace Source allocation place (CPU or MLU).
+ * \param[in]  src      Source memory address.
+ * \param[in]  num      memory size in bytes to copy.
+ * \param[in]  stream   MLU stream.
+ *
+ * \note    For MLU memory copy, MLU stream need to be specified
+ *          for asynchronously memory copy.
+ *
+ */
+template <typename DstPlace, typename SrcPlace>
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
+          mluStream stream);
+#endif
+
 }  // namespace memory
 }  // namespace paddle

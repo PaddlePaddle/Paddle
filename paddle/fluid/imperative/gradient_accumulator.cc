@@ -18,16 +18,22 @@
 #include <memory>
 #include <utility>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_XPU
+#include "xpu/refactor/math.h"
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#endif
 
 namespace paddle {
 namespace imperative {
@@ -79,14 +85,30 @@ class TensorAddFunctor : public boost::static_visitor<> {
     blas.AXPY(numel_, 1., x_, y_);
   }
 
+#ifdef PADDLE_WITH_XPU
+  void operator()(const platform::XPUPlace& place) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    int r = xpu::add<XPUType>(
+        ctx->x_context(), reinterpret_cast<const XPUType*>(x_),
+        reinterpret_cast<const XPUType*>(y_), reinterpret_cast<XPUType*>(y_),
+        static_cast<int>(numel_));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU add kernel return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
+  }
+#else
   void operator()(const platform::XPUPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
+#endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void operator()(const platform::CUDAPlace& place) {
     platform::CUDADeviceContext* ctx =
         dynamic_cast<platform::CUDADeviceContext*>(
@@ -103,8 +125,55 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
+#ifdef PADDLE_WITH_MLU
+  void operator()(const platform::MLUPlace& place) {
+    // TODO(fwg): SUPPORT it
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const platform::MLUPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  void operator()(const platform::NPUPlace& place) {
+    // TODO(zhiqiu): SUPPORT it
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const platform::NPUPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
+  void operator()(const platform::NPUPinnedPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
   // there is NO blas in CUDAPinnedPlace
   void operator()(const platform::CUDAPinnedPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+  // there is NO support in IPUPlace
+  void operator()(const platform::IPUPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -116,6 +185,24 @@ class TensorAddFunctor : public boost::static_visitor<> {
   const T* x_;
   T* y_;
 };
+
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+void XPUTensorAddFunctor(const platform::Place& place,
+                         const framework::Tensor& src, framework::Tensor* dst) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  const XPUType* x = reinterpret_cast<const XPUType*>(src.data<T>());
+  XPUType* y = reinterpret_cast<XPUType*>(dst->mutable_data<T>(place));
+  int r = xpu::add<XPUType>(ctx->x_context(), x, y, y,
+                            static_cast<int>(src.numel()));
+  PADDLE_ENFORCE_EQ(
+      r, XPU_SUCCESS,
+      platform::errors::External("XPU add kernel return wrong value[%d %s]", r,
+                                 XPUAPIErrorMsg[r]));
+}
+#endif
 
 template <typename DeviceContext, typename T>
 void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
@@ -150,6 +237,12 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   auto data_type = src_tensor.type();
   auto place = src_tensor.place();
 
+  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+                    platform::errors::PreconditionNotMet(
+                        "The data type of source tensor and destination tensor "
+                        "should be equal, Otherwise, the calculation results "
+                        "will be incorrect."));
+
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
@@ -159,14 +252,64 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     return;                                                          \
   }
 
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::DeviceContext* ctx = pool.Get(place);
+    auto dev_ctx = dynamic_cast<platform::NPUDeviceContext*>(ctx);
+    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+      dst_tensor->mutable_data<float>(place);
+    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
+      dst_tensor->mutable_data<double>(place);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::float16>::DataType()) {
+      dst_tensor->mutable_data<platform::float16>(place);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+    }
+    const auto& runner = operators::NpuOpRunner(
+        "Add", {*dst_tensor, src_tensor}, {*dst_tensor}, {});
+    runner.Run(dev_ctx->stream());
+    return;
+  }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(place)) {
+    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+      XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::float16>::DataType()) {
+      XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+    }
+    return;
+  }
+#endif
+
   PADDLE_TENSOR_ADD(float);
+
+#ifndef PADDLE_WITH_XPU
+  // NOTE(phlrain): xpu only support float
   PADDLE_TENSOR_ADD(double);
+  // NOTE(chenweihang): only support complex grad tensor accumulated,
+  // support selected rows if needed in the future
+  PADDLE_TENSOR_ADD(platform::complex<float>);
+  PADDLE_TENSOR_ADD(platform::complex<double>);
+#endif
 
 #undef PADDLE_TENSOR_ADD
 
   if (data_type == framework::proto::VarType::FP16) {
     if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       return TensorAddImpl<platform::CUDADeviceContext, platform::float16>(
           src_tensor, dst_tensor, place);
 #else
@@ -204,7 +347,7 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
     return;                                                                  \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, double);
@@ -212,7 +355,7 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 #endif
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, double);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 
@@ -247,7 +390,7 @@ static void SelectedRowsAddTensor(
     return;                                                                \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, double);
@@ -255,7 +398,7 @@ static void SelectedRowsAddTensor(
 #endif
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, double);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 
@@ -294,7 +437,7 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
     return dst_var;                                                       \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, double);
@@ -302,7 +445,7 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
 #endif
     PADDLE_SELECTED_ROWS_ADD(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD(platform::CPUDeviceContext, double);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 
@@ -365,8 +508,8 @@ static platform::Place GetPlaceOfVar(
 
 void GradientAccumulator::AccumulateGrad() {
   /**
-   * If the gradient has been calculated by previous graph,
-   * it should be added to the previous graph result.
+   * If the leaf gradient has been calculated done, the inner_var_
+   * should be added to the var_.
    */
   if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInnerVar()) {
     return;
@@ -377,13 +520,13 @@ void GradientAccumulator::AccumulateGrad() {
                         "this auto-grad"));
   PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(), true,
                     platform::errors::InvalidArgument(
-                        "Interior var of Leaf tensor  should be initialized."));
+                        "Interior var of Leaf tensor should be initialized."));
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
-    VLOG(6) << "Leaf Gradient Var(" << var_->Name()
-            << ") has been calculated by previous graph, will accumulate on "
-               "previous graph.";
+    VLOG(6) << "Leaf Var(" << var_->Name()
+            << ")'s Gradient has been initizlized, will accumulate on "
+               "previous gradient.";
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
         TensorAdd(*src, dst);
@@ -403,13 +546,69 @@ void GradientAccumulator::AccumulateGrad() {
           "Only support LoDTensor and SelectedRows for gradient var"));
     }
   } else {
-    VLOG(6) << "Leaf Gradient Var(" << var_->Name()
-            << ") has not been initialized, not accumulate. Just move";
+    VLOG(6)
+        << "Leaf Var(" << var_->Name()
+        << ")'s Gradient has not been initialized, not accumulate. Just move";
     *(dst) = std::move(*src);
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());
+    var_->SetIsEmpty(false);
   }
   inner_var_.reset();
+}
+
+void GradientAccumulator::CallGradientHooks() {
+  PADDLE_ENFORCE_EQ(var_->IsLeafGrad(), true,
+                    platform::errors::Unavailable(
+                        "Only leaf gradient Tensor can deal with by gradient "
+                        "hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(
+      SumGradCompleted(), true,
+      platform::errors::PreconditionNotMet(
+          "Only can call gradient hooks after sum gradient completed."));
+  PADDLE_ENFORCE_EQ(
+      HasInnerVar(), true,
+      platform::errors::PreconditionNotMet(
+          "Leaf Tensor's inner var is nullptr when call gradient hook."));
+  PADDLE_ENFORCE_EQ(
+      inner_var_->Var().IsInitialized(), true,
+      platform::errors::PreconditionNotMet("Leaf Tensor's inner var "
+                                           "is not initialized when "
+                                           "call gradient hook."));
+  if (var_->HasVariableWrapperHook()) {
+    VLOG(3) << "Call " << var_->GetVariableWrapperHooks().size()
+            << " hooks of leaf gradient accumulator's inner var `"
+            << var_->Name() << "`.";
+    auto tmp_var = inner_var_;
+    VLOG(3) << "Input var " << var_->Name() << "'s hook size - "
+            << var_->GetVariableWrapperHooks().size();
+    for (const auto& hook_pair : var_->GetVariableWrapperHooks()) {
+      tmp_var = (*hook_pair.second)(tmp_var);
+    }
+    inner_var_ = tmp_var;
+  }
+}
+
+void GradientAccumulator::CallReduceHooks() {
+  PADDLE_ENFORCE_EQ(
+      var_->IsLeafGrad(), true,
+      platform::errors::Unavailable("Only leaf gradient Tensor can deal with "
+                                    "by reduce hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(SumGradCompleted(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the gradient "
+                        "summation is completed in current batch."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(), false,
+                    platform::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the "
+                        "gradient accumulation is completed in "
+                        "current batch or across batchs."));
+  if (var_->HasVoidHook()) {
+    for (const auto& hook : var_->GetVoidHooks()) {
+      VLOG(3) << "call gradient accumulator backward hooks.";
+      (*hook)();
+    }
+  }
 }
 
 void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
@@ -498,7 +697,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         }
       }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (paddle::platform::is_gpu_place(place)) {
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
@@ -559,7 +758,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           // Increase count
           IncreaseCurCnt();
         }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       }
 #endif
       tmp_grad_vars_.clear();

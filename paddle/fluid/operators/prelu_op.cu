@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/prelu.h"
 #include "paddle/fluid/operators/prelu_op.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -42,17 +42,22 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
 
     const T* alpha_ptr = alpha->data<T>();
     auto& mode = context.Attr<std::string>("mode");
+    auto& data_format = context.Attr<std::string>("data_format");
 
     int numel = x->numel();
     auto dim = x->dims();
+    auto x_rank = dim.size();
 
-    VLOG(4) << "dim[0]:" << dim[0] << ", dim[1]:" << dim[1]
-            << ", numel:" << numel;
+    VLOG(4) << "dim[0]:" << dim[0] << ", dim[1]:" << dim[1] << ", dim["
+            << x_rank - 1 << "]:" << dim[x_rank - 1] << ", numel:" << numel;
 
     if (mode == "channel") {
+      bool channel_last = data_format == "NHWC";
+      size_t channel = channel_last ? dim[x_rank - 1] : dim[1];
       math::PreluChannelWiseDirectCUDAFunctor<T> prelu_channel_wise;
       prelu_channel_wise(context.cuda_device_context().stream(), x_ptr,
-                         alpha_ptr, o_ptr, dim[0], dim[1], numel);
+                         alpha_ptr, o_ptr, dim[0], channel, channel_last,
+                         numel);
     } else if (mode == "element") {
       math::PreluElementWiseDirectCUDAFunctor<T> prelu_element_wise;
       prelu_element_wise(context.cuda_device_context().stream(), x_ptr,
@@ -65,7 +70,7 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
   }
 };
 
-enum PRELU_MODE { Element, Channel, Scalar };
+enum PRELU_MODE { Element, ChannelFirst, ChannelLast, Scalar };
 
 template <typename T>
 __global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
@@ -78,24 +83,28 @@ __global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
     if (mode == Element) {
       size_t element_index = index % spatial_size;
       scale = alpha_ptr[element_index];
-    } else if (mode == Channel) {
+    } else if (mode == ChannelFirst) {
       size_t temp = index / plane_size;
       size_t channel_index = temp % channel_num;
+      scale = alpha_ptr[channel_index];
+    } else if (mode == ChannelLast) {
+      size_t channel_index = index % channel_num;
       scale = alpha_ptr[channel_index];
     } else {
       scale = alpha_ptr[0];
     }
     T x = x_ptr[index];
     T dy = dy_ptr[index];
-    if (dx_ptr != nullptr) dx_ptr[index] = (x > 0) ? dy : scale * dy;
-    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > 0) ? 0 : x * dy;
+    T zero = static_cast<T>(0);
+    if (dx_ptr != nullptr) dx_ptr[index] = (x > zero) ? dy : scale * dy;
+    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > zero) ? zero : x * dy;
   }
 }
 
 template <typename T>
 class PreluOpGradFunctor {
  public:
-  void operator()(cudaStream_t stream, const T* x, const T* alpha, const T* dy,
+  void operator()(gpuStream_t stream, const T* x, const T* alpha, const T* dy,
                   T* dx, T* dalpha, const framework::DDim& input_dims,
                   PRELU_MODE mode) {
     size_t numel = 1;
@@ -104,17 +113,14 @@ class PreluOpGradFunctor {
     }
     size_t plane_size = numel / input_dims[0] / input_dims[1];
     size_t spatial_size = numel / input_dims[0];
+    size_t channel =
+        mode == ChannelLast ? input_dims[input_dims.size() - 1] : input_dims[1];
 
     PReluOpGradKernel<
         T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x, alpha, dy, dx, dalpha, input_dims[1], plane_size, spatial_size,
-        numel, mode);
+        x, alpha, dy, dx, dalpha, channel, plane_size, spatial_size, numel,
+        mode);
   }
-};
-
-template <typename T>
-struct IdentityFunctor {
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
 };
 
 template <typename DeviceContext, typename T>
@@ -137,9 +143,11 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
     if (!dx && !dalpha) return;
 
     auto& mode = context.Attr<std::string>("mode");
+    auto& data_format = context.Attr<std::string>("data_format");
 
     int numel = x->numel();
     auto dim = x->dims();
+    auto x_rank = dim.size();
     std::vector<int> input_shape = framework::vectorize<int>(dim);
     auto stream = context.cuda_device_context().stream();
 
@@ -154,10 +162,12 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
     }
 
     PRELU_MODE m;
+    bool channel_last = false;
     if (mode == "element") {
       m = Element;
     } else if (mode == "channel") {
-      m = Channel;
+      channel_last = data_format == "NHWC";
+      m = channel_last ? ChannelLast : ChannelFirst;
     } else {
       m = Scalar;
     }
@@ -169,14 +179,14 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
 
     std::vector<int> reduce_dims;
     for (size_t i = 0; i < dim.size(); i++) {
-      if (mode == "channel" && i == 1) continue;
+      if (mode == "channel" && !channel_last && i == 1) continue;
+      if (mode == "channel" && channel_last && i == dim.size() - 1) continue;
       if (mode == "element" && i != 0) continue;
       reduce_dims.push_back(i);
     }
 
-    TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-        dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), cub::Sum(),
-        IdentityFunctor<T>(), stream);
+    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        dalpha_tmp, dalpha, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };
 
@@ -184,10 +194,14 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     prelu, ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     prelu_grad,
     ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext,
+                             plat::float16>,
     ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext, double>);

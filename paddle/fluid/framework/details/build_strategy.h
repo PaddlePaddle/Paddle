@@ -39,13 +39,17 @@ class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {
 namespace framework {
 namespace details {
+using DeviceType = paddle::platform::DeviceType;
+namespace p = paddle::platform;
 
 struct BuildStrategy {
   // ParallelExecutor supports two modes of ReduceStrategy, kAllReduce and
@@ -96,6 +100,9 @@ struct BuildStrategy {
   // while running.
   bool cache_runtime_context_{false};
 
+  // Fix the op run order.
+  bool fix_op_run_order_{false};
+
   // Operator fusion
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.
@@ -105,8 +112,8 @@ struct BuildStrategy {
   bool enable_auto_fusion_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
-  boost::optional<bool> fuse_all_optimizer_ops_{false};
-  boost::optional<bool> fuse_all_reduce_ops_{boost::none};
+  paddle::optional<bool> fuse_all_optimizer_ops_{false};
+  paddle::optional<bool> fuse_all_reduce_ops_{paddle::none};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
   bool fuse_relu_depthwise_conv_{false};
@@ -114,7 +121,7 @@ struct BuildStrategy {
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
-  boost::optional<bool> fuse_broadcast_ops_{boost::none};
+  paddle::optional<bool> fuse_broadcast_ops_{paddle::none};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
 
@@ -128,13 +135,15 @@ struct BuildStrategy {
   // By default, memory_optimize would be opened if gc is disabled, and
   // be closed if gc is enabled.
   // Users can forcely enable/disable memory_optimize by setting True/False.
-  boost::optional<bool> memory_optimize_{boost::none};
+  paddle::optional<bool> memory_optimize_{paddle::none};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
 
   // Turn off inplace addto by default.
   bool enable_addto_{false};
+
+  bool allow_cuda_graph_capture_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
@@ -147,6 +156,7 @@ struct BuildStrategy {
 
   // NCCL config
   size_t nccl_comm_num_{1};
+  size_t bkcl_comm_num_{1};
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
   bool use_hierarchical_allreduce_{false};
@@ -172,6 +182,11 @@ struct BuildStrategy {
 
   bool IsFinalized() const { return is_finalized_; }
 
+  void ClearFinalized() {
+    pass_builder_ = nullptr;
+    is_finalized_ = false;
+  }
+
   bool IsMultiDevPass(const std::string &pass_name) const;
 
   // Apply the passes built by the pass_builder_. The passes will be
@@ -180,11 +195,14 @@ struct BuildStrategy {
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
-#if defined(PADDLE_WITH_NCCL)
-                   const bool use_cuda,
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+                   DeviceType use_device,
                    platform::NCCLCommunicator *nccl_ctxs) const;
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+                   DeviceType use_device,
+                   platform::BKCLCommunicator *bkcl_ctxs) const;
 #else
-                   const bool use_cuda) const;
+                   DeviceType use_device) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <string>
-#include <vector>
-
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
+#include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
@@ -38,9 +36,12 @@ class FuseAllReduceOpPass : public ir::Pass {
     auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *multi_nccl_ctxs =
         &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    auto *multi_bkcl_ctxs =
+        &Get<platform::BKCLCommunicator>(details::kBKCLCtxs);
 #endif
 
     ir::Graph &result = *graph;
@@ -89,9 +90,12 @@ class FuseAllReduceOpPass : public ir::Pass {
       for (auto &p_g : group_p_g) {
         group_all_reduce_ops.emplace_back(all_reduce_ops.at(p_g.second));
       }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       InsertFusedAllReduce(places, local_scopes, group_size,
                            group_all_reduce_ops, multi_nccl_ctxs, &result);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+      InsertFusedAllReduce(places, local_scopes, group_size,
+                           group_all_reduce_ops, multi_bkcl_ctxs, &result);
 #else
       InsertFusedAllReduce(places, local_scopes, group_size,
                            group_all_reduce_ops, &result);
@@ -152,10 +156,44 @@ class FuseAllReduceOpPass : public ir::Pass {
                             const std::vector<Scope *> &local_scopes,
                             const size_t num_of_all_reduce,
                             const std::vector<ir::Node *> &all_reduce_ops,
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
                             const platform::NCCLCommunicator *multi_nccl_ctxs,
+#elif defined(PADDLE_WITH_XPU_BKCL)
+                            const platform::BKCLCommunicator *multi_bkcl_ctxs,
 #endif
                             ir::Graph *result) const {
+    bool is_grad_merge = false;
+    std::string grad_merge_cond_name;
+    for (auto &op : all_reduce_ops) {
+      auto *grad_merge_all_reduce_op_handle =
+          dynamic_cast<details::GradMergeAllReduceOpHandle *>(
+              &op->Wrapper<details::OpHandleBase>());
+      if (grad_merge_all_reduce_op_handle) {
+        if (is_grad_merge) {
+          auto this_grad_merge_cond_name =
+              grad_merge_all_reduce_op_handle->GradMergeCondName();
+
+          PADDLE_ENFORCE_EQ(
+              grad_merge_cond_name, this_grad_merge_cond_name,
+              platform::errors::InvalidArgument(
+                  "grad_merge_cond_name is not same in different all_reduce, "
+                  "prev_grad_merge_cond_name is %s, this_grad_merge_cond_name "
+                  "is %s",
+                  grad_merge_cond_name, this_grad_merge_cond_name));
+        } else {
+          is_grad_merge = true;
+          grad_merge_cond_name =
+              grad_merge_all_reduce_op_handle->GradMergeCondName();
+        }
+      } else {
+        PADDLE_ENFORCE_EQ(is_grad_merge, false,
+                          platform::errors::InvalidArgument(
+                              "if use grad_merge, all of allreduce must be "
+                              "grad_merge_allreduce"));
+      }
+    }
+    VLOG(6) << "fused allreduce use_grad_merge=" << is_grad_merge;
+
     std::vector<details::VarHandleBase *> inputs;
     std::vector<details::VarHandleBase *> outputs;
     for (auto &op : all_reduce_ops) {
@@ -179,12 +217,18 @@ class FuseAllReduceOpPass : public ir::Pass {
       result->RemoveNode(op_handle.Node());
     }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, multi_nccl_ctxs, result);
+                           local_scopes, is_grad_merge, grad_merge_cond_name,
+                           multi_nccl_ctxs, result);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
+                           local_scopes, is_grad_merge, grad_merge_cond_name,
+                           multi_bkcl_ctxs, result);
 #else
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, result);
+                           local_scopes, is_grad_merge, grad_merge_cond_name,
+                           result);
 #endif
   }
 
@@ -194,20 +238,52 @@ class FuseAllReduceOpPass : public ir::Pass {
       const std::vector<details::VarHandleBase *> &outputs,
       const size_t num_of_all_reduce,
       const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
-#if defined(PADDLE_WITH_NCCL)
+      const std::vector<Scope *> &local_scopes, bool is_grad_merge,
+      const std::string &grad_merge_cond_name,
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       const platform::NCCLCommunicator *multi_nccl_ctxs,
+#elif defined(PADDLE_WITH_XPU_BKCL)
+      const platform::BKCLCommunicator *multi_bkcl_ctxs,
 #endif
       ir::Graph *result) const {
-#if defined(PADDLE_WITH_NCCL)
-    auto *op_handle = new details::FusedAllReduceOpHandle(
-        result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
-        local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
+    details::FusedAllReduceOpHandle *op_handle = NULL;
+    if (is_grad_merge) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      op_handle = new details::FusedGradMergeAllReduceOpHandle(
+          result->CreateEmptyNode("fused_all_reduce",
+                                  ir::Node::Type::kOperation),
+          local_scopes, places, num_of_all_reduce, grad_merge_cond_name,
+          multi_nccl_ctxs);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+      op_handle = new details::FusedGradMergeAllReduceOpHandle(
+          result->CreateEmptyNode("fused_all_reduce",
+                                  ir::Node::Type::kOperation),
+          local_scopes, places, num_of_all_reduce, grad_merge_cond_name,
+          multi_bkcl_ctxs);
 #else
-    auto *op_handle = new details::FusedAllReduceOpHandle(
-        result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
-        local_scopes, places, num_of_all_reduce);
+      op_handle = new details::FusedGradMergeAllReduceOpHandle(
+          result->CreateEmptyNode("fused_all_reduce",
+                                  ir::Node::Type::kOperation),
+          local_scopes, places, num_of_all_reduce, grad_merge_cond_name);
 #endif
+    } else {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      op_handle = new details::FusedAllReduceOpHandle(
+          result->CreateEmptyNode("fused_all_reduce",
+                                  ir::Node::Type::kOperation),
+          local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+      op_handle = new details::FusedAllReduceOpHandle(
+          result->CreateEmptyNode("fused_all_reduce",
+                                  ir::Node::Type::kOperation),
+          local_scopes, places, num_of_all_reduce, multi_bkcl_ctxs);
+#else
+      op_handle = new details::FusedAllReduceOpHandle(
+          result->CreateEmptyNode("fused_all_reduce",
+                                  ir::Node::Type::kOperation),
+          local_scopes, places, num_of_all_reduce);
+#endif
+    }
 
     for (auto in : inputs) {
       op_handle->AddInput(in);
@@ -217,8 +293,12 @@ class FuseAllReduceOpPass : public ir::Pass {
       op_handle->AddOutput(out);
     }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (!multi_nccl_ctxs) {
+      SetCommunicationContext(places, op_handle);
+    }
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    if (!multi_bkcl_ctxs) {
       SetCommunicationContext(places, op_handle);
     }
 #else

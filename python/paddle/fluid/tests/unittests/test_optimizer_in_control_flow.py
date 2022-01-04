@@ -14,16 +14,16 @@
 
 from __future__ import print_function
 
-import numpy as np
+import os
 import unittest
 
+import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 import paddle.fluid.core as core
-import paddle.fluid.compiler as compiler
-import os
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784
@@ -32,6 +32,8 @@ FC_SIZE = 40
 EPOCH_NUM = 5
 LR = 0.001
 SEED = 2020
+
+paddle.enable_static()
 
 
 def static(train_data,
@@ -282,8 +284,6 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
 
             if num_devices > 1:
                 self.assertRaises(NotImplementedError, not_implemented_error)
-            else:
-                not_implemented_error()
 
 
 if __name__ == '__main__':

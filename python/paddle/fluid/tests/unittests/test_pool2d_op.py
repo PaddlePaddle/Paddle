@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -41,6 +41,8 @@ def max_pool2D_forward_naive(x,
                              exclusive=True,
                              adaptive=False,
                              data_type=np.float64):
+    if data_type == np.float64 and core.is_compiled_with_rocm():
+        data_type = np.float32
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -81,6 +83,8 @@ def avg_pool2D_forward_naive(x,
                              exclusive=True,
                              adaptive=False,
                              data_type=np.float64):
+    if data_type == np.float64 and core.is_compiled_with_rocm():
+        data_type = np.float32
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -248,7 +252,7 @@ def pool2D_forward_naive(x,
     return out
 
 
-class TestPool2D_Op(OpTest):
+class TestPool2D_Op_Mixin(object):
     def setUp(self):
         self.op_type = "pool2d"
         self.use_cudnn = False
@@ -340,7 +344,7 @@ class TestPool2D_Op(OpTest):
         self.use_cudnn = False
 
     def init_data_type(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -357,6 +361,10 @@ class TestPool2D_Op(OpTest):
 
     def init_adaptive(self):
         self.adaptive = False
+
+
+class TestPool2D_Op(TestPool2D_Op_Mixin, OpTest):
+    pass
 
 
 class TestCase1(TestPool2D_Op):

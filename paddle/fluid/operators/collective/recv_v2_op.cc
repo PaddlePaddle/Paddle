@@ -34,13 +34,26 @@ class RecvOpV2 : public framework::OperatorWithKernel {
         ring_id, 0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
-    auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
-    PADDLE_ENFORCE_GE(out_shape.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "The size of the output shape must be greater than 0 "
-                          "but the value given is %d.",
-                          out_shape.size()));
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+
+    if (ctx->GetOutputsVarType("Out").front() ==
+        framework::proto::VarType::LOD_TENSOR) {
+      auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
+      PADDLE_ENFORCE_GE(
+          out_shape.size(), 1,
+          platform::errors::InvalidArgument(
+              "The size of the output shape must be greater than 0 "
+              "but the value given is %d.",
+              out_shape.size()));
+      for (size_t i = 0; i < out_shape.size(); ++i) {
+        PADDLE_ENFORCE_GE(out_shape[i], 1,
+                          platform::errors::InvalidArgument(
+                              "The shape attribute for recv_v2 must be set "
+                              "explicitly, but the %dth element is %d which "
+                              "is less than 1.",
+                              i, out_shape[i]));
+      }
+      ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    }
   }
 
  protected:
@@ -62,6 +75,12 @@ class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
+        .SetDefault("tag");
+    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
+        .SetDefault(0);
+#endif
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(

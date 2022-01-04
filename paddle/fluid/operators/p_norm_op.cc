@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -174,3 +175,11 @@ REGISTER_OP_CPU_KERNEL(p_norm, ops::PnormKernel<CPU, float>,
                        ops::PnormKernel<CPU, double>);
 REGISTER_OP_CPU_KERNEL(p_norm_grad, ops::PnormGradKernel<CPU, float>,
                        ops::PnormGradKernel<CPU, double>);
+REGISTER_OP_VERSION(p_norm)
+    .AddCheckpoint(
+        R"ROC(
+        Upgrade p_norm, add 1 attribute [asvector].
+      )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "asvector",
+            "Compute as vector when axis is None and input is matrix", false));

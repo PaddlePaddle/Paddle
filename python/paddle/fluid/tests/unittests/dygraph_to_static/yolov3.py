@@ -76,7 +76,7 @@ cfg.label_smooth = True
 # Model options
 #
 # input size
-cfg.input_size = 608
+cfg.input_size = 224 if sys.platform == 'darwin' else 608
 # pixel mean values
 cfg.pixel_means = [0.485, 0.456, 0.406]
 # pixel std values
@@ -93,11 +93,11 @@ cfg.ignore_thresh = .7
 # SOLVER options
 #
 # batch size
-cfg.batch_size = 2 if sys.platform == 'darwin' or os.name == 'nt' else 4 
+cfg.batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else 4
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
-cfg.max_iter = 20 if fluid.is_compiled_with_cuda() else 2
+cfg.max_iter = 20 if fluid.is_compiled_with_cuda() else 1
 # Disable mixup in last N iter
 cfg.no_mixup_iter = 10 if fluid.is_compiled_with_cuda() else 1
 # warm up to learning rate 

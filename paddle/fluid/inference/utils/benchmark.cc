@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/utils/benchmark.h"
 
+#include <fstream>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

@@ -28,12 +28,15 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -152,14 +155,14 @@ class FleetWrapper {
 // Push dense variables to server in async mode
 // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
 // Param<out>: push_sparse_status
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm, int batch_size,
-      const paddle::platform::Place& place, cudaStream_t stream,
-      cudaEvent_t event);
+      const paddle::platform::Place& place, gpuStream_t stream,
+      gpuEvent_t event);
 #endif
 #ifdef PADDLE_WITH_XPU
   void PushDenseVarsAsync(
@@ -206,7 +209,8 @@ class FleetWrapper {
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+      const bool scale_sparse_gradient_with_batch_size);
 
   // Push sparse variables to server in async mode
   void PushSparseFromTensorWithLabelAsync(
@@ -262,6 +266,7 @@ class FleetWrapper {
                            bool load_combine);
 
   void PrintTableStat(const uint64_t table_id);
+  void SetFileNumOneShard(const uint64_t table_id, int file_num);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
@@ -272,6 +277,8 @@ class FleetWrapper {
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
+  void SaveMultiTableOnePath(const std::vector<int>& table_ids,
+                             const std::string& path, const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModelOneTable(const uint64_t table_id, const std::string& path,
@@ -328,6 +335,8 @@ class FleetWrapper {
   }
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
+
+  void SetDate(const uint64_t table_id, const std::string& date);
 
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;

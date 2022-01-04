@@ -95,6 +95,32 @@ class MyMultiSlotDataGenerator_error_5(fleet.MultiSlotDataGenerator):
         return data_iter
 
 
+class MyMultiSlotStringDataGenerator_zip(fleet.MultiSlotStringDataGenerator):
+    def generate_sample(self, line):
+        def data_iter():
+            for i in range(40):
+                if i == 1:
+                    yield None
+                feature_name = ["words", "label"]
+                data = [["1", "2", "3", "4"], ["0"]]
+                yield zip(feature_name, data)
+
+        return data_iter
+
+
+class MyMultiSlotDataGenerator_zip(fleet.MultiSlotDataGenerator):
+    def generate_sample(self, line):
+        def data_iter():
+            for i in range(40):
+                if i == 1:
+                    yield None
+                feature_name = ["words", "label"]
+                data = [[1, 2, 3, 4], [0]]
+                yield zip(feature_name, data)
+
+        return data_iter
+
+
 class TestMultiSlotDataGenerator(unittest.TestCase):
     def test_MultiSlotDataGenerator_basic(self):
         my_ms_dg = MyMultiSlotDataGenerator()
@@ -147,6 +173,20 @@ class TestMultiSlotDataGenerator_error_5(unittest.TestCase):
             my_ms_dg = MyMultiSlotDataGenerator_error_5()
             my_ms_dg.set_batch(1)
             my_ms_dg.run_from_memory()
+
+
+class TestMultiSlotStringDataGeneratorZip(unittest.TestCase):
+    def test_MultiSlotStringDataGenerator_zip(self):
+        my_ms_dg = MyMultiSlotStringDataGenerator_zip()
+        my_ms_dg.set_batch(1)
+        my_ms_dg.run_from_memory()
+
+
+class TestMultiSlotDataGeneratorZip(unittest.TestCase):
+    def test_MultiSlotDataGenerator_zip(self):
+        my_ms_dg = MyMultiSlotDataGenerator_zip()
+        my_ms_dg.set_batch(1)
+        my_ms_dg.run_from_memory()
 
 
 if __name__ == '__main__':

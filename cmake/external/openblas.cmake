@@ -15,15 +15,16 @@
 INCLUDE(ExternalProject)
 
 SET(CBLAS_PREFIX_DIR  ${THIRD_PARTY_PATH}/openblas)
-SET(CBLAS_SOURCE_DIR  ${THIRD_PARTY_PATH}/openblas/src/extern_openblas)
 SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 SET(CBLAS_REPOSITORY  ${GIT_URL}/xianyi/OpenBLAS.git)
 SET(CBLAS_TAG         v0.3.7)
+if(APPLE AND WITH_ARM)
+  SET(CBLAS_TAG         v0.3.13)
+endif()
 
-cache_third_party(extern_openblas
-    REPOSITORY    ${CBLAS_REPOSITORY}
-    TAG           ${CBLAS_TAG}
-    DIR           CBLAS_SOURCE_DIR)
+if(WITH_MIPS)
+  SET(CBLAS_TAG         v0.3.13)
+endif()
 
 IF(NOT WIN32)
     SET(CBLAS_LIBRARIES
@@ -45,9 +46,9 @@ IF(NOT WIN32)
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${OPENBLAS_DOWNLOAD_CMD}"
+        GIT_REPOSITORY      ${CBLAS_REPOSITORY}
+        GIT_TAG             ${CBLAS_TAG}
         PREFIX              ${CBLAS_PREFIX_DIR}
-        SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}
@@ -63,9 +64,9 @@ ELSE(NOT WIN32)
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        "${OPENBLAS_DOWNLOAD_CMD}"
+        GIT_REPOSITORY      ${CBLAS_REPOSITORY}
+        GIT_TAG             ${CBLAS_TAG}
         PREFIX              ${CBLAS_PREFIX_DIR}
-        SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     0
         UPDATE_COMMAND      ""

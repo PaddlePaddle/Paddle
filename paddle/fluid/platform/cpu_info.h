@@ -41,7 +41,7 @@ limitations under the License. */
 #define cpuid(reg, x) __cpuidex(reg, x, 0)
 #else
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW)
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
 #include <cpuid.h>
 inline void cpuid(int reg[4], int x) {
   __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
@@ -73,6 +73,15 @@ size_t CUDAPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t CUDAPinnedMaxChunkSize();
 
+//! Get the maximum allocation size for a machine.
+size_t NPUPinnedMaxAllocSize();
+
+//! Get the minimum chunk size for buddy allocator.
+size_t NPUPinnedMinChunkSize();
+
+//! Get the maximum chunk size for buddy allocator.
+size_t NPUPinnedMaxChunkSize();
+
 typedef enum {
   isa_any,
   sse42,
@@ -83,6 +92,7 @@ typedef enum {
   avx512_core_vnni,
   avx512_mic,
   avx512_mic_4ops,
+  avx512_bf16,
 } cpu_isa_t;  // Instruction set architecture
 
 // May I use some instruction

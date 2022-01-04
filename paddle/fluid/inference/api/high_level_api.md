@@ -1,7 +1,7 @@
 # Inference High-level APIs
 This document describes the high-level inference APIs, one can use them to deploy a Paddle model for an application quickly.
 
-The APIs are described in `paddle_inference_api.h`, just one header file, and two libaries `libpaddle_fluid.so` and `libpaddle_fluid_api.so` are needed for a deployment.
+The APIs are described in `paddle_inference_api.h`, just one header file, and two libaries `libpaddle_inference.so` and `libpaddle_inference_io.so` are needed for a deployment.
 
 ## PaddleTensor
 We provide the `PaddleTensor` data structure to give a general tensor interface.
