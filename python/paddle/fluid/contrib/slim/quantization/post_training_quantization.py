@@ -132,6 +132,7 @@ class PostTrainingQuantization(object):
                  params_filename=None,
                  batch_generator=None,
                  sample_generator=None,
+                 data_loader=None,
                  batch_size=10,
                  batch_nums=None,
                  algo="KL",
@@ -169,6 +170,9 @@ class PostTrainingQuantization(object):
                 calibrate data for DataLoader, and it only returns a sample every
                 time. Note that, sample_generator and batch_generator, only one
                 should be set. Beisdes, sample_generator dose not support lod tensor.
+            data_loader(Python Generator, Paddle.io.DataLoader, optional): The
+                generator provides calibrate data for DataLoader, and it could
+                return a batch every time.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of 
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use 
@@ -303,7 +307,7 @@ class PostTrainingQuantization(object):
         self._program = None
         self._feed_list = None
         self._fetch_list = None
-        self._data_loader = None
+        self._data_loader = data_loader
 
         self._out_scale_op_list = _out_scale_op_list
         self._quantized_weight_var_name = set()
@@ -431,17 +435,21 @@ class PostTrainingQuantization(object):
 
         feed_vars = [framework._get_var(str(var_name), self._program) \
             for var_name in self._feed_list]
-        self._data_loader = io.DataLoader.from_generator(
-            feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True)
-        if self._sample_generator is not None:
-            self._data_loader.set_sample_generator(
-                self._sample_generator,
-                batch_size=self._batch_size,
-                drop_last=True,
-                places=self._place)
-        elif self._batch_generator is not None:
-            self._data_loader.set_batch_generator(
-                self._batch_generator, places=self._place)
+
+        if self._data_loader is None:
+            self._data_loader = io.DataLoader.from_generator(
+                feed_list=feed_vars,
+                capacity=3 * self._batch_size,
+                iterable=True)
+            if self._sample_generator is not None:
+                self._data_loader.set_sample_generator(
+                    self._sample_generator,
+                    batch_size=self._batch_size,
+                    drop_last=True,
+                    places=self._place)
+            elif self._batch_generator is not None:
+                self._data_loader.set_batch_generator(
+                    self._batch_generator, places=self._place)
 
     def _optimize_fp32_model(self):
         '''
