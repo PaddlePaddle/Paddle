@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+#include <map>
+#include <functional>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle{
 namespace platform {
