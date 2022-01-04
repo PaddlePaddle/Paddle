@@ -18,12 +18,25 @@
 namespace infrt {
 namespace trt {
 /*
- * trtOpTellerPass.
+ * trtGraphSplitPass.
  *
- * Pick out the operators supported by tensorrt and convert it to graph.
+ * Splite the graph op when the number of operations is too small.
+ * The feature is the opposite of 'trtOpTellerPass'.
  *
  * source func:
  *
+ * func @main() -> tensor<?xf32> {
+ *  %a = "pd.feed"()...
+ *  %d, %f = "pd.graph"(%a) {
+ *     %m = "pd.conv2d"(%a)...
+ *     %n = "pd.conv3d"(%m)...
+ *     %s = "pd.conv2d"(%a)...
+ *     "pd.fetch" %n, %s
+ *  } ...
+ *  "pd.fetch" %d, %f
+ * }
+ *
+ * destination func:
  * func @main() -> tensor<?xf32> {
  *  %a = "pd.feed"()...
  *  %c = "pd.conv2d"(%a) ...
@@ -31,32 +44,17 @@ namespace trt {
  *  %f = "pd.conv2d"(%a) ...
  *  "pd.fetch" %d, %f
  * }
- *
- * destination func:
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %c = "pd.graph"(%a) {
- *     %m = "pd.conv2d"(%a)...
- *     "pd.fetch" %m
- *  } ...
- *  %d = "pd.graph"(%c) {
- *      %m = "pd.conv3d"(%c)...
- *      "pd.fetch" %m
- *  } ...
- *  %f = "pd.graph"(%a) {
- *      %m = "pd.conv2d"(%a)...
- *      "pd.fetch" %m
- *  } ...
- *  "pd.fetch" %d, %f
- * }
- * TODO(winter-wang): Supplementary how to judge the operators can be supported
- * by tensorrt.
  */
-class trtOpTellerPass
-    : public ::mlir::PassWrapper<trtOpTellerPass, ::mlir::FunctionPass> {
+class trtGraphSplitPass
+    : public ::mlir::PassWrapper<trtGraphSplitPass, ::mlir::FunctionPass> {
  public:
-  ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
+  ::llvm::StringRef getName() const override { return "trtGraphSplitPass"; }
   void runOnFunction() override;
+  explicit trtGraphSplitPass(size_t min_subgraph_size = 3)
+      : min_subgraph_size_(min_subgraph_size) {}
+
+ private:
+  size_t min_subgraph_size_;
 };
 }  // namespace trt
 }  // namespace infrt
