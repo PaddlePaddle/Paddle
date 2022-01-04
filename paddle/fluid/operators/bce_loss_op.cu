@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/operators/bce_loss_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -22,6 +23,17 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+template <typename T>
+struct BCELossGradFunctor {
+  T one = static_cast<T>(1.0f);
+  T eps = static_cast<T>(1e-12);
+  __device__ __forceinline__ T operator()(const T& x, const T& label,
+                                          const T& dout) const {
+    T term1 = max((one - x) * x, eps);
+    return (dout * (x - label) / term1);
+  }
+};
 
 template <typename T>
 __global__ void GPUBCELossForward(const T* x_data, const T* label_data,
@@ -41,23 +53,6 @@ __global__ void GPUBCELossForward(const T* x_data, const T* label_data,
     T term2 = max(real_log(one - x), neg_100);
 
     out_data[i] = ((label - one) * term2) - (label * term1);
-  }
-}
-
-template <typename T>
-__global__ void GPUBCELossBackward(const T* x_data, const T* label_data,
-                                   const T* dout_data, T* dx_data,
-                                   const int in_numel) {
-  CUDA_KERNEL_LOOP(i, in_numel) {
-    T x = x_data[i];
-    T label = label_data[i];
-    T dout = dout_data[i];
-    T one = static_cast<T>(1.);
-    T eps = static_cast<T>(1e-12);
-
-    T term1 = max((one - x) * x, eps);
-
-    dx_data[i] = dout * (x - label) / term1;
   }
 }
 
@@ -91,17 +86,13 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     auto* labels = ctx.Input<Tensor>("Label");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-    int x_numel = x->numel();
-    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
-
-    auto& dev_ctx = ctx.cuda_device_context();
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(dev_ctx, x_numel);
-
-    GPUBCELossBackward<T><<<config.block_per_grid, config.thread_per_block, 0,
-                            dev_ctx.stream()>>>(
-        x->data<T>(), labels->data<T>(), dout->data<T>(), dx_data, x_numel);
+    dx->mutable_data<T>(ctx.GetPlace());
+    std::vector<const framework::Tensor*> ins = {x, labels, dout};
+    std::vector<framework::Tensor*> outs = {dx};
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto functor = BCELossGradFunctor<T>();
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
+        dev_ctx, ins, &outs, functor);
   }
 };
 
