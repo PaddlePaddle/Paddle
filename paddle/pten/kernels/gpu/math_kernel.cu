@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
