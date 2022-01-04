@@ -126,13 +126,15 @@ class Unsqueeze2GradKernel : public framework::OpKernel<T> {
     auto *d_out =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    // auto in_dims = d_x->dims();
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
+    // framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
+    // d_x->ShareDataWith(*d_out);
+    framework::Tensor input_tensor;
+    input_tensor.ShareDataWith(*d_out);
+    d_x->ShareDataWith(input_tensor);
     d_x->Resize(x_dims);
   }
 };

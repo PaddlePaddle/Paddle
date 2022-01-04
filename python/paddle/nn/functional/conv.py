@@ -343,8 +343,10 @@ def conv1d(x,
         dilation = [1] + convert_to_list(dilation, 1, 'dilation')
 
     l_type = "conv2d"
-    if (num_channels == groups and num_channels != 1 and
-            num_filters % num_channels == 0 and not use_cudnn):
+
+    # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
+    if (core.is_compiled_with_cuda() and num_channels == groups and
+            num_channels != 1 and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
@@ -360,7 +362,11 @@ def conv1d(x,
         weight = unsqueeze(weight, axis=[-1])
     else:
         weight = unsqueeze(weight, axis=[-2])
-
+    # print("x_shape:", x.shape)
+    # print("w_shape:", weight.shape)
+    # print("padding:", padding)
+    # print("stride: ", stride)
+    # print("dilation:", dilation)
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
