@@ -303,7 +303,9 @@ class NodeTrees {
     ~NodeTrees();
     
     void logme(BaseLogger* logger);
-    void traverse(std::function<void (HostRecordNode*)>, std::function<void (CudaRuntimeRecordNode*)>, std::function<void (DeviceRecordNode*)>);
+    void traverse(std::function<void (HostRecordNode*)>, 
+                  std::function<void (CudaRuntimeRecordNode*)>, 
+                  std::function<void (DeviceRecordNode*)>);
     const std::map<uint64_t, HostRecordNode*>& GetNodeTrees() { return thread_record_trees_map_; }
     
 
