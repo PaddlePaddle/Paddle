@@ -50,7 +50,7 @@ wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
-if not defined GENERATOR set GENERATOR="Visual Studio 15 2017"
+if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
