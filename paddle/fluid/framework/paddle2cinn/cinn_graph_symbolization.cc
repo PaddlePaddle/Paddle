@@ -51,15 +51,15 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
     info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
-  if (skip_trans_type) {
-    // info.type is Unk in default and cinn will
-    // not use the type of this feed tensor normally
-    VLOG(4) << "A feed tenosr does not set type";
-  } else {
-    auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
-    info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
+  // use FP32 as default type if skip_trans_type=true in the case
+  // of no_need_buffer feeds to pass cinn enforce check, and we will
+  // ensure these feeds doesn't be used in execution on cinn_launch op
+  auto tensor_type = ::paddle::framework::proto::VarType::FP32;
+  if (!skip_trans_type) {
+    tensor_type = tensor.type();
   }
-
+  auto cinn_var_type = TransformVarDataTypeToCinn(tensor_type);
+  info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
   return info;
 }
 }  // namespace utils
