@@ -171,7 +171,7 @@ class PostTrainingQuantization(object):
                 time. Note that, sample_generator and batch_generator, only one
                 should be set. Beisdes, sample_generator dose not support lod tensor.
             data_loader(Python Generator, Paddle.io.DataLoader, optional): The
-                generator provides calibrate data for DataLoader, and it could
+                Generator or Dataloader provides calibrate data, and it could
                 return a batch every time.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of 
