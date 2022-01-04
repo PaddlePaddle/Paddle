@@ -80,7 +80,7 @@ class MemcpyD2HFunctor {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }
-    // NOTE(Aurelius84): t host <-> device memory copies of a memory block of 64
+    // NOTE(Aurelius84): host <-> device memory copies of a memory block of 64
     // KB or less are asynchronous. See
     // https://forums.developer.nvidia.com/t/host-device-memory-copies-up-to-64-kb-are-asynchronous/17907
     if (src.memory_size() <= WAIT_THRESHOLD) {
