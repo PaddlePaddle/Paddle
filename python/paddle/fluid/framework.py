@@ -119,11 +119,11 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
             The sharded model will be computed from small to large. The default value is None, 
             which means no pipelining computation order and run Ops in terms of graph.
     
-    Notes:
-        Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None.
-        Please refer to :code:`paddle.static.IpuGraphConfig` . 
-        Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. 
-        Please refer to :code:`paddle.static.IpuPipeliningConfig` .
+    **Note**:
+    Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None.
+    Please refer to :code:`paddle.static.IpuGraphConfig` . 
+    Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. 
+    Please refer to :code:`paddle.static.IpuPipeliningConfig` .
 
     Examples:
         .. code-block:: python
