@@ -1119,6 +1119,7 @@ def mm(input, mat2, name=None):
         Tensor: The product Tensor.
 
     ::
+
         * example 1:
 
         input: [B, ..., M, K], mat2: [B, ..., K, N]
