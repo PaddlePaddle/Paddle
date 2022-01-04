@@ -381,7 +381,6 @@ def set_paddle_custom_device_lib_path(lib_path):
     else:
         os.environ['CUSTOM_DEVICE_ROOT'] = ''
 
-
 # set paddle lib path
 def set_paddle_lib_path():
     site_dirs = site.getsitepackages() if hasattr(

@@ -495,6 +495,26 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
 #endif
+    } else if (platform::is_pluggable_device_place(place_)) {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for " << place_ << ".";
+        gc.reset(new PluggableDeviceUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::PluggableDevicePlace, place_),
+            max_memory_size));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Please set FLAGS_fast_eager_deletion_mode=true to use "
+            "GarbageCollector on PluggableDevice."));
+        VLOG(4) << "Use default stream gc for " << place_ << ".";
+        gc.reset(new PluggableDeviceDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::PluggableDevicePlace, place_),
+            max_memory_size));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No PluggableDevice gc found"));
+#endif
     }
   }
 

@@ -200,6 +200,28 @@ class MLUStreamGarbageCollector : public GarbageCollector {
 };
 #endif
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+class PluggableDeviceDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  PluggableDeviceDefaultStreamGarbageCollector(
+      const platform::PluggableDevicePlace &place, size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class PluggableDeviceUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  PluggableDeviceUnsafeFastGarbageCollector(
+      const platform::PluggableDevicePlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
 template <typename Container>
 void GarbageCollector::Add(Container &&objs) {
   Add(std::forward<Container>(objs), []() {});

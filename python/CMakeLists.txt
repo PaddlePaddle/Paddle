@@ -87,6 +87,16 @@ endif()
 
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE_DEPS})
 
+if(WITH_PLUGGABLE_DEVICE)
+add_custom_command(TARGET copy_paddle_pybind POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/plugins/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/plugins/pluggable_devices/
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/plugins/__init__.py
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/plugins/pluggable_devices/__init__.py
+    COMMENT "Creating plugin dirrectories------>>>"
+)
+endif()
+
 IF(WIN32)
   add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle/

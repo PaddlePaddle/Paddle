@@ -219,3 +219,7 @@ endif(ON_INFER)
 if(WITH_CRYPTO)
     add_definitions(-DPADDLE_WITH_CRYPTO)
 endif(WITH_CRYPTO)
+
+if(WITH_PLUGGABLE_DEVICE AND NOT WIN32)
+    add_definitions(-DPADDLE_WITH_PLUGGABLE_DEVICE)
+endif()

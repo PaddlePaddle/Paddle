@@ -251,6 +251,7 @@ else()
     include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
 endif()
 unset(WITH_RECORD_BUILDTIME CACHE)
+option(WITH_PLUGGABLE_DEVICE "Compile with pluggable device support"    OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)

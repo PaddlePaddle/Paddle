@@ -29,6 +29,9 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/platform/device/device_guard.h"
+#endif
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -251,6 +254,16 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "
           "WITH_ASCEND_CL "
+          "option."));
+#endif
+    } else if (platform::is_pluggable_device_place(p)) {
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+      EmplaceDeviceContext<PluggableDeviceContext, PluggableDevicePlace>(
+          &device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "PluggableDevicePlace is not supported. Please re-compile with "
+          "WITH_PLUGGABLE_DEVICE "
           "option."));
 #endif
     }
@@ -881,6 +894,25 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   return key_it->second;
 }
 
+#endif
+
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+PluggableDeviceContext::PluggableDeviceContext(PluggableDevicePlace place)
+    : place_(place) {
+  DeviceGuard guard(place_);
+  stream_.reset(new stream::Stream());
+  stream_->Init(place_);
+}
+
+PluggableDeviceContext::~PluggableDeviceContext() {}
+
+Place PluggableDeviceContext::GetPlace() const { return place_; }
+
+void PluggableDeviceContext::Wait() const {
+  // platform::RecordEvent record_event("NPUDeviceContext/wait");
+  VLOG(4) << "PluggableDevice context(" << this << ")  Wait";
+  stream_->Wait();
+}
 #endif
 }  // namespace platform
 }  // namespace paddle

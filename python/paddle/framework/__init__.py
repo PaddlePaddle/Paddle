@@ -29,6 +29,7 @@ from ..fluid.core import CUDAPlace  # noqa: F401
 from ..fluid.core import CUDAPinnedPlace  # noqa: F401
 from ..fluid.core import NPUPlace  # noqa: F401
 from ..fluid.core import MLUPlace  # noqa: F401
+from ..fluid.core import PluggableDevicePlace  # noqa: F401
 from ..fluid.core import VarBase  # noqa: F401
 
 from paddle.fluid import core  # noqa: F401

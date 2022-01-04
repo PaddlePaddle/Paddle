@@ -25,6 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
+#include "paddle/fluid/platform/device/device_manager.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -238,6 +239,21 @@ void InitDevices(const std::vector<int> devices) {
       VLOG(3) << "ENV [CUSTOM_DEVICE_ROOT] is empty.";
     }
   }
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  std::string plugin_root_dir(std::getenv("PADDLE_PLUGIN_ROOT"));
+  VLOG(1) << "PADDLE_PLUGIN_ROOT=" << plugin_root_dir;
+  if (platform::LoadPluggableDevice(plugin_root_dir + "/pluggable_devices/")) {
+    auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+    for (auto &dev_type : device_types) {
+      VLOG(1) << "Device type: " << dev_type << ", visible devices count: "
+              << platform::DeviceManager::VisibleDevicesCount(dev_type);
+      for (size_t i = 0;
+           i < platform::DeviceManager::VisibleDevicesCount(dev_type); i++) {
+        places.push_back(platform::PluggableDevicePlace(dev_type, i));
+      }
+    }
+  }
+#endif
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN

@@ -161,10 +161,25 @@ inline void RegisterKernelClass(const char* op_type, const char* library_type,
   if (library == "MKLDNN") {
     data_layout = "MKLDNNLAYOUT";
   }
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  if (std::is_same<PlaceType, platform::PluggableDevicePlace>::value) {
+    OpKernelType key(ToDataType(std::type_index(typeid(T))),
+                     platform::PluggableDevicePlace(library_type),
+                     StringToDataLayout(data_layout), LibraryType::kPlain,
+                     customized_type_value);
+    OperatorWithKernel::AllOpKernels()[op_type][key] = func;
+  } else {
+    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
+                     StringToDataLayout(data_layout),
+                     StringToLibraryType(library_type), customized_type_value);
+    OperatorWithKernel::AllOpKernels()[op_type][key] = func;
+  }
+#else
   OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
                    StringToDataLayout(data_layout),
                    StringToLibraryType(library_type), customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;
+#endif
 }
 
 template <typename PlaceType, size_t I, typename... KernelTypes>
@@ -339,6 +354,10 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_MLU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, MLU, ::paddle::platform::MLUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_PLUG_KERNEL(op_type, dev_type, ...) \
+  REGISTER_OP_KERNEL(op_type, dev_type, \
+  ::paddle::platform::PluggableDevicePlace, __VA_ARGS__)
+
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -384,6 +403,13 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_PLUG_KERNEL_FUNCTOR(op_type, dev_type, ...)       \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, dev_type, ::paddle::platform::PluggableDevicePlace, \
+      DEFAULT_TYPE, \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 

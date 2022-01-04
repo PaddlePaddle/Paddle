@@ -202,6 +202,34 @@ void MLUStreamGarbageCollector::ClearCallback(
 }
 #endif
 
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+PluggableDeviceDefaultStreamGarbageCollector::
+    PluggableDeviceDefaultStreamGarbageCollector(
+        const platform::PluggableDevicePlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void PluggableDeviceDefaultStreamGarbageCollector::Wait() const {
+  static_cast<platform::PluggableDeviceContext *>(this->dev_ctx_)
+      ->WaitStreamCallback();
+}
+
+void PluggableDeviceDefaultStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  static_cast<platform::PluggableDeviceContext *>(this->dev_ctx_)
+      ->AddStreamCallback(callback);
+}
+
+PluggableDeviceUnsafeFastGarbageCollector::
+    PluggableDeviceUnsafeFastGarbageCollector(
+        const platform::PluggableDevicePlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void PluggableDeviceUnsafeFastGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
+#endif
+
 int64_t GetEagerDeletionThreshold() {
   return FLAGS_eager_delete_tensor_gb < 0
              ? -1
