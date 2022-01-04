@@ -409,7 +409,10 @@ void AnalysisPredictor::MkldnnPreSet(
 void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
-  if (config_.mkldnn_cache_capacity_ > 0) {
+  if (config_.mkldnn_cache_capacity_ > 0 &&
+      static_cast<platform::MKLDNNDeviceContext *>(
+          (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
+              ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
       auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
                                  (&platform::DeviceContextPool::Instance())
@@ -1344,6 +1347,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
+  x->executor_->ResetTrtOps(++x->clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

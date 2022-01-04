@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
 namespace operators {  // namespace operators
@@ -205,7 +205,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       auto pt_x = paddle::experimental::MakePtenDenseTensor(commonterm);
       auto pt_y = paddle::experimental::MakePtenDenseTensor(commonterm_conj);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(commonterm);
-      pten::Add<T>(dev_ctx, *pt_x.get(), *pt_y.get(), -1, pt_z.get());
+      pten::AddKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), -1, pt_z.get());
 
       auto mat_dim_u = math::CreateMatrixDescriptor(u_bst.dims(), 0, false);
       auto mat_dim_c =
