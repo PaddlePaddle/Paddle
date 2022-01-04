@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <set>
+
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/cast_kernel.h"
