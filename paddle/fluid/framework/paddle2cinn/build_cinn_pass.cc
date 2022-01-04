@@ -217,33 +217,69 @@ void AddOutputVar(const GraphNodeSet& output_vars, const GraphNodeSet& cluster,
 
 std::unordered_set<std::string> ExtractNoNeedBufferFeeds(
     const GraphNodeSet& cluster, const GraphNodeSet& cluster_inputs) {
-  // 1. Find ops with NoNeedBufferVarsInferer and collect their argument names
-  std::unordered_set<std::string> no_need_buffer_args;
-  for (const auto* op_node : cluster) {
+  // 1. Find op with NoNeedBufferVarsInferer defined and collect its input nodes
+  std::unordered_map<Node*, GraphNodeSet> op_node2no_need_buffer_nodes;
+  for (auto* op_node : cluster) {
     auto& inferer =
         OpInfoMap::Instance().Get(op_node->Name()).NoNeedBufferVarsInferer();
     if (!inferer) {
       continue;
     }
     auto* op_desc = op_node->Op();
-    auto no_need_buffer_params =
+    PADDLE_ENFORCE_NOT_NULL(
+        op_desc, platform::errors::PreconditionNotMet(
+                     "The op desc of node in cluster shouldn't be null."));
+    auto inferred_params =
         inferer(op_desc->Inputs(), op_desc->Inputs(), op_desc->GetAttrMap());
-    for (const auto& param : no_need_buffer_params) {
-      const auto& args = op_desc->Input(param);
-      no_need_buffer_args.insert(args.begin(), args.end());
+    std::unordered_set<std::string> inferred_args;
+    std::for_each(inferred_params.begin(), inferred_params.end(),
+                  [&op_desc, &inferred_args](const std::string& param) {
+                    const auto& args = op_desc->Input(param);
+                    inferred_args.insert(args.begin(), args.end());
+                  });
+    auto& no_need_buffer_nodes = op_node2no_need_buffer_nodes[op_node];
+    for (auto* input_node : op_node->inputs) {
+      if (input_node->Var() && inferred_args.count(input_node->Name())) {
+        VLOG(4) << "Input node(" << input_node->Name() << ") of op("
+                << op_node->Name() << ") is no_need_buffer";
+        no_need_buffer_nodes.insert(input_node);
+      }
     }
   }
 
-  // 2. A variable that is one of no_need_buffer_args
-  // and also one of cluster_inputs can be put in no_need_buffer_feeds
-  std::unordered_set<std::string> no_need_buffer_feeds;
-  for (auto* node : cluster_inputs) {
-    if (no_need_buffer_args.count(node->Name()) > 0) {
-      no_need_buffer_feeds.insert(node->Name());
-      VLOG(4) << "Input var node(" << node->Name() << ") does not need buffer";
+  // 2. Extract no_need_buffer nodes from cluster_inputs by checking
+  // all of their outputs are op nodes with NoNeedBufferVarsInferer
+  // and they used as no_need_buffer inputs.
+  auto check_all_used_as_no_need_buffer_fn =
+      [&op_node2no_need_buffer_nodes](Node* var_node) -> bool {
+    for (auto* output_node : var_node->outputs) {
+      auto it = op_node2no_need_buffer_nodes.find(output_node);
+      if (it == op_node2no_need_buffer_nodes.end()) {
+        VLOG(4) << "Var node(" << var_node->Name() << ")'s output node("
+                << output_node->Name()
+                << ") doesn't have NoNeedBufferVarsInferer";
+        return false;
+      }
+      if (it->second.count(var_node) == 0) {
+        VLOG(4) << "Var node("
+                << ") is not used as no_need_buffer inputs";
+        return false;
+      }
+    }
+    return true;
+  };
+  std::unordered_set<std::string> result;
+  for (const auto& op2inputs_pair : op_node2no_need_buffer_nodes) {
+    for (auto* input_node : op2inputs_pair.second) {
+      if (cluster_inputs.count(input_node) &&
+          check_all_used_as_no_need_buffer_fn(input_node)) {
+        VLOG(4) << "Input node(" << input_node->Name()
+                << ") is declared as no_need_buffer cluster_inputs";
+        result.insert(input_node->Name());
+      }
     }
   }
-  return no_need_buffer_feeds;
+  return result;
 }
 
 // Create new subgraph with and op nodes are cluster nodes, and all
