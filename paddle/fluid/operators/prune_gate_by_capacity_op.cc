@@ -38,23 +38,10 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     int64_t n_expert = ctx->Attrs().Get<int64_t>("n_expert");
     int64_t n_worker = ctx->Attrs().Get<int64_t>("n_worker");
 
-    int64_t gate_idx_num_ele = 1;
-    for (int64_t i = 0; i < gate_idx_dims.size(); i++) {
-      gate_idx_num_ele *= gate_idx_dims[i];
-    }
     int64_t expert_count_num_ele = 1;
     for (int64_t i = 0; i < expert_count_dims.size(); i++) {
       expert_count_num_ele *= expert_count_dims[i];
     }
-
-    PADDLE_ENFORCE_EQ(
-        gate_idx_num_ele, n_expert * n_worker,
-        platform::errors::Unavailable(
-            "The number of elements for gate_id is ( %ld ) incorrect "
-            "because the number of gate_idx must equal the "
-            "product of n_worker ( %ld ) and n_expert( %ld ). "
-            "Please input appropriate gate_idx again!",
-            gate_idx_num_ele, n_worker, n_expert));
 
     PADDLE_ENFORCE_EQ(
         expert_count_num_ele, n_expert * n_worker,
@@ -126,8 +113,8 @@ This operator is used to prune gate by capacity(CUDA).
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(prune_gate_by_capacity, ops::PruneGateByCapacityOp,
-                  ops::PruneGateByCapacityOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity, ops::PruneGateByCapacityOp,
+                             ops::PruneGateByCapacityOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
     prune_gate_by_capacity,
