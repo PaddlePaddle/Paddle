@@ -18,15 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
-static inline float transfer_type(int value) {
-  return static_cast<float>(value);
-}
-static inline float transfer_type(float value) { return value; }
-static inline double transfer_type(int64_t value) {
-  return static_cast<double>(value);
-}
-static inline double transfer_type(double value) { return value; }
-
 namespace paddle {
 namespace operators {
 
@@ -126,7 +117,7 @@ struct MinFunctor {
 template <typename T>
 struct FMaxFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    return std::fmax(transfer_type(a), transfer_type(b));
+    return std::fmax(a, b);
   }
 };
 
@@ -142,11 +133,32 @@ struct FMaxFunctor<paddle::platform::float16> {
   }
 };
 
+template <>
+struct FMaxFunctor<int> {
+  inline HOSTDEVICE int operator()(const int& a, const int& b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t& a,
+                                       const int64_t& b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmax(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
 // Fmin
 template <typename T>
 struct FMinFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    return std::fmin(transfer_type(a), transfer_type(b));
+    return std::fmin(a, b);
   }
 };
 
@@ -159,6 +171,27 @@ struct FMinFunctor<paddle::platform::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
     return static_cast<paddle::platform::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int> {
+  inline HOSTDEVICE int operator()(const int& a, const int& b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t& a,
+                                       const int64_t& b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmin(double_a, double_b);
+    return std::llrint(result);
   }
 };
 

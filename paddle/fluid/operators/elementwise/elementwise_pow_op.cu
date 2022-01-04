@@ -32,7 +32,7 @@ struct CudaPowFunctor<
   // Use llrint to cast it to the nearest integer, which is 3.
   inline HOSTDEVICE T operator()(const T args[]) const {
     return std::llrint(
-        std::pow(transfer_type(args[0]), transfer_type(args[1])));
+        std::pow(static_cast<double>(args[0]), static_cast<double>(args[1])));
   }
 };
 
