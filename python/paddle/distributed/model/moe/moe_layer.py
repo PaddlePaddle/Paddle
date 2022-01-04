@@ -230,9 +230,13 @@ class MoeLayer(nn.Layer):
     Args:
         d_model: (int) model dimention
         experts: (nn.LayerList) expert networks list
-        gate_config: (dict): gate network config, containing 2 keys: 
-                `type`(str) value can be: "naive", "gshard", "switch" or None, default is "gshard"
-                `top_k`(int) default value is 2
+        gate: (dict|NaiveGate|SwitchGate|NaiveGate): 
+                if gate is a dict:
+                    gate is a gate network config, containing 2 keys: 
+                    `type`(str) value can be: "naive", "gshard", "switch" or None, default is "gshard"
+                    `top_k`(int) default value is 2
+                else gate is an instance of NaiveGate|SwitchGate|NaiveGate:
+
         moe_group: moe group for experts communication
         mp_group: mp group for mp commutication
         kwargs: other parameters
@@ -252,7 +256,7 @@ class MoeLayer(nn.Layer):
         num_experts=8
         dim_feedforward=512
         d_model=8
-        tok_k=2
+        top_k=2
 
         class ExpertLayer(Layer):
             def __init__(self, d_model, d_hidden, name=None,rank=0, windex = 0, num_expert=1):
@@ -277,7 +281,7 @@ class MoeLayer(nn.Layer):
         
         moeLayer = MoeLayer(d_model = d_model,
                             experts=experts_list,
-                            gate_config=gate_config,
+                            gate=gate_config,
                             moe_group=moe_group,
                             mp_group=mp_group,
                             recompute_interval=0)
@@ -287,7 +291,7 @@ class MoeLayer(nn.Layer):
     def __init__(self,
                  d_model,
                  experts,
-                 gate_config=None,
+                 gate=None,
                  moe_group=None,
                  mp_group=None,
                  **kwargs):
@@ -295,10 +299,11 @@ class MoeLayer(nn.Layer):
 
         recompute_interval = kwargs.get("recompute_interval", 0)
 
-        if gate_config is None:
-            gate_config = dict()
+        if gate is None:
+            gate = dict()
 
-        assert isinstance(gate_config, dict), "gate config' type must be dict"
+        assert isinstance(gate, (dict, NaiveGate, GShardGate, SwitchGate)), \
+             "gate config' type must be dict or an instance of BaseGate"
         # only support mp/dp
         self.group = moe_group
 
@@ -312,31 +317,35 @@ class MoeLayer(nn.Layer):
 
         self.mp_group = mp_group
         self.d_model = d_model
-        self.top_k = gate_config.get("top_k", 2)
-        gate = gate_config.get("type", "gshard")
-        if gate == "naive" or gate is None:
-            gate = NaiveGate(
-                self.d_model,
-                num_expert=len(experts),
-                world_size=self.world_size,
-                topk=self.top_k)
-        elif gate == "gshard":
-            gate = GShardGate(
-                self.d_model,
-                num_expert=len(experts),
-                world_size=self.world_size,
-                topk=self.top_k,
-                group=self.group)
-        elif gate == "switch":
-            gate = SwitchGate(
-                self.d_model,
-                num_expert=len(experts),
-                world_size=self.world_size,
-                topk=self.top_k,
-                group=self.group)
+        if isinstance(gate, dict):
+            self.top_k = gate.get("top_k", 2)
+            gate = gate.get("type", "gshard")
+            if gate == "naive" or gate is None:
+                gate = NaiveGate(
+                    self.d_model,
+                    num_expert=len(experts),
+                    world_size=self.world_size,
+                    topk=self.top_k)
+            elif gate == "gshard":
+                gate = GShardGate(
+                    self.d_model,
+                    num_expert=len(experts),
+                    world_size=self.world_size,
+                    topk=self.top_k,
+                    group=self.group)
+            elif gate == "switch":
+                gate = SwitchGate(
+                    self.d_model,
+                    num_expert=len(experts),
+                    world_size=self.world_size,
+                    topk=self.top_k,
+                    group=self.group)
+            else:
+                assert False, "We only support naive gate, \
+                                gshard gate and switch gate, \
+                                but you choose {} gate.".format(str(gate))
         else:
-            assert False, "We only support naive gate, gshard gate and switch gate, but you choose {} gate.".format(
-                str(gate))
+            self.top_k = gate.top_k
         self.gate = gate
 
     def forward(self, inp):
