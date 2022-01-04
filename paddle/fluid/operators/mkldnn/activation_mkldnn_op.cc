@@ -282,7 +282,6 @@ namespace ops = paddle::operators;
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
   __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);                 \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);                 \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
   __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradFunctor);
 
@@ -293,6 +292,8 @@ REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
                                        GeluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradFunctor);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sqrt, SqrtMKLDNNFunctor,
+                                       SqrtMKLDNNGradFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

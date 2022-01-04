@@ -208,6 +208,8 @@ void BindVarDsec(pybind11::module *m) {
       .def("_set_attr", &pd::VarDesc::SetAttr)
       .def("remove_attr", &pd::VarDesc::RemoveAttr)
       .def("id", &pd::VarDesc::Id)
+      .def("original_id", &pd::VarDesc::OriginalId)
+      .def("set_original_id", &pd::VarDesc::SetOriginalId)
       .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
@@ -305,6 +307,8 @@ void BindOpDesc(pybind11::module *m) {
       .def("block", [](pd::OpDesc &self) { return self.Block(); },
            pybind11::return_value_policy::reference)
       .def("id", &pd::OpDesc::Id)
+      .def("original_id", &pd::OpDesc::OriginalId)
+      .def("set_original_id", &pd::OpDesc::SetOriginalId)
       .def("inputs", &pd::OpDesc::Inputs)
       .def("outputs", &pd::OpDesc::Outputs);
 }

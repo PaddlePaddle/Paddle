@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 namespace pten {
 namespace kps = paddle::operators::kernel_primitives;

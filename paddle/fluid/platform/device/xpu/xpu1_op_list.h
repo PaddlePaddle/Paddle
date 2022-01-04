@@ -263,6 +263,8 @@ XPUOpMap& get_kl1_ops() {
       {"softmax_with_cross_entropy_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"split", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                              pOpKernelType(vartype::INT32, XPUPlace())})},
       {"sqrt_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sqrt", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"square_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},

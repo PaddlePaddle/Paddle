@@ -1521,7 +1521,7 @@ class Unfold(Layer):
             unfold = nn.Unfold(kernel_sizes=[3, 3])
             result = unfold(x)
             print(result)
-   """
+    """
 
     def __init__(self,
                  kernel_sizes,
@@ -1540,6 +1540,95 @@ class Unfold(Layer):
     def forward(self, input):
         return F.unfold(
             input,
+            kernel_sizes=self.kernel_sizes,
+            strides=self.strides,
+            paddings=self.paddings,
+            dilations=self.dilations,
+            name=self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
+                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)
+
+
+class Fold(Layer):
+    """
+
+    This Op is used to combines an array of sliding local blocks into a large containing
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
+    combined value in the resulting large tensor by summing all values from all containing blocks. 
+
+
+    For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
+    can be calculated as following.
+
+    .. math::
+
+        H_out &= output_size[0]
+        W_out &= output_size[1]
+        C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
+
+    Parameters:
+        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+                                  or an interger o treated as [o, o].
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        The tensor formed by combining a group of sliding local blocks
+        The output shape is [N, Cout, H, W] as decriabled above.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            x = paddle.randn([2,12,9])
+            fold = nn.Fold(output_sizes=(4, 4), kernel_sizes=2)
+            y = fold(x)
+            # y.shape = [2,3,4,4]
+   """
+
+    def __init__(self,
+                 output_sizes,
+                 kernel_sizes,
+                 dilations=1,
+                 paddings=0,
+                 strides=1,
+                 name=None):
+        super(Fold, self).__init__()
+
+        self.output_sizes = output_sizes
+        self.kernel_sizes = kernel_sizes
+        self.dilations = dilations
+        self.paddings = paddings
+        self.strides = strides
+        self.name = name
+
+    def forward(self, input):
+        return F.fold(
+            input,
+            output_sizes=self.output_sizes,
             kernel_sizes=self.kernel_sizes,
             strides=self.strides,
             paddings=self.paddings,
