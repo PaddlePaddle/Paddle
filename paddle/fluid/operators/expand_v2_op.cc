@@ -65,9 +65,9 @@ class ExpandV2Op : public framework::OperatorWithKernel {
       if (x_dims[i] == -1) {
         out_shape[i] = -1;
       } else if (expand_shape[i] == -1) {
-        if(static_cast<size_t>(x_dims.size()) > i){
+        if (static_cast<size_t>(x_dims.size()) > i) {
           out_shape[i] = x_dims[i];
-        }else{
+        } else{
           out_shape[i] = -1;
         }
       } else if (expand_shape[i] == -2) {
