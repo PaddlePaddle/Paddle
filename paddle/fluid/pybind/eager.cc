@@ -541,28 +541,28 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_dims,
-            paddle::platform::errors::Fatal(
+            paddle::platform::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL dims is "
                 "forbidden. Please check your code and make sure you new a "
                 "dims before calling this constructor."));
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_name,
-            paddle::platform::errors::Fatal(
+            paddle::platform::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL name is "
                 "forbidden. Please check your code and make sure you new a "
                 "name before calling this constructor."));
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_dtype,
-            paddle::platform::errors::Fatal(
+            paddle::platform::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL dtype is "
                 "forbidden. Please check your code and make sure you new a "
                 "dtype before calling this constructor."));
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_persistable,
-            paddle::platform::errors::Fatal(
+            paddle::platform::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL persistable is "
                 "forbidden. Please check your code and make sure you new a "
                 "persistable before calling this constructor."));
