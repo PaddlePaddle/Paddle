@@ -20,6 +20,6 @@ if (WITH_TESTING)
   cc_test(cinn_graph_symbolization_test SRCS cinn_graph_symbolization_test.cc DEPS cinn_graph_symbolization)
   set_tests_properties(cinn_graph_symbolization_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test(cinn_compiler_test SRCS cinn_compiler_test.cc DEPS cinn_compiler place proto_desc graph_viz_pass build_cinn_pass cinn)
+  cc_test(cinn_compiler_test SRCS cinn_compiler_test.cc DEPS cinn_compiler place proto_desc graph_viz_pass build_cinn_pass cinn mul_op activation_op elementwise_add_op)
   set_tests_properties(cinn_compiler_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
