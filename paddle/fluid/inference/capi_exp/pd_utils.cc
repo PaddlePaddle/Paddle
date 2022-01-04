@@ -83,7 +83,7 @@ void PD_CstrDestroy(__pd_take PD_Cstr* cstr) {
   if (cstr != NULL) {
     if (cstr->size != 0) {
       cstr->size = 0;
-      delete cstr->data;
+      delete[] cstr->data;
       cstr->data = NULL;
     }
     delete cstr;
