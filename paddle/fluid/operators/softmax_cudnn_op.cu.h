@@ -597,7 +597,7 @@ __global__ void NormalSoftmaxBackward(T* input_grad, const T* output_grad,
       // 1. reduce sum
       AccT sum = 0;
       for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int data_offset = input_offset + mid_id * mid_stride;
+        int data_offset = grad_offset + mid_id * mid_stride;
         sum += static_cast<AccT>(output_grad[data_offset]) *
                static_cast<AccT>(output[data_offset]);
       }
@@ -609,7 +609,7 @@ __global__ void NormalSoftmaxBackward(T* input_grad, const T* output_grad,
       // 2. (log)softmax backward
       Functor<AccT, T> functor(sum);
       for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int data_offset = input_offset + mid_id * mid_stride;
+        int data_offset = grad_offset + mid_id * mid_stride;
         input_grad[data_offset] =
             functor(static_cast<AccT>(output_grad[data_offset]),
                     static_cast<AccT>(output[data_offset]));
