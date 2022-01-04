@@ -110,9 +110,7 @@ void OpHandleBase::InitXPU() {
                           "%s should have only one dev_ctx.", Name()));
     auto &place = dev_ctxes_.begin()->first;
     int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
-    PADDLE_ENFORCE_EQ(
-        xpu_set_device(dev_id), XPU_SUCCESS,
-        platform::errors::PreconditionNotMet("xpu_set_device failed"));
+    platform::SetXPUDeviceId(dev_id);
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {

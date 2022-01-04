@@ -39,10 +39,12 @@ extern PyTypeObject* pEagerTensorType;
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
-  if (!self->eager_tensor.initialized()) {
-    Py_INCREF(Py_None);
-    return Py_None;
-  }
+  PADDLE_ENFORCE_EQ(
+      self->eager_tensor.initialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor data of %s is Empty that indicates we have null tensor for "
+          "now, please check if it has no data and initialize it first.",
+          self->eager_tensor.name()));
   auto tensor_dims = self->eager_tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->eager_tensor.type());
   auto sizeof_dtype = pten::DataTypeSize(self->eager_tensor.type());
@@ -140,13 +142,15 @@ static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
 static PyObject* eager_tensor_retain_grads(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_TRY
-  auto meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
-  if (!meta->GetMutableGradNode()) {
-    VLOG(6) << "Make grad node of tensor: " << self->eager_tensor.name()
-            << "become accumulation node";
-    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+  if (egr::Controller::Instance().HasGrad()) {
+    auto meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+    if (!meta->GetMutableGradNode()) {
+      VLOG(6) << "Make grad node of tensor: " << self->eager_tensor.name()
+              << "become accumulation node";
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+    }
+    egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
   }
-  egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL

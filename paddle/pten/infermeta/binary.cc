@@ -14,7 +14,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 namespace pten {
 
@@ -162,13 +162,13 @@ DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
-    general::GetBroadcastDimsArrays(x_dims,
-                                    y_dims,
-                                    x_dims_array.data(),
-                                    y_dims_array.data(),
-                                    out_dims_array.data(),
-                                    max_dim,
-                                    axis);
+    funcs::GetBroadcastDimsArrays(x_dims,
+                                  y_dims,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
     return_meta.dims = paddle::framework::make_ddim(out_dims_array);
   }
   return_meta.lod = x_meta.lod;

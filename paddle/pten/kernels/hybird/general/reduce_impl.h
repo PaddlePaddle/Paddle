@@ -16,8 +16,9 @@
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
-#include "paddle/pten/kernels/hybird/math/cast_func.h"
+
 namespace pten {
 namespace general {
 
@@ -30,11 +31,12 @@ void Reduce(const DeviceContext& dev_ctx,
             DataType out_dtype,
             DenseTensor* out) {
   // If the dims has full dim, set the reduce_all is True
-  const auto& input_dim_size = x.dims().size();
+  const int& input_dim_size = x.dims().size();
   std::set<int> dims_set(dims.begin(), dims.end());
   bool full_dim = true;
-  for (auto i = 0; i < input_dim_size; ++i) {
-    if (dims_set.find(i) == dims_set.end()) {
+  for (int i = 0; i < input_dim_size; ++i) {
+    if (dims_set.find(i) == dims_set.end() &&
+        dims_set.find(i - input_dim_size) == dims_set.end()) {
       full_dim = false;
       break;
     }
@@ -57,11 +59,8 @@ void Reduce(const DeviceContext& dev_ctx,
         pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
         pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
-    // cast x tensor to out_dtype first
-    PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                         math::CastKernelImpl<DeviceContext, T, data_t>(
-                             dev_ctx, x, &tmp_tensor);
-                       }));
+    // cast x tensor to out_dtype
+    pten::CastKernel<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(

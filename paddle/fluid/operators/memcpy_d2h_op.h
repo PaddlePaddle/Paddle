@@ -69,16 +69,24 @@ class MemcpyD2HFunctor {
   }
 
  private:
+  static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
   void CopyLoDTensor(const framework::LoDTensor &src,
                      framework::LoDTensor &dst) const {  // NOLINT
     if (dst_place_type_ == 1) {
       framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
     } else if (dst_place_type_ == 0) {
-      framework::TensorCopySync(src, platform::CPUPlace(), &dst);
+      framework::TensorCopy(src, platform::CPUPlace(), dev_ctx_, &dst);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }
+    // NOTE(Aurelius84): host <-> device memory copies of a memory block of 64
+    // KB or less are asynchronous. See
+    // https://forums.developer.nvidia.com/t/host-device-memory-copies-up-to-64-kb-are-asynchronous/17907
+    if (src.memory_size() <= WAIT_THRESHOLD) {
+      dev_ctx_.Wait();
+    }
+
     dst.set_lod(src.lod());
   }
 

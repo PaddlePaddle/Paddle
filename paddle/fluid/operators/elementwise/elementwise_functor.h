@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -25,58 +26,31 @@ namespace operators {
 
 // Add
 template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a + b; }
-};
+using AddFunctor = pten::funcs::AddFunctor<T>;
+
 template <typename T>
-struct InverseAddFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b + a; }
-};
+using InverseAddFunctor = pten::funcs::InverseAddFunctor<T>;
 
 // Subtract
 template <typename T>
-struct SubFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
-};
+using SubFunctor = pten::funcs::SubtractFunctor<T>;
+
 template <typename T>
-struct InverseSubFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b - a; }
-};
+using InverseSubFunctor = pten::funcs::InverseSubtractFunctor<T>;
 
 // Multiply
 template <typename T>
-struct MulFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
-};
+using MulFunctor = pten::funcs::MultiplyFunctor<T>;
+
 template <typename T>
-struct InverseMulFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b * a; }
-};
+using InverseMulFunctor = pten::funcs::InverseMultiplyFunctor<T>;
 
 // Divide
-#define DIV_ERROR_INFO                                             \
-  "InvalidArgumentError: Integer division by zero encountered in " \
-  "(floor) divide. Please check the input value."
-
-template <typename T, typename Enable = void>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
-};
+template <typename T>
+using DivFunctor = pten::funcs::DivideFunctor<T>;
 
 template <typename T>
-struct DivFunctor<T,
-                  typename std::enable_if<std::is_integral<T>::value>::type> {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    // For int32/int64, need to check whether the divison is zero.
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-    return a / b;
-  }
-};
-
-template <typename T, typename Enable = void>
-struct InverseDivFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
-};
+using InverseDivFunctor = pten::funcs::InverseDivideFunctor<T>;
 
 // Floor Divide
 template <typename T>
