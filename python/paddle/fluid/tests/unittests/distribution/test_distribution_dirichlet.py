@@ -102,12 +102,3 @@ class TestDirichlet(unittest.TestCase):
             with self.assertRaises(ValueError):
                 paddle.distribution.Dirichlet(
                     paddle.squeeze(self.concentration))
-
-        def TestSample(self):
-            with self.assertRaises(NotImplementedError):
-                paddle.distribution.Dirichlet(
-                    paddle.to_tensor(self.concentration)).sample()
-
-
-if __name__ == '__main__':
-    unittest.main()

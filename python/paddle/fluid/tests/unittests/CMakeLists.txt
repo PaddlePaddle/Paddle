@@ -890,7 +890,7 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT 
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fetch_unmerged PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 150)
+set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)

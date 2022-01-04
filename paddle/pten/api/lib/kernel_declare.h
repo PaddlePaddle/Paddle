@@ -19,9 +19,3 @@ limitations under the License. */
 // TODO(chenweihang) After the kernel is split into a single file,
 // the kernel declare statement is automatically generated according to the
 // file name of the kernel, and this header file will be removed
-
-PT_DECLARE_KERNEL(mean, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
-#endif
