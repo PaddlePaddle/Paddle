@@ -18,8 +18,8 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/reduce.h"
 #include "paddle/pten/kernels/cpu/elementwise_impl.h"
+#include "paddle/pten/kernels/cpu/reduce.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 // See Note [ Why still include the fluid headers? ]
