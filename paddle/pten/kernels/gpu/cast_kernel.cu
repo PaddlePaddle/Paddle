@@ -85,11 +85,11 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   CastCUDAKernelImplWithPtr(dev_ctx, in_data, out_data, size);
 }
 
-template <typename T, typename ContextT>
-void Cast(const ContextT& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DenseTensor* out) {
+template <typename T, typename Context>
+void CastKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DataType out_dtype,
+                DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
                        CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
                      }));
@@ -101,7 +101,7 @@ void Cast(const ContextT& dev_ctx,
   PT_REGISTER_CTX_KERNEL(cast,                              \
                          GPU,                               \
                          ALL_LAYOUT,                        \
-                         pten::Cast,                        \
+                         pten::CastKernel,                  \
                          float,                             \
                          double,                            \
                          int,                               \
