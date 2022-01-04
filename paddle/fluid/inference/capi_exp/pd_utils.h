@@ -67,6 +67,8 @@ PADDLE_CAPI_EXPORT extern void PD_TwoDimArraySizeDestroy(
 
 ///
 /// \brief Destroy the PD_Cstr object pointed to by the pointer.
+/// NOTE: if input string is empty, the return PD_Cstr's size is
+/// 0 and data is NULL.
 ///
 /// \param[in] cstr pointer to the PD_Cstr object.
 ///
