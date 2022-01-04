@@ -83,7 +83,7 @@ void PD_CstrDestroy(__pd_take PD_Cstr* cstr) {
   if (cstr != NULL) {
     if (cstr->size != 0) {
       cstr->size = 0;
-      free(cstr->data);
+      delete cstr->data;
       cstr->data = NULL;
     }
     delete cstr;
@@ -116,7 +116,9 @@ __pd_give PD_Cstr* CvtStrToCstr(const std::string& str) {
   PD_Cstr* cstr = new PD_Cstr;
   cstr->size = str.length() + 1;
   cstr->data = str.empty() ? NULL : new char[str.length() + 1];
-  memcpy(cstr->data, str.c_str(), str.length() + 1);
+  if (!str.empty()) {
+    memcpy(cstr->data, str.c_str(), str.length() + 1);
+  }
   return cstr;
 }
 }  // namespace paddle_infer
