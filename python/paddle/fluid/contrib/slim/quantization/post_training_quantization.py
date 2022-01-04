@@ -17,6 +17,7 @@ import re
 import logging
 import numpy as np
 import shutil
+from inspect import isgeneratorfunction
 from .... import io
 from .... import core
 from .... import framework
@@ -283,8 +284,10 @@ class PostTrainingQuantization(object):
         assert executor is not None, "The executor cannot be None."
         assert model_dir is not None, "The model_dir cannot be None."
         assert any([gen is not None] for gen in [sample_generator,
-            batch_generator]), "The sample_generator and batch_generator " \
-            "cannot be None in the same time."
+            batch_generator, data_loader]), "The sample_generator, batch_generator " \
+            "and data_loader cannot be None in the same time."
+        assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction))), \
+            "data_loader only accepts `paddle.io.DataLoader` or Generator instance." if data_loader else None
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
             "The algo should be KL, hist, mse, avg, abs_max or min_max."
