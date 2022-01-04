@@ -891,3 +891,65 @@ def searchsorted(sorted_sequence,
                "right": right})
 
     return out
+
+
+def kthvalue(x, k, axis=None, keepdim=False, name=None):
+    """
+    This OP is used to find values and indices of the k-th smallest at the axis.
+
+    Args:
+        x(Tensor): A N-D Tensor with type float32, float64, int32, int64.
+        k(int): The k for the k-th smallest number to look for along the axis.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. The default is None. And if the axis is None, it will computed as -1 by default.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+   
+    Examples:
+
+        .. code-block:: python
+    
+            import paddle
+            
+            x = paddle.randn((2,3,2))
+            # Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[[ 0.22954939, -0.01296274],
+            #         [ 1.17135799, -0.34493217],
+            #         [-0.19550551, -0.17573971]],
+            #
+            #        [[ 0.15104349, -0.93965352],
+            #         [ 0.14745511,  0.98209465],
+            #         [ 0.10732264, -0.55859774]]])           
+            y = paddle.kthvalue(x, 2, 1)    
+            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # [[ 0.22954939, -0.17573971],
+            #  [ 0.14745511, -0.55859774]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #  [[0, 2],
+            #  [1, 2]]))
+    """
+    if in_dygraph_mode():
+        if axis is not None:
+            return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim", keepdim)
+        else:
+            return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+
+    helper = LayerHelper("kthvalue", **locals())
+    inputs = {"X": [x]}
+    attrs = {'k': k}
+    if axis is not None:
+        attrs['axis'] = axis
+    values = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+
+    helper.append_op(
+        type="kthvalue",
+        inputs=inputs,
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs=attrs)
+    indices.stop_gradient = True
+    return values, indices
