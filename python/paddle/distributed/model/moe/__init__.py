@@ -14,3 +14,4 @@
 
 from .moe_layer import *
 from .grad_clip import *
+from .gate import *
