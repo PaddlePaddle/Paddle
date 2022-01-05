@@ -62,8 +62,10 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  Carrier* carrier = GlobalMap<int64_t, Carrier>::Create(0, 0);
-  carrier->Init(0, {{0, 0}, {1, 0}}, {0, 1});
+  std::string carrier_id = "0";
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier->Init(0, {{0, 0}, {1, 0}});
 
   auto msg_bus = std::make_shared<MessageBus>();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");

@@ -25,7 +25,7 @@ namespace trt {
  * source func:
  *
  * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()
+ *  %a = "pd.feed"()...
  *  %c = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     "pd.fetch" %m
@@ -42,7 +42,7 @@ namespace trt {
  *
  * destination func:
  * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()
+ *  %a = "pd.feed"()...
  *  %d, %f = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
@@ -58,6 +58,5 @@ class trtGraphFusePass
   ::llvm::StringRef getName() const override { return "trtGraphFusePass"; }
   void runOnFunction() override;
 };
-
 }  // namespace trt
 }  // namespace infrt

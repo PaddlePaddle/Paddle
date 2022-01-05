@@ -1823,6 +1823,205 @@ def qr(x, mode="reduced", name=None):
         return q, r
 
 
+def lu(x, pivot=True, get_infos=False, name=None):
+    r"""
+    Computes the LU factorization of an N-D(N>=2) matrix x. 
+
+    Returns the LU factorization(inplace x) and Pivots. low triangular matrix L and 
+    upper triangular matrix U are combined to a single LU matrix.
+
+    Pivoting is done if pivot is set to True.
+    P mat can be get by pivots:
+    # ones = eye(rows) #eye matrix of rank rows
+    # for i in range(cols):
+    #     swap(ones[i], ones[pivots[i]])
+    # return ones
+
+    Args:
+
+        X (Tensor): the tensor to factor of N-dimensions(N>=2).
+
+        pivot (bool, optional): controls whether pivoting is done. Default: True.
+
+        get_infos (bool, optional): if set to True, returns an info IntTensor. Default: False.
+
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+            
+    Returns:
+        factorization (Tensor): LU matrix, the factorization of input X.
+
+        pivots (IntTensor): the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the 
+                    intermediate transpositions of rows. The final permutation `perm` could be 
+                    reconstructed by this, details refer to upper example.
+
+        infos (IntTensor, optional): if `get_infos` is `True`, this is a tensor of size (∗(N-2)) 
+                    where non-zero values indicate whether factorization for the matrix or each minibatch 
+                    has succeeded or failed.
+
+        
+    Examples:            
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
+            lu,p,info = paddle.linalg.lu(x, get_infos=True)
+
+            # >>> lu:
+            # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            #    [[5.        , 6.        ],
+            #        [0.20000000, 0.80000000],
+            #        [0.60000000, 0.50000000]])
+            # >>> p
+            # Tensor(shape=[2], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
+            #    [3, 3])
+            # >>> info
+            # Tensor(shape=[], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
+            #    0)
+            
+            P,L,U = paddle.linalg.lu_unpack(lu,p)
+
+            # >>> P
+            # (Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            # [[0., 1., 0.],
+            # [0., 0., 1.],
+            # [1., 0., 0.]]), 
+            # >>> L
+            # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            # [[1.        , 0.        ],
+            # [0.20000000, 1.        ],
+            # [0.60000000, 0.50000000]]), 
+            # >>> U
+            # Tensor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            # [[5.        , 6.        ],
+            # [0.        , 0.80000000]]))
+            
+
+            # one can verify : X = P @ L @ U ;     
+    """
+    if in_dygraph_mode():
+        LU, Piv, Info = _C_ops.lu(x, 'pivots', pivot)
+        if get_infos:
+            return LU, Piv, Info
+        else:
+            return LU, Piv
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
+    helper = LayerHelper('lu', **locals())
+    lu = helper.create_variable_for_type_inference(dtype=x.dtype)
+    p = helper.create_variable_for_type_inference(dtype='int')
+    info = helper.create_variable_for_type_inference(dtype='int')
+    attrs = dict()
+    attrs['pivots'] = pivot
+    helper.append_op(
+        type='lu',
+        inputs={'X': x},
+        outputs={'Out': lu,
+                 'Pivots': p,
+                 'Infos': info},
+        attrs=attrs)
+    if get_infos:
+        return lu, p, info
+    else:
+        return lu, p
+
+
+def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
+    r"""
+    Unpack L U and P to single matrix tensor . 
+    unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
+
+    P mat can be get by pivots:
+    # ones = eye(rows) #eye matrix of rank rows
+    # for i in range(cols):
+    #     swap(ones[i], ones[pivots[i]])
+
+
+    Args:
+        x (Tensor): The LU tensor get from paddle.linalg.lu, which is combined by L and U.
+
+        y (Tensor): Pivots get from paddle.linalg.lu.
+
+        unpack_ludata (bool,optional): whether to unpack L and U from x. Default: True.
+
+        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
+
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+            
+    Returns:
+        P (Tensor): Permutation matrix P of lu factorization.
+
+        L (Tensor): The lower triangular matrix tensor of lu factorization.
+
+        U (Tensor): The upper triangular matrix tensor of lu factorization.
+
+        
+    Examples:            
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
+            lu,p,info = paddle.linalg.lu(x, get_infos=True)
+
+            # >>> lu:
+            # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            #    [[5.        , 6.        ],
+            #        [0.20000000, 0.80000000],
+            #        [0.60000000, 0.50000000]])
+            # >>> p
+            # Tensor(shape=[2], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
+            #    [3, 3])
+            # >>> info
+            # Tensor(shape=[], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
+            #    0)
+            
+            P,L,U = paddle.linalg.lu_unpack(lu,p)
+
+            # >>> P
+            # (Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            # [[0., 1., 0.],
+            # [0., 0., 1.],
+            # [1., 0., 0.]]), 
+            # >>> L
+            # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            # [[1.        , 0.        ],
+            # [0.20000000, 1.        ],
+            # [0.60000000, 0.50000000]]), 
+            # >>> U
+            # Tensor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            # [[5.        , 6.        ],
+            # [0.        , 0.80000000]]))
+
+            # one can verify : X = P @ L @ U ;   
+    """
+
+    if in_dygraph_mode():
+        P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
+                                   'unpack_pivots', unpack_pivots)
+        return P, L, U
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu_unpack')
+    helper = LayerHelper('lu_unpack', **locals())
+    p = helper.create_variable_for_type_inference(dtype=x.dtype)
+    l = helper.create_variable_for_type_inference(dtype=x.dtype)
+    u = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    attrs = dict()
+    attrs['unpack_ludata'] = unpack_ludata
+    attrs['unpack_pivots'] = unpack_pivots
+    helper.append_op(
+        type='lu_unpack',
+        inputs={'X': x,
+                'Pivots': y},
+        outputs={'Pmat': p,
+                 'L': l,
+                 'U': u},
+        attrs=attrs)
+    return p, l, u
+
+
 def eig(x, name=None):
     """
     This API performs the eigenvalue decomposition of a square matrix or a batch of square matrices.

@@ -36,7 +36,9 @@ mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
                                      const std::string& mlir_source) {
   // context->allowUnregisteredDialects();
   RegisterCinnDialects(context->getDialectRegistry());
-  context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
+  // Currenetly, We only used the CinnDialect and mlir::BuiltinDialect is
+  // enough。Don't need StandardOpsDialect.
+  // context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
 
   mlir::ScopedDiagnosticHandler scope_handler(
       context, [](mlir::Diagnostic& diag) {
