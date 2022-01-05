@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/transform.h"
+
+#include <set>
+
 #include "paddle/pten/api/ext/dispatch.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
 
 namespace pten {
-namespace general {
 
 template <typename DeviceContext, typename T, typename Functor>
 void Reduce(const DeviceContext& dev_ctx,
@@ -60,7 +61,7 @@ void Reduce(const DeviceContext& dev_ctx,
         pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
     // cast x tensor to out_dtype
-    pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
+    pten::CastKernel<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
@@ -70,7 +71,5 @@ void Reduce(const DeviceContext& dev_ctx,
         }));
   }
 }
-
-}  // namespace general
 
 }  // namespace pten

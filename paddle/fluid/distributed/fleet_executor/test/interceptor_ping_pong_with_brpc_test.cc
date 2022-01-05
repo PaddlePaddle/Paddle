@@ -106,16 +106,18 @@ TEST(InterceptorTest, PingPong) {
   std::cout << "ip1: " << ip1 << std::endl;
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank = {{0, 0},
                                                                  {1, 1}};
+  std::string carrier_id = "0";
 
   int pid = fork();
   if (pid == 0) {
-    Carrier* carrier = GlobalMap<int64_t, Carrier>::Create(0, 0);
+    Carrier* carrier =
+        GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+    GlobalVal<std::string>::Set(carrier_id);
     auto msg_bus = std::make_shared<MessageBus>();
     carrier->SetMsgBus(msg_bus);
     // NOTE: need Init msg_bus after carrier SetMsgBus
-    carrier->Init(0, interceptor_id_to_rank, {0});
+    carrier->Init(0, interceptor_id_to_rank);
     msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
-    carrier->SetMsgBus(msg_bus);
     Interceptor* a = carrier->SetInterceptor(
         0, InterceptorFactory::Create("PingPong", 0, nullptr));
     msg_bus->Barrier();
@@ -123,10 +125,12 @@ TEST(InterceptorTest, PingPong) {
     a->Send(1, msg);
     carrier->Wait();
   } else {
-    Carrier* carrier = GlobalMap<int64_t, Carrier>::Create(0, 0);
+    Carrier* carrier =
+        GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+    GlobalVal<std::string>::Set(carrier_id);
     auto msg_bus = std::make_shared<MessageBus>();
     carrier->SetMsgBus(msg_bus);
-    carrier->Init(1, interceptor_id_to_rank, {1});
+    carrier->Init(1, interceptor_id_to_rank);
     msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
     carrier->SetInterceptor(1,
                             InterceptorFactory::Create("PingPong", 1, nullptr));

@@ -43,17 +43,17 @@ class InterceptorMessageServiceImpl;
 class RuntimeGraph;
 class MessageBus;
 
+// TODO(liyurui): Add CarrierId instead of std::string
+
 class Carrier final {
  public:
-  explicit Carrier(int64_t carrier_id) : carrier_id_(carrier_id) {}
+  explicit Carrier(const std::string& carrier_id) : carrier_id_(carrier_id) {}
   ~Carrier();
   void Init(int64_t rank,
-            const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-            const std::unordered_set<int64_t>& interceptor_ids);
+            const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank);
   void Init(
       int64_t rank,
       const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-      const std::unordered_set<int64_t>& interceptor_ids,
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
       framework::Scope* root_scope, framework::Scope* minibatch_scope,
       const std::vector<framework::Scope*>& microbatch_scopes,
@@ -109,7 +109,7 @@ class Carrier final {
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
   std::shared_ptr<MessageBus> msg_bus_;
   int64_t rank_;
-  int64_t carrier_id_;
+  std::string carrier_id_;
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
   int thread_num_;
