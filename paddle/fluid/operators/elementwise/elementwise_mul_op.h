@@ -185,27 +185,28 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy) {
-  default_elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-}
+// template <typename DeviceContext, typename T>
+// typename std::enable_if<
+//     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+// elementwise_mul_grad(const framework::ExecutionContext& ctx,
+//                      const framework::Tensor* x, const framework::Tensor* y,
+//                      const framework::Tensor* out,
+//                      const framework::Tensor* dout, framework::Tensor* dx,
+//                      framework::Tensor* dy) {
+//   default_elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
+//   dy);
+// }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy);
+// template <typename DeviceContext, typename T>
+// typename std::enable_if<
+//     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+// elementwise_mul_grad(const framework::ExecutionContext& ctx,
+//                      const framework::Tensor* x, const framework::Tensor* y,
+//                      const framework::Tensor* out,
+//                      const framework::Tensor* dout, framework::Tensor* dx,
+//                      framework::Tensor* dy);
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
@@ -232,12 +233,15 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-      elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-    } else {
-      default_elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
-                                                     dy);
-    }
+    // if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+    //    elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    // } else {
+    //   default_elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout,
+    //   dx,
+    //                                                  dy);
+    // }
+    default_elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
+                                                   dy);
   }
 };
 
