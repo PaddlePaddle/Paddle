@@ -49,12 +49,16 @@ class PluggableDevice : public DeviceInterface {
     return count;
   }
 
+  std::vector<size_t> ListVisibleDevices() override {
+    std::vector<size_t> devices(VisibleDevicesCount());
+    pimpl_->visible_devices(devices.size());
+    return devices;
+  }
+
   C_DeviceInterface* Impl() { return pimpl_.get(); }
 
   void SynchronizeDevice(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
-
-    PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->synchronize_device(device));
+    PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->synchronize_device(dev_id));
   }
 
   void Initialize() override {
@@ -62,22 +66,19 @@ class PluggableDevice : public DeviceInterface {
       LOG(ERROR) << "Initialize " + Type() + " Failed\n";
       exit(-1);
     }
-    size_t count = VisibleDevicesCount();
-    for (size_t i = 0; i < count; ++i) {
-      C_Device_st device;
-      device.id = i;
-      devices_pool.emplace_back(std::move(device));
-    }
-    for (size_t i = 0; i < count; ++i) {
-      InitDevice(i);
+
+    std::vector<size_t> visible_devices = ListVisibleDevices();
+    for (auto dev_id : visible_devices) {
+      InitDevice(dev_id);
     }
   }
 
   void Finalize() override {
-    for (size_t i = 0; i < devices_pool.size(); ++i) {
-      // SetDevice(i);
-      // SynchronizeDevice(i);
-      DeInitDevice(i);
+    std::vector<size_t> visible_devices = ListVisibleDevices();
+    for (auto dev_id : visible_devices) {
+      // SetDevice(dev_id);
+      // SynchronizeDevice(dev_id);
+      DeInitDevice(dev_id);
     }
 
     bool ok = true;
@@ -97,34 +98,24 @@ class PluggableDevice : public DeviceInterface {
   void InitDevice(size_t dev_id) override {
     if (pimpl_->init_device) {
       // Core set logical id, and Plugin replace it with physical id
-      const auto device = &devices_pool[dev_id];
-      PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->init_device(device));
+      PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->init_device(dev_id));
     }
   }
 
   void DeInitDevice(size_t dev_id) override {
     if (pimpl_->deinit_device) {
-      const auto device = &devices_pool[dev_id];
-      PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->deinit_device(device));
+      PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->deinit_device(dev_id));
     }
   }
 
   void SetDevice(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
-    PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->set_device(device));
+    PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->set_device(dev_id));
   }
 
   int GetDevice() override {
     C_Device_st device;
-    // get physical id
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->get_device(&device));
-    // get logical id
-    auto it = std::find(devices_pool.begin(), devices_pool.end(), device);
-    PADDLE_ENFORCE_NE(
-        it, devices_pool.end(),
-        platform::errors::NotFound("Cannot find device %d", device.id));
-    int dev_id = it - devices_pool.begin();
-    return dev_id;
+    return device.id;
   }
 
   void CreateStream(size_t dev_id, stream::Stream* stream,
@@ -139,35 +130,28 @@ class PluggableDevice : public DeviceInterface {
           "stream::Stream::Flag::kDefaultFlag is not allowed on "
           "PluggableDevice."));
     }
-    const auto device = &devices_pool[dev_id];
     C_Stream c_stream;
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-        pimpl_->create_stream(device, &c_stream));
+        pimpl_->create_stream(dev_id, &c_stream));
     stream->set_stream(c_stream);
   }
 
   void DestroyStream(size_t dev_id, stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->destroy_stream(
-        device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+        dev_id, reinterpret_cast<C_Stream>(stream->raw_stream())));
   }
 
   void SynchronizeStream(size_t dev_id, const stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->synchronize_stream(
-        device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+        dev_id, reinterpret_cast<C_Stream>(stream->raw_stream())));
   }
 
   bool QueryStream(size_t dev_id, const stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
     if (!pimpl_->query_stream) {
       SynchronizeStream(dev_id, stream);
       return true;
     }
-    if (pimpl_->query_stream(device, reinterpret_cast<C_Stream>(
+    if (pimpl_->query_stream(dev_id, reinterpret_cast<C_Stream>(
                                          stream->raw_stream())) == C_SUCCESS) {
       return true;
     }
@@ -180,9 +164,8 @@ class PluggableDevice : public DeviceInterface {
       PADDLE_THROW(platform::errors::Unavailable(
           "AddCallback is not supported on " + Type() + "."));
     } else {
-      const auto device = &devices_pool[dev_id];
       PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->stream_add_callback(
-          device, reinterpret_cast<C_Stream>(stream->raw_stream()),
+          dev_id, reinterpret_cast<C_Stream>(stream->raw_stream()),
           [](C_Device device, C_Stream stream, void* user_data,
              C_Status* status) {
             std::unique_ptr<std::function<void()>> func(
@@ -195,45 +178,36 @@ class PluggableDevice : public DeviceInterface {
 
   void CreateEvent(size_t dev_id, event::Event* event,
                    event::Event::Flag flags) override {
-    const auto device = &devices_pool[dev_id];
     C_Event c_event;
 
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-        pimpl_->create_event(device, &c_event));
+        pimpl_->create_event(dev_id, &c_event));
     event->set_event(c_event);
   }
 
   void DestroyEvent(size_t dev_id, event::Event* event) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->destroy_event(
-        device, reinterpret_cast<C_Event>(event->raw_event())));
+        dev_id, reinterpret_cast<C_Event>(event->raw_event())));
   }
 
   void RecordEvent(size_t dev_id, const event::Event* event,
                    const stream::Stream* stream) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->record_event(
-        device, reinterpret_cast<C_Stream>(stream->raw_stream()),
+        dev_id, reinterpret_cast<C_Stream>(stream->raw_stream()),
         reinterpret_cast<C_Event>(event->raw_event())));
   }
 
   void SynchronizeEvent(size_t dev_id, const event::Event* event) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->synchronize_event(
-        device, reinterpret_cast<C_Event>(event->raw_event())));
+        dev_id, reinterpret_cast<C_Event>(event->raw_event())));
   }
 
   bool QueryEvent(size_t dev_id, const event::Event* event) override {
-    const auto device = &devices_pool[dev_id];
-
     if (!pimpl_->query_event) {
       SynchronizeEvent(dev_id, event);
       return true;
     }
-    if (pimpl_->query_event(device, reinterpret_cast<C_Event>(
+    if (pimpl_->query_event(dev_id, reinterpret_cast<C_Event>(
                                         event->raw_event())) == C_SUCCESS) {
       return true;
     }
@@ -242,48 +216,45 @@ class PluggableDevice : public DeviceInterface {
 
   void StreamWaitEvent(size_t dev_id, const stream::Stream* stream,
                        const event::Event* event) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->stream_wait_event(
-        device, reinterpret_cast<C_Stream>(stream->raw_stream()),
+        dev_id, reinterpret_cast<C_Stream>(stream->raw_stream()),
         reinterpret_cast<C_Event>(event->raw_event())));
   }
 
   void MemoryCopy(size_t dev_id, void* dst, const void* src, size_t size,
                   MemoryCpyKind kind,
                   const stream::Stream* stream = nullptr) override {
-    const auto device = &devices_pool[dev_id];
     auto place = platform::PluggableDevicePlace(Type(), dev_id);
 
     if (kind == MemoryCpyKind::HostToDevice) {
       if (stream && stream->raw_stream() && pimpl_->async_memory_copy_h2d) {
         C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->async_memory_copy_h2d(device, c_stream, dst, src, size));
+            pimpl_->async_memory_copy_h2d(dev_id, c_stream, dst, src, size));
       } else {
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         pool.Get(place)->Wait();
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->memory_copy_h2d(device, dst, src, size));
+            pimpl_->memory_copy_h2d(dev_id, dst, src, size));
       }
     } else if (kind == MemoryCpyKind::DeviceToHost) {
       if (stream && stream->raw_stream() && pimpl_->async_memory_copy_d2h) {
         C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->async_memory_copy_d2h(device, c_stream, dst, src, size));
+            pimpl_->async_memory_copy_d2h(dev_id, c_stream, dst, src, size));
       } else {
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         pool.Get(place)->Wait();
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->memory_copy_d2h(device, dst, src, size));
+            pimpl_->memory_copy_d2h(dev_id, dst, src, size));
       }
     } else if (kind == MemoryCpyKind::DeviceToDevice) {
       if (stream && stream->raw_stream() && pimpl_->async_memory_copy_d2d) {
         C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->async_memory_copy_d2d(device, c_stream, dst, src, size));
+            pimpl_->async_memory_copy_d2d(dev_id, c_stream, dst, src, size));
       } else {
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
@@ -300,29 +271,27 @@ class PluggableDevice : public DeviceInterface {
                       const void* src, size_t size,
                       const stream::Stream* stream = nullptr) override {
     int dst_dev_id = PlaceToId(dst_place);
-    auto dst_device = &devices_pool[dst_dev_id];
-    auto src_device = &devices_pool[src_dev_id];
 
     if (stream && stream->raw_stream()) {
       if (!pimpl_->async_memory_copy_p2p) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "AsyncMemoryCopyPeer is not supported on " + Type() + "."));
+        MemoryCopyPeer(dst_place, dst, src_dev_id, src, size);
       } else {
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(pimpl_->async_memory_copy_p2p(
-            dst_device, src_device,
+            dst_dev_id, src_device,
             reinterpret_cast<C_Stream>(stream->raw_stream()), dst, src, size));
       }
     } else {
       if (!pimpl_->memory_copy_p2p) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "MemoryCopyPeer is not supported on " + Type() + "."));
+        std::unique_ptr<void> p(new uint8_t[size]);
+        MemoryCopy(src_dev_id, p.get(), src, size, MemoryCpyKind::DeviceToHost);
+        MemoryCopy(dst_dev_id, dst, p.get(), size, MemoryCpyKind::HostToDevice);
       } else {
         auto src_place = platform::PluggableDevicePlace(Type(), src_dev_id);
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         pool.Get(src_place)->Wait();
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->memory_copy_p2p(dst_device, src_device, dst, src, size));
+            pimpl_->memory_copy_p2p(dst_dev_id, src_dev_id, dst, src, size));
       }
     }
   }
@@ -331,18 +300,17 @@ class PluggableDevice : public DeviceInterface {
       size_t dev_id, size_t size,
       MemoryAllocKind kind = MemoryAllocKind::Normal) override {
     void* ptr = nullptr;
-    const auto device = &devices_pool[dev_id];
 
     if (kind == MemoryAllocKind::Normal) {
       PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-          pimpl_->device_memory_allocate(device, &ptr, size));
+          pimpl_->device_memory_allocate(dev_id, &ptr, size));
     } else if (kind == MemoryAllocKind::Host) {
       if (!pimpl_->unified_memory_allocate) {
         PADDLE_THROW(platform::errors::Unavailable(
             "MemoryAllocKind::Host is not supported on " + Type() + "."));
       } else {
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->host_memory_allocate(device, &ptr, size));
+            pimpl_->host_memory_allocate(dev_id, &ptr, size));
       }
     } else if (kind == MemoryAllocKind::Unified) {
       if (!pimpl_->unified_memory_allocate) {
@@ -350,7 +318,7 @@ class PluggableDevice : public DeviceInterface {
             "MemoryAllocKind::Unified is not supported on " + Type() + "."));
       } else {
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->unified_memory_allocate(device, &ptr, size));
+            pimpl_->unified_memory_allocate(dev_id, &ptr, size));
       }
     } else {
       PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
@@ -361,18 +329,16 @@ class PluggableDevice : public DeviceInterface {
   void MemoryDeallocate(
       size_t dev_id, void* ptr, size_t size,
       MemoryAllocKind kind = MemoryAllocKind::Normal) override {
-    const auto device = &devices_pool[dev_id];
-
     if (kind == MemoryAllocKind::Normal) {
       PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-          pimpl_->device_memory_deallocate(device, ptr, size));
+          pimpl_->device_memory_deallocate(dev_id, ptr, size));
     } else if (kind == MemoryAllocKind::Host) {
       if (!pimpl_->host_memory_deallocate) {
         PADDLE_THROW(platform::errors::Unavailable(
             "MemoryAllocKind::Host is not supported on " + Type() + "."));
       } else {
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->host_memory_deallocate(device, ptr, size));
+            pimpl_->host_memory_deallocate(dev_id, ptr, size));
       }
     } else if (kind == MemoryAllocKind::Unified) {
       if (!pimpl_->unified_memory_deallocate) {
@@ -380,7 +346,7 @@ class PluggableDevice : public DeviceInterface {
             "MemoryAllocKind::Host is not supported on " + Type() + "."));
       } else {
         PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-            pimpl_->unified_memory_deallocate(device, ptr, size));
+            pimpl_->unified_memory_deallocate(dev_id, ptr, size));
       }
     } else {
       PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
@@ -389,11 +355,9 @@ class PluggableDevice : public DeviceInterface {
 
   void MemorySet(size_t dev_id, void* ptr, uint8_t value,
                  size_t size) override {
-    const auto device = &devices_pool[dev_id];
-
     if (pimpl_->device_memory_set) {
       PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-          pimpl_->device_memory_set(device, ptr, value, size));
+          pimpl_->device_memory_set(dev_id, ptr, value, size));
     } else {
       void* tmp = new uint8_t[size];
       memset(tmp, value, size);
@@ -402,10 +366,8 @@ class PluggableDevice : public DeviceInterface {
   }
 
   void MemoryStats(size_t dev_id, size_t* total, size_t* free) override {
-    const auto device = &devices_pool[dev_id];
-
     PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-        pimpl_->device_memory_stats(device, total, free));
+        pimpl_->device_memory_stats(dev_id, total, free));
 
     size_t used = *total - *free;
     VLOG(10) << Type() + " memory usage " << (used >> 20) << "M/"
@@ -414,20 +376,16 @@ class PluggableDevice : public DeviceInterface {
   }
 
   size_t GetMinChunkSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
-
     size_t size = 0;
-    pimpl_->device_min_chunk_size(device, &size);
+    pimpl_->device_min_chunk_size(dev_id, &size);
     VLOG(10) << Type() + " min chunk size " << size << "B";
     return size;
   }
 
   size_t GetMaxChunkSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
-
     size_t size = 0;
     if (pimpl_->device_max_chunk_size) {
-      pimpl_->device_max_chunk_size(device, &size);
+      pimpl_->device_max_chunk_size(dev_id, &size);
       VLOG(10) << Type() + " max chunk size " << size << "B";
     } else {
       return DeviceInterface::GetMaxChunkSize(dev_id);
@@ -436,11 +394,9 @@ class PluggableDevice : public DeviceInterface {
   }
 
   size_t GetMaxAllocSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
-
     size_t size = 0;
     if (pimpl_->device_max_alloc_size) {
-      pimpl_->device_max_alloc_size(device, &size);
+      pimpl_->device_max_alloc_size(dev_id, &size);
       VLOG(10) << Type() + " max alloc size " << (size >> 20) << "M";
     } else {
       return DeviceInterface::GetMaxAllocSize(dev_id);
@@ -449,10 +405,9 @@ class PluggableDevice : public DeviceInterface {
   }
 
   size_t GetInitAllocSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
     size_t size = 0;
     if (pimpl_->device_init_alloc_size) {
-      pimpl_->device_init_alloc_size(device, &size);
+      pimpl_->device_init_alloc_size(dev_id, &size);
       VLOG(10) << Type() + " init alloc size " << (size >> 20) << "M";
     } else {
       return DeviceInterface::GetInitAllocSize(dev_id);
@@ -461,10 +416,9 @@ class PluggableDevice : public DeviceInterface {
   }
 
   size_t GetReallocSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
     size_t size = 0;
     if (pimpl_->device_realloc_size) {
-      pimpl_->device_realloc_size(device, &size);
+      pimpl_->device_realloc_size(dev_id, &size);
       VLOG(10) << Type() + " realloc size " << (size >> 20) << "M";
     } else {
       return DeviceInterface::GetReallocSize(dev_id);
@@ -473,18 +427,40 @@ class PluggableDevice : public DeviceInterface {
   }
 
   size_t GetExtraPaddingSize(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
-
     size_t padding_size = 0;
     if (pimpl_->device_extra_padding_size) {
       PADDLE_ENFORCE_PLUGGABLE_DEVICE_SUCCESS(
-          pimpl_->device_extra_padding_size(device, &padding_size));
+          pimpl_->device_extra_padding_size(dev_id, &padding_size));
       VLOG(10) << Type() + " extra padding size " << (padding_size >> 20)
                << "M";
     } else {
       return DeviceInterface::GetExtraPaddingSize(dev_id);
     }
     return 0;
+  }
+
+  size_t GetComputeCapability() override {
+    size_t capability = 0;
+    if (pimpl_->get_compute_capability) {
+      pimpl_->get_compute_capability(&capability)
+    }
+    return capability;
+  }
+
+  size_t GetRuntimeVersion() override {
+    size_t version = 0;
+    if (pimpl_->get_runtime_version) {
+      pimpl_->get_runtime_version(&version)
+    }
+    return version;
+  }
+
+  size_t GetDriverVersion() override {
+    size_t version = 0;
+    if (pimpl_->get_driver_version) {
+      pimpl_->get_driver_version(&version)
+    }
+    return version;
   }
 
  private:
@@ -495,18 +471,10 @@ class PluggableDevice : public DeviceInterface {
 
   inline int PlaceToId(const Place& place) {
     int dev_id = PlaceToIdNoCheck(place);
-    PADDLE_ENFORCE_LT(dev_id, devices_pool.size(),
-                      platform::errors::InvalidArgument(
-                          "DeviceInterface id must be less than " + Type() +
-                              " count, "
-                              "but received id is: %d. " +
-                              Type() + " count is: %d.",
-                          dev_id, devices_pool.size()));
     return dev_id;
   }
   std::unique_ptr<C_DeviceInterface> pimpl_;
   void* dso_handle_;
-  std::vector<C_Device_st> devices_pool;
 };
 
 bool ValidPluggableRuntimePluginParams(const RuntimePluginParams* params) {
@@ -569,12 +537,17 @@ bool ValidPluggableRuntimePluginParams(const RuntimePluginParams* params) {
   CHECK_PTR(async_memory_copy_p2p, false);
 
   CHECK_PTR(visible_devices_count, true);
+  CHECK_PTR(visible_devices, true);
   CHECK_PTR(device_memory_stats, true);
 
   CHECK_PTR(device_min_chunk_size, true);
   CHECK_PTR(device_max_chunk_size, false);
   CHECK_PTR(device_max_alloc_size, false);
   CHECK_PTR(device_extra_padding_size, false);
+  CHECK_PTR(get_compute_capability, false);
+  CHECK_PTR(get_runtime_version, false);
+  CHECK_PTR(get_driver_version, false);
+
   return true;
 #undef CHECK_PTR
 }
