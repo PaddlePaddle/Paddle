@@ -25,38 +25,20 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-class CudaTracer {
+class HostTracer {
  public:
   // Returns a reference to singleton.
-  static CuptiTracer& GetInstance() {
-    static CuptiTracer instance;
+  static HostTracer& GetInstance() {
+    static HostTracer instance;
     return instance;
   }
-
-  void PrepareTrace();
 
   void StartTrace();
 
   void StopTrace(TraceDataCollector* collector);
 
  private:
-  CudaTracer() = default;
-  DISABLE_COPY_AND_ASSIGN(CudaTracer);
-
-  // Used by CUPTI Activity API to request buffer
-  static void CUPTIAPI BufferRequestedCallback(uint8_t** buffer, size_t* size,
-                                               size_t* maxNumRecords);
-
-  // Used by CUPTI Activity API to commit a completed buffer
-  static void CUPTIAPI BufferCompletedCallback(CUcontext ctx, uint32_t streamId,
-                                               uint8_t* buffer,
-                                               size_t /* unused */,
-                                               size_t validSize);
-
-  void AllocateBuffer(uint8_t** buffer, size_t* size);
-
-  void ReclaimBuffer(CUcontext context, uint32_t stream_id, uint8_t* buffer,
-                     size_t size);
+  DISABLE_COPY_AND_ASSIGN(HostTracer);
 };
 
 }  // namespace platform

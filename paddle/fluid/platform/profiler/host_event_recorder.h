@@ -191,6 +191,9 @@ struct ThreadEventSection {
 class ThreadEventRecorder {
  public:
   ThreadEventRecorder();
+
+  ~ThreadEventRecorder();
+
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 
  public:
@@ -249,17 +252,23 @@ class HostEventRecorder {
     GetThreadLocalRecorder().RecordEvent(std::forward<Args>(args)...);
   }
 
-  // thread-unsafe, make sure make sure there is no running tracing
+  // thread-unsafe, make sure make sure there is no running tracing.
   void StopTrace() { trace_level_ = kDisabled; }
 
-  // thread-unsafe, make sure make sure there is no running tracing
+  // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
   HostEventSection GatherEvents();
 
   // thread-safe
   void RegisterThreadRecorder(uint64_t tid, ThreadEventRecorder *recorder) {
-    const std::lock_guard<std::mutex> guard(thread_recorders_lock_);
+    std::lock_guard<std::mutex> guard(thread_recorders_lock_);
     thread_recorders_[tid] = recorder;  // not owned
+  }
+
+  // thread-safe
+  void UnregisterThreadRecorder(uint64_t tid) {
+    std::lock_guard<std::mutex> guard(thread_recorders_lock_);
+    thread_recorders_.erase(tid);
   }
 
  private:

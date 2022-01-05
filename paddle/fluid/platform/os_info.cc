@@ -40,13 +40,26 @@ ThreadId::ThreadId() {
   std::stringstream ss;
   ss << std::this_thread::get_id();
   cupti_tid_ = static_cast<uint32_t>(std::stoull(ss.str()));
+  ThreadIdRegistry::GetInstance().RegisterThread(*this);
 }
 
-ThreadIdRegistry::~ThreadIdRegistry() {
-  std::lock_guard<std::mutex> lock(lock_);
-  for (auto id_pair : id_map_) {
-    delete id_pair.second;
+ThreadId::~ThreadId() {
+  ThreadIdRegistry::GetInstance().UnregisterThread(*this);
+}
+
+std::vector<std::reference_wrapper<const ThreadId>>
+ThreadIdRegistry::AllThreadIds() {
+  decltype(id_map_) snapshot;
+  {
+    std::lock_guard<std::mutex> lock(lock_);
+    snapshot = id_map_;
   }
+  std::vector<std::reference_wrapper<const ThreadId>> threads;
+  threads.reserve(snapshot.size());
+  for (const auto &elem : snapshot) {
+    threads.push_back(std::cref(*elem.second));
+  }
+  return threads;
 }
 
 }  // namespace platform

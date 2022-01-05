@@ -43,7 +43,10 @@ inline uint64_t PosixInNsec() {
 // All kinds of Ids for OS thread
 class ThreadId {
  public:
-  ThreadId();
+  static const ThreadId& CurrentThreadId() {
+    static thread_local ThreadId tid;
+    return tid;
+  }
 
   uint64_t MainTid() const { return SysTid(); }
 
@@ -54,6 +57,12 @@ class ThreadId {
   uint64_t SysTid() const { return sys_tid_ != 0 ? sys_tid_ : std_tid_; }
 
  private:
+  ThreadId();
+
+  DISABLE_COPY_AND_ASSIGN(ThreadId);
+
+  ~ThreadId();
+
   uint64_t std_tid_ = 0;    // std::hash<std::thread::id>
   uint32_t cupti_tid_ = 0;  // thread_id used by Nvidia CUPTI
   uint64_t sys_tid_ = 0;    // OS-specific, Linux: gettid
@@ -61,38 +70,36 @@ class ThreadId {
 
 class ThreadIdRegistry {
  public:
-  // singleton
+  // Singleton
   static ThreadIdRegistry& GetInstance() {
     static ThreadIdRegistry instance;
     return instance;
   }
 
-  const ThreadId* GetThreadId(uint64_t std_id) {
-    std::lock_guard<std::mutex> lock(lock_);
-    if (LIKELY(id_map_.find(std_id) != id_map_.end())) {
-      return id_map_[std_id];
-    }
-    return nullptr;
-  }
-
-  const ThreadId& CurrentThreadId() {
-    static thread_local ThreadId* tid_ = nullptr;
-    if (LIKELY(tid_ != nullptr)) {
-      return *tid_;
-    }
-    tid_ = new ThreadId;
-    std::lock_guard<std::mutex> lock(lock_);
-    id_map_[tid_->StdTid()] = tid_;
-    return *tid_;
-  }
+  // Returns current snapshot of all threads.
+  // The snapshot holds referrences, make sure there is no thread
+  // create/destory when using it.
+  std::vector<std::reference_wrapper<const ThreadId>> AllThreadIds();
 
  private:
+  friend ThreadId;
+
   ThreadIdRegistry() = default;
+
   DISABLE_COPY_AND_ASSIGN(ThreadIdRegistry);
-  ~ThreadIdRegistry();
+
+  void RegisterThread(const ThreadId& id) {
+    std::lock_guard<std::mutex> lock(lock_);
+    id_map_[id.MainTid()] = &id;
+  }
+
+  void UnregisterThread(const ThreadId& id) {
+    std::lock_guard<std::mutex> lock(lock_);
+    id_map_.erase(id.MainTid());
+  }
 
   std::mutex lock_;
-  std::unordered_map<uint64_t, ThreadId*> id_map_;
+  std::unordered_map<uint64_t, const ThreadId*> id_map_;
 };
 
 }  // namespace platform
