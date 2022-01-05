@@ -1759,7 +1759,7 @@ def tile(x, repeat_times, name=None):
                     'Elements in repeat_times must be 1-D Tensors or integers.')
 
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'tile')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError(
             "When the date type is bool for the input 'x' of tile op, you "
