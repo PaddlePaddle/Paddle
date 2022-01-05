@@ -16,7 +16,7 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/binary.h"
 
 namespace pten {
 

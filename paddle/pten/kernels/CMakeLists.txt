@@ -24,10 +24,19 @@ endif()
 # pten depends all pten kernel targets
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
-set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
+set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory convert_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
+# remove this dep after removing fluid deps on tensor creation
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} pten_api_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
+
+set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel pten_transpose_cpu)
+if(WITH_GPU OR WITH_ROCM)
+  set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_gpu)
+endif()
 
 # auto build kernel targets by cmake
-register_kernels(DEPS ${COMMON_KERNEL_DEPS})
+register_kernels(EXCLUDES math_kernel DEPS ${COMMON_KERNEL_DEPS})
+kernel_library(math_kernel DEPS ${MATH_KERNEL_DEPS})
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})

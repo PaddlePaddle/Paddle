@@ -43,6 +43,7 @@ from .linalg import cov  # noqa: F401
 from .linalg import norm  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
+from .linalg import lstsq  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
 from .linalg import cross  # noqa: F401
@@ -62,6 +63,8 @@ from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
 from .linalg import cholesky_solve  # noqa: F401
+from .linalg import lu  # noqa: F401
+from .linalg import lu_unpack  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -119,6 +122,8 @@ from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
 from .manipulation import as_complex  # noqa: F401
 from .manipulation import take_along_axis  # noqa: F401
+from .manipulation import put_along_axis  # noqa: F401
+from .manipulation import put_along_axis_  # noqa: F401
 from .manipulation import as_real  # noqa: F401
 from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
@@ -246,11 +251,16 @@ from .search import nonzero  # noqa: F401
 from .search import sort  # noqa: F401
 from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
+from .search import kthvalue  # noqa: F401
+from .search import mode  # noqa: F401
+
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
+from .stat import quantile  # noqa: F401
+
 from .to_string import set_printoptions  # noqa: F401
 
 from .array import array_length  # noqa: F401
@@ -268,6 +278,7 @@ tensor_method_func  = [ #noqa
            'norm',
            'cond',
            'transpose',
+           'lstsq',
            'dist',
            't',
            'cross',
@@ -356,6 +367,7 @@ tensor_method_func  = [ #noqa
            'clip_',
            'trace',
            'kron',
+           'kthvalue',
            'isfinite',
            'isinf',
            'isnan',
@@ -429,6 +441,7 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'quantile',
            'is_complex',
            'is_integer',
            'rank',
@@ -453,6 +466,8 @@ tensor_method_func  = [ #noqa
            'asinh',
            'atanh',
            'acosh',
+           'lu',
+           'lu_unpack',
            'as_complex',
            'as_real',
            'rad2deg',
@@ -460,6 +475,7 @@ tensor_method_func  = [ #noqa
            'gcd',
            'lcm',
            'diff',
+           "mode",
            'lerp',
            'lerp_',
            'erfinv',
@@ -468,6 +484,8 @@ tensor_method_func  = [ #noqa
            'moveaxis',
            'repeat_interleave',
            'take_along_axis',
+           'put_along_axis',
+           'put_along_axis_',
            'exponential_',
 ]
 

@@ -27,6 +27,8 @@ limitations under the License. */
 #include "thrust/pair.h"
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 
@@ -53,8 +55,11 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
               gpuStream_t stream);
+  void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
+              gpuStream_t stream);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            gpuStream_t stream);
+  void get(const KeyType* d_keys, char* d_vals, size_t len, gpuStream_t stream);
   void show();
   void dump_to_cpu(int devid, cudaStream_t stream);
 
@@ -62,7 +67,19 @@ class HashTable {
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
               Sgd sgd, gpuStream_t stream);
 
+  template <typename Sgd>
+  void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
+              gpuStream_t stream);
+
   int size() { return container_->size(); }
+
+  void set_feature_value_size(size_t pull_feature_value_size,
+                              size_t push_grad_value_size) {
+    pull_feature_value_size_ = pull_feature_value_size;
+    push_grad_value_size_ = push_grad_value_size;
+    VLOG(3) << "hashtable set pull value size: " << pull_feature_value_size_
+            << " push value size: " << push_grad_value_size_;
+  }
 
   std::unique_ptr<RWLock> rwlock_{nullptr};
 
@@ -71,6 +88,9 @@ class HashTable {
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
+  size_t max_mf_dim_ = 8;
+  size_t pull_feature_value_size_;
+  size_t push_grad_value_size_;
 };
 }  // end namespace framework
 }  // end namespace paddle
