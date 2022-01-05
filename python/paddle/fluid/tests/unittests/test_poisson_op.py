@@ -19,6 +19,7 @@ from op_test import OpTest
 import math
 
 paddle.enable_static()
+paddle.seed(100)
 
 
 def output_hist(out, lam, a, b):

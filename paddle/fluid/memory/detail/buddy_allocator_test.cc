@@ -95,10 +95,10 @@ TEST(BuddyAllocator, GpuFraction) {
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
   TestBuddyAllocator(&buddy_allocator, 10 << 10);
-  TestBuddyAllocator(&buddy_allocator, 10 << 20);
+  TestBuddyAllocator(&buddy_allocator, 1 << 20);
 
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 300 << 20,
+  TestBuddyAllocator(&buddy_allocator, 500 << 20,
                      /* use_system_allocator = */ true);
   TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);

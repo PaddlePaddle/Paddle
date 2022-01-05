@@ -1012,6 +1012,41 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
                                     ops::kConvMKLDNNFP32,
                                     ops::ConvMKLDNNGradOpKernel<float, float>);
 
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace, BF16,
+    ops::kConvMKLDNNFP32,
+    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, FP32,
+                                    ops::kConvMKLDNNFP32,
+                                    ops::ConvMKLDNNOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    depthwise_conv2d, MKLDNN, ::paddle::platform::CPUPlace, BF16,
+    ops::kConvMKLDNNFP32,
+    ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8,
+                                    ops::kConvMKLDNNINT8,
+                                    ops::ConvMKLDNNOpKernel<uint8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8,
+                                    ops::kConvMKLDNNINT8,
+                                    ops::ConvMKLDNNOpKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d_grad, MKLDNN,
+                                    ::paddle::platform::CPUPlace, FP32,
+                                    ops::kConvMKLDNNFP32,
+                                    ops::ConvMKLDNNGradOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    depthwise_conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace, BF16,
+    ops::kConvMKLDNNFP32,
+    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16, float>);
+
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
