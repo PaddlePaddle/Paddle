@@ -913,13 +913,21 @@ def file_label_reader(file_root, batch_size, name=None):
         name=unique_name.generate("file_label_reader"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype='uint8')
+    
+    label = helper.create_variable(
+        name=unique_name.generate("file_label_reader"),
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        dtype='int')
+
     helper.append_op(
         type="file_label_reader",
         inputs=inputs,
         attrs=attrs,
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "Label": label
+                 })
 
-    return out
+    return out, label
 
 
 def image_decode(x, mode='unchanged', num_threads=2, name=None):
@@ -1021,14 +1029,14 @@ def image_decode_random_crop(x,
 
             print(img.shape)
     """
-
+    local_rank = paddle.distributed.get_rank()
     if in_dygraph_mode():
         return _C_ops.batch_decode_random_crop(
                 x, "mode", mode, "num_threads", num_threads,
                 "aspect_ratio_min", aspect_ratio_min,
                 "aspect_ratio_max", aspect_ratio_max,
                 "area_min", area_min, "area_max", area_max,
-                "num_attempts", num_attempts)
+                "num_attempts", num_attempts, "local_rank", local_rank)
 
     inputs = {'X': x}
     attrs = {"mode": mode,
@@ -1037,7 +1045,8 @@ def image_decode_random_crop(x,
              "aspect_ratio_max": aspect_ratio_max,
              "area_min": area_min,
              "area_max": area_max,
-             "num_attempts": num_attempts}
+             "num_attempts": num_attempts, 
+             "local_rank": local_rank}
 
     helper = LayerHelper("batch_decode_random_crop", **locals())
     out = helper.create_variable(

@@ -63,7 +63,9 @@ class Pipeline:
         self._main_program = framework.switch_main_program(self._main_program)
         self._startup_program = framework.switch_startup_program(
             self._startup_program)
-        paddle.disable_static()
+            
+        local_rank = paddle.distributed.get_rank()
+        paddle.disable_static("gpu:" + str(local_rank))
 
     def set_outputs(self, outputs):
         if isinstance(outputs, Sequence):

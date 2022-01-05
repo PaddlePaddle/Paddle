@@ -33,11 +33,11 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     int num_threads = ctx.Attr<int>("num_threads");
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads;
     auto mode = ctx.Attr<std::string>("mode");
-    
+    auto local_rank = ctx.Attr<int>("local_rank");
     // multi-phrase decode thread pool
     if (!decode_pool) {
       LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
-      decode_pool = new NvjpegDecoderThreadPool(num_threads, mode);
+      decode_pool = new NvjpegDecoderThreadPool(num_threads, mode, local_rank);
       // rand_seq = new std::seed_seq(static_cast<int>(time(0)));
     }
 
@@ -45,6 +45,8 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensorArray>("X");
 
     auto* out = ctx.OutputVar("Out");
+    auto dev = platform::CUDAPlace(local_rank);
+    
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
     out_array.resize(inputs->size());
 
@@ -71,7 +73,8 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
         .tensor = &out_array[i],
         .roi_generator = new RandomROIGenerator(
                                 aspect_ratio_range, area_range, rands[i]),
-        .place = ctx.GetPlace()
+        .place = dev
+        // .place = ctx.GetPlace()
       };
       decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
     }
