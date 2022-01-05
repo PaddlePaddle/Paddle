@@ -15192,7 +15192,7 @@ def mish(x, threshold=20, name=None):
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
     if in_dygraph_mode():
-        return core.ops.mish(x, 'threshold', threshold)
+        return _C_ops.mish(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
     check_type(threshold, 'threshold', (float, int), 'mish')

@@ -1159,8 +1159,8 @@ struct CudaMishFunctor : public BaseActivationFunctor<T> {
   // softplus(x) = x, if x > threshold
   //             = ln(1 + exp(x)), otherwise
   // Inputs: args[0], the input x
-  __device__ __forceinline__ T operator()(const T* args) const {
-    MPType x = static_cast<MPType>(args[0]);
+  __device__ __forceinline__ T operator()(const T& arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
     MPType sp = (x > static_cast<MPType>(threshold)) ? x : log(one + exp(x));
     return static_cast<T>(x * tanh(sp));
   }
@@ -1180,11 +1180,13 @@ struct CudaMishGradFunctor : public BaseActivationFunctor<T> {
   // sp = softplus(x)
   // Inputs: args[0], the input dout
   //         args[1], the input x
-  __device__ __forceinline__ T operator()(const T* args) const {
-    MPType dout = static_cast<MPType>(args[0]);
-    MPType x = static_cast<MPType>(args[1]);
+  __device__ __forceinline__ T operator()(const T& arg_dout,
+                                          const T& arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
     MPType sp = (x > static_cast<MPType>(threshold)) ? x : log(one + exp(x));
-    MPType gsp = one - exp(-sp);
+    MPType gsp =
+        (x > static_cast<MPType>(threshold)) ? one : one / (one + exp(-x));
     MPType tsp = tanh(sp);
     return static_cast<T>(dout * (tsp + x * (one - tsp * tsp) * gsp));
   }

@@ -1206,7 +1206,7 @@ def mish(x, name=None):
             out = F.mish(x) # [-0.03357624, 0., 4.99955208]
     """
     if in_dygraph_mode():
-        return core.ops.mish(x)
+        return _C_ops.mish(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mish')
     helper = LayerHelper('mish', **locals())
