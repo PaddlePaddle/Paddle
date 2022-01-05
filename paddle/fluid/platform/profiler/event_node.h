@@ -315,10 +315,10 @@ class NodeTrees {
 
   private:
     std::map<uint64_t, HostRecordNode*> thread_record_trees_map_;
-    bool BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes, 
+    void BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes, 
                     const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
                     const std::vector<DeviceRecordNode*>& device_record_nodes);
-    bool BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
+    HostRecordNode* BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
                                std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes);
 
 };

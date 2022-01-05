@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <limits.h>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
 
@@ -70,10 +71,51 @@ void NodeTrees::BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes
       });
   }
 
-  // start to construct trees
+  // construct trees
   for(auto it = thread2host_record_nodes.begin(); it != thread2host_record_nodes.end(); ++it){
-     BuildTreeRelationship(it->second, thread2runtime_record_nodes[it->first]);
+     thread_record_trees_map_[it->first] = BuildTreeRelationship(it->second, thread2runtime_record_nodes[it->first]);
   }
+}
+
+void NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
+                                      std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes){
+  // a stack used for analyse relationship
+  auto node_stack = std::vector<HostRecordNode*>;
+  // root node, top level 
+  auto root_node = new HostRecordNode(std::string("root node"), TracerEventType::Operator, LLONG_MIN, LLONG_MAX);
+  // push root node into node_stack
+  node_stack.push_back(root_node);
+  // handle host_record_nodes
+  for(auto it = host_record_nodes.begin(); it != host_record_nodes.end(); ++it){
+      while(true){
+          auto stack_top_node = node_stack.back();
+
+          if(*it->start_ns() < stack_top_node->end_ns()){
+              // current node is the child of stack_top_node
+              PADDLE_ENFORCE_LE(*it->end_ns(), stack_top_node->end_ns(), 
+                                platform::errors::Fatal("should not have time range intersection within one thread")
+                               ); 
+              stack_top_node->AddChild(*it);
+              node_stack.push_back(*it);
+              break;
+          }else{
+              node_stack.pop_back();
+              // insert runtime node
+              // judge if time range of runtime node within stack_top_node
+              for(auto runtimenode = runtime_record_nodes.begin(); runtimenode != runtime_record_nodes.end(); ++runtimenode){
+                  if((runtimenode->start_ns() >= stack_top_node->start_ns()) && (runtimenode->end_ns() <= stack_top_node->end_ns())){
+                     stack_top_node->AddCudaRuntimeNode(runtimenode);                    
+                  }else{
+                      // from this runtime node, not within stack_top_node, erase the nodes within stack_top_node from runtime_record_nodes
+                      runtime_record_nodes.erase(runtime_record_nodes.begin(), runtimenode);
+                      break;
+                  }
+              }
+          }
+      }
+  }
+  return root_node;
+
 }
 
 } // namespace platform
