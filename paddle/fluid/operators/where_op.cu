@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/where_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace platform = paddle::platform;
 

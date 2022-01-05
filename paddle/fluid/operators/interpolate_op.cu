@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/operators/interpolate_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_lanuch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
