@@ -37,8 +37,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-
+#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
 #include "paddle/fluid/platform/device/device_manager.h"
+#endif
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);

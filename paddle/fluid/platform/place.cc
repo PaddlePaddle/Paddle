@@ -130,7 +130,9 @@ std::string PlaceHelper::GetDeviceType(const Place &place) {
   } else if (is_pluggable_device_place(place)) {
     return BOOST_GET_CONST(PluggableDevicePlace, place).GetDeviceType();
   } else {
-    PADDLE_THROW(platform::errors::Fatal("Unknown device type."));
+    PADDLE_THROW(platform::errors::Fatal(
+        "Unknown device type. please use "
+        "paddle.fluid.core.list_all_device_types to check supprted devices"));
   }
 }
 
@@ -146,7 +148,9 @@ size_t PlaceHelper::GetDeviceId(const Place &place) {
   } else if (is_pluggable_device_place(place)) {
     return BOOST_GET_CONST(PluggableDevicePlace, place).GetDeviceId();
   } else {
-    PADDLE_THROW(platform::errors::Fatal("Unknown device type."));
+    PADDLE_THROW(platform::errors::Fatal(
+        "Unknown device type. please use "
+        "paddle.fluid.core.list_all_device_types to check supprted devices"));
   }
 }
 

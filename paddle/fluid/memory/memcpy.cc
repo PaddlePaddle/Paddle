@@ -694,9 +694,8 @@ void Copy<platform::PluggableDevicePlace, platform::PluggableDevicePlace>(
           dst_place, dst, src, num, &stream_wrapper);
     }
   } else {
-    PADDLE_THROW(platform::errors::Unavailable("Copy between " + src_type +
-                                               " and " + dst_type +
-                                               " is not supported."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Copy between %s and %s is not supported.", src_type, dst_type));
   }
 }
 #endif  // PADDLE_WITH_PLUGGABLE_DEVICE
