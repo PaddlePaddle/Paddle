@@ -789,21 +789,21 @@ def max_unpool3d(x,
                  name=None):
     """
     This API implements max unpooling 3d opereation.
-    'max_unpool3d' accepts the output of 'max_pool3d' as input
-    Including the indices of the maximum value and calculating the partial inverse
+    `max_unpool3d` accepts the output of `max_pool3d` as input, 
+    including the indices of the maximum value and calculate the partial inverse. 
     All non-maximum values ​​are set to zero.
-    
+
     - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
     - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
     
     .. math::
-    D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
+        D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
 
     .. math::
-    H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
+        H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
 
     .. math::
-    W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
+        W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
 
     or as given by :attr:`output_size` in the call operator
 
