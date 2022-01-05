@@ -209,9 +209,7 @@ class FileDataReaderWrapper {
   std::shared_ptr<FileDataReader> reader = nullptr;
 
   void ShutDown() {
-    LOG(ERROR) << "FileDataReaderWrapper shutdown enter";
-    reader->ShutDown();
-    LOG(ERROR) << "FileDataReaderWrapper shutdown finish";
+    if (reader) reader->ShutDown();
   }
 };
 

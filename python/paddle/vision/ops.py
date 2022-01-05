@@ -31,6 +31,7 @@ __all__ = [ #noqa
     'DeformConv2D',
     'read_file',
     'decode_jpeg',
+    'image_decode',
     'image_decode_random_crop',
     'random_flip',
     'roi_pool',
@@ -40,6 +41,7 @@ __all__ = [ #noqa
     'roi_align',
     'RoIAlign',
     'random_crop_and_resize',
+    'image_resize',
 ]
 
 
@@ -907,7 +909,6 @@ def file_label_reader(file_root, batch_size, name=None):
     }
 
     helper = LayerHelper("file_label_reader", **locals())
-    # out = helper.create_variable_for_type_inference('uint8')
     out = helper.create_variable(
         name=unique_name.generate("file_label_reader"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
@@ -917,6 +918,59 @@ def file_label_reader(file_root, batch_size, name=None):
         inputs=inputs,
         attrs=attrs,
         outputs={"Out": out})
+
+    return out
+
+
+def image_decode(x, mode='unchanged', num_threads=2, name=None):
+    """
+    Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
+    Optionally converts the image to the desired format. 
+    The values of the output tensor are uint8 between 0 and 255.
+
+    Args:
+        x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
+            of the JPEG image.
+        mode (str): The read mode used for optionally converting the image. 
+            Default: 'unchanged'.
+        num_threads (int): parallel thread number.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+
+    Examples:
+        .. code-block:: python
+            import cv2
+            import paddle
+
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
+
+            cv2.imwrite('fake.jpg', fake_img)
+
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            img = paddle.vision.ops.decode_jpeg(img_bytes)
+
+            print(img.shape)
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.batch_decode(
+                x, "mode", mode, "num_threads", num_threads)
+
+    inputs = {'X': x}
+    attrs = {"mode": mode,
+             "num_threads": num_threads}
+
+    helper = LayerHelper("batch_decode", **locals())
+    out = helper.create_variable(
+        name=unique_name.generate("image_decode"),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=x.dtype)
+    helper.append_op(
+        type="batch_decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
     return out
 
@@ -1534,6 +1588,89 @@ def random_crop_and_resize(x,
     }
     helper.append_op(
         type="random_crop_and_resize",
+        inputs=inputs,
+        outputs={"Out": out},
+        attrs=attrs)
+    return out
+
+
+def image_resize(x,
+                 size,
+                 interp_method='bilinear',
+                 align_corners=True,
+                 align_mode=1,
+                 data_layout='NCHW',
+                 seed=0,
+                 name=None):
+    """
+    This operator implements the paddle.vision.transforms.Resize.
+
+    Please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/vision/transforms/Resized_cn.html#randomresizedcrop
+     for details. This operator has only a GPU kernel.
+
+    Args:
+        x (List[Tensor]): A list of input images, 3D-Tensor with the shape
+            of [C,H,W] or [H,W,c]. The data type is uint8 or float32.
+        size (int|list|tuple): Target size of output image,
+            with (height, width) shape.
+        interp_method (str, optional): Interpolation method. Default: 'bilinear'.
+            support method are as following:
+            - "nearest",
+            - "bilinear"
+        align_corners (bool, optional): If True, the centers of 4 corner pixels
+            of the input and output tensors are aligned, preserving the values
+            at the corner pixels, If False, are not aligned. Default: True
+        align_mode (int32, optional): Optional for bilinear interpolation,
+            can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
+            src_idx = scale*dst_index. Default: 1
+        data_layout (str, optional): Only used in an optional string
+            from: NHWC, NCHW. Specify that the data format of the input
+            and output data is channel_first or channel_last. Default: NCHW
+        seed (int, optional): The random seed. Default: 0
+        name(str, optional): For detailed information, please refer to :
+            ref:`api_guide_Name`. Usually name is no need to set and None by
+            default.
+
+    Returns:
+        Tensor: The output of RandomCropAndResizeOp is a 4-D tensor with shape
+            (batch_size, channels, h, w). The data type is uint8 or float32.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.ops import random_crop_and_resize
+
+            data = paddle.rand([3, 256, 256])
+            out = random_crop_and_resize([data])
+    """
+    check_type(size, 'size', (int, tuple), 'random_crop_and_resize')
+    assert interp_method in ['bilinear', 'nearest']
+    assert data_layout in ['NCHW', 'NHWC']
+    if isinstance(size, int):
+        size = (size, size)
+
+    if in_dygraph_mode():
+        out = _C_ops.batch_resize(
+            x, "size", size, "interp_method", interp_method,
+            "align_corners", align_corners, "align_mode",
+            align_mode, "data_layout", data_layout, "seed", seed)
+        return out
+
+    helper = LayerHelper('batch_resize', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    inputs = {"X": x}
+    attrs = {
+        "size": size,
+        "interp_method": interp_method,
+        "align_corners": align_corners,
+        "align_mode": align_mode,
+        "data_layout": data_layout,
+        "seed": seed,
+    }
+    helper.append_op(
+        type="batch_resize",
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs)

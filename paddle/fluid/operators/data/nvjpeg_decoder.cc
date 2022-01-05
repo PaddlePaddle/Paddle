@@ -116,12 +116,13 @@ void NvjpegDecoder::ParseDecodeParams(
 
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_, output_format));
 
-  ROI roi;
-  roi_generator->GenerateRandomROI(width, height, &roi);
+  if (roi_generator) {
+    ROI roi;
+    roi_generator->GenerateRandomROI(width, height, &roi);
 
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(decode_params_, roi.x, roi.y, roi.w, roi.h));
-
-  std::vector<int64_t> out_shape = {output_components, roi.h, roi.w};
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(decode_params_, roi.x, roi.y, roi.w, roi.h));
+  }
+  std::vector<int64_t> out_shape = {output_components, height, width};
   out->Resize(framework::make_ddim(out_shape));
 
   // allocate memory and assign to out_image

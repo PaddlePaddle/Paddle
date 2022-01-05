@@ -14,15 +14,25 @@
 
 #pragma once
 
-#include <math.h>
-#include <algorithm>
-#include <cstdlib>
-#include <string>
-#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <thrust/random.h>
-#endif
+namespace paddle {
+namespace operators {
+namespace data {
+
+template <typename T>
+class BatchResizeCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    // no cpu kernel.
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "BatchResize op only supports GPU now."));
+  }
+};
+
+}  // namespace data
+}  // namespace operators
+}  // namespace paddle
+

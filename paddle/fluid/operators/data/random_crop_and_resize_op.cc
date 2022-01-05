@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/random_crop_and_resize_op.h"
+#include "paddle/fluid/operators/data/random_crop_and_resize_op.h"
 
 namespace paddle {
 namespace operators {
+namespace data {
 
 class RandomCropAndResizeOp : public framework::OperatorWithKernel {
  public:
@@ -113,25 +114,16 @@ class RandomCropAndResizeOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename T>
-class RandomCropAndResizeCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    // no cpu kernel.
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "RandomCropAndResize op only supports GPU now."));
-  }
-};
-
+}  // namespace data
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    random_crop_and_resize, ops::RandomCropAndResizeOp,
-    ops::RandomCropAndResizeOpMaker,
+    random_crop_and_resize, ops::data::RandomCropAndResizeOp,
+    ops::data::RandomCropAndResizeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(random_crop_and_resize,
-                       ops::RandomCropAndResizeCPUKernel<uint8_t>)
+                       ops::data::RandomCropAndResizeCPUKernel<uint8_t>)

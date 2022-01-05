@@ -30,12 +30,12 @@ namespace operators {
 namespace data {
 
 template <typename T>
-class CPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
+class CPUBatchDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(LieLinJiang): add cpu implement.
     PADDLE_THROW(platform::errors::Unimplemented(
-        "BatchDecodeRandomCrop op only supports GPU now."));
+        "BatchDecode op only supports GPU now."));
   }
 };
 

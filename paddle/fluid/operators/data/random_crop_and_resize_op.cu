@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/random_crop_and_resize_op.h"
+#include "paddle/fluid/operators/data/random_crop_and_resize_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
+namespace data {
 
 using framework::LoDTensor;
 using DataLayout = framework::DataLayout;
@@ -350,10 +351,11 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+}  // namespace data
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(random_crop_and_resize,
-                        ops::RandomCropAndResizeCUDAKernel<uint8_t>,
-                        ops::RandomCropAndResizeCUDAKernel<float>);
+                        ops::data::RandomCropAndResizeCUDAKernel<uint8_t>,
+                        ops::data::RandomCropAndResizeCUDAKernel<float>);

@@ -13,32 +13,35 @@
 // limitations under the License.
 
 #pragma once
-#include <fstream>
+
+#include <math.h>
+#include <algorithm>
+#include <cstdlib>
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/operators/data/nvjpeg_decoder.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <thrust/random.h>
+#endif
 
 namespace paddle {
 namespace operators {
 namespace data {
 
 template <typename T>
-class CPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
+class RandomCropAndResizeCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // TODO(LieLinJiang): add cpu implement.
+    // no cpu kernel.
     PADDLE_THROW(platform::errors::Unimplemented(
-        "BatchDecodeRandomCrop op only supports GPU now."));
+        "RandomCropAndResize op only supports GPU now."));
   }
 };
 
 }  // namespace data
 }  // namespace operators
 }  // namespace paddle
+
