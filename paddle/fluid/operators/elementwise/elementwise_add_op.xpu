@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-/*
-#ifdef PADDLE_WITH_XPU
 
 #if defined(__CUDA_ARCH__)
   #undef __CUDA_ARCH__
@@ -31,12 +29,9 @@ limitations under the License. */
   #undef __NVCC__
 #endif
 
-
-
+// Note(liuxiandong)
+#ifdef __xpu_on_host__
 #include <xpu/runtime.h>
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include <memory>
 #include <string>
@@ -47,18 +42,34 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << "lxd_debug: elementwise_add forward" << std::endl;
+  }
+};
 
-void ElementwiseAddXPU2Compute(const framework::ExecutionContext& ctx){
-  std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
-}
-
-void ElementwiseAddGradXPU2Compute(const framework::ExecutionContext& ctx){
-  std::cout<<"lxd_debug: XPU2 backward element_add !"<<std::endl;
-}
-
+template <typename T>
+class ElementwiseAddGradXPUKernel
+    : public ::paddle::operators::ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << "lxd_debug: elementwise_add backward" << std::endl;
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
+REGISTER_OP_KERNEL(elementwise_add, KP, plat::XPUPlace,
+                   ops::ElementwiseAddXPUKernel<float>,
+                   ops::ElementwiseAddXPUKernel<paddle::platform::float16>);
+
+REGISTER_OP_KERNEL(elementwise_add_grad, KP, plat::XPUPlace,
+                   ops::ElementwiseAddGradXPUKernel<float>,
+                   ops::ElementwiseAddGradXPUKernel<paddle::platform::float16>);
 #endif
-*/

@@ -333,13 +333,32 @@ function(op_library TARGET)
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for XPU
+    if (WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, KP);\n")
+    endif()
+
     if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
 
-    if (WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, KP);\n")
-    endif()
+    # if (WITH_XPU AND ${xpu_cc_srcs_len} GREATER 0)
+    #     file(READ ${ORIGINAL_TARGET}_xpu.cc TARGET_XPU_CONTENT)
+    #     # It is different from the logic above, becareful
+    #     string(REGEX MATCH "REGISTER_OP_XPU_KERNEL\\(.*" multi_xpu_register "${TARGET_XPU_CONTENT}")
+    #     # [ \t\r\n]* is used for blank characters
+    #     string(REGEX MATCH "REGISTER_OP_XPU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_xpu_register "${multi_xpu_register}")
+
+    #     if (one_xpu_register STREQUAL "")
+    #         string(REPLACE "_op" "" XPU_TARGET "${TARGET}")
+    #     else ()
+    #         string(REPLACE "REGISTER_OP_XPU_KERNEL(" "" XPU_TARGET "${one_xpu_register}")
+    #         string(REPLACE "," "" XPU_TARGET "${XPU_TARGET}")
+    #         # [ \t\r\n]+ is used for blank characters.
+    #         # Here we use '+' instead of '*' since it is a REPLACE operation.
+    #         string(REGEX REPLACE "[ \t\r\n]+" "" XPU_TARGET "${XPU_TARGET}")
+    #     endif()
+    #     file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${XPU_TARGET}, XPU);\n")
+    # endif()
 
     if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
         file(READ ${ORIGINAL_TARGET}_npu.cc TARGET_NPU_CONTENT)
