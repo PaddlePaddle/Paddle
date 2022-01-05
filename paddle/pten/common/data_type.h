@@ -18,10 +18,6 @@ limitations under the License. */
 #include "complex.h"   // NOLINT
 #include "float16.h"   // NOLINT
 
-// #include "paddle/fluid/platform/bfloat16.h"
-// #include "paddle/fluid/platform/complex.h"
-// #include "paddle/fluid/platform/enforce.h"
-// #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/api/ext/exception.h"
 
 namespace paddle {

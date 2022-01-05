@@ -28,7 +28,9 @@ inline const T* Tensor::data() const {
   PADDLE_ENFORCE_EQ(
       valid, true,
       platform::errors::InvalidArgument(
-          "Tensor holds the wrong type, it holds, but desires to be."));
+          "Tensor holds the wrong type, it holds %s, but desires to be %s.",
+          DataTypeToString(type_),
+          DataTypeToString(DataTypeTrait<T>::DataType())));
 
   return reinterpret_cast<const T*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
@@ -44,7 +46,9 @@ inline T* Tensor::data() {
   PADDLE_ENFORCE_EQ(
       valid, true,
       platform::errors::InvalidArgument(
-          "Tensor holds the wrong type, it holds, but desires to be"));
+          "Tensor holds the wrong type, it holds %s, but desires to be %s",
+          DataTypeToString(type_),
+          DataTypeToString(DataTypeTrait<T>::DataType())));
 
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                               offset_);
