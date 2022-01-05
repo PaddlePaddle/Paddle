@@ -5,7 +5,7 @@ include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/pd_op_base.td"
 
-def PD_RsqrtOp : PD_Op<"rsqrt", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_RsqrtOp : PD_Op<"rsqrt", [NoSideEffect]> {
   let summary = "rsqrt op";
   let description = [{
     
@@ -21,7 +21,7 @@ def PD_RsqrtOp : PD_Op<"rsqrt", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_AddmmOp : PD_Op<"addmm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_AddmmOp : PD_Op<"addmm", [NoSideEffect]> {
   let summary = "addmm op";
   let description = [{
     
@@ -39,7 +39,7 @@ def PD_AddmmOp : PD_Op<"addmm", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_GruOp : PD_Op<"gru", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_GruOp : PD_Op<"gru", [NoSideEffect]> {
   let summary = "gru op";
   let description = [{
     
@@ -60,7 +60,7 @@ def PD_GruOp : PD_Op<"gru", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Hidden);
 }
-def PD_RoundOp : PD_Op<"round", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_RoundOp : PD_Op<"round", [NoSideEffect]> {
   let summary = "round op";
   let description = [{
     
@@ -82,7 +82,7 @@ def PD_RoundOp : PD_Op<"round", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Rank_attentionOp : PD_Op<"rank_attention", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Rank_attentionOp : PD_Op<"rank_attention", [NoSideEffect]> {
   let summary = "rank_attention op";
   let description = [{
     
@@ -96,7 +96,7 @@ def PD_Rank_attentionOp : PD_Op<"rank_attention", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$InputHelp,PD_Tensor:$Out,PD_Tensor:$InsRank);
 }
-def PD_Bicubic_interpOp : PD_Op<"bicubic_interp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bicubic_interpOp : PD_Op<"bicubic_interp", [NoSideEffect]> {
   let summary = "bicubic_interp op";
   let description = [{
     
@@ -237,7 +237,7 @@ def PD_Bicubic_interpOp : PD_Op<"bicubic_interp", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_TileOp : PD_Op<"tile", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_TileOp : PD_Op<"tile", [NoSideEffect]> {
   let summary = "tile op";
   let description = [{
     
@@ -268,7 +268,7 @@ def PD_TileOp : PD_Op<"tile", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bilinear_tensor_productOp : PD_Op<"bilinear_tensor_product", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bilinear_tensor_productOp : PD_Op<"bilinear_tensor_product", [NoSideEffect]> {
   let summary = "bilinear_tensor_product op";
   let description = [{
     
@@ -293,7 +293,7 @@ def PD_Bilinear_tensor_productOp : PD_Op<"bilinear_tensor_product", [NoSideEffec
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Matmul_v2Op : PD_Op<"matmul_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Matmul_v2Op : PD_Op<"matmul_v2", [NoSideEffect]> {
   let summary = "matmul_v2 op";
   let description = [{
     Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
@@ -306,7 +306,7 @@ def PD_Matmul_v2Op : PD_Op<"matmul_v2", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_C_embeddingOp : PD_Op<"c_embedding", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_C_embeddingOp : PD_Op<"c_embedding", [NoSideEffect]> {
   let summary = "c_embedding op";
   let description = [{
     
@@ -324,7 +324,7 @@ def PD_C_embeddingOp : PD_Op<"c_embedding", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Elementwise_maxOp : PD_Op<"elementwise_max", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_maxOp : PD_Op<"elementwise_max", [NoSideEffect]> {
   let summary = "elementwise_max op";
   let description = [{
     
@@ -369,7 +369,7 @@ def PD_Elementwise_maxOp : PD_Op<"elementwise_max", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_TanOp : PD_Op<"tan", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_TanOp : PD_Op<"tan", [NoSideEffect]> {
   let summary = "tan op";
   let description = [{
     
@@ -385,7 +385,7 @@ def PD_TanOp : PD_Op<"tan", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_FspOp : PD_Op<"fsp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_FspOp : PD_Op<"fsp", [NoSideEffect]> {
   let summary = "fsp op";
   let description = [{
     
@@ -404,7 +404,7 @@ def PD_FspOp : PD_Op<"fsp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_WhereOp : PD_Op<"where", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_WhereOp : PD_Op<"where", [NoSideEffect]> {
   let summary = "where op";
   let description = [{
     
@@ -424,7 +424,7 @@ def PD_WhereOp : PD_Op<"where", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_softmaxOp : PD_Op<"sequence_softmax", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_softmaxOp : PD_Op<"sequence_softmax", [NoSideEffect]> {
   let summary = "sequence_softmax op";
   let description = [{
     
@@ -456,7 +456,7 @@ def PD_Sequence_softmaxOp : PD_Op<"sequence_softmax", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Affine_channelOp : PD_Op<"affine_channel", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Affine_channelOp : PD_Op<"affine_channel", [NoSideEffect]> {
   let summary = "affine_channel op";
   let description = [{
     
@@ -474,7 +474,7 @@ def PD_Affine_channelOp : PD_Op<"affine_channel", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Triangular_solveOp : PD_Op<"triangular_solve", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Triangular_solveOp : PD_Op<"triangular_solve", [NoSideEffect]> {
   let summary = "triangular_solve op";
   let description = [{
     
@@ -489,7 +489,7 @@ def PD_Triangular_solveOp : PD_Op<"triangular_solve", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_topk_avg_poolingOp : PD_Op<"sequence_topk_avg_pooling", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_topk_avg_poolingOp : PD_Op<"sequence_topk_avg_pooling", [NoSideEffect]> {
   let summary = "sequence_topk_avg_pooling op";
   let description = [{
     
@@ -500,7 +500,7 @@ def PD_Sequence_topk_avg_poolingOp : PD_Op<"sequence_topk_avg_pooling", [NoSideE
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Space_to_depthOp : PD_Op<"space_to_depth", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Space_to_depthOp : PD_Op<"space_to_depth", [NoSideEffect]> {
   let summary = "space_to_depth op";
   let description = [{
     
@@ -521,7 +521,7 @@ def PD_Space_to_depthOp : PD_Op<"space_to_depth", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ReverseOp : PD_Op<"reverse", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ReverseOp : PD_Op<"reverse", [NoSideEffect]> {
   let summary = "reverse op";
   let description = [{
     
@@ -560,7 +560,7 @@ def PD_ReverseOp : PD_Op<"reverse", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Expand_v2Op : PD_Op<"expand_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Expand_v2Op : PD_Op<"expand_v2", [NoSideEffect]> {
   let summary = "expand_v2 op";
   let description = [{
     
@@ -590,7 +590,7 @@ def PD_Expand_v2Op : PD_Op<"expand_v2", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_LgammaOp : PD_Op<"lgamma", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LgammaOp : PD_Op<"lgamma", [NoSideEffect]> {
   let summary = "lgamma op";
   let description = [{
     
@@ -605,7 +605,7 @@ def PD_LgammaOp : PD_Op<"lgamma", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SolveOp : PD_Op<"solve", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SolveOp : PD_Op<"solve", [NoSideEffect]> {
   let summary = "solve op";
   let description = [{
     
@@ -621,7 +621,7 @@ def PD_SolveOp : PD_Op<"solve", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Deformable_psroi_poolingOp : PD_Op<"deformable_psroi_pooling", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Deformable_psroi_poolingOp : PD_Op<"deformable_psroi_pooling", [NoSideEffect]> {
   let summary = "deformable_psroi_pooling op";
   let description = [{
     
@@ -648,7 +648,7 @@ def PD_Deformable_psroi_poolingOp : PD_Op<"deformable_psroi_pooling", [NoSideEff
 
   let results = (outs PD_Tensor:$TopCount,PD_Tensor:$Output);
 }
-def PD_Instance_normOp : PD_Op<"instance_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Instance_normOp : PD_Op<"instance_norm", [NoSideEffect]> {
   let summary = "instance_norm op";
   let description = [{
     
@@ -666,7 +666,7 @@ def PD_Instance_normOp : PD_Op<"instance_norm", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Gather_ndOp : PD_Op<"gather_nd", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Gather_ndOp : PD_Op<"gather_nd", [NoSideEffect]> {
   let summary = "gather_nd op";
   let description = [{
     
@@ -721,7 +721,7 @@ def PD_Gather_ndOp : PD_Op<"gather_nd", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Reduce_prodOp : PD_Op<"reduce_prod", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reduce_prodOp : PD_Op<"reduce_prod", [NoSideEffect]> {
   let summary = "reduce_prod op";
   let description = [{
     
@@ -737,7 +737,7 @@ def PD_Reduce_prodOp : PD_Op<"reduce_prod", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_AsinOp : PD_Op<"asin", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_AsinOp : PD_Op<"asin", [NoSideEffect]> {
   let summary = "asin op";
   let description = [{
     
@@ -751,7 +751,7 @@ def PD_AsinOp : PD_Op<"asin", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_LstmpOp : PD_Op<"lstmp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LstmpOp : PD_Op<"lstmp", [NoSideEffect]> {
   let summary = "lstmp op";
   let description = [{
     
@@ -809,7 +809,7 @@ def PD_LstmpOp : PD_Op<"lstmp", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Projection,PD_Tensor:$Cell);
 }
-def PD_Huber_lossOp : PD_Op<"huber_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Huber_lossOp : PD_Op<"huber_loss", [NoSideEffect]> {
   let summary = "huber_loss op";
   let description = [{
     
@@ -839,7 +839,7 @@ def PD_Huber_lossOp : PD_Op<"huber_loss", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_sliceOp : PD_Op<"sequence_slice", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_sliceOp : PD_Op<"sequence_slice", [NoSideEffect]> {
   let summary = "sequence_slice op";
   let description = [{
     
@@ -867,7 +867,7 @@ def PD_Sequence_sliceOp : PD_Op<"sequence_slice", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Lookup_tableOp : PD_Op<"lookup_table", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Lookup_tableOp : PD_Op<"lookup_table", [NoSideEffect]> {
   let summary = "lookup_table op";
   let description = [{
     
@@ -885,7 +885,7 @@ def PD_Lookup_tableOp : PD_Op<"lookup_table", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SoftplusOp : PD_Op<"softplus", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SoftplusOp : PD_Op<"softplus", [NoSideEffect]> {
   let summary = "softplus op";
   let description = [{
     
@@ -901,7 +901,7 @@ def PD_SoftplusOp : PD_Op<"softplus", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Depthwise_conv2dOp : PD_Op<"depthwise_conv2d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Depthwise_conv2dOp : PD_Op<"depthwise_conv2d", [NoSideEffect]> {
   let summary = "depthwise_conv2d op";
   let description = [{
     
@@ -937,7 +937,7 @@ def PD_Depthwise_conv2dOp : PD_Op<"depthwise_conv2d", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Sigmoid_cross_entropy_with_logitsOp : PD_Op<"sigmoid_cross_entropy_with_logits", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sigmoid_cross_entropy_with_logitsOp : PD_Op<"sigmoid_cross_entropy_with_logits", [NoSideEffect]> {
   let summary = "sigmoid_cross_entropy_with_logits op";
   let description = [{
     
@@ -971,7 +971,7 @@ def PD_Sigmoid_cross_entropy_with_logitsOp : PD_Op<"sigmoid_cross_entropy_with_l
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ExpOp : PD_Op<"exp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ExpOp : PD_Op<"exp", [NoSideEffect]> {
   let summary = "exp op";
   let description = [{
     
@@ -985,7 +985,7 @@ def PD_ExpOp : PD_Op<"exp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ScatterOp : PD_Op<"scatter", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ScatterOp : PD_Op<"scatter", [NoSideEffect]> {
   let summary = "scatter op";
   let description = [{
     
@@ -1004,7 +1004,7 @@ def PD_ScatterOp : PD_Op<"scatter", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_LogOp : PD_Op<"log", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LogOp : PD_Op<"log", [NoSideEffect]> {
   let summary = "log op";
   let description = [{
     
@@ -1020,7 +1020,7 @@ def PD_LogOp : PD_Op<"log", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Conv_shiftOp : PD_Op<"conv_shift", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Conv_shiftOp : PD_Op<"conv_shift", [NoSideEffect]> {
   let summary = "conv_shift op";
   let description = [{
     
@@ -1044,7 +1044,7 @@ def PD_Conv_shiftOp : PD_Op<"conv_shift", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Smooth_l1_lossOp : PD_Op<"smooth_l1_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Smooth_l1_lossOp : PD_Op<"smooth_l1_loss", [NoSideEffect]> {
   let summary = "smooth_l1_loss op";
   let description = [{
     
@@ -1074,7 +1074,7 @@ def PD_Smooth_l1_lossOp : PD_Op<"smooth_l1_loss", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Linear_interp_v2Op : PD_Op<"linear_interp_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Linear_interp_v2Op : PD_Op<"linear_interp_v2", [NoSideEffect]> {
   let summary = "linear_interp_v2 op";
   let description = [{
     
@@ -1215,7 +1215,7 @@ def PD_Linear_interp_v2Op : PD_Op<"linear_interp_v2", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Temporal_shiftOp : PD_Op<"temporal_shift", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Temporal_shiftOp : PD_Op<"temporal_shift", [NoSideEffect]> {
   let summary = "temporal_shift op";
   let description = [{
     
@@ -1259,7 +1259,7 @@ def PD_Temporal_shiftOp : PD_Op<"temporal_shift", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_NceOp : PD_Op<"nce", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_NceOp : PD_Op<"nce", [NoSideEffect]> {
   let summary = "nce op";
   let description = [{
     
@@ -1274,7 +1274,7 @@ def PD_NceOp : PD_Op<"nce", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Cost);
 }
-def PD_MvOp : PD_Op<"mv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MvOp : PD_Op<"mv", [NoSideEffect]> {
   let summary = "mv op";
   let description = [{
     
@@ -1288,7 +1288,7 @@ def PD_MvOp : PD_Op<"mv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Add_position_encodingOp : PD_Op<"add_position_encoding", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Add_position_encodingOp : PD_Op<"add_position_encoding", [NoSideEffect]> {
   let summary = "add_position_encoding op";
   let description = [{
     
@@ -1302,7 +1302,7 @@ def PD_Add_position_encodingOp : PD_Op<"add_position_encoding", [NoSideEffect, D
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_PreluOp : PD_Op<"prelu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_PreluOp : PD_Op<"prelu", [NoSideEffect]> {
   let summary = "prelu op";
   let description = [{
     
@@ -1327,7 +1327,7 @@ def PD_PreluOp : PD_Op<"prelu", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fill_diagonalOp : PD_Op<"fill_diagonal", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fill_diagonalOp : PD_Op<"fill_diagonal", [NoSideEffect]> {
   let summary = "fill_diagonal op";
   let description = [{
     Fill replace operator
@@ -1338,7 +1338,7 @@ def PD_Fill_diagonalOp : PD_Op<"fill_diagonal", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_LogsigmoidOp : PD_Op<"logsigmoid", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LogsigmoidOp : PD_Op<"logsigmoid", [NoSideEffect]> {
   let summary = "logsigmoid op";
   let description = [{
     
@@ -1352,7 +1352,7 @@ def PD_LogsigmoidOp : PD_Op<"logsigmoid", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_scatterOp : PD_Op<"sequence_scatter", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_scatterOp : PD_Op<"sequence_scatter", [NoSideEffect]> {
   let summary = "sequence_scatter op";
   let description = [{
     
@@ -1387,7 +1387,7 @@ def PD_Sequence_scatterOp : PD_Op<"sequence_scatter", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Partial_sumOp : PD_Op<"partial_sum", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Partial_sumOp : PD_Op<"partial_sum", [NoSideEffect]> {
   let summary = "partial_sum op";
   let description = [{
     
@@ -1410,7 +1410,7 @@ def PD_Partial_sumOp : PD_Op<"partial_sum", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Relu6Op : PD_Op<"relu6", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Relu6Op : PD_Op<"relu6", [NoSideEffect]> {
   let summary = "relu6 op";
   let description = [{
     
@@ -1424,7 +1424,7 @@ def PD_Relu6Op : PD_Op<"relu6", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Conv3dOp : PD_Op<"conv3d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Conv3dOp : PD_Op<"conv3d", [NoSideEffect]> {
   let summary = "conv3d op";
   let description = [{
     
@@ -1461,7 +1461,7 @@ def PD_Conv3dOp : PD_Op<"conv3d", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Lstm_unitOp : PD_Op<"lstm_unit", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Lstm_unitOp : PD_Op<"lstm_unit", [NoSideEffect]> {
   let summary = "lstm_unit op";
   let description = [{
     
@@ -1481,7 +1481,7 @@ def PD_Lstm_unitOp : PD_Op<"lstm_unit", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$C,PD_Tensor:$H);
 }
-def PD_Transpose2Op : PD_Op<"transpose2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Transpose2Op : PD_Op<"transpose2", [NoSideEffect]> {
   let summary = "transpose2 op";
   let description = [{
     
@@ -1517,7 +1517,7 @@ def PD_Transpose2Op : PD_Op<"transpose2", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_UnfoldOp : PD_Op<"unfold", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_UnfoldOp : PD_Op<"unfold", [NoSideEffect]> {
   let summary = "unfold op";
   let description = [{
     
@@ -1533,7 +1533,7 @@ def PD_UnfoldOp : PD_Op<"unfold", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_LrnOp : PD_Op<"lrn", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LrnOp : PD_Op<"lrn", [NoSideEffect]> {
   let summary = "lrn op";
   let description = [{
     
@@ -1570,7 +1570,7 @@ def PD_LrnOp : PD_Op<"lrn", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$MidOut);
 }
-def PD_Softmax_with_cross_entropyOp : PD_Op<"softmax_with_cross_entropy", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Softmax_with_cross_entropyOp : PD_Op<"softmax_with_cross_entropy", [NoSideEffect]> {
   let summary = "softmax_with_cross_entropy op";
   let description = [{
     
@@ -1609,7 +1609,7 @@ def PD_Softmax_with_cross_entropyOp : PD_Op<"softmax_with_cross_entropy", [NoSid
 
   let results = (outs PD_Tensor:$Loss);
 }
-def PD_Max_pool3d_with_indexOp : PD_Op<"max_pool3d_with_index", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Max_pool3d_with_indexOp : PD_Op<"max_pool3d_with_index", [NoSideEffect]> {
   let summary = "max_pool3d_with_index op";
   let description = [{
     
@@ -1648,7 +1648,7 @@ def PD_Max_pool3d_with_indexOp : PD_Op<"max_pool3d_with_index", [NoSideEffect, D
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Mask);
 }
-def PD_Flatten2Op : PD_Op<"flatten2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Flatten2Op : PD_Op<"flatten2", [NoSideEffect]> {
   let summary = "flatten2 op";
   let description = [{
     
@@ -1678,7 +1678,7 @@ def PD_Flatten2Op : PD_Op<"flatten2", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect]> {
   let summary = "matmul op";
   let description = [{
     
@@ -1725,7 +1725,7 @@ def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CvmOp : PD_Op<"cvm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CvmOp : PD_Op<"cvm", [NoSideEffect]> {
   let summary = "cvm op";
   let description = [{
     
@@ -1741,7 +1741,7 @@ def PD_CvmOp : PD_Op<"cvm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Masked_selectOp : PD_Op<"masked_select", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Masked_selectOp : PD_Op<"masked_select", [NoSideEffect]> {
   let summary = "masked_select op";
   let description = [{
     
@@ -1755,7 +1755,7 @@ def PD_Masked_selectOp : PD_Op<"masked_select", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_TraceOp : PD_Op<"trace", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_TraceOp : PD_Op<"trace", [NoSideEffect]> {
   let summary = "trace op";
   let description = [{
     
@@ -1773,7 +1773,7 @@ def PD_TraceOp : PD_Op<"trace", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Modified_huber_lossOp : PD_Op<"modified_huber_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Modified_huber_lossOp : PD_Op<"modified_huber_loss", [NoSideEffect]> {
   let summary = "modified_huber_loss op";
   let description = [{
     
@@ -1801,7 +1801,7 @@ def PD_Modified_huber_lossOp : PD_Op<"modified_huber_loss", [NoSideEffect, Decla
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_RollOp : PD_Op<"roll", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_RollOp : PD_Op<"roll", [NoSideEffect]> {
   let summary = "roll op";
   let description = [{
     
@@ -1816,7 +1816,7 @@ def PD_RollOp : PD_Op<"roll", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Squared_l2_distanceOp : PD_Op<"squared_l2_distance", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Squared_l2_distanceOp : PD_Op<"squared_l2_distance", [NoSideEffect]> {
   let summary = "squared_l2_distance op";
   let description = [{
     
@@ -1838,7 +1838,7 @@ def PD_Squared_l2_distanceOp : PD_Op<"squared_l2_distance", [NoSideEffect, Decla
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Conv3d_transposeOp : PD_Op<"conv3d_transpose", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Conv3d_transposeOp : PD_Op<"conv3d_transpose", [NoSideEffect]> {
   let summary = "conv3d_transpose op";
   let description = [{
     
@@ -1875,7 +1875,7 @@ def PD_Conv3d_transposeOp : PD_Op<"conv3d_transpose", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_ConcatOp : PD_Op<"concat", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ConcatOp : PD_Op<"concat", [NoSideEffect]> {
   let summary = "concat op";
   let description = [{
     
@@ -1896,7 +1896,7 @@ def PD_ConcatOp : PD_Op<"concat", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Hierarchical_sigmoidOp : PD_Op<"hierarchical_sigmoid", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Hierarchical_sigmoidOp : PD_Op<"hierarchical_sigmoid", [NoSideEffect]> {
   let summary = "hierarchical_sigmoid op";
   let description = [{
     
@@ -1911,7 +1911,7 @@ def PD_Hierarchical_sigmoidOp : PD_Op<"hierarchical_sigmoid", [NoSideEffect, Dec
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SqueezeOp : PD_Op<"squeeze", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SqueezeOp : PD_Op<"squeeze", [NoSideEffect]> {
   let summary = "squeeze op";
   let description = [{
     
@@ -1944,7 +1944,7 @@ def PD_SqueezeOp : PD_Op<"squeeze", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bpr_lossOp : PD_Op<"bpr_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bpr_lossOp : PD_Op<"bpr_loss", [NoSideEffect]> {
   let summary = "bpr_loss op";
   let description = [{
     
@@ -1963,7 +1963,7 @@ def PD_Bpr_lossOp : PD_Op<"bpr_loss", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Fft_c2cOp : PD_Op<"fft_c2c", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fft_c2cOp : PD_Op<"fft_c2c", [NoSideEffect]> {
   let summary = "fft_c2c op";
   let description = [{
     
@@ -1974,7 +1974,7 @@ def PD_Fft_c2cOp : PD_Op<"fft_c2c", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bicubic_interp_v2Op : PD_Op<"bicubic_interp_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bicubic_interp_v2Op : PD_Op<"bicubic_interp_v2", [NoSideEffect]> {
   let summary = "bicubic_interp_v2 op";
   let description = [{
     
@@ -2115,7 +2115,7 @@ def PD_Bicubic_interp_v2Op : PD_Op<"bicubic_interp_v2", [NoSideEffect, DeclareOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ReshapeOp : PD_Op<"reshape", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ReshapeOp : PD_Op<"reshape", [NoSideEffect]> {
   let summary = "reshape op";
   let description = [{
     
@@ -2164,7 +2164,7 @@ def PD_ReshapeOp : PD_Op<"reshape", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Roi_alignOp : PD_Op<"roi_align", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Roi_alignOp : PD_Op<"roi_align", [NoSideEffect]> {
   let summary = "roi_align op";
   let description = [{
     
@@ -2188,7 +2188,7 @@ def PD_Roi_alignOp : PD_Op<"roi_align", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Reshape2Op : PD_Op<"reshape2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reshape2Op : PD_Op<"reshape2", [NoSideEffect]> {
   let summary = "reshape2 op";
   let description = [{
     
@@ -2237,7 +2237,7 @@ def PD_Reshape2Op : PD_Op<"reshape2", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_UnstackOp : PD_Op<"unstack", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_UnstackOp : PD_Op<"unstack", [NoSideEffect]> {
   let summary = "unstack op";
   let description = [{
     
@@ -2250,7 +2250,7 @@ def PD_UnstackOp : PD_Op<"unstack", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Scatter_nd_addOp : PD_Op<"scatter_nd_add", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Scatter_nd_addOp : PD_Op<"scatter_nd_add", [NoSideEffect]> {
   let summary = "scatter_nd_add op";
   let description = [{
     
@@ -2286,7 +2286,7 @@ def PD_Scatter_nd_addOp : PD_Op<"scatter_nd_add", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_reshapeOp : PD_Op<"sequence_reshape", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_reshapeOp : PD_Op<"sequence_reshape", [NoSideEffect]> {
   let summary = "sequence_reshape op";
   let description = [{
     
@@ -2321,7 +2321,7 @@ def PD_Sequence_reshapeOp : PD_Op<"sequence_reshape", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bilateral_sliceOp : PD_Op<"bilateral_slice", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bilateral_sliceOp : PD_Op<"bilateral_slice", [NoSideEffect]> {
   let summary = "bilateral_slice op";
   let description = [{
     
@@ -2334,7 +2334,7 @@ def PD_Bilateral_sliceOp : PD_Op<"bilateral_slice", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Pad_constant_likeOp : PD_Op<"pad_constant_like", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pad_constant_likeOp : PD_Op<"pad_constant_like", [NoSideEffect]> {
   let summary = "pad_constant_like op";
   let description = [{
     
@@ -2413,7 +2413,7 @@ def PD_Pad_constant_likeOp : PD_Op<"pad_constant_like", [NoSideEffect, DeclareOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Pool2dOp : PD_Op<"pool2d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pool2dOp : PD_Op<"pool2d", [NoSideEffect]> {
   let summary = "pool2d op";
   let description = [{
     
@@ -2507,7 +2507,7 @@ def PD_Pool2dOp : PD_Op<"pool2d", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ImagOp : PD_Op<"imag", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ImagOp : PD_Op<"imag", [NoSideEffect]> {
   let summary = "imag op";
   let description = [{
     
@@ -2522,7 +2522,7 @@ def PD_ImagOp : PD_Op<"imag", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_EighOp : PD_Op<"eigh", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_EighOp : PD_Op<"eigh", [NoSideEffect]> {
   let summary = "eigh op";
   let description = [{
     
@@ -2537,7 +2537,7 @@ def PD_EighOp : PD_Op<"eigh", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Eigenvalues,PD_Tensor:$Eigenvectors);
 }
-def PD_StackOp : PD_Op<"stack", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_StackOp : PD_Op<"stack", [NoSideEffect]> {
   let summary = "stack op";
   let description = [{
     
@@ -2549,7 +2549,7 @@ def PD_StackOp : PD_Op<"stack", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Gru_unitOp : PD_Op<"gru_unit", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Gru_unitOp : PD_Op<"gru_unit", [NoSideEffect]> {
   let summary = "gru_unit op";
   let description = [{
     
@@ -2573,7 +2573,7 @@ def PD_Gru_unitOp : PD_Op<"gru_unit", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Hidden);
 }
-def PD_Unsqueeze2Op : PD_Op<"unsqueeze2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Unsqueeze2Op : PD_Op<"unsqueeze2", [NoSideEffect]> {
   let summary = "unsqueeze2 op";
   let description = [{
     
@@ -2592,7 +2592,7 @@ def PD_Unsqueeze2Op : PD_Op<"unsqueeze2", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bce_lossOp : PD_Op<"bce_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bce_lossOp : PD_Op<"bce_loss", [NoSideEffect]> {
   let summary = "bce_loss op";
   let description = [{
     
@@ -2609,7 +2609,7 @@ def PD_Bce_lossOp : PD_Op<"bce_loss", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Im2sequenceOp : PD_Op<"im2sequence", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Im2sequenceOp : PD_Op<"im2sequence", [NoSideEffect]> {
   let summary = "im2sequence op";
   let description = [{
     
@@ -2671,7 +2671,7 @@ def PD_Im2sequenceOp : PD_Op<"im2sequence", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Linear_chain_crfOp : PD_Op<"linear_chain_crf", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Linear_chain_crfOp : PD_Op<"linear_chain_crf", [NoSideEffect]> {
   let summary = "linear_chain_crf op";
   let description = [{
     
@@ -2733,7 +2733,7 @@ def PD_Linear_chain_crfOp : PD_Op<"linear_chain_crf", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$LogLikelihood);
 }
-def PD_Teacher_student_sigmoid_lossOp : PD_Op<"teacher_student_sigmoid_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Teacher_student_sigmoid_lossOp : PD_Op<"teacher_student_sigmoid_loss", [NoSideEffect]> {
   let summary = "teacher_student_sigmoid_loss op";
   let description = [{
     
@@ -2756,7 +2756,7 @@ def PD_Teacher_student_sigmoid_lossOp : PD_Op<"teacher_student_sigmoid_loss", [N
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Lookup_table_v2Op : PD_Op<"lookup_table_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Lookup_table_v2Op : PD_Op<"lookup_table_v2", [NoSideEffect]> {
   let summary = "lookup_table_v2 op";
   let description = [{
     
@@ -2774,7 +2774,7 @@ def PD_Lookup_table_v2Op : PD_Op<"lookup_table_v2", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_L1_normOp : PD_Op<"l1_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_L1_normOp : PD_Op<"l1_norm", [NoSideEffect]> {
   let summary = "l1_norm op";
   let description = [{
     
@@ -2790,7 +2790,7 @@ def PD_L1_normOp : PD_Op<"l1_norm", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SqrtOp : PD_Op<"sqrt", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SqrtOp : PD_Op<"sqrt", [NoSideEffect]> {
   let summary = "sqrt op";
   let description = [{
     
@@ -2807,7 +2807,7 @@ def PD_SqrtOp : PD_Op<"sqrt", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fused_elemwise_activationOp : PD_Op<"fused_elemwise_activation", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fused_elemwise_activationOp : PD_Op<"fused_elemwise_activation", [NoSideEffect]> {
   let summary = "fused_elemwise_activation op";
   let description = [{
     
@@ -2856,7 +2856,7 @@ def PD_Fused_elemwise_activationOp : PD_Op<"fused_elemwise_activation", [NoSideE
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SlogdeterminantOp : PD_Op<"slogdeterminant", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SlogdeterminantOp : PD_Op<"slogdeterminant", [NoSideEffect]> {
   let summary = "slogdeterminant op";
   let description = [{
     
@@ -2866,7 +2866,7 @@ def PD_SlogdeterminantOp : PD_Op<"slogdeterminant", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_DropoutOp : PD_Op<"dropout", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_DropoutOp : PD_Op<"dropout", [NoSideEffect]> {
   let summary = "dropout op";
   let description = [{
     
@@ -2884,7 +2884,7 @@ def PD_DropoutOp : PD_Op<"dropout", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Log_lossOp : PD_Op<"log_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Log_lossOp : PD_Op<"log_loss", [NoSideEffect]> {
   let summary = "log_loss op";
   let description = [{
     
@@ -2909,7 +2909,7 @@ def PD_Log_lossOp : PD_Op<"log_loss", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Loss);
 }
-def PD_Sigmoid_focal_lossOp : PD_Op<"sigmoid_focal_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sigmoid_focal_lossOp : PD_Op<"sigmoid_focal_loss", [NoSideEffect]> {
   let summary = "sigmoid_focal_loss op";
   let description = [{
     
@@ -2933,7 +2933,7 @@ def PD_Sigmoid_focal_lossOp : PD_Op<"sigmoid_focal_loss", [NoSideEffect, Declare
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Conv2dOp : PD_Op<"conv2d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Conv2dOp : PD_Op<"conv2d", [NoSideEffect]> {
   let summary = "conv2d op";
   let description = [{
     
@@ -2969,7 +2969,7 @@ def PD_Conv2dOp : PD_Op<"conv2d", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Uniform_random_inplaceOp : PD_Op<"uniform_random_inplace", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Uniform_random_inplaceOp : PD_Op<"uniform_random_inplace", [NoSideEffect]> {
   let summary = "uniform_random_inplace op";
   let description = [{
     
@@ -2981,7 +2981,7 @@ def PD_Uniform_random_inplaceOp : PD_Op<"uniform_random_inplace", [NoSideEffect,
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_MaxoutOp : PD_Op<"maxout", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MaxoutOp : PD_Op<"maxout", [NoSideEffect]> {
   let summary = "maxout op";
   let description = [{
     
@@ -3010,7 +3010,7 @@ def PD_MaxoutOp : PD_Op<"maxout", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Linear_interpOp : PD_Op<"linear_interp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Linear_interpOp : PD_Op<"linear_interp", [NoSideEffect]> {
   let summary = "linear_interp op";
   let description = [{
     
@@ -3151,7 +3151,7 @@ def PD_Linear_interpOp : PD_Op<"linear_interp", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Batch_normOp : PD_Op<"batch_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Batch_normOp : PD_Op<"batch_norm", [NoSideEffect]> {
   let summary = "batch_norm op";
   let description = [{
     
@@ -3170,7 +3170,7 @@ def PD_Batch_normOp : PD_Op<"batch_norm", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Y,PD_Tensor:$MeanOut,PD_Tensor:$VarianceOut);
 }
-def PD_Elementwise_addOp : PD_Op<"elementwise_add", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_addOp : PD_Op<"elementwise_add", [NoSideEffect]> {
   let summary = "elementwise_add op";
   let description = [{
     
@@ -3215,7 +3215,7 @@ def PD_Elementwise_addOp : PD_Op<"elementwise_add", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_AcosOp : PD_Op<"acos", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_AcosOp : PD_Op<"acos", [NoSideEffect]> {
   let summary = "acos op";
   let description = [{
     
@@ -3229,7 +3229,7 @@ def PD_AcosOp : PD_Op<"acos", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_UnpoolOp : PD_Op<"unpool", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_UnpoolOp : PD_Op<"unpool", [NoSideEffect]> {
   let summary = "unpool op";
   let description = [{
     
@@ -3246,7 +3246,7 @@ def PD_UnpoolOp : PD_Op<"unpool", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CumprodOp : PD_Op<"cumprod", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CumprodOp : PD_Op<"cumprod", [NoSideEffect]> {
   let summary = "cumprod op";
   let description = [{
     Cumprod operator. Return the cumprod results of the input elements along the dim.
@@ -3257,7 +3257,7 @@ def PD_CumprodOp : PD_Op<"cumprod", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sample_logitsOp : PD_Op<"sample_logits", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sample_logitsOp : PD_Op<"sample_logits", [NoSideEffect]> {
   let summary = "sample_logits op";
   let description = [{
     
@@ -3272,7 +3272,7 @@ def PD_Sample_logitsOp : PD_Op<"sample_logits", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$SampledLabels);
 }
-def PD_Crop_tensorOp : PD_Op<"crop_tensor", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Crop_tensorOp : PD_Op<"crop_tensor", [NoSideEffect]> {
   let summary = "crop_tensor op";
   let description = [{
     
@@ -3353,7 +3353,7 @@ def PD_Crop_tensorOp : PD_Op<"crop_tensor", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Deformable_convOp : PD_Op<"deformable_conv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Deformable_convOp : PD_Op<"deformable_conv", [NoSideEffect]> {
   let summary = "deformable_conv op";
   let description = [{
     
@@ -3392,7 +3392,7 @@ def PD_Deformable_convOp : PD_Op<"deformable_conv", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Expand_asOp : PD_Op<"expand_as", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Expand_asOp : PD_Op<"expand_as", [NoSideEffect]> {
   let summary = "expand_as op";
   let description = [{
     
@@ -3417,7 +3417,7 @@ def PD_Expand_asOp : PD_Op<"expand_as", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Matrix_powerOp : PD_Op<"matrix_power", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Matrix_powerOp : PD_Op<"matrix_power", [NoSideEffect]> {
   let summary = "matrix_power op";
   let description = [{
     
@@ -3431,7 +3431,7 @@ def PD_Matrix_powerOp : PD_Op<"matrix_power", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bilinear_interpOp : PD_Op<"bilinear_interp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bilinear_interpOp : PD_Op<"bilinear_interp", [NoSideEffect]> {
   let summary = "bilinear_interp op";
   let description = [{
     
@@ -3572,7 +3572,7 @@ def PD_Bilinear_interpOp : PD_Op<"bilinear_interp", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SigmoidOp : PD_Op<"sigmoid", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SigmoidOp : PD_Op<"sigmoid", [NoSideEffect]> {
   let summary = "sigmoid op";
   let description = [{
     
@@ -3586,7 +3586,7 @@ def PD_SigmoidOp : PD_Op<"sigmoid", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Inplace_abnOp : PD_Op<"inplace_abn", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Inplace_abnOp : PD_Op<"inplace_abn", [NoSideEffect]> {
   let summary = "inplace_abn op";
   let description = [{
     
@@ -3605,7 +3605,7 @@ def PD_Inplace_abnOp : PD_Op<"inplace_abn", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Y,PD_Tensor:$MeanOut,PD_Tensor:$VarianceOut);
 }
-def PD_SoftshrinkOp : PD_Op<"softshrink", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SoftshrinkOp : PD_Op<"softshrink", [NoSideEffect]> {
   let summary = "softshrink op";
   let description = [{
     
@@ -3624,7 +3624,7 @@ def PD_SoftshrinkOp : PD_Op<"softshrink", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_MulOp : PD_Op<"mul", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MulOp : PD_Op<"mul", [NoSideEffect]> {
   let summary = "mul op";
   let description = [{
     
@@ -3645,7 +3645,7 @@ def PD_MulOp : PD_Op<"mul", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Data_normOp : PD_Op<"data_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Data_normOp : PD_Op<"data_norm", [NoSideEffect]> {
   let summary = "data_norm op";
   let description = [{
     
@@ -3662,7 +3662,7 @@ def PD_Data_normOp : PD_Op<"data_norm", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_Reorder_lod_tensor_by_rankOp : PD_Op<"reorder_lod_tensor_by_rank", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reorder_lod_tensor_by_rankOp : PD_Op<"reorder_lod_tensor_by_rank", [NoSideEffect]> {
   let summary = "reorder_lod_tensor_by_rank op";
   let description = [{
     ReorderLoDTensorByRankTable operator.
@@ -3703,7 +3703,7 @@ def PD_Reorder_lod_tensor_by_rankOp : PD_Op<"reorder_lod_tensor_by_rank", [NoSid
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SppOp : PD_Op<"spp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SppOp : PD_Op<"spp", [NoSideEffect]> {
   let summary = "spp op";
   let description = [{
     
@@ -3730,7 +3730,7 @@ def PD_SppOp : PD_Op<"spp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_FloorOp : PD_Op<"floor", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_FloorOp : PD_Op<"floor", [NoSideEffect]> {
   let summary = "floor op";
   let description = [{
     
@@ -3744,7 +3744,7 @@ def PD_FloorOp : PD_Op<"floor", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_GeluOp : PD_Op<"gelu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_GeluOp : PD_Op<"gelu", [NoSideEffect]> {
   let summary = "gelu op";
   let description = [{
     
@@ -3764,7 +3764,7 @@ def PD_GeluOp : PD_Op<"gelu", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SiluOp : PD_Op<"silu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SiluOp : PD_Op<"silu", [NoSideEffect]> {
   let summary = "silu op";
   let description = [{
     
@@ -3777,7 +3777,7 @@ def PD_SiluOp : PD_Op<"silu", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_RealOp : PD_Op<"real", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_RealOp : PD_Op<"real", [NoSideEffect]> {
   let summary = "real op";
   let description = [{
      
@@ -3792,7 +3792,7 @@ def PD_RealOp : PD_Op<"real", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Nearest_interp_v2Op : PD_Op<"nearest_interp_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Nearest_interp_v2Op : PD_Op<"nearest_interp_v2", [NoSideEffect]> {
   let summary = "nearest_interp_v2 op";
   let description = [{
     
@@ -3933,7 +3933,7 @@ def PD_Nearest_interp_v2Op : PD_Op<"nearest_interp_v2", [NoSideEffect, DeclareOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Squeeze2Op : PD_Op<"squeeze2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Squeeze2Op : PD_Op<"squeeze2", [NoSideEffect]> {
   let summary = "squeeze2 op";
   let description = [{
     
@@ -3966,7 +3966,7 @@ def PD_Squeeze2Op : PD_Op<"squeeze2", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Strided_sliceOp : PD_Op<"strided_slice", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Strided_sliceOp : PD_Op<"strided_slice", [NoSideEffect]> {
   let summary = "strided_slice op";
   let description = [{
     
@@ -3982,7 +3982,7 @@ def PD_Strided_sliceOp : PD_Op<"strided_slice", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Depthwise_conv2d_transposeOp : PD_Op<"depthwise_conv2d_transpose", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Depthwise_conv2d_transposeOp : PD_Op<"depthwise_conv2d_transpose", [NoSideEffect]> {
   let summary = "depthwise_conv2d_transpose op";
   let description = [{
     
@@ -4017,7 +4017,7 @@ def PD_Depthwise_conv2d_transposeOp : PD_Op<"depthwise_conv2d_transpose", [NoSid
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_SquareOp : PD_Op<"square", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SquareOp : PD_Op<"square", [NoSideEffect]> {
   let summary = "square op";
   let description = [{
     
@@ -4031,7 +4031,7 @@ def PD_SquareOp : PD_Op<"square", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Var_conv_2dOp : PD_Op<"var_conv_2d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Var_conv_2dOp : PD_Op<"var_conv_2d", [NoSideEffect]> {
   let summary = "var_conv_2d op";
   let description = [{
     
@@ -4048,7 +4048,7 @@ def PD_Var_conv_2dOp : PD_Op<"var_conv_2d", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Col);
 }
-def PD_Log1pOp : PD_Op<"log1p", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Log1pOp : PD_Op<"log1p", [NoSideEffect]> {
   let summary = "log1p op";
   let description = [{
     
@@ -4064,7 +4064,7 @@ def PD_Log1pOp : PD_Op<"log1p", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fused_softmax_mask_upper_triangleOp : PD_Op<"fused_softmax_mask_upper_triangle", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fused_softmax_mask_upper_triangleOp : PD_Op<"fused_softmax_mask_upper_triangle", [NoSideEffect]> {
   let summary = "fused_softmax_mask_upper_triangle op";
   let description = [{
     
@@ -4078,7 +4078,7 @@ def PD_Fused_softmax_mask_upper_triangleOp : PD_Op<"fused_softmax_mask_upper_tri
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Atan2Op : PD_Op<"atan2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Atan2Op : PD_Op<"atan2", [NoSideEffect]> {
   let summary = "atan2 op";
   let description = [{
     
@@ -4093,7 +4093,7 @@ def PD_Atan2Op : PD_Op<"atan2", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fft_r2cOp : PD_Op<"fft_r2c", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fft_r2cOp : PD_Op<"fft_r2c", [NoSideEffect]> {
   let summary = "fft_r2c op";
   let description = [{
     
@@ -4104,7 +4104,7 @@ def PD_Fft_r2cOp : PD_Op<"fft_r2c", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Roi_poolOp : PD_Op<"roi_pool", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Roi_poolOp : PD_Op<"roi_pool", [NoSideEffect]> {
   let summary = "roi_pool op";
   let description = [{
     
@@ -4131,7 +4131,7 @@ def PD_Roi_poolOp : PD_Op<"roi_pool", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Overlap_addOp : PD_Op<"overlap_add", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Overlap_addOp : PD_Op<"overlap_add", [NoSideEffect]> {
   let summary = "overlap_add op";
   let description = [{
     
@@ -4142,7 +4142,7 @@ def PD_Overlap_addOp : PD_Op<"overlap_add", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fill_anyOp : PD_Op<"fill_any", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fill_anyOp : PD_Op<"fill_any", [NoSideEffect]> {
   let summary = "fill_any op";
   let description = [{
     Fill operator with backward;
@@ -4153,7 +4153,7 @@ def PD_Fill_anyOp : PD_Op<"fill_any", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Max_pool2d_with_indexOp : PD_Op<"max_pool2d_with_index", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Max_pool2d_with_indexOp : PD_Op<"max_pool2d_with_index", [NoSideEffect]> {
   let summary = "max_pool2d_with_index op";
   let description = [{
     
@@ -4192,7 +4192,7 @@ def PD_Max_pool2d_with_indexOp : PD_Op<"max_pool2d_with_index", [NoSideEffect, D
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Mask);
 }
-def PD_Pad3dOp : PD_Op<"pad3d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pad3dOp : PD_Op<"pad3d", [NoSideEffect]> {
   let summary = "pad3d op";
   let description = [{
     
@@ -4253,7 +4253,7 @@ def PD_Pad3dOp : PD_Op<"pad3d", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_NormOp : PD_Op<"norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_NormOp : PD_Op<"norm", [NoSideEffect]> {
   let summary = "norm op";
   let description = [{
     
@@ -4272,7 +4272,7 @@ def PD_NormOp : PD_Op<"norm", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_MishOp : PD_Op<"mish", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MishOp : PD_Op<"mish", [NoSideEffect]> {
   let summary = "mish op";
   let description = [{
     
@@ -4293,7 +4293,7 @@ def PD_MishOp : PD_Op<"mish", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_FlattenOp : PD_Op<"flatten", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_FlattenOp : PD_Op<"flatten", [NoSideEffect]> {
   let summary = "flatten op";
   let description = [{
     
@@ -4323,7 +4323,7 @@ def PD_FlattenOp : PD_Op<"flatten", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Margin_cross_entropyOp : PD_Op<"margin_cross_entropy", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Margin_cross_entropyOp : PD_Op<"margin_cross_entropy", [NoSideEffect]> {
   let summary = "margin_cross_entropy op";
   let description = [{
     
@@ -4344,7 +4344,7 @@ def PD_Margin_cross_entropyOp : PD_Op<"margin_cross_entropy", [NoSideEffect, Dec
 
   let results = (outs PD_Tensor:$Softmax,PD_Tensor:$Loss);
 }
-def PD_PowOp : PD_Op<"pow", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_PowOp : PD_Op<"pow", [NoSideEffect]> {
   let summary = "pow op";
   let description = [{
     
@@ -4358,7 +4358,7 @@ def PD_PowOp : PD_Op<"pow", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_StanhOp : PD_Op<"stanh", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_StanhOp : PD_Op<"stanh", [NoSideEffect]> {
   let summary = "stanh op";
   let description = [{
     
@@ -4372,7 +4372,7 @@ def PD_StanhOp : PD_Op<"stanh", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Label_smoothOp : PD_Op<"label_smooth", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Label_smoothOp : PD_Op<"label_smooth", [NoSideEffect]> {
   let summary = "label_smooth op";
   let description = [{
     
@@ -4405,7 +4405,7 @@ def PD_Label_smoothOp : PD_Op<"label_smooth", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Roi_perspective_transformOp : PD_Op<"roi_perspective_transform", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Roi_perspective_transformOp : PD_Op<"roi_perspective_transform", [NoSideEffect]> {
   let summary = "roi_perspective_transform op";
   let description = [{
     
@@ -4417,7 +4417,7 @@ def PD_Roi_perspective_transformOp : PD_Op<"roi_perspective_transform", [NoSideE
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Mask,PD_Tensor:$TransformMatrix);
 }
-def PD_ExpandOp : PD_Op<"expand", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ExpandOp : PD_Op<"expand", [NoSideEffect]> {
   let summary = "expand op";
   let description = [{
     
@@ -4448,7 +4448,7 @@ def PD_ExpandOp : PD_Op<"expand", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Rnn_memory_helperOp : PD_Op<"rnn_memory_helper", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Rnn_memory_helperOp : PD_Op<"rnn_memory_helper", [NoSideEffect]> {
   let summary = "rnn_memory_helper op";
   let description = [{
     
@@ -4457,7 +4457,7 @@ def PD_Rnn_memory_helperOp : PD_Op<"rnn_memory_helper", [NoSideEffect, DeclareOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Prroi_poolOp : PD_Op<"prroi_pool", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Prroi_poolOp : PD_Op<"prroi_pool", [NoSideEffect]> {
   let summary = "prroi_pool op";
   let description = [{
     
@@ -4474,7 +4474,7 @@ def PD_Prroi_poolOp : PD_Op<"prroi_pool", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Pool3dOp : PD_Op<"pool3d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pool3dOp : PD_Op<"pool3d", [NoSideEffect]> {
   let summary = "pool3d op";
   let description = [{
     
@@ -4587,7 +4587,7 @@ def PD_Pool3dOp : PD_Op<"pool3d", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_FrameOp : PD_Op<"frame", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_FrameOp : PD_Op<"frame", [NoSideEffect]> {
   let summary = "frame op";
   let description = [{
     
@@ -4598,7 +4598,7 @@ def PD_FrameOp : PD_Op<"frame", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Group_normOp : PD_Op<"group_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Group_normOp : PD_Op<"group_norm", [NoSideEffect]> {
   let summary = "group_norm op";
   let description = [{
     
@@ -4611,7 +4611,7 @@ def PD_Group_normOp : PD_Op<"group_norm", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_C_softmax_with_cross_entropyOp : PD_Op<"c_softmax_with_cross_entropy", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_C_softmax_with_cross_entropyOp : PD_Op<"c_softmax_with_cross_entropy", [NoSideEffect]> {
   let summary = "c_softmax_with_cross_entropy op";
   let description = [{
     
@@ -4623,7 +4623,7 @@ def PD_C_softmax_with_cross_entropyOp : PD_Op<"c_softmax_with_cross_entropy", [N
 
   let results = (outs PD_Tensor:$Softmax,PD_Tensor:$Loss);
 }
-def PD_Sequence_expand_asOp : PD_Op<"sequence_expand_as", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_expand_asOp : PD_Op<"sequence_expand_as", [NoSideEffect]> {
   let summary = "sequence_expand_as op";
   let description = [{
     
@@ -4668,7 +4668,7 @@ def PD_Sequence_expand_asOp : PD_Op<"sequence_expand_as", [NoSideEffect, Declare
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_QrOp : PD_Op<"qr", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_QrOp : PD_Op<"qr", [NoSideEffect]> {
   let summary = "qr op";
   let description = [{
     
@@ -4683,7 +4683,7 @@ def PD_QrOp : PD_Op<"qr", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpIn
 
   let results = (outs PD_Tensor:$Q,PD_Tensor:$R);
 }
-def PD_Layer_normOp : PD_Op<"layer_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Layer_normOp : PD_Op<"layer_norm", [NoSideEffect]> {
   let summary = "layer_norm op";
   let description = [{
     
@@ -4701,7 +4701,7 @@ def PD_Layer_normOp : PD_Op<"layer_norm", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_RnnOp : PD_Op<"rnn", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_RnnOp : PD_Op<"rnn", [NoSideEffect]> {
   let summary = "rnn op";
   let description = [{
     
@@ -4711,7 +4711,7 @@ def PD_RnnOp : PD_Op<"rnn", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$DropoutState,PD_Tensor:$Out,PD_Tensor:$State);
 }
-def PD_Hard_sigmoidOp : PD_Op<"hard_sigmoid", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Hard_sigmoidOp : PD_Op<"hard_sigmoid", [NoSideEffect]> {
   let summary = "hard_sigmoid op";
   let description = [{
     
@@ -4728,7 +4728,7 @@ def PD_Hard_sigmoidOp : PD_Op<"hard_sigmoid", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CorrelationOp : PD_Op<"correlation", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CorrelationOp : PD_Op<"correlation", [NoSideEffect]> {
   let summary = "correlation op";
   let description = [{
     Correlation of two feature map. Only support NCHW data format.
@@ -4737,7 +4737,7 @@ def PD_CorrelationOp : PD_Op<"correlation", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Segment_poolOp : PD_Op<"segment_pool", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Segment_poolOp : PD_Op<"segment_pool", [NoSideEffect]> {
   let summary = "segment_pool op";
   let description = [{
     
@@ -4764,7 +4764,7 @@ def PD_Segment_poolOp : PD_Op<"segment_pool", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Filter_by_instagOp : PD_Op<"filter_by_instag", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Filter_by_instagOp : PD_Op<"filter_by_instag", [NoSideEffect]> {
   let summary = "filter_by_instag op";
   let description = [{
     
@@ -4783,7 +4783,7 @@ def PD_Filter_by_instagOp : PD_Op<"filter_by_instag", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$LossWeight,PD_Tensor:$IndexMap);
 }
-def PD_Expand_as_v2Op : PD_Op<"expand_as_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Expand_as_v2Op : PD_Op<"expand_as_v2", [NoSideEffect]> {
   let summary = "expand_as_v2 op";
   let description = [{
     
@@ -4794,7 +4794,7 @@ def PD_Expand_as_v2Op : PD_Op<"expand_as_v2", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Nll_lossOp : PD_Op<"nll_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Nll_lossOp : PD_Op<"nll_loss", [NoSideEffect]> {
   let summary = "nll_loss op";
   let description = [{
     
@@ -4817,7 +4817,7 @@ def PD_Nll_lossOp : PD_Op<"nll_loss", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Total_weight);
 }
-def PD_DotOp : PD_Op<"dot", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_DotOp : PD_Op<"dot", [NoSideEffect]> {
   let summary = "dot op";
   let description = [{
     
@@ -4826,7 +4826,7 @@ def PD_DotOp : PD_Op<"dot", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Shuffle_batchOp : PD_Op<"shuffle_batch", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Shuffle_batchOp : PD_Op<"shuffle_batch", [NoSideEffect]> {
   let summary = "shuffle_batch op";
   let description = [{
     
@@ -4843,7 +4843,7 @@ def PD_Shuffle_batchOp : PD_Op<"shuffle_batch", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$ShuffleIdx,PD_Tensor:$SeedOut);
 }
-def PD_MultiplexOp : PD_Op<"multiplex", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MultiplexOp : PD_Op<"multiplex", [NoSideEffect]> {
   let summary = "multiplex op";
   let description = [{
     
@@ -4885,7 +4885,7 @@ def PD_MultiplexOp : PD_Op<"multiplex", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Leaky_reluOp : PD_Op<"leaky_relu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Leaky_reluOp : PD_Op<"leaky_relu", [NoSideEffect]> {
   let summary = "leaky_relu op";
   let description = [{
     
@@ -4899,7 +4899,7 @@ def PD_Leaky_reluOp : PD_Op<"leaky_relu", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Elementwise_powOp : PD_Op<"elementwise_pow", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_powOp : PD_Op<"elementwise_pow", [NoSideEffect]> {
   let summary = "elementwise_pow op";
   let description = [{
     
@@ -4944,7 +4944,7 @@ def PD_Elementwise_powOp : PD_Op<"elementwise_pow", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Shrink_rnn_memoryOp : PD_Op<"shrink_rnn_memory", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Shrink_rnn_memoryOp : PD_Op<"shrink_rnn_memory", [NoSideEffect]> {
   let summary = "shrink_rnn_memory op";
   let description = [{
     
@@ -4963,7 +4963,7 @@ def PD_Shrink_rnn_memoryOp : PD_Op<"shrink_rnn_memory", [NoSideEffect, DeclareOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_P_normOp : PD_Op<"p_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_P_normOp : PD_Op<"p_norm", [NoSideEffect]> {
   let summary = "p_norm op";
   let description = [{
     
@@ -4997,7 +4997,7 @@ def PD_P_normOp : PD_Op<"p_norm", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Lod_resetOp : PD_Op<"lod_reset", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Lod_resetOp : PD_Op<"lod_reset", [NoSideEffect]> {
   let summary = "lod_reset op";
   let description = [{
     LoDReset operator
@@ -5062,7 +5062,7 @@ def PD_Lod_resetOp : PD_Op<"lod_reset", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_PadOp : PD_Op<"pad", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_PadOp : PD_Op<"pad", [NoSideEffect]> {
   let summary = "pad op";
   let description = [{
     
@@ -5094,7 +5094,7 @@ def PD_PadOp : PD_Op<"pad", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_convOp : PD_Op<"sequence_conv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_convOp : PD_Op<"sequence_conv", [NoSideEffect]> {
   let summary = "sequence_conv op";
   let description = [{
     
@@ -5114,7 +5114,7 @@ def PD_Sequence_convOp : PD_Op<"sequence_conv", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Log10Op : PD_Op<"log10", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Log10Op : PD_Op<"log10", [NoSideEffect]> {
   let summary = "log10 op";
   let description = [{
     
@@ -5130,7 +5130,7 @@ def PD_Log10Op : PD_Op<"log10", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Center_lossOp : PD_Op<"center_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Center_lossOp : PD_Op<"center_loss", [NoSideEffect]> {
   let summary = "center_loss op";
   let description = [{
     
@@ -5145,7 +5145,7 @@ def PD_Center_lossOp : PD_Op<"center_loss", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$CentersOut,PD_Tensor:$SampleCenterDiff,PD_Tensor:$Loss);
 }
-def PD_SliceOp : PD_Op<"slice", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SliceOp : PD_Op<"slice", [NoSideEffect]> {
   let summary = "slice op";
   let description = [{
     
@@ -5187,7 +5187,7 @@ def PD_SliceOp : PD_Op<"slice", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_MeshgridOp : PD_Op<"meshgrid", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MeshgridOp : PD_Op<"meshgrid", [NoSideEffect]> {
   let summary = "meshgrid op";
   let description = [{
     
@@ -5213,7 +5213,7 @@ def PD_MeshgridOp : PD_Op<"meshgrid", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Hard_swishOp : PD_Op<"hard_swish", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Hard_swishOp : PD_Op<"hard_swish", [NoSideEffect]> {
   let summary = "hard_swish op";
   let description = [{
     
@@ -5233,7 +5233,7 @@ def PD_Hard_swishOp : PD_Op<"hard_swish", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SinOp : PD_Op<"sin", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SinOp : PD_Op<"sin", [NoSideEffect]> {
   let summary = "sin op";
   let description = [{
     
@@ -5247,7 +5247,7 @@ def PD_SinOp : PD_Op<"sin", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Pad2dOp : PD_Op<"pad2d", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pad2dOp : PD_Op<"pad2d", [NoSideEffect]> {
   let summary = "pad2d op";
   let description = [{
     
@@ -5294,7 +5294,7 @@ def PD_Pad2dOp : PD_Op<"pad2d", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_InverseOp : PD_Op<"inverse", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_InverseOp : PD_Op<"inverse", [NoSideEffect]> {
   let summary = "inverse op";
   let description = [{
     
@@ -5307,7 +5307,7 @@ def PD_InverseOp : PD_Op<"inverse", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Spectral_normOp : PD_Op<"spectral_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Spectral_normOp : PD_Op<"spectral_norm", [NoSideEffect]> {
   let summary = "spectral_norm op";
   let description = [{
     
@@ -5351,7 +5351,7 @@ def PD_Spectral_normOp : PD_Op<"spectral_norm", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Shuffle_channelOp : PD_Op<"shuffle_channel", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Shuffle_channelOp : PD_Op<"shuffle_channel", [NoSideEffect]> {
   let summary = "shuffle_channel op";
   let description = [{
     
@@ -5370,7 +5370,7 @@ def PD_Shuffle_channelOp : PD_Op<"shuffle_channel", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Psroi_poolOp : PD_Op<"psroi_pool", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Psroi_poolOp : PD_Op<"psroi_pool", [NoSideEffect]> {
   let summary = "psroi_pool op";
   let description = [{
     
@@ -5385,7 +5385,7 @@ def PD_Psroi_poolOp : PD_Op<"psroi_pool", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CeilOp : PD_Op<"ceil", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CeilOp : PD_Op<"ceil", [NoSideEffect]> {
   let summary = "ceil op";
   let description = [{
     
@@ -5399,7 +5399,7 @@ def PD_CeilOp : PD_Op<"ceil", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_EigOp : PD_Op<"eig", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_EigOp : PD_Op<"eig", [NoSideEffect]> {
   let summary = "eig op";
   let description = [{
     
@@ -5413,7 +5413,7 @@ def PD_EigOp : PD_Op<"eig", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Eigenvalues,PD_Tensor:$Eigenvectors);
 }
-def PD_Reduce_minOp : PD_Op<"reduce_min", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reduce_minOp : PD_Op<"reduce_min", [NoSideEffect]> {
   let summary = "reduce_min op";
   let description = [{
     
@@ -5429,7 +5429,7 @@ def PD_Reduce_minOp : PD_Op<"reduce_min", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CosOp : PD_Op<"cos", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CosOp : PD_Op<"cos", [NoSideEffect]> {
   let summary = "cos op";
   let description = [{
     
@@ -5445,7 +5445,7 @@ def PD_CosOp : PD_Op<"cos", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Cudnn_lstmOp : PD_Op<"cudnn_lstm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Cudnn_lstmOp : PD_Op<"cudnn_lstm", [NoSideEffect]> {
   let summary = "cudnn_lstm op";
   let description = [{
     
@@ -5489,7 +5489,7 @@ def PD_Cudnn_lstmOp : PD_Op<"cudnn_lstm", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$StateOut,PD_Tensor:$Out,PD_Tensor:$LastH,PD_Tensor:$LastC);
 }
-def PD_Reduce_sumOp : PD_Op<"reduce_sum", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reduce_sumOp : PD_Op<"reduce_sum", [NoSideEffect]> {
   let summary = "reduce_sum op";
   let description = [{
     
@@ -5505,7 +5505,7 @@ def PD_Reduce_sumOp : PD_Op<"reduce_sum", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_DigammaOp : PD_Op<"digamma", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_DigammaOp : PD_Op<"digamma", [NoSideEffect]> {
   let summary = "digamma op";
   let description = [{
     
@@ -5520,7 +5520,7 @@ def PD_DigammaOp : PD_Op<"digamma", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fused_softmax_maskOp : PD_Op<"fused_softmax_mask", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fused_softmax_maskOp : PD_Op<"fused_softmax_mask", [NoSideEffect]> {
   let summary = "fused_softmax_mask op";
   let description = [{
     
@@ -5544,7 +5544,7 @@ def PD_Fused_softmax_maskOp : PD_Op<"fused_softmax_mask", [NoSideEffect, Declare
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_EigvalshOp : PD_Op<"eigvalsh", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_EigvalshOp : PD_Op<"eigvalsh", [NoSideEffect]> {
   let summary = "eigvalsh op";
   let description = [{
     
@@ -5559,7 +5559,7 @@ def PD_EigvalshOp : PD_Op<"eigvalsh", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Eigenvalues,PD_Tensor:$Eigenvectors);
 }
-def PD_DiagonalOp : PD_Op<"diagonal", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_DiagonalOp : PD_Op<"diagonal", [NoSideEffect]> {
   let summary = "diagonal op";
   let description = [{
     
@@ -5573,7 +5573,7 @@ def PD_DiagonalOp : PD_Op<"diagonal", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_TruncOp : PD_Op<"trunc", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_TruncOp : PD_Op<"trunc", [NoSideEffect]> {
   let summary = "trunc op";
   let description = [{
     
@@ -5586,7 +5586,7 @@ def PD_TruncOp : PD_Op<"trunc", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Log2Op : PD_Op<"log2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Log2Op : PD_Op<"log2", [NoSideEffect]> {
   let summary = "log2 op";
   let description = [{
     
@@ -5602,7 +5602,7 @@ def PD_Log2Op : PD_Op<"log2", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_TanhOp : PD_Op<"tanh", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_TanhOp : PD_Op<"tanh", [NoSideEffect]> {
   let summary = "tanh op";
   let description = [{
     
@@ -5616,7 +5616,7 @@ def PD_TanhOp : PD_Op<"tanh", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Yolov3_lossOp : PD_Op<"yolov3_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Yolov3_lossOp : PD_Op<"yolov3_loss", [NoSideEffect]> {
   let summary = "yolov3_loss op";
   let description = [{
     
@@ -5695,7 +5695,7 @@ def PD_Yolov3_lossOp : PD_Op<"yolov3_loss", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Loss);
 }
-def PD_Graph_send_recvOp : PD_Op<"graph_send_recv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Graph_send_recvOp : PD_Op<"graph_send_recv", [NoSideEffect]> {
   let summary = "graph_send_recv op";
   let description = [{
     
@@ -5715,7 +5715,7 @@ def PD_Graph_send_recvOp : PD_Op<"graph_send_recv", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_AtanOp : PD_Op<"atan", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_AtanOp : PD_Op<"atan", [NoSideEffect]> {
   let summary = "atan op";
   let description = [{
     
@@ -5729,7 +5729,7 @@ def PD_AtanOp : PD_Op<"atan", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_UnsqueezeOp : PD_Op<"unsqueeze", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_UnsqueezeOp : PD_Op<"unsqueeze", [NoSideEffect]> {
   let summary = "unsqueeze op";
   let description = [{
     
@@ -5748,7 +5748,7 @@ def PD_UnsqueezeOp : PD_Op<"unsqueeze", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Log_softmaxOp : PD_Op<"log_softmax", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Log_softmaxOp : PD_Op<"log_softmax", [NoSideEffect]> {
   let summary = "log_softmax op";
   let description = [{
     
@@ -5760,7 +5760,7 @@ def PD_Log_softmaxOp : PD_Op<"log_softmax", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Top_k_v2Op : PD_Op<"top_k_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Top_k_v2Op : PD_Op<"top_k_v2", [NoSideEffect]> {
   let summary = "top_k_v2 op";
   let description = [{
     
@@ -5776,7 +5776,7 @@ def PD_Top_k_v2Op : PD_Op<"top_k_v2", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Indices);
 }
-def PD_Tanh_shrinkOp : PD_Op<"tanh_shrink", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Tanh_shrinkOp : PD_Op<"tanh_shrink", [NoSideEffect]> {
   let summary = "tanh_shrink op";
   let description = [{
     
@@ -5790,7 +5790,7 @@ def PD_Tanh_shrinkOp : PD_Op<"tanh_shrink", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Hard_shrinkOp : PD_Op<"hard_shrink", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Hard_shrinkOp : PD_Op<"hard_shrink", [NoSideEffect]> {
   let summary = "hard_shrink op";
   let description = [{
     
@@ -5809,7 +5809,7 @@ def PD_Hard_shrinkOp : PD_Op<"hard_shrink", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_unpadOp : PD_Op<"sequence_unpad", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_unpadOp : PD_Op<"sequence_unpad", [NoSideEffect]> {
   let summary = "sequence_unpad op";
   let description = [{
     
@@ -5842,7 +5842,7 @@ def PD_Sequence_unpadOp : PD_Op<"sequence_unpad", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fused_elemwise_add_activationOp : PD_Op<"fused_elemwise_add_activation", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fused_elemwise_add_activationOp : PD_Op<"fused_elemwise_add_activation", [NoSideEffect]> {
   let summary = "fused_elemwise_add_activation op";
   let description = [{
     
@@ -5891,7 +5891,7 @@ def PD_Fused_elemwise_add_activationOp : PD_Op<"fused_elemwise_add_activation", 
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Frobenius_normOp : PD_Op<"frobenius_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Frobenius_normOp : PD_Op<"frobenius_norm", [NoSideEffect]> {
   let summary = "frobenius_norm op";
   let description = [{
     
@@ -5907,7 +5907,7 @@ def PD_Frobenius_normOp : PD_Op<"frobenius_norm", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CropOp : PD_Op<"crop", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CropOp : PD_Op<"crop", [NoSideEffect]> {
   let summary = "crop op";
   let description = [{
     
@@ -5983,7 +5983,7 @@ def PD_CropOp : PD_Op<"crop", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Tensor_array_to_tensorOp : PD_Op<"tensor_array_to_tensor", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Tensor_array_to_tensorOp : PD_Op<"tensor_array_to_tensor", [NoSideEffect]> {
   let summary = "tensor_array_to_tensor op";
   let description = [{
     
@@ -6015,7 +6015,7 @@ def PD_Tensor_array_to_tensorOp : PD_Op<"tensor_array_to_tensor", [NoSideEffect,
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$OutIndex);
 }
-def PD_ErfOp : PD_Op<"erf", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ErfOp : PD_Op<"erf", [NoSideEffect]> {
   let summary = "erf op";
   let description = [{
     
@@ -6034,7 +6034,7 @@ def PD_ErfOp : PD_Op<"erf", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Trilinear_interpOp : PD_Op<"trilinear_interp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Trilinear_interpOp : PD_Op<"trilinear_interp", [NoSideEffect]> {
   let summary = "trilinear_interp op";
   let description = [{
     
@@ -6175,7 +6175,7 @@ def PD_Trilinear_interpOp : PD_Op<"trilinear_interp", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_LogsumexpOp : PD_Op<"logsumexp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LogsumexpOp : PD_Op<"logsumexp", [NoSideEffect]> {
   let summary = "logsumexp op";
   let description = [{
     
@@ -6191,7 +6191,7 @@ def PD_LogsumexpOp : PD_Op<"logsumexp", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_concatOp : PD_Op<"sequence_concat", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_concatOp : PD_Op<"sequence_concat", [NoSideEffect]> {
   let summary = "sequence_concat op";
   let description = [{
     Sequence Concat Op
@@ -6207,7 +6207,7 @@ def PD_Sequence_concatOp : PD_Op<"sequence_concat", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ArgsortOp : PD_Op<"argsort", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ArgsortOp : PD_Op<"argsort", [NoSideEffect]> {
   let summary = "argsort op";
   let description = [{
     
@@ -6224,7 +6224,7 @@ def PD_ArgsortOp : PD_Op<"argsort", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Indices);
 }
-def PD_Sequence_expandOp : PD_Op<"sequence_expand", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_expandOp : PD_Op<"sequence_expand", [NoSideEffect]> {
   let summary = "sequence_expand op";
   let description = [{
     
@@ -6299,7 +6299,7 @@ def PD_Sequence_expandOp : PD_Op<"sequence_expand", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Bilinear_interp_v2Op : PD_Op<"bilinear_interp_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Bilinear_interp_v2Op : PD_Op<"bilinear_interp_v2", [NoSideEffect]> {
   let summary = "bilinear_interp_v2 op";
   let description = [{
     
@@ -6440,7 +6440,7 @@ def PD_Bilinear_interp_v2Op : PD_Op<"bilinear_interp_v2", [NoSideEffect, Declare
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ClipOp : PD_Op<"clip", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ClipOp : PD_Op<"clip", [NoSideEffect]> {
   let summary = "clip op";
   let description = [{
     
@@ -6459,7 +6459,7 @@ def PD_ClipOp : PD_Op<"clip", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Deformable_conv_v1Op : PD_Op<"deformable_conv_v1", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Deformable_conv_v1Op : PD_Op<"deformable_conv_v1", [NoSideEffect]> {
   let summary = "deformable_conv_v1 op";
   let description = [{
     
@@ -6507,7 +6507,7 @@ def PD_Deformable_conv_v1Op : PD_Op<"deformable_conv_v1", [NoSideEffect, Declare
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Hinge_lossOp : PD_Op<"hinge_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Hinge_lossOp : PD_Op<"hinge_loss", [NoSideEffect]> {
   let summary = "hinge_loss op";
   let description = [{
     
@@ -6529,7 +6529,7 @@ def PD_Hinge_lossOp : PD_Op<"hinge_loss", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Loss);
 }
-def PD_DeterminantOp : PD_Op<"determinant", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_DeterminantOp : PD_Op<"determinant", [NoSideEffect]> {
   let summary = "determinant op";
   let description = [{
     
@@ -6539,7 +6539,7 @@ def PD_DeterminantOp : PD_Op<"determinant", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Conv2d_transposeOp : PD_Op<"conv2d_transpose", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Conv2d_transposeOp : PD_Op<"conv2d_transpose", [NoSideEffect]> {
   let summary = "conv2d_transpose op";
   let description = [{
     
@@ -6574,7 +6574,7 @@ def PD_Conv2d_transposeOp : PD_Op<"conv2d_transpose", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_SoftsignOp : PD_Op<"softsign", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SoftsignOp : PD_Op<"softsign", [NoSideEffect]> {
   let summary = "softsign op";
   let description = [{
     
@@ -6588,7 +6588,7 @@ def PD_SoftsignOp : PD_Op<"softsign", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Broadcast_tensorsOp : PD_Op<"broadcast_tensors", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Broadcast_tensorsOp : PD_Op<"broadcast_tensors", [NoSideEffect]> {
   let summary = "broadcast_tensors op";
   let description = [{
     This OP is used to broadcast a vector of inputs 
@@ -6598,7 +6598,7 @@ def PD_Broadcast_tensorsOp : PD_Op<"broadcast_tensors", [NoSideEffect, DeclareOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Grid_samplerOp : PD_Op<"grid_sampler", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Grid_samplerOp : PD_Op<"grid_sampler", [NoSideEffect]> {
   let summary = "grid_sampler op";
   let description = [{
     
@@ -6654,7 +6654,7 @@ def PD_Grid_samplerOp : PD_Op<"grid_sampler", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_Fft_c2rOp : PD_Op<"fft_c2r", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fft_c2rOp : PD_Op<"fft_c2r", [NoSideEffect]> {
   let summary = "fft_c2r op";
   let description = [{
     
@@ -6665,7 +6665,7 @@ def PD_Fft_c2rOp : PD_Op<"fft_c2r", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Pyramid_hashOp : PD_Op<"pyramid_hash", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pyramid_hashOp : PD_Op<"pyramid_hash", [NoSideEffect]> {
   let summary = "pyramid_hash op";
   let description = [{
     
@@ -6679,7 +6679,7 @@ def PD_Pyramid_hashOp : PD_Op<"pyramid_hash", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$DropPos);
 }
-def PD_Multi_dotOp : PD_Op<"multi_dot", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Multi_dotOp : PD_Op<"multi_dot", [NoSideEffect]> {
   let summary = "multi_dot op";
   let description = [{
     
@@ -6694,7 +6694,7 @@ def PD_Multi_dotOp : PD_Op<"multi_dot", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_poolOp : PD_Op<"sequence_pool", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_poolOp : PD_Op<"sequence_pool", [NoSideEffect]> {
   let summary = "sequence_pool op";
   let description = [{
     
@@ -6736,7 +6736,7 @@ def PD_Sequence_poolOp : PD_Op<"sequence_pool", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_TransposeOp : PD_Op<"transpose", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_TransposeOp : PD_Op<"transpose", [NoSideEffect]> {
   let summary = "transpose op";
   let description = [{
     
@@ -6772,7 +6772,7 @@ def PD_TransposeOp : PD_Op<"transpose", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Top_kOp : PD_Op<"top_k", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Top_kOp : PD_Op<"top_k", [NoSideEffect]> {
   let summary = "top_k op";
   let description = [{
     
@@ -6788,7 +6788,7 @@ def PD_Top_kOp : PD_Op<"top_k", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Indices);
 }
-def PD_DistOp : PD_Op<"dist", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_DistOp : PD_Op<"dist", [NoSideEffect]> {
   let summary = "dist op";
   let description = [{
     
@@ -6821,7 +6821,7 @@ def PD_DistOp : PD_Op<"dist", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Affine_gridOp : PD_Op<"affine_grid", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Affine_gridOp : PD_Op<"affine_grid", [NoSideEffect]> {
   let summary = "affine_grid op";
   let description = [{
     
@@ -6892,7 +6892,7 @@ def PD_Affine_gridOp : PD_Op<"affine_grid", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Output);
 }
-def PD_ReciprocalOp : PD_Op<"reciprocal", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ReciprocalOp : PD_Op<"reciprocal", [NoSideEffect]> {
   let summary = "reciprocal op";
   let description = [{
     
@@ -6906,7 +6906,7 @@ def PD_ReciprocalOp : PD_Op<"reciprocal", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Fill_diagonal_tensorOp : PD_Op<"fill_diagonal_tensor", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Fill_diagonal_tensorOp : PD_Op<"fill_diagonal_tensor", [NoSideEffect]> {
   let summary = "fill_diagonal_tensor op";
   let description = [{
     Fill replace operator
@@ -6917,7 +6917,7 @@ def PD_Fill_diagonal_tensorOp : PD_Op<"fill_diagonal_tensor", [NoSideEffect, Dec
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_AbsOp : PD_Op<"abs", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_AbsOp : PD_Op<"abs", [NoSideEffect]> {
   let summary = "abs op";
   let description = [{
     
@@ -6932,7 +6932,7 @@ def PD_AbsOp : PD_Op<"abs", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Partial_concatOp : PD_Op<"partial_concat", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Partial_concatOp : PD_Op<"partial_concat", [NoSideEffect]> {
   let summary = "partial_concat op";
   let description = [{
     
@@ -6953,7 +6953,7 @@ def PD_Partial_concatOp : PD_Op<"partial_concat", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_EluOp : PD_Op<"elu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_EluOp : PD_Op<"elu", [NoSideEffect]> {
   let summary = "elu op";
   let description = [{
     
@@ -6970,7 +6970,7 @@ def PD_EluOp : PD_Op<"elu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Index_selectOp : PD_Op<"index_select", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Index_selectOp : PD_Op<"index_select", [NoSideEffect]> {
   let summary = "index_select op";
   let description = [{
     
@@ -6988,7 +6988,7 @@ def PD_Index_selectOp : PD_Op<"index_select", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Row_convOp : PD_Op<"row_conv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Row_convOp : PD_Op<"row_conv", [NoSideEffect]> {
   let summary = "row_conv op";
   let description = [{
     
@@ -7035,7 +7035,7 @@ def PD_Row_convOp : PD_Op<"row_conv", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_CrossOp : PD_Op<"cross", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CrossOp : PD_Op<"cross", [NoSideEffect]> {
   let summary = "cross op";
   let description = [{
     
@@ -7050,7 +7050,7 @@ def PD_CrossOp : PD_Op<"cross", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Elementwise_mulOp : PD_Op<"elementwise_mul", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_mulOp : PD_Op<"elementwise_mul", [NoSideEffect]> {
   let summary = "elementwise_mul op";
   let description = [{
     
@@ -7095,7 +7095,7 @@ def PD_Elementwise_mulOp : PD_Op<"elementwise_mul", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_LstmOp : PD_Op<"lstm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_LstmOp : PD_Op<"lstm", [NoSideEffect]> {
   let summary = "lstm op";
   let description = [{
     
@@ -7145,7 +7145,7 @@ def PD_LstmOp : PD_Op<"lstm", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Hidden,PD_Tensor:$Cell);
 }
-def PD_Match_matrix_tensorOp : PD_Op<"match_matrix_tensor", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Match_matrix_tensorOp : PD_Op<"match_matrix_tensor", [NoSideEffect]> {
   let summary = "match_matrix_tensor op";
   let description = [{
     
@@ -7163,7 +7163,7 @@ def PD_Match_matrix_tensorOp : PD_Op<"match_matrix_tensor", [NoSideEffect, Decla
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Tmp);
 }
-def PD_Elementwise_divOp : PD_Op<"elementwise_div", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_divOp : PD_Op<"elementwise_div", [NoSideEffect]> {
   let summary = "elementwise_div op";
   let description = [{
     
@@ -7208,7 +7208,7 @@ def PD_Elementwise_divOp : PD_Op<"elementwise_div", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Kldiv_lossOp : PD_Op<"kldiv_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Kldiv_lossOp : PD_Op<"kldiv_loss", [NoSideEffect]> {
   let summary = "kldiv_loss op";
   let description = [{
     
@@ -7242,7 +7242,7 @@ def PD_Kldiv_lossOp : PD_Op<"kldiv_loss", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Loss);
 }
-def PD_SeluOp : PD_Op<"selu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SeluOp : PD_Op<"selu", [NoSideEffect]> {
   let summary = "selu op";
   let description = [{
     
@@ -7265,7 +7265,7 @@ def PD_SeluOp : PD_Op<"selu", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_MeanOp : PD_Op<"mean", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_MeanOp : PD_Op<"mean", [NoSideEffect]> {
   let summary = "mean op";
   let description = [{
     
@@ -7277,7 +7277,7 @@ def PD_MeanOp : PD_Op<"mean", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Gumbel_softmaxOp : PD_Op<"gumbel_softmax", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Gumbel_softmaxOp : PD_Op<"gumbel_softmax", [NoSideEffect]> {
   let summary = "gumbel_softmax op";
   let description = [{
     
@@ -7291,7 +7291,7 @@ def PD_Gumbel_softmaxOp : PD_Op<"gumbel_softmax", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Sequence_padOp : PD_Op<"sequence_pad", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Sequence_padOp : PD_Op<"sequence_pad", [NoSideEffect]> {
   let summary = "sequence_pad op";
   let description = [{
     
@@ -7351,7 +7351,7 @@ def PD_Sequence_padOp : PD_Op<"sequence_pad", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Length);
 }
-def PD_Tree_convOp : PD_Op<"tree_conv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Tree_convOp : PD_Op<"tree_conv", [NoSideEffect]> {
   let summary = "tree_conv op";
   let description = [{
     
@@ -7370,7 +7370,7 @@ def PD_Tree_convOp : PD_Op<"tree_conv", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Flatten_contiguous_rangeOp : PD_Op<"flatten_contiguous_range", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Flatten_contiguous_rangeOp : PD_Op<"flatten_contiguous_range", [NoSideEffect]> {
   let summary = "flatten_contiguous_range op";
   let description = [{
     
@@ -7400,7 +7400,7 @@ def PD_Flatten_contiguous_rangeOp : PD_Op<"flatten_contiguous_range", [NoSideEff
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Tril_triuOp : PD_Op<"tril_triu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Tril_triuOp : PD_Op<"tril_triu", [NoSideEffect]> {
   let summary = "tril_triu op";
   let description = [{
     
@@ -7422,7 +7422,7 @@ def PD_Tril_triuOp : PD_Op<"tril_triu", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_BreluOp : PD_Op<"brelu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_BreluOp : PD_Op<"brelu", [NoSideEffect]> {
   let summary = "brelu op";
   let description = [{
     
@@ -7436,7 +7436,7 @@ def PD_BreluOp : PD_Op<"brelu", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Reduce_meanOp : PD_Op<"reduce_mean", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reduce_meanOp : PD_Op<"reduce_mean", [NoSideEffect]> {
   let summary = "reduce_mean op";
   let description = [{
     
@@ -7452,7 +7452,7 @@ def PD_Reduce_meanOp : PD_Op<"reduce_mean", [NoSideEffect, DeclareOpInterfaceMet
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SinhOp : PD_Op<"sinh", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SinhOp : PD_Op<"sinh", [NoSideEffect]> {
   let summary = "sinh op";
   let description = [{
     
@@ -7466,7 +7466,7 @@ def PD_SinhOp : PD_Op<"sinh", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Rank_lossOp : PD_Op<"rank_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Rank_lossOp : PD_Op<"rank_loss", [NoSideEffect]> {
   let summary = "rank_loss op";
   let description = [{
     
@@ -7500,7 +7500,7 @@ def PD_Rank_lossOp : PD_Op<"rank_loss", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Reduce_maxOp : PD_Op<"reduce_max", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Reduce_maxOp : PD_Op<"reduce_max", [NoSideEffect]> {
   let summary = "reduce_max op";
   let description = [{
     
@@ -7516,7 +7516,7 @@ def PD_Reduce_maxOp : PD_Op<"reduce_max", [NoSideEffect, DeclareOpInterfaceMetho
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Expm1Op : PD_Op<"expm1", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Expm1Op : PD_Op<"expm1", [NoSideEffect]> {
   let summary = "expm1 op";
   let description = [{
     
@@ -7530,7 +7530,7 @@ def PD_Expm1Op : PD_Op<"expm1", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Squared_l2_normOp : PD_Op<"squared_l2_norm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Squared_l2_normOp : PD_Op<"squared_l2_norm", [NoSideEffect]> {
   let summary = "squared_l2_norm op";
   let description = [{
     
@@ -7546,7 +7546,7 @@ def PD_Squared_l2_normOp : PD_Op<"squared_l2_norm", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Elementwise_subOp : PD_Op<"elementwise_sub", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_subOp : PD_Op<"elementwise_sub", [NoSideEffect]> {
   let summary = "elementwise_sub op";
   let description = [{
     
@@ -7591,7 +7591,7 @@ def PD_Elementwise_subOp : PD_Op<"elementwise_sub", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Margin_rank_lossOp : PD_Op<"margin_rank_loss", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Margin_rank_lossOp : PD_Op<"margin_rank_loss", [NoSideEffect]> {
   let summary = "margin_rank_loss op";
   let description = [{
     
@@ -7622,7 +7622,7 @@ def PD_Margin_rank_lossOp : PD_Op<"margin_rank_loss", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_ReluOp : PD_Op<"relu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ReluOp : PD_Op<"relu", [NoSideEffect]> {
   let summary = "relu op";
   let description = [{
     
@@ -7636,7 +7636,7 @@ def PD_ReluOp : PD_Op<"relu", [NoSideEffect, DeclareOpInterfaceMethods<InferType
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_BmmOp : PD_Op<"bmm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_BmmOp : PD_Op<"bmm", [NoSideEffect]> {
   let summary = "bmm op";
   let description = [{
     
@@ -7653,7 +7653,7 @@ def PD_BmmOp : PD_Op<"bmm", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOp
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Soft_reluOp : PD_Op<"soft_relu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Soft_reluOp : PD_Op<"soft_relu", [NoSideEffect]> {
   let summary = "soft_relu op";
   let description = [{
     
@@ -7667,7 +7667,7 @@ def PD_Soft_reluOp : PD_Op<"soft_relu", [NoSideEffect, DeclareOpInterfaceMethods
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SwishOp : PD_Op<"swish", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SwishOp : PD_Op<"swish", [NoSideEffect]> {
   let summary = "swish op";
   let description = [{
     
@@ -7681,7 +7681,7 @@ def PD_SwishOp : PD_Op<"swish", [NoSideEffect, DeclareOpInterfaceMethods<InferTy
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Cross_entropyOp : PD_Op<"cross_entropy", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Cross_entropyOp : PD_Op<"cross_entropy", [NoSideEffect]> {
   let summary = "cross_entropy op";
   let description = [{
     
@@ -7723,7 +7723,7 @@ def PD_Cross_entropyOp : PD_Op<"cross_entropy", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Y);
 }
-def PD_CholeskyOp : PD_Op<"cholesky", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_CholeskyOp : PD_Op<"cholesky", [NoSideEffect]> {
   let summary = "cholesky op";
   let description = [{
     
@@ -7738,7 +7738,7 @@ def PD_CholeskyOp : PD_Op<"cholesky", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Batch_fcOp : PD_Op<"batch_fc", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Batch_fcOp : PD_Op<"batch_fc", [NoSideEffect]> {
   let summary = "batch_fc op";
   let description = [{
     
@@ -7751,7 +7751,7 @@ def PD_Batch_fcOp : PD_Op<"batch_fc", [NoSideEffect, DeclareOpInterfaceMethods<I
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Nearest_interpOp : PD_Op<"nearest_interp", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Nearest_interpOp : PD_Op<"nearest_interp", [NoSideEffect]> {
   let summary = "nearest_interp op";
   let description = [{
     
@@ -7892,7 +7892,7 @@ def PD_Nearest_interpOp : PD_Op<"nearest_interp", [NoSideEffect, DeclareOpInterf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_GatherOp : PD_Op<"gather", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_GatherOp : PD_Op<"gather", [NoSideEffect]> {
   let summary = "gather op";
   let description = [{
     
@@ -7922,7 +7922,7 @@ def PD_GatherOp : PD_Op<"gather", [NoSideEffect, DeclareOpInterfaceMethods<Infer
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Trilinear_interp_v2Op : PD_Op<"trilinear_interp_v2", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Trilinear_interp_v2Op : PD_Op<"trilinear_interp_v2", [NoSideEffect]> {
   let summary = "trilinear_interp_v2 op";
   let description = [{
     
@@ -8063,7 +8063,7 @@ def PD_Trilinear_interp_v2Op : PD_Op<"trilinear_interp_v2", [NoSideEffect, Decla
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_SoftmaxOp : PD_Op<"softmax", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SoftmaxOp : PD_Op<"softmax", [NoSideEffect]> {
   let summary = "softmax op";
   let description = [{
     
@@ -8095,7 +8095,7 @@ def PD_SoftmaxOp : PD_Op<"softmax", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Index_sampleOp : PD_Op<"index_sample", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Index_sampleOp : PD_Op<"index_sample", [NoSideEffect]> {
   let summary = "index_sample op";
   let description = [{
     
@@ -8112,7 +8112,7 @@ def PD_Index_sampleOp : PD_Op<"index_sample", [NoSideEffect, DeclareOpInterfaceM
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Elementwise_minOp : PD_Op<"elementwise_min", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Elementwise_minOp : PD_Op<"elementwise_min", [NoSideEffect]> {
   let summary = "elementwise_min op";
   let description = [{
     
@@ -8157,7 +8157,7 @@ def PD_Elementwise_minOp : PD_Op<"elementwise_min", [NoSideEffect, DeclareOpInte
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Pixel_shuffleOp : PD_Op<"pixel_shuffle", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Pixel_shuffleOp : PD_Op<"pixel_shuffle", [NoSideEffect]> {
   let summary = "pixel_shuffle op";
   let description = [{
     
@@ -8179,7 +8179,7 @@ def PD_Pixel_shuffleOp : PD_Op<"pixel_shuffle", [NoSideEffect, DeclareOpInterfac
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_Thresholded_reluOp : PD_Op<"thresholded_relu", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_Thresholded_reluOp : PD_Op<"thresholded_relu", [NoSideEffect]> {
   let summary = "thresholded_relu op";
   let description = [{
     
@@ -8197,7 +8197,7 @@ def PD_Thresholded_reluOp : PD_Op<"thresholded_relu", [NoSideEffect, DeclareOpIn
 
   let results = (outs PD_Tensor:$Out);
 }
-def PD_WarpctcOp : PD_Op<"warpctc", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_WarpctcOp : PD_Op<"warpctc", [NoSideEffect]> {
   let summary = "warpctc op";
   let description = [{
     
@@ -8220,7 +8220,7 @@ def PD_WarpctcOp : PD_Op<"warpctc", [NoSideEffect, DeclareOpInterfaceMethods<Inf
 
   let results = (outs PD_Tensor:$Loss);
 }
-def PD_SvdOp : PD_Op<"svd", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_SvdOp : PD_Op<"svd", [NoSideEffect]> {
   let summary = "svd op";
   let description = [{
     

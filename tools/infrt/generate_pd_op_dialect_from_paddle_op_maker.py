@@ -135,7 +135,7 @@ def convert_op_proto_into_mlir(op_descs):
         automatically_generated_op_dialect.append(op_type)
         # 2.1 OpDef
         HEAD = "def PD_" + op_type.capitalize(
-        ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {\n"
+        ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect]> {\n"
         SUMMARY = "  let summary = \"" + op_type + " op\";\n"
 
         # 2.2 Description
