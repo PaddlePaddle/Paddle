@@ -11,7 +11,8 @@ limitations under the License. */
 
 #include <limits.h>
 #include <algorithm>
-#include <queue>
+#include <deque>
+#include <stack>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
 
@@ -143,11 +144,78 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& h
 
 }
 
-void NodeTrees::LogMe(BaseLogger& logger){
-    // log all nodes except root node, root node is a helper node.
+
+const std::map<uint64_t, vector<HostRecordNode*>> NodeTrees::Traverse(bool bfs=true){
+  // traverse the tree, provide two methods: bfs(breadth first search) or dfs(depth first search)
+  std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes;
+  if(bfs == true){
+    for(auto it = thread_record_trees_map_.begin(); it != thread_record_trees_map_.end(); ++it){
+      auto deque = std::deque<HostRecordNode*>();
+      uint64_t thread_id = it->first;
+      auto root_node = it->second;
+      deque.push_back(root_node)
+      while(!deque.empty()){
+          auto current_node = deque.front();
+          deque.pop_front();
+          thread2host_record_nodes[thread_id].push_back(current_node);
+          for(auto child = current_node->GetChildren().begin(); child != current_node->GetChildren().end(); ++child){
+              deque.push_back(*child);
+          }
+      }
+    }
     
+  }else{
+    for(auto it = thread_record_trees_map_.begin(); it != thread_record_trees_map_.end(); ++it){
+      auto stack = std::stack<HostRecordNode*>(); 
+      uint64_t thread_id = it->first;
+      auto root_node = it->second;
+      stack.push(root_node);
+      while(!stack.empty()){
+          auto current_node = stack.top();
+          stack.pop();
+          thread2host_record_nodes[thread_id].push_back(current_node);
+          for(auto child = current_node->GetChildren().begin(); child != current_node->GetChildren().end(); ++child){
+              stack.push(*child);
+          }
+      }
+    }
+  }
 }
 
+
+void NodeTrees::LogMe(BaseLogger& logger){
+  // log all nodes except root node, root node is a helper node.
+  const std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes = Traverse(true);
+  for(auto it = thread2host_record_nodes.begin(); it != thread2host_record_nodes.end(); ++it){
+      for(auto hostnode = it->second.begin()+1; hostnode != it->second.end(); ++it){ //skip root node
+          hostnode->LogMe(logger);
+          for(auto runtimenode = hostnode->GetRuntimeRecordNodes().begin(); runtimenode != hostnode->GetRuntimeRecordNodes().end(); ++runtimenode){
+              runtimenode->LogMe(logger);
+              for(auto devicenode = runtimenode->GetDeviceRecordNodes().begin(); devicenode != runtimenode->GetDeviceRecordNodes().end(); ++devicenode){
+                devicenode->LogMe(logger);
+              }
+          }
+      }
+  }
+}
+
+void NodeTrees::HandleTrees(std::function<void (HostRecordNode*)> host_record_node_handle, 
+                  std::function<void (CudaRuntimeRecordNode*)> runtime_record_node_handle, 
+                  std::function<void (DeviceRecordNode*)> device_record_node_handle){
+  // using different user-defined function to handle different nodes
+  const std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes = Traverse(true);
+  for(auto it = thread2host_record_nodes.begin(); it != thread2host_record_nodes.end(); ++it){
+      for(auto hostnode = it->second.begin()+1; hostnode != it->second.end(); ++it){ //skip root node
+          host_record_node_handle(hostnode);
+          for(auto runtimenode = hostnode->GetRuntimeRecordNodes().begin(); runtimenode != hostnode->GetRuntimeRecordNodes().end(); ++runtimenode){
+              runtime_record_node_handle(runtimenode);
+              for(auto devicenode = runtimenode->GetDeviceRecordNodes().begin(); devicenode != runtimenode->GetDeviceRecordNodes().end(); ++devicenode){
+                device_record_node_handle(devicenode);
+              }
+          }
+      }
+  }
+}
 
 } // namespace platform
 } // namespace paddle
