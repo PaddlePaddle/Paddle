@@ -114,6 +114,20 @@ __global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<double>>(
   }
 }
 
+template <typename T>
+struct MulGradFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+};
+template <typename T>
+struct MulGradFunctor<paddle::platform::complex<T>> {
+  inline HOSTDEVICE paddle::platform::complex<T> operator()(
+      const paddle::platform::complex<T>& a,
+      const paddle::platform::complex<T>& b) const {
+    paddle::platform::complex<T> b_conj(b.real, -b.imag);
+    return a * b_conj;
+  }
+};
+
 template <typename InT, typename OutT>
 struct MulGradXYFunctor {
   inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT& a,
@@ -121,8 +135,8 @@ struct MulGradXYFunctor {
                                                                  const InT& c) {
     paddle::framework::Array<OutT, 2> outs;
     // dx = dout * y
-    // dy = dout * x
     outs[0] = a * b;
+    // dy = dout * x
     outs[1] = a * c;
     return outs;
   }
@@ -137,23 +151,23 @@ struct MulGradXYFunctor<complex<InT>, complex<OutT>> {
       const complex<InT>& a, const complex<InT>& b, const complex<InT>& c) {
     paddle::framework::Array<complex<OutT>, 2> outs;
     // dx = dout * y
-    // dy = dout * x
     complex<InT> b_conj(b.real, -b.imag);
-    complex<InT> c_conj(c.real, -c.imag);
     outs[0] = a * b_conj;
+    // dy = dout * x
+    complex<InT> c_conj(c.real, -c.imag);
     outs[1] = a * c_conj;
     return outs;
   }
 };
 
-template <typename T>
-void ReduceWrapper(const platform::CUDADeviceContext& dev_ctx, int axis,
-                   const framework::Tensor* in, const framework::Tensor* out,
-                   framework::Tensor* src, framework::Tensor* dst) {
-  std::vector<int> reduce_dims = GetReduceDim(in->dims(), out->dims(), axis);
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
-}
+// template <typename T>
+// void ReduceWrapper(const platform::CUDADeviceContext& dev_ctx, int axis,
+//                    const framework::Tensor* in, const framework::Tensor* out,
+//                    framework::Tensor* src, framework::Tensor* dst) {
+//   std::vector<int> reduce_dims = GetReduceDim(in->dims(), out->dims(), axis);
+//   TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+//       *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
+// }
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
@@ -167,15 +181,31 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
   int axis = ctx.Attr<int>("axis");
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
-  framework::Tensor tmp_dx;
-  framework::Tensor tmp_dy;
-  tmp_dx.mutable_data<T>(dout->dims(), ctx.GetPlace());
-  tmp_dy.mutable_data<T>(dout->dims(), ctx.GetPlace());
+  const auto place = ctx.GetPlace();
+  // framework::Tensor tmp_dx;
+  // framework::Tensor tmp_dy;
+  // tmp_dx.mutable_data<T>(dout->dims(), ctx.GetPlace());
+  // tmp_dy.mutable_data<T>(dout->dims(), ctx.GetPlace());
 
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const framework::Tensor*> ins = {dout, y, x};  //
+    GetGradXAndYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const framework::Tensor*> ins = {dout, y};  //
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
+                                                dx, MulGradFunctor<T>());
+  } else if (dx == nullptr && dy != nullptr) {
+    std::vector<const framework::Tensor*> ins = {dout, x};  //
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
+                                                dx, MulGradFunctor<T>());
+  }
+}
+/*
   if (dx != nullptr && dy != nullptr) {
     dx->mutable_data<T>(ctx.GetPlace());
     dy->mutable_data<T>(ctx.GetPlace());
-    std::vector<const framework::Tensor*> ins = {dout, y, x};
+    std::vector<const framework::Tensor*> ins = {dout, y, x}; //
     std::vector<framework::Tensor*> outs;
     if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
       outs = {dx, dy};
@@ -186,9 +216,10 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
     } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
       outs = {&tmp_dx, &tmp_dy};
     }
-    auto functor = MulGradXYFunctor<T, T>();
+    auto functor = MulGradXYFunctor<T, T>();  //
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T,
-                                decltype(functor), 2>(dev_ctx, ins, &outs, axis,
+                                decltype(functor), 2>(dev_ctx, ins, &outs,
+axis,
                                                       functor);
     if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
       ReduceWrapper<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
@@ -201,7 +232,7 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
 
   } else if (dx != nullptr && dy == nullptr) {
     dx->mutable_data<T>(ctx.GetPlace());
-    std::vector<const framework::Tensor*> ins = {dout, y};
+    std::vector<const framework::Tensor*> ins = {dout, y}; //
     std::vector<framework::Tensor*> outs;
     if (dx->dims() != dout->dims()) {
       outs = {&tmp_dx};
@@ -210,13 +241,13 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
     }
 
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, axis, MulGradFunctor<T>());
+        dev_ctx, ins, &outs, axis, MulGradFunctor<T>());  //
     if (dx->dims() != dout->dims()) {
       ReduceWrapper<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
     }
   } else if (dx == nullptr && dy != nullptr) {
     dy->mutable_data<T>(ctx.GetPlace());
-    std::vector<const framework::Tensor*> ins = {dout, x};
+    std::vector<const framework::Tensor*> ins = {dout, x}; //
     std::vector<framework::Tensor*> outs;
     if (dy->dims() != dout->dims()) {
       outs = {&tmp_dy};
@@ -225,12 +256,13 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
     }
 
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, axis, MulGradFunctor<T>());
+        dev_ctx, ins, &outs, axis, MulGradFunctor<T>());  //
     if (dy->dims() != dout->dims()) {
       ReduceWrapper<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
     }
   }
 }
+*/
 
 /*
 template <typename DeviceContext, typename T>
@@ -257,7 +289,8 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
         dx->clear();
         dx->mutable_data<T>(x->dims(), ctx.GetPlace());
       }
-      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
+      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(),
+axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
 
       framework::Tensor dx_tmp;
@@ -275,7 +308,8 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
       ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
           ctx, dout, x, axis, MulGradFunctor<T>(), dy);
     } else {
-      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
+      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(),
+axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
 
       framework::Tensor dy_tmp;
