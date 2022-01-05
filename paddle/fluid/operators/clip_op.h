@@ -18,23 +18,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/transform.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 using platform::Transform;
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename UnaryOperation>
-__global__ void ClipCudaKernel(const T* input, T* out, int num,
-                               UnaryOperation op) {
-  int idx = threadIdx.x + blockDim.x * blockIdx.x;
-  if (idx < num) {
-    out[idx] = op(input[idx]);
-  }
-}
-#endif
 
 template <typename T>
 class ClipFunctor {
@@ -106,12 +98,12 @@ class ClipKernel : public framework::OpKernel<T> {
       int64_t numel = x->numel();
       if (platform::is_gpu_place(context.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-        int threads = 256;
-        int blocks = (numel + threads - 1) / threads;
-        ClipCudaKernel<T, ClipFunctor<T>><<<
-            blocks, threads, 0,
-            context.template device_context<platform::CUDADeviceContext>()
-                .stream()>>>(x_data, out_data, numel, ClipFunctor<T>(min, max));
+        std::vector<const framework::Tensor*> ins = {x};
+        std::vector<framework::Tensor*> outs = {out};
+        auto functor = ClipFunctor<T>(min, max);
+        LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+            context.template device_context<platform::CUDADeviceContext>(), ins,
+            &outs, functor);
 #endif
       } else {
         Transform<DeviceContext> trans;
