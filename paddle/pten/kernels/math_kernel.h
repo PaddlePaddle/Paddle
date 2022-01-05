@@ -21,12 +21,12 @@ limitations under the License. */
 namespace pten {
 
 template <typename T, typename Context>
-void Mean(const Context& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out);
+void MeanKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out);
 
 template <typename T, typename Context>
 void AddKernel(const Context& dev_ctx,
@@ -57,13 +57,13 @@ void MultiplyKernel(const Context& dev_ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-void Sum(const Context& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out);
+void SumKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               bool reduce_all,
+               DataType out_dtype,
+               DenseTensor* out);
 
 template <typename T, typename ContextT>
 DenseTensor Add(const ContextT& dev_ctx,
