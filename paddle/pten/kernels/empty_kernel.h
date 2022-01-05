@@ -17,7 +17,7 @@
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/infermeta/nary.h"
+#include "paddle/pten/infermeta/nullary.h"
 #include "paddle/pten/infermeta/unary.h"
 
 namespace pten {

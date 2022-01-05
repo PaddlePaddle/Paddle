@@ -16,9 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -76,12 +75,12 @@ struct DivideFunctor {
  */
 
 template <typename T, typename Context>
-void Mean(const Context& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out) {
+void MeanKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
@@ -97,13 +96,13 @@ DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 template <typename T, typename Context>
-void Sum(const Context& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out) {
+void SumKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               bool reduce_all,
+               DataType out_dtype,
+               DenseTensor* out) {
   pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -115,7 +114,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_CTX_KERNEL(
-    mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool, float16) {}
+    mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
 PT_REGISTER_CTX_KERNEL(add,
                        GPU,
                        ALL_LAYOUT,
@@ -164,7 +163,7 @@ PT_REGISTER_CTX_KERNEL(multiply,
 PT_REGISTER_CTX_KERNEL(sum,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Sum,
+                       pten::SumKernel,
                        bool,
                        float,
                        double,
