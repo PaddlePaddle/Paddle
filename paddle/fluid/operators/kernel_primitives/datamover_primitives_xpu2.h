@@ -56,11 +56,11 @@ struct BroadcastConfig {
     }
 
     for (int i = 1; i < dim_size - 1; ++i) {
-      strides_out[dim_size - i - 1] =
-          std::accumulate(out_dims.begin(), out_dims.begin() + i, 1,
-                          std::multiplies<int64_t>());
-      strides_in[dim_size - i - 1] = std::accumulate(
-          in_dims.begin(), in_dims.begin() + i, 1, std::multiplies<int64_t>());
+      strides_out[dim_size - i - 1] = std::accumulate(
+          out_dims.begin(), out_dims.begin() + i, 1, std::multiplies<int64_t>())
+          strides_in[dim_size - i - 1] =
+              std::accumulate(in_dims.begin(), in_dims.begin() + i, 1,
+                              std::multiplies<int64_t>())
     }
 
     memcpy(stride_in, strides_in.data(), kDims * sizeof(uint32_t));
@@ -99,11 +99,12 @@ struct BroadcastConfig {
  */
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
           bool IsBoundary = false>
-__device__ void ReadData(Ty* dst, const Tx _global_ptr_* src, int size_nx,
-                         int size_ny, int stride_nx, int stride_ny) {
+__device__ __forceinline__ void ReadData(Ty* dst, const Tx _global_ptr_* src,
+                                         int size_nx, int size_ny,
+                                         int stride_nx, int stride_ny) {
   int thread_offset = core_id();
   int left_size_nx = size_nx - thread_offset;
-  __local__ Tx in_temp[1];
+  __local__ T in_temp[1];
   // Each branch is added for better performance
   if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
     if (IsBoundary) {
@@ -167,7 +168,7 @@ __device__ void ReadData(Ty* dst, const Tx _global_ptr_* src, int size_nx,
  * init_data: Initial value.
  */
 template <typename T, int NX>
-__device__ void Init(T* dst, T init_data) {
+__device__ __forceinline__ void Init(T* dst, T init_data) {
 #pragma unroll
   for (int i = 0; i < NX; i++) {
     dst[i] = init_data;
@@ -196,7 +197,8 @@ __device__ void Init(T* dst, T init_data) {
  * size: The current block needs to load size data continuously.
  */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
-__device__ void ReadData(T* dst, const T _global_ptr_* src, int num) {
+__device__ __forceinline__ void ReadData(T* dst, const T _global_ptr_* src,
+                                         int num) {
   int thread_offset = core_id() * NX;
   __local__ T in_temp[1];
   if (IsBoundary) {  // core_num() * NX > num
@@ -239,10 +241,10 @@ __device__ void ReadData(T* dst, const T _global_ptr_* src, int num) {
  */
 template <typename T, int NX, int NY, int BlockSize, int Rank,
           bool IsBoundary = false>
-__device__ void ReadDataBc(T* dst, const T _global_ptr_* src,
-                           uint32_t block_offset,
-                           details::BroadcastConfig<Rank> config,
-                           int total_num_output, int stride_nx, int stride_ny) {
+__device__ __forceinline__ void ReadDataBc(
+    T* dst, const T _global_ptr_* src, uint32_t block_offset,
+    details::BroadcastConfig<Rank> config, int total_num_output, int stride_nx,
+    int stride_ny) {
   uint32_t thread_offset = block_offset + core_id();
   uint32_t index_src = 0;
   __local__ T in_temp[1];
@@ -254,7 +256,7 @@ __device__ void ReadDataBc(T* dst, const T _global_ptr_* src,
       uint32_t index_output = thread_offset + ny * stride_ny + nx * stride_nx;
       index_src = 0;
       if (IsBoundary) {
-        if (index_output >= (uint32_t)total_num_output) {
+        if (index_output >= total_num_output) {
           break;
         }
       }
@@ -303,10 +305,10 @@ __device__ void ReadDataBc(T* dst, const T _global_ptr_* src,
  */
 template <typename T, int NX, int NY, int BlockSize, int Rank,
           typename IndexCal, bool IsBoundary = false>
-__device__ void ReadDataReduce(T* dst, const T _global_ptr_* src,
-                               int block_offset, const IndexCal& index_cal,
-                               int size_nx, int size_ny, int stride_nx,
-                               int stride_ny, bool reduce_last_dim) {
+__device__ __forceinline__ void ReadDataReduce(
+    T* dst, const T _global_ptr_* src, int block_offset,
+    const IndexCal& index_cal, int size_nx, int size_ny, int stride_nx,
+    int stride_ny, bool reduce_last_dim) {
   __local__ T in_temp[1];
   int thread_offset = 0;
   int left_size_nx = size_nx;
@@ -419,8 +421,9 @@ __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
  */
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
           bool IsBoundary = false>
-__device__ void WriteData(Ty _global_ptr_* dst, const Tx* src, int size_nx,
-                          int size_ny, int stride_nx, int stride_ny) {
+__device__ __forceinline__ void WriteData(Ty _global_ptr_* dst, const Tx* src,
+                                          int size_nx, int size_ny,
+                                          int stride_nx, int stride_ny) {
   int thread_offset = core_id();
   int left_size_nx = size_nx - thread_offset;
   __local__ Ty in_temp[1];
@@ -430,11 +433,11 @@ __device__ void WriteData(Ty _global_ptr_* dst, const Tx* src, int size_nx,
     if (IsBoundary) {
       if (left_size_nx > 0) {
         in_temp[0] = static_cast<Ty>(src[0]);
-        LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
+        LM2GM(in_temp, dst + thread_offset, sizeof(T));
       }
     } else {
       in_temp[0] = static_cast<Ty>(src[0]);
-      LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
+      LM2GM(in_temp, dst + thread_offset, sizeof(T));
     }
   } else if (NX == 1) {
 #pragma unroll
@@ -446,7 +449,7 @@ __device__ void WriteData(Ty _global_ptr_* dst, const Tx* src, int size_nx,
       }
 
       in_temp[0] = static_cast<Ty>(src[idy]);
-      LM2GM(in_temp, dst + thread_offset + idy * stride_ny, sizeof(Ty));
+      LM2GM(in_temp, dst + thread_offset + idy * stride_ny, sizeof(T));
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
 #pragma unroll
@@ -458,7 +461,7 @@ __device__ void WriteData(Ty _global_ptr_* dst, const Tx* src, int size_nx,
       }
 
       in_temp[0] = static_cast<Ty>(src[idx]);
-      LM2GM(in_temp, dst + thread_offset + idx * stride_nx, sizeof(Ty));
+      LM2GM(in_temp, dst + thread_offset + idx * stride_nx, sizeof(T));
     }
   } else {  // for NX != 1 and NY != 1
 #pragma unroll
@@ -477,7 +480,7 @@ __device__ void WriteData(Ty _global_ptr_* dst, const Tx* src, int size_nx,
         }
         in_temp[0] = static_cast<Ty>(src[idx + idy * NX]);
         LM2GM(in_temp, dst + thread_offset + idx * stride_nx + idy * stride_ny,
-              sizeof(Ty));
+              sizeof(T));
       }
     }
   }
@@ -495,7 +498,7 @@ __device__ void WriteData(Ty _global_ptr_* dst, const Tx* src, int size_nx,
  * init_data: The register pointer of init data, the size is NX.
  */
 template <typename T, int NX, bool IsBoundary = false>
-__device__ void Init(T* dst, T* init_data, int num) {
+__device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
 #pragma unroll
   for (int i = 0; i < NX; i++) {
     if (IsBoundary) {
@@ -532,10 +535,9 @@ __device__ void Init(T* dst, T* init_data, int num) {
  */
 template <typename T, int NX, int NY, int BlockSize, int Rank,
           bool IsBoundary = false>
-__device__ void ReadDataBc(T* dst, const T _global_ptr_* src,
-                           uint32_t block_offset,
-                           details::BroadcastConfig<Rank> config,
-                           int total_num_output) {
+__device__ __forceinline__ void ReadDataBc(
+    T* dst, const T _global_ptr_* src, uint32_t block_offset,
+    details::BroadcastConfig<Rank> config, int total_num_output) {
   uint32_t thread_offset = block_offset + core_id() * NX;
   uint32_t index_src = 0;
   __local__ T in_temp[1];
@@ -545,7 +547,7 @@ __device__ void ReadDataBc(T* dst, const T _global_ptr_* src,
     uint32_t index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
-      if (index_output >= (uint32_t)total_num_output) {
+      if (index_output >= total_num_output) {
         break;
       }
     }
@@ -556,7 +558,7 @@ __device__ void ReadDataBc(T* dst, const T _global_ptr_* src,
       index_src += (tmp % config.shape_in[i]) * config.stride_in[i];
     }
     GM2LM(src + index_src, in_temp, sizeof(T));
-    dst[nx] = in_temp[0];
+    dst[nx + ny * NX] = in_temp[0];
   }
 }
 

@@ -48,31 +48,31 @@ static inline __device__ void sync_all() {
 #define ncores 64
 template <typename T, typename OpFunc, int VecSize>
 __device__ void BlockXReduce(T* data, OpFunc reducer) {
-  //  __shared__ T sum_array[ncores * VecSize];
-  //  int core_idx = core_id() * VecSize;
-  //  mfence();
-  //  sync_all();
-  //
-  // #pragma unroll
-  //  for (int i = 0; i < VecSize; i++) {
-  //    mfence();
-  //    sum_array[core_idx + i] = data[i];
-  //    mfence();
-  //    data[i] = 0;
-  //  }
-  //  sync_all();
-  // #pragma unroll
-  //  for (int i = 0; i < VecSize; i++) {
-  // #pragma unroll
-  //    for (int j = 0; j < ncores; j++) {
-  //      mfence();
-  //      T tmp = sum_array[j * VecSize + i];
-  //      mfence();
-  //      data[i] = reducer(data[i], tmp);
-  //      mfence();
-  //    }
-  //  }
-  //  sync_all();
+  __shared__ T sum_array[ncores * VecSize];
+  int core_idx = core_id() * VecSize;
+  mfence();
+  sync_all();
+
+#pragma unroll
+  for (int i = 0; i < VecSize; i++) {
+    mfence();
+    sum_array[core_idx + i] = data[i];
+    mfence();
+    data[i] = 0;
+  }
+  sync_all();
+#pragma unroll
+  for (int i = 0; i < VecSize; i++) {
+#pragma unroll
+    for (int j = 0; j < ncores; j++) {
+      mfence();
+      T tmp = sum_array[j * VecSize + i];
+      mfence();
+      data[i] = reducer(data[i], tmp);
+      mfence();
+    }
+  }
+  sync_all();
 }
 #undef ncores
 
@@ -104,7 +104,8 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
  */
 template <typename InT, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void ElementwiseUnary(OutT* out, const InT* in, OpFunc compute) {
+__device__ __forceinline__ void ElementwiseUnary(OutT* out, const InT* in,
+                                                 OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
     out[idx] = static_cast<OutT>(compute(in[idx]));
@@ -138,8 +139,9 @@ __device__ void ElementwiseUnary(OutT* out, const InT* in, OpFunc compute) {
  */
 template <typename InT, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void ElementwiseBinary(OutT* out, const InT* in1, const InT* in2,
-                                  OpFunc compute) {
+__device__ __forceinline__ void ElementwiseBinary(OutT* out, const InT* in1,
+                                                  const InT* in2,
+                                                  OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
@@ -175,8 +177,10 @@ __device__ void ElementwiseBinary(OutT* out, const InT* in1, const InT* in2,
  */
 template <typename InT, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void ElementwiseTernary(OutT* out, const InT* in1, const InT* in2,
-                                   const InT* in3, OpFunc compute) {
+__device__ __forceinline__ void ElementwiseTernary(OutT* out, const InT* in1,
+                                                   const InT* in2,
+                                                   const InT* in3,
+                                                   OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx], in3[idx]));
@@ -210,7 +214,8 @@ __device__ void ElementwiseTernary(OutT* out, const InT* in1, const InT* in2,
  */
 template <typename InT, typename OutT, int NX, int NY, int BlockSize, int Arity,
           class OpFunc>
-__device__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY], OpFunc compute) {
+__device__ __forceinline__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY],
+                                               OpFunc compute) {
   __local__ InT args[Arity];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
@@ -250,8 +255,8 @@ __device__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY], OpFunc compute) {
  */
 template <typename InT, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void CycleBinary(OutT* out, const InT* in1, const InT* in2,
-                            OpFunc compute) {
+__device__ __forceinline__ void CycleBinary(OutT* out, const InT* in1,
+                                            const InT* in2, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX; idx++) {
 #pragma unroll
@@ -289,11 +294,12 @@ __device__ void CycleBinary(OutT* out, const InT* in1, const InT* in2,
  * reducer: Compute function which was declared like ReduceFunctor<InT>().
  * reduce_last_dim: if the last dim gets involved in reduction.
  */
-template <typename T, int NX, int NY, int BlockSize, typename ReduceFunctor,
+template <typename T, int NX, int NY, int BlockSize, class ReduceFunctor,
           details::ReduceMode Mode>
-__device__ void Reduce(T* out, const T* in, ReduceFunctor reducer,
-                       bool reduce_last_dim) {
-  if (Mode == details::kGlobalMode) {
+__device__ __forceinline__ void Reduce(T* out, const T* in,
+                                       ReduceFunctor reducer,
+                                       bool reduce_last_dim) {
+  if (Mode == kGlobalMode) {
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
 #pragma unroll
@@ -301,7 +307,7 @@ __device__ void Reduce(T* out, const T* in, ReduceFunctor reducer,
         out[i] = reducer(out[i], in[i * NX + j]);
       }
     }
-    // BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
+    BlockXReduce<T, OpFunc, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
