@@ -193,7 +193,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     // VectorizedRandomGenerator use curand_uniform4, so we only support
     // vec_size is 4;
     int vec_size = (platform::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
-    auto gpu_config = GetVectorizedLaunchConfig(dev_ctx, x_numel, vec_size);
+    auto gpu_config = GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
     auto offset =
         ((x_numel - 1) / (gpu_config.GetThreadNum() * vec_size) + 1) * vec_size;
 
@@ -216,12 +216,12 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 #else
     if (vec_size == 4 && size % 4 == 0) {
       VectorizedRandomGenerator<T, uint8_t, 4><<<
-          gpu_config.block_per_grid, gpu_config.thread_per_block, 0, stream>>>(
+          gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     } else {
-      RandomGenerator<T, uint8_t><<<gpu_config.block_per_grid,
-                                    gpu_config.thread_per_block, 0, stream>>>(
+      RandomGenerator<T, uint8_t><<<gpu_config.GetGridSize(),
+                                    gpu_config.GetBlockSize(), 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     }

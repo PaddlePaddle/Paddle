@@ -118,7 +118,6 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = ins[0]->numel();
-  auto gpu_config = GetVectorizedLaunchConfig(ctx, numel, VecSize);
   auto stream = ctx.stream();
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
   paddle::framework::Array<OutT *, NumOuts> outs_data;
@@ -141,6 +140,7 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
+  auto gpu_config = GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   VectorizedElementwiseKernel<InT, OutT, Functor, Arity, NumOuts, VecSize><<<

@@ -84,7 +84,7 @@ inline void ChangeThreadNum(const platform::CUDADeviceContext& context,
 }
 #endif
 
-class GpuLaunchConfig {
+struct GpuLaunchConfig {
  public:
   GpuLaunchConfig() {}
 
@@ -98,54 +98,46 @@ class GpuLaunchConfig {
     return thread_per_block.x * thread_per_block.y * thread_per_block.z;
   }
 
-  dim3 theory_thread_count = dim3(1, 1, 1);
   dim3 thread_per_block = dim3(1, 1, 1);
   dim3 block_per_grid = dim3(1, 1, 1);
   int compute_capability = 0;
 };
 
+/*
+* According to NVIDIA, if number of threads per block is 64/128/256/512,
+* cuda performs better. And number of blocks should be greater (at least
+* 2x~4x) than number of SMs. Hence, SM count is took into account within
+* this function to determine the right number of threads per block.
+*/
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
-    const platform::CUDADeviceContext& context, int64_t element_count,
-#ifdef PADDLE_WITH_HIP
-    // HIP will throw GPU memory access fault if threads > 256
-    int max_threads = PREDEFINED_BLOCK_SIZE) {
-#else
-    int max_threads = 1024) {
-#endif
-  PADDLE_ENFORCE_GT(element_count, 0,
-                    platform::errors::InvalidArgument(
-                        "element count should be greater than 0,"
-                        " but received value is: %d.",
-                        element_count));
-
-  const int theory_thread_count = element_count;
-  // Get Max threads in all SM
-  int max_physical_threads = context.GetMaxPhysicalThreadCount();
-  int sm = context.GetSMCount();
-
-  // Compute physical threads we need, should small than max sm threads
-  const int physical_thread_count =
-      (std::min)(max_physical_threads, theory_thread_count);
+    const platform::CUDADeviceContext& context, int64_t numel,
+    int vec_size = 1) {
+  PADDLE_ENFORCE_GT(numel, 0, platform::errors::InvalidArgument(
+                                  "element quantity should be greater than 0,"
+                                  " but received value is: %d.",
+                                  numel));
+  int threads = PREDEFINED_BLOCK_SIZE;
+  int sm_count = context.GetSMCount();
+  int active_threads_num = numel / vec_size;
+  if (active_threads_num / (sm_count << 1) < PREDEFINED_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about twice of SM, to acquire better performance.
+    threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
+  } else if (active_threads_num / (sm_count << 2) < PREDEFINED_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
+  }
+  // Number of threads per block shall be larger than 64.
+  threads = std::max(64, threads);
+  int blocks = ((numel + vec_size - 1) / vec_size + threads - 1) / threads;
 
   // Get compute_capability
   const int capability = context.GetComputeCapability();
 
-#ifdef WITH_NV_JETSON
-  if (capability == 53 || capability == 62) {
-    max_threads = 512;
-  }
-#endif
-
-  // Need get from device
-  const int thread_per_block =
-      (std::min)(max_threads, context.GetMaxThreadsPerBlock());
-  const int block_count =
-      (std::min)(DivUp(physical_thread_count, thread_per_block), sm);
-
   GpuLaunchConfig config;
-  config.theory_thread_count.x = theory_thread_count;
-  config.thread_per_block.x = thread_per_block;
-  config.block_per_grid.x = block_count;
+  config.thread_per_block.x = threads;
+  config.block_per_grid.x = blocks;
   config.compute_capability = capability;
   return config;
 }
@@ -170,7 +162,6 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
 
   GpuLaunchConfig config;
   // Noticed, block size is not align to 32, if needed do it yourself.
-  config.theory_thread_count = dim3(x_dim, y_dim, 1);
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
   int grid_x = (std::min)(DivUp(x_dim, block_cols), max_blocks);
@@ -178,37 +169,6 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
       (std::min)(max_blocks / grid_x, (std::max)(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
-  return config;
-}
-
-/*
-* According to NVIDIA, if number of threads per block is 64/128/256/512,
-* cuda performs better. And number of blocks should be greater (at least
-* 2x~4x) than number of SMs. Hence, SM count is took into account within
-* this function to determine the right number of threads per block.
-*/
-inline GpuLaunchConfig GetVectorizedLaunchConfig(
-    const paddle::platform::CUDADeviceContext& ctx, int64_t numel,
-    int vec_size) {
-  int threads = PREDEFINED_BLOCK_SIZE;
-  int sm_count = ctx.GetSMCount();
-  int active_threads_num = numel / vec_size;
-  if (active_threads_num / (sm_count << 1) < PREDEFINED_BLOCK_SIZE) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about twice of SM, to acquire better performance.
-    threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
-  } else if (active_threads_num / (sm_count << 2) < PREDEFINED_BLOCK_SIZE) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about 4 times of SM, to acquire better performance.
-    threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
-  }
-  // Number of threads per block shall be larger than 64.
-  threads = std::max(64, threads);
-  int blocks = ((numel + vec_size - 1) / vec_size + threads - 1) / threads;
-
-  GpuLaunchConfig config;
-  config.thread_per_block.x = threads;
-  config.block_per_grid.x = blocks;
   return config;
 }
 
