@@ -482,20 +482,19 @@ class PostTrainingQuantization(object):
         feed_vars = [framework._get_var(str(var_name), self._program) \
             for var_name in self._feed_list]
 
-        if self._data_loader is None:
-            self._data_loader = io.DataLoader.from_generator(
-                feed_list=feed_vars,
-                capacity=3 * self._batch_size,
-                iterable=True)
-            if self._sample_generator is not None:
-                self._data_loader.set_sample_generator(
-                    self._sample_generator,
-                    batch_size=self._batch_size,
-                    drop_last=True,
-                    places=self._place)
-            elif self._batch_generator is not None:
-                self._data_loader.set_batch_generator(
-                    self._batch_generator, places=self._place)
+        if self._data_loader is not None:
+            return
+        self._data_loader = io.DataLoader.from_generator(
+            feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True)
+        if self._sample_generator is not None:
+            self._data_loader.set_sample_generator(
+                self._sample_generator,
+                batch_size=self._batch_size,
+                drop_last=True,
+                places=self._place)
+        elif self._batch_generator is not None:
+            self._data_loader.set_batch_generator(
+                self._batch_generator, places=self._place)
 
     def _optimize_fp32_model(self):
         '''
