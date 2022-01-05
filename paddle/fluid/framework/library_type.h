@@ -26,6 +26,7 @@ enum class LibraryType {
   kPlain = 0,
   kMKLDNN = 1,
   kCUDNN = 2,
+  kKP = 3,
 };
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
@@ -36,6 +37,8 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
       return "MKLDNN";
     case LibraryType::kCUDNN:
       return "CUDNN";
+    case LibraryType::kKP:
+      return "KP";
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unknown LibraryType code (%d), only supports library type include "
@@ -69,6 +72,8 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kPlain;
   } else if (s == std::string("MLU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("KP")) {
+    return LibraryType::kKP;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unknown LibraryType string (%s), only support library type string "
