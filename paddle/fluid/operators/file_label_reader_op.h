@@ -150,9 +150,9 @@ class FileDataReader {
   }
 
   void ShutDown() {
-    LOG(ERROR) << "FileDataReader shutdown enter";
     if (queue_) queue_->Close();
 
+    is_closed_.store(true);
     if (load_thrd_.joinable()) {
       load_thrd_.join();
     }
@@ -240,6 +240,7 @@ class FileDataReaderWrapper {
   void ShutDown() {
     LOG(ERROR) << "FileDataReaderWrapper shutdown enter";
     reader->ShutDown();
+    LOG(ERROR) << "FileDataReaderWrapper shutdown finish";
   }
 };
 

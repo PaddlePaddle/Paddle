@@ -119,11 +119,11 @@ void MapRunner::StartMapThread(const Scope* scope) {
         ShutDown();
         return false;
       }
-      LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
+      // LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
 
       // Step 2: run ops by executor without fetch
-      executor.Run(*map_block_->Program(), &scope_, map_block_->ID(), false, true, std::vector<std::string>(), false, true);
-      LOG(ERROR) << "MapThread Loop " << program_id_ << " program run finish";
+      executor.Run(*map_block_->Program(), &scope_, static_cast<int>(map_block_->ID()), false, true, std::vector<std::string>(), false, true);
+      // LOG(ERROR) << "MapThread Loop " << program_id_ << " program run finish";
 
       // Step 3: fetch output variable to LoDTensor vector
       //        and push to output queue
@@ -149,10 +149,10 @@ void MapRunner::StartMapThread(const Scope* scope) {
           output_queues_[i]->Push(t_arr);
         }
       }
-      LOG(ERROR) << "MapThread Loop " << program_id_ << " push queue finish";
+      // LOG(ERROR) << "MapThread Loop " << program_id_ << " push queue finish";
     }
     scope->DeleteScope(&scope_);
-    LOG(ERROR) << "MapThread Loop " << program_id_ << " delete scope and return";
+    // LOG(ERROR) << "MapThread Loop " << program_id_ << " delete scope and return";
     return true;
   }));
 }

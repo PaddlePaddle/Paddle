@@ -108,7 +108,7 @@ class NvjpegDecoderThreadPool {
     std::deque<std::shared_ptr<NvjpegDecodeTask>> task_queue_;
     std::mutex mutex_;
 
-    std::atomic<bool> shutdown_;
+    bool shutdown_;
     std::condition_variable running_cond_;
     bool running_;
     std::condition_variable completed_cond_;

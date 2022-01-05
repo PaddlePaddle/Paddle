@@ -203,17 +203,22 @@ void NvjpegDecoderThreadPool::WaitTillTasksCompleted() {
 }
 
 void NvjpegDecoderThreadPool::ShutDown() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown enter";
 
+  std::unique_lock<std::mutex> lock(mutex_);
   running_ = false;
-  shutdown_.store(true);
+  shutdown_ = true;
   running_cond_.notify_all();
+  lock.unlock();
+
+  for (auto& thread : threads_) {
+    // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown thread join, shutdown_ " << shutdown_;
+    thread.join();
+    // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown thread join finish 1";
+  }
 
   task_queue_.clear();
-
-  for (auto &thread : threads_) {
-    thread.join();
-  }
+  // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown finish";
 }
 
 void NvjpegDecoderThreadPool::SortTaskByLengthDescend() {
@@ -228,10 +233,12 @@ void NvjpegDecoderThreadPool::SortTaskByLengthDescend() {
 void NvjpegDecoderThreadPool::ThreadLoop(const int thread_idx) {
   NvjpegDecoder* decoder = new NvjpegDecoder(mode_, dev_id_);
 
-  while (!shutdown_.load()) {
+  while (!shutdown_) {
     std::unique_lock<std::mutex> lock(mutex_);
-    running_cond_.wait(lock, [this] { return running_ && !task_queue_.empty(); });
-    if (shutdown_.load()) break;
+    // LOG(ERROR) << "ThreadLoop wait running_cond_";
+    running_cond_.wait(lock, [this] { return (running_ && !task_queue_.empty()) || shutdown_; });
+    // LOG(ERROR) << "ThreadLoop shutdown_ " << shutdown_;
+    if (shutdown_) break;
 
     auto task = task_queue_.front();
     task_queue_.pop_front();
