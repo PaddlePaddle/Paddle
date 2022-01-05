@@ -18,11 +18,12 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-NvjpegDecoder::NvjpegDecoder(std::string mode) 
+NvjpegDecoder::NvjpegDecoder(std::string mode, int dev_id) 
   : nvjpeg_streams_(2),
     pinned_buffers_(2),
     page_id_(0),
     mode_(mode) {
+  platform::SetDeviceId(dev_id);
   // create cuda stream
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithFlags(&cuda_stream_, cudaStreamNonBlocking));
 
@@ -158,9 +159,10 @@ void NvjpegDecoder::Run(
   Decode(bit_stream, bit_len, &image);
 }
 
-NvjpegDecoderThreadPool::NvjpegDecoderThreadPool(const int num_threads, const std::string mode)
+NvjpegDecoderThreadPool::NvjpegDecoderThreadPool(const int num_threads, const std::string mode, const int dev_id)
   : threads_(num_threads),
     mode_(mode),
+    dev_id_(dev_id),
     shutdown_(false),
     running_(false),
     completed_(false),
@@ -224,7 +226,7 @@ void NvjpegDecoderThreadPool::SortTaskByLengthDescend() {
 }
 
 void NvjpegDecoderThreadPool::ThreadLoop(const int thread_idx) {
-  NvjpegDecoder* decoder = new NvjpegDecoder(mode_);
+  NvjpegDecoder* decoder = new NvjpegDecoder(mode_, dev_id_);
 
   while (!shutdown_.load()) {
     std::unique_lock<std::mutex> lock(mutex_);

@@ -94,8 +94,8 @@ void Buffer<T>::Close() {
 class FileDataReader {
  public:
   explicit FileDataReader(const framework::ExecutionContext& ctx,
-                          LoDTensorBlockingQueue* queue)
-              : queue_(queue) {
+                          LoDTensorBlockingQueue* queue, LoDTensorBlockingQueue* label_queue)
+              : queue_(queue), label_queue_(label_queue){
     std::vector<std::string> files =
         ctx.Attr<std::vector<std::string>>("files");
     std::vector<int> labels = ctx.Attr<std::vector<int>>("labels");
@@ -158,8 +158,21 @@ class FileDataReader {
     }
   }
 
-  LoDTensorArray Read() {
+  // LoDTensorArray Read() {
+  //   LoDTensorArray ret;
+  //   ret.reserve(batch_size_);
+  //   int start_index = GetStartIndex();
+  //   for (int32_t i = start_index; i < start_index + batch_size_; ++i) {
+  //     // FIXME
+  //     i %= image_label_pairs_.size();
+  //     framework::LoDTensor tmp = ReadSample(image_label_pairs_[i].first);
+  //     ret.push_back(std::move(tmp));
+  //   }
+  //   return ret;
+  // }
+  std::pair<LoDTensorArray, std::vector<int>> Read() {
     LoDTensorArray ret;
+    std::vector<int> label;
     ret.reserve(batch_size_);
     int start_index = GetStartIndex();
     for (int32_t i = start_index; i < start_index + batch_size_; ++i) {
@@ -167,8 +180,9 @@ class FileDataReader {
       i %= image_label_pairs_.size();
       framework::LoDTensor tmp = ReadSample(image_label_pairs_[i].first);
       ret.push_back(std::move(tmp));
+      label.push_back(image_label_pairs_[i].second);
     }
-    return ret;
+    return std::make_pair(ret, label);
   }
 
   // LoDTensorArray Next() {
@@ -179,9 +193,23 @@ class FileDataReader {
   //
   void LoadBatch() {
     // std::cout << "start LoadBatch 0.01" << std::endl;
-    LoDTensorArray batch_data = std::move(Read());
-    queue_->Push(batch_data);
-    // return batch_buffer_.Push(batch_data) == BufferStatus::kBufferStatusSuccess;
+    // LoDTensorArray batch_data = std::move(Read());
+    // queue_->Push(batch_data);
+    
+    auto batch_data = std::move(Read());
+    queue_->Push(batch_data.first);
+    framework::LoDTensor label_tensor;
+    LoDTensorArray label_array;
+    // auto& label_tensor = label.GetMutable<framework::LoDTensor>();
+    label_tensor.Resize(
+        framework::make_ddim({static_cast<int64_t>(batch_data.first.size())}));
+    platform::CPUPlace cpu;
+    auto* label_data = label_tensor.mutable_data<int>(cpu);
+    for (size_t i = 0; i < batch_data.first.size(); ++i) {
+      label_data[i] = batch_data.second[i];
+    }
+    label_array.push_back(label_tensor);
+    label_queue_->Push(label_array);
   }
 
  private:
@@ -197,13 +225,14 @@ class FileDataReader {
   Buffer<LoDTensorArray> batch_buffer_;
   std::thread load_thrd_;
   LoDTensorBlockingQueue* queue_;
+  LoDTensorBlockingQueue* label_queue_;
 };
 
 class FileDataReaderWrapper {
  public:
   void SetUp(const framework::ExecutionContext& ctx,
-             LoDTensorBlockingQueue* queue) {
-    reader.reset(new FileDataReader(ctx, queue));
+             LoDTensorBlockingQueue* queue, LoDTensorBlockingQueue* label_queue) {
+    reader.reset(new FileDataReader(ctx, queue, label_queue));
   }
 
   std::shared_ptr<FileDataReader> reader = nullptr;

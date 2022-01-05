@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
@@ -43,7 +44,7 @@ struct NvjpegDecodeTask {
 
 class NvjpegDecoder {
   public:
-    NvjpegDecoder(const std::string mode);
+    NvjpegDecoder(const std::string mode, int dev_id);
 
     ~NvjpegDecoder();
 
@@ -81,7 +82,7 @@ class NvjpegDecoder {
 
 class NvjpegDecoderThreadPool {
   public:
-    NvjpegDecoderThreadPool(const int num_threads, const std::string mode);
+    NvjpegDecoderThreadPool(const int num_threads, const std::string mode, const int dev_id);
 
     ~NvjpegDecoderThreadPool();
 
@@ -102,6 +103,7 @@ class NvjpegDecoderThreadPool {
 
     std::vector<std::thread> threads_;
     std::string mode_;
+    int dev_id_;
 
     std::deque<std::shared_ptr<NvjpegDecodeTask>> task_queue_;
     std::mutex mutex_;

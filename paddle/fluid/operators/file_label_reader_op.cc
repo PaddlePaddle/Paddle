@@ -65,9 +65,20 @@ class FileLabelReaderOp : public framework::OperatorBase {
       out_queue = holder->GetQueue();
     }
 
+    auto* out_label = scope.FindVar(Output("Label"));
+    auto out_label_queue =
+        out_label->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+    if (out_label_queue == nullptr) {
+      LOG(ERROR) << "FileLabelReaderOp init output label queue";
+      auto* label_holder =
+          out_label->template GetMutable<LoDTensorBlockingQueueHolder>();
+      label_holder->InitOnce(2);
+      out_label_queue = label_holder->GetQueue();
+    }
+
     if (reader_wrapper.reader == nullptr) {
       // create reader
-      reader_wrapper.SetUp(ctx, out_queue.get());
+      reader_wrapper.SetUp(ctx, out_queue.get(), out_label_queue.get());
     }
     // LoDTensorArray samples = reader_wrapper.reader->Next();
     // framework::LoDTensorArray out_array;
@@ -94,6 +105,7 @@ class FileLabelReaderOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddOutput("Out", "The output tensor of ReadFile op");
+    AddOutput("Label", "The output tensor of ReadFile op");
     AddComment(R"DOC(
 This operator read a file.
 )DOC");
