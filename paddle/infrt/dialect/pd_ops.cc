@@ -20,6 +20,7 @@
 
 namespace mlir {
 namespace pd {
+
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
   addOperations<
@@ -69,103 +70,6 @@ LogicalResult ConstantOp::inferReturnTypes(
 ::mlir::OpFoldResult ConstantOp::fold(
     ::llvm::ArrayRef<::mlir::Attribute> operands) {
   return value();
-}
-
-LogicalResult ElementwiseAdd::inferReturnTypes(
-    MLIRContext *context,
-    Optional<Location> location,
-    ValueRange operands,
-    DictionaryAttr attributes,
-    RegionRange regions,
-    SmallVectorImpl<Type> &inferredReturnTypes) {
-  inferredReturnTypes.push_back(operands[0].getType());
-  return success();
-}
-void ElementwiseAdd::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
-  results.insert<FuseMulAdd>(context);
-}
-
-::mlir::OpFoldResult ElementwiseAdd::fold(
-    llvm::ArrayRef<mlir::Attribute> operands) {
-  if (getElementTypeOrSelf(getType()).isa<FloatType>()) {
-    if (!operands[0] || !operands[1]) return {};
-    DenseElementsAttr lhs = operands[0].dyn_cast<DenseElementsAttr>();
-    DenseElementsAttr rhs = operands[1].dyn_cast<DenseElementsAttr>();
-    if (!lhs || !rhs) return {};
-    ShapedType type = getType().template cast<ShapedType>();
-    if (!type.hasStaticShape()) return {};
-    Type etype = type.getElementType();
-    if (!etype.isa<FloatType>()) return {};
-    SmallVector<APFloat, 6> values;
-    values.reserve(lhs.getNumElements());
-    for (const auto zip :
-         llvm::zip(lhs.getValues<APFloat>(), rhs.getValues<APFloat>())) {
-      values.push_back(
-          std::plus<APFloat>()(std::get<0>(zip), std::get<1>(zip)));
-    }
-    return DenseElementsAttr::get(type, values);
-  }
-  return {};
-}
-
-LogicalResult ElementwiseDiv::inferReturnTypes(
-    MLIRContext *context,
-    Optional<Location> location,
-    ValueRange operands,
-    DictionaryAttr attributes,
-    RegionRange regions,
-    SmallVectorImpl<Type> &inferredReturnTypes) {
-  inferredReturnTypes.push_back(operands[0].getType());
-  return success();
-}
-
-LogicalResult ElementwiseMul::inferReturnTypes(
-    MLIRContext *context,
-    Optional<Location> location,
-    ValueRange operands,
-    DictionaryAttr attributes,
-    RegionRange regions,
-    SmallVectorImpl<Type> &inferredReturnTypes) {
-  inferredReturnTypes.push_back(operands[0].getType());
-  return success();
-}
-
-LogicalResult ElementwiseSub::inferReturnTypes(
-    MLIRContext *context,
-    Optional<Location> location,
-    ValueRange operands,
-    DictionaryAttr attributes,
-    RegionRange regions,
-    SmallVectorImpl<Type> &inferredReturnTypes) {
-  inferredReturnTypes.push_back(operands[0].getType());
-  return success();
-}
-
-LogicalResult MulOp::inferReturnTypes(
-    MLIRContext *context,
-    Optional<Location> location,
-    ValueRange operands,
-    DictionaryAttr attributes,
-    RegionRange regions,
-    SmallVectorImpl<Type> &inferredReturnTypes) {
-  inferredReturnTypes.push_back(operands[0].getType());
-  return success();
-}
-
-void ReluOp::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
-  results.insert<FuseFCRelu>(context);
-}
-
-void FusedRepeatedFCRelu::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
-  results.insert<FuseRepeatedFCRelu2>(context);
-}
-
-void BatchNormOp::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
-  results.insert<FuseBatchNormWithConvPattern>(context);
 }
 
 }  // namespace pd

@@ -73,5 +73,6 @@ def PD_ElementType : Type<Or<[PD_Float.predicate,
 
 def PD_Tensor : TensorOf<[PD_ElementType]>;
 
+def PD_Tensor_Array : VectorOf<[PD_Tensor]>;
 
 #endif // PD_OP_BASE
