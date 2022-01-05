@@ -29,19 +29,19 @@ limitations under the License. */
 namespace pten {
 
 template <typename Context, typename T>
-void ReduceSumForMatmulGrad(const Context& ctx,
+void ReduceSumForMatmulGrad(const Context& dev_ctx,
                             const DenseTensor& input,
                             DenseTensor* output,
                             const std::vector<int>& reduce_dims) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   kernels::
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
 #else
   std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(), reduce_dims.end());
   eigen::ReduceKernelImpl<Context, T, T, pten::eigen::SumFunctor>(
-      ctx, input, output, reduce_dims_tmp, true, false);
+      dev_ctx, input, output, reduce_dims_tmp, true, false);
 #endif
 }
 
@@ -893,9 +893,19 @@ void MatmulTripleGradKernel(const Context& context,
     VLOG(3) << "========  MatMulV2TripleGradKernel, Compute ====== Case 2";
     DenseTensor x_help = x;
     DenseTensor y_help = y;
-    DenseTensor dout_help = dout_help;
+    DenseTensor dout_help = dout;
+    DenseTensor ddx_help = ddx;
+    DenseTensor ddy_help = ddy;
     ReshapeXYOutIntoMatrixSequence(
         &x_help, &y_help, &dout_help, transpose_x, transpose_y);
+
+    if (ddx_help.dims() != x_help.dims()) {
+      ddx_help.Resize(x_help.dims());
+    }
+
+    if (ddy_help.dims() != y_help.dims()) {
+      ddy_help.Resize(y_help.dims());
+    }
 
     DDim out_dx_dims;
     if (out_d_x) {
@@ -920,8 +930,8 @@ void MatmulTripleGradKernel(const Context& context,
         out_d_dout->Resize(dout_help.dims());
       }
 
-      ddx_conj = Conj<T>(context, ddx);
-      ddy_conj = Conj<T>(context, ddy);
+      ddx_conj = Conj<T>(context, ddx_help);
+      ddy_conj = Conj<T>(context, ddy_help);
     }
 
     DDim out_d_ddx_dims;
@@ -941,9 +951,9 @@ void MatmulTripleGradKernel(const Context& context,
     }
 
     if (out_d_ddx || out_d_ddy) {
-      x_conj = Conj<T>(context, x);
-      y_conj = Conj<T>(context, y);
-      dout_conj = Conj<T>(context, dout);
+      x_conj = Conj<T>(context, x_help);
+      y_conj = Conj<T>(context, y_help);
+      dout_conj = Conj<T>(context, dout_help);
     }
 
     bool d_dout_flag = false;
@@ -1329,7 +1339,7 @@ void MatmulTripleGradKernel(const Context& context,
     }
 
     if (out_d_ddy) {
-      if (out_d_ddy_dims != x_help.dims()) {
+      if (out_d_ddy_dims != y_help.dims()) {
         out_d_ddy->Resize(out_d_ddy_dims);
       }
     }

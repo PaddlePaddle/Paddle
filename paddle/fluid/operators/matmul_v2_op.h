@@ -149,11 +149,16 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
+    if (dx) dx->mutable_data<T>(ctx.GetPlace());
+    if (dy) dy->mutable_data<T>(ctx.GetPlace());
+
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
     auto pt_dout = paddle::experimental::MakePtenDenseTensor(*dout);
-    auto pt_dx = paddle::experimental::MakePtenDenseTensor(*dx);
-    auto pt_dy = paddle::experimental::MakePtenDenseTensor(*dy);
+    auto pt_dx = dx ? paddle::experimental::MakePtenDenseTensor(*dx)
+                    : std::unique_ptr<pten::DenseTensor>(nullptr);
+    auto pt_dy = dy ? paddle::experimental::MakePtenDenseTensor(*dy)
+                    : std::unique_ptr<pten::DenseTensor>(nullptr);
 
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
@@ -180,7 +185,9 @@ class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
     bool transpose_x = context.Attr<bool>("trans_x");
     bool transpose_y = context.Attr<bool>("trans_y");
 
-    auto& dev_ctx = context.device_context<DeviceContext>();
+    if (dx) dx->mutable_data<T>(context.GetPlace());
+    if (dy) dy->mutable_data<T>(context.GetPlace());
+    if (ddout) ddout->mutable_data<T>(context.GetPlace());
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
@@ -190,6 +197,8 @@ class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
     auto pt_dx = paddle::experimental::MakePtenDenseTensor(*dx);
     auto pt_dy = paddle::experimental::MakePtenDenseTensor(*dy);
     auto pt_ddout = paddle::experimental::MakePtenDenseTensor(*ddout);
+
+    auto& dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
     pten::MatmulDoubleGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, *pt_ddx,
@@ -223,6 +232,12 @@ class MatMulV2TripleGradKernel : public framework::OpKernel<T> {
 
     bool transpose_x = context.Attr<bool>("trans_x");
     bool transpose_y = context.Attr<bool>("trans_y");
+
+    if (out_d_x) out_d_x->mutable_data<T>(context.GetPlace());
+    if (out_d_y) out_d_y->mutable_data<T>(context.GetPlace());
+    if (out_d_dout) out_d_dout->mutable_data<T>(context.GetPlace());
+    if (out_d_ddx) out_d_ddx->mutable_data<T>(context.GetPlace());
+    if (out_d_ddy) out_d_ddy->mutable_data<T>(context.GetPlace());
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);

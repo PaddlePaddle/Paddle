@@ -37,6 +37,8 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     // fluid kernel "mean/reshape/matmul/flatten/sum" should be deprecated
     {"flatten", "deprecated"},
     {"matmul", "deprecated"},
+    {"matmul_grad", "deprecated"},
+    {"matmul_grad_grad", "deprecated"},
     {"mean", "deprecated"},
     {"reshape", "deprecated"},
     {"sum", "deprecated"}};

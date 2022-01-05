@@ -338,44 +338,48 @@ static void BuildDygraphPtenKernelContext(
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
-    auto& outs_vector = outs.at(output_names[i]);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
-    size_t end_idx = start_idx + outs_vector.size();
     auto current_vector_size = kernel_ctx->OutputsSize();
-    // If the memory needed is less than the current memory allocated, we will
-    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
-    // Otherwise，we will create new storage.
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      if (current_vector_size > start_idx + offset) {
-        auto* buffer_tensor =
-            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset);
-        if (buffer_tensor) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
+
+    auto iter = outs.find(output_names[i]);
+    if (iter != outs.end()) {
+      auto& outs_vector = iter->second;
+      size_t end_idx = start_idx + outs_vector.size();
+
+      // If the memory needed is less than the current memory allocated, we will
+      // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+      // Otherwise，we will create new storage.
+      for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+        if (current_vector_size > start_idx + offset) {
+          auto* buffer_tensor = kernel_ctx->MutableOutputAt<pten::DenseTensor>(
+              start_idx + offset);
+          if (buffer_tensor) {
+            experimental::ReMakePtenDenseTensorFromVar(
+                outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
+          } else {
+            kernel_ctx->SetOutputWithoutSetRange(
+                start_idx + offset,
+                experimental::MakePtenTensorBaseFromVar(
+                    outs_vector[offset]->MutableVar(), out_def));
+          }
         } else {
-          kernel_ctx->SetOutputWithoutSetRange(
-              start_idx + offset,
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(
               experimental::MakePtenTensorBaseFromVar(
                   outs_vector[offset]->MutableVar(), out_def));
         }
-      } else {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(
-                outs_vector[offset]->MutableVar(), out_def));
       }
-    }
 
-    if (outs_vector.empty()) {
+      kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
+    } else {
       if (current_vector_size > start_idx) {
         kernel_ctx->SetOutputWithoutSetRange(start_idx, {nullptr});
       } else {
         kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
       }
-      end_idx = start_idx + 1;
+      kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
+                                    i);
     }
-
-    kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
@@ -483,15 +487,18 @@ static void WriteBackToOutputs(
   auto& output_names = std::get<2>(pt_kernel_signature.args);
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& outs_vector = outs.at(output_names[i]);
+    auto iter = outs.find(output_names[i]);
+    if (iter != outs.end()) {
+      auto& outs_vector = iter->second;
 
-    auto& range_pair = kernel_ctx->OutputRangeAt(i);
-    auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
-        range_pair.first, range_pair.second);
+      auto& range_pair = kernel_ctx->OutputRangeAt(i);
+      auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
+          range_pair.first, range_pair.second);
 
-    for (size_t j = 0; j < pten_outs.size(); ++j) {
-      experimental::MakeVariableFromPtenTensor(pten_outs[j],
-                                               outs_vector[j]->MutableVar());
+      for (size_t j = 0; j < pten_outs.size(); ++j) {
+        experimental::MakeVariableFromPtenTensor(pten_outs[j],
+                                                 outs_vector[j]->MutableVar());
+      }
     }
   }
 }
