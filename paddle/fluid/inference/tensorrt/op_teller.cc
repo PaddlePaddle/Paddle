@@ -179,6 +179,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
+
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -714,6 +715,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
+
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
@@ -722,10 +724,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+
       auto scale = BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
       auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+
       if (!(out_h > 0 && out_w > 0)) {
+        if (scale.size() < 2) return false;
         if (scale[0] <= 0.f || scale[1] <= 0.f) {
           VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                      "not set.";
