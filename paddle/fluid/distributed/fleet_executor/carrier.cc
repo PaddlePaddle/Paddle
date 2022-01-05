@@ -73,7 +73,8 @@ bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   PADDLE_ENFORCE_EQ(
       interceptor_message.ctrl_message(), false,
-      "Control message should be only send inter rank using message bus.");
+      platform::errors::Fatal(
+          "Control message should be only send inter rank using message bus."));
   int64_t dst_id = interceptor_message.dst_id();
   Interceptor* dst_interceptor = GetInterceptor(dst_id);
   dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
