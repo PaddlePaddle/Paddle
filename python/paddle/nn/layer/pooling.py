@@ -1228,13 +1228,13 @@ class MaxUnPool3D(Layer):
     - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
     
     .. math::
-        D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
+        D_{out} = (D_{in} - 1) * stride[0] - 2 * padding[0] + kernel\_size[0]
 
     .. math::
-        H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
+        H_{out} = (H_{in} - 1) * stride[1] - 2 * padding[1] + kernel\_size[1]
 
     .. math::
-        W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
+        W_{out} = (W_{in} - 1) * stride[2] - 2 * padding[2] + kernel\_size[2]
 
     or as given by :attr:`output_size` in the call operator
 
