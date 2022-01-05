@@ -40,21 +40,16 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += dim_size;
 
-    int k = -1;
+    int k = GetScalar<int>(ctx, "k");
     PADDLE_ENFORCE_GE(input_dims.size(), 1,
                       paddle::platform::errors::InvalidArgument(
                           "input of topk must have >= 1d shape"));
     if (ctx->IsRuntime()) {
-      // skip runtime infershape if k==-1
-      if (k == -1) return;
       PADDLE_ENFORCE_GE(
           input_dims[axis], k,
           paddle::platform::errors::InvalidArgument(
               "input of topk op must have >= %d columns in axis of %d", k,
               axis));
-    } else {
-      k = GetScalar<int>(ctx, "k");
-      printf("k in compile time: %d\n", k);
     }
 
     framework::DDim dims = input_dims;

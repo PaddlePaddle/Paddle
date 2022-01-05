@@ -169,25 +169,14 @@ class TopkV2Kernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>("Out");
     auto* indices = context.Output<Tensor>("Indices");
     const auto& in_dims = input->dims();
-    int k = static_cast<int>(context.Attr<int>("k"));
+    int k = GetScalar<int>(context, "k");
+    VLOG(1) << "kernel func k: " << k;
     const auto& sorted = static_cast<bool>(context.Attr<bool>("sorted"));
     const auto& largest = static_cast<bool>(context.Attr<bool>("largest"));
 
     // axis < 0, calculate the real axis
     int axis = static_cast<int>(context.Attr<int>("axis"));
     if (axis < 0) axis += in_dims.size();
-
-    // if K tensor is not null, will the use K tensor as k
-    if (context.HasAttrVar("k")) {
-      VLOG(1) << "kernel func k: " << k;
-      k = GetScalar<int>(context, "k");
-      VLOG(1) << "kernel func k: " << k;
-      framework::DDim output_dims = output->dims();
-      // accroding to axis to set K value in the dim
-      output_dims[axis] = k;
-      output->Resize(output_dims);
-      indices->Resize(output_dims);
-    }
 
     T* output_data = output->mutable_data<T>(context.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(context.GetPlace());

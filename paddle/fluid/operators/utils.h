@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
@@ -90,27 +91,6 @@ inline T GetScalarDataFromVarDesc(const framework::InferShapeContext* ctx,
   return content[0];
 }
 
-template <typename T>
-std::vector<T> GetScalars(const framework::InferShapeContext* ctx,
-                          const std::string& attr_name) {
-  if (ctx->HasAttrVar(attr_name)) {
-    return GetDataFromVarDesc<T>(ctx, attr_name);
-  } else {
-    return ctx->Attrs().Get<std::vector<T>>(attr_name);
-  }
-}
-
-template <typename T>
-T GetScalar(const framework::InferShapeContext* ctx,
-            const std::string& attr_name) {
-  auto res = GetScalars<T>(ctx, attr_name);
-  PADDLE_ENFORCE_EQ(
-      res.size(), 1,
-      platform::errors::PreconditionNotMet(
-          "Required content.size() == 1, but received %d.", res.size()));
-  return res[0];
-}
-
 // ####################   Execution Template Function    ####################
 template <typename T>
 inline std::vector<T> GetDataFromVariable(const framework::Variable* var) {
@@ -140,7 +120,7 @@ inline std::vector<T> GetDataFromVariable(const framework::Variable* var) {
 
 template <typename T>
 inline std::vector<T> GetDataFromVariable(
-    const std::vector<framework::Variable*> vars,
+    const std::vector<framework::Variable*>& vars,
     const std::string& attr_name) {
   auto var_num = vars.size();
   PADDLE_ENFORCE_GE(var_num, 1,
@@ -171,6 +151,46 @@ inline std::vector<T> GetDataFromVariable(
     const framework::ExecutionContext& ctx, const std::string& attr_name) {
   auto vars = ctx.MultiAttrVar(attr_name);
   return GetDataFromVariable<T>(vars, attr_name);
+}
+
+template <typename T>
+inline std::vector<T> GetDataFromVariable(
+    const framework::InferShapeContext* ctx, const std::string& attr_name) {
+  auto var_ptrs = ctx->GetAttrVarPtrs(attr_name);
+  std::vector<framework::Variable*> vars;
+  std::transform(var_ptrs.begin(), var_ptrs.end(), std::back_inserter(vars),
+                 [](framework::InferShapeVarPtr& var) {
+                   return BOOST_GET(framework::Variable*, var);
+                 });
+  return GetDataFromVariable<T>(vars, attr_name);
+}
+
+// ####################   Interface for Operator    ####################
+
+template <typename T>
+std::vector<T> GetScalars(const framework::InferShapeContext* ctx,
+                          const std::string& attr_name) {
+  if (ctx->HasAttrVar(attr_name)) {
+    bool is_runtime = ctx->IsRuntime();
+    VLOG(3) << "Get attribute: " << attr_name
+            << " from InferShapeContext with is_runtime: " << is_runtime;
+    return is_runtime ? GetDataFromVariable<T>(ctx, attr_name)
+                      : GetDataFromVarDesc<T>(ctx, attr_name);
+  } else {
+    VLOG(3) << "Get attribute " << attr_name << " from ctx->Attrs().";
+    return ctx->Attrs().Get<std::vector<T>>(attr_name);
+  }
+}
+
+template <typename T>
+T GetScalar(const framework::InferShapeContext* ctx,
+            const std::string& attr_name) {
+  auto res = GetScalars<T>(ctx, attr_name);
+  PADDLE_ENFORCE_EQ(
+      res.size(), 1,
+      platform::errors::PreconditionNotMet(
+          "Required content.size() == 1, but received %d.", res.size()));
+  return res[0];
 }
 
 template <typename T>
