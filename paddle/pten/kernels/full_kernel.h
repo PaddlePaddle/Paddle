@@ -14,55 +14,50 @@
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/infermeta.h"
+
+#include "paddle/pten/infermeta/nullary.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void FullKernel(const Context& context,
+void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void FullLikeKernel(const Context& context,
+void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor Full(const Context& context,
+DenseTensor Full(const Context& dev_ctx,
                  const ScalarArray& shape,
                  const Scalar& val,
                  DataType dtype = DataType::FLOAT32,
                  Backend backend = Backend::CPU,  // Is backend needed here?
                  DataLayout layout = DataLayout::NCHW) {
   auto out_meta = CreateInferMeta(shape, dtype, layout);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          context.GetPlace()),
-      std::move(out_meta));
-  FullKernel<T, Context>(context, shape, val, &dense_out);
+  auto dense_out = Empty<T, Context>(dev_ctx, std::move(out_meta));
+  FullKernel<T, Context>(dev_ctx, shape, val, &dense_out);
   return dense_out;
 }
 
 template <typename T, typename Context>
 DenseTensor FullLike(
-    const Context& context,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const Scalar& val,
     DataType dtype = DataType::UNDEFINED,
     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
     DataLayout layout = DataLayout::UNDEFINED) {
   auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          context.GetPlace()),
-      std::move(out_meta));
-  FullLikeKernel<T, Context>(context, val, &dense_out);
+  auto dense_out = Empty<T, Context>(dev_ctx, std::move(out_meta));
+  FullLikeKernel<T, Context>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 
