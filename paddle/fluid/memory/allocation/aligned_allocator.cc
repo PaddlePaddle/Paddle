@@ -23,17 +23,17 @@ namespace allocation {
 // For memory address alignment
 class AlignedAllocation : public DecoratedAllocation {
  public:
-  AlignedAllocation(AllocationPtr underlying_allocation, size_t offset)
+  AlignedAllocation(std::unique_ptr<DecoratedAllocation> underlying_allocation,
+                    size_t offset)
       : DecoratedAllocation(
             reinterpret_cast<uint8_t*>(underlying_allocation->ptr()) + offset,
-            static_cast<DecoratedAllocation*>(underlying_allocation.get())
-                ->base_ptr(),
+            underlying_allocation->base_ptr(),
             underlying_allocation->size() - offset,
             underlying_allocation->place()),
         underlying_allocation_(std::move(underlying_allocation)) {}
 
  private:
-  AllocationPtr underlying_allocation_;
+  std::unique_ptr<DecoratedAllocation> underlying_allocation_;
 };
 
 AlignedAllocator::AlignedAllocator(
@@ -56,7 +56,9 @@ bool AlignedAllocator::IsAllocThreadSafe() const {
 Allocation* AlignedAllocator::AllocateImpl(size_t size) {
   auto raw_allocation = underlying_allocator_->Allocate(size + alignment_);
   size_t offset = AlignedPtrOffset(raw_allocation->ptr(), alignment_);
-  return new AlignedAllocation(std::move(raw_allocation), offset);
+  return new AlignedAllocation(
+      static_unique_ptr_cast<DecoratedAllocation>(std::move(raw_allocation)),
+      offset);
 }
 
 void AlignedAllocator::FreeImpl(Allocation* allocation) { delete allocation; }

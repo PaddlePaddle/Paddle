@@ -93,19 +93,18 @@ class CUDAGraphAllocator
  private:
   class PrivateAllocation : public DecoratedAllocation {
    public:
-    PrivateAllocation(CUDAGraphAllocator* allocator,
-                      AllocationPtr underlying_allocation)
+    PrivateAllocation(
+        CUDAGraphAllocator* allocator,
+        std::unique_ptr<DecoratedAllocation> underlying_allocation)
         : DecoratedAllocation(
-              underlying_allocation->ptr(),
-              static_cast<DecoratedAllocation*>(underlying_allocation.get())
-                  ->base_ptr(),
+              underlying_allocation->ptr(), underlying_allocation->base_ptr(),
               underlying_allocation->size(), underlying_allocation->place()),
           allocator_(allocator->shared_from_this()),
           underlying_allocation_(std::move(underlying_allocation)) {}
 
    private:
     std::shared_ptr<Allocator> allocator_;
-    AllocationPtr underlying_allocation_;
+    std::unique_ptr<DecoratedAllocation> underlying_allocation_;
   };
 
   explicit CUDAGraphAllocator(const std::shared_ptr<Allocator>& allocator)
@@ -120,7 +119,9 @@ class CUDAGraphAllocator
  protected:
   Allocation* AllocateImpl(size_t size) {
     VLOG(10) << "Allocate " << size << " for CUDA Graph";
-    return new PrivateAllocation(this, underlying_allocator_->Allocate(size));
+    return new PrivateAllocation(this,
+                                 static_unique_ptr_cast<DecoratedAllocation>(
+                                     underlying_allocator_->Allocate(size)));
   }
 
   void FreeImpl(Allocation* allocation) {

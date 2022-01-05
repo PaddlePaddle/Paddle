@@ -19,11 +19,10 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    AllocationPtr underlying_allocation, gpuStream_t owning_stream)
+    std::unique_ptr<DecoratedAllocation> underlying_allocation,
+    gpuStream_t owning_stream)
     : DecoratedAllocation(
-          underlying_allocation->ptr(),
-          static_cast<DecoratedAllocation*>(underlying_allocation.get())
-              ->base_ptr(),
+          underlying_allocation->ptr(), underlying_allocation->base_ptr(),
           underlying_allocation->size(), underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)) {}
@@ -137,8 +136,10 @@ Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   } catch (...) {
     throw;
   }
-  StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
-      std::move(underlying_allocation), default_stream_);
+  StreamSafeCUDAAllocation* allocation =
+      new StreamSafeCUDAAllocation(static_unique_ptr_cast<DecoratedAllocation>(
+                                       std::move(underlying_allocation)),
+                                   default_stream_);
   VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
           << allocation->ptr();
   return allocation;

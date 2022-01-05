@@ -138,6 +138,7 @@ class DecoratedAllocation : public pten::candidate::Allocation {
 };
 
 using Allocation = pten::candidate::Allocation;
+using AllocationPtr = std::unique_ptr<Allocation>;
 
 void DeleteAllocation(Allocation* allocation);
 
@@ -174,8 +175,6 @@ class Allocator : public pten::candidate::Allocator {
   virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
 };
 
-using AllocationPtr = Allocator::AllocationPtr;
-
 inline size_t AlignedSize(size_t size, size_t alignment) {
   auto remaining = size % alignment;
   return remaining == 0 ? size : size + alignment - remaining;
@@ -185,6 +184,13 @@ inline size_t AlignedPtrOffset(const void* ptr, size_t alignment) {
   auto ptr_addr = reinterpret_cast<uintptr_t>(ptr);
   auto diff = ptr_addr % alignment;
   return diff == 0 ? 0 : alignment - diff;
+}
+
+template <typename Derived, typename Base>
+decltype(auto) static_unique_ptr_cast(std::unique_ptr<Base>&& p) {
+  static_assert(std::is_base_of<Base, Derived>::value,
+                "Derived type must derive from Base.");
+  return std::unique_ptr<Derived>(static_cast<Derived*>(p.release()));
 }
 
 }  // namespace allocation

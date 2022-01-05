@@ -41,11 +41,10 @@ namespace allocation {
  */
 class CUDADeviceContextAllocation : public DecoratedAllocation {
  public:
-  explicit CUDADeviceContextAllocation(AllocationPtr allocation)
-      : DecoratedAllocation(
-            allocation->ptr(),
-            static_cast<DecoratedAllocation *>(allocation.get())->base_ptr(),
-            allocation->size(), allocation->place()),
+  explicit CUDADeviceContextAllocation(
+      std::unique_ptr<DecoratedAllocation> allocation)
+      : DecoratedAllocation(allocation->ptr(), allocation->base_ptr(),
+                            allocation->size(), allocation->place()),
         underlying_allocation_(std::move(allocation)) {}
 
   ~CUDADeviceContextAllocation() {
@@ -67,7 +66,7 @@ class CUDADeviceContextAllocation : public DecoratedAllocation {
   }
 
  private:
-  AllocationPtr underlying_allocation_;
+  std::unique_ptr<DecoratedAllocation> underlying_allocation_;
   const platform::CUDADeviceContext *dev_ctx_{nullptr};
 };
 
@@ -110,8 +109,9 @@ class CUDADeviceContextAllocator : public Allocator {
         platform::errors::PreconditionNotMet(
             "Default stream is not set for CUDADeviceContextAllocator"));
     platform::CUDADeviceGuard guard(place_.device);
-    auto allocation =
-        new CUDADeviceContextAllocation(memory::Alloc(place_, size));
+    auto allocation = new CUDADeviceContextAllocation(
+        static_unique_ptr_cast<DecoratedAllocation>(
+            memory::Alloc(place_, size)));
 // Wait for the event on stream
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, default_stream_));
