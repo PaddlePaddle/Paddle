@@ -121,11 +121,11 @@ class HostRecordNode {
     uint64_t duration() { return end_ns_ - start_ns_; }
 
     // member function
-    void AddChild(HostRecordNode* node);
-    void AddCudaRuntimeNode(CudaRuntimeRecordNode* node);
-    std::vector<HostRecordNode*> GetChildren();
-    std::vector<CudaRuntimeRecordNode*> GetRuntimeRecordNodes();
-    void logme(BaseLogger* logger);
+    void AddChild(HostRecordNode* node) { children_.push_back(node); };
+    void AddCudaRuntimeNode(CudaRuntimeRecordNode* node) { runtime_node_ptrs_.push_back(node); };
+    std::vector<HostRecordNode*>& GetChildren() { return children_; };
+    std::vector<CudaRuntimeRecordNode*>& GetRuntimeRecordNodes() { return runtime_node_ptrs_; };
+    void LogMe(BaseLogger& logger) { logger.LogHostRecordNode(*this); };
 
   private:
     // record name
@@ -171,9 +171,9 @@ class CudaRuntimeRecordNode{
     uint32_t correlation_id() { return correlation_id_; }
     uint32_t callback_id() {return callback_id_; }
     // member function
-    void AddDeviceRecordNode(DeviceRecordNode* node);
-    void logme(BaseLogger* logger);
-    std::vector<DeviceRecordNode*> GetDeviceRecordNodes();
+    void AddDeviceRecordNode(DeviceRecordNode* node) { device_node_ptrs_.push_back(node); };
+    void LogMe(BaseLogger& logger) { logger.LogRuntimeRecordNode(*this); };
+    std::vector<DeviceRecordNode*>& GetDeviceRecordNodes() { return device_node_ptrs_; };
 
   private:
     // record name
@@ -228,7 +228,7 @@ class DeviceRecordNode{
                      correlation_id_(correlation_id), memset_info_(memset_info) {}
     
     // destructor
-    ~DeviceRecordNode();
+    ~DeviceRecordNode() {};
     // getter
     std::string name() { return name_; }
     TracerEventType type() { return type_; }
@@ -262,7 +262,7 @@ class DeviceRecordNode{
       }
     
     // member function
-    void logme(BaseLogger* logger);
+    void LogMe(BaseLogger& logger) { logger.LogDeviceRecordNode(*this); };
 
   private:
     // record name
@@ -306,11 +306,12 @@ class NodeTrees {
     // destructor
     ~NodeTrees();
     
-    void logme(BaseLogger* logger);
-    void traverse(std::function<void (HostRecordNode*)>, 
+    void LogMe(BaseLogger& logger);
+    void HandleTrees(std::function<void (HostRecordNode*)>, 
                   std::function<void (CudaRuntimeRecordNode*)>, 
                   std::function<void (DeviceRecordNode*)>);
     const std::map<uint64_t, HostRecordNode*>& GetNodeTrees() { return thread_record_trees_map_; }
+    const std::map<uint64_t, vector<HostRecordNode*>> Traverse(bool bfs=true);
     
 
   private:
@@ -320,6 +321,7 @@ class NodeTrees {
                     const std::vector<DeviceRecordNode*>& device_record_nodes);
     HostRecordNode* BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
                                std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes);
+    
 
 };
 

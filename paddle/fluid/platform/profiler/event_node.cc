@@ -9,13 +9,38 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
 #include <limits.h>
+#include <algorithm>
+#include <queue>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 namespace paddle{
 namespace platform {
+
+HostRecordNode::~HostRecordNode(){
+    // delete all runtime nodes and recursive delete children
+    for(auto it = runtime_node_ptrs_.begin(); it != runtime_node_ptrs_.end(); ++it){
+        delete *it;
+    }
+    for(auto it = children_.begin(); it != children_.end(); ++it){
+        delete *it;
+    }
+}
+
+CudaRuntimeRecordNode::~CudaRuntimeRecordNode(){
+    // delete all device nodes
+    for(auto it = device_node_ptrs_.begin(); it != device_node_ptrs_.end(); ++it){
+        delete *it;
+    }
+}
+
+NodeTrees::~NodeTrees(){
+    // delete all root nodes
+    for(auto it = thread_record_trees_map_.begin(); it != thread_record_trees_map_.end(); ++it){
+        delete it->second;
+    }
+}
 
 void NodeTrees::BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes, 
                            const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
@@ -117,6 +142,12 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& h
   return root_node;
 
 }
+
+void NodeTrees::LogMe(BaseLogger& logger){
+    // log all nodes except root node, root node is a helper node.
+    
+}
+
 
 } // namespace platform
 } // namespace paddle
