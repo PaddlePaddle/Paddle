@@ -1053,6 +1053,67 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
   PrettyLogDetail("---    quantized %d fusion_lstm ops", quantize_count);
 }
 
+void CPUQuantizePass::QuantizeNearestInterp(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::NearestInterp nearest_interp_pattern{pattern, name_scope_};
+  nearest_interp_pattern();
+
+  int quantize_nearest_interp_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize nearest_interp op";
+    GET_IR_NODE_FROM_SUBGRAPH(nearest_interp_op, nearest_interp_op,
+                              nearest_interp_pattern);
+
+    // skip if should not be quantized
+    if (!platform::HasOpINT8DataType(nearest_interp_op->Op())) {
+      LogQuantizationDisabled(nearest_interp_op);
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, nearest_interp_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, nearest_interp_pattern);
+
+    // skip if prev op and next op is not quantized
+    if (!(IsOpDequantized(prev_op)) && !(IsOpQuantized(next_op))) {
+      LogCannotQuantizeOp(nearest_interp_op,
+                          "There are no other quantized operators nearby, so "
+                          "quantization is not recommended.");
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(nearest_interp_in, nearest_interp_in,
+                              nearest_interp_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(nearest_interp_out, nearest_interp_out,
+                              nearest_interp_pattern);
+
+    if (!AreScalesPresentForNodes({nearest_interp_in, nearest_interp_out})) {
+      LogCannotQuantizeOp(nearest_interp_op);
+      return;
+    }
+
+    bool is_input_unsigned{false};
+    auto input_scale =
+        GetScaleValueForNode(nearest_interp_in, &is_input_unsigned);
+    QuantizeInput(g, nearest_interp_op, nearest_interp_in, "X", input_scale,
+                  is_input_unsigned);
+
+    bool is_output_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(nearest_interp_out, &is_output_unsigned);
+    DequantizeOutput(g, nearest_interp_op, nearest_interp_out, "Out",
+                     output_scale, is_output_unsigned);
+
+    ++quantize_nearest_interp_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_nearest_interp_count);
+
+  PrettyLogDetail("---    quantized %d nearest_interp ops",
+                  quantize_nearest_interp_count);
+}
+
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE_NOT_NULL(
@@ -1076,6 +1137,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);
   QuantizeSlice(graph);
+  QuantizeNearestInterp(graph);
 }
 
 }  // namespace ir

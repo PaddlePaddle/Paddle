@@ -17,6 +17,24 @@
 namespace paddle {
 namespace distributed {
 
+// TODO(liyurui): Change this file to global.h
+template <typename T>
+class GlobalVal final {
+ public:
+  static T Get() { return *GetPtr(); }
+  static T Set(T val) {
+    auto* ptr = GetPtr();
+    *ptr = val;
+    return val;
+  }
+
+ private:
+  static T* GetPtr() {
+    static T value;
+    return &value;
+  }
+};
+
 template <typename KeyT, typename ValueT>
 class GlobalMap final {
  public:
@@ -26,12 +44,41 @@ class GlobalMap final {
         item, platform::errors::NotFound("This value is not in global map."));
     return item;
   }
+
   template <typename... Args>
   static ValueT* Create(KeyT id, Args&&... args) {
     auto* ptr = GetPPtr(id);
     PADDLE_ENFORCE_EQ(ptr->get(), nullptr,
                       platform::errors::AlreadyExists(
                           "This value has already in global map."));
+    ValueT* item = new ValueT(std::forward<Args>(args)...);
+    ptr->reset(item);
+    return item;
+  }
+
+ private:
+  static std::unique_ptr<ValueT>* GetPPtr(KeyT id) {
+    static std::unordered_map<KeyT, std::unique_ptr<ValueT>> id_to_ptr;
+    return &id_to_ptr[id];
+  }
+};
+
+template <typename KeyT, typename ValueT>
+class ThreadSafeGlobalMap final {
+ public:
+  static ValueT* Get(KeyT id) {
+    ValueT* item = GetPPtr(id)->get();
+    PADDLE_ENFORCE_NOT_NULL(
+        item, platform::errors::NotFound(
+                  "This value is not in thread safe global map."));
+    return item;
+  }
+  template <typename... Args>
+  static ValueT* Create(KeyT id, Args&&... args) {
+    auto* ptr = GetPPtr(id);
+    PADDLE_ENFORCE_EQ(ptr->get(), nullptr,
+                      platform::errors::AlreadyExists(
+                          "This value has already in thread safe global map."));
     ValueT* item = new ValueT(std::forward<Args>(args)...);
     ptr->reset(item);
     return item;
