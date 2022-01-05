@@ -112,16 +112,6 @@ class Tensor {
 #endif
 
  public:
-  template <typename T, size_t D, int MajorType, typename IndexType>
-  friend struct EigenTensor;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenMatrix;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenVector;
-
- public:
   Tensor()
       : type_(proto::VarType::FP32),
         offset_(0),
@@ -130,6 +120,8 @@ class Tensor {
   explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
+  const void* data() const;
+
   template <typename T>
   T* data();
 
@@ -273,6 +265,7 @@ class Tensor {
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
+  void set_offset(size_t offset) { offset_ = offset; }
 
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);
