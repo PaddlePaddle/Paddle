@@ -99,6 +99,9 @@ def get_op_desc(op_proto):
 def get_all_ops_desc():
     all_op_protos_dict = {}
     all_op_protos = framework.get_all_op_protos()
+    for op_proto in all_op_protos:
+        op_type = str(op_proto.type)
+        all_op_protos_dict[op_type] = get_op_desc(op_proto)
     return all_op_protos_dict
 
 

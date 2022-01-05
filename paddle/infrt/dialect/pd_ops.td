@@ -8235,7 +8235,7 @@ def PD_SvdOp : PD_Op<"svd", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$U,PD_Tensor:$S,PD_Tensor:$VH);
 }
-def PD_FeedOp : PD_Op<"Feed", [NoSideEffect]> {
+def PD_FeedOp : PD_Op<"feed", [NoSideEffect]> {
   let summary = "Feed Op";
 
   let description = [{
