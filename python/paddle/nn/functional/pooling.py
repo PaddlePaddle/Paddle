@@ -789,7 +789,23 @@ def max_unpool3d(x,
                  name=None):
     """
     This API implements max unpooling 3d opereation.
-    See more details in :ref:`api_nn_pooling_MaxUnPool3D` .
+    'max_unpool3d' accepts the output of 'max_pool3d' as input
+    Including the indices of the maximum value and calculating the partial inverse
+    All non-maximum values ​​are set to zero.
+    
+    - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
+    - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
+    
+    .. math::
+    D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
+
+    .. math::
+    H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
+
+    .. math::
+    W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
+
+    or as given by :attr:`output_size` in the call operator
 
 
     Args:
@@ -818,26 +834,12 @@ def max_unpool3d(x,
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
+    Returns:
+        Tensor: The output tensor of unpooling result. 
 
-        - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
-        - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
-          .. math::
-            D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
-
-          .. math::
-            H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
-
-          .. math::
-            W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
-
-          or as given by :attr:`output_size` in the call operator
-
-        Returns:
-            Tensor: The output tensor of unpooling result. 
-
-        Examples:
-            .. code-block:: python
-          
+    Examples:
+        .. code-block:: python
+        
             import paddle
             import paddle.nn.functional as F
 

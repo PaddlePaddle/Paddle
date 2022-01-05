@@ -301,5 +301,6 @@ __all__ = [     #noqa
            'LayerDict',
            'ZeroPad2D',
            'MaxUnPool2D',
+           'MaxUnPool3D',
            'HingeEmbeddingLoss',
 ]

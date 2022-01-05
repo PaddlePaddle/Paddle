@@ -1223,8 +1223,22 @@ class MaxUnPool3D(Layer):
     'max_unpool3d' accepts the output of 'max_pool3d' as input
     Including the indices of the maximum value and calculating the partial inverse
     All non-maximum values ​​are set to zero.
-    
 
+    - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
+    - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
+    
+    .. math::
+    D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
+
+    .. math::
+    H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
+
+    .. math::
+    W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
+
+    or as given by :attr:`output_size` in the call operator
+
+    
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
@@ -1242,37 +1256,22 @@ class MaxUnPool3D(Layer):
                              None by default.
 
 
-        - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
-        - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
-          .. math::
-            D_{out} = (D_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
-
-          .. math::
-            H_{out} = (H_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
-
-          .. math::
-            W_{out} = (W_{in} - 1) \times \text{stride[2]} - 2 \times \text{padding[2]} + \text{kernel\_size[2]}
-
-          or as given by :attr:`output_size` in the call operator
-
     Returns:
         A callable object of MaxUnPool3D.
-
-            
 
     Examples:
         .. code-block:: python
         
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        data = paddle.rand(shape=[1, 1, 7, 7, 7])
-        pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
-        # pool_out shape: [1, 1, 3, 3, 3],  indices shape: [1, 1, 3, 3, 3]
-        Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
-        unpool_out = Unpool3D(pool_out, indices)
-        # unpool_out shape: [1, 1, 6, 6, 6]
+            data = paddle.rand(shape=[1, 1, 7, 7, 7])
+            pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+            # pool_out shape: [1, 1, 3, 3, 3],  indices shape: [1, 1, 3, 3, 3]
+            Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
+            unpool_out = Unpool3D(pool_out, indices)
+            # unpool_out shape: [1, 1, 6, 6, 6]
 
     """
 
