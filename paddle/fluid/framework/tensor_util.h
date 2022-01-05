@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
+#include "paddle/pten/core/dense_tensor.h"
+
 namespace paddle {
 namespace framework {
 
@@ -75,6 +77,8 @@ class Tensor;
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                const platform::DeviceContext& ctx, pten::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is
@@ -85,6 +89,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 // not completed.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                pten::DenseTensor* dst);
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst);
