@@ -138,6 +138,14 @@ class DeviceManager {
 
   static size_t VisibleDevicesCount(const std::string& device_type);
 
+  static std::vector<size_t> ListVisibleDevices(const std::string& device_type);
+
+  static size_t GetComputeCapability(const std::string& device_type);
+
+  static size_t GetRuntimeVersion(const std::string& device_type);
+
+  static size_t GetDriverVersion(const std::string& device_type);
+
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);
   DeviceManager() {}
@@ -147,7 +155,7 @@ class DeviceManager {
 
   std::unordered_map<std::string, std::unique_ptr<DeviceInterface>>
       device_impl_map_;
-  std::unordered_map<std::string, std::vector<std::unique_ptr<Device>>>
+  std::unordered_map<std::string, std::unordered_map<std::unique_ptr<Device>>>
       device_map_;
 };
 

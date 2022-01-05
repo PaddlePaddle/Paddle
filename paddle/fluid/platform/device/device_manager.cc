@@ -340,6 +340,27 @@ size_t DeviceManager::VisibleDevicesCount(const std::string& device_type) {
   return dev_impl->VisibleDevicesCount();
 }
 
+std::vector<size_t> DeviceManager::ListVisibleDevices(
+    const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->ListVisibleDevices();
+}
+
+size_t DeviceManager::GetComputeCapability(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetComputeCapability();
+}
+
+size_t DeviceManager::GetRuntimeVersion(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetRuntimeVersion();
+}
+
+size_t DeviceManager::GetDriverVersion(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetDriverVersion();
+}
+
 DeviceManager& DeviceManager::Instance() {
   static DeviceManager platform_manager;
   return platform_manager;
