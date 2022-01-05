@@ -521,7 +521,11 @@ static void GetGridDim(int high_dim, int mid_dim, int low_dim,
 }
 
 static void GetBlockDim(int mid_dim, int low_dim, dim3* block) {
+#ifdef __HIPCC__
+  constexpr int max_num_threads = 256;
+#else
   constexpr int max_num_threads = 1024;
+#endif
   int block_x = 1 << log2_ceil(low_dim);
   int block_y = 1 << log2_ceil(mid_dim);
   block->x = std::min(block_x, 32);
