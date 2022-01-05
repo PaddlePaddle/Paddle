@@ -23,7 +23,7 @@ limitations under the License. */
 PT_REGISTER_CTX_KERNEL(dot_grad,
                        GPU,
                        ALL_LAYOUT,
-                       pten::DotGrad,
+                       pten::DotGradKernel,
                        float,
                        double,
                        int,

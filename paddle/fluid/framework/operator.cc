@@ -1874,16 +1874,33 @@ void OperatorWithKernel::BuildPtenKernelContext(
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (current_vector_size > start_idx + offset) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            outs_vector[offset], out_def,
+        auto* buffer_tensor =
             pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
-                                                                   offset));
+                                                                   offset);
+        if (buffer_tensor) {
+          experimental::ReMakePtenDenseTensorFromVar(outs_vector[offset],
+                                                     out_def, buffer_tensor);
+        } else {
+          pt_kernel_context_->SetOutputWithoutSetRange(
+              start_idx + offset, experimental::MakePtenTensorBaseFromVar(
+                                      outs_vector[offset], out_def));
+        }
       } else {
         pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
             experimental::MakePtenTensorBaseFromVar(outs_vector[offset],
                                                     out_def));
       }
     }
+
+    if (outs_vector.empty()) {
+      if (current_vector_size > start_idx) {
+        pt_kernel_context_->SetOutputWithoutSetRange(start_idx, {nullptr});
+      } else {
+        pt_kernel_context_->EmplaceBackOutputWithoutSetRange({nullptr});
+      }
+      end_idx = start_idx + 1;
+    }
+
     pt_kernel_context_->AssignOutputRange(std::make_pair(start_idx, end_idx),
                                           i);
   }
@@ -1996,7 +2013,9 @@ void OperatorWithKernel::WriteBackToOutputs(RuntimeContext* ctx) const {
             range_pair.first, range_pair.second);
 
     for (size_t j = 0; j < pten_outs.size(); ++j) {
-      experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
+      if (pten_outs[j]) {
+        experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
+      }
     }
   }
 }

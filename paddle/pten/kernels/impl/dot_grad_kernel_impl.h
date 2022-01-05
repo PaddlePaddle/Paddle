@@ -53,7 +53,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dx->numel());
 
-        Conj<T, DeviceContext>(ctx, *tensor_y, tensor_dx);
+        ConjKernel<T, DeviceContext>(ctx, *tensor_y, tensor_dx);
 
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
         dx.device(dev) = dx * dout.broadcast(size);
@@ -64,7 +64,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dy->numel());
 
-        Conj<T, DeviceContext>(ctx, *tensor_x, tensor_dy);
+        ConjKernel<T, DeviceContext>(ctx, *tensor_x, tensor_dy);
 
         auto dy = EigenVector<T>::Flatten(*tensor_dy);
         dy.device(dev) = dy * dout.broadcast(size);
@@ -78,7 +78,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
 
-        Conj<T, DeviceContext>(ctx, *tensor_y, tensor_dx);
+        ConjKernel<T, DeviceContext>(ctx, *tensor_y, tensor_dx);
 
         auto dx = EigenMatrix<T>::From(*tensor_dx);
         dx.device(dev) = dx * dout.broadcast(size);
@@ -90,7 +90,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
 
-        Conj<T, DeviceContext>(ctx, *tensor_x, tensor_dy);
+        ConjKernel<T, DeviceContext>(ctx, *tensor_x, tensor_dy);
 
         auto dy = EigenMatrix<T>::From(*tensor_dy);
         dy.device(dev) = dy * dout.broadcast(size);
@@ -103,7 +103,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dx = tensor_dx->mutable_data<T>();
       const auto* data_y = tensor_y->data<T>();
       const DDim& dim = tensor_x->dims();
-      size_t N = static_cast<size_t>(paddle::product(dim));
+      size_t N = static_cast<size_t>(paddle::framework::product(dim));
 
       auto step = dim[dim.size() - 1];
 
@@ -118,7 +118,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dy = tensor_dy->mutable_data<T>();
       const auto* data_x = tensor_x->data<T>();
       const DDim& dim = tensor_y->dims();
-      size_t N = static_cast<size_t>(paddle::product(dim));
+      size_t N = static_cast<size_t>(paddle::framework::product(dim));
 
       auto step = dim[dim.size() - 1];
 
@@ -257,8 +257,8 @@ struct DotDoubleGradFunction<DeviceContext,
       }
 
       if (tensor_ddout) {
-        DenseTensor tensor_x_help = Conj<T, DeviceContext>(ctx, tensor_x);
-        DenseTensor tensor_y_help = Conj<T, DeviceContext>(ctx, tensor_y);
+        DenseTensor tensor_x_help = Conj<T, DeviceContext>(ctx, *tensor_x);
+        DenseTensor tensor_y_help = Conj<T, DeviceContext>(ctx, *tensor_y);
 
         auto x = EigenVector<T>::Flatten(tensor_x_help);
         auto y = EigenVector<T>::Flatten(tensor_y_help);
@@ -483,7 +483,8 @@ struct DotTripleGradFunction<DeviceContext,
       DenseTensor in_tensor_d_ddout_help;
       auto& dev = *ctx.eigen_device();
       if (out_tensor_d_x || out_tensor_d_y) {
-        in_tensor_d_ddout_help = Conj<T, DeviceContext>(ctx, in_tensor_d_ddout);
+        in_tensor_d_ddout_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_d_ddout);
       }
       if (out_tensor_d_x) {
         auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
@@ -503,9 +504,9 @@ struct DotTripleGradFunction<DeviceContext,
 
       if (out_tensor_d_dout) {
         DenseTensor in_tensor_ddx_help =
-            Conj<T, DeviceContext>(ctx, in_tensor_ddx);
+            Conj<T, DeviceContext>(ctx, *in_tensor_ddx);
         DenseTensor in_tensor_ddy_help =
-            Conj<T, DeviceContext>(ctx, in_tensor_ddy);
+            Conj<T, DeviceContext>(ctx, *in_tensor_ddy);
 
         auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
         auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
@@ -517,8 +518,9 @@ struct DotTripleGradFunction<DeviceContext,
 
       if (out_tensor_d_ddx) {
         DenseTensor in_tensor_dout_help =
-            Conj<T, DeviceContext>(ctx, in_tensor_dout);
-        DenseTensor in_tensor_y_help = Conj<T, DeviceContext>(ctx, in_tensor_y);
+            Conj<T, DeviceContext>(ctx, *in_tensor_dout);
+        DenseTensor in_tensor_y_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_y);
 
         auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
         auto y = EigenVector<T>::Flatten(in_tensor_y_help);
@@ -532,8 +534,9 @@ struct DotTripleGradFunction<DeviceContext,
 
       if (out_tensor_d_ddy) {
         DenseTensor in_tensor_dout_help =
-            Conj<T, DeviceContext>(ctx, in_tensor_dout);
-        DenseTensor in_tensor_x_help = Conj<T, DeviceContext>(ctx, in_tensor_x);
+            Conj<T, DeviceContext>(ctx, *in_tensor_dout);
+        DenseTensor in_tensor_x_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_x);
 
         auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
         auto x = EigenVector<T>::Flatten(in_tensor_x_help);
@@ -828,12 +831,12 @@ struct DotTripleGradFunction<DeviceContext,
 };
 
 template <typename T, typename ContextT>
-void DotGrad(const ContextT& dev_ctx,
-             const DenseTensor& x,
-             const DenseTensor& y,
-             const DenseTensor& dout,
-             DenseTensor* dx,
-             DenseTensor* dy) {
+void DotGradKernel(const ContextT& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   const DenseTensor& dout,
+                   DenseTensor* dx,
+                   DenseTensor* dy) {
   if (dx) {
     dx->mutable_data<T>();
   }
@@ -844,15 +847,15 @@ void DotGrad(const ContextT& dev_ctx,
 }
 
 template <typename T, typename ContextT>
-void DotDoubleGrad(const ContextT& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   const DenseTensor& ddx,
-                   const DenseTensor& ddy,
-                   const DenseTensor& dout,
-                   DenseTensor* dx,
-                   DenseTensor* dy,
-                   DenseTensor* ddout) {
+void DotDoubleGradKernel(const ContextT& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& dout,
+                         DenseTensor* dx,
+                         DenseTensor* dy,
+                         DenseTensor* ddout) {
   if (dx) {
     dx->mutable_data<T>();
   }
@@ -867,20 +870,20 @@ void DotDoubleGrad(const ContextT& dev_ctx,
 }
 
 template <typename T, typename ContextT>
-void DotTripleGrad(const ContextT& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   const DenseTensor& ddx,
-                   const DenseTensor& ddy,
-                   const DenseTensor& d_dx,
-                   const DenseTensor& d_dy,
-                   const DenseTensor& dout,
-                   const DenseTensor& d_ddout,
-                   DenseTensor* d_x,
-                   DenseTensor* d_y,
-                   DenseTensor* d_ddx,
-                   DenseTensor* d_ddy,
-                   DenseTensor* d_dout) {
+void DotTripleGradKernel(const ContextT& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& d_dx,
+                         const DenseTensor& d_dy,
+                         const DenseTensor& dout,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x,
+                         DenseTensor* d_y,
+                         DenseTensor* d_ddx,
+                         DenseTensor* d_ddy,
+                         DenseTensor* d_dout) {
   if (d_x) {
     d_x->mutable_data<T>();
   }
@@ -904,8 +907,6 @@ void DotTripleGrad(const ContextT& dev_ctx,
                                        ddy,
                                        d_dx,
                                        d_dy,
-                                       dx,
-                                       dy,
                                        dout,
                                        d_ddout,
                                        d_x,

@@ -118,7 +118,7 @@ void MatMulFunction(const Context& context,
             N));
     VLOG(3) << "MatMul's case 1";
     Out->Resize({1});
-    Out->mutable_data<T>(ctx.GetPlace());
+    Out->mutable_data<T>();
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,

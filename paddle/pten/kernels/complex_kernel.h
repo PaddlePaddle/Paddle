@@ -14,11 +14,26 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/include/infermeta.h"
 
 namespace pten {
 
 template <typename T, typename ContextT>
-void Conj(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out);
+void ConjKernel(const ContextT& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out);
+
+template <typename T, typename ContextT>
+DenseTensor Conj(const ContextT& dev_ctx, const DenseTensor& x) {
+  auto out_meta = UnchangedInferMeta(x.meta());
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  ConjKernel<T>(dev_ctx, x, &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten

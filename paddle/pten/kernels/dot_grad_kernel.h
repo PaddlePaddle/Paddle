@@ -19,38 +19,38 @@
 namespace pten {
 
 template <typename T, typename ContextT>
-void DotGrad(const ContextT& dev_ctx,
-             const DenseTensor& x,
-             const DenseTensor& y,
-             const DenseTensor& dout,
-             DenseTensor* dx,
-             DenseTensor* dy);
-
-template <typename T, typename ContextT>
-void DotDoubleGrad(const ContextT& dev_ctx,
+void DotGradKernel(const ContextT& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   const DenseTensor& ddx,
-                   const DenseTensor& ddy,
                    const DenseTensor& dout,
                    DenseTensor* dx,
-                   DenseTensor* dy,
-                   DenseTensor* ddout);
+                   DenseTensor* dy);
 
 template <typename T, typename ContextT>
-void DotTripleGrad(const ContextT& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   const DenseTensor& ddx,
-                   const DenseTensor& ddy,
-                   const DenseTensor& d_dx,
-                   const DenseTensor& d_dy,
-                   const DenseTensor& dout,
-                   const DenseTensor& d_ddout,
-                   DenseTensor* d_x,
-                   DenseTensor* d_y,
-                   DenseTensor* d_ddx,
-                   DenseTensor* d_ddy,
-                   DenseTensor* d_dout);
+void DotDoubleGradKernel(const ContextT& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& dout,
+                         DenseTensor* dx,
+                         DenseTensor* dy,
+                         DenseTensor* ddout);
+
+template <typename T, typename ContextT>
+void DotTripleGradKernel(const ContextT& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& d_dx,
+                         const DenseTensor& d_dy,
+                         const DenseTensor& dout,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x,
+                         DenseTensor* d_y,
+                         DenseTensor* d_ddx,
+                         DenseTensor* d_ddy,
+                         DenseTensor* d_dout);
 
 }  // namespace pten

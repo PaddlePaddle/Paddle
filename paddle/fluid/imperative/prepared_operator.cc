@@ -337,15 +337,33 @@ static void BuildDygraphPtenKernelContext(
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (current_vector_size > start_idx + offset) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            outs_vector[offset]->MutableVar(), out_def,
-            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset));
+        auto* buffer_tensor =
+            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset);
+        if (buffer_tensor) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
+        } else {
+          kernel_ctx->SetOutputWithoutSetRange(
+              start_idx + offset,
+              experimental::MakePtenTensorBaseFromVar(
+                  outs_vector[offset]->MutableVar(), out_def));
+        }
       } else {
         kernel_ctx->EmplaceBackOutputWithoutSetRange(
             experimental::MakePtenTensorBaseFromVar(
                 outs_vector[offset]->MutableVar(), out_def));
       }
     }
+
+    if (outs_vector.empty()) {
+      if (current_vector_size > start_idx) {
+        kernel_ctx->SetOutputWithoutSetRange(start_idx, {nullptr});
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      }
+      end_idx = start_idx + 1;
+    }
+
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
@@ -519,6 +537,7 @@ static void PreparedOpRunImpl(
 template <typename VarType>
 static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
+    const framework::OpKernelType& kernel_type,
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
@@ -549,7 +568,9 @@ static void PreparedOpRunPtImpl(
   pt_kernel_context->ClearData();
 
   // TODO(chenweihang): add debug flags later
-  // TODO(chenweihang): deal with complex cases later
+  if (framework::IsComplexType(kernel_type.data_type_)) {
+    HandleComplexGradToRealGrad<VarType>(outs);
+  }
 }
 
 void PreparedOp::Run(const NameVarMap<VarBase>& ins,
@@ -557,9 +578,9 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
-    PreparedOpRunPtImpl<VarBase>(op_, pt_kernel_signature_, pt_kernel_,
-                                 pt_kernel_context_, dev_ctx_, ins, outs, attrs,
-                                 default_attrs);
+    PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
+                                 pt_kernel_, pt_kernel_context_, dev_ctx_, ins,
+                                 outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
                                outs, attrs, default_attrs);
@@ -571,9 +592,9 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
-    PreparedOpRunPtImpl<VariableWrapper>(op_, pt_kernel_signature_, pt_kernel_,
-                                         pt_kernel_context_, dev_ctx_, ins,
-                                         outs, attrs, default_attrs);
+    PreparedOpRunPtImpl<VariableWrapper>(
+        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, pt_kernel_context_,
+        dev_ctx_, ins, outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);

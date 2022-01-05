@@ -23,10 +23,10 @@
 namespace pten {
 
 template <typename T, typename ContextT>
-void Dot(const ContextT& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out) {
+void DotKernel(const ContextT& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
   auto* z = out->mutable_data<T>();
@@ -52,7 +52,7 @@ using complex128 = ::paddle::platform::complex<double>;
 PT_REGISTER_CTX_KERNEL(dot,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Dot,
+                       pten::DotKernel,
                        float,
                        double,
                        int,

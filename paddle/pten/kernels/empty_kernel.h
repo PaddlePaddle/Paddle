@@ -14,15 +14,61 @@
 
 #pragma once
 
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/include/infermeta.h"
 
 namespace pten {
 
 template <typename T, typename ContextT>
-void Empty(const ContextT& dev_ctx, const ScalarArray& shape, DenseTensor* out);
+void EmptyKernel(const ContextT& dev_ctx,
+                 const ScalarArray& shape,
+                 DenseTensor* out);
 
 template <typename T, typename ContextT>
-void EmptyLike(const ContextT& dev_ctx, DenseTensor* out);
+void EmptyLikeKernel(const ContextT& dev_ctx, DenseTensor* out);
+
+template <typename T, typename ContextT>
+DenseTensor Empty(const ContextT& dev_ctx,
+                  const ScalarArray& shape,
+                  DataType dtype = DataType::FLOAT32,
+                  Backend backend = Backend::CPU,  // Is backend needed here?
+                  DataLayout layout = DataLayout::NCHW) {
+  auto out_meta = CreateInferMeta(shape, dtype, layout);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  EmptyKernel<T, ContextT>(dev_ctx, shape, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename ContextT>
+DenseTensor EmptyLike(
+    const ContextT& dev_ctx,
+    const DenseTensor& x,
+    DataType dtype = DataType::UNDEFINED,
+    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
+    DataLayout layout = DataLayout::UNDEFINED) {
+  auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  EmptyLikeKernel<T, ContextT>(dev_ctx, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename ContextT>
+DenseTensor Empty(const ContextT& dev_ctx) {
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      {paddle::experimental::CppTypeToDataType<T>::Type(),
+       {-1},
+       DataLayout::NCHW});
+  return dense_out;
+}
 
 }  // namespace pten

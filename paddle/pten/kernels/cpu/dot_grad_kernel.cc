@@ -23,7 +23,7 @@
 PT_REGISTER_CTX_KERNEL(dot_grad,
                        CPU,
                        ALL_LAYOUT,
-                       pten::DotGrad,
+                       pten::DotGradKernel,
                        float,
                        double,
                        int,

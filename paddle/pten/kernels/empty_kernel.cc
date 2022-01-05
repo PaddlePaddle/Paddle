@@ -17,17 +17,19 @@ limitations under the License. */
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+#include "paddle/fluid/platform/complex.h"
+
 namespace pten {
 
 template <typename T, typename ContextT>
-void Empty(const ContextT& dev_ctx,
-           const ScalarArray& shape,
-           DenseTensor* out) {
+void EmptyKernel(const ContextT& dev_ctx,
+                 const ScalarArray& shape,
+                 DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename ContextT>
-void EmptyLike(const ContextT& dev_ctx, DenseTensor* out) {
+void EmptyLikeKernel(const ContextT& dev_ctx, DenseTensor* out) {
   out->mutable_data<T>();
 }
 
@@ -36,45 +38,63 @@ void EmptyLike(const ContextT& dev_ctx, DenseTensor* out) {
 PT_REGISTER_CTX_KERNEL(empty,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Empty,
-                       bool,
-                       int,
-                       int64_t,
+                       pten::EmptyKernel,
                        float,
                        double,
-                       paddle::platform::float16) {}
+                       uint8_t,
+                       int16_t,
+                       int,
+                       int64_t,
+                       bool,
+                       paddle::platform::float16,
+                       paddle::platform::bfloat16,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}
 
 PT_REGISTER_CTX_KERNEL(empty_like,
                        CPU,
                        ALL_LAYOUT,
-                       pten::EmptyLike,
-                       bool,
-                       int,
-                       int64_t,
+                       pten::EmptyLikeKernel,
                        float,
                        double,
-                       paddle::platform::float16) {}
+                       uint8_t,
+                       int16_t,
+                       int,
+                       int64_t,
+                       bool,
+                       paddle::platform::float16,
+                       paddle::platform::bfloat16,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_CTX_KERNEL(empty,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Empty,
-                       bool,
-                       int,
-                       int64_t,
+                       pten::EmptyKernel,
                        float,
                        double,
-                       paddle::platform::float16) {}
+                       uint8_t,
+                       int16_t,
+                       int,
+                       int64_t,
+                       bool,
+                       paddle::platform::float16,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}
 
 PT_REGISTER_CTX_KERNEL(empty_like,
                        GPU,
                        ALL_LAYOUT,
-                       pten::EmptyLike,
-                       bool,
-                       int,
-                       int64_t,
+                       pten::EmptyLikeKernel,
                        float,
                        double,
-                       paddle::platform::float16) {}
+                       uint8_t,
+                       int16_t,
+                       int,
+                       int64_t,
+                       bool,
+                       paddle::platform::float16,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}
 #endif

@@ -15,34 +15,37 @@ limitations under the License. */
 #include "paddle/pten/kernels/matmul_grad_kernel.h"
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/kernels/impl/matmul_grad_kernel_impl.h"
 
 PT_REGISTER_CTX_KERNEL(matmul_grad,
-                       CPU,
+                       GPU,
                        ALL_LAYOUT,
                        pten::MatmulGradKernel,
                        float,
                        double,
+                       paddle::platform::float16,
                        paddle::platform::complex<float>,
                        paddle::platform::complex<double>) {}
 
 PT_REGISTER_CTX_KERNEL(matmul_grad_grad,
-                       CPU,
+                       GPU,
                        ALL_LAYOUT,
                        pten::MatmulDoubleGradKernel,
                        float,
                        double,
+                       paddle::platform::float16,
                        paddle::platform::complex<float>,
                        paddle::platform::complex<double>) {}
 
 PT_REGISTER_CTX_KERNEL(matmul_triple_grad,
-                       CPU,
+                       GPU,
                        ALL_LAYOUT,
                        pten::MatmulTripleGradKernel,
                        float,
                        double,
+                       paddle::platform::float16,
                        paddle::platform::complex<float>,
                        paddle::platform::complex<double>) {}

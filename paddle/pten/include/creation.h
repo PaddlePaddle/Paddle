@@ -23,36 +23,36 @@ namespace pten {
 
 // TODO(YuanRisheng) This function name should be same as User API name.
 // TODO(zyfncg) Automatic code generation
-template <typename T, typename ContextT>
-DenseTensor Empty(const ContextT& dev_ctx,
-                  const ScalarArray& shape,
-                  DataType dtype = DataType::FLOAT32,
-                  Backend backend = Backend::CPU,  // Is backend needed here?
-                  DataLayout layout = DataLayout::NCHW) {
-  auto out_meta = CreateInferMeta(shape, dtype, layout);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  Empty<T, ContextT>(dev_ctx, shape, &dense_out);
-  return dense_out;
-}
+// template <typename T, typename ContextT>
+// DenseTensor Empty(const ContextT& dev_ctx,
+//                   const ScalarArray& shape,
+//                   DataType dtype = DataType::FLOAT32,
+//                   Backend backend = Backend::CPU,  // Is backend needed here?
+//                   DataLayout layout = DataLayout::NCHW) {
+//   auto out_meta = CreateInferMeta(shape, dtype, layout);
+//   pten::DenseTensor dense_out(
+//       pten::make_intrusive<paddle::experimental::SharedStorage>(
+//           dev_ctx.GetPlace()),
+//       std::move(out_meta));
+//   Empty<T, ContextT>(dev_ctx, shape, &dense_out);
+//   return dense_out;
+// }
 
-template <typename T, typename ContextT>
-DenseTensor EmptyLike(
-    const ContextT& dev_ctx,
-    const DenseTensor& x,
-    DataType dtype = DataType::UNDEFINED,
-    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
-    DataLayout layout = DataLayout::UNDEFINED) {
-  auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  EmptyLike<T, ContextT>(dev_ctx, &dense_out);
-  return dense_out;
-}
+// template <typename T, typename ContextT>
+// DenseTensor EmptyLike(
+//     const ContextT& dev_ctx,
+//     const DenseTensor& x,
+//     DataType dtype = DataType::UNDEFINED,
+//     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
+//     DataLayout layout = DataLayout::UNDEFINED) {
+//   auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
+//   pten::DenseTensor dense_out(
+//       pten::make_intrusive<paddle::experimental::SharedStorage>(
+//           dev_ctx.GetPlace()),
+//       std::move(out_meta));
+//   EmptyLike<T, ContextT>(dev_ctx, &dense_out);
+//   return dense_out;
+// }
 
 template <typename T, typename ContextT>
 DenseTensor Full(const ContextT& dev_ctx,

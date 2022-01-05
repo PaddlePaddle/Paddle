@@ -65,6 +65,8 @@ class DenseTensor : public TensorBase,
   /// \brief DenseTensor shallow copy constructor.
   DenseTensor(const DenseTensor& other);
 
+  DenseTensor& operator=(DenseTensor&& other);
+
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~DenseTensor() = default;
 

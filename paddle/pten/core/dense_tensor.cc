@@ -41,6 +41,12 @@ DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
 DenseTensor::DenseTensor(const DenseTensor& other)
     : meta_(other.meta()), storage_(copy_intrusive(other.storage_)) {}
 
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+  meta_ = std::move(other.meta_);
+  storage_.swap(other.storage_);
+  return *this;
+}
+
 int64_t DenseTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;

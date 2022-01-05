@@ -15,48 +15,49 @@
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace pten {
 
 template <typename T, typename DevCtx>
-void MatmulGrad(const DevCtx& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& y,
-                const DenseTensor& dout,
-                bool transpose_x,
-                bool transpose_y,
-                DenseTensor* dx,
-                DenseTensor* dy);
-
-template <typename T, typename DevCtx>
-void MatmulDoubleGrad(const DevCtx& dev_ctx,
+void MatmulGradKernel(const DevCtx& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& dout,
-                      const DenseTensor& ddx,
-                      const DenseTensor& ddy,
                       bool transpose_x,
                       bool transpose_y,
                       DenseTensor* dx,
-                      DenseTensor* dy,
-                      DenseTensor* ddout);
+                      DenseTensor* dy);
 
 template <typename T, typename DevCtx>
-void MatmulTripleGrad(const DevCtx& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      const DenseTensor& dout,
-                      const DenseTensor& ddx,
-                      const DenseTensor& ddy,
-                      const DenseTensor& d_dx,
-                      const DenseTensor& d_dy,
-                      const DenseTensor& d_ddout,
-                      bool transpose_x,
-                      bool transpose_y,
-                      DenseTensor* out_d_x,
-                      DenseTensor* out_d_y,
-                      DenseTensor* out_d_dout,
-                      DenseTensor* out_d_ddx,
-                      DenseTensor* out_d_ddy);
+void MatmulDoubleGradKernel(const DevCtx& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            const DenseTensor& dout,
+                            paddle::optional<const DenseTensor&> ddx,
+                            paddle::optional<const DenseTensor&> ddy,
+                            bool transpose_x,
+                            bool transpose_y,
+                            DenseTensor* dx,
+                            DenseTensor* dy,
+                            DenseTensor* ddout);
+
+template <typename T, typename DevCtx>
+void MatmulTripleGradKernel(const DevCtx& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            const DenseTensor& dout,
+                            const DenseTensor& ddx,
+                            const DenseTensor& ddy,
+                            paddle::optional<const DenseTensor&> d_dx,
+                            paddle::optional<const DenseTensor&> d_dy,
+                            paddle::optional<const DenseTensor&> d_ddout,
+                            bool transpose_x,
+                            bool transpose_y,
+                            DenseTensor* out_d_x,
+                            DenseTensor* out_d_y,
+                            DenseTensor* out_d_dout,
+                            DenseTensor* out_d_ddx,
+                            DenseTensor* out_d_ddy);
 
 }  // namespace pten
