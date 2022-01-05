@@ -1563,7 +1563,6 @@ class MultiplicativeDecay(LRScheduler):
                     scheduler.step()    # If you update learning rate each step
               # scheduler.step()        # If you update learning rate each epoch
 
-
     """
 
     def __init__(self, learning_rate, lr_lambda, last_epoch=-1, verbose=False):
