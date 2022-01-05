@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infermeta/nary.h"
+#include "paddle/pten/infermeta/nullary.h"
 
 namespace pten {
 

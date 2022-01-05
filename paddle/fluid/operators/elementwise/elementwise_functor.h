@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/array.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -84,6 +86,71 @@ template <typename T>
 struct MinFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     return a < b ? a : b;
+  }
+};
+
+template <typename T>
+using Complex = paddle::platform::complex<T>;
+
+template <typename InT, typename OutT>
+struct DivGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT a,
+                                                                 const InT b,
+                                                                 const InT c) {
+    // dx = dout / y
+    // dy = - dout * out / y
+    paddle::framework::Array<OutT, 2> outs;
+    outs[0] = a / c;
+    outs[1] = -a * b / c;
+    return outs;
+  }
+};
+
+template <typename InT, typename OutT>
+struct DivGradXYFunctor<Complex<InT>, Complex<OutT>> {
+  inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
+      const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
+    paddle::framework::Array<Complex<OutT>, 2> outs;
+    Complex<InT> c_conj(c.real, -c.imag);
+    Complex<InT> out_div_c_conj((b / c).real, -(b / c).imag);
+    outs[0] = a / c_conj;
+    outs[1] = -a * out_div_c_conj;
+    return outs;
+  }
+};
+
+// Float div grad
+template <typename T>
+struct DivGradXFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+};
+
+// Complex div grad
+template <typename T>
+struct DivGradXFunctor<Complex<T>> {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
+                                          const Complex<T>& b) const {
+    Complex<T> b_conj(b.real, -b.imag);
+    return a / b_conj;
+  }
+};
+
+// Float mul and div
+template <typename T>
+struct DivGradYFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+    return -a * b / c;
+  }
+};
+
+// Complex mul and div
+template <typename T>
+struct DivGradYFunctor<Complex<T>> {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
+                                          const Complex<T>& b,
+                                          const Complex<T>& c) const {
+    Complex<T> out_div_c_conj((b / c).real, -(b / c).imag);
+    return -a * out_div_c_conj;
   }
 };
 
