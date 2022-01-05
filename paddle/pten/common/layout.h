@@ -27,6 +27,7 @@ enum class DataLayout {
   NHWC,
   NCHW,
   MKLDNN,
+  SPARSE_CSR,
   NUM_DATA_LAYOUTS,
   // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_LAYOUT = UNDEFINED,
@@ -64,6 +65,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::kAnyLayout;
   } else if (s == "MKLDNNLAYOUT") {
     return DataLayout::kMKLDNN;
+  } else if (s == "SPARSE_CSR") {
+    return DataLayout::SPARSE_CSR;
   } else {
     PD_THROW("Unknown data layout type string: ", s, ".");
   }
