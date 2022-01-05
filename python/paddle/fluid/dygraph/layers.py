@@ -31,7 +31,7 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, _convert_into_variable
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
@@ -882,41 +882,39 @@ class Layer(core.Layer):
     def _build_once(self, *args, **kwargs):
         pass
 
+    def _dygraph_call_func(self, *inputs, **kwargs):
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
+        if not self._built:
+            with program_desc_tracing_guard(False):
+                self._build_once(*inputs, **kwargs)
+
+                # TODO(liuyuhui) Only xpu broadcast parameters here.
+                # The other device is to call _sync_params_buffers in DataParallel
+                # to realize the parameter synchronization among multiply cards.
+                if parallel_helper._is_data_parallel_mode(
+                ) and paddle.is_compiled_with_xpu():
+                    parallel_helper._broadcast_parameters(
+                        self._parameters.values())
+
+            self._built = True
+
+        outputs = self.forward(*inputs, **kwargs)
+
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
+        return outputs
+
     def __call__(self, *inputs, **kwargs):
-        # NOTE(Aurelius84): Why we still need param_guard here?
-        # In case of ControlFlow, true_fn and false_fn will contain
-        # parameters that may not trigger logic of `Operator` to create
-        # them. we add this to make sure all parameters is available.
-        with param_guard(self._parameters), param_guard(self._buffers):
-            for forward_pre_hook in self._forward_pre_hooks.values():
-                hook_result = forward_pre_hook(self, inputs)
-                if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result, )
-                    inputs = hook_result
-
-            if not self._built:
-                with program_desc_tracing_guard(False):
-                    self._build_once(*inputs, **kwargs)
-
-                    # TODO(liuyuhui) Only xpu broadcast parameters here.
-                    # The other device is to call _sync_params_buffers in DataParallel
-                    # to realize the parameter synchronization among multiply cards.
-                    if parallel_helper._is_data_parallel_mode(
-                    ) and paddle.is_compiled_with_xpu():
-                        parallel_helper._broadcast_parameters(
-                            self._parameters.values())
-
-                self._built = True
-
-            outputs = self.forward(*inputs, **kwargs)
-
-            for forward_post_hook in self._forward_post_hooks.values():
-                hook_result = forward_post_hook(self, inputs, outputs)
-                if hook_result is not None:
-                    outputs = hook_result
-
-            return outputs
+        return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1096,6 +1094,8 @@ class Layer(core.Layer):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
+                if in_declarative_mode():
+                    return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
             _sub_layers = self.__dict__['_sub_layers']
@@ -1104,6 +1104,8 @@ class Layer(core.Layer):
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
+                if in_declarative_mode():
+                    return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
 
@@ -1174,11 +1176,16 @@ class Layer(core.Layer):
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if _buffers[name] is None or type(_buffers[
-                                name]) == core.VarBase:
+                        if in_declarative_mode() and _buffers[name] is None:
+                            raise RuntimeError(
+                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
+                                'not allowed to be set to Variable when self.{0} is None.'.
+                                format(name))
+                        elif _buffers[name] is None or type(
+                                getattr(self, name)) == core.VarBase:
                             _buffers[name] = assign(value)
                         else:
-                            assign(value, _buffers[name])
+                            assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
