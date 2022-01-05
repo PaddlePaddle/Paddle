@@ -408,6 +408,14 @@ class TestSetValueItemNone9(TestSetValueApi):
         self.data[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
 
+class TestSetValueItemNone10(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
+
+    def _get_answer(self):
+        self.data[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
+
+
 # 1.5 item is list or Tensor of bol
 class TestSetValueItemBool1(TestSetValueApi):
     def _call_setitem(self, x):

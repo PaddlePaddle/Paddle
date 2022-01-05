@@ -541,7 +541,7 @@ static void ParseIndexingSlice(
   PADDLE_ENFORCE_LE(ell_count, 1,
                     platform::errors::InvalidArgument(
                         "An index can only have a single ellipsis ('...')"));
-
+  int none_count = 0;
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
 
@@ -587,7 +587,8 @@ static void ParseIndexingSlice(
     } else if (slice_item == Py_Ellipsis) {
       dim += rank - specified_dims;
     } else if (slice_item == Py_None) {
-      none_axes->push_back(dim);
+      none_axes->push_back(dim + none_count);
+      none_count++;
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
       PADDLE_ENFORCE_EQ(
@@ -939,6 +940,11 @@ void BindImperative(py::module *m_ptr) {
               }
             };
 
+            // NOTE(liym27):
+            // Increase the version of VarBase self because __setitem__ is an
+            // inplace operator for the VarBase self.
+            self->BumpInplaceVersion();
+
             // 1. Check argumnets
             bool parse_index = true;
 
@@ -1106,10 +1112,6 @@ void BindImperative(py::module *m_ptr) {
               SetTensorFromPyArray(self_tensor, self_numpy,
                                    self_tensor->place(), false);
             }
-            // NOTE(liym27):
-            // Increase the version of VarBase self because __setitem__ is an
-            // inplace operator for the VarBase self.
-            self->BumpInplaceVersion();
           })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -1181,29 +1183,6 @@ void BindImperative(py::module *m_ptr) {
                      }
                    }
                    axis -= len;
-                 }
-
-                 // Deal with cases that there are more than one
-                 // prefix none index, For example:
-                 // [None, None, :, :, None]
-                 // the none_axes int the return of ParseIndexingSlice is:
-                 // [0,    0,          2   ]
-                 // according to the interface of "unsqueeze2",
-                 // we should convert it to:
-                 // [0,    0,          4   ]
-                 int prefix_zero_cnt = 0;
-                 for (const auto &axis : none_axes) {
-                   if (axis == 0) {
-                     prefix_zero_cnt++;
-                   } else {
-                     break;
-                   }
-                 }
-                 if (prefix_zero_cnt > 0) {
-                   int none_axes_num = static_cast<int>(none_axes.size());
-                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
-                     none_axes[i] += prefix_zero_cnt;
-                   }
                  }
 
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
