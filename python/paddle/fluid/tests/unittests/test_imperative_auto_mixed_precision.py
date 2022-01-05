@@ -598,6 +598,32 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertEqual(optimizers[0]._multi_precision, False)
         self.assertEqual(optimizers[1]._multi_precision, False)
 
+    def test_skip_BatchNorm_Layer_norm(self):
+        model = paddle.nn.LayerNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm1D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm2D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm3D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
 
 class TestPureFp16SaveLoad(unittest.TestCase):
     def test_save_dtype_exception(self):

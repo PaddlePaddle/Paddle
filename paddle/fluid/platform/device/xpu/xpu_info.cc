@@ -14,8 +14,8 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 #include "gflags/gflags.h"
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
 
 PADDLE_DEFINE_EXPORTED_string(
@@ -31,7 +31,31 @@ PADDLE_DEFINE_EXPORTED_string(
 namespace paddle {
 namespace platform {
 
-static int GetXPUDeviceCountImpl() {
+/**************************** Version Management **************************/
+
+//! Get the version of XPU Driver
+int GetDriverVersion() {
+  uint32_t driver_version_major = 0;
+  uint32_t driver_version_minor = 0;
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      xpu_get_driver_version(&driver_version_major, &driver_version_minor));
+  int driver_version = driver_version_major * 10 + driver_version_minor;
+  return driver_version;
+}
+
+//! Get the version of XPU Runtime
+int GetRuntimeVersion() {
+  uint32_t rumtime_version_major = 0;
+  uint32_t rumtime_version_minor = 0;
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      xpu_get_runtime_version(&rumtime_version_major, &rumtime_version_minor));
+  int runtime_version = rumtime_version_major * 10 + rumtime_version_minor;
+  return runtime_version;
+}
+
+/**************************** Device Management **************************/
+
+static int GetDeviceCountImpl() {
   const auto *xpu_visible_devices = std::getenv("XPU_VISIBLE_DEVICES");
   if (xpu_visible_devices != nullptr) {
     std::string xpu_visible_devices_str(xpu_visible_devices);
@@ -44,34 +68,30 @@ static int GetXPUDeviceCountImpl() {
   }
 
   int count = 0;
-  int ret = xpu_device_count(&count);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_count(&count));
   return count;
 }
 
 int GetXPUDeviceCount() {
-  static auto dev_cnt = GetXPUDeviceCountImpl();
+  static auto dev_cnt = GetDeviceCountImpl();
   return dev_cnt;
 }
 
 int GetXPUCurrentDeviceId() {
   int dev_id;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_current_device(&dev_id));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
   return dev_id;
+}
+
+void SetXPUDeviceId(int id) {
+  PADDLE_ENFORCE_LT(
+      id, GetXPUDeviceCount(),
+      platform::errors::InvalidArgument("id must less than XPU count"));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
 }
 
 //! Get a list of device ids from environment variable or use all.
@@ -92,24 +112,38 @@ std::vector<int> GetXPUSelectedDevices() {
   return devices;
 }
 
-void SetXPUDeviceId(int id) {
-  PADDLE_ENFORCE_LT(
-      id, GetXPUDeviceCount(),
-      platform::errors::InvalidArgument("id must less than XPU count"));
-  int ret = xpu_set_device(id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+/**************************** Memory Management **************************/
+
+void MemcpySyncH2D(void *dst, const void *src, size_t count, int dev_id) {
+  platform::XPUDeviceGuard guard(dev_id);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
 }
+
+void MemcpySyncD2H(void *dst, const void *src, size_t count, int dev_id) {
+  platform::XPUDeviceGuard guard(dev_id);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
+}
+
+void MemcpySyncD2D(void *dst, int dst_id, const void *src, int src_id,
+                   size_t count) {
+  int dev_id = GetXPUCurrentDeviceId();
+  if (dst_id == dev_id && src_id == dev_id) {
+    platform::XPUDeviceGuard guard(dev_id);
+    PADDLE_ENFORCE_XPU_SUCCESS(
+        xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_DEVICE));
+  } else {
+    PADDLE_ENFORCE_XPU_SUCCESS(
+        xpu_memcpy_peer(dst_id, dst, src_id, src, count));
+  }
+}
+
+/**************************** Others **************************/
 
 XPUVersion get_xpu_version(int dev_id) {
   uint64_t v = 0;
-  int ret = xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "xpu_device_get_attr return wrong value[%d]", ret));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
 
   if (v == K100 || v == K200) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";

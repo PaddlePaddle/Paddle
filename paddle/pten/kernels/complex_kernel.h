@@ -20,19 +20,17 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void ConjKernel(const ContextT& dev_ctx,
-                const DenseTensor& x,
-                DenseTensor* out);
+template <typename T, typename Context>
+void ConjKernel(const Context& context, const DenseTensor& x, DenseTensor* out);
 
-template <typename T, typename ContextT>
-DenseTensor Conj(const ContextT& dev_ctx, const DenseTensor& x) {
+template <typename T, typename Context>
+DenseTensor Conj(const Context& context, const DenseTensor& x) {
   auto out_meta = UnchangedInferMeta(x.meta());
   pten::DenseTensor dense_out(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
+          context.GetPlace()),
       std::move(out_meta));
-  ConjKernel<T>(dev_ctx, x, &dense_out);
+  ConjKernel<T>(context, x, &dense_out);
   return dense_out;
 }
 

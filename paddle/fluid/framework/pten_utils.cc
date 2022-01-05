@@ -60,7 +60,7 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
-  DataLayout data_layout = pten::TransToFluidDataLayout(kernel_key.layout());
+  DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
@@ -83,8 +83,7 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   } else {
     // do
   }
-  paddle::experimental::DataLayout layout =
-      pten::TransToPtenDataLayout(kernel_type.data_layout_);
+  paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
       pten::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);

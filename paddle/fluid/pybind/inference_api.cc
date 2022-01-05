@@ -742,7 +742,13 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("get_output_names", &paddle_infer::Predictor::GetOutputNames)
       .def("get_input_handle", &paddle_infer::Predictor::GetInputHandle)
       .def("get_output_handle", &paddle_infer::Predictor::GetOutputHandle)
-      .def("run", &paddle_infer::Predictor::Run)
+      .def("run",
+           [](paddle_infer::Predictor &self) {
+#ifdef PADDLE_WITH_ASCEND_CL
+             pybind11::gil_scoped_release release;
+#endif
+             self.Run();
+           })
       .def("clone", &paddle_infer::Predictor::Clone)
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",

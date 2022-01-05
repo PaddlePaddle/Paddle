@@ -24,8 +24,8 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void DotKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotKernel(const Context& context,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
@@ -35,14 +35,14 @@ void DotKernel(const ContextT& dev_ctx,
     auto eigen_x = pten::EigenVector<T>::Flatten(x);
     auto eigen_y = pten::EigenVector<T>::Flatten(y);
 
-    auto& dev = *dev_ctx.eigen_device();
+    auto& dev = *context.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum();
   } else {
     auto eigen_out = pten::EigenMatrix<T>::From(*out);
     auto eigen_x = pten::EigenMatrix<T>::From(x);
     auto eigen_y = pten::EigenMatrix<T>::From(y);
 
-    auto& dev = *dev_ctx.eigen_device();
+    auto& dev = *context.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
   }
 }

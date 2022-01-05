@@ -21,6 +21,8 @@ from paddle import fluid
 from paddle.distribution import *
 from paddle.fluid import layers
 
+import config
+
 paddle.enable_static()
 
 
@@ -128,3 +130,37 @@ class DistributionTestName(unittest.TestCase):
 
         lp = categorical1.log_prob(value_tensor)
         self.assertEqual(self.get_prefix(lp.name), name + '_log_prob')
+
+
+@config.place(config.DEVICES)
+@config.parameterize((config.TEST_CASE_NAME, 'batch_shape', 'event_shape'),
+                     [('test-tuple', (10, 20),
+                       (10, 20)), ('test-list', [100, 100], [100, 200, 300]),
+                      ('test-null-eventshape', (100, 100), ())])
+class TestDistributionShape(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.dist = paddle.distribution.Distribution(
+            batch_shape=self.batch_shape, event_shape=self.event_shape)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_batch_shape(self):
+        self.assertTrue(isinstance(self.dist.batch_shape, tuple))
+        self.assertTrue(self.dist.batch_shape == tuple(self.batch_shape))
+
+    def test_event_shape(self):
+        self.assertTrue(isinstance(self.dist.event_shape, tuple))
+        self.assertTrue(self.dist.event_shape == tuple(self.event_shape))
+
+    def test_prob(self):
+        with self.assertRaises(NotImplementedError):
+            self.dist.prob(paddle.to_tensor(config.xrand()))
+
+    def test_extend_shape(self):
+        shapes = [(34, 20), (56, ), ()]
+        for shape in shapes:
+            self.assertTrue(
+                self.dist._extend_shape(shape),
+                shape + self.dist.batch_shape + self.dist.event_shape)

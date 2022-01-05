@@ -22,8 +22,8 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void DotKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotKernel(const Context& context,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
