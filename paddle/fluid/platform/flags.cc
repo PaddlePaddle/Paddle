@@ -695,6 +695,18 @@ PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
                             "It controls whether to use pten kernel");
 
 /**
+ * Pt kernel related FLAG
+ * Name: FLAGS_run_kp_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in
+ * the Op for XPU2.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, true,
+                            "It controls whether to use kp kernel for xpu2");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_allreduce_record_one_event
  * Since Version: 2.2.0

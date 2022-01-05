@@ -160,9 +160,9 @@ class ConstantInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             # fill constant should set the "str_value" to preserve precision
@@ -279,9 +279,9 @@ class UniformInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             op = block.append_op(
@@ -382,9 +382,9 @@ class NormalInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             op = block.append_op(
@@ -477,9 +477,9 @@ class TruncatedNormalInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             op = block.append_op(
@@ -617,9 +617,9 @@ class XavierInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             if self._uniform:
@@ -770,9 +770,9 @@ class MSRAInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             if self._uniform:
@@ -938,9 +938,9 @@ class BilinearInitializer(Initializer):
             ]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             op = block.append_op(
@@ -1044,9 +1044,9 @@ class NumpyArrayInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, True)
+                var.copy_(var_tmp, False)
             else:
-                var.copy_(out_var, True)
+                var.copy_(out_var, False)
             return None
         else:
             op = block.append_op(
@@ -1148,13 +1148,14 @@ def _global_bias_initializer():
 
 def calculate_gain(nonlinearity, param=None):
     """
-    Get the recommended gain value of some nonlinearity function.
+    Get the recommended ``gain`` value of some nonlinearity function. ``gain`` value can be used in some 
+    ``paddle.nn.initializer`` api to adjust the initialization value.
 
     Args:
-        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, which is one of 
-        "linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose" , 1.0 will be returned.
+        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, such as: 
+            `linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose` , 1.0 will be returned.
         param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 
-        'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
+            'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
 
     Returns:
         A float value, which is the recommended gain for this nonlinearity function.
