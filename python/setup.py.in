@@ -370,6 +370,8 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
+          'paddle.plugins',
+          'paddle.plugins.pluggable_devices',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -573,6 +575,7 @@ headers = (
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/bfloat16.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/device/device_ext.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
@@ -620,6 +623,8 @@ class InstallHeaders(Command):
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
             if 'fluid' in install_dir:
                 install_dir = "paddle/pten/common/"
+            if 'device_ext.h' in header:
+                install_dir = "paddle/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
