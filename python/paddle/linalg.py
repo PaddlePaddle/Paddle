@@ -27,11 +27,14 @@ from .tensor.linalg import matrix_rank  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
 from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.linalg import qr  # noqa: F401
+from .tensor.linalg import lu  # noqa: F401
+from .tensor.linalg import lu_unpack  # noqa: F401
 from .tensor.linalg import eigh  # noqa: F401
 from .tensor.linalg import det  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import pinv  # noqa: F401
 from .tensor.linalg import triangular_solve  # noqa: F401
+from .tensor.linalg import lstsq
 
 __all__ = [
     'cholesky',  #noqa
@@ -45,6 +48,8 @@ __all__ = [
     'matrix_rank',
     'svd',
     'qr',
+    'lu',
+    'lu_unpack',
     'matrix_power',
     'det',
     'slogdet',
@@ -54,4 +59,5 @@ __all__ = [
     'solve',
     'cholesky_solve',
     'triangular_solve',
+    'lstsq'
 ]

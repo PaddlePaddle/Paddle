@@ -1402,3 +1402,19 @@ def get_standalone_cost_data(distributed_programs):
         standalone_cost_data.append(cost_data)
 
     return standalone_cost_data
+
+
+def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
+    op_id = op_desc.id()
+    op_original_id = op_desc.original_id()
+    # First, try to set the original id to the id of the op_desc
+    if op_id in dist_context._dist_ops_for_program:
+        dist_op_desc.set_original_id(op_id)
+        return
+    # Second, try to set the original id to the original_id of the op_desc
+    elif op_original_id in dist_context._dist_ops_for_program:
+        dist_op_desc.set_original_id(op_original_id)
+        return
+    # Third, print error infomation if we cannot find the original id
+    else:
+        assert False, "Cannot find the original id in the distributed context"

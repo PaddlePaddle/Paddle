@@ -14,17 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-
-#ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
 
 namespace paddle {
 namespace memory {
@@ -74,41 +66,7 @@ void Copy<platform::XPUPlace, platform::CPUPlace>(platform::XPUPlace dst_place,
     VLOG(1) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  if (dev_id != dst_place.device) {
-    ret = xpu_set_device(dst_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
-  ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id != dst_place.device) {
-    ret = xpu_set_device(dev_id);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
+  platform::MemcpySyncH2D(dst, src, num, dst_place.device);
 }
 
 template <>
@@ -120,46 +78,7 @@ void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
     VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
     return;
   }
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  if (dev_id != src_place.device) {
-    ret = xpu_set_device(src_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
-
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.GetByPlace(src_place);
-  dev_ctx->Wait();
-
-  ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id != src_place.device) {
-    ret = xpu_set_device(dev_id);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
+  platform::MemcpySyncD2H(dst, src, num, src_place.device);
 }
 
 template <>
@@ -171,69 +90,7 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
     VLOG(1) << "memcpy XPU_DEVICE_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  if (dev_id != src_place.device || dev_id != dst_place.device) {
-    ret = xpu_set_device(src_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    void* tmp = malloc(num);
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetByPlace(src_place);
-    dev_ctx->Wait();
-
-    ret = xpu_memcpy(tmp, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    ret = xpu_set_device(dst_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    ret = xpu_memcpy(dst, tmp, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    ret = xpu_set_device(dev_id);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    free(tmp);
-  } else {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetByPlace(src_place);
-    int ret = xpu::copy(dev_ctx->x_context(), static_cast<const int8_t*>(src),
-                        static_cast<int8_t*>(dst), num);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS, platform::errors::External(
-                                            "XPU API return wrong value[%d %s]",
-                                            ret, XPUAPIErrorMsg[ret]));
-  }
+  platform::MemcpySyncD2D(dst, dst_place.device, src, src_place.device, num);
 }
 #endif
 
