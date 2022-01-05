@@ -228,7 +228,7 @@ class DenseTensor : public TensorBase,
   explicit DenseTensor(const paddle::framework::proto::VarType::Type& dtype);
 
   inline bool IsInitialized() const {
-    return storage_ != nullptr && storage_->data() != nullptr;
+    return storage_ != nullptr && storage_->data_shared() != nullptr;
   }
 
   template <typename T>
