@@ -91,12 +91,14 @@ class CUDAGraphAllocator
     : public Allocator,
       public std::enable_shared_from_this<CUDAGraphAllocator> {
  private:
-  class PrivateAllocation : public Allocation {
+  class PrivateAllocation : public DecoratedAllocation {
    public:
     PrivateAllocation(CUDAGraphAllocator* allocator,
                       AllocationPtr underlying_allocation)
-        : Allocation(
-              underlying_allocation->ptr(), underlying_allocation->base_ptr(),
+        : DecoratedAllocation(
+              underlying_allocation->ptr(),
+              static_cast<DecoratedAllocation*>(underlying_allocation.get())
+                  ->base_ptr(),
               underlying_allocation->size(), underlying_allocation->place()),
           allocator_(allocator->shared_from_this()),
           underlying_allocation_(std::move(underlying_allocation)) {}

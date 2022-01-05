@@ -79,7 +79,7 @@ using FreeChunkBin =
 class BestFitAllocator;
 
 // The BestFitAllocation maintain the List Node iterator.
-class BestFitAllocation : public Allocation {
+class BestFitAllocation : public DecoratedAllocation {
  private:
   using ListIt = typename details::ChunkList::iterator;
 

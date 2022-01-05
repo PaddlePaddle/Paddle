@@ -39,11 +39,13 @@ namespace allocation {
  * allocation so that CUDADeviceContextAllocation can be used in a CUDA stream
  * which deletes allocation in the callback.
  */
-class CUDADeviceContextAllocation : public Allocation {
+class CUDADeviceContextAllocation : public DecoratedAllocation {
  public:
   explicit CUDADeviceContextAllocation(AllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->base_ptr(),
-                   allocation->size(), allocation->place()),
+      : DecoratedAllocation(
+            allocation->ptr(),
+            static_cast<DecoratedAllocation *>(allocation.get())->base_ptr(),
+            allocation->size(), allocation->place()),
         underlying_allocation_(std::move(allocation)) {}
 
   ~CUDADeviceContextAllocation() {
@@ -56,7 +58,7 @@ class CUDADeviceContextAllocation : public Allocation {
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
-      AllocationDeleter()(p_allocation);
+      delete p_allocation;
     });
   }
 

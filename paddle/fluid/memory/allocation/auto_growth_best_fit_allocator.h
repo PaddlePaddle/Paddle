@@ -71,10 +71,12 @@ class AutoGrowthBestFitAllocator : public Allocator {
     List<Block> blocks_;
   };
 
-  struct BlockAllocation : public Allocation {
+  struct BlockAllocation : public DecoratedAllocation {
     explicit BlockAllocation(const List<Block>::iterator &it)
-        : Allocation(it->ptr_, it->chunk_->allocation_->base_ptr(), it->size_,
-                     it->chunk_->allocation_->place()),
+        : DecoratedAllocation(it->ptr_, static_cast<DecoratedAllocation *>(
+                                            it->chunk_->allocation_.get())
+                                            ->base_ptr(),
+                              it->size_, it->chunk_->allocation_->place()),
           block_it_(it) {}
 
     List<Block>::iterator block_it_;

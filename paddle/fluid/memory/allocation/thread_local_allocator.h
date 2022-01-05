@@ -28,10 +28,10 @@ namespace allocation {
 
 class ThreadLocalAllocatorImpl;
 
-class ThreadLocalAllocation : public Allocation {
+class ThreadLocalAllocation : public DecoratedAllocation {
  public:
   ThreadLocalAllocation(void* ptr, size_t size, platform::Place place)
-      : Allocation(ptr, size, place) {}
+      : DecoratedAllocation(ptr, size, place) {}
 
   void SetThreadLocalAllocatorImpl(
       std::shared_ptr<ThreadLocalAllocatorImpl> allocator) {

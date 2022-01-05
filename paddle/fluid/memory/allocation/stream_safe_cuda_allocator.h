@@ -32,7 +32,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class StreamSafeCUDAAllocation : public Allocation {
+class StreamSafeCUDAAllocation : public DecoratedAllocation {
  public:
   StreamSafeCUDAAllocation(AllocationPtr underlying_allocation,
                            gpuStream_t owning_stream);

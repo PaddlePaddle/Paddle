@@ -170,10 +170,10 @@ Allocation* BestFitAllocator::AllocateImpl(size_t size) {
 BestFitAllocation::BestFitAllocation(
     paddle::memory::allocation::BestFitAllocator* allocator,
     typename details::ChunkList::iterator chunk_it)
-    : Allocation(reinterpret_cast<void*>(
-                     reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
-                     chunk_it->offset_),
-                 chunk_it->size_, allocator->Place()),
+    : DecoratedAllocation(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(
+                                                      allocator->BasePtr()) +
+                                                  chunk_it->offset_),
+                          chunk_it->size_, allocator->Place()),
       chunk_it_(chunk_it) {}
 }  // namespace allocation
 }  // namespace memory

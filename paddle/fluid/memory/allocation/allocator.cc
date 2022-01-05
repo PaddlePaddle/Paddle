@@ -18,11 +18,15 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-bool Allocator::IsAllocThreadSafe() const { return false; }
-
 void Allocator::FreeImpl(Allocation* allocation) {
-  Allocator* allocator = allocation->TopDecoratedAllocator();
-  allocator->Free(allocation);
+  static_cast<DecoratedAllocation*>(allocation)
+      ->TopDecoratedAllocator()
+      ->Free(allocation);
+}
+
+void DeleteAllocation(Allocation* allocation) {
+  auto* a = static_cast<DecoratedAllocation*>(allocation);
+  a->TopDecoratedAllocator()->Free(allocation);
 }
 
 }  // namespace allocation

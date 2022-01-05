@@ -29,7 +29,7 @@ class DefaultAllocator : public pten::Allocator {
       : place_(place) {}
 
   static void Delete(Allocation* allocation) {
-    deleter_(allocation->CastContextWithoutCheck<paddle::memory::Allocation>());
+    delete allocation->CastContextWithoutCheck<paddle::memory::Allocation>();
   }
 
   Allocation Allocate(size_t bytes_size) override {
@@ -42,7 +42,6 @@ class DefaultAllocator : public pten::Allocator {
 
  private:
   paddle::platform::Place place_;
-  static paddle::memory::Allocator::AllocationDeleter deleter_;
 };
 
 }  // namespace experimental

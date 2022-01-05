@@ -111,10 +111,10 @@ class SharedStorage : public pten::Storage {
   int64_t size_{0};
 };
 
-class TensorStorage : public paddle::memory::allocation::Allocation {
+class TensorStorage : public paddle::memory::allocation::DecoratedAllocation {
  public:
   explicit TensorStorage(pten::intrusive_ptr<pten::Storage> storage)
-      : paddle::memory::allocation::Allocation(
+      : paddle::memory::allocation::DecoratedAllocation(
             storage->data(), storage->size(), storage->place()),
         storage_(std::move(storage)) {}
 

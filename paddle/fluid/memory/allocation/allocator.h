@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/allocator.h"
 
 DECLARE_string(allocator_strategy);
 
@@ -83,27 +84,14 @@ class Allocator;
  * Therefore, `decorated_allocators_` of the new Allocation object would
  * be a new chain, differing from the underlying Allocation object.
  */
-class Allocation {
+class DecoratedAllocation : public pten::candidate::Allocation {
  public:
-  inline Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), base_ptr_(ptr), size_(size), place_(place) {}
-  inline Allocation(void* ptr, void* base_ptr, size_t size,
-                    platform::Place place)
-      : ptr_(ptr), base_ptr_(base_ptr), size_(size), place_(place) {}
+  using pten::candidate::Allocation::Allocation;
+  DecoratedAllocation(void* ptr, void* base_ptr, size_t size,
+                      const platform::Place& place)
+      : pten::candidate::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
-  Allocation(const Allocation& o) = delete;
-  Allocation& operator=(const Allocation& o) = delete;
-  Allocation(Allocation&& o) = delete;
-  Allocation& operator=(Allocation&& o) = delete;
-
-  // Returns the holding pointer.
-  // NOTE: For performance consideration, it is better not to make this method
-  // as a virtual method. If we want to implement a `defragmentation` later,
-  // we might need to make `ptr_` field as a protected field, and add a virtual
-  // method like `defragmentation` to change `ptr_`.
-  inline void* ptr() const { return ptr_; }
-
-  inline void* base_ptr() const {
+  void* base_ptr() const {
     PADDLE_ENFORCE_EQ(FLAGS_allocator_strategy, "auto_growth",
                       paddle::platform::errors::Unimplemented(
                           "base_ptr() is only implemented for auto_growth "
@@ -112,21 +100,6 @@ class Allocation {
     return base_ptr_;
   }
 
-  // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
-  // last valid element.
-  //
-  // NOTE: Some allocator might alloc more memory than request. The size
-  // could larger than its request. For example,
-  //    the AlignedAllocator will always allocate memory as size + kAlignment.
-  //    The raw pointer might not aligned, so an offset might be added to raw
-  //    the pointer. The size of this allocation will be
-  //    `size + kAlignemnt - offset`.
-  inline size_t size() const { return size_; }
-
-  inline const platform::Place& place() const { return place_; }
-
-  virtual ~Allocation() {}
-
  private:
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
     decorated_allocators_.emplace_back(allocator);
@@ -134,15 +107,16 @@ class Allocation {
 
   inline void PopDecoratedAllocator() { decorated_allocators_.pop_back(); }
 
+  inline void SetDeleter(pten::candidate::Allocation::DeleterFnPtr deleter) {
+    deleter_ = deleter;
+  }
+
   inline Allocator* TopDecoratedAllocator() {
     return decorated_allocators_.back();
   }
 
  private:
-  void* ptr_;
   void* base_ptr_;  // the point that directly requested from system
-  size_t size_;
-  platform::Place place_;
 
   /**
    * NOTE(zjl): Since decorated_allocators_ is usually a small vector.
@@ -160,45 +134,39 @@ class Allocation {
   DecoratedAllocatorStack decorated_allocators_;
 
   friend class Allocator;
+  friend void DeleteAllocation(pten::candidate::Allocation* allocation);
 };
 
+using Allocation = pten::candidate::Allocation;
+
+void DeleteAllocation(Allocation* allocation);
+
 // Base interface class of memory Allocator.
-class Allocator {
+class Allocator : public pten::candidate::Allocator {
  public:
-  virtual ~Allocator() {}
-
-  class AllocationDeleter {
-   public:
-    inline void operator()(Allocation* allocation) const {
-      Allocator* allocator = allocation->TopDecoratedAllocator();
-      allocator->Free(allocation);
-    }
-  };
-
-  using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
-
   // Allocate an allocation.
   // size may be 0, but it would be too complex if we handle size == 0
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
-  inline AllocationPtr Allocate(size_t size) {
-    auto ptr = AllocateImpl(size);
-    ptr->RegisterDecoratedAllocator(this);
-    return AllocationPtr(ptr);
+  AllocationPtr Allocate(size_t size) override {
+    return AllocationPtr(DecoratedAllocate(size));
   }
 
   // This function should not be called outside Allocator class
-  inline void Free(Allocation* allocation) {
-    allocation->PopDecoratedAllocator();
-    FreeImpl(allocation);
+  void Free(Allocation* allocation) override {
+    auto* a = static_cast<DecoratedAllocation*>(allocation);
+    a->PopDecoratedAllocator();
+    FreeImpl(a);
   }
 
-  inline uint64_t Release(const platform::Place& place) {
-    return ReleaseImpl(place);
-  }
+  uint64_t Release(const platform::Place& place) { return ReleaseImpl(place); }
 
-  // True if the `Allocate` is thread safe.
-  virtual bool IsAllocThreadSafe() const;
+  Allocation* DecoratedAllocate(size_t size) {
+    auto* ptr = static_cast<DecoratedAllocation*>(AllocateImpl(size));
+    ptr->RegisterDecoratedAllocator(this);
+    ptr->SetDeleter(&DeleteAllocation);
+    return ptr;
+  }
 
  protected:
   virtual Allocation* AllocateImpl(size_t size) = 0;
@@ -206,7 +174,6 @@ class Allocator {
   virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
 };
 
-using AllocationDeleter = Allocator::AllocationDeleter;
 using AllocationPtr = Allocator::AllocationPtr;
 
 inline size_t AlignedSize(size_t size, size_t alignment) {

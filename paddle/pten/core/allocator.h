@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <cstdint>
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/candidate/allocator.h"
 
 namespace pten {
 

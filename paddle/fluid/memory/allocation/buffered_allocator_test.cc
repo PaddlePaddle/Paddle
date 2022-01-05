@@ -51,9 +51,9 @@ TEST(buffered_allocator, thread_safety) {
   }
 }
 
-class StubAllocation : public Allocation {
+class StubAllocation : public DecoratedAllocation {
  public:
-  using Allocation::Allocation;
+  using DecoratedAllocation::DecoratedAllocation;
 };
 
 class StubAllocator : public Allocator {

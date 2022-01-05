@@ -17,14 +17,6 @@ limitations under the License. */
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
-namespace memory {
-namespace allocation {
-class Allocation;
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {

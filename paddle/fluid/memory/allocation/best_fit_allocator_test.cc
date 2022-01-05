@@ -28,10 +28,10 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class StubAllocation : public Allocation {
+class StubAllocation : public DecoratedAllocation {
  public:
   explicit StubAllocation(size_t size)
-      : Allocation(0, size, platform::CPUPlace()) {}
+      : DecoratedAllocation(0, size, platform::CPUPlace()) {}
 };
 
 TEST(BestFitAllocator, test_allocation) {

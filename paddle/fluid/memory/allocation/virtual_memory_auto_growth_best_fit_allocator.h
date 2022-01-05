@@ -34,10 +34,10 @@ struct Block {
   bool is_free_;
 };
 
-struct BlockAllocation : public Allocation {
+struct BlockAllocation : public DecoratedAllocation {
   explicit BlockAllocation(const std::list<Block>::iterator &it,
                            platform::Place place)
-      : Allocation(it->ptr_, it->size_, place), block_it_(it) {}
+      : DecoratedAllocation(it->ptr_, it->size_, place), block_it_(it) {}
 
   std::list<Block>::iterator block_it_;
 };

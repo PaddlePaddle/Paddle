@@ -28,11 +28,11 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class MemoryMapWriterAllocation : public Allocation {
+class MemoryMapWriterAllocation : public DecoratedAllocation {
  public:
   explicit MemoryMapWriterAllocation(void *ptr, size_t size,
                                      std::string ipc_name)
-      : Allocation(ptr, size, platform::CPUPlace()),
+      : DecoratedAllocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
@@ -43,11 +43,11 @@ class MemoryMapWriterAllocation : public Allocation {
   std::string ipc_name_;
 };
 
-class MemoryMapReaderAllocation : public Allocation {
+class MemoryMapReaderAllocation : public DecoratedAllocation {
  public:
   explicit MemoryMapReaderAllocation(void *ptr, size_t size,
                                      std::string ipc_name)
-      : Allocation(ptr, size, platform::CPUPlace()),
+      : DecoratedAllocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
