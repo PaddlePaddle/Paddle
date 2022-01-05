@@ -124,7 +124,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
