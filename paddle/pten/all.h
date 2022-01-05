@@ -19,5 +19,4 @@ limitations under the License. */
 #include "paddle/pten/include/creation.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/include/linalg.h"
-#include "paddle/pten/include/manipulation.h"
 #include "paddle/pten/include/math.h"

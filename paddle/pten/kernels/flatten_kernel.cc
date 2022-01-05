@@ -22,11 +22,11 @@
 namespace pten {
 
 template <typename T, typename Context>
-void Flatten(const Context& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out) {
+void FlattenKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int start_axis,
+                   int stop_axis,
+                   DenseTensor* out) {
   auto out_dims = out->dims();
   pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
@@ -42,7 +42,7 @@ void FlattenWithXShape(const Context& dev_ctx,
                        int stop_axis,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  Flatten<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
   funcs::SetXShape(x, xshape);
 }
 
@@ -51,7 +51,7 @@ void FlattenWithXShape(const Context& dev_ctx,
 PT_REGISTER_CTX_KERNEL(flatten,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Flatten,
+                       pten::FlattenKernel,
                        float,
                        double,
                        uint8_t,
@@ -74,7 +74,7 @@ PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
 PT_REGISTER_CTX_KERNEL(flatten,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Flatten,
+                       pten::FlattenKernel,
                        float,
                        paddle::platform::float16,
                        double,
@@ -100,7 +100,7 @@ PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
 PT_REGISTER_CTX_KERNEL(flatten,
                        XPU,
                        ALL_LAYOUT,
-                       pten::Flatten,
+                       pten::FlattenKernel,
                        float,
                        paddle::platform::float16,
                        double,

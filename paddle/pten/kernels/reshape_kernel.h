@@ -14,16 +14,18 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/include/infermeta.h"
 
 namespace pten {
 
 template <typename Context>
-void Reshape(const Context& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
+void ReshapeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const ScalarArray& shape,
+                   DenseTensor* out);
 
 template <typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
@@ -31,5 +33,18 @@ void ReshapeWithXShape(const Context& dev_ctx,
                        const ScalarArray& shape,
                        DenseTensor* xshape,
                        DenseTensor* out);
+
+template <typename T, typename ContextT>
+DenseTensor Reshape(const ContextT& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<int64_t>& shape) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  ReshapeKernel<ContextT>(dev_ctx, x, ScalarArray(shape), &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten
