@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 #endif
 
 namespace pten {
