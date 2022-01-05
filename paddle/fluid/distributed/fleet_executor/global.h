@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace distributed {
 
