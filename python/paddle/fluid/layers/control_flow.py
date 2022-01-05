@@ -2478,6 +2478,7 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
             for op in sub_block.ops:
                 op._rename_output(old_name, new_name)
+                op._rename_input(old_name, new_name)
                 if op.type == "if":
                     for item in iter_list:
                         _rename_sub_block_output_recursively(
