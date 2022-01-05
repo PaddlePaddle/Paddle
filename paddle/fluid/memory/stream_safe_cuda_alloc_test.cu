@@ -276,7 +276,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
           paddle::platform::DeviceContextPool::Instance().Get(place))
           ->stream();
   std::shared_ptr<Allocation> allocation_implicit_stream =
-      Alloc(place, alloc_size);
+      AllocShared(place, alloc_size);
   EXPECT_EQ(GetStream(allocation_implicit_stream), default_stream);
 
   gpuStream_t new_stream;
