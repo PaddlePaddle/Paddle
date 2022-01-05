@@ -535,6 +535,13 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnQuantizer(
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnQuantizerEnabled(
     __pd_keep PD_Config* pd_config);
 ///
+/// \brief Turn on MKLDNN FC passes.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnFcPasses(
+    __pd_keep PD_Config* pd_config);
+///
 /// \brief Turn on MKLDNN bfloat16.
 ///
 /// \param[in] pd_onfig config

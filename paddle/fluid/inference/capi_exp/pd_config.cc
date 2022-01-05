@@ -363,6 +363,10 @@ void PD_ConfigEnableMkldnnQuantizer(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableMkldnnQuantizer();
 }
+void PD_ConfigEnableMkldnnFcPasses(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableMkldnnFcPasses();
+}
 void PD_ConfigEnableMkldnnBfloat16(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableMkldnnBfloat16();

@@ -25,8 +25,7 @@ void profile(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> outputs;
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+    cfg.EnableMkldnnFcPasses();
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

@@ -200,6 +200,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   CP_MEMBER(mkldnn_cache_capacity_);
+  CP_MEMBER(use_mkldnn_fc_passes_);
   // Bfloat16 related.
   CP_MEMBER(use_mkldnn_bfloat16_);
   CP_MEMBER(bfloat16_enabled_op_types_);
@@ -347,6 +348,17 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
   use_mkldnn_quantizer_ = false;
+#endif
+
+  Update();
+}
+
+void AnalysisConfig::EnableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  use_mkldnn_fc_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnFcPasses";
+  use_mkldnn_fc_passes_ = false;
 #endif
 
   Update();
@@ -544,6 +556,12 @@ void AnalysisConfig::Update() {
     }
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->EnableMkldnnQuantizer();
+#endif
+  }
+
+  if (use_mkldnn_fc_passes_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnFcPasses();
 #endif
   }
 

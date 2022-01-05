@@ -614,6 +614,12 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
+  /// \brief Turn on MKLDNN FC passes.
+  ///
+  ///
+  void EnableMkldnnFcPasses();
+
+  ///
   /// \brief Turn on MKLDNN bfloat16.
   ///
   ///
@@ -865,6 +871,7 @@ struct PD_INFER_DECL AnalysisConfig {
   int mkldnn_cache_capacity_{10};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+  bool use_mkldnn_fc_passes_{false};
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
 

@@ -280,12 +280,21 @@ void CpuPassStrategy::EnableMKLDNN() {
 #endif
 }
 
+void CpuPassStrategy::EnableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!use_mkldnn_fc_passes_) {
+    passes_.push_back("fc_mkldnn_pass");
+    passes_.push_back("fc_act_mkldnn_fuse_pass");
+  }
+  use_mkldnn_fc_passes_ = true;
+#else
+  use_mkldnn_fc_passes_ = false;
+#endif
+}
+
 void CpuPassStrategy::EnableMkldnnQuantizer() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_quantizer_) {
-    // INT8 implies FC oneDNN passes to be used
-    passes_.push_back("fc_mkldnn_pass");
-    passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
   }
   use_mkldnn_quantizer_ = true;

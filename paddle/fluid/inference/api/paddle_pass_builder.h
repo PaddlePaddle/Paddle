@@ -133,6 +133,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable MKLDNN quantize optimization.
   virtual void EnableMkldnnQuantizer() {}
 
+  /// \brief Enable MKLDNN fc passes
+  virtual void EnableMkldnnFcPasses() {}
+
   /// \brief Enable MKLDNN bfloat16.
   virtual void EnableMkldnnBfloat16() {}
 
@@ -181,6 +184,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_ = other.use_mkldnn_;
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
+    use_mkldnn_fc_passes_ = other.use_mkldnn_fc_passes_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -194,12 +198,16 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN quantize optimization.
   void EnableMkldnnQuantizer() override;
 
+  /// \brief Enable MKLDNN fc passes.
+  void EnableMkldnnFcPasses() override;
+
   /// \brief Enable MKLDNN bfloat16.
   void EnableMkldnnBfloat16() override;
 
  protected:
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
+  bool use_mkldnn_fc_passes_{false};
   bool use_mkldnn_bfloat16_{false};
   /// \endcond
 };

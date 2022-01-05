@@ -341,6 +341,14 @@ bool PD_MkldnnQuantizerEnabled(const PD_AnalysisConfig* config) {
   return config->config.mkldnn_quantizer_enabled();
 }
 
+void PD_EnableMkldnnFcPasses(PD_AnalysisConfig* config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of analysis configuration shouldn't be nullptr"));
+  config->config.EnableMkldnnFcPasses();
+}
+
 void PD_EnableMkldnnBfloat16(PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
