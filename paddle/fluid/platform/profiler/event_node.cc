@@ -77,7 +77,7 @@ void NodeTrees::BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes
   }
 }
 
-void NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
+HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
                                       std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes){
   // a stack used for analyse relationship
   auto node_stack = std::vector<HostRecordNode*>;
