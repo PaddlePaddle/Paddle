@@ -63,6 +63,12 @@ static bool IgnoreGradAttribute(const std::string& op_type,
 }
 
 static void PrepareAttrMapForOps() {
+  // Handle "run_program_op"
+  static framework::ProgramDesc fake_prog;
+  operators_with_attrs["run_program"] = {};
+  operators_with_attrs["run_program"]["global_block"] =
+      fake_prog.MutableBlock(0);
+
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};
