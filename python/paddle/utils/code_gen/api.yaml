@@ -15,8 +15,16 @@
     func : CastInferMeta
   kernel :
     func : cast
-    param : [x, out_dtype, x.dtype()]
+    param : [x, out_dtype]
     data_type : x
+
+- api : conj
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : conj
 
 - api : divide
   args : (const Tensor& x, const Tensor& y)
@@ -36,6 +44,32 @@
   kernel : 
     func : dot
 
+- api : empty
+  args : (const ScalarArray& shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
+  output: Tensor
+  infer_meta : 
+    func : CreateInferMeta
+    param : [shape, dtype, layout]
+  kernel : 
+    func : empty
+    param : [shape]
+    data_type : dtype
+    backend : place
+    layout : layout
+  
+- api : empty_like
+  args : (const Tensor& x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
+  output: Tensor
+  infer_meta : 
+    func : CreateLikeInferMeta
+    param : [x, dtype, layout]
+  kernel : 
+    func : empty_like
+    param : []
+    data_type : dtype > x
+    backend : place > x
+    layout : layout > x
+
 - api : flatten
   args : (const Tensor& x, int start_axis, int stop_axis)
   output : Tensor
@@ -48,7 +82,7 @@
   args : (const ScalarArray& shape, const Scalar& value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
   output: Tensor
   infer_meta : 
-    func : FullInferMeta
+    func : CreateInferMeta
     param : [shape, dtype, layout]
   kernel : 
     func : full
@@ -61,7 +95,7 @@
   args : (const Tensor& x, const Scalar& value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
   output: Tensor
   infer_meta : 
-    func : FullLikeInferMeta
+    func : CreateLikeInferMeta
     param : [x, dtype, layout]
   kernel : 
     func : full_like
@@ -145,20 +179,3 @@
   args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place, layout)
-
-# - api : full_like
-#   args : (const Tensor& x, const Scalar& value, DataType dtype, Backend place)->Tensor
-#   output: {Tensor : dtype}
-#   kernel : fill_any_like
-#   T : [dtype, x]
-#   backend : [place, x]
-#   layout : []
-#   InferMeta : UnchangedInferMeta(x)
-
-- api : conj
-  args : (const Tensor& x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : conj

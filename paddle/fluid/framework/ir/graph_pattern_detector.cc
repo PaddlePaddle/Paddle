@@ -924,6 +924,7 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
   seqconv_input->assert_is_op_input("sequence_conv", "X");
   auto *seqconv_op = pattern->NewNode(seqconv_repr())
                          ->assert_is_op("sequence_conv")
+                         ->assert_has_n_inputs(2)
                          ->assert_op_attr<bool>("paddingTrainable", false)
                          ->assert_op_attr<int>("contextStride", 1);
 
@@ -1638,6 +1639,32 @@ PDNode *patterns::Slice::operator()() {
   slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
   next_op->LinksFrom({slice_out});
   return slice_out;
+}
+
+PDNode *patterns::NearestInterp::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto nearest_interp_op =
+      pattern->NewNode(nearest_interp_op_repr())
+          ->assert_is_ops({"nearest_interp", "nearest_interp_v2"});
+
+  auto nearest_interp_in =
+      pattern->NewNode(nearest_interp_in_repr())
+          ->AsInput()
+          ->assert_is_ops_input({"nearest_interp", "nearest_interp_v2"}, "X");
+  auto nearest_interp_out =
+      pattern->NewNode(nearest_interp_out_repr())
+          ->AsOutput()
+          ->assert_is_ops_output({"nearest_interp", "nearest_interp_v2"},
+                                 "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({nearest_interp_in});
+  nearest_interp_op->LinksFrom({nearest_interp_in})
+      .LinksTo({nearest_interp_out});
+  next_op->LinksFrom({nearest_interp_out});
+  return nearest_interp_out;
 }
 
 PDNode *patterns::Matmul::operator()() {
@@ -2375,15 +2402,8 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
 PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
-  std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
-                                       "fc", "matmul", "pool2d", "prior_box",
-                                       "reshape2", "transpose2", "fusion_gru",
-                                       "fusion_lstm", "multi_gru", "slice"});
-  if (!quantize_enabled_op_types.empty()) {
-    supported_op_types = quantize_enabled_op_types;
-  }
-  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  auto *op =
+      pattern->NewNode(op_repr())->assert_is_ops(quantize_enabled_op_types);
   return op;
 }
 

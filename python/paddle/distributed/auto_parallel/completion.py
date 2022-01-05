@@ -698,13 +698,13 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             continue
 
         # complete the annotation of grad op (xxx_grad op or sum op)
-        # xxx_grad op will have a corresponding forward op in gradopidx2opidx
+        # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
         grad_op = ops[idx]
-        if grad_op.desc.id() in dist_op_context.gradopidx2opidx:
+        if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
             # TODO support the case where one forward op corresponding to multiple xxx_grad op
             forward_op = _get_op_by_id(
                 ops[:first_backward_op_idx],
-                dist_op_context.gradopidx2opidx[grad_op.desc.id()])
+                dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
             assert forward_op is not None
 
             # op dist attr
@@ -769,7 +769,7 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             dist_context.set_op_dist_attr_for_program(grad_op,
                                                       grad_op_dist_attr)
 
-        # only sum op for merge mutiple version grad has no a corresponding mapping in gradopidx2opidx
+        # only sum op for merge mutiple version grad has no a corresponding mapping in grad_op_id_to_op_id
         else:
             assert grad_op.type == "sum", "got unexpect op [{}]".format(
                 str(grad_op.type))

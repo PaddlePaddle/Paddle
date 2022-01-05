@@ -40,6 +40,11 @@ class intrusive_ptr {
     rhs.reset();
   }
 
+  intrusive_ptr<T>& operator=(intrusive_ptr<T>&& rhs) {
+    px = std::move(rhs.px);
+    return *this;
+  }
+
   void reset() { this_type().swap(*this); }
 
   void reset(T* rhs) { this_type(rhs).swap(*this); }

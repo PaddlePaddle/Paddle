@@ -130,6 +130,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
+    # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
+    add_definitions("-DNOMINMAX")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE

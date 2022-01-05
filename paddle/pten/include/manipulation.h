@@ -17,9 +17,9 @@
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/manipulation.h"
-#include "paddle/pten/kernels/cuda/manipulation.h"
-#include "paddle/pten/kernels/xpu/manipulation.h"
+#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/pten/kernels/flatten_kernel.h"
+#include "paddle/pten/kernels/reshape_kernel.h"
 
 namespace pten {
 
@@ -33,21 +33,7 @@ DenseTensor Flatten(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Flatten<T>(dev_ctx, x, start_axis, stop_axis, &dense_out);
-  return dense_out;
-}
-
-template <typename T, typename ContextT>
-DenseTensor Cast(const ContextT& dev_ctx,
-                 const DenseTensor& x,
-                 DataType out_dtype,
-                 DataType in_dtype) {
-  auto out_meta = CastInferMeta(x.meta(), out_dtype);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  Cast<T>(dev_ctx, x, out_dtype, in_dtype, &dense_out);
+  Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, &dense_out);
   return dense_out;
 }
 
@@ -60,7 +46,7 @@ DenseTensor Reshape(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Reshape(dev_ctx, x, ScalarArray(shape), &dense_out);
+  Reshape<ContextT>(dev_ctx, x, ScalarArray(shape), &dense_out);
   return dense_out;
 }
 

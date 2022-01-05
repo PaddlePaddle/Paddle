@@ -25,12 +25,6 @@ limitations under the License. */
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 
-#ifdef __HIPCC__
-#define ELEMENTWISE_BLOCK_SIZE 256
-#else
-#define ELEMENTWISE_BLOCK_SIZE 512
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -38,7 +32,8 @@ namespace kps = paddle::operators::kernel_primitives;
 
 using ElementwiseType = pten::ElementwiseType;
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
+          int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
@@ -66,8 +61,8 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(ctx, pt_inputs,
-                                                           &pt_outputs, func);
+  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+      ctx, pt_inputs, &pt_outputs, func);
 }
 
 }  // namespace operators
