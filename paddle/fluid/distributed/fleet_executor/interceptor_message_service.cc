@@ -29,14 +29,8 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
   VLOG(3) << "Interceptor Message Service receives a message from interceptor "
           << request->src_id() << " to interceptor " << request->dst_id()
           << ", with the message: " << request->message_type();
-  // TODO(liyurui): Remove this hard code.
-  int64_t carrier_id;
-  if (request->ctrl_message()) {
-    carrier_id = 0;
-  } else {
-    carrier_id = *GlobalMap<int64_t, int64_t>::Get(request->dst_id());
-  }
-  bool flag = GlobalMap<int64_t, Carrier>::Get(carrier_id)
+  const auto& carrier_id = GlobalVal<std::string>::Get();
+  bool flag = GlobalMap<std::string, Carrier>::Get(carrier_id)
                   ->EnqueueInterceptorMessage(*request);
   response->set_rst(flag);
 }

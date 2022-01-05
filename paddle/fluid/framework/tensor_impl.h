@@ -54,6 +54,12 @@ inline T* Tensor::data() {
                               offset_);
 }
 
+inline const void* Tensor::data() const {
+  check_memory_size();
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 offset_);
+}
+
 template <typename T>
 inline T* Tensor::mutable_data(const DDim& dims, const platform::Place& place,
                                size_t requested_size) {
