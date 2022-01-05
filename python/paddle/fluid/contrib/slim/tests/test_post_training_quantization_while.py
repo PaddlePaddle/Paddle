@@ -115,19 +115,30 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  is_use_cache_file=False,
                                  is_optimize_model=False,
                                  batch_size=10,
-                                 batch_nums=10):
+                                 batch_nums=10,
+                                 is_data_loader=False):
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.global_scope()
         val_reader = paddle.dataset.mnist.train()
 
+        def val_data_generator():
+            batches = []
+            for data in val_reader():
+                batches.append(data[0].reshape(1, 28, 28))
+                if len(batches) == batch_size:
+                    batches = np.asarray(batches)
+                    yield {"x": batches}
+                    batches = []
+
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
             model_filename='model.pdmodel',
             params_filename='model.pdiparams',
-            sample_generator=val_reader,
+            sample_generator=val_reader if not is_data_loader else None,
+            data_loader=val_data_generator if is_data_loader else None,
             batch_size=batch_size,
             batch_nums=batch_nums,
             algo=algo,
@@ -153,7 +164,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                  diff_threshold,
                  batch_size=10,
                  infer_iterations=10,
-                 quant_iterations=5):
+                 quant_iterations=5,
+                 is_data_loader=False):
 
         origin_model_path = self.download_model(data_url, data_md5, model_name)
         #origin_model_path = os.path.join(origin_model_path, model_name)
@@ -166,8 +178,15 @@ class TestPostTrainingQuantization(unittest.TestCase):
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model_name, quant_iterations * batch_size))
         self.generate_quantized_model(
-            origin_model_path, algo, quantizable_op_type, is_full_quantize,
-            is_use_cache_file, is_optimize_model, batch_size, quant_iterations)
+            origin_model_path,
+            algo,
+            quantizable_op_type,
+            is_full_quantize,
+            is_use_cache_file,
+            is_optimize_model,
+            batch_size,
+            quant_iterations,
+            is_data_loader=is_data_loader)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model_name, infer_iterations * batch_size))
@@ -307,6 +326,20 @@ class TestPostTrainingAbsMaxForWhile(TestPostTrainingQuantization):
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold, batch_size, infer_iterations,
                       quant_iterations)
+        self.run_test(
+            model_name,
+            data_url,
+            data_md5,
+            algo,
+            quantizable_op_type,
+            is_full_quantize,
+            is_use_cache_file,
+            is_optimize_model,
+            diff_threshold,
+            batch_size,
+            infer_iterations,
+            quant_iterations,
+            is_data_loader=True)
 
 
 if __name__ == '__main__':
