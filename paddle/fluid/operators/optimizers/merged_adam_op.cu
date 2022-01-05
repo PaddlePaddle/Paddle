@@ -26,20 +26,18 @@ __global__ void AdamKernelREG(MT beta1, MT beta2, MT epsilon, MT beta1_pow_,
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
 
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
-
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
     MT g = static_cast<MT>(grad[id]);
-    MT mom1 = moment1[id];
-    MT mom2 = moment2[id];
+    MT mom1 = static_cast<MT>(moment1[id]);
+    MT mom2 = static_cast<MT>(moment2[id]);
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-    p -= lr * (mom1 /
-               (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -62,9 +60,6 @@ __global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
 
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
-
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
@@ -74,8 +69,9 @@ __global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
     MT mom2 = static_cast<MT>(moment2[id]);
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-    p -= lr * (mom1 /
-               (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
