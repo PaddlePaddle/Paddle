@@ -120,6 +120,8 @@ class Tensor {
   explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
+  const void* data() const;
+
   template <typename T>
   T* data();
 
