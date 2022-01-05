@@ -99,6 +99,7 @@ class DSGD : public DenseOptimizer {
 };
 
 // adam optimizer for dense tensor
+// TODO(zhaocaibei123): add CHECK(common_dense_table.task_pool_size_) == 1
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
@@ -131,6 +132,8 @@ class DAdam : public DenseOptimizer {
     epsilon = 1.0e-8;
   }
 
+  // make sure common_dense_table.task_pool_size_ == 1;
+  // otherwise, task_pool_size_ times beta1_pow/beta2_pow multiplication
   void update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
