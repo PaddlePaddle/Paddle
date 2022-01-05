@@ -393,6 +393,7 @@ def _is_enable_standalone_executor():
     """
     Whether to use experimental executor `StandaloneExecutor`.
     """
+    return True
     flag = False
     env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
     if env_val in [1, '1', True, 'True', 'true']:
