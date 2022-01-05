@@ -40,6 +40,10 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "mkldnn_data_type"
+    type: STRING
+  }
+  attrs {
     name: "scale_x"
     type: FLOAT
   }

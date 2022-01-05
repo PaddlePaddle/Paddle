@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp as amp
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 
 import contextlib
 import numpy
@@ -158,6 +159,10 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         test_data = next(test_reader())
         test_feat = numpy.array(
             [data[0] for data in test_data]).astype("float32")
+
+        if use_bf16:
+            test_feat = convert_float_to_uint16(test_feat)
+
         test_label = numpy.array(
             [data[1] for data in test_data]).astype("float32")
 
