@@ -59,8 +59,8 @@ class TestTracerMode(unittest.TestCase):
 
             decorated_func = fluid.dygraph.no_grad(need_no_grad_func)
             self.assertTrue(
-                str(inspect.getargspec(decorated_func)) ==
-                str(inspect.getargspec(need_no_grad_func)))
+                str(inspect.getfullargspec(decorated_func)) ==
+                str(inspect.getfullargspec(need_no_grad_func)))
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
 
@@ -103,8 +103,8 @@ class TestNoGradClass(unittest.TestCase):
 
         decorated_func = paddle.no_grad()(need_no_grad_func)
         self.assertEqual(
-            str(inspect.getargspec(decorated_func)),
-            str(inspect.getargspec(need_no_grad_func)))
+            str(inspect.getfullargspec(decorated_func)),
+            str(inspect.getfullargspec(need_no_grad_func)))
 
         def test_gen():
             for i in range(3):

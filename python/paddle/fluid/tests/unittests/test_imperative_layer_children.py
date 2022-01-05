@@ -39,7 +39,6 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = self.features(inputs)
-
         return x
 
 
@@ -53,16 +52,22 @@ class TestLayerChildren(unittest.TestCase):
             net_layers.eval()
 
             x = paddle.rand([2, 1, 28, 28])
-
             y1 = net(x)
             y2 = net_layers(x)
 
             np.testing.assert_allclose(y1.numpy(), y2.numpy())
+            return y1, y2
 
     def test_func_apply_init_weight(self):
         with _test_eager_guard():
-            self.func_apply_init_weight()
-        self.func_apply_init_weight()
+            paddle.seed(102)
+            self.new_y1, self.new_y2 = self.func_apply_init_weight()
+        paddle.seed(102)
+        self.ori_y1, self.ori_y2 = self.func_apply_init_weight()
+
+        # compare ori dygraph and new egr
+        np.testing.assert_allclose(self.ori_y1.numpy(), self.new_y1.numpy())
+        np.testing.assert_allclose(self.ori_y2.numpy(), self.new_y2.numpy())
 
 
 if __name__ == '__main__':
