@@ -14,12 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstring>
 #include <mutex>
-#include <string>
-#include <type_traits>
-#include <unordered_map>
 #include <vector>
+#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -27,36 +24,53 @@ namespace platform {
 
 class CudaTracer {
  public:
-  // Returns a reference to singleton.
-  static CuptiTracer& GetInstance() {
-    static CuptiTracer instance;
+  // Singleton. CUPTI imposes this restriction.
+  static CudaTracer& GetInstance() {
+    static CudaTracer instance;
     return instance;
   }
 
-  void PrepareTrace();
+  void PrepareTracing();
 
-  void StartTrace();
+  void StartTracing();
 
-  void StopTrace(TraceDataCollector* collector);
+  void StopTracing();
+
+  // void StopTrace(TraceDataCollector* collector);
 
  private:
+  struct ActivityBuffer {
+    ActivityBuffer(uint8_t* addr, size_t size) : addr(addr), valid_size(size) {}
+    uint8_t* addr;
+    size_t valid_size;
+  };
+
   CudaTracer() = default;
+
   DISABLE_COPY_AND_ASSIGN(CudaTracer);
+
+  void EnableCuptiActivity();
+
+  void DisableCuptiActivity();
+
+  void ProcessCuptiActivity();
 
   // Used by CUPTI Activity API to request buffer
   static void CUPTIAPI BufferRequestedCallback(uint8_t** buffer, size_t* size,
-                                               size_t* maxNumRecords);
+                                               size_t* max_num_records);
 
   // Used by CUPTI Activity API to commit a completed buffer
-  static void CUPTIAPI BufferCompletedCallback(CUcontext ctx, uint32_t streamId,
-                                               uint8_t* buffer,
-                                               size_t /* unused */,
-                                               size_t validSize);
+  static void CUPTIAPI BufferCompletedCallback(CUcontext ctx,
+                                               uint32_t stream_id,
+                                               uint8_t* buffer, size_t size,
+                                               size_t valid_size);
 
   void AllocateBuffer(uint8_t** buffer, size_t* size);
 
-  void ReclaimBuffer(CUcontext context, uint32_t stream_id, uint8_t* buffer,
-                     size_t size);
+  void ReclaimBuffer(uint8_t* buffer, size_t valid_size);
+
+  std::mutex activity_buffer_lock_;
+  std::vector<ActivityBuffer> activity_buffers_;
 };
 
 }  // namespace platform

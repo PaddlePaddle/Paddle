@@ -20,8 +20,8 @@ limitations under the License. */
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/profiler/event.h"
 
 namespace paddle {
 namespace platform {
