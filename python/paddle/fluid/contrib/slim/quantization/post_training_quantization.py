@@ -286,8 +286,9 @@ class PostTrainingQuantization(object):
         assert any([gen is not None] for gen in [sample_generator,
             batch_generator, data_loader]), "The sample_generator, batch_generator " \
             "and data_loader cannot be None in the same time."
-        assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction))), \
-            "data_loader only accepts `paddle.io.DataLoader` or Generator instance." if data_loader else None
+        if data_loader is not None:
+            assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction))), \
+                "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
             "The algo should be KL, hist, mse, avg, abs_max or min_max."
