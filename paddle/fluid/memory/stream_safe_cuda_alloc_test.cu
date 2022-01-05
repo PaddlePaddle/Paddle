@@ -225,21 +225,22 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
 
 TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
-  auto &instance = allocation::AllocatorFacade::Instance();
-  const std::shared_ptr<Allocator> &allocator = instance.GetAllocator(place);
-
   size_t alloc_size = 256;
-  std::shared_ptr<Allocation> allocation_from_allocator =
-      allocator->Allocate(alloc_size);
-  EXPECT_GE(allocation_from_allocator->size(), alloc_size);
-  void *address = allocation_from_allocator->ptr();
-  allocation_from_allocator.reset();
 
   std::shared_ptr<Allocation> allocation_implicit_stream =
       AllocShared(place, alloc_size);
   EXPECT_GE(allocation_implicit_stream->size(), alloc_size);
-  EXPECT_EQ(allocation_implicit_stream->ptr(), address);
+  void *address = allocation_implicit_stream->ptr();
   allocation_implicit_stream.reset();
+
+  auto &instance = allocation::AllocatorFacade::Instance();
+  const std::shared_ptr<Allocator> &allocator = instance.GetAllocator(place);
+
+  std::shared_ptr<Allocation> allocation_from_allocator =
+      allocator->Allocate(alloc_size);
+  EXPECT_GE(allocation_from_allocator->size(), alloc_size);
+  EXPECT_EQ(allocation_from_allocator->ptr(), address);
+  allocation_from_allocator.reset();
 
   Release(place);
   CheckMemLeak(place);
