@@ -122,7 +122,8 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+  auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+  platform::XPUDeviceGuard guard(dev_id);
 #endif
 
   auto& block = program.Block(0);
@@ -343,7 +344,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #endif
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
-        xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+        auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+        platform::XPUDeviceGuard guard(dev_id);
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
@@ -370,7 +372,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #endif
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
-      xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+      platform::XPUDeviceGuard guard(dev_id);
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
@@ -416,7 +419,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
 
   if (!context->scope_) {
-    int num = rand() % places_.size();
+    int num = rand_r() % places_.size();
     context->place_num_ = num;
     auto place = places_[num];
     context->scope_ = &(place_scopes_[num]->NewScope());

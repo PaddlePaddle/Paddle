@@ -19,6 +19,7 @@
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
@@ -27,62 +28,31 @@
 
 namespace pten {
 
-template <typename InT, typename OutT, int VecSize>
-__global__ void VecCastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
-  using LoadT = paddle::platform::AlignedVector<InT, VecSize>;
-  using StoreT = paddle::platform::AlignedVector<OutT, VecSize>;
-
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (int64_t i = idx * VecSize; i < N;
-       i += blockDim.x * gridDim.x * VecSize) {
-    LoadT in_val;
-    paddle::platform::Load<InT, VecSize>(&in[i], &in_val);
-
-    StoreT out_val;
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      out_val[j] = static_cast<OutT>(in_val[j]);
-    }
-
-    paddle::platform::Store<OutT, VecSize>(out_val, &out[i]);
-  }
-}
-
 template <typename InT, typename OutT>
-__global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
-  CUDA_KERNEL_LOOP(index, N) { out[index] = static_cast<OutT>(in[index]); }
-}
+struct CastFuctor {
+  __device__ __forceinline__ OutT operator()(const InT& x) const {
+    return static_cast<OutT>(x);
+  }
+};
 
 template <typename InT, typename OutT>
 void CastCUDAKernelImpl(const GPUContext& dev_ctx,
                         const DenseTensor& x,
                         DenseTensor* out) {
-  auto* in_data = x.data<InT>();
-  auto size = x.numel();
-  auto* out_data = out->mutable_data<OutT>();
-
-  paddle::platform::GpuLaunchConfig config =
-      paddle::platform::GetGpuLaunchConfig1D(dev_ctx, size);
-  int vec_size = paddle::platform::GetVectorizedSize<OutT>(out_data);
-  if (!std::is_same<InT, OutT>::value && vec_size == 4 && size % 4 == 0) {
-    VecCastCUDAKernel<InT, OutT, 4><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(
-        in_data, size, out_data);
-  } else {
-    CastCUDAKernel<InT, OutT><<<config.block_per_grid,
-                                config.thread_per_block,
-                                0,
-                                dev_ctx.stream()>>>(in_data, size, out_data);
-  }
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  outputs.emplace_back(out);
+  out->mutable_data<OutT>();
+  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
+      dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
 }
 
-template <typename T, typename ContextT>
-void Cast(const ContextT& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DenseTensor* out) {
+template <typename T, typename Context>
+void CastKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DataType out_dtype,
+                DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
                        CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
                      }));
@@ -94,7 +64,7 @@ void Cast(const ContextT& dev_ctx,
   PT_REGISTER_CTX_KERNEL(cast,                              \
                          GPU,                               \
                          ALL_LAYOUT,                        \
-                         pten::Cast,                        \
+                         pten::CastKernel,                  \
                          float,                             \
                          double,                            \
                          int,                               \

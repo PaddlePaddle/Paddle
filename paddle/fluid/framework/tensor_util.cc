@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#include "paddle/pten/core/dense_tensor.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
 #endif
@@ -30,11 +33,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void TensorCopy(const Tensor& src, const platform::Place& dst_place,
-                const platform::DeviceContext& ctx, Tensor* dst) {
+template <typename TENSOR>
+void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
+                    const platform::DeviceContext& ctx, TENSOR* dst) {
   if (&src == dst) {
     auto src_copy = src;
-    TensorCopy(src_copy, dst_place, ctx, dst);
+    TensorCopyImpl(src_copy, dst_place, ctx, dst);
     return;
   }
 
@@ -45,7 +49,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
   auto src_place = src.place();
-  auto src_ptr = src.data<void>();
+  auto src_ptr = src.data();
 #ifdef PADDLE_WITH_MKLDNN
   dst->set_format(src.format());
   // oneDNN tensors due to padding may be of bigger size
@@ -357,10 +361,41 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    auto src_mlu_place = BOOST_GET_CONST(platform::MLUPlace, src_place);
+    auto dst_cpu_place = BOOST_GET_CONST(platform::CPUPlace, dst_place);
+    auto stream =
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_cpu_place, dst_ptr, src_mlu_place, src_ptr, size, stream);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    auto src_cpu_place = BOOST_GET_CONST(platform::CPUPlace, src_place);
+    auto dst_mlu_place = BOOST_GET_CONST(platform::MLUPlace, dst_place);
+    auto stream =
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_mlu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+  }
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    auto src_mlu_place = BOOST_GET_CONST(platform::MLUPlace, src_place);
+    auto dst_mlu_place = BOOST_GET_CONST(platform::MLUPlace, dst_place);
+    auto stream =
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_mlu_place, dst_ptr, src_mlu_place, src_ptr, size, stream);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copying from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 }
 
-void TensorCopy(const Tensor& src, const platform::Place& dst_place,
-                Tensor* dst) {
+template <typename TENSOR>
+void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
+                    TENSOR* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(dst_place) || platform::is_npu_place(dst_place)) {
@@ -368,7 +403,24 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   } else {
     dev_ctx = pool.Get(src.place());
   }
-  TensorCopy(src, dst_place, *dev_ctx, dst);
+  TensorCopyImpl(src, dst_place, *dev_ctx, dst);
+}
+
+void TensorCopy(const Tensor& src, const platform::Place& dst_place,
+                Tensor* dst) {
+  TensorCopyImpl<Tensor>(src, dst_place, dst);
+}
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                pten::DenseTensor* dst) {
+  TensorCopyImpl<pten::DenseTensor>(src, dst_place, dst);
+}
+void TensorCopy(const Tensor& src, const platform::Place& dst_place,
+                const platform::DeviceContext& ctx, Tensor* dst) {
+  TensorCopyImpl<Tensor>(src, dst_place, ctx, dst);
+}
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                const platform::DeviceContext& ctx, pten::DenseTensor* dst) {
+  TensorCopyImpl<pten::DenseTensor>(src, dst_place, ctx, dst);
 }
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
@@ -388,7 +440,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   dst->set_format(src.format());
 #endif
   auto src_place = src.place();
-  auto src_ptr = src.data<void>();
+  auto src_ptr = src.data();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -519,6 +571,35 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
         BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
+                 nullptr);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::MLUPlace, src_place), src_ptr, size,
+                 nullptr);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size,
+                 nullptr);
+  }
+  else if (platform::is_mlu_place(src_place) &&  // NOLINT
+           platform::is_mlu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::MLUPlace, src_place), src_ptr, size,
                  nullptr);
   }
   else {  // NOLINT
@@ -912,7 +993,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
   {  // the 3rd field, tensor data
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
 
-    auto* data_ptr = tensor.data<void>();
+    auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size, (std::numeric_limits<std::streamsize>::max)(),
                       platform::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));

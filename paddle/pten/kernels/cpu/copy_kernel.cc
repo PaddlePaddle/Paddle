@@ -25,8 +25,8 @@ limitations under the License. */
 namespace pten {
 
 // NOTE(chenweihang): blocking is useless in cpu kernel
-template <typename ContextT>
-void Copy(const ContextT& dev_ctx,
+template <typename Context>
+void Copy(const Context& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst) {

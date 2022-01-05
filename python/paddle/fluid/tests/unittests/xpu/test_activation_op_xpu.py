@@ -154,6 +154,11 @@ class TestXPUAbs(TestXPUActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -332,6 +337,25 @@ def leaky_relu(x, alpha):
     else:
         y_ref = np.minimum(x, alpha * x)
     return y_ref.astype(x.dtype)
+
+
+class TestXPUReciprocal(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "reciprocal"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(1, 2, [1111, 1117]).astype(self.dtype)
+        out = np.reciprocal(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {'use_xpu': True}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
