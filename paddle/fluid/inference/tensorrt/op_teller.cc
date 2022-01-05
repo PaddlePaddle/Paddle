@@ -714,6 +714,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
+      auto* block = desc.Block();
+      int out_size = 0;
+      if (desc.InputArgumentNames().size() > 1 &&
+          desc.Input("OutSize").size()) {
+        auto x_var_name = desc.Input("OutSize")[0];
+        auto* x_var_desc = block->FindVar(x_var_name);
+        const auto x_shape = x_var_desc->GetShape();
+        out_size = x_shape.size();
+      }
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
@@ -726,7 +735,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
       if (!(out_h > 0 && out_w > 0)) {
-        if (scale[0] <= 0.f || scale[1] <= 0.f) {
+        if (!scale.size() && !out_size) {
+          return false;
+        }
+        if (out_size) {
+          VLOG(3) << "TensorRT currently do not support dynamic specified "
+                     "output_size";
+          return false;
+        }
+        if (scale.size() && (scale[0] <= 0.f || scale[1] <= 0.f)) {
           VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                      "not set.";
           return false;
