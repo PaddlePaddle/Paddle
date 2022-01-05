@@ -22,6 +22,7 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
@@ -181,6 +182,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         # create op
         new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
+        set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
         new_op_desc.set_input('X', [X_var.name])
@@ -345,6 +347,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         # create op
         new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
+        set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
         new_op_desc.set_input('X', [X_var.name])

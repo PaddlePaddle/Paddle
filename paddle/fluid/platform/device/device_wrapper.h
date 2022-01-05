@@ -12,16 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+/**************************** Enforce Wrapper **************************/
+
 #pragma once
 
-#include "paddle/pten/core/kernel_registry.h"
-
-// TODO(chenweihang) After the kernel is split into a single file,
-// the kernel declare statement is automatically generated according to the
-// file name of the kernel, and this header file will be removed
-
-PT_DECLARE_KERNEL(mean, CPU, ALL_LAYOUT);
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
