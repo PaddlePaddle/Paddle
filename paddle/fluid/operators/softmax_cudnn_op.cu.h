@@ -206,7 +206,7 @@ struct SoftmaxBackwardFunctor {
   HOSTDEVICE inline SoftmaxBackwardFunctor(Tx sum) : sum(sum) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& grad_out, const Tx& out) const {
-    return static_cast<Ty>(grad_out - out * sum);
+    return static_cast<Ty>(out * (grad_out - sum));
   }
 
  private:
