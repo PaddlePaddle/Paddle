@@ -195,5 +195,20 @@ size_t DeviceInterface::GetExtraPaddingSize(size_t dev_id) {
   return 0;
 }
 
+size_t DeviceInterface::GetComputeCapability() {
+  VLOG(10) << Type() + " get compute capability " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetRuntimeVersion() {
+  VLOG(10) << Type() + "  get runtime version " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetDriverVersion() {
+  VLOG(10) << Type() + " get driver version " << 0;
+  return 0;
+}
+
 }  // namespace platform
 }  // namespace paddle

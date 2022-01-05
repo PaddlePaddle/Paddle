@@ -65,8 +65,7 @@ struct C_DeviceInterface {
   /**
    * @brief Initialize device
    *
-   * @param[C_Device] device     Core fill it with a logical id, and then plugin
-   * must replace it with a physical id
+   * @param[C_Device] device     Core fill it with a physical id
    */
   C_Status (*init_device)(const C_Device device);
 
@@ -379,6 +378,13 @@ struct C_DeviceInterface {
   C_Status (*visible_devices_count)(size_t* count);
 
   /**
+   * @brief Visible devices
+   *
+   * @param[size_t*]    devices     Plugin fill it with visible devices
+   */
+  C_Status (*visible_devices)(size_t* devices);
+
+  /**
    * @brief Device memory statistic
    *
    * @param[C_Device]   device     Core fill it with a physical id
@@ -430,6 +436,27 @@ struct C_DeviceInterface {
    * @param[size_t*]    size
    */
   C_Status (*device_realloc_size)(const C_Device device, size_t* size);
+
+  /**
+   * @brief Get compute capability
+   *
+   * @param[size_t*]    get_compute_capability
+   */
+  C_Status (*get_compute_capability)(size_t* compute_capbility);
+
+  /**
+   * @brief Get runtime version
+   *
+   * @param[size_t*]    version
+   */
+  C_Status (*get_runtime_version)(size_t* version);
+
+  /**
+   * @brief Get driver version
+   *
+   * @param[size_t*]    version
+   */
+  C_Status (*get_driver_version)(size_t* version);
 
   void* reserved_info_api[8];
 

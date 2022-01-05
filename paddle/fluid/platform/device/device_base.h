@@ -43,6 +43,7 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual ~DeviceInterface() {}
   virtual size_t VisibleDevicesCount() = 0;
+  virtual std::vector<size_t> ListVisibleDevices() = 0;
 
   // Platform
   //! Initialize
@@ -140,6 +141,12 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetMaxChunkSize(size_t dev_id);
 
   virtual size_t GetExtraPaddingSize(size_t dev_id);
+
+  virtual size_t GetComputeCapability();
+
+  virtual size_t GetRuntimeVersion();
+
+  virtual size_t GetDriverVersion();
 
  private:
   const std::string type_;
