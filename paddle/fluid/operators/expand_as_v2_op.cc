@@ -153,5 +153,5 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_VERSION(expand_as_v2)
     .AddCheckpoint(
         R"ROC(fix expand_as_v2 and add new input [Y])ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewInput("Y", "Expand X according to the shape of Y"));
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "Y", "Expand X according to the shape of Y"));
