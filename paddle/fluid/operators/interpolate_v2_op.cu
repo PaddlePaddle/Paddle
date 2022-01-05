@@ -16,6 +16,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 
 namespace paddle {
 namespace operators {
@@ -23,39 +24,26 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
-template <typename T>
-__global__ void KeNearestNeighborInterpNCHWFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t num_batchs, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t num_channels, const float ratio_h,
-    const float ratio_w, const bool align_corners) {
-  int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
-  int nc_id = threadIdx.z + blockIdx.z * blockDim.z;
-  int nc_stride = blockDim.z * gridDim.z;
-  int nc = num_batchs * num_channels;
+struct FastDivModForInterpolate {
+ public:
+  platform::FastDivMod channels_;
+  platform::FastDivMod output_w_;
+  platform::FastDivMod outimg_w_;
+  platform::FastDivMod out_size_;
+  platform::FastDivMod outimgw_mul_chann_;
 
-  // nearest_sampling by multiple read in_addr and write to out_addr
-  int in_img_idx = (align_corners)
-                       ? static_cast<int>(ratio_w * out_img_idx + 0.5)
-                       : static_cast<int>(ratio_w * out_img_idx);
-  int in_img_idy = (align_corners)
-                       ? static_cast<int>(ratio_h * out_img_idy + 0.5)
-                       : static_cast<int>(ratio_h * out_img_idy);
-
-  int in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
-  int in_index_stride = nc_stride * in_img_h * in_img_w;
-
-  int out_index = (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
-  int out_index_stride = nc_stride * out_img_h * out_img_w;
-
-  while (nc_id < nc) {
-    out[out_index] = in[in_index];
-    in_index += in_index_stride;
-    out_index += out_index_stride;
-    nc_id += nc_stride;
+  explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
+                                               const int output_w,
+                                               const int outimg_w,
+                                               const int out_size,
+                                               const int outimgw_mul_chann) {
+    channels_ = platform::FastDivMod(channels);
+    output_w_ = platform::FastDivMod(output_w);
+    outimg_w_ = platform::FastDivMod(outimg_w);
+    out_size_ = platform::FastDivMod(out_size);
+    outimgw_mul_chann_ = platform::FastDivMod(outimgw_mul_chann);
   }
-}
+};
 
 template <typename T>
 __global__ void KeNearestNeighborInterpFw(
@@ -63,7 +51,7 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
     const size_t out_img_w, const size_t output_h, const size_t output_w,
     const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners) {
+    const bool align_corners, const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -71,22 +59,41 @@ __global__ void KeNearestNeighborInterpFw(
   int out_img_size = out_img_h * out_img_w;
 
   for (; tid < nthreads; tid += stride) {
-    int out_id_h = tid / output_w;
-    int out_id_w = tid % output_w;
+    int outimgw_mul_channels = out_img_w * num_channels;
+    FastDivModForInterpolate divmods(num_channels, output_w, out_img_w,
+                                     out_img_size, outimgw_mul_channels);
 
-    int out_img_idy = out_id_w / (out_img_w * num_channels);
-    int out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
-    int channel_id = tid % num_channels;
+    auto out_id_divmod = divmods.output_w_.Divmod(tid);
+    int out_id_h = out_id_divmod.val[0];
+    int out_id_w = out_id_divmod.val[1];
 
-    int in_img_idy = (align_corners)
-                         ? static_cast<int>(ratio_h * out_img_idy + 0.5)
-                         : static_cast<int>(ratio_h * out_img_idy);
-    int in_img_idx = (align_corners)
-                         ? static_cast<int>(ratio_w * out_img_idx + 0.5)
-                         : static_cast<int>(ratio_w * out_img_idx);
+    int channel_id, out_img_idy, out_img_idx;
+    if (data_layout == DataLayout::kNCHW) {
+      auto channel_divmod = divmods.out_size_.Divmod(out_id_w);
+      channel_id = channel_divmod.val[0];
+      out_img_idy = divmods.outimg_w_.Divmod(channel_divmod.val[1]).val[0];
+      out_img_idx = divmods.outimg_w_.Divmod(tid).val[1];
+    } else {
+      channel_id = divmods.channels_.Divmod(tid).val[1];
+      auto outimg_id_divmod = divmods.outimgw_mul_chann_.Divmod(out_id_w);
+      out_img_idy = outimg_id_divmod.val[0];
+      out_img_idx = divmods.channels_.Divmod(outimg_id_divmod.val[1]).val[0];
+    }
 
-    out[tid] = in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
-                  in_img_idx * num_channels + channel_id];
+    int in_img_idx = ratio_w * out_img_idx;
+    int in_img_idy = ratio_h * out_img_idy;
+    if (align_corners) {
+      in_img_idx += 0.5;
+      in_img_idy += 0.5;
+    }
+
+    if (data_layout == DataLayout::kNCHW) {
+      out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
+                    in_img_idy * in_img_w + in_img_idx];
+    } else {
+      out[tid] = in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
+                    in_img_idx * num_channels + channel_id];
+    }
   }
 }
 
@@ -1203,22 +1210,11 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
-    if (data_layout == DataLayout::kNCHW) {
-      platform::GpuLaunchConfig config_3d = platform::GetCpuLaunchConfig3D(
-          ctx.cuda_device_context(), n * c, out_h, out_w);
-
-      KeNearestNeighborInterpNCHWFw<
-          T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
-               ctx.cuda_device_context().stream()>>>(
-          input_data, in_h, in_w, n, output_data, out_h, out_w, c, ratio_h,
-          ratio_w, align_corners);
-    } else {
-      KeNearestNeighborInterpFw<
-          T><<<config.block_per_grid, config.thread_per_block, 0,
-               ctx.cuda_device_context().stream()>>>(
-          input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-          out_chw, c, ratio_h, ratio_w, align_corners);
-    }
+    KeNearestNeighborInterpFw<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
+        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
+        out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
     dim3 thread_num = config.thread_per_block;
 #ifdef WITH_NV_JETSON
