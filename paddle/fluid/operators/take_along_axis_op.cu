@@ -32,7 +32,6 @@ class TakeAlongAxisCUDAKernel : public framework::OpKernel<T> {
     auto result = ctx.Output<Tensor>("Result");
     result->Resize(index->dims());
     result->mutable_data<T>(ctx.GetPlace());
-
     const auto &index_type = index->type();
     if (index_type == framework::proto::VarType::INT32) {
       gpu_gather_kernel<T, int32_t>(*input, axis, *index, *result,

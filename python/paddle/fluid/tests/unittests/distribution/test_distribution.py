@@ -164,7 +164,3 @@ class TestDistributionShape(unittest.TestCase):
             self.assertTrue(
                 self.dist._extend_shape(shape),
                 shape + self.dist.batch_shape + self.dist.event_shape)
-
-
-if __name__ == '__main__':
-    unittest.main()

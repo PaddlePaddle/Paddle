@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, _in_eager_mode
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -56,6 +56,9 @@ class TensorHookRemoveHelper(object):
                     "The backward hook (ID: %d) of Tensor `%s` you want to remove does not exist or has been removed."
                     % (self._hook_id, tensor.name), RuntimeWarning)
         return False
+
+
+_already_patch_repr = False
 
 
 def monkey_patch_varbase():
@@ -146,7 +149,11 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        assert isinstance(value, (np.ndarray, core.VarBase, dict, str)), \
+        if _in_eager_mode():
+            base_tensor = core.eager.EagerTensor
+        else:
+            base_tensor = core.VarBase
+        assert isinstance(value, (np.ndarray, base_tensor, dict, str)), \
             "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
 
         if isinstance(value, (dict, str)):
@@ -160,7 +167,7 @@ def monkey_patch_varbase():
                 self.value().set_string_list(value)
         else:
             value_np = value
-            if isinstance(value, core.VarBase):
+            if isinstance(value, base_tensor):
                 value_np = value.numpy()
 
             self_tensor_np = self.numpy()
@@ -231,22 +238,40 @@ def monkey_patch_varbase():
         """
         if framework.in_dygraph_mode():
             if grad_tensor is not None:
-                assert isinstance(
-                    grad_tensor, paddle.
-                    Tensor), "The type of grad_tensor must be paddle.Tensor"
+                if _in_eager_mode():
+                    assert isinstance(
+                        grad_tensor, core.eager.EagerTensor
+                    ), "The type of grad_tensor must be paddle.Tensor"
+                else:
+                    assert isinstance(
+                        grad_tensor, paddle.
+                        Tensor), "The type of grad_tensor must be paddle.Tensor"
                 assert grad_tensor.shape == self.shape, \
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
 
+            if _in_eager_mode():
+                if grad_tensor is None:
+                    grad_tensor = []
+                else:
+                    grad_tensor = [grad_tensor]
             if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                core.dygraph_run_backward([scaled_loss], [grad_tensor],
-                                          retain_graph,
-                                          framework._dygraph_tracer())
+                if _in_eager_mode():
+                    core.eager.run_backward([scaled_loss], grad_tensor,
+                                            retain_graph)
+                else:
+                    core.dygraph_run_backward([scaled_loss], [grad_tensor],
+                                              retain_graph,
+                                              framework._dygraph_tracer())
             else:
-                core.dygraph_run_backward([self], [grad_tensor], retain_graph,
-                                          framework._dygraph_tracer())
+                if _in_eager_mode():
+                    core.eager.run_backward([self], grad_tensor, retain_graph)
+                else:
+                    core.dygraph_run_backward([self], [grad_tensor],
+                                              retain_graph,
+                                              framework._dygraph_tracer())
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -280,15 +305,22 @@ def monkey_patch_varbase():
                 # [500.]
 
         """
-        if self._grad_ivar() is None:
-            return None
-
-        new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
-        if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
-            return (np.array(new_ivar.value().get_selected_rows().get_tensor()),
-                    np.array(new_ivar.value().get_selected_rows().rows()))
+        if _in_eager_mode():
+            if not self.grad._is_initialized():
+                return None
+            # TODO(wanghuancoder) support SELECTED_ROWS
+            return self.grad.numpy()
         else:
-            return np.array(new_ivar.value().get_tensor())
+            if self._grad_ivar() is None:
+                return None
+
+            new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
+            if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
+                return (
+                    np.array(new_ivar.value().get_selected_rows().get_tensor()),
+                    np.array(new_ivar.value().get_selected_rows().rows()))
+            else:
+                return np.array(new_ivar.value().get_tensor())
 
     @framework.dygraph_only
     def register_hook(self, hook):
@@ -555,8 +587,12 @@ def monkey_patch_varbase():
                 #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        from paddle.tensor.to_string import to_string
-        return to_string(self)
+        if _in_eager_mode():
+            from paddle.tensor.to_string import eager_tensor_to_string
+            return eager_tensor_to_string(self)
+        else:
+            from paddle.tensor.to_string import to_string
+            return to_string(self)
 
     def __deepcopy__(self, memo):
         """
@@ -583,7 +619,10 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        new_varbase = core.VarBase()
+        if _in_eager_mode():
+            new_varbase = core.eager.EagerTensor()
+        else:
+            new_varbase = core.VarBase()
         new_varbase.name = self.name + unique_name.generate("_deepcopy")
         memo[id(self)] = new_varbase
         new_varbase.copy_(self, True)
@@ -717,33 +756,62 @@ def monkey_patch_varbase():
             # Call c++ func __setitem_varbase__ to speedup.
             return self.__setitem_varbase__(item, value)
 
+    @framework.dygraph_only
+    def _grad_ivar(self):
+        if self.grad._is_initialized():
+            return self.grad
+        else:
+            return None
+
+    @framework.dygraph_only
+    def clear_gradient(self, set_to_zero=True):
+        if set_to_zero:
+            self._zero_grads()
+        else:
+            self._clear_gradient()
+
+    if core._in_eager_mode() and not hasattr(core, "eager"):
+        return
+
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("clear_grad", clear_grad),
-        ("inplace_version", inplace_version), ("grad", grad),
-        ("gradient", gradient), ("register_hook", register_hook),
-        ("__str__", __str__), ("__repr__", __str__),
-        ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
-        ("__name__", "Tensor"), ("__array__", __array__),
+        ("inplace_version", inplace_version), ("gradient", gradient),
+        ("register_hook", register_hook), ("__str__", __str__),
+        ("__repr__", __str__), ("__deepcopy__", __deepcopy__),
+        ("__module__", "paddle"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
         ("__setitem__", __setitem__), ("_to", _to)):
-        setattr(core.VarBase, method_name, method)
-
-    # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
-    # So, we need to overwrite it to a more readable one.
-    # See details in https://github.com/pybind/pybind11/issues/2537.
-    origin = getattr(core.VarDesc.VarType, "__repr__")
-
-    def dtype_str(dtype):
-        if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
-            prefix = 'paddle.'
-            return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+        if core._in_eager_mode():
+            setattr(core.eager.EagerTensor, method_name, method)
         else:
-            # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
-            return origin(dtype)
+            setattr(core.VarBase, method_name, method)
 
-    setattr(core.VarDesc.VarType, "__repr__", dtype_str)
+    if core._in_eager_mode():
+        setattr(core.eager.EagerTensor, "_grad_ivar", _grad_ivar)
+        setattr(core.eager.EagerTensor, "clear_gradient", clear_gradient)
+    else:
+        setattr(core.VarBase, "__name__", "Tensor")
+        setattr(core.VarBase, "grad", grad)
+
+    global _already_patch_repr
+    if not _already_patch_repr:
+        # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
+        # So, we need to overwrite it to a more readable one.
+        # See details in https://github.com/pybind/pybind11/issues/2537.
+        origin = getattr(core.VarDesc.VarType, "__repr__")
+
+        def dtype_str(dtype):
+            if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+                prefix = 'paddle.'
+                return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+            else:
+                # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
+                return origin(dtype)
+
+        setattr(core.VarDesc.VarType, "__repr__", dtype_str)
+        _already_patch_repr = True
 
     # patch math methods for varbase
     monkey_patch_math_varbase()
