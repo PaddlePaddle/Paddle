@@ -964,13 +964,17 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
             print(img.shape)
     """
 
+    local_rank = paddle.distributed.get_rank()
+
     if in_dygraph_mode():
         return _C_ops.batch_decode(
-                x, "mode", mode, "num_threads", num_threads)
+                x, "mode", mode, "num_threads", num_threads,
+                "local_rank", local_rank)
 
     inputs = {'X': x}
     attrs = {"mode": mode,
-             "num_threads": num_threads}
+             "num_threads": num_threads,
+             "local_rank": local_rank}
 
     helper = LayerHelper("batch_decode", **locals())
     out = helper.create_variable(

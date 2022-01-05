@@ -91,6 +91,9 @@ and 255.
         "for optionally converting the image, can be \"unchanged\" "
         ",\"gray\" , \"rgb\" .")
         .SetDefault("unchanged");
+    AddAttr<int>("local_rank",
+                 "(int64_t)"
+                 "The index of the op to start execution");
   }
 };
 

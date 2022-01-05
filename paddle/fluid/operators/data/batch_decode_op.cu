@@ -32,11 +32,12 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
     int num_threads = ctx.Attr<int>("num_threads");
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads;
     auto mode = ctx.Attr<std::string>("mode");
+    auto local_rank = ctx.Attr<int>("local_rank");
     
     // multi-phrase decode thread pool
     if (!decode_pool) {
       LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
-      decode_pool = new NvjpegDecoderThreadPool(num_threads, mode);
+      decode_pool = new NvjpegDecoderThreadPool(num_threads, mode, local_rank);
     }
 
     const framework::LoDTensorArray* inputs =
