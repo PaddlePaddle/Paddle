@@ -291,7 +291,7 @@ void DenseTensor::ResetHolder(
   if (storage_ != nullptr && storage_->data_shared()) {
     PADDLE_ENFORCE_LE(
         numel() * SizeOf(dtype()) + meta_.offset,
-        storage_->data_shared()->size(),
+        holder->size(),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
   }
