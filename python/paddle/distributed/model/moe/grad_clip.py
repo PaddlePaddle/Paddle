@@ -66,6 +66,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         .. code-block:: python
         
             import paddle
+            from paddle.distributed import moe
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(in_features=10, out_features=10, 
@@ -76,7 +77,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             loss.backward()
 
             is_expert_func = lambda param: "expert_" in param.name
-            clip = paddle.nn.ClipGradForMOEByGlobalNorm(clip_norm=1.0,is_expert_func, None)
+            clip = moe.grad_clip.ClipGradForMOEByGlobalNorm(clip_norm=1.0,is_expert_func, None)
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.step()
     """
