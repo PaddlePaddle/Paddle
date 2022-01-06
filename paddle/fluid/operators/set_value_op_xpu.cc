@@ -183,6 +183,9 @@ class SetValueXPUKernel : public framework::OpKernel<T> {
                       platform::errors::External(
                           "XPU scatter kernel return wrong value[%d %s]", r,
                           XPUAPIErrorMsg[r]));
+    if (dev_ctx.x_context()->xpu_stream) {
+      dev_ctx.Wait();
+    }
   }
 };
 
