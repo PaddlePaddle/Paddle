@@ -260,7 +260,7 @@ class ReduceKernel : public framework::OpKernel<T> {
 
     // call new kernel
     pten::Reduce<DeviceContext, T, Functor>(
-        dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
+        dev_ctx, *pt_x.get(), tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }
 };
@@ -694,7 +694,7 @@ template <typename T, template <typename> class ReduceOp,
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    bool reduce_all = context.Attr<bool>("reduce_all");
+    // bool reduce_all = context.Attr<bool>("reduce_all");
     const Tensor* input = context.Input<Tensor>("X");
     Tensor* output = context.Output<Tensor>("Out");
     auto out_dtype = context.Attr<int>("out_dtype");
@@ -719,9 +719,8 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), reduce_all,
-                                           dims_int64, false, pt_out_dtype,
-                                           pt_out.get());
+    pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), dims_int64,
+                                           false, pt_out_dtype, pt_out.get());
   }
 };
 #endif

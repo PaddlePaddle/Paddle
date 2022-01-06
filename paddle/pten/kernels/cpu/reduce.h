@@ -200,11 +200,11 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
 template <typename DeviceContext, typename T, typename Functor>
 void Reduce(const DeviceContext& dev_ctx,
             const DenseTensor& x,
-            bool reduce_all,
             const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
+  bool reduce_all = dims.empty();
   // If the dims has full dim, set the reduce_all is True
   const int& input_dim_size = x.dims().size();
   std::set<int> dims_set(dims.begin(), dims.end());

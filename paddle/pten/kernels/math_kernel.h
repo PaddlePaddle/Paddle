@@ -26,7 +26,6 @@ void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
-                bool reduce_all,
                 DenseTensor* out);
 
 template <typename T, typename Context>
@@ -62,7 +61,6 @@ void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
-               bool reduce_all,
                DataType out_dtype,
                DenseTensor* out);
 

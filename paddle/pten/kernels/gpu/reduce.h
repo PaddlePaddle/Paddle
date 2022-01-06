@@ -1240,11 +1240,11 @@ template <typename T,
           template <typename, typename> class TransformOp>
 void Reduce(const GPUContext& dev_ctx,
             const DenseTensor& x,
-            bool reduce_all,
             const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
+  bool reduce_all = dims.empty();
   std::vector<int> reduce_dims =
       pten::kernels::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 

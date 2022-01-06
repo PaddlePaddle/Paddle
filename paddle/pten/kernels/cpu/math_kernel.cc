@@ -59,11 +59,10 @@ void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
-                bool reduce_all,
                 DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<CPUContext, T, pten::funcs::MeanFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T, typename Context>
@@ -95,11 +94,10 @@ void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
-               bool reduce_all,
                DataType out_dtype,
                DenseTensor* out) {
   pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, dims, keep_dim, out_dtype, out);
 }
 
 // Create the definition of Add
