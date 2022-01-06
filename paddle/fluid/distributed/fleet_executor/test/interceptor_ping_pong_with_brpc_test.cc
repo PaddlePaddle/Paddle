@@ -115,10 +115,10 @@ TEST(InterceptorTest, PingPong) {
     GlobalVal<std::string>::Set(new std::string(carrier_id));
     MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
     msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
-    msg_bus->Barrier();
     carrier->Init(0, interceptor_id_to_rank);
     Interceptor* a = carrier->SetInterceptor(
         0, InterceptorFactory::Create("PingPong", 0, nullptr));
+    msg_bus->Barrier();
     InterceptorMessage msg;
     a->Send(1, msg);
     carrier->Wait();
@@ -128,10 +128,10 @@ TEST(InterceptorTest, PingPong) {
     GlobalVal<std::string>::Set(new std::string(carrier_id));
     MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
     msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
-    msg_bus->Barrier();
     carrier->Init(1, interceptor_id_to_rank);
     carrier->SetInterceptor(1,
                             InterceptorFactory::Create("PingPong", 1, nullptr));
+    msg_bus->Barrier();
     carrier->Wait();
   }
 }
