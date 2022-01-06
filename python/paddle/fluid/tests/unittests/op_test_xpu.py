@@ -203,14 +203,3 @@ class XPUOpTest(OpTest):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
         return analytic_grads
-
-
-def get_xpu_support_types(op_name, dev_id=0):
-    xpu_version = core.get_xpu_device_version(dev_id)
-    return core.get_xpu_device_support_types(op_name, xpu_version)
-
-
-def register_test_class(globals_, class_name, class_obj, test_type):
-    cls_name = "{0}_{1}".format(class_name, str(test_type))
-    class_obj.__name__ = cls_name
-    globals_[cls_name] = class_obj
