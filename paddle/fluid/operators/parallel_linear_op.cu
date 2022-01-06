@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/parallel_linear_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -80,7 +80,6 @@ __global__ void add_bias_kernel(T* data, const T* bias,
   CUDA_KERNEL_LOOP(idx, batch_size * out_feat) {
     int col = idx % out_feat;
     data[idx] += bias[col];
-    // paddle::platform::CudaAtomicAdd(&data[idx], bias[col]);
   }
 }
 
@@ -116,14 +115,6 @@ template <typename DeviceContext, typename T>
 class ParallelLinearCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    /* Tensor shape message
-    X.dim = batch_size * in_dim
-    W.dim = num_expert * in_dim * out_dim
-    b.dim = num_expert * out_dim
-    expert_count.dim = num_expert
-    output.dim = batch_size * out_dim
-    */
-
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* w = ctx.Input<Tensor>("W");
     auto* bias = ctx.Input<Tensor>("Bias");
@@ -150,18 +141,6 @@ class ParallelLinearCUDAKernel : public framework::OpKernel<T> {
 
     output->Resize({batch_size, out_feat});
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
-
-    // initialize
-    // auto out_eigen = framework::EigenVector<T>::Flatten(*output);
-    // auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-    //  .eigen_device();
-    // out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
-
-    // ugly code to get expert_count in cpu
-    // std::vector<int64_t> expert_count;
-    // framework::TensorToVector(*gpu_expert_count, ctx.device_context(),
-    // &expert_count);
-    // dev_ctx.Wait();
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     for (int64_t i = 0, ptr = 0; i < num_expert; ++i) {
@@ -235,12 +214,6 @@ class ParallelLinearGradOpCUDAKernel : public framework::OpKernel<T> {
     db_eigen.device(place) = db_eigen.constant(static_cast<T>(0));
     T* db_data = db->data<T>();
 
-    // ugly code to get expert_count in cpu
-    // std::vector<int64_t> expert_count;
-    // framework::TensorToVector(*gpu_expert_count, ctx.device_context(),
-    // &expert_count);
-    // dev_ctx.Wait();
-
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
 
     // bias
@@ -265,9 +238,6 @@ class ParallelLinearGradOpCUDAKernel : public framework::OpKernel<T> {
                 dw_data + i * in_feat * out_feat);
 
       // TODO(shenliang03): need use reduce_sum to optimize performance
-      // add_bias_grad<T>(ctx.cuda_device_context().stream(),
-      //                  dout_data + ptr * out_feat, db_data + i * out_feat,
-      //                  expert_count[i], out_feat);
 
       column_reduce<<<grid_threads, block_threads, sizeof(T) * 1024,
                       ctx.cuda_device_context().stream()>>>(

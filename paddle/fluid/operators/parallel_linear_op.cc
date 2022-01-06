@@ -28,11 +28,6 @@ class ParallelLinearOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "ParallelLinear");
     // Bias
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "ParallelLinear");
-
-    // fwd_expert_count
-    // OP_INOUT_CHECK(ctx->HasInput("Expert_Count"), "Input", "Expert_Count",
-    //  "ParallelLinear");
-
     // global_output_buf
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ParallelLinear");
 
@@ -40,7 +35,6 @@ class ParallelLinearOp : public framework::OperatorWithKernel {
     auto w_dims = ctx->GetInputDim("W");
     auto b_dims = ctx->GetInputDim("Bias");
 
-    // auto expert_count_dims = ctx->GetInputDim("Expert_Count");
     auto expert_count = ctx->Attrs().Get<std::vector<int>>("expert_count");
     auto expert_count_dims = expert_count.size();
 
@@ -100,8 +94,6 @@ class ParallelLinearOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor of batch_fc_op operator.");
     AddInput("W", "(Tensor) Input tensor of batch_fc_op operator.");
     AddInput("Bias", "(Tensor) Input tensor of batch_fc_op operator.");
-    // AddInput("Expert_Count", "(Tensor) Input tensor of batch_fc_op
-    // operator.");
 
     AddOutput("Out", "Output tensor of batch_fc_op operator.");
 
@@ -154,7 +146,6 @@ class ParallelLinearGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("W", this->Input("W"));
     op->SetInput("Bias", this->Input("Bias"));
-    // op->SetInput("Expert_Count", this->Input("Expert_Count"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
