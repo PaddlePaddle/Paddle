@@ -233,7 +233,7 @@ template <typename DeviceContext, typename T, typename Functor>
 class ReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    bool reduce_all = context.Attr<bool>("reduce_all");
+    // bool reduce_all = context.Attr<bool>("reduce_all");
     auto* output = context.Output<Tensor>("Out");
     auto dims = context.Attr<std::vector<int>>("dim");
     bool keep_dim = context.Attr<bool>("keep_dim");
