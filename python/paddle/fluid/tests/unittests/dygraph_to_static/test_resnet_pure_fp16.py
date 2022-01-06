@@ -106,7 +106,9 @@ def train(to_static, build_strategy=None):
 class TestResnet(unittest.TestCase):
     def train(self, to_static):
         program_translator.enable(to_static)
-        return train(to_static)
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.enable_inplace = False
+        return train(to_static, build_strategy)
 
     def test_resnet(self):
         if fluid.is_compiled_with_cuda():
@@ -114,8 +116,7 @@ class TestResnet(unittest.TestCase):
             dygraph_loss = self.train(to_static=False)
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             self.assertTrue(
-                np.allclose(
-                    static_loss, dygraph_loss, atol=1e-3),
+                np.allclose(static_loss, dygraph_loss),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                                  dygraph_loss))
 

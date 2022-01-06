@@ -33,13 +33,12 @@ class TestPureFP16(TestMNIST):
         return self.train(to_static=False)
 
     def test_mnist_to_static(self):
-        if paddle.fluid.is_compiled_with_cuda() and os.name != 'nt':
+        if paddle.fluid.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             self.assertTrue(
-                np.allclose(
-                    dygraph_loss, static_loss, atol=1e-3),
+                np.allclose(dygraph_loss, static_loss),
                 msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                                 static_loss))
 
@@ -52,7 +51,9 @@ class TestPureFP16(TestMNIST):
 
         if to_static:
             print("Successfully to apply @to_static.")
-            mnist = paddle.jit.to_static(mnist)
+            build_strategy = paddle.static.BuildStrategy()
+            build_strategy.enable_inplace = False
+            mnist = paddle.jit.to_static(mnist, build_strategy=build_strategy)
 
         optimizer = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=mnist.parameters())
