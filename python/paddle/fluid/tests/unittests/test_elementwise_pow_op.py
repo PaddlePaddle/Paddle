@@ -156,11 +156,11 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         # dout = 1
         self.grad_res = np.asarray([1, 1, 1])
         # dx = dout * y * pow(x, y-1)
-        self.grad_x = self.grad_res * self.y * (self.x
-                                                **(self.y - 1)).astype("int")
+        self.grad_x = (np.rint(self.grad_res * self.y * self.x
+                               **(self.y - 1))).astype("int")
         # dy = dout * log(x) * pow(x, y)
-        self.grad_y = (self.grad_res * np.log(self.x) *
-                       (self.x**self.y)).astype("int")
+        self.grad_y = (np.rint(self.grad_res * np.log(self.x) *
+                               (self.x**self.y))).astype("int")
         print(self.grad_res, self.grad_x, self.grad_y)
 
     def test_grad(self):
@@ -176,6 +176,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 y.stop_gradient = False
                 res = x**y
                 res.backward()
+                print(res.gradient(), x.gradient(), y.gradient())
                 self.assertTrue(np.array_equal(res.gradient(), self.grad_res))
                 self.assertTrue(np.array_equal(x.gradient(), self.grad_x))
                 self.assertTrue(np.array_equal(y.gradient(), self.grad_y))

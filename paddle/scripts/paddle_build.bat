@@ -78,6 +78,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
+set WITH_TPCACHE=OFF
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -325,10 +326,14 @@ echo    ========================================
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+echo %task_name%|findstr wincheck_inference >nul && (
+    call "D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+) || (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+)
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
-set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+::set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
 rem Use 64-bit ToolSet to compile
 set PreferredToolArchitecture=x64
 

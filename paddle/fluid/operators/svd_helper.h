@@ -84,7 +84,7 @@ void BatchSvd(const T* X, T* U, T* VH, T* S, int rows, int cols, int batches,
 
 template <typename T>
 struct PowFunctor {
-  PowFunctor(const T* input, T* output, int64_t numel, float exp)
+  PowFunctor(const T* input, T* output, int64_t numel, T exp)
       : input_(input), output_(output), numel_(numel), exp_(exp) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -93,7 +93,7 @@ struct PowFunctor {
   const T* input_;
   T* output_;
   int64_t numel_;
-  float exp_;
+  T exp_;
 };
 
 template <typename T>
@@ -210,7 +210,7 @@ struct DeviceIndependenceTensorOperations {
       const framework::ExecutionContext& context)
       : context(context) {}
 
-  framework::Tensor Pow(const framework::Tensor& x, float exp) {
+  framework::Tensor Pow(const framework::Tensor& x, T exp) {
     framework::Tensor out;
     auto for_range = GetForRange(x.numel());
     int numel = x.numel();
