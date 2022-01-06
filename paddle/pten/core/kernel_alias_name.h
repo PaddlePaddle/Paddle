@@ -29,7 +29,7 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"flatten_contiguous_range", "flatten"},
     {"matmul_v2", "matmul"},
     {"matmul_v2_grad", "matmul_grad"},
-    {"matmul_v2_grad_grad", "matmul_grad_grad"},
+    {"matmul_v2_grad_grad", "matmul_double_grad"},
     {"matmul_v2_triple_grad", "matmul_triple_grad"},
     {"reduce_mean", "mean"},
     {"reduce_sum", "sum"},

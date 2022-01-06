@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ limitations under the License. */
 #include "paddle/pten/kernels/impl/dot_grad_kernel_impl.h"
 #include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
-#include "paddle/pten/kernels/hybird/eigen/reduce.h"
+#include "paddle/pten/kernels/cpu/reduce.h"
+#include "paddle/pten/kernels/funcs/reduce_functor.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
@@ -47,7 +48,7 @@ struct ReduceSumForMatmulGrad<CPUContext, T> {
                   const std::vector<int>& reduce_dims) {
     std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
                                          reduce_dims.end());
-    eigen::ReduceKernelImpl<CPUContext, T, T, pten::eigen::SumFunctor>(
+    ReduceKernelImpl<CPUContext, T, T, pten::funcs::SumFunctor>(
         dev_ctx, input, output, reduce_dims_tmp, true, false);
   }
 };
@@ -697,7 +698,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
 
     if (transpose_x) {
       if (transpose_y) {
-        if (dx)
+        if (dx) {
           MatMulFunction<Context, T>(dev_ctx,
                                      ddy.get(),
                                      dout_conj,
@@ -706,7 +707,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                                      &dx_help,
                                      true,
                                      true);
-        if (dy)
+        }
+        if (dy) {
           MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddx.get(),
@@ -715,6 +717,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                                      &dy_help,
                                      true,
                                      true);
+        }
       } else {
         if (dx)
           MatMulFunction<Context, T>(dev_ctx,
@@ -737,7 +740,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
       }
     } else {
       if (transpose_y) {
-        if (dx)
+        if (dx) {
           MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddy.get(),
@@ -746,7 +749,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                                      &dx_help,
                                      false,
                                      false);
-        if (dy)
+        }
+        if (dy) {
           MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddx.get(),
@@ -755,8 +759,9 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                                      &dy_help,
                                      true,
                                      false);
+        }
       } else {
-        if (dx)
+        if (dx) {
           MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddy.get(),
@@ -765,7 +770,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                                      &dx_help,
                                      false,
                                      true);
-        if (dy)
+        }
+        if (dy) {
           MatMulFunction<Context, T>(dev_ctx,
                                      ddx.get(),
                                      dout_conj,
@@ -774,6 +780,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                                      &dy_help,
                                      true,
                                      false);
+        }
       }
     }
 

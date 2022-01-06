@@ -443,7 +443,7 @@ class MatMulV2OpDoubleGrad : public framework::OperatorWithKernel {
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
     return framework::KernelSignature(
-        "matmul_grad_grad", {"X", "Y", "DOut", "DDX", "DDY"},
+        "matmul_double_grad", {"X", "Y", "DOut", "DDX", "DDY"},
         {"trans_x", "trans_y"}, {"DX", "DY", "DDOut"});
   }
 };

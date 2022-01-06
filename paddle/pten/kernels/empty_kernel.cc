@@ -20,15 +20,15 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void EmptyKernel(const ContextT& context,
+template <typename T, typename Context>
+void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
 }
 
-template <typename T, typename ContextT>
-void EmptyLikeKernel(const ContextT& context, DenseTensor* out) {
+template <typename T, typename Context>
+void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out) {
   out->mutable_data<T>();
 }
 

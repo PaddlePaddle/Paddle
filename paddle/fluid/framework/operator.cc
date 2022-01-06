@@ -1889,6 +1889,9 @@ void OperatorWithKernel::BuildPtenKernelContext(
       }
     }
 
+    // Deal with the case that some outputs are NULL when run the kernel.
+    // For example : the outputs of matmul_grad are dx and dy,
+    // sometimes dx or dy may be NULL.
     if (outs_vector.empty()) {
       if (current_vector_size > start_idx) {
         pt_kernel_context_->SetOutputWithoutSetRange(start_idx, {nullptr});

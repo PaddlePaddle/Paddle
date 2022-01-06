@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,16 +18,16 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void DotGradKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    const DenseTensor& dout,
                    DenseTensor* dx,
                    DenseTensor* dy);
 
-template <typename T, typename ContextT>
-void DotDoubleGradKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& ddx,
@@ -37,8 +37,8 @@ void DotDoubleGradKernel(const ContextT& dev_ctx,
                          DenseTensor* dy,
                          DenseTensor* ddout);
 
-template <typename T, typename ContextT>
-void DotTripleGradKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& ddx,

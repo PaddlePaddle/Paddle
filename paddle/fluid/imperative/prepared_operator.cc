@@ -343,35 +343,7 @@ static void BuildDygraphPtenKernelContext(
     auto current_vector_size = kernel_ctx->OutputsSize();
 
     auto iter = outs.find(output_names[i]);
-    if (iter != outs.end()) {
-      auto& outs_vector = iter->second;
-      size_t end_idx = start_idx + outs_vector.size();
-
-      // If the memory needed is less than the current memory allocated, we will
-      // reuse the current memory by using ReMakePtenDenseTensorFromVar.
-      // Otherwise，we will create new storage.
-      for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-        if (current_vector_size > start_idx + offset) {
-          auto* buffer_tensor = kernel_ctx->MutableOutputAt<pten::DenseTensor>(
-              start_idx + offset);
-          if (buffer_tensor) {
-            experimental::ReMakePtenDenseTensorFromVar(
-                outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
-          } else {
-            kernel_ctx->SetOutputWithoutSetRange(
-                start_idx + offset,
-                experimental::MakePtenTensorBaseFromVar(
-                    outs_vector[offset]->MutableVar(), out_def));
-          }
-        } else {
-          kernel_ctx->EmplaceBackOutputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(
-                  outs_vector[offset]->MutableVar(), out_def));
-        }
-      }
-
-      kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
-    } else {
+    if (iter == outs.end()) {
       if (current_vector_size > start_idx) {
         kernel_ctx->SetOutputWithoutSetRange(start_idx, {nullptr});
       } else {
@@ -379,7 +351,35 @@ static void BuildDygraphPtenKernelContext(
       }
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
+      continue;
     }
+
+    auto& outs_vector = iter->second;
+    size_t end_idx = start_idx + outs_vector.size();
+
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (current_vector_size > start_idx + offset) {
+        auto* buffer_tensor =
+            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset);
+        if (buffer_tensor) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
+        } else {
+          kernel_ctx->SetOutputWithoutSetRange(
+              start_idx + offset,
+              experimental::MakePtenTensorBaseFromVar(
+                  outs_vector[offset]->MutableVar(), out_def));
+        }
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(
+                outs_vector[offset]->MutableVar(), out_def));
+      }
+    }
+    kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {

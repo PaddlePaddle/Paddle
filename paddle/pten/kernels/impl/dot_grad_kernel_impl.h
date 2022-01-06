@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -830,8 +830,8 @@ struct DotTripleGradFunction<DeviceContext,
   }
 };
 
-template <typename T, typename ContextT>
-void DotGradKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    const DenseTensor& dout,
@@ -843,11 +843,11 @@ void DotGradKernel(const ContextT& dev_ctx,
   if (dy) {
     dy->mutable_data<T>();
   }
-  DotGradFunction<ContextT, T>()(dev_ctx, &x, &y, &dout, dx, dy);
+  DotGradFunction<Context, T>()(dev_ctx, &x, &y, &dout, dx, dy);
 }
 
-template <typename T, typename ContextT>
-void DotDoubleGradKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& ddx,
@@ -865,12 +865,12 @@ void DotDoubleGradKernel(const ContextT& dev_ctx,
   if (ddout) {
     ddout->mutable_data<T>();
   }
-  DotDoubleGradFunction<ContextT, T>()(
+  DotDoubleGradFunction<Context, T>()(
       dev_ctx, &x, &y, &dout, ddx, ddy, dx, dy, ddout);
 }
 
-template <typename T, typename ContextT>
-void DotTripleGradKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void DotTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& ddx,
@@ -900,20 +900,20 @@ void DotTripleGradKernel(const ContextT& dev_ctx,
     d_dout->mutable_data<T>();
   }
 
-  DotTripleGradFunction<ContextT, T>()(dev_ctx,
-                                       &x,
-                                       &y,
-                                       ddx,
-                                       ddy,
-                                       d_dx,
-                                       d_dy,
-                                       dout,
-                                       d_ddout,
-                                       d_x,
-                                       d_y,
-                                       d_dout,
-                                       d_ddx,
-                                       d_ddy);
+  DotTripleGradFunction<Context, T>()(dev_ctx,
+                                      &x,
+                                      &y,
+                                      ddx,
+                                      ddy,
+                                      d_dx,
+                                      d_dy,
+                                      dout,
+                                      d_ddout,
+                                      d_x,
+                                      d_y,
+                                      d_dout,
+                                      d_ddx,
+                                      d_ddy);
 }
 
 }  // namespace pten
