@@ -17,15 +17,23 @@ import re
 import sys
 import json
 import glob
+import atexit
 import hashlib
 import logging
 import collections
 import textwrap
 import warnings
 import subprocess
+import threading
 
+from importlib import machinery
 from contextlib import contextmanager
 from setuptools.command import bdist_egg
+
+try:
+    from subprocess import DEVNULL  # py3
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
 
 from ...fluid import core
 from ...fluid.framework import OpProtoHolder
@@ -433,13 +441,47 @@ def _reset_so_rpath(so_path):
         run_cmd(cmd)
 
 
+def _get_include_dirs_when_compiling(compile_dir):
+    """
+    Get all include directories when compiling the PaddlePaddle
+    source code.
+    """
+    include_dirs_file = 'includes.txt'
+    path = os.path.abspath(compile_dir)
+    include_dirs_file = os.path.join(path, include_dirs_file)
+    if not os.path.isfile(include_dirs_file):
+        return []
+    with open(include_dirs_file, 'r') as f:
+        include_dirs = [line.strip() for line in f.readlines() if line.strip()]
+
+    extra_dirs = ['paddle/fluid/platform']
+    all_include_dirs = list(include_dirs)
+    for extra_dir in extra_dirs:
+        for include_dir in include_dirs:
+            d = os.path.join(include_dir, extra_dir)
+            if os.path.isdir(d):
+                all_include_dirs.append(d)
+    all_include_dirs.append(path)
+    all_include_dirs.sort()
+    return all_include_dirs
+
+
 def normalize_extension_kwargs(kwargs, use_cuda=False):
     """
     Normalize include_dirs, library_dir and other attributes in kwargs.
     """
     assert isinstance(kwargs, dict)
+    compile_include_dirs = []
+    # NOTE: the "_compile_dir" argument is not public to users. It is only
+    # reserved for internal usage. We do not guarantee that this argument
+    # is always valid in the future release versions.
+    compile_dir = kwargs.get("_compile_dir", None)
+    if compile_dir:
+        compile_include_dirs = _get_include_dirs_when_compiling(compile_dir)
+
     # append necessary include dir path of paddle
-    include_dirs = kwargs.get('include_dirs', [])
+    include_dirs = list(kwargs.get('include_dirs', []))
+    include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
 
     kwargs['include_dirs'] = include_dirs
@@ -797,7 +839,6 @@ def parse_op_info(op_name):
     Parse input names and outpus detail information from registered custom op
     from OpInfoMap.
     """
-    from paddle.fluid.framework import OpProtoHolder
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
             "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".
@@ -844,16 +885,28 @@ def _generate_python_module(module_name,
     """
     Automatically generate python file to allow import or load into as module
     """
-    api_file = os.path.join(build_directory, module_name + '.py')
+
+    def remove_if_exit(filepath):
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+    # NOTE: Use unique id as suffix to avoid write same file at same time in
+    # both multi-thread and multi-process.
+    thread_id = str(threading.currentThread().ident)
+    api_file = os.path.join(build_directory,
+                            module_name + '_' + thread_id + '.py')
     log_v("generate api file: {}".format(api_file), verbose)
 
-    # write into .py file
+    # delete the temp file before exit python process    
+    atexit.register(lambda: remove_if_exit(api_file))
+
+    # write into .py file with RWLock
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))
 
     # load module
-    custom_module = _load_module_from_file(api_file, verbose)
+    custom_module = _load_module_from_file(api_file, module_name, verbose)
     return custom_module
 
 
@@ -901,7 +954,7 @@ def _custom_api_content(op_name):
     return api_content
 
 
-def _load_module_from_file(api_file_path, verbose=False):
+def _load_module_from_file(api_file_path, module_name, verbose=False):
     """
     Load module from python file.
     """
@@ -911,8 +964,9 @@ def _load_module_from_file(api_file_path, verbose=False):
 
     # Unique readable module name to place custom api.
     log_v('import module from file: {}'.format(api_file_path), verbose)
-    ext_name = "_paddle_cpp_extension_"
-    from importlib import machinery
+    ext_name = "_paddle_cpp_extension_" + module_name
+
+    # load module with RWLock
     loader = machinery.SourceFileLoader(ext_name, api_file_path)
     module = loader.load_module()
 
@@ -1066,10 +1120,6 @@ def run_cmd(command, verbose=False):
     """
     # logging
     log_v("execute command: {}".format(command), verbose)
-    try:
-        from subprocess import DEVNULL  # py3
-    except ImportError:
-        DEVNULL = open(os.devnull, 'wb')
 
     # execute command
     try:

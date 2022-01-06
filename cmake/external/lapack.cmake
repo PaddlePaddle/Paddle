@@ -17,7 +17,6 @@ INCLUDE (ExternalProject)
 SET(LAPACK_PREFIX_DIR       ${THIRD_PARTY_PATH}/lapack)
 SET(LAPACK_SOURCE_DIR       ${THIRD_PARTY_PATH}/lapack/src/extern_lapack)
 SET(LAPACK_INSTALL_DIR      ${THIRD_PARTY_PATH}/install/lapack)
-SET(LAPACK_INCLUDE_DIR      ${LAPACK_SOURCE_DIR})
 SET(LAPACK_LIB_DIR          ${LAPACK_INSTALL_DIR}/lib)
 
 # Note(zhouwei): lapack need fortan compiler which many machines don't have, so use precompiled library.
@@ -57,7 +56,6 @@ ExternalProject_Add(
     URL                     ${LAPACK_URL}
     URL_MD5                 ${LAPACK_URL_MD5}
     PREFIX                  ${LAPACK_PREFIX_DIR}
-    DOWNLOAD_DIR            ${LAPACK_SOURCE_DIR}
     DOWNLOAD_NO_PROGRESS    1
     PATCH_COMMAND           ""
     UPDATE_COMMAND          ""

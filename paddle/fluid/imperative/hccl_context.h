@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/dynload/hccl.h"
-#include "paddle/fluid/platform/npu_resource_pool.h"
+#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
+#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
 
 namespace paddle {
 namespace framework {
@@ -49,6 +49,8 @@ class HCCLParallelContext : public ParallelContext {
   void AllReduceByStream(const framework::Variable& src,
                          framework::Variable* dst, int ring_id,
                          bool use_calc_stream) override;
+
+  void Broadcast(framework::Variable* src, int ring_id) override;
 
   paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
 

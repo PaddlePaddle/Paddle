@@ -19,110 +19,23 @@ namespace paddle {
 namespace framework {
 
 InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
-  garbages_.reset(new GarbageQueue());
-  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
+  garbages_ = std::make_unique<GarbageQueue>();
+  max_memory_size_ = static_cast<int64_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
-
-  WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
-                           /*track_task*/ false);
-  queue_ = CreateSingleThreadedWorkQueue(options);
 }
 
-InterpreterCoreGarbageCollector::~InterpreterCoreGarbageCollector() {
-  queue_.reset(nullptr);
+void InterpreterCoreGarbageCollector::Add(Variable* var) {
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Not allowed to call the member function "
+                                      "of InterpreterCoreGarbageCollector"));
 }
 
-void InterpreterCoreGarbageCollector::Add(
-    std::shared_ptr<memory::Allocation> garbage,
-    paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {
-  if (max_memory_size_ <= 1) {
-    Free(garbage, event, ctx);
-  } else {
-    if (!garbage) return;
-    GarbageQueue* garbage_ptr = nullptr;
-    {
-      std::lock_guard<paddle::memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
-      garbages_->push_back(std::move(garbage));
-
-      if (cur_memory_size_ >= max_memory_size_) {
-        cur_memory_size_ = 0;
-        garbage_ptr = garbages_.release();
-        garbages_.reset(new GarbageQueue());
-      }
-    }
-    if (garbage_ptr) {
-      Free(garbage_ptr, event, ctx);
-    }
-  }
-}
-
-void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
-                                          paddle::platform::DeviceEvent& event,
+void InterpreterCoreGarbageCollector::Add(Variable* var,
+                                          platform::DeviceEvent& event,
                                           const platform::DeviceContext* ctx) {
-  if (!var) {
-    return;
-  }
-
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
-  } else if (var->IsType<
-                 operators::reader::
-                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
-    // var->Clear(); // TODO(xiongkun03) can we clear directly? Why we must use
-    // Add interface?
-  } else if (var->IsType<SelectedRows>()) {
-    Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
-        event, ctx);
-  } else if (var->IsType<LoDTensorArray>()) {
-    auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-    for (auto& t : *tensor_arr) {
-      Add(t.MoveMemoryHolder(), event, ctx);
-    }
-  } else if (var->IsType<std::vector<Scope*>>()) {
-    // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
-    // refer to executor.cc to see what old garbage collector does.
-    // do nothing, because the sub scope will be deleted by sub-executor.
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The variable(%s) is not supported in eager deletion.",
-        framework::ToTypeName(var->Type())));
-  }
-}
-
-void InterpreterCoreGarbageCollector::Free(GarbageQueue* garbages,
-                                           paddle::platform::DeviceEvent& event,
-                                           const platform::DeviceContext* ctx) {
-  event.Record(ctx);
-  event.SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbages, event = &event ]() {
-    while (!event->Query()) {
-#if defined(_WIN32)
-      SleepEx(50, FALSE);
-#else
-      sched_yield();
-#endif
-      continue;
-    }
-    delete container;
-  });
-}
-
-void InterpreterCoreGarbageCollector::Free(
-    std::shared_ptr<memory::Allocation>& garbage,
-    paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {
-  event.Record(ctx);
-  event.SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbage, event = &event ]() {
-    while (!event->Query()) {
-#if defined(_WIN32)
-      SleepEx(50, FALSE);
-#else
-      sched_yield();
-#endif
-      continue;
-    }
-  });
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Not allowed to call the member function "
+                                      "of InterpreterCoreGarbageCollector"));
 }
 
 }  // namespace framework

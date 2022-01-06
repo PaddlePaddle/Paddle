@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
 namespace egr {
+namespace legacy {
 
 class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   using DDim = paddle::framework::DDim;
@@ -215,13 +216,13 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<paddle::framework::InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "GetInputVarPtrs not support in dygraph runtime context"));
   }
 
   std::vector<paddle::framework::InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "GetOutputVarPtrs not support in dygraph runtime context"));
   }
@@ -401,4 +402,5 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   const std::string op_type_;
 };
 
+}  // namespace legacy
 }  // namespace egr

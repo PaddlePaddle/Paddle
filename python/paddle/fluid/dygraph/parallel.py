@@ -356,7 +356,7 @@ def sync_params_buffers(model,
                         src_rank=0,
                         is_model_parallel=False):
     model_vars = []
-    for _, param in model.state_dict().items():
+    for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.VarBase):
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)
@@ -370,6 +370,8 @@ def sync_params_buffers(model,
             # such as moe's expert parameters
             if getattr(param, "no_sync", False):
                 continue
+        if param.type == core.VarDesc.VarType.VOCAB:
+            continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:

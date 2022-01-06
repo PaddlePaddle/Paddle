@@ -229,5 +229,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 "micro_batch_size": 2,
                 "accumulate_steps": 4,
             }
+        elif name == 'asp':
+            strategy.asp = True
         else:
             raise NotImplementedError()
