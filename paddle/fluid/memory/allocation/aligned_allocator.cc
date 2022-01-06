@@ -20,11 +20,13 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// For memory address alignment
 class AlignedAllocation : public Allocation {
  public:
   AlignedAllocation(AllocationPtr underlying_allocation, size_t offset)
       : Allocation(
             reinterpret_cast<uint8_t*>(underlying_allocation->ptr()) + offset,
+            underlying_allocation->base_ptr(),
             underlying_allocation->size() - offset,
             underlying_allocation->place()),
         underlying_allocation_(std::move(underlying_allocation)) {}

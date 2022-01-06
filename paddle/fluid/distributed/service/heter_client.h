@@ -76,20 +76,23 @@ class HeterClient {
 
   void CreateClient2XpuConnection();
 
-  void SendAndRecvAsync(const std::vector<std::string>& ep,
-                        const platform::DeviceContext& ctx,
+  void SendAndRecvAsync(const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& message_name,
                         const std::vector<std::string>& send_var_name,
-                        const std::vector<std::string>& recv_var_name);
+                        const std::vector<std::string>& recv_var_name,
+                        const std::string& mode = "forward");
 
   // HeterClient singleton
   static std::shared_ptr<HeterClient> GetInstance(
-      const std::vector<std::string>& endpoint, const int& trainer_id) {
+      const std::vector<std::string>& endpoint,
+      const std::vector<std::string>& previous_endpoint,
+      const int& trainer_id) {
     if (NULL == s_instance_) {
       is_initialized_ = true;
       s_instance_.reset(new paddle::distributed::HeterClient());
       s_instance_->SetXpuList(endpoint);
+      s_instance_->SetPreviousXpuList(previous_endpoint);
       s_instance_->SetTrainerID(trainer_id);
       s_instance_->CreateClient2XpuConnection();
     }
@@ -118,6 +121,10 @@ class HeterClient {
     xpu_list_ = xpu_list;
   }
 
+  void SetPreviousXpuList(const std::vector<std::string>& xpu_list) {
+    previous_xpu_list_ = xpu_list;
+  }
+
   void SetTrainerID(const int& trainer_id) { trainer_id_ = trainer_id; }
 
  private:
@@ -125,9 +132,11 @@ class HeterClient {
   static bool is_initialized_;
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
+  std::vector<std::shared_ptr<brpc::Channel>> previous_xpu_channels_;
 
   DISABLE_COPY_AND_ASSIGN(HeterClient);
   std::vector<std::string> xpu_list_;
+  std::vector<std::string> previous_xpu_list_;
 
   bool running_ = false;
   int trainer_id_;

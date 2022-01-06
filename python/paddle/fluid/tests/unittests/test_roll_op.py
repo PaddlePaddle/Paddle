@@ -122,6 +122,34 @@ class TestRollAPI(unittest.TestCase):
 
         self.assertRaises(ValueError, test_axis_out_range)
 
+    def test_shifts_as_tensor_dygraph(self):
+        with fluid.dygraph.guard():
+            x = paddle.arange(9).reshape([3, 3])
+            shape = paddle.shape(x)
+            shifts = shape // 2
+            axes = [0, 1]
+            out = paddle.roll(x, shifts=shifts, axis=axes).numpy()
+            expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
+            self.assertTrue(np.allclose(out, expected_out))
+
+    def test_shifts_as_tensor_static(self):
+        with program_guard(Program(), Program()):
+            x = paddle.arange(9).reshape([3, 3]).astype('float32')
+            shape = paddle.shape(x)
+            shifts = shape // 2
+            axes = [0, 1]
+            out = paddle.roll(x, shifts=shifts, axis=axes)
+            expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            [out_np] = exe.run(fetch_list=[out])
+            self.assertTrue(np.allclose(out_np, expected_out))
+
+            if paddle.is_compiled_with_cuda():
+                exe = fluid.Executor(fluid.CPUPlace())
+                [out_np] = exe.run(fetch_list=[out])
+                self.assertTrue(np.allclose(out_np, expected_out))
+
 
 if __name__ == "__main__":
     unittest.main()

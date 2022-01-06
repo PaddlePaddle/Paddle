@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/platform/type_defs.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
 
 namespace paddle {
@@ -335,6 +335,8 @@ class FleetWrapper {
   }
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
+
+  void SetDate(const uint64_t table_id, const std::string& date);
 
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;

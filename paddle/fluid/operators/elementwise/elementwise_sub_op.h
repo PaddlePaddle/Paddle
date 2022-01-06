@@ -14,10 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
+// only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/kernels/math_kernel.h"
 namespace paddle {
 namespace operators {
 
@@ -37,13 +42,6 @@ void default_elementwise_sub(const framework::ExecutionContext& ctx,
   }
 }
 
-template <typename DeviceContext, typename T, class Enable = void>
-struct SameDimsElemwiseSub {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z);
-};
-
 template <typename DeviceContext, typename T>
 class ElementwiseSubKernel : public framework::OpKernel<T> {
  public:
@@ -53,13 +51,13 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
 
-    auto dims_equal = x->dims() == y->dims();
-    if (dims_equal) {
-      SameDimsElemwiseSub<DeviceContext, T> same_dims_sub;
-      same_dims_sub(ctx, x, y, z);
-    } else {
-      default_elementwise_sub<DeviceContext, T>(ctx, x, y, z);
-    }
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    int axis = ctx.Attr<int>("axis");
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    pten::SubtractKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                            pt_z.get());
   }
 };
 
@@ -76,18 +74,41 @@ struct SubGradDY {
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+
+  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* x, const framework::Tensor* y,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  int axis = ctx.Attr<int>("axis");
-  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+  default_elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy);
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
@@ -110,15 +131,13 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
     // skip out
     auto* out = dout;
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
-      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-          ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
-          SubGradDY<T>());
+      default_elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
+                                                     dy);
     }
   }
 };

@@ -66,5 +66,7 @@ namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(stack,
+                       ops::StackXPUKernel<plat::XPUDeviceContext, int64_t>,
+                       ops::StackXPUKernel<plat::XPUDeviceContext, int>,
                        ops::StackXPUKernel<plat::XPUDeviceContext, float>);
 #endif

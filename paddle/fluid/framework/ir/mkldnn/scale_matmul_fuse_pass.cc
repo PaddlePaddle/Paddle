@@ -129,8 +129,9 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_scale_matmul_fuse_count);
-  PrettyLogDetail("---    fused %d scale with matmul",
-                  found_scale_matmul_fuse_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d scale with matmul",
+                    found_scale_matmul_fuse_count);
 }
 
 }  // namespace ir

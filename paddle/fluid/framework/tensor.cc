@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -29,14 +31,16 @@ void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
                                        "Tensor holds no memory. "
                                        "Call Tensor::mutable_data firstly."));
+  size_t size = numel() * SizeOfType(type());
+
   PADDLE_ENFORCE_LE(
-      numel() * SizeOfType(type()), memory_size(),
+      size, memory_size(),
       platform::errors::PreconditionNotMet(
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
           "But received  Tensor's dimension is d%, memory's size is %d.",
-          numel() * SizeOfType(type()), memory_size()));
+          size, memory_size()));
 }
 
 Tensor::Tensor(const proto::VarType::Type& dtype)
@@ -58,14 +62,7 @@ void* Tensor::mutable_data(const platform::Place& place,
           "The Tensor's shape is [",
           dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(
-        requested_size, size,
-        platform::errors::InvalidArgument(
-            "The requested memory size is less than the memory size of Tensor. "
-            "But received requested memory size is %d, "
-            "memory size of Tensor is %d.",
-            requested_size, size));
+  if (requested_size && (requested_size > size)) {
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
@@ -85,6 +82,31 @@ void* Tensor::mutable_data(const platform::Place& place,
   PADDLE_ENFORCE_NOT_NULL(this->holder_, platform::errors::PreconditionNotMet(
                                              "The tensor is not initialized."));
   return mutable_data(place, type_, requested_size);
+}
+
+void* Tensor::mutable_data(const platform::Place& place,
+                           proto::VarType::Type type,
+                           const platform::Stream& stream) {
+  type_ = type;
+  PADDLE_ENFORCE_GE(
+      numel(), 0,
+      platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(), "] now"));
+  size_t size = numel() * SizeOfType(type);
+
+  /* some versions of boost::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + offset_ ||
+      !(platform::is_gpu_place(place) &&
+        memory::InSameStream(holder_, stream))) {
+    holder_.reset();
+    holder_ = memory::AllocShared(place, size, stream);
+    offset_ = 0;
+  }
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 offset_);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -202,10 +224,12 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
 }
 
 void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                                 const proto::VarType::Type type) {
-  ResetHolder(holder);
+                                 const proto::VarType::Type& type) {
   type_ = type;
+  ResetHolder(holder);
 }
+
+void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 }  // namespace framework
 }  // namespace paddle

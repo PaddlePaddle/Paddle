@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -143,6 +143,8 @@ class ParallelExecutor {
 
   void SetReaderOpDeviceInfoOfGraphs(
       const std::vector<ir::Graph *> &final_graphs);
+
+  void PrepareForCUDAGraphCapture(ir::Graph *graph);
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;

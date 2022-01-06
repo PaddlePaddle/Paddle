@@ -34,12 +34,14 @@ include_directories("${PADDLE_LIB}/")
 set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/install/")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
@@ -52,8 +54,10 @@ if (WIN32)
     if (WITH_MKL)
       set(FLAG_OPENMP "/openmp")
     endif()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4251 /wd4267 /wd4305")
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd ${FLAG_OPENMP}")
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT ${FLAG_OPENMP}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4251 /wd4267 /wd4305")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd ${FLAG_OPENMP}")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT ${FLAG_OPENMP}")
     safe_set_static_flag()
@@ -151,12 +155,13 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags protobuf xxhash cryptopp
+      glog gflags protobuf xxhash cryptopp utf8proc
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf xxhash cryptopp-static ${EXTERNAL_LIB})
+      glog gflags_static libprotobuf xxhash cryptopp-static utf8proc_static
+      ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 

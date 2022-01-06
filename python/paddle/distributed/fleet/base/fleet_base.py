@@ -33,8 +33,10 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
-from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
+from paddle.fluid import core
+from paddle.fluid.dygraph import to_variable
 
 __all__ = []
 
@@ -275,13 +277,15 @@ class Fleet(object):
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
 
-            # init hybrid parallel environment in dygraph
-            if tp._HYBRID_PARALLEL_GROUP is None:
-                self._init_hybrid_parallel_env()
-            else:
-                warnings.warn(
-                    "The dygraph hybrid parallel environment has been initialized."
-                )
+            # hybrid parallel not support for npu/xpu
+            if self._user_defined_strategy.heter_ccl_mode == False:
+                # init hybrid parallel environment in dygraph
+                if tp._HYBRID_PARALLEL_GROUP is None:
+                    self._init_hybrid_parallel_env()
+                else:
+                    warnings.warn(
+                        "The dygraph hybrid parallel environment has been initialized."
+                    )
         elif self._is_collective:
             use_sharding = self._user_defined_strategy.sharding
 
@@ -561,8 +565,7 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker._is_server(
-        ) or self._role_maker._is_heter_worker()
+        return self._role_maker._is_server()
 
     def barrier_worker(self):
         """
@@ -624,6 +627,8 @@ class Fleet(object):
         """
         self._runtime_handle._init_server(*args, **kwargs)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def load_model(self, path, mode):
         """
         load fleet model from path
@@ -696,6 +701,8 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save(self, dirname, feed=[], fetch=[], **configs):
         inference = True
 
@@ -739,6 +746,8 @@ class Fleet(object):
             self._runtime_handle._save_persistables(
                 executor, dirname, main_program=None, mode=increment_mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -774,6 +783,8 @@ class Fleet(object):
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment, mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
 
@@ -822,7 +833,7 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
-    def shrink(self, threshold):
+    def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
     def distributed_optimizer(self, optimizer, strategy=None):
@@ -871,8 +882,12 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() > 1:
-                return HybridParallelOptimizer(optimizer, self._hcg,
-                                               self._user_defined_strategy)
+                if self._user_defined_strategy.heter_ccl_mode == False:
+                    return HybridParallelOptimizer(optimizer, self._hcg,
+                                                   self._user_defined_strategy)
+                else:
+                    return HeterParallelOptimizer(optimizer,
+                                                  self._user_defined_strategy)
             else:
                 return optimizer
         return self
@@ -936,6 +951,17 @@ class Fleet(object):
         assert model is not None, "model should not be None"
         if self.worker_num() <= 1:
             return model
+
+        if self._user_defined_strategy.heter_ccl_mode == True:
+            distributed_model = paddle.DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB,
+                find_unused_parameters=self._user_defined_strategy.
+                find_unused_parameters)
+            return distributed_model
 
         if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
             distributed_model = ShardingParallel(
@@ -1418,11 +1444,12 @@ class Fleet(object):
         context["role_maker"] = self._role_maker
 
         # Use the auto-parallel's routines instead
-        if self._user_defined_strategy.semi_auto:
+        if self._user_defined_strategy.semi_auto or self._user_defined_strategy.auto_search:
             from ...auto_parallel.parallelizer import AutoParallelizer
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
                 loss, startup_program, parameter_list, no_grad_set)
+
             return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
 
         # compile time
@@ -1523,13 +1550,15 @@ class Fleet(object):
         else:
             apply_ir_passes(loss.block.program, startup_program, self)
 
-        program = paddle.static.default_main_program()
-        opt_info = {}
-        opt_info["mpi_size"] = self.worker_num()
-        opt_info["mpi_rank"] = self.worker_index()
-        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
-            opt_info[k] = v
-        program._fleet_opt = opt_info
+        if not self._role_maker._is_heter_parameter_server_mode:
+            program = paddle.static.default_main_program()
+            opt_info = {}
+            opt_info["mpi_size"] = self.worker_num()
+            opt_info["mpi_rank"] = self.worker_index()
+            for k, v in self._user_defined_strategy.trainer_desc_configs.items(
+            ):
+                opt_info[k] = v
+            program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
@@ -1547,26 +1576,52 @@ class Fleet(object):
             if getattr(optimizer, '_param_groups', None) and isinstance(
                     optimizer._param_groups[0], dict):
                 param_grads = []
+                param_grads_fp16 = []
+                param_grads_fp32 = []
                 for group in optimizer._param_groups:
                     for param in group['params']:
                         if param._grad_ivar() is not None:
                             param_grads.append(param._grad_ivar())
+                            if param._grad_ivar(
+                            ).dtype == core.VarDesc.VarType.FP16:
+                                param_grads_fp16.append(param._grad_ivar())
+                            else:
+                                param_grads_fp32.append(param._grad_ivar())
             else:
                 param_grads = [
                     param._grad_ivar() for param in optimizer._parameter_list
                     if param._grad_ivar() is not None
                 ]
-            _C_ops.check_finite_and_unscale(param_grads, self._scale,
-                                            param_grads, self._found_inf)
+                param_grads_fp16 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
+                ]
+                param_grads_fp32 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
+                ]
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                param_grads_fp16,
+                                                temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                param_grads_fp32,
+                                                temp_found_inf_fp32)
 
-            self._found_inf = paddle.cast(self._found_inf, dtype="int32")
+            self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
+            is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
             # TODO(shenliang03) Since dp allreduce in the optimizer is 
             # after the gradscaler, check_finite needs to synchronize global 
             # information. In the future, we should use check_group to speed.
             paddle.distributed.all_reduce(
-                self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
-            self._found_inf = paddle.cast(self._found_inf, dtype="bool")
+                is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
+            self._found_inf = is_found_inf.numpy()[0]
 
         # Only tensor_parallel and pipeline_parallel need to modify scaler
         if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
 #include <algorithm>
 #include <cassert>
 
@@ -29,7 +27,8 @@ YoloBoxPlugin::YoloBoxPlugin(const nvinfer1::DataType data_type,
                              const std::vector<int>& anchors,
                              const int class_num, const float conf_thresh,
                              const int downsample_ratio, const bool clip_bbox,
-                             const float scale_x_y, const int input_h,
+                             const float scale_x_y, const bool iou_aware,
+                             const float iou_aware_factor, const int input_h,
                              const int input_w)
     : data_type_(data_type),
       class_num_(class_num),
@@ -37,6 +36,8 @@ YoloBoxPlugin::YoloBoxPlugin(const nvinfer1::DataType data_type,
       downsample_ratio_(downsample_ratio),
       clip_bbox_(clip_bbox),
       scale_x_y_(scale_x_y),
+      iou_aware_(iou_aware),
+      iou_aware_factor_(iou_aware_factor),
       input_h_(input_h),
       input_w_(input_w) {
   anchors_.insert(anchors_.end(), anchors.cbegin(), anchors.cend());
@@ -45,6 +46,7 @@ YoloBoxPlugin::YoloBoxPlugin(const nvinfer1::DataType data_type,
   assert(class_num_ > 0);
   assert(input_h_ > 0);
   assert(input_w_ > 0);
+  assert((iou_aware_factor_ > 0 && iou_aware_factor_ < 1));
 
   cudaMalloc(&anchors_device_, anchors.size() * sizeof(int));
   cudaMemcpy(anchors_device_, anchors.data(), anchors.size() * sizeof(int),
@@ -59,6 +61,8 @@ YoloBoxPlugin::YoloBoxPlugin(const void* data, size_t length) {
   DeserializeValue(&data, &length, &downsample_ratio_);
   DeserializeValue(&data, &length, &clip_bbox_);
   DeserializeValue(&data, &length, &scale_x_y_);
+  DeserializeValue(&data, &length, &iou_aware_);
+  DeserializeValue(&data, &length, &iou_aware_factor_);
   DeserializeValue(&data, &length, &input_h_);
   DeserializeValue(&data, &length, &input_w_);
 }
@@ -119,10 +123,10 @@ __device__ inline void GetYoloBox(float* box, const T* x, const int* anchors,
                                   int img_height, int img_width, float scale,
                                   float bias) {
   box[0] = static_cast<float>(
-      (i + sigmoid(static_cast<float>(x[index]) * scale + bias)) * img_width /
+      (i + sigmoid(static_cast<float>(x[index])) * scale + bias) * img_width /
       grid_size_w);
   box[1] = static_cast<float>(
-      (j + sigmoid(static_cast<float>(x[index + stride]) * scale + bias)) *
+      (j + sigmoid(static_cast<float>(x[index + stride])) * scale + bias) *
       img_height / grid_size_h);
   box[2] = static_cast<float>(expf(static_cast<float>(x[index + 2 * stride])) *
                               anchors[2 * an_idx] * img_width / input_size_w);
@@ -133,8 +137,19 @@ __device__ inline void GetYoloBox(float* box, const T* x, const int* anchors,
 
 __device__ inline int GetEntryIndex(int batch, int an_idx, int hw_idx,
                                     int an_num, int an_stride, int stride,
-                                    int entry) {
-  return (batch * an_num + an_idx) * an_stride + entry * stride + hw_idx;
+                                    int entry, bool iou_aware) {
+  if (iou_aware) {
+    return (batch * an_num + an_idx) * an_stride +
+           (batch * an_num + an_num + entry) * stride + hw_idx;
+  } else {
+    return (batch * an_num + an_idx) * an_stride + entry * stride + hw_idx;
+  }
+}
+
+__device__ inline int GetIoUIndex(int batch, int an_idx, int hw_idx, int an_num,
+                                  int an_stride, int stride) {
+  return batch * an_num * an_stride + (batch * an_num + an_idx) * stride +
+         hw_idx;
 }
 
 template <typename T>
@@ -178,7 +193,8 @@ __global__ void KeYoloBoxFw(const T* const input, const int* const imgsize,
                             const int w, const int an_num, const int class_num,
                             const int box_num, int input_size_h,
                             int input_size_w, bool clip_bbox, const float scale,
-                            const float bias) {
+                            const float bias, bool iou_aware,
+                            const float iou_aware_factor) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   float box[4];
@@ -193,11 +209,16 @@ __global__ void KeYoloBoxFw(const T* const input, const int* const imgsize,
     int img_height = imgsize[2 * i];
     int img_width = imgsize[2 * i + 1];
 
-    int obj_idx =
-        GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 4);
+    int obj_idx = GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 4,
+                                iou_aware);
     float conf = sigmoid(static_cast<float>(input[obj_idx]));
-    int box_idx =
-        GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0);
+    if (iou_aware) {
+      int iou_idx = GetIoUIndex(i, j, k * w + l, an_num, an_stride, grid_num);
+      float iou = sigmoid<float>(input[iou_idx]);
+      conf = powf(conf, 1. - iou_aware_factor) * powf(iou, iou_aware_factor);
+    }
+    int box_idx = GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0,
+                                iou_aware);
 
     if (conf < conf_thresh) {
       for (int i = 0; i < 4; ++i) {
@@ -212,8 +233,8 @@ __global__ void KeYoloBoxFw(const T* const input, const int* const imgsize,
     box_idx = (i * box_num + j * grid_num + k * w + l) * 4;
     CalcDetectionBox<T>(boxes, box, box_idx, img_height, img_width, clip_bbox);
 
-    int label_idx =
-        GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 5);
+    int label_idx = GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num,
+                                  5, iou_aware);
     int score_idx = (i * box_num + j * grid_num + k * w + l) * class_num;
     CalcLabelScore<T>(scores, input, label_idx, score_idx, class_num, conf,
                       grid_num);
@@ -240,7 +261,8 @@ int YoloBoxPlugin::enqueue_impl(int batch_size, const void* const* inputs,
       reinterpret_cast<const int* const>(inputs[1]),
       reinterpret_cast<T*>(outputs[0]), reinterpret_cast<T*>(outputs[1]),
       conf_thresh_, anchors_device_, n, h, w, an_num, class_num_, box_num,
-      input_size_h, input_size_w, clip_bbox_, scale_x_y_, bias);
+      input_size_h, input_size_w, clip_bbox_, scale_x_y_, bias, iou_aware_,
+      iou_aware_factor_);
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -274,6 +296,8 @@ size_t YoloBoxPlugin::getSerializationSize() const TRT_NOEXCEPT {
   serialize_size += SerializedSize(scale_x_y_);
   serialize_size += SerializedSize(input_h_);
   serialize_size += SerializedSize(input_w_);
+  serialize_size += SerializedSize(iou_aware_);
+  serialize_size += SerializedSize(iou_aware_factor_);
   return serialize_size;
 }
 
@@ -285,6 +309,8 @@ void YoloBoxPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, downsample_ratio_);
   SerializeValue(&buffer, clip_bbox_);
   SerializeValue(&buffer, scale_x_y_);
+  SerializeValue(&buffer, iou_aware_);
+  SerializeValue(&buffer, iou_aware_factor_);
   SerializeValue(&buffer, input_h_);
   SerializeValue(&buffer, input_w_);
 }
@@ -326,8 +352,8 @@ void YoloBoxPlugin::configurePlugin(
 
 nvinfer1::IPluginV2Ext* YoloBoxPlugin::clone() const TRT_NOEXCEPT {
   return new YoloBoxPlugin(data_type_, anchors_, class_num_, conf_thresh_,
-                           downsample_ratio_, clip_bbox_, scale_x_y_, input_h_,
-                           input_w_);
+                           downsample_ratio_, clip_bbox_, scale_x_y_,
+                           iou_aware_, iou_aware_factor_, input_h_, input_w_);
 }
 
 YoloBoxPluginCreator::YoloBoxPluginCreator() {}
@@ -367,6 +393,8 @@ nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
   float scale_x_y = 1.;
   int h = -1;
   int w = -1;
+  bool iou_aware = false;
+  float iou_aware_factor = 0.5;
 
   for (int i = 0; i < fc->nbFields; ++i) {
     const std::string field_name(fc->fields[i].name);
@@ -386,6 +414,10 @@ nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
       clip_bbox = *static_cast<const bool*>(fc->fields[i].data);
     } else if (field_name.compare("scale_x_y")) {
       scale_x_y = *static_cast<const float*>(fc->fields[i].data);
+    } else if (field_name.compare("iou_aware")) {
+      iou_aware = *static_cast<const bool*>(fc->fields[i].data);
+    } else if (field_name.compare("iou_aware_factor")) {
+      iou_aware_factor = *static_cast<const float*>(fc->fields[i].data);
     } else if (field_name.compare("h")) {
       h = *static_cast<const int*>(fc->fields[i].data);
     } else if (field_name.compare("w")) {
@@ -397,7 +429,8 @@ nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
 
   return new YoloBoxPlugin(
       type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT, anchors,
-      class_num, conf_thresh, downsample_ratio, clip_bbox, scale_x_y, h, w);
+      class_num, conf_thresh, downsample_ratio, clip_bbox, scale_x_y, iou_aware,
+      iou_aware_factor, h, w);
 }
 
 nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::deserializePlugin(

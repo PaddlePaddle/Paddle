@@ -40,6 +40,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from paddle import _C_ops
 
 __all__ = [
     'Program',
@@ -50,11 +51,14 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'xpu_places',
+    'mlu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
+    'is_compiled_with_npu',
     'Variable',
     'require_version',
     'device_guard',
@@ -73,7 +77,29 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
+_already_patch_eager_tensor = False
 _global_flags_ = core.globals()
+core._disable_eager_mode()
+
+
+@signature_safe_contextmanager
+def _test_eager_guard(tracer=None):
+    core._enable_eager_mode()
+    _C_ops.switch_to_eager_ops()
+    global _already_patch_eager_tensor
+    if not _already_patch_eager_tensor:
+        from .dygraph.varbase_patch_methods import monkey_patch_varbase
+        monkey_patch_varbase()
+        _already_patch_eager_tensor = True
+    if tracer is None:
+        core._set_eager_tracer(_dygraph_tracer_)
+    else:
+        core._set_eager_tracer(tracer)
+    try:
+        yield
+    finally:
+        core._disable_eager_mode()
+        _C_ops.switch_to_core_ops()
 
 
 def require_version(min_version, max_version=None):
@@ -213,6 +239,10 @@ def in_dygraph_mode():
     return _dygraph_tracer_ is not None
 
 
+def _in_eager_mode():
+    return core._in_eager_mode() and in_dygraph_mode()
+
+
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
@@ -312,6 +342,30 @@ def _current_expected_place():
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_xpu():
+            try:
+                device_count = core.get_xpu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.XPUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_mlu():
+            try:
+                device_count = core.get_mlu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.MLUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -327,6 +381,8 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
+    if _in_eager_mode():
+        return core.eager._set_expected_place(place)
     _set_dygraph_tracer_expected_place(place)
 
 
@@ -380,6 +436,24 @@ def _xpu_ids():
     return device_ids
 
 
+def _npu_ids():
+    npus_env = os.getenv("FLAGS_selected_npus")
+    if npus_env:
+        device_ids = [int(s) for s in npus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_npu_device_count())
+    return device_ids
+
+
+def _mlu_ids():
+    mlus_env = os.getenv("FLAGS_selected_mlus")
+    if mlus_env:
+        device_ids = [int(s) for s in mlus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_mlu_device_count())
+    return device_ids
+
+
 def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
@@ -393,6 +467,21 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
+
+
+def is_compiled_with_npu():
+    """
+    Whether this whl package can be used to run the model on NPU.
+
+    Returns (bool): support npu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_npu = fluid.is_compiled_with_npu()
+    """
+    return core.is_compiled_with_npu()
 
 
 def disable_signal_handler():
@@ -420,6 +509,21 @@ def disable_signal_handler():
     core.disable_signal_handler()
 
 
+def is_compiled_with_cinn():
+    """
+    Whether this whl package can be used to run the model on CINN.
+
+    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_cinn = paddle.device.is_compiled_with_cinn()
+    """
+    return core.is_compiled_with_cinn()
+
+
 def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
@@ -430,7 +534,7 @@ def is_compiled_with_cuda():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_cuda()
+            support_gpu = paddle.device.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -445,7 +549,7 @@ def is_compiled_with_rocm():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_rocm()
+            support_gpu = paddle.device.is_compiled_with_rocm()
     """
     return core.is_compiled_with_rocm()
 
@@ -538,6 +642,47 @@ def xpu_places(device_ids=None):
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
 
 
+def npu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
+    
+    This function creates a list of :code:`paddle.NPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_npus` would be checked first. For example, if
+    :code:`FLAGS_selected_npus=0,1,2`, the returned list would
+    be [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
+    If :code:`FLAGS_selected_npus` is not set, all visible
+    npu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of NPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of NPU device ids.
+    Returns:
+        list of paddle.NPUPlace: Created NPU place list.
+    Examples:
+        .. code-block:: python
+
+            # required: npu
+
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            npu_places = static.npu_places()
+    """
+    assert core.is_compiled_with_npu(), \
+        "Not compiled with NPU"
+    if device_ids is None:
+        device_ids = _npu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.NPUPlace(dev_id) for dev_id in device_ids]
+
+
 def cpu_places(device_count=None):
     """
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
@@ -602,6 +747,48 @@ def cuda_pinned_places(device_count=None):
     if device_count is None:
         device_count = len(_cuda_ids())
     return [core.CUDAPinnedPlace()] * device_count
+
+
+def mlu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
+        This function creates a list of :code:`paddle.device.MLUPlace` objects.
+        If :code:`device_ids` is None, environment variable of
+        :code:`FLAGS_selected_mlus` would be checked first. For example, if
+        :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
+        be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+        If :code:`FLAGS_selected_mlus` is not set, all visible
+        mlu places would be returned.
+        If :code:`device_ids` is not None, it should be the device
+        ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
+        the returned list would be
+        [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+
+    Parameters:
+        device_ids (list or tuple of int, optional): list of MLU device ids.
+
+    Returns:
+        list of paddle.device.MLUPlace: Created MLU place list.
+
+    Examples:
+        .. code-block:: python
+
+            # required: mlu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+            mlu_places = static.mlu_places()
+    """
+    assert core.is_compiled_with_mlu(), \
+        "Not compiled with MLU"
+    if device_ids is None:
+        device_ids = _mlu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.MLUPlace(dev_id) for dev_id in device_ids]
 
 
 class NameScope(object):
@@ -807,6 +994,14 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if _in_eager_mode():
+        eager_tensor = core.eager.EagerTensor(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape) if shape else [], name, type
+            if type else core.VarDesc.VarType.LOD_TENSOR, True
+            if persistable else False)
+        eager_tensor.retain_grads()
+        return eager_tensor
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
                         if type else core.VarDesc.VarType.LOD_TENSOR, True
@@ -818,6 +1013,8 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, core.eager.EagerTensor)
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -828,6 +1025,8 @@ class ParameterMetaClass(VariableMetaClass):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, EagerParamBase)
             return issubclass(t, ParamBase)
         else:
             return issubclass(t, Parameter)
@@ -900,6 +1099,10 @@ class Variable(object):
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+
+        if dtype == core.VarDesc.VarType.STRINGS:
+            type = core.VarDesc.VarType.STRINGS
+            lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
 
@@ -1226,13 +1429,12 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
-            self)
-        if var_dist_attr is not None:
+        dist_tensor = dist_context.get_dist_tensor_for_program(self)
+        if dist_tensor is not None:
             var_str += ", {name} = {value}".format(
-                name="dist_attr", value=var_dist_attr)
+                name="dist_attr", value=dist_tensor)
 
         return var_str
 
@@ -1279,6 +1481,33 @@ class Variable(object):
         return res_str
 
     __repr__ = __str__
+
+    def element_size(self):
+        """
+        Returns the size in bytes of an element in the Tensor.
+        
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x1', shape=[3, 2], dtype='bool')
+            x.element_size() # 1
+
+            x = paddle.static.data(name='x2', shape=[3, 2], dtype='int16')
+            x.element_size() # 2
+
+            x = paddle.static.data(name='x3', shape=[3, 2], dtype='float16')
+            x.element_size() # 2
+
+            x = paddle.static.data(name='x4', shape=[3, 2], dtype='float32')
+            x.element_size() # 4
+
+            x = paddle.static.data(name='x5', shape=[3, 2], dtype='float64')
+            x.element_size() # 8
+        """
+        return self.desc.element_size()
 
     @property
     def stop_gradient(self):
@@ -1927,6 +2156,14 @@ class Variable(object):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_npu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.NPUPlace(p.npu_device_id())
+        elif p.is_mlu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.MLUPlace(p.mlu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -2443,12 +2680,12 @@ class Operator(object):
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
-        if op_dist_attr is not None:
+        dist_op = dist_context.get_dist_op_for_program(self)
+        if dist_op is not None:
             attrs_str += ", {name} = {value}".format(
-                name="dist_attr", value=op_dist_attr)
+                name="dist_attr", value=dist_op)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
@@ -3097,7 +3334,10 @@ class Block(object):
         global_block = self.program.global_block()
         param = None
         if in_dygraph_mode():
-            param = ParamBase(*args, **kwargs)
+            if _in_eager_mode():
+                param = EagerParamBase(*args, **kwargs)
+            else:
+                param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
 
@@ -3142,6 +3382,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
+            inplace_map = kwargs.get("inplace_map", None)
             type = kwargs.get("type", None)
             op = Operator(
                 block=self,
@@ -3160,7 +3401,8 @@ class Block(object):
                                        kwargs.get("inputs", {}),
                                        kwargs.get("outputs", {}), attrs
                                        if attrs else {},
-                                       kwargs.get("stop_gradient", False))
+                                       kwargs.get("stop_gradient", False),
+                                       inplace_map)
         else:
             from paddle.fluid.dygraph.base import param_guard
 
@@ -3956,6 +4198,23 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
+    def all_sub_graphs(self, for_test=False):
+        """
+        Return all sub_graphs included in the main graph as a set.
+        """
+
+        return [
+            IrGraph(
+                self.graph.get_sub_graph(i), for_test=for_test)
+            for i in range(self.graph.sub_graph_size())
+        ]
+
+    def get_sub_graph(self, i, for_test=False):
+        """
+        Return i-th sub_graph in the main graph.
+        """
+        return IrGraph(self.graph.get_sub_graph(i), for_test=for_test)
+
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
@@ -4102,8 +4361,10 @@ class IrGraph(object):
             node_in(IrNode): the input node.
             node_out(IrNode): the output node.
         """
-        assert node_in.node in self.graph.nodes() and node_out.node in self.graph.nodes(), \
-            'The two arguments(node_in&node_out) must be in the graph nodes.'
+        assert node_in.node in self.graph.nodes(), (
+            'node_in(%s) must be in the graph nodes.' % node_in.node.name())
+        assert node_out.node in self.graph.nodes(), (
+            'node_out(%s) must be in the graph nodes.' % node_out.node.name())
         node_in.append_output(node_out)
         node_out.append_input(node_in)
 
@@ -4265,7 +4526,8 @@ class IrGraph(object):
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert target_node is not None, "Cannot find the target node in the giving set."
+        assert target_node is not None, (
+            "Cannot find the target node (%s)in the giving set." % node_name)
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -4371,6 +4633,9 @@ class Program(object):
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+
+        # assigned if this program has been parsed by a heter pipeline parameter server optimizer
+        self._heter_pipeline_opt = None
 
         # appending gradients times
         self._appending_grad_times = 0
@@ -5995,7 +6260,7 @@ class ParamBase(core.VarBase):
 
         self.need_clip = kwargs.get('need_clip', True)
 
-        self.is_distributed = False
+        self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
 
     @property
@@ -6063,10 +6328,156 @@ class ParamBase(core.VarBase):
         return new_param
 
     def _copy_to(self, device, blocking):
-        print("in ParamBase copy_to func")
         state = copy.deepcopy(self.__dict__)
         new_param = ParamBase(self.shape, self.dtype, **state)
         core.varbase_copy(self, new_param, device, blocking)
+        return new_param
+
+    __repr__ = __str__
+
+
+if hasattr(core, "eager"):
+    _core_eager_eagertensor = core.eager.EagerTensor
+else:
+    _core_eager_eagertensor = object
+
+
+class EagerParamBase(_core_eager_eagertensor):
+    """
+    EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode). 
+    A EagerParamBase is a persistable Tensor, and will be updated by optimizers 
+    after each iteration.
+    The training of a neural network is essentially the updating of
+    its EagerParamBase.
+
+    Relative to a general Tensor, a EagerParamBase has several its own
+    member variables:
+
+    Args:
+        trainable(bool): True if the EagerParamBase need to be updated after
+            iterations.
+        optimize_attr(map): EagerParamBase attributes related with optimizing.
+            Currently, it only contains 'learning_rate'.
+            Default: {'learning_rate': 1.0}
+        regularizer(WeightDecayRegularizer): The Regularizer which will
+            be applied on the EagerParamBase. Default: None
+        do_model_average(bool): True if the model average strategy will
+            be applied on this EagerParamBase.
+        need_clip (bool): Whether the parameter gradient need to be cliped 
+            in optimizer. Default is True.
+    """
+
+    @dygraph_only
+    def __init__(self, shape, dtype, **kwargs):
+        if shape is None:
+            raise ValueError("The shape of Parameter should not be None")
+        if dtype is None:
+            raise ValueError("The dtype of Parameter should not be None")
+
+        if len(shape) == 0:
+            raise ValueError(
+                "The dimensions of shape for Parameter must be greater than 0")
+
+        for each in shape:
+            if each < 0:
+                raise ValueError(
+                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
+                    % list(shape))
+
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
+        name = kwargs.get('name', unique_name.generate('_eager_param_base'))
+
+        super(EagerParamBase, self).__init__(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape)
+            if shape else [], name, core.VarDesc.VarType.LOD_TENSOR, True)
+        self.retain_grads()
+
+        trainable = kwargs.get('trainable', True)
+        self.stop_gradient = not trainable
+
+        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+
+        self.regularizer = kwargs.get('regularizer', None)
+
+        self.do_model_average = kwargs.get('do_model_average', None)
+
+        self.need_clip = kwargs.get('need_clip', True)
+
+        self.is_distributed = kwargs.get('is_distributed', False)
+        # self.block = default_main_program().global_block()
+
+    @property
+    def trainable(self):
+        return not self.stop_gradient
+
+    @trainable.setter
+    def trainable(self, trainable):
+        if isinstance(trainable, bool):
+            self.stop_gradient = not trainable
+        else:
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
+
+    def __str__(self):
+        """
+        Convert a EagerParamBase object to a readable string.
+
+        Returns(str): A readable string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                linear = paddle.nn.Linear(3, 3)
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [[ 0.48948765,  0.05829060, -0.25524026],
+                #         [-0.70368278,  0.52986908, -0.68742192],
+                #         [-0.54217887,  0.48439729,  0.34082305]])
+        """
+        return "Parameter containing:\n{tensor}".format(
+            tensor=super(EagerParamBase, self).__str__())
+
+    def __deepcopy__(self, memo):
+        """
+        Deep copy parameter, it will always performs Tensor copy.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import copy
+                linear = paddle.nn.Linear(1, 3)
+                linear_copy = copy.deepcopy(linear)
+
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+                print(linear_copy.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+        """
+        state = copy.deepcopy(self.__dict__, memo)
+        state["name"] = self.name + unique_name.generate("_deepcopy")
+        new_param = EagerParamBase(self.shape, self.dtype, **state)
+        memo[id(self)] = new_param
+        new_param.copy_(self, True)
+        return new_param
+
+    def _copy_to(self, device, blocking):
+        state = copy.deepcopy(self.__dict__)
+        new_param = EagerParamBase(self.shape, self.dtype, **state)
+        core.eager.tensor_copy(self, new_param, device, blocking)
         return new_param
 
     __repr__ = __str__
@@ -6274,14 +6685,17 @@ def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
-
+    if _in_eager_mode():
+        core.eager._set_expected_place(place)
     _set_dygraph_tracer_expected_place(place)
 
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
-        _set_dygraph_tracer_expected_place(tmp_place)
+        if _in_eager_mode():
+            core.eager._set_expected_place(_global_expected_place_)
+        _set_dygraph_tracer_expected_place(_global_expected_place_)
 
 
 def switch_device(device):
@@ -6428,7 +6842,8 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
+                          core.MLUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6483,8 +6898,20 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
+    # MLU
+    avaliable_mlu_place = re.match(r'mlu:\d+', place)
+    if avaliable_mlu_place:
+        if not core.is_compiled_with_mlu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with MLU".format(avaliable_mlu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.MLUPlace(device_id)
+
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, MLUPlace and NPUPlace, but received {}.".
         format(place))
 
 

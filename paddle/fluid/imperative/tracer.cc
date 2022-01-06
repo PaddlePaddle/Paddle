@@ -133,6 +133,16 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use NPU device since it's not compiled with NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
 #endif
+    } else if (platform::is_mlu_place(place)) {
+#if defined(PADDLE_WITH_MLU)
+      gc.reset(new framework::MLUDefaultStreamGarbageCollector(
+          BOOST_GET_CONST(platform::MLUPlace, place), 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use MLU device since it's not compiled with MLU,"
+          "Please recompile or reinstall Paddle with MLU support."));
+#endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
@@ -176,10 +186,10 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                               : attr_checker->GetDefaultAttrMap();
 
   NameVarBaseMap new_ins = ins;
-  if (amp_level_ == 1) {
+  if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (amp_level_ == 2) {
+  } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }
@@ -208,11 +218,21 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
+    } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+      platform::SetMLUDeviceId(
+          BOOST_GET_CONST(platform::MLUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with MLU if use MLUPlace."));
+#endif
     }
 
     OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
+    // Compatible impl: clear pten kernel context data when throw error
+    OpBase::GetKernelContext()->ClearData();
     throw std::move(exception);
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::Fatal(

@@ -238,6 +238,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
+  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir, NNAdapterModelCacheDir,
@@ -271,6 +272,14 @@ struct Argument {
   // Only used in paddle-lite subgraph.
   DECL_ARGUMENT_FIELD(cpu_math_library_num_threads, CpuMathLibraryNumThreads,
                       int);
+
+  // ipu related
+  DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
+  DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
+  DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
+  DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
+  DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
+  DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
 
  private:
   std::unordered_set<std::string> valid_fields_;

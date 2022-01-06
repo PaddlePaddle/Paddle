@@ -844,11 +844,19 @@ def _run_dygraph(instance, input, program_holder):
             continue
         persistable_var._set_grad_type(grad_var.type())
 
+    drop_scope_if_no_grad(instance, tmp_scope_vec)
+
     # 3. prepare output, keep same form with inputs
     outs = output_vars
     if len(output_vars) == 1:
         outs = output_vars[0]
     return outs
+
+
+def drop_scope_if_no_grad(instance, scope_vec):
+    tracer = framework._dygraph_tracer()
+    if (not instance._is_test) and (not tracer._has_grad):
+        scope_vec.value().get_scope().drop_kids()
 
 
 def _run_static_graph(input, program_holder, trace_program):
@@ -1069,8 +1077,13 @@ def append_var_from_block_desc_static(block,
             else:
                 lod_level = None
 
+            if var_desc.persistable():
+                current_block = block.program.global_block()
+            else:
+                current_block = block
+
             vars_append.append(
-                block.create_var(
+                current_block.create_var(
                     name=var_desc.name(),
                     dtype=data_type,
                     type=var_type,
@@ -1278,9 +1291,11 @@ class TranslatedLayer(layers.Layer):
 
     def train(self):
         self._is_test = False
+        self.training = True
 
     def eval(self):
         self._is_test = True
+        self.training = False
 
     def program(self, method_name='forward'):
         """

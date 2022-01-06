@@ -46,8 +46,10 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'cudnn_lstm', \
     'rnn', \
     'lgamma', \
+    'sparse_attention', \
     'svd', \
     'matrix_power', \
+    'cholesky_solve', \
     'solve', \
 ]
 
