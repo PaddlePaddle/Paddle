@@ -12,7 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/platform/os_info.h"
+#include <thread>
 #include "gtest/gtest.h"
+
+TEST(ThreadInfo, TestThreadIdUtils) {
+  using paddle::platform::GetCurrentThreadMainId;
+  using paddle::platform::GetCurrentThreadId;
+  using paddle::platform::GetAllThreadIds;
+  EXPECT_EQ(std::hash<std::thread::id>()(std::this_thread::get_id()),
+            GetCurrentThreadId().std_tid);
+  auto ids = GetAllThreadIds();
+  EXPECT_EQ(1u, ids.size());
+  EXPECT_EQ(GetCurrentThreadId().sys_tid, ids.begin()->second.sys_tid);
+}
 
 TEST(ThreadInfo, TestThreadNameUtils) {
   using paddle::platform::GetCurrentThreadName;

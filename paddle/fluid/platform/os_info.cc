@@ -104,21 +104,17 @@ template <typename T>
 thread_local typename ThreadDataRegistry<T>::ThreadDataHolder
     ThreadDataRegistry<T>::thread_data_;
 
-class ThreadIdHolder {
+class InternalThreadId {
  public:
-  ThreadIdHolder();
-
-  ~ThreadIdHolder();
+  InternalThreadId();
 
   const ThreadId& GetTid() const { return id_; }
-
-  uint64_t GetMainTid() const { return id_.MainTid(); }
 
  private:
   ThreadId id_;
 };
 
-class ThreadIdRegistry {
+/*class ThreadIdRegistry {
  public:
   // Singleton
   static ThreadIdRegistry& GetInstance() {
@@ -146,9 +142,9 @@ class ThreadIdRegistry {
 
   std::mutex lock_;
   std::unordered_map<uint64_t, const ThreadIdHolder*> id_map_;
-};
+};*/
 
-ThreadIdHolder::ThreadIdHolder() {
+InternalThreadId::InternalThreadId() {
   // C++ std tid
   id_.std_tid = std::hash<std::thread::id>()(std::this_thread::get_id());
 // system tid
@@ -163,14 +159,9 @@ ThreadIdHolder::ThreadIdHolder() {
   std::stringstream ss;
   ss << std::this_thread::get_id();
   id_.cupti_tid = static_cast<uint32_t>(std::stoull(ss.str()));
-  ThreadIdRegistry::GetInstance().RegisterThread(*this);
 }
 
-ThreadIdHolder::~ThreadIdHolder() {
-  ThreadIdRegistry::GetInstance().UnregisterThread(*this);
-}
-
-std::vector<ThreadId> ThreadIdRegistry::AllThreadIds() {
+/*std::vector<ThreadId> ThreadIdRegistry::AllThreadIds() {
   std::vector<ThreadId> ids;
   std::lock_guard<std::mutex> lock(lock_);
   ids.reserve(id_map_.size());
@@ -181,18 +172,29 @@ std::vector<ThreadId> ThreadIdRegistry::AllThreadIds() {
 }
 
 static thread_local ThreadIdHolder thread_id;
-
+*/
 }  // namespace internal
 
-uint64_t GetCurrentThreadMainId() { return internal::thread_id.GetMainTid(); }
+uint64_t GetCurrentThreadMainId() {
+  return internal::ThreadDataRegistry<
+             internal::InternalThreadId>::GetCurrentThreadData()
+      .GetTid()
+      .MainTid();
+}
 
-ThreadId GetCurrentThreadId() { return internal::thread_id.GetTid(); }
+ThreadId GetCurrentThreadId() {
+  return internal::ThreadDataRegistry<
+             internal::InternalThreadId>::GetCurrentThreadData()
+      .GetTid();
+}
 
 std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
-  auto tids = internal::ThreadIdRegistry::GetInstance().AllThreadIds();
+  auto tids =
+      internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+          .GetAllThreadDataByValue();
   std::unordered_map<uint64_t, ThreadId> res;
-  for (const auto& tid : tids) {
-    res[tid.MainTid()] = tid;
+  for (const auto& kv : tids) {
+    res[kv.first] = kv.second.GetTid();
   }
   return res;
 }
