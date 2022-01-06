@@ -33,7 +33,6 @@ using LayerNormScaleBiasT =
  * operators. Currently only support forward
  */
 
-// todo(@limin29):
 template <typename T, int VecSize, typename U,
           bool ScaleBiasWithSameTypeX = false>
 __device__ void CalcLayernormY(
