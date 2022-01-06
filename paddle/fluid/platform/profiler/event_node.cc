@@ -47,8 +47,8 @@ void NodeTrees::BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes
                            const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
                            const std::vector<DeviceRecordNode*>& device_record_nodes){
   // seperate Host Record Nodes into different threads
-  std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes; //used to store HostRecordNodes per thread
-  std::map<uint64_t, vector<CudaRuntimeRecordNode*>> thread2runtime_record_nodes; //used to store CudaRuntimeRecordNode per thread
+  std::map<uint64_t, std::vector<HostRecordNode*>> thread2host_record_nodes; //used to store HostRecordNodes per thread
+  std::map<uint64_t, std::vector<CudaRuntimeRecordNode*>> thread2runtime_record_nodes; //used to store CudaRuntimeRecordNode per thread
   std::map<uint32_t, CudaRuntimeRecordNode*> correlation_id2runtime_record_node; // used to store the relation between correlation id and runtime node
   // construct thread2host_record_nodes
   for(auto it = host_record_nodes.begin(); it != host_record_nodes.end(); ++it){
@@ -106,7 +106,7 @@ void NodeTrees::BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes
 HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
                                       std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes){
   // a stack used for analyse relationship
-  auto node_stack = std::vector<HostRecordNode*>;
+  auto node_stack = std::vector<HostRecordNode*>();
   // root node, top level 
   auto root_node = new HostRecordNode(std::string("root node"), TracerEventType::Operator, LLONG_MIN, LLONG_MAX);
   // push root node into node_stack
@@ -116,9 +116,9 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& h
       while(true){
           auto stack_top_node = node_stack.back();
 
-          if(*it->start_ns() < stack_top_node->end_ns()){
+          if((*it)->start_ns() < stack_top_node->end_ns()){
               // current node is the child of stack_top_node
-              PADDLE_ENFORCE_LE(*it->end_ns(), stack_top_node->end_ns(), 
+              PADDLE_ENFORCE_LE((*it)->end_ns(), stack_top_node->end_ns(), 
                                 platform::errors::Fatal("should not have time range intersection within one thread")
                                ); 
               stack_top_node->AddChild(*it);
@@ -129,8 +129,8 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& h
               // insert runtime node
               // judge if time range of runtime node within stack_top_node
               for(auto runtimenode = runtime_record_nodes.begin(); runtimenode != runtime_record_nodes.end(); ++runtimenode){
-                  if((runtimenode->start_ns() >= stack_top_node->start_ns()) && (runtimenode->end_ns() <= stack_top_node->end_ns())){
-                     stack_top_node->AddCudaRuntimeNode(runtimenode);                    
+                  if(((*runtimenode)->start_ns() >= stack_top_node->start_ns()) && ((*runtimenode)->end_ns() <= stack_top_node->end_ns())){
+                     stack_top_node->AddCudaRuntimeNode(*runtimenode);                    
                   }else{
                       // from this runtime node, not within stack_top_node, erase the nodes within stack_top_node from runtime_record_nodes
                       runtime_record_nodes.erase(runtime_record_nodes.begin(), runtimenode);
@@ -145,15 +145,15 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(std::vector<HostRecordNode*>& h
 }
 
 
-const std::map<uint64_t, vector<HostRecordNode*>> NodeTrees::Traverse(bool bfs=true){
+const std::map<uint64_t, std::vector<HostRecordNode*>> NodeTrees::Traverse(bool bfs){
   // traverse the tree, provide two methods: bfs(breadth first search) or dfs(depth first search)
-  std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes;
+  std::map<uint64_t, std::vector<HostRecordNode*>> thread2host_record_nodes;
   if(bfs == true){
     for(auto it = thread_record_trees_map_.begin(); it != thread_record_trees_map_.end(); ++it){
       auto deque = std::deque<HostRecordNode*>();
       uint64_t thread_id = it->first;
       auto root_node = it->second;
-      deque.push_back(root_node)
+      deque.push_back(root_node);
       while(!deque.empty()){
           auto current_node = deque.front();
           deque.pop_front();
@@ -180,19 +180,20 @@ const std::map<uint64_t, vector<HostRecordNode*>> NodeTrees::Traverse(bool bfs=t
       }
     }
   }
+  return thread2host_record_nodes;
 }
 
 
 void NodeTrees::LogMe(BaseLogger& logger){
   // log all nodes except root node, root node is a helper node.
-  const std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes = Traverse(true);
+  const std::map<uint64_t, std::vector<HostRecordNode*>> thread2host_record_nodes = Traverse(true);
   for(auto it = thread2host_record_nodes.begin(); it != thread2host_record_nodes.end(); ++it){
       for(auto hostnode = it->second.begin()+1; hostnode != it->second.end(); ++it){ //skip root node
-          hostnode->LogMe(logger);
-          for(auto runtimenode = hostnode->GetRuntimeRecordNodes().begin(); runtimenode != hostnode->GetRuntimeRecordNodes().end(); ++runtimenode){
-              runtimenode->LogMe(logger);
-              for(auto devicenode = runtimenode->GetDeviceRecordNodes().begin(); devicenode != runtimenode->GetDeviceRecordNodes().end(); ++devicenode){
-                devicenode->LogMe(logger);
+          (*hostnode)->LogMe(logger);
+          for(auto runtimenode = (*hostnode)->GetRuntimeRecordNodes().begin(); runtimenode != (*hostnode)->GetRuntimeRecordNodes().end(); ++runtimenode){
+              (*runtimenode)->LogMe(logger);
+              for(auto devicenode = (*runtimenode)->GetDeviceRecordNodes().begin(); devicenode != (*runtimenode)->GetDeviceRecordNodes().end(); ++devicenode){
+                (*devicenode)->LogMe(logger);
               }
           }
       }
@@ -203,14 +204,14 @@ void NodeTrees::HandleTrees(std::function<void (HostRecordNode*)> host_record_no
                   std::function<void (CudaRuntimeRecordNode*)> runtime_record_node_handle, 
                   std::function<void (DeviceRecordNode*)> device_record_node_handle){
   // using different user-defined function to handle different nodes
-  const std::map<uint64_t, vector<HostRecordNode*>> thread2host_record_nodes = Traverse(true);
+  const std::map<uint64_t, std::vector<HostRecordNode*>> thread2host_record_nodes = Traverse(true);
   for(auto it = thread2host_record_nodes.begin(); it != thread2host_record_nodes.end(); ++it){
       for(auto hostnode = it->second.begin()+1; hostnode != it->second.end(); ++it){ //skip root node
-          host_record_node_handle(hostnode);
-          for(auto runtimenode = hostnode->GetRuntimeRecordNodes().begin(); runtimenode != hostnode->GetRuntimeRecordNodes().end(); ++runtimenode){
-              runtime_record_node_handle(runtimenode);
-              for(auto devicenode = runtimenode->GetDeviceRecordNodes().begin(); devicenode != runtimenode->GetDeviceRecordNodes().end(); ++devicenode){
-                device_record_node_handle(devicenode);
+          host_record_node_handle(*hostnode);
+          for(auto runtimenode = (*hostnode)->GetRuntimeRecordNodes().begin(); runtimenode != (*hostnode)->GetRuntimeRecordNodes().end(); ++runtimenode){
+              runtime_record_node_handle(*runtimenode);
+              for(auto devicenode = (*runtimenode)->GetDeviceRecordNodes().begin(); devicenode != (*runtimenode)->GetDeviceRecordNodes().end(); ++devicenode){
+                device_record_node_handle(*devicenode);
               }
           }
       }
