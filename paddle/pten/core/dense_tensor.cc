@@ -431,20 +431,9 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  PADDLE_ENFORCE_NOT_NULL(
-      tensor.storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  PADDLE_ENFORCE_NOT_NULL(
-      tensor.storage_->data_shared(),
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-
-  storage_->set_data_shared(tensor.storage_->data_shared());
+  if (storage_ != nullptr && tensor.storage_ != nullptr) {
+    storage_->set_data_shared(tensor.storage_->data_shared());
+  }
   meta_.offset = tensor.meta().offset;
 }
 
