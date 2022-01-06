@@ -664,6 +664,116 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     return ret
 
 
+def max_unpool1d(x,
+                 indices,
+                 kernel_size,
+                 stride=None,
+                 padding=0,
+                 data_format="NCL",
+                 output_size=None,
+                 name=None):
+    """
+    This API implements max unpooling 1d opereation.
+    `max_unpool1d` accepts the output of `max_pool1d` as input, 
+    including the indices of the maximum value and calculate the partial inverse. 
+    All non-maximum values ​​are set to zero.
+
+    - Input: :math:`(N, C, L_{in})`
+    - Output: :math:`(N, C, L_{out})`, where
+    
+    .. math::
+        L_{out} = (L_{in} - 1) * stride - 2 * padding + kernel\_size
+
+    or as given by :attr:`output_size` in the call operator.
+
+
+    Args:
+        x (Tensor): The input tensor of unpooling operator which is a 3-D tensor with
+                          shape [N, C, L]. The format of input tensor is `"NCL"`, 
+                          where `N` is batch size, `C` is the number of channels, `L` is
+                          the length of the feature. The data type is float32 or float64.
+        indices (Tensor): The indices given out by maxpooling1d which is a 3-D tensor with
+                          shape [N, C, L]. The format of input tensor is `"NCL"` , 
+                          where `N` is batch size, `C` is the number of channels, `L` is
+                          the length of the featuree. The data type is float32 or float64.
+        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+            it must contain an integer.
+        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+            it must contain an integer.
+        padding (int | tuple): Padding that was added to the input.
+        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+                           the actual output shape will be automatically calculated by (input_shape,
+                           kernel_size, stride, padding).
+        data_format (string): The data format of the input and output data.
+                        The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_length]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Tensor: The output tensor of unpooling result. 
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import paddle.nn.functional as F
+
+            data = paddle.rand(shape=[1, 3, 16])
+            pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+            # pool_out shape: [1, 3, 8],  indices shape: [1, 3, 8]
+            unpool_out = F.max_unpool1d(pool_out, indices, kernel_size=2, padding=0)
+            # unpool_out shape: [1, 3, 16]
+
+    """
+    """NCL to NCHW"""
+    data_format = "NCHW"
+    x = unsqueeze(x, [2])
+    indices = unsqueeze(indices, [2])
+    kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
+    padding, padding_algorithm = _update_padding_nd(padding, 1)
+    # use 2d to implenment 1d should expand padding in advance.
+    padding = _expand_low_nd_padding(padding)
+
+    if data_format not in ["NCHW"]:
+        raise ValueError("Attr(data_format) should be 'NCHW'. Received "
+                         "Attr(data_format): %s." % str(data_format))
+
+    output_size = _unpool_output_size(x, kernel_size, stride, padding,
+                                      output_size)
+
+    if in_dygraph_mode():
+        output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
+                               kernel_size, 'strides', stride, 'paddings',
+                               padding, "output_size", output_size,
+                               "data_format", data_format)
+        return squeeze(output, [2])
+
+    op_type = "unpool"
+    helper = LayerHelper(op_type, **locals())
+    dtype = helper.input_dtype(input_param_name="x")
+    unpool_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type=op_type,
+        inputs={"X": x,
+                "Indices": indices},
+        outputs={"Out": unpool_out},
+        attrs={
+            "unpooling_type": "max",
+            "ksize": kernel_size,
+            "strides": stride,
+            "paddings": padding,
+            "output_size": output_size
+        })
+    return squeeze(unpool_out, [2])
+
+
 def max_unpool2d(x,
                  indices,
                  kernel_size,
