@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -21,28 +22,16 @@
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
 
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUContext = paddle::platform::NPUDeviceContext;
-#endif
-#ifdef PADDLE_WITH_XPU
-using XPUContext = paddle::platform::XPUDeviceContext;
-#endif
-
 #define PT_KERNEL(...) \
   ::pten::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
+
+#define PT_VARIADIC_KERNEL(...)                                       \
+  reinterpret_cast<void*>(&::pten::KernelImpl<decltype(&__VA_ARGS__), \
+                                              &__VA_ARGS__>::VariadicCompute)
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
   template <typename... Tail>                                                \
@@ -169,10 +158,19 @@ struct TypeTag {};
 template <typename Fn, Fn fn>
 struct KernelImpl;
 
-template <typename Return, typename... Args, Return (*kernel_fn)(Args...)>
-struct KernelImpl<Return (*)(Args...), kernel_fn> {
+template <typename Return,
+          typename DevCtx,
+          typename... Args,
+          Return (*kernel_fn)(DevCtx, Args...)>
+struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   static void Compute(KernelContext* ctx) {
-    KernelCallHelper<Args..., TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+    KernelCallHelper<DevCtx,
+                     Args...,
+                     TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+  }
+
+  static void VariadicCompute(const DeviceContext& dev_ctx, Args... args) {
+    return kernel_fn(static_cast<DevCtx>(dev_ctx), std::forward<Args>(args)...);
   }
 
  private:
@@ -183,10 +181,7 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CUDAContext);
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(NPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
 #endif
 #ifdef PADDLE_WITH_XPU
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
@@ -224,12 +219,12 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   template <typename T>
   struct KernelCallHelper<TypeTag<T>> {
     template <int dev_ctx_idx, int in_idx, int attr_idx, int out_idx>
-    static void Compute(KernelContext* ctx, Args&... args) {
+    static void Compute(KernelContext* ctx, DevCtx dev_ctx, Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       static_assert(out_idx > 0, "Kernel should have output argument.");
       // TODO(chenweihang): check dev_ctx, in, attr, out number
-      return kernel_fn(args...);
+      return kernel_fn(dev_ctx, args...);
     }
   };
 };

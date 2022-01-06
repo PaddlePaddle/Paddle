@@ -15,6 +15,7 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -59,7 +60,7 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
-  DataLayout data_layout = pten::TransToFluidDataLayout(kernel_key.layout());
+  DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
@@ -82,8 +83,7 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   } else {
     // do
   }
-  paddle::experimental::DataLayout layout =
-      pten::TransToPtenDataLayout(kernel_type.data_layout_);
+  paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
       pten::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
@@ -101,10 +101,10 @@ KernelSignatureMap& KernelSignatureMap::Instance() {
       if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
         KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
-        auto success =
-            kernel_signature_map_->map_
-                .emplace(op_type, std::move(maker.GetKernelSignature()))
-                .second;
+        auto success = kernel_signature_map_->map_
+                           .emplace(pten::TransToPtenKernelName(op_type),
+                                    std::move(maker.GetKernelSignature()))
+                           .second;
         PADDLE_ENFORCE_EQ(
             success, true,
             platform::errors::PermissionDenied(
@@ -190,8 +190,9 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
-                         GetAttrsArgsNames(), GetOutputArgsNames());
+  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
+                         GetInputArgsNames(), GetAttrsArgsNames(),
+                         GetOutputArgsNames());
 }
 
 std::string KernelSignatureToString(const KernelSignature& signature) {

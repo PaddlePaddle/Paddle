@@ -118,8 +118,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
       value = str_value.empty() ? "value" : "str_value";
     }
     if (!ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
-      return framework::KernelSignature("fill_constant", {}, {shape, value},
-                                        {"Out"});
+      return framework::KernelSignature("full", {}, {shape, value}, {"Out"});
     }
     return framework::KernelSignature("fill_constant.unregistered", {}, {}, {});
   }

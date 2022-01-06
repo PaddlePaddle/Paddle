@@ -75,7 +75,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
+#endif
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
@@ -130,6 +132,14 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/ipu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
@@ -158,6 +168,8 @@ PyTypeObject *g_cpuplace_pytype = nullptr;
 PyTypeObject *g_xpuplace_pytype = nullptr;
 PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
+PyTypeObject *g_mluplace_pytype = nullptr;
+PyTypeObject *g_framework_tensor_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -199,6 +211,14 @@ bool IsCompiledWithNPU() {
 #endif
 }
 
+bool IsCompiledWithIPU() {
+#ifndef PADDLE_WITH_IPU
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
@@ -209,6 +229,14 @@ bool IsCompiledWithMKLDNN() {
 
 bool IsCompiledWithCINN() {
 #ifndef PADDLE_WITH_CINN
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithMLU() {
+#ifndef PADDLE_WITH_MLU
   return false;
 #else
   return true;
@@ -280,10 +308,9 @@ OpSupportedInfos(const std::string &place,
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place},
-      {"CPU", &platform::is_cpu_place},
-      {"XPU", &platform::is_xpu_place},
-      {"NPU", &platform::is_npu_place},
+      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place}, {"NPU", &platform::is_npu_place},
+      {"MLU", &platform::is_mlu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
@@ -541,7 +568,9 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+#ifndef PADDLE_ON_INFERENCE
   BindEager(&m);
+#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -562,6 +591,14 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
+
+  m.def("clear_gradients",
+        [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
+           bool set_to_zero) {
+          for (auto param : param_list) {
+            param->ClearGradient(set_to_zero);
+          }
+        });
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
@@ -709,7 +746,11 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindImperative(&m);
 
-  py::class_<framework::Tensor>(m, "Tensor", py::buffer_protocol())
+  py::class_<framework::Tensor> framework_tensor(m, "Tensor",
+                                                 py::buffer_protocol());
+  g_framework_tensor_pytype =
+      reinterpret_cast<PyTypeObject *>(framework_tensor.ptr());
+  framework_tensor
       .def("__array__",
            [](framework::Tensor &self) { return TensorToPyArray(self); })
       .def("_is_initialized",
@@ -740,6 +781,10 @@ PYBIND11_MODULE(core_noavx, m) {
            [](framework::Tensor &self, paddle::platform::NPUPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_alloc_float",
+           [](framework::Tensor &self, paddle::platform::MLUPlace &place) {
+             self.mutable_data<float>(place);
+           })
       .def("_alloc_double",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<double>(place);
@@ -754,6 +799,10 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_alloc_int",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("_alloc_int",
+           [](framework::Tensor &self, paddle::platform::MLUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
@@ -786,6 +835,11 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
+      .def("_mutable_data",
+           [](framework::Tensor &self, paddle::platform::MLUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
@@ -802,6 +856,8 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::MLUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
@@ -812,6 +868,10 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::NPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::IPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::MLUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
@@ -819,7 +879,7 @@ PYBIND11_MODULE(core_noavx, m) {
         
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|XPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
           LoDTensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
@@ -1419,6 +1479,18 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("erase", &Scope::EraseVars, py::arg("names"),
+           R"DOC(
+           Find variable named :code:`name` in the current scope or
+           its parent scope. Return None if not found. 
+
+           Args:
+               name (str): the variable names to be erase.
+
+           Returns:
+               None
+           )DOC",
+           py::return_value_policy::reference)
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            R"DOC(
            Create a new sub-scope of the current scope.
@@ -1579,6 +1651,18 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                   })
         .def_static("create",
+                  [](paddle::platform::MLUPlace& place)
+                      -> paddle::platform::DeviceContext* {
+#ifndef PADDLE_WITH_MLU
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use MLUPlace in CPU/GPU version, "
+                 "Please recompile or reinstall Paddle with MLU support."));
+#else
+                    return new paddle::platform::MLUDeviceContext(place);
+#endif
+                  })
+        .def_static("create",
                     [](paddle::platform::NPUPlace& place)
                         -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_ASCEND_CL
@@ -1693,6 +1777,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::MLUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("_get_device_id",
@@ -1909,6 +1994,127 @@ All parameter, weight, gradient are variables in Paddle.
            [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
+  // IPUPlace
+  py::class_<platform::IPUPlace>(m, "IPUPlace", R"DOC(
+    IPUPlace is a descriptor of a device.
+    It represents a IPU device on which a tensor will be allocated and a model will run.
+
+    Examples:
+        .. code-block:: python
+          import paddle
+
+          # required: ipu
+
+          ipu_place = paddle.IPUPlace()
+
+        )DOC")
+      .def("__init__",
+           [](platform::IPUPlace &self) {
+#ifdef PADDLE_WITH_IPU
+             if (platform::GetIPUDeviceCount() == 0) {
+               LOG(ERROR) << "Cannot use IPU because there is no IPU "
+                             "detected on your "
+                             "machine.";
+               std::exit(-1);
+             }
+             // use ipu(0) to comile, while run with the number user configure
+             // in sharding and pipline.
+             new (&self) platform::IPUPlace(0);
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use IPU because you didn't install IPU version "
+                 "PaddlePaddle.\n"
+                 "If you want to use IPU, please try to install IPU version "
+                 "PaddlePaddle by: pip install paddlepaddle*\n"
+                 "If you only have CPU, please change IPUPlace to be "
+                 "CPUPlace().\n");
+             std::exit(-1);
+#endif
+           })
+      .def("_type", &PlaceIndex<platform::IPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::IPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::IPUPlace, platform::CUDAPinnedPlace>)
+#ifdef PADDLE_WITH_IPU
+      .def("get_device_id",
+           [](const platform::IPUPlace &self) { return self.GetDeviceId(); })
+#endif
+      .def("__str__", string::to_string<const platform::IPUPlace &>);
+
+  // MLUPlace
+  py::class_<platform::MLUPlace> mluplace(m, "MLUPlace", R"DOC(
+    MLUPlace is a descriptor of a device.
+    It represents a MLU device on which a tensor will be allocated and a model will run.
+
+    Examples:
+        .. code-block:: python
+          import paddle
+          # required: mlu
+          mlu_place = paddle.MLUPlace(0)
+
+        )DOC");
+  g_mluplace_pytype = reinterpret_cast<PyTypeObject *>(mluplace.ptr());
+  mluplace
+      .def("__init__",
+           [](platform::MLUPlace &self, int dev_id) {
+#ifdef PADDLE_WITH_MLU
+             if (UNLIKELY(dev_id < 0)) {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid MLUPlace(%d), device id must be 0 or "
+                   "positive integer",
+                   dev_id);
+               std::exit(-1);
+             }
+             if (UNLIKELY(dev_id >= platform::GetMLUDeviceCount())) {
+               if (platform::GetMLUDeviceCount() == 0) {
+                 LOG(ERROR) << "Cannot use MLU because there is no MLU "
+                               "detected on your "
+                               "machine.";
+                 std::exit(-1);
+               } else {
+                 LOG(ERROR) << string::Sprintf(
+                     "Invalid MLUPlace(%d), must inside [0, %d), because MLU "
+                     "number on your machine is %d",
+                     dev_id, platform::GetMLUDeviceCount(),
+                     platform::GetMLUDeviceCount());
+                 std::exit(-1);
+               }
+             }
+             new (&self) platform::MLUPlace(dev_id);
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use MLU because you have installed CPU/GPU/... "
+                 "version "
+                 "PaddlePaddle.\n"
+                 "If you want to use MLU, please try to install MLU version "
+                 "PaddlePaddle by: pip install paddlepaddle-mlu\n"
+                 "If you only have CPU, please change MLUPlace(%d) to be "
+                 "CPUPlace().\n",
+                 dev_id);
+             std::exit(-1);
+#endif
+           })
+      .def("_type", &PlaceIndex<platform::MLUPlace>)
+#ifdef PADDLE_WITH_MLU
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::IPUPlace>)
+      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::MLUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::MLUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::MLUPlace &self) { return self.GetDeviceId(); })
+#endif
+      .def("__str__", string::to_string<const platform::MLUPlace &>);
+
   py::class_<platform::Place> platformplace(m, "Place");
   g_place_pytype = reinterpret_cast<PyTypeObject *>(platformplace.ptr());
   platformplace.def(py::init<>())
@@ -1918,7 +2124,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::IPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::MLUPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
       .def("is_cpu_place",
@@ -1927,10 +2135,14 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self) { return platform::is_xpu_place(self); })
       .def("is_npu_place",
            [](platform::Place &self) { return platform::is_npu_place(self); })
+      .def("is_ipu_place",
+           [](platform::Place &self) { return platform::is_ipu_place(self); })
       .def("is_cuda_pinned_place",
            [](platform::Place &self) {
              return platform::is_cuda_pinned_place(self);
            })
+      .def("is_mlu_place",
+           [](platform::Place &self) { return platform::is_mlu_place(self); })
       .def("gpu_device_id",
            [](platform::Place &self) {
              return BOOST_GET_CONST(platform::CUDAPlace, self).device;
@@ -1942,6 +2154,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("npu_device_id",
            [](platform::Place &self) {
              return BOOST_GET_CONST(platform::NPUPlace, self).device;
+           })
+      .def("ipu_device_id",
+           [](platform::Place &self) {
+             return BOOST_GET_CONST(platform::IPUPlace, self).device;
+           })
+      .def("mlu_device_id",
+           [](platform::Place &self) {
+             return BOOST_GET_CONST(platform::MLUPlace, self).device;
            })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
@@ -1965,6 +2185,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_place",
            [](platform::Place &self, const platform::NPUPlace &npu_place) {
              self = npu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::IPUPlace &ipu_place) {
+             self = ipu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::MLUPlace &mlu_place) {
+             self = mlu_place;
            })
       .def("__repr__", string::to_string<const platform::Place &>)
       .def("__str__", string::to_string<const platform::Place &>);
@@ -2011,6 +2239,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::MLUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2197,9 +2431,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -2516,6 +2752,14 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
+#ifdef PADDLE_WITH_IPU
+  m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  m.def("get_mlu_device_count", platform::GetMLUDeviceCount);
+#endif
+
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
       .value("kDefault", platform::TracerOption::kDefault)
       .value("kOpDetail", platform::TracerOption::kOpDetail)
@@ -2593,6 +2837,11 @@ All parameter, weight, gradient are variables in Paddle.
                      bool val) { self.Set<bool>(name, new bool(val)); })
       .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::vector<std::string> set) {
+             self.Set(name, new std::vector<std::string>(set));
+           })
       .def("set",
            [](ir::Pass &self, const std::string &name,
               std::unordered_set<std::string> set) {
@@ -3424,6 +3673,118 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
+
+#ifdef PADDLE_WITH_IPU
+  py::class_<platform::ipu::IpuBackend,
+             std::shared_ptr<platform::ipu::IpuBackend>>(m, "IpuBackend")
+      .def(py::init(&platform::ipu::IpuBackend::GetNewInstance))
+      .def("clear", &platform::ipu::IpuBackend::Clear)
+      .def("set_scope", &platform::ipu::IpuBackend::SetScope)
+      .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy);
+
+  py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
+      .def(py::init())
+      .def_property(
+          "num_ipus",
+          [](const platform::ipu::IpuStrategy &self) { return self.num_ipus; },
+          [](platform::ipu::IpuStrategy &self, int num_ipus) {
+            self.num_ipus = num_ipus;
+          },
+          R"DOC(
+            Int type, set the number ipu we need. Default 1.
+          )DOC")
+      .def_property(
+          "accumulationFactor",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options_.accumulationFactor;
+          },
+          [](platform::ipu::IpuStrategy &self, int accumulationFactor) {
+            self.popart_options_.accumulationFactor = accumulationFactor;
+          },
+          R"DOC(
+            Specify the number of micro-batches to accumulate before
+            applying the varUpdate. Default 1.
+          )DOC")
+      .def_property("batches_per_step",
+                    [](const platform::ipu::IpuStrategy &self) {
+                      return self.batches_per_step;
+                    },
+                    [](platform::ipu::IpuStrategy &self, int batches_per_step) {
+                      self.batches_per_step = batches_per_step;
+                    },
+                    R"DOC(
+            Int type, set batches_per_step. Default 1.
+          )DOC")
+      .def_property("is_training",
+                    [](const platform::ipu::IpuStrategy &self) {
+                      return self.is_training;
+                    },
+                    [](platform::ipu::IpuStrategy &self, bool is_training) {
+                      self.is_training = is_training;
+                    },
+                    R"DOC(
+            Bool type, True for training, False inference. Default True.
+          )DOC")
+      .def_property(
+          "enable_pipelining",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options_.enablePipelining;
+          },
+          [](platform::ipu::IpuStrategy &self, bool enable_pipelining) {
+            self.popart_options_.enablePipelining = enable_pipelining;
+          },
+          R"DOC(
+            Bool type, True enable pipeline, otherwise disable. Default False.
+          )DOC")
+      .def_property(
+          "enable_manual_shard",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options_.virtualGraphMode ==
+                   platform::ipu::VirtualGraphMode::Manual;
+          },
+          [](platform::ipu::IpuStrategy &self, bool enable_ipu_shard) {
+            if (enable_ipu_shard) {
+              self.popart_options_.virtualGraphMode =
+                  platform::ipu::VirtualGraphMode::Manual;
+            } else {
+              self.popart_options_.virtualGraphMode =
+                  platform::ipu::VirtualGraphMode::Off;
+            }
+          },
+          R"DOC(
+            Bool type, True enable model sharding, otherwise disable. Default "
+            "False.
+          )DOC")
+      .def_property("need_avg_shard",
+                    [](const platform::ipu::IpuStrategy &self) {
+                      return self.need_avg_shard;
+                    },
+                    [](platform::ipu::IpuStrategy &self, bool need_avg_shard) {
+                      self.need_avg_shard = need_avg_shard;
+                    },
+                    R"DOC(
+            Bool type, True enable avg shard, otherwise disable. Default False.
+          )DOC")
+      .def_property("batch_size",
+                    [](const platform::ipu::IpuStrategy &self) {
+                      return self.batch_size;
+                    },
+                    [](platform::ipu::IpuStrategy &self, int batch_size) {
+                      self.batch_size = batch_size;
+                    },
+                    R"DOC(
+            Int type, used to make batch size fixed. Default 1.
+          )DOC")
+      .def_property("enable_fp16",
+                    [](const platform::ipu::IpuStrategy &self) {
+                      return self.enable_fp16;
+                    },
+                    [](platform::ipu::IpuStrategy &self, bool enable_fp16) {
+                      self.enable_fp16 = enable_fp16;
+                    },
+                    R"DOC(
+            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC");
+#endif
 
   BindFleetWrapper(&m);
   BindIO(&m);

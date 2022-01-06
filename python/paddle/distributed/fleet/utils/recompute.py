@@ -63,7 +63,8 @@ def swith_rng_state(rng_state):
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        check_recompute_necessary(args)
+        if framework._dygraph_tracer()._has_grad:
+            check_recompute_necessary(args)
 
         # store for recomputing 
         ctx.run_function = run_function

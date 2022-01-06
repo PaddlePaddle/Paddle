@@ -81,9 +81,6 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
   auto context = bk_function();
   auto forward = cls.attr("forward");
 
-  auto result_forward = forward(context, *args, **kwargs);
-  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(context.ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
@@ -166,6 +163,10 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
   }
+
+  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
+      std::make_shared<operators::PyLayerContext>(context.ptr());
+  auto result_forward = forward(context, *args, **kwargs);
   NameVarBaseMap ins = {{"X", input_vars}};
 
   std::vector<std::shared_ptr<imperative::VarBase>> output_vars;
@@ -226,6 +227,15 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
     if (if_inplace) {
+      // when pylayer forward is inplace strategy, check whether tensor is leaf
+      for (auto& t : input_vars) {
+        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(), false,
+                          platform::errors::InvalidArgument(
+                              "Leaf Var (%s) that doesn't stop gradient can't "
+                              "use inplace strategy.",
+                              t->Name()));
+      }
+
       inplace_map["X"] = "Out";
     }
 

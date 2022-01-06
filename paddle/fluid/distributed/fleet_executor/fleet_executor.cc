@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global_map.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -31,12 +34,41 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
                                  "Error occurs while parsing string to proto"));
 }
 
-FleetExecutor::~FleetExecutor() { root_scope_->DropKids(); }
+FleetExecutor::~FleetExecutor() {
+  root_scope_->DropKids();
+  for (const auto& carrier_id : carrier_ids_) {
+    GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
+  }
+}
 
-void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
-                         framework::Scope* scope,
-                         const platform::Place& place) {
-  runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
+void FleetExecutor::Init(
+    const std::string& carrier_id, const framework::ProgramDesc& program_desc,
+    framework::Scope* scope, const platform::Place& place,
+    const std::vector<TaskNode*>& task_nodes,
+    const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
+  PADDLE_ENFORCE_GT(task_nodes.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "Fleet executor is inited with empty task node"));
+  // TODO(fleet_exe devs): the unused_vars should be got from run time graph
+  std::vector<std::unique_ptr<framework::OperatorBase>> ops;
+  for (auto task_node : task_nodes) {
+    for (auto op : task_node->ops()) {
+      ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
+    }
+  }
+  auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
+  runtime_graph_ = std::make_shared<RuntimeGraph>();
+  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
+  for (auto task_node : task_nodes) {
+    task_node->SetUnusedVars(unused_vars);
+    int64_t interceptor_id = task_node->task_id();
+    interceptor_id_to_task.emplace(interceptor_id, task_node);
+  }
+  runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
+  runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
+  for (auto& unique_op : ops) {
+    unique_op.release();
+  }
   root_scope_ = scope;
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
@@ -49,16 +81,24 @@ void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
     CopyParameters(i, program_desc);
   }
   VLOG(5) << runtime_graph_->DebugString();
-  InitCarrier();
+  msg_bus_ = std::make_shared<MessageBus>();
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier_ids_.insert(carrier_id);
+  GlobalVal<std::string>::Set(carrier_id);
+  // TODO(liyurui): Maybe message bus should be created only once
+  InitCarrier(carrier);
   InitMessageBus();
+
+  // Wait for all message bus connected.
+  msg_bus_->Barrier();
 }
 
-void FleetExecutor::InitCarrier() {
-  Carrier& carrier_instance = Carrier::Instance();
-  if (!carrier_instance.IsInit()) {
-    carrier_instance.Init(runtime_graph_, root_scope_, minibatch_scope_,
-                          microbatch_scopes_, place_);
-  }
+void FleetExecutor::InitCarrier(Carrier* carrier) {
+  carrier->SetMsgBus(msg_bus_);
+  carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
+                runtime_graph_->interceptor_id_to_node(), root_scope_,
+                minibatch_scope_, microbatch_scopes_, place_);
 }
 
 void FleetExecutor::InitMessageBus() {
@@ -91,24 +131,14 @@ void FleetExecutor::InitMessageBus() {
   VLOG(3) << "The number of ranks are "
           << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
-  MessageBus& message_bus_instance = MessageBus::Instance();
-  if (!message_bus_instance.IsInit()) {
-    message_bus_instance.Init(runtime_graph_->intercepter_id_to_rank(),
-                              rank_to_addr, addr);
+  if (!msg_bus_->IsInit()) {
+    msg_bus_->Init(cur_rank, rank_to_addr, addr);
   }
 }
 
-void FleetExecutor::Run() {
-  // Run
-  Carrier& carrier_instance = Carrier::Instance();
-  MessageBus& message_bus_instance = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(
-      carrier_instance.IsInit(), true,
-      platform::errors::Unavailable("Carrier has not been init yet."));
-  PADDLE_ENFORCE_EQ(
-      message_bus_instance.IsInit(), true,
-      platform::errors::Unavailable("MessageBus has not been init yet."));
-  carrier_instance.Start();
+void FleetExecutor::Run(const std::string& carrier_id) {
+  GlobalMap<std::string, Carrier>::Get(carrier_id)->Start();
+  GlobalVal<std::string>::Set(carrier_id);
   for (auto* micro_scop : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
     // some operators may create local scope when running, such as while_op.

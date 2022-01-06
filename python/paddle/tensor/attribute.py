@@ -21,6 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype
 # TODO: define functions to get tensor attributes  
 from ..fluid.layers import rank  # noqa: F401
 from ..fluid.layers import shape  # noqa: F401
+import paddle
 from paddle import _C_ops
 
 __all__ = []
@@ -45,6 +46,34 @@ def _real_to_complex_dtype(dtype):
 
 
 def is_complex(x):
+    """Return whether x is a tensor of complex data type(complex64 or complex128).
+
+    Args:
+        x (Tensor): The input tensor.
+
+    Returns:
+        bool: True if the data type of the input is complex data type, otherwise false.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1 + 2j, 3 + 4j])
+            print(paddle.is_complex(x))
+            # True
+
+            x = paddle.to_tensor([1.1, 1.2])
+            print(paddle.is_complex(x))
+            # False
+
+            x = paddle.to_tensor([1, 2, 3])
+            print(paddle.is_complex(x))
+            # False
+    """
+    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+        raise TypeError("Expected Tensor, but received type of x: {}".format(
+            type(x)))
     dtype = x.dtype
     is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64 or
                         dtype == core.VarDesc.VarType.COMPLEX128)
@@ -52,6 +81,30 @@ def is_complex(x):
 
 
 def is_floating_point(x):
+    """
+    Returns whether the dtype of `x` is one of paddle.float64, paddle.float32, paddle.float16, and paddle.bfloat16.
+
+    Args:
+        x (Tensor): The input tensor.
+
+    Returns:
+        bool: True if the dtype of `x` is floating type, otherwise false.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.arange(1., 5., dtype='float32')
+            y = paddle.arange(1, 5, dtype='int32')
+            print(paddle.is_floating_point(x))
+            # True
+            print(paddle.is_floating_point(y))
+            # False
+    """
+    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+        raise TypeError("Expected Tensor, but received type of x: {}".format(
+            type(x)))
     dtype = x.dtype
     is_fp_dtype = (dtype == core.VarDesc.VarType.FP32 or
                    dtype == core.VarDesc.VarType.FP64 or
@@ -61,6 +114,34 @@ def is_floating_point(x):
 
 
 def is_integer(x):
+    """Return whether x is a tensor of integeral data type.
+
+    Args:
+        x (Tensor): The input tensor.
+
+    Returns:
+        bool: True if the data type of the input is integer data type, otherwise false.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1 + 2j, 3 + 4j])
+            print(paddle.is_integer(x))
+            # False
+
+            x = paddle.to_tensor([1.1, 1.2])
+            print(paddle.is_integer(x))
+            # False
+
+            x = paddle.to_tensor([1, 2, 3])
+            print(paddle.is_integer(x))
+            # True
+    """
+    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+        raise TypeError("Expected Tensor, but received type of x: {}".format(
+            type(x)))
     dtype = x.dtype
     is_int_dtype = (dtype == core.VarDesc.VarType.UINT8 or
                     dtype == core.VarDesc.VarType.INT8 or
