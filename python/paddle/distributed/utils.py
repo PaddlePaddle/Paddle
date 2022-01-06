@@ -89,13 +89,6 @@ def assign_pos(x, cum_count):
         return core.ops.assign_pos(x, cum_count, cum_count[-1])
     else:
         op_type = 'assign_pos'
-        # check_variable_and_dtype(
-        #     x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        #     'global_scatter')
-        # check_variable_and_dtype(local_count, 'local_count', ['int64'],
-        #                          'global_scatter')
-        # check_variable_and_dtype(global_count, 'global_count', ['int64'],
-        #                          'global_scatter')
 
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=cum_count.dtype)
