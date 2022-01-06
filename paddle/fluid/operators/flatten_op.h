@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/include/core.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/flatten_grad_kernel.h"
 #include "paddle/pten/kernels/flatten_kernel.h"
 
@@ -154,11 +155,18 @@ class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
 
     auto pt_d_x = paddle::experimental::MakePtenDenseTensor(*d_x);
     auto pt_d_out = paddle::experimental::MakePtenDenseTensor(*d_out);
-    auto pt_xshape = paddle::experimental::MakePtenDenseTensor(*xshape);
+
+    // Because the holder of xshape may be nullptr, we can't use
+    // MakePtenDenseTensor.
+    // So, we create a new DenseTensor to save the dims of xshape.
+    pten::DenseTensorMeta xshape_meta{pten::TransToPtenDataType(d_x->type()),
+                                      xshape->dims(), d_x->layout()};
+    auto pt_xshape =
+        pten::Empty<T, DeviceContext>(dev_ctx, std::move(xshape_meta));
 
     // call new kernel
     pten::FlattenGradKernel<T, DeviceContext>(dev_ctx, *pt_d_out.get(),
-                                              *pt_xshape.get(), pt_d_x.get());
+                                              pt_xshape, pt_d_x.get());
   }
 };
 
