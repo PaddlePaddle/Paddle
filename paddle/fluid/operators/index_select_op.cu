@@ -201,12 +201,16 @@ REGISTER_OP_CUDA_KERNEL(
     index_select,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext,
+                               paddle::platform::float16>,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     index_select_grad,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext,
+                                   paddle::platform::float16>,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext,
                                    int64_t>);
