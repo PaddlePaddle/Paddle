@@ -238,15 +238,15 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
 
 // Ternary compare
 template <typename T>
-struct TernaryGreaterThanFunctor {
+struct MaxGreaterThanFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
     return a > b ? c : static_cast<T>(0);
   }
 };
 template <typename T>
-struct TernaryLessEqualThanFunctor {
+struct MaxLessEqualThanFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
-    return (a < b || a == b) ? c : static_cast<T>(0);
+    return a <= b ? c : static_cast<T>(0);
   }
 };
 
@@ -257,9 +257,14 @@ struct MaxGradXYFunctor {
                                                                  const InT& c) {
     paddle::framework::Array<OutT, 2> outs;
     // dx = dout * (x > y)
-    outs[0] = a > b ? c : static_cast<InT>(0);
     // dy = dout * (x <= y)
-    outs[1] = (a < b || a == b) ? c : static_cast<InT>(0);
+    if (a > b) {
+      outs[0] = c;
+      outs[1] = static_cast<InT>(0);
+    } else {
+      outs[0] = static_cast<InT>(0);
+      outs[1] = c;
+    }
     return outs;
   }
 };

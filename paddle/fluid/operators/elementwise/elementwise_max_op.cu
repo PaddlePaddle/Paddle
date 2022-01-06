@@ -61,11 +61,11 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
     }
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     GetGradXOrYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dx, TernaryGreaterThanFunctor<T>());
+        dev_ctx, place, axis, ins, dout, dx, MaxGreaterThanFunctor<T>());
   } else if (dx == nullptr && dy != nullptr) {
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     GetGradXOrYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dy, TernaryLessEqualThanFunctor<T>());
+        dev_ctx, place, axis, ins, dout, dy, MaxLessEqualThanFunctor<T>());
   }
 }
 
