@@ -22,12 +22,6 @@ limitations under the License. */
 namespace pten {
 namespace tests {
 
-TEST(sparse_csr_tensor, default_construct) {
-  SparseCsrTensor csr;
-  CHECK(csr.valid());
-  CHECK(!csr.initialized());
-}
-
 TEST(sparse_csr_tensor, construct) {
   auto dense_dims = paddle::framework::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
@@ -78,7 +72,6 @@ TEST(sparse_csr_tensor, construct) {
 }
 
 TEST(sparse_csr_tensor, other_function) {
-  SparseCsrTensor csr;
   auto alloc = std::make_shared<FancyAllocator>();
   auto dense_dims = paddle::framework::make_ddim({4, 4});
   auto crows_dims = paddle::framework::make_ddim({dense_dims[0] + 1});
@@ -96,8 +89,8 @@ TEST(sparse_csr_tensor, other_function) {
       {static_cast<int64_t>(non_zero_nums.size())});
   DenseTensorMeta nums_meta(DataType::INT64, nums_dims, DataLayout::NCHW);
   DenseTensor nums(alloc, nums_meta);
-  // Test SetMember
-  csr.SetMemberTensor(crows, cols, values, nums, dense_dims);
+
+  SparseCsrTensor csr(crows, cols, values, nums, dense_dims);
   CHECK(csr.initialized());
   CHECK_EQ(csr.batch_size(), 1);
   CHECK_EQ(csr.dims(), dense_dims);

@@ -95,7 +95,7 @@ void SparseCsrTensor::SetMemberTensor(const DenseTensor& non_zero_crows,
                                       const DDim& dims) {
   Check(non_zero_crows, non_zero_cols, non_zero_elements, non_zero_nums, dims);
   this->dims_ = dims;
-  this->non_zero_crows_ = non_zero_crows;
+  // this->non_zero_crows_ = non_zero_crows;
   this->non_zero_cols_ = non_zero_cols;
   this->non_zero_elements_ = non_zero_elements;
   this->non_zero_nums_ = non_zero_nums;

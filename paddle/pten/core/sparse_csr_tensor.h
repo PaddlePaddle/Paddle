@@ -33,12 +33,6 @@ class CompatibleDenseTensorUtils;
 class SparseCsrTensor : public TensorBase,
                         public TypeInfoTraits<TensorBase, SparseCsrTensor> {
  public:
-  /// \brief Because sparse csr tensor is a kind of container, we give a default
-  /// constructor to use for stl container. But the sparse csr tensor created
-  /// with
-  /// the default constructor is not practical.
-  SparseCsrTensor() = default;
-
   /// \brief Because sparse csr tensor is a resource handle, we provide a
   /// default
   /// move constructor to support move semantics.
