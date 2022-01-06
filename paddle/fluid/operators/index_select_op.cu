@@ -55,7 +55,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
   int64_t pre_idx = idx / (stride * size);
   int64_t dim_idx = idx % (stride * size) / stride;
   int64_t begin_idx = idx + (delta * pre_idx - dim_idx) * stride;
-  
+
   input_grad[idx] = 0.0;
   for (int64_t i = 0; i < nums; i++) {
     if (index[i] == dim_idx) {
