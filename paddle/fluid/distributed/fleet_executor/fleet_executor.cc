@@ -35,7 +35,6 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   // Message bus will be created and inited only once
   GlobalVal<MessageBus>::Create();
   InitMessageBus();
-  GlobalVal<MessageBus>::Get()->Barrier();
 }
 
 FleetExecutor::~FleetExecutor() {
@@ -91,6 +90,7 @@ void FleetExecutor::Init(
   // Set current running carrier
   GlobalVal<std::string>::Set(new std::string(carrier_id));
   InitCarrier(carrier);
+  GlobalVal<MessageBus>::Get()->Barrier();
 }
 
 void FleetExecutor::InitCarrier(Carrier* carrier) {
@@ -135,7 +135,11 @@ void FleetExecutor::InitMessageBus() {
 void FleetExecutor::Run(const std::string& carrier_id) {
   Carrier* carrier = GlobalMap<std::string, Carrier>::Get(carrier_id);
   // Set current running carrier
-  GlobalVal<std::string>::Set(new std::string(carrier_id));
+  if (*GlobalVal<std::string>::Get() != carrier_id) {
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    // TODO(liyurui): Move barrier to service
+    GlobalVal<MessageBus>::Get()->Barrier();
+  }
   carrier->Start();
   for (auto* micro_scop : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
