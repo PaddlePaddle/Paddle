@@ -38,6 +38,7 @@ class SqueezeKernel : public framework::OpKernel<T> {
     auto &axes = context.Attr<std::vector<int>>("axes");
     auto x_dims = in->dims();
     auto out_dims = GetOutputShape(axes, x_dims, true);
+
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
@@ -54,6 +55,7 @@ class SqueezeGradKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(in_dims);
@@ -73,12 +75,9 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
     auto out_dims = GetOutputShape(axes, x_dims, true);
 
     out->mutable_data(context.GetPlace(), in->type());
-    framework::Tensor input_tensor;
-    input_tensor.ShareDataWith(*in);
-    out->ShareDataWith(input_tensor);
-    // framework::TensorCopy(
-    //     *in, context.GetPlace(),
-    //     context.template device_context<platform::DeviceContext>(), out);
+    framework::TensorCopy(
+        *in, context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
   }
 };
@@ -90,14 +89,13 @@ class Squeeze2GradKernel : public framework::OpKernel<T> {
     auto *d_out =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    // auto in_dims = d_x->dims();
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::Tensor input_tensor;
-    input_tensor.ShareDataWith(*d_out);
-    d_x->ShareDataWith(input_tensor);
-    // framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
+    framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(x_dims);
   }
 };

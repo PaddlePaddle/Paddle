@@ -326,25 +326,40 @@ def conv1d(x,
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
-    if len(padding) == 2:
-        padding = [0] * 2 + padding
-    elif len(padding) == 1:
-        padding = [0] + padding
-    else:
-        raise ValueError(
-            "The size of padding's dimension should be 1 or 2. But got padding={}".
-            format(padding))
 
-    if channel_last:
+    use_dgrad_engine = False
+    #dgrad_engine<float, int=512, int=6, int=5, int=3, int=3, int=3, bool=1> has better performance
+    if num_filters == 512:
+        use_dgrad_engine = True
+
+    if channel_last or use_dgrad_engine:
+        if len(padding) == 2:
+            padding = padding + [0] * 2
+        elif len(padding) == 1:
+            padding = padding + [0]
+        else:
+            raise ValueError(
+                "The size of padding's dimension should be 1 or 2. But got padding={}".
+                format(padding))
         stride = convert_to_list(stride, 1, 'stride') + [1]
         dilation = convert_to_list(dilation, 1, 'dilation') + [1]
+        weight = unsqueeze(weight, axis=[-1])
     else:
+        if len(padding) == 2:
+            padding = [0] * 2 + padding
+        elif len(padding) == 1:
+            padding = [0] + padding
+        else:
+            raise ValueError(
+                "The size of padding's dimension should be 1 or 2. But got padding={}".
+                format(padding))
         stride = [1] + convert_to_list(stride, 1, 'stride')
         dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+        weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"
 
-    # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
+    # When "groups == num_channels and num_filters % num_channels == 0" using depthwise_conv2d has better performance
     if (core.is_compiled_with_cuda() and num_channels == groups and
             num_channels != 1 and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
@@ -357,26 +372,20 @@ def conv1d(x,
         else:
             l_type = 'conv2d'
 
-    x = unsqueeze(x, axis=[-2])
-    if channel_last:
-        weight = unsqueeze(weight, axis=[-1])
-    else:
-        weight = unsqueeze(weight, axis=[-2])
-    # print("x_shape:", x.shape)
-    # print("w_shape:", weight.shape)
-    # print("padding:", padding)
-    # print("stride: ", stride)
-    # print("dilation:", dilation)
+    squeeze_aixs = -2
+    if use_dgrad_engine:
+        squeeze_aixs = -2 if channel_last else -1
+
+    x = unsqueeze(x, axis=[squeeze_aixs])
+
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
                  padding_algorithm, "data_format", conv2d_data_format)
         out = getattr(_C_ops, l_type)(x, weight, *attrs)
-
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
-
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -400,7 +409,7 @@ def conv1d(x,
             type=l_type, inputs=inputs, outputs=outputs, attrs=attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
-    out = squeeze(out, axis=[-2])
+    out = squeeze(out, axis=[squeeze_aixs])
     return out
 
 
