@@ -253,11 +253,9 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>
   void LayernormResidualDropoutBias(const platform::CUDADeviceContext& ctx,
                                     const T* src, const T* residual,
-                                    const T* bias,
-                                    // const LayerNormParamType<T>* gamma,
-                                    // const LayerNormParamType<T>* beta,
-                                    const P* gamma, const P* beta,
-                                    T* dropout_out, MaskType* mask, T* out,
+                                    const T* bias, const P* gamma,
+                                    const P* beta, T* dropout_out,
+                                    MaskType* mask, T* out,
                                     LayerNormParamType<T>* mean,
                                     LayerNormParamType<T>* variance) {
     using U = LayerNormParamType<T>;
@@ -277,16 +275,14 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
   }
 
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>
-  void LayernormResidualDropoutBiasGrad(
-      const platform::CUDADeviceContext& ctx, const T* d_out,
-      const T* layernorm_src, const MaskType* mask,
-      // const LayerNormParamType<T>* gamma,
-      const P* gamma, const LayerNormParamType<T>* mean,
-      const LayerNormParamType<T>* variance, T* d_layernorm_src,
-      // LayerNormParamType<T>* d_scale,
-      // LayerNormParamType<T>* d_layernorm_bias,
-      P* d_scale, P* d_layernorm_bias, T* d_dropout_src, T* d_bias,
-      T* d_residual) {
+  void LayernormResidualDropoutBiasGrad(const platform::CUDADeviceContext& ctx,
+                                        const T* d_out, const T* layernorm_src,
+                                        const MaskType* mask, const P* gamma,
+                                        const LayerNormParamType<T>* mean,
+                                        const LayerNormParamType<T>* variance,
+                                        T* d_layernorm_src, P* d_scale,
+                                        P* d_layernorm_bias, T* d_dropout_src,
+                                        T* d_bias, T* d_residual) {
     using U = LayerNormParamType<T>;
     LayerNormBackward<T, U, is_same_type>(
         layernorm_src, d_out, gamma, mean, variance, d_layernorm_src, d_scale,

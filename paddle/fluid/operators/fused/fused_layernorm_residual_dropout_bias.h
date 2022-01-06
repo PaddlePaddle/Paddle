@@ -37,13 +37,10 @@ using LayerNormScaleBiasT =
 template <typename T, int VecSize, typename U,
           bool ScaleBiasWithSameTypeX = false>
 __device__ void CalcLayernormY(
-    // const LayerNormParamType<T> *scale,
-    // const LayerNormParamType<T> *bias,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias, const T *x,
     T *y, const int row_id, const int col_id, const int cols,
     const LayerNormParamType<T> mean_val, const LayerNormParamType<T> invvar) {
-  // using U = LayerNormParamType<T>;
   using LoadT = platform::AlignedVector<T, VecSize>;
   using StoreT = platform::AlignedVector<T, VecSize>;
   using LoadU = platform::AlignedVector<U, VecSize>;
@@ -51,8 +48,6 @@ __device__ void CalcLayernormY(
       platform::AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
                               VecSize>;
   for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
-    // LoadU scale_vec;
-    // LoadU bias_vec;
     LoadScaleOrBias scale_vec;
     LoadScaleOrBias bias_vec;
     LoadT x_vec;
@@ -111,8 +106,6 @@ __global__ void FusedLayernormResidualDropoutBias(
     const T *src, const T *residual, const T *bias,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
-    // const LayerNormParamType<T> *scale,
-    // const LayerNormParamType<T> *layernorm_bias,
     MaskType *mask, T *dst, T *layernorm_dst, LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var) {
   int col_id = threadIdx.x;
@@ -122,7 +115,6 @@ __global__ void FusedLayernormResidualDropoutBias(
   curand_init(seed, idx, increment, &state);
 
   T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
-  // using U = LayerNormParamType<T>;
 
   __shared__ U mean_share;
   __shared__ U var_share;
@@ -142,14 +134,6 @@ __global__ void FusedLayernormResidualDropoutBias(
   mean_val = BlockReduceSum<U>(mean_val, shared_mean);
   var_val = BlockReduceSum<U>(var_val, shared_var);
   if (threadIdx.x == 0) {
-#if 0
-    auto scale = static_cast<float>(1.) / static_cast<float>(cols);
-    auto tmp = mean_val * scale;
-    mean[row_id] = mean_share = static_cast<U>(tmp);
-    var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
-    var_share = var_share > U(0) ? var_share : U(0);
-    var[row_id] = var_share;
-#endif
     auto scale = static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
         static_cast<float>(1.) / static_cast<float>(cols));
     auto tmp = mean_val * static_cast<U>(scale);
@@ -193,13 +177,10 @@ void LaunchLayernormResidualDropoutBias(
     uint64_t seed, const float dropout_prob, const float epsilon,
     const bool is_upscale_in_train, const bool is_test, const T *src,
     const T *residual, const T *bias,
-    // const LayerNormParamType<T> *scale,
-    // const LayerNormParamType<T> *layernorm_bias,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
     MaskType *mask_data, T *dst, T *layernorm_dst, LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var, const platform::CUDADeviceContext &ctx) {
-  // using U = LayerNormParamType<T>;
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
