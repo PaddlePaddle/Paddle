@@ -1,5 +1,7 @@
 #ifndef PD_OPS
 #define PD_OPS
+# warning: this file  can not be modified mannually.
+# warning: this file is generated automatically by tools/infrt/generate_pd_op_dialect_from_paddle_op_maker.py
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/IR/OpBase.td"
