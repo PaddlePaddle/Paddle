@@ -22,7 +22,6 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/operators/p_norm_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
@@ -96,13 +95,11 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     const T* x = in_x->data<T>();
     T* norm = out_norm->mutable_data<T>(ctx.GetPlace());
     auto xdim = in_x->dims();
-    auto ndim = out_norm->dims();
     float porder = ctx.Attr<float>("porder");
     bool asvector = ctx.Attr<bool>("asvector");
     int axis = ctx.Attr<int>("axis");
     std::vector<int> reduce_axis = {axis};
     reduce_axis = GetReduceDim(reduce_axis, xdim.size(), asvector);
-
     auto stream = ctx.cuda_device_context().stream();
 
     if (porder == 0) {
@@ -121,13 +118,12 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       const framework::Tensor* tmp_norm = out_norm;
       std::vector<const framework::Tensor*> ins = {tmp_norm};
       std::vector<framework::Tensor*> outs = {out_norm};
-      auto func_inverse = UnsignedPowFunctor<T>(1. / porder);
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
 
       LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T,
                                           UnsignedPowFunctor<T>>(
-          cuda_ctx, ins, &outs, func_inverse);
+          cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }
 };
@@ -148,18 +144,17 @@ struct AbsMaxAndMinGradFunctor {
 template <typename T>
 struct PNormGradFunctor {
   HOSTDEVICE explicit inline PNormGradFunctor(float porder) {
-    this->porder = porder;
+    this->porder = static_cast<T>(porder - 1.);
   }
   template <typename DeviceContext, typename X, typename Y, typename DX,
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    dx->device(place) =
-        (*x).abs().pow(static_cast<T>(this->porder - 1.)) * (*x).sign() *
-        dy->broadcast(dim) *
-        (*y).pow(static_cast<T>(1. - this->porder)).broadcast(dim);
+    dx->device(place) = (*x).abs().pow(this->porder) * (*x).sign() *
+                        dy->broadcast(dim) *
+                        (*y).pow(-this->porder).broadcast(dim);
   }
-  float porder;
+  T porder;
 };
 
 template <typename DeviceContext, typename T, typename AttrType = T>
