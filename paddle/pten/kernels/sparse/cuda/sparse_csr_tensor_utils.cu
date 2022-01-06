@@ -138,7 +138,7 @@ void SparseCooToCsr(const CUDAContext& dev_ctx,
                                          config.thread_per_block>>>(
       src_rows_data, csr_crows_data, dense_dims[0], non_zero_num);
 
-  auto place = BOOST_GET_CONST(paddle::platform::CPUPlace, dev_ctx.GetPlace());
+  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
   paddle::memory::Copy(place,
                        csr_cols_data,
                        place,
@@ -185,7 +185,7 @@ void SparseCsrToCoo(const CUDAContext& dev_ctx,
   kernel_convert_csr_crows_to_coo_rows<<<config.block_per_grid,
                                          config.thread_per_block>>>(
       csr_crows_data, coo_rows_data, dense_dim[0], non_zero_num);
-  auto place = BOOST_GET_CONST(paddle::platform::CPUPlace, dev_ctx.GetPlace());
+  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
   paddle::memory::Copy(place,
                        coo_cols_data,
                        place,
