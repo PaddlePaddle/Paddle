@@ -596,6 +596,10 @@ def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
     return block.var(base_name).is_parameter
 
 
+def _is_forward_op(op):
+    return op.attr("op_role") == 0
+
+
 def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     dp_group = None
