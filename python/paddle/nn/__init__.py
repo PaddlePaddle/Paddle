@@ -68,6 +68,7 @@ from .layer.common import Dropout2D  # noqa: F401
 from .layer.common import Dropout3D  # noqa: F401
 from .layer.common import AlphaDropout  # noqa: F401
 from .layer.common import Unfold  # noqa: F401
+from .layer.common import Fold  # noqa: F401
 
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
@@ -215,6 +216,7 @@ __all__ = [     #noqa
            'Bilinear',
            'AlphaDropout',
            'Unfold',
+           'Fold',
            'RNNCellBase',
            'SimpleRNNCell',
            'LSTMCell',
