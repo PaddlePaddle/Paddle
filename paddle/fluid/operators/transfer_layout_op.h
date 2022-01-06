@@ -66,7 +66,7 @@ class TransferLayoutFunctor {
         // Just set layout/format. No real transform occur
 
         auto out_format = platform::MKLDNNFormatForSize(
-            in_tensor.dims().size(), ToMKLDNNFormat(in_layout));
+            in_tensor.dims().size(), framework::ToMKLDNNFormat(in_layout));
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order

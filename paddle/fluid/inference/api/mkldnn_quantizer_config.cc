@@ -107,6 +107,18 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["fusion_lstm"]["ReorderedC0"] = ScaleAlgo::NONE;
   rules_["fusion_lstm"]["CheckedCell"] = ScaleAlgo::NONE;
   rules_["fusion_lstm"]["Hidden"] = ScaleAlgo::KL;
+
+  rules_["nearest_interp"]["X"] = ScaleAlgo::KL;
+  rules_["nearest_interp"]["OutSize"] = ScaleAlgo::NONE;
+  rules_["nearest_interp"]["SizeTensor"] = ScaleAlgo::NONE;
+  rules_["nearest_interp"]["Scale"] = ScaleAlgo::NONE;
+  rules_["nearest_interp"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["nearest_interp_v2"]["X"] = ScaleAlgo::KL;
+  rules_["nearest_interp_v2"]["OutSize"] = ScaleAlgo::NONE;
+  rules_["nearest_interp_v2"]["SizeTensor"] = ScaleAlgo::NONE;
+  rules_["nearest_interp_v2"]["Scale"] = ScaleAlgo::NONE;
+  rules_["nearest_interp_v2"]["Out"] = ScaleAlgo::NONE;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

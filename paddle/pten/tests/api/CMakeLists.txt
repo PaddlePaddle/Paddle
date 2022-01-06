@@ -12,6 +12,7 @@ cc_test(test_framework_place_utils storage SRCS test_place_utils.cc DEPS pten_ap
 cc_test(test_mean_api SRCS test_mean_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_dot_api SRCS test_dot_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_matmul_api SRCS test_matmul_api.cc DEPS pten_tensor pten_api pten_api_utils)
+cc_test(test_empty_api SRCS test_empty_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_fill_api SRCS test_fill_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_flatten_api SRCS test_flatten_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_elementwise_api SRCS test_elementwise_api.cc DEPS pten_tensor pten_api pten_api_utils)

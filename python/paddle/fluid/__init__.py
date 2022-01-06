@@ -55,7 +55,6 @@ from . import initializer
 from .initializer import set_global_initializer
 from . import layers
 from . import dygraph
-from . import eager
 from . import contrib
 from . import nets
 from . import optimizer
@@ -71,7 +70,7 @@ from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -91,7 +90,6 @@ from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
-from .eager.eager_tensor_patch_methods import monkey_patch_eagertensor
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
@@ -115,7 +113,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'contrib',
         'data',
         'dygraph',
-        'eager',
         'enable_dygraph',
         'disable_dygraph',
         'enable_imperative',
@@ -133,6 +130,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'CUDAPinnedPlace',
         'NPUPlace',
         'IPUPlace',
+        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -220,7 +218,6 @@ def __bootstrap__():
 monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
-monkey_patch_eagertensor()
 
 # NOTE(zhiqiu): register npu_finalize on the exit of Python,
 # do some clean up manually.

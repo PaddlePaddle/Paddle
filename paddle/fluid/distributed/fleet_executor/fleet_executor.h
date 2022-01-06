@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
@@ -30,25 +31,23 @@ namespace distributed {
 class RuntimeGraph;
 class MessageBus;
 class TaskNode;
-class Carrier;
 
 class FleetExecutor final {
  public:
   FleetExecutor() = delete;
   explicit FleetExecutor(const std::string& exe_desc_str);
   ~FleetExecutor();
-  void Init(const framework::ProgramDesc& program_desc, framework::Scope* scope,
+  void Init(const std::string& carrier_id,
+            const framework::ProgramDesc& program_desc, framework::Scope* scope,
             const platform::Place& place,
             const std::vector<TaskNode*>& task_nodes,
             const std::unordered_map<int64_t, int64_t>& task_id_to_rank);
-  void Run();
-  // TODO(liyurui): Change to use registry table for multi-carrier.
-  static Carrier& GetCarrier();
+  void Run(const std::string& carrier_id);
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   void InitMessageBus();
-  void InitCarrier();
+  void InitCarrier(Carrier* carrier);
   void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
   FleetExecutorDesc exe_desc_;
   std::shared_ptr<RuntimeGraph> runtime_graph_;
@@ -59,6 +58,7 @@ class FleetExecutor final {
   // The carriers under FleetExecutor will share message bus,
   // using shared_ptr to manage lifetime and condition race.
   std::shared_ptr<MessageBus> msg_bus_;
+  std::unordered_set<std::string> carrier_ids_;
 };
 
 }  // namespace distributed

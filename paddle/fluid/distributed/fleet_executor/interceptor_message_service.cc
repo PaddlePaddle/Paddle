@@ -16,7 +16,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/global_map.h"
 
 namespace paddle {
 namespace distributed {
@@ -29,8 +29,10 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
   VLOG(3) << "Interceptor Message Service receives a message from interceptor "
           << request->src_id() << " to interceptor " << request->dst_id()
           << ", with the message: " << request->message_type();
-  FleetExecutor::GetCarrier().EnqueueInterceptorMessage(*request);
-  response->set_rst(true);
+  const auto& carrier_id = GlobalVal<std::string>::Get();
+  bool flag = GlobalMap<std::string, Carrier>::Get(carrier_id)
+                  ->EnqueueInterceptorMessage(*request);
+  response->set_rst(flag);
 }
 
 }  // namespace distributed
