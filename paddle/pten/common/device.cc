@@ -24,7 +24,7 @@ const char* DeviceTypeStr(DeviceType type) {
     case DeviceType::kUndef:
       return "kUndef";
     case DeviceType::kHost:
-      return "kUndef";
+      return "kHost";
     case DeviceType::kXpu:
       return "kXpu";
     case DeviceType::kCuda:
