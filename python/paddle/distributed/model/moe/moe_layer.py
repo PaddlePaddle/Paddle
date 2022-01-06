@@ -25,7 +25,7 @@ from paddle.distributed import alltoall, all_gather
 from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
 from paddle.distributed import fleet
 from paddle.autograd import PyLayer
-from .gate import NaiveGate, GShardGate, SwitchGate
+from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
 from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 from paddle import fluid
@@ -302,7 +302,7 @@ class MoeLayer(nn.Layer):
         if gate is None:
             gate = dict()
 
-        assert isinstance(gate, (dict, NaiveGate, GShardGate, SwitchGate)), \
+        assert isinstance(gate, (dict, BaseGate)), \
              "gate config' type must be dict or an instance of BaseGate"
         # only support mp/dp
         self.group = moe_group
@@ -344,8 +344,12 @@ class MoeLayer(nn.Layer):
                 assert False, "We only support naive gate, \
                                 gshard gate and switch gate, \
                                 but you choose {} gate.".format(str(gate))
-        else:
+        elif isinstance(gate, NaiveGate):
             self.top_k = gate.top_k
+        elif isinstance(gate, BaseGate):
+            raise TypeError("Unimplemented gate type: ", type(gate))
+        else:
+            raise TypeError("gate's type must be either dict or moe.BaseGate")
         self.gate = gate
 
     def forward(self, inp):
