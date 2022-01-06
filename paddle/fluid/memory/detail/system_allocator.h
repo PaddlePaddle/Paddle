@@ -108,11 +108,10 @@ class MLUAllocator : public SystemAllocator {
 };
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-class PluggableDeviceAllocator : public SystemAllocator {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDeviceAllocator : public SystemAllocator {
  public:
-  explicit PluggableDeviceAllocator(const std::string& device_type,
-                                    size_t dev_id)
+  explicit CustomDeviceAllocator(const std::string& device_type, size_t dev_id)
       : dev_type_(device_type), dev_id_(dev_id) {}
 
   virtual void* Alloc(size_t* index, size_t size);

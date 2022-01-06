@@ -30,8 +30,8 @@ static void StreamCallbackFunc(void* user_data) {
 
 class NpuDevice : public DeviceInterface {
  public:
-  NpuDevice(const std::string& type, int priority, bool is_pluggable)
-      : DeviceInterface(type, priority, is_pluggable) {
+  NpuDevice(const std::string& type, int priority, bool is_custom)
+      : DeviceInterface(type, priority, is_custom) {
     // Initialize();
   }
 
@@ -39,10 +39,15 @@ class NpuDevice : public DeviceInterface {
     // Finalize();
   }
 
-  size_t VisibleDevicesCount() override {
+  size_t GetDeviceCount() override {
     uint32_t count = 0;
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetDeviceCount(&count));
     return count;
+  }
+
+  std::vector<size_t> GetDeviceList() override {
+    std::vector<size_t> devices;
+    return devices;
   }
 
   void SynchronizeDevice(size_t dev_id) override {
@@ -53,14 +58,14 @@ class NpuDevice : public DeviceInterface {
   void Initialize() override {
     // TODO(wangran16): make sure to initialize once
     PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
-    size_t count = VisibleDevicesCount();
+    size_t count = GetDeviceCount();
     for (size_t i = 0; i < count; ++i) {
       InitDevice(i);
     }
   }
 
   void Finalize() override {
-    size_t count = VisibleDevicesCount();
+    size_t count = GetDeviceCount();
     for (size_t i = 0; i < count; ++i) {
       DeInitDevice(i);
     }

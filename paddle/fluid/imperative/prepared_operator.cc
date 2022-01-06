@@ -279,12 +279,11 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
-      is_pluggable_device_place(expected_kernel_key.place_)) {
+      is_custom_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing "
-            << BOOST_GET_CONST(platform::PluggableDevicePlace, place)
-                   .GetDeviceType()
+            << BOOST_GET_CONST(platform::CustomPlace, place).GetDeviceType()
             << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

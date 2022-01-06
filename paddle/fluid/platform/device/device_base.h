@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/device/event.h"
 #include "paddle/fluid/platform/device/stream.h"
 
@@ -35,14 +35,15 @@ class DeviceInterface {  // Driver / Runtime
     Unified = 2,
   };
 
-  DeviceInterface(const std::string& type, uint8_t priority, bool is_pluggable)
-      : type_(type), priority_(priority), is_pluggable_(is_pluggable) {}
+  DeviceInterface(const std::string& type, uint8_t priority, bool is_custom)
+      : type_(type), priority_(priority), is_custom_(is_custom) {}
   uint8_t Priority() { return priority_; }
   std::string Type() { return type_; }
-  bool IsPluggable() { return is_pluggable_; }
+  bool IsCustom() { return is_custom_; }
 
   virtual ~DeviceInterface() {}
-  virtual size_t VisibleDevicesCount() = 0;
+  virtual size_t GetDeviceCount() = 0;
+  virtual std::vector<size_t> GetDeviceList() = 0;
 
   // Platform
   //! Initialize
@@ -141,10 +142,16 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual size_t GetExtraPaddingSize(size_t dev_id);
 
+  virtual size_t GetComputeCapability();
+
+  virtual size_t GetRuntimeVersion();
+
+  virtual size_t GetDriverVersion();
+
  private:
   const std::string type_;
   const uint8_t priority_;
-  const bool is_pluggable_;
+  const bool is_custom_;
 
   size_t AllocSize(size_t dev_id, bool realloc);
 

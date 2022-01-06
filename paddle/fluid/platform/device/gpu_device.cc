@@ -35,17 +35,22 @@ static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
 
 class GpuDevice : public DeviceInterface {
  public:
-  GpuDevice(const std::string& type, int priority, bool is_pluggable)
-      : DeviceInterface(type, priority, is_pluggable) {}
+  GpuDevice(const std::string& type, int priority, bool is_custom)
+      : DeviceInterface(type, priority, is_custom) {}
   ~GpuDevice() override {}
-  size_t VisibleDevicesCount() override { return GetGPUDeviceCount(); }
+  size_t GetDeviceCount() override { return GetGPUDeviceCount(); }
 };
 
 class CudaDevice : public GpuDevice {
  public:
-  CudaDevice(const std::string& type, int priority, bool is_pluggable)
-      : GpuDevice(type, priority, is_pluggable) {}
+  CudaDevice(const std::string& type, int priority, bool is_custom)
+      : GpuDevice(type, priority, is_custom) {}
   ~CudaDevice() override {}
+
+  std::vector<size_t> GetDeviceList() override {
+    std::vector<size_t> devices;
+    return devices;
+  }
 
   void SynchronizeDevice(size_t dev_id) override {
     // PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(BOOST_GET_CONST(CUDAPlace,
@@ -54,14 +59,14 @@ class CudaDevice : public GpuDevice {
   }
 
   void Initialize() override {
-    size_t count = VisibleDevicesCount();
+    size_t count = GetDeviceCount();
     for (size_t i = 0; i < count; ++i) {
       InitDevice(i);
     }
   }
 
   void Finalize() override {
-    size_t count = VisibleDevicesCount();
+    size_t count = GetDeviceCount();
     for (size_t i = 0; i < count; ++i) {
       DeInitDevice(i);
     }

@@ -227,7 +227,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   size_t allocate_bytes = max_chunk_size_;
   size_t index = 0;
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (system_allocator_->UseGpu()) {
     if ((total_used_ + total_free_) == 0) {
       allocate_bytes = std::max(init_alloc_size_, request_bytes);

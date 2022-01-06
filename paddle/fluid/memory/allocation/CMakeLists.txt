@@ -58,7 +58,7 @@ else ()
     set(AllocatorFacadeDeps)
 endif()
 
-if (WITH_PLUGGABLE_DEVICE)
+if (WITH_CUSTOM_DEVICE)
   cc_library(plug_allocator SRCS plug_allocator.cc DEPS allocator device_manager)
   set(AllocatorFacadeDeps ${AllocatorFacadeDeps} plug_allocator)
 endif()

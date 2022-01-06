@@ -21,9 +21,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class PluggableDeviceAllocator : public Allocator {
+class CustomDeviceAllocator : public Allocator {
  public:
-  explicit PluggableDeviceAllocator(const platform::PluggableDevicePlace& place)
+  explicit CustomDeviceAllocator(const platform::CustomPlace& place)
       : place_(place) {}
 
   bool IsAllocThreadSafe() const override;

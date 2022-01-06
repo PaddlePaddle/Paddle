@@ -225,8 +225,8 @@ def _convert_to_place(device):
         selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
-    elif device in core.list_all_pluggable_device_type():
-        place = core.PluggableDevicePlace(device, 0)
+    elif device in core.list_all_custom_device_type():
+        place = core.CustomPlace(device, 0)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
@@ -235,17 +235,17 @@ def _convert_to_place(device):
         if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device and not avaliable_mlu_device:
             device_info_list = device.split(':', 1)
             platform_name = device_info_list[0]
-            if platform_name in core.list_all_pluggable_device_type():
+            if platform_name in core.list_all_custom_device_type():
                 device_id = device_info_list[1]
                 device_id = int(device_id)
-                place = core.PluggableDevicePlace(platform_name, device_id)
+                place = core.CustomPlace(platform_name, device_id)
             else:
                 raise ValueError(
                     "The device must be a string which is like 'cpu', " +
                     ', '.join([
                         "'{}', '{}:x'".format(x, x) for x in [
                             'gpu', 'xpu', 'npu', 'mlu'
-                        ] + core.list_all_pluggable_device_type()
+                        ] + core.list_all_custom_device_type()
                     ]))
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():

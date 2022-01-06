@@ -372,11 +372,18 @@ struct C_DeviceInterface {
   //////////////
 
   /**
-   * @brief Visible device count
+   * @brief Get visible device count
    *
    * @param[size_t*]    count       Plugin fill it
    */
-  C_Status (*visible_devices_count)(size_t* count);
+  C_Status (*get_device_count)(size_t* count);
+
+  /**
+   * @brief Get visible device list
+   *
+   * @param[size_t*]    devices     Plugin fill it
+   */
+  C_Status (*get_device_list)(size_t* devices);
 
   /**
    * @brief Device memory statistic
@@ -430,6 +437,27 @@ struct C_DeviceInterface {
    * @param[size_t*]    size
    */
   C_Status (*device_realloc_size)(const C_Device device, size_t* size);
+
+  /**
+   * @brief Get compute capability
+   *
+   * @param[size_t*]    compute_capability
+   */
+  C_Status (*get_compute_capability)(size_t* compute_capability);
+
+  /**
+   * @brief Get runtime version
+   *
+   * @param[size_t*]    version
+   */
+  C_Status (*get_runtime_version)(size_t* version);
+
+  /**
+   * @brief Get driver version
+   *
+   * @param[size_t*]    version
+   */
+  C_Status (*get_driver_version)(size_t* version);
 
   void* reserved_info_api[8];
 

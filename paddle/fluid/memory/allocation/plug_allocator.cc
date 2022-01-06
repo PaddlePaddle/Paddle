@@ -21,18 +21,18 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-bool PluggableDeviceAllocator::IsAllocThreadSafe() const { return true; }
-void PluggableDeviceAllocator::FreeImpl(Allocation* allocation) {
+bool CustomDeviceAllocator::IsAllocThreadSafe() const { return true; }
+void CustomDeviceAllocator::FreeImpl(Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
-      platform::errors::PermissionDenied("PluggableDevice memory is "
+      platform::errors::PermissionDenied("CustomDevice memory is "
                                          "freed in incorrect device. "
                                          "This may be a bug"));
 
   delete allocation;
 }
 
-Allocation* PluggableDeviceAllocator::AllocateImpl(size_t size) {
+Allocation* CustomDeviceAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_,
                  [this] { platform::DeviceManager::SetDevice(place_); });
 

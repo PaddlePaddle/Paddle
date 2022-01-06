@@ -816,11 +816,11 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 };
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-class PluggableDeviceContext : public DeviceContext {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDeviceContext : public DeviceContext {
  public:
-  explicit PluggableDeviceContext(PluggableDevicePlace place);
-  virtual ~PluggableDeviceContext();
+  explicit CustomDeviceContext(CustomPlace place);
+  virtual ~CustomDeviceContext();
 
   Place GetPlace() const override;
   void Wait() const override;
@@ -837,20 +837,20 @@ class PluggableDeviceContext : public DeviceContext {
  private:
   std::string device_type_;
 
-  PluggableDevicePlace place_;
+  CustomPlace place_;
 
   std::shared_ptr<platform::stream::Stream> stream_;
 
-  PluggableDeviceContext();
-  DISABLE_COPY_AND_ASSIGN(PluggableDeviceContext);
+  CustomDeviceContext();
+  DISABLE_COPY_AND_ASSIGN(CustomDeviceContext);
 };
 template <>
-struct DefaultDeviceContextType<platform::PluggableDevicePlace> {
-  using TYPE = PluggableDeviceContext;
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = CustomDeviceContext;
 };
 #else
 template <>
-struct DefaultDeviceContextType<platform::PluggableDevicePlace> {
+struct DefaultDeviceContextType<platform::CustomPlace> {
   using TYPE = DeviceContext;
 };
 #endif

@@ -432,16 +432,16 @@ void MLUAllocator::Free(void* p, size_t size, size_t index) {
 bool MLUAllocator::UseGpu() const { return true; }
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-void* PluggableDeviceAllocator::Alloc(size_t* index, size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void* CustomDeviceAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   void* p;
-  auto place = platform::PluggableDevicePlace(dev_type_, dev_id_);
+  auto place = platform::CustomPlace(dev_type_, dev_id_);
   auto device = platform::DeviceManager::GetDeviceWithPlace(place);
   p = device->MemoryAllocate(size);
   if (LIKELY(p)) {
-    VLOG(4) << "PluggableDeviceAllocator::Alloc " << p << " size " << size;
+    VLOG(4) << "CustomDeviceAllocator::Alloc " << p << " size " << size;
     *index = 0;
     plug_alloc_size += size;
   } else {
@@ -459,8 +459,8 @@ void* PluggableDeviceAllocator::Alloc(size_t* index, size_t size) {
   return p;
 }
 
-void PluggableDeviceAllocator::Free(void* p, size_t size, size_t index) {
-  VLOG(4) << "PluggableDeviceAllocator::Free " << p << " size " << size;
+void CustomDeviceAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "CustomDeviceAllocator::Free " << p << " size " << size;
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(plug_alloc_size, size,
@@ -469,12 +469,12 @@ void PluggableDeviceAllocator::Free(void* p, size_t size, size_t index) {
                         "allocated gpu memory (%d)",
                         size, plug_alloc_size));
   plug_alloc_size -= size;
-  auto place = platform::PluggableDevicePlace(dev_type_, dev_id_);
+  auto place = platform::CustomPlace(dev_type_, dev_id_);
   auto device = platform::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
 }
 
-bool PluggableDeviceAllocator::UseGpu() const { return true; }
+bool CustomDeviceAllocator::UseGpu() const { return true; }
 #endif
 
 }  // namespace detail

@@ -1073,12 +1073,11 @@ void Copy<pten::CPUPlace, pten::Place>(pten::CPUPlace dst_place, void* dst,
   Copy(pten::Place(dst_place.GetType()), dst, src_place, src, num);
 }
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <>
-void Copy<platform::CPUPlace, platform::PluggableDevicePlace>(
-    platform::CPUPlace dst_place, void* dst,
-    platform::PluggableDevicePlace src_place, const void* src, size_t num,
-    void* stream) {
+void Copy<platform::CPUPlace, platform::CustomPlace>(
+    platform::CPUPlace dst_place, void* dst, platform::CustomPlace src_place,
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   std::string msg;
@@ -1102,9 +1101,9 @@ void Copy<platform::CPUPlace, platform::PluggableDevicePlace>(
 }
 
 template <>
-void Copy<platform::PluggableDevicePlace, platform::CPUPlace>(
-    platform::PluggableDevicePlace dst_place, void* dst,
-    platform::CPUPlace src_place, const void* src, size_t num, void* stream) {
+void Copy<platform::CustomPlace, platform::CPUPlace>(
+    platform::CustomPlace dst_place, void* dst, platform::CPUPlace src_place,
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   std::string msg;
@@ -1128,10 +1127,9 @@ void Copy<platform::PluggableDevicePlace, platform::CPUPlace>(
 }
 
 template <>
-void Copy<platform::PluggableDevicePlace, platform::PluggableDevicePlace>(
-    platform::PluggableDevicePlace dst_place, void* dst,
-    platform::PluggableDevicePlace src_place, const void* src, size_t num,
-    void* stream) {
+void Copy<platform::CustomPlace, platform::CustomPlace>(
+    platform::CustomPlace dst_place, void* dst, platform::CustomPlace src_place,
+    const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   std::string msg;
@@ -1162,11 +1160,10 @@ void Copy<platform::PluggableDevicePlace, platform::PluggableDevicePlace>(
           dst_place, dst, src, num, &stream_wrapper);
     }
   } else {
-    PADDLE_THROW(platform::errors::Unavailable("Copy between " + src_type +
-                                               " and " + dst_type +
-                                               " is not supported."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Copy between %s and %s is not supported.", src_type, dst_type));
   }
 }
-#endif  // PADDLE_WITH_PLUGGABLE_DEVICE
+#endif  // PADDLE_WITH_CUSTOM_DEVICE
 }  // namespace memory
 }  // namespace paddle

@@ -99,10 +99,9 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
         platform::errors::Unimplemented("platform::MLUPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(
-      const platform::PluggableDevicePlace &place) const {
+  inline ::DLDevice operator()(const platform::CustomPlace &place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "platform::PluggableDevicePlace is not supported"));
+        "platform::CustomPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const platform::CUDAPlace &place) const {

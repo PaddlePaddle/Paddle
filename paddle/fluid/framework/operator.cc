@@ -245,11 +245,11 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto dev_id = place.device;
       platform::SetMLUDeviceId(dev_id);
 #endif
-    } else if (platform::is_pluggable_device_place(place)) {
-#ifndef PADDLE_WITH_PLUGGABLE_DEVICE
+    } else if (platform::is_custom_place(place)) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with PluggableDevice support.",
+          "reinstall Paddle with CustomDevice support.",
           place));
 #else
       platform::DeviceManager::SetDevice(place);

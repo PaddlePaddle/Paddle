@@ -161,10 +161,10 @@ inline void RegisterKernelClass(const char* op_type, const char* library_type,
   if (library == "MKLDNN") {
     data_layout = "MKLDNNLAYOUT";
   }
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-  if (std::is_same<PlaceType, platform::PluggableDevicePlace>::value) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (std::is_same<PlaceType, platform::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
-                     platform::PluggableDevicePlace(library_type),
+                     platform::CustomPlace(library_type),
                      StringToDataLayout(data_layout), LibraryType::kPlain,
                      customized_type_value);
     OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -356,7 +356,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 
 #define REGISTER_OP_PLUG_KERNEL(op_type, dev_type, ...) \
   REGISTER_OP_KERNEL(op_type, dev_type, \
-  ::paddle::platform::PluggableDevicePlace, __VA_ARGS__)
+  ::paddle::platform::CustomPlace, __VA_ARGS__)
 
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
@@ -408,7 +408,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 
 #define REGISTER_OP_PLUG_KERNEL_FUNCTOR(op_type, dev_type, ...)       \
   REGISTER_OP_KERNEL_EX(                                              \
-      op_type, dev_type, ::paddle::platform::PluggableDevicePlace, \
+      op_type, dev_type, ::paddle::platform::CustomPlace, \
       DEFAULT_TYPE, \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)

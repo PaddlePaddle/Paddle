@@ -18,6 +18,9 @@
 #endif
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/platform/device/device_guard.h"
+#endif
 
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_double(memory_fraction_of_eager_deletion);
@@ -202,31 +205,64 @@ void MLUStreamGarbageCollector::ClearCallback(
 }
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-PluggableDeviceDefaultStreamGarbageCollector::
-    PluggableDeviceDefaultStreamGarbageCollector(
-        const platform::PluggableDevicePlace &place, size_t max_memory_size)
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+UnsafeFastCustomGarbageCollector::UnsafeFastCustomGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
-void PluggableDeviceDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::PluggableDeviceContext *>(this->dev_ctx_)
+void UnsafeFastCustomGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
+
+CustomDefaultStreamGarbageCollector::CustomDefaultStreamGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void CustomDefaultStreamGarbageCollector::Wait() const {
+  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
       ->WaitStreamCallback();
 }
 
-void PluggableDeviceDefaultStreamGarbageCollector::ClearCallback(
+void CustomDefaultStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
-  static_cast<platform::PluggableDeviceContext *>(this->dev_ctx_)
+  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
       ->AddStreamCallback(callback);
 }
 
-PluggableDeviceUnsafeFastGarbageCollector::
-    PluggableDeviceUnsafeFastGarbageCollector(
-        const platform::PluggableDevicePlace &place, size_t max_memory_size)
+CustomDeviceUnsafeFastGarbageCollector::CustomDeviceUnsafeFastGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
-void PluggableDeviceUnsafeFastGarbageCollector::ClearCallback(
+void CustomDeviceUnsafeFastGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback();
+}
+
+CustomStreamGarbageCollector::CustomStreamGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {
+  platform::DeviceGuard guard(place);
+  stream_.reset(new platform::stream::Stream);
+  stream_->Init(place);
+  callback_manager_.reset(new platform::CallbackManager(stream_.get()));
+}
+
+CustomStreamGarbageCollector::~CustomStreamGarbageCollector() {
+  platform::DeviceGuard guard(this->dev_ctx_->GetPlace());
+  stream_->Synchronize();
+  stream_->Destroy();
+}
+
+platform::stream::Stream *CustomStreamGarbageCollector::stream() const {
+  return stream_.get();
+}
+
+void CustomStreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
+
+void CustomStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback_manager_->AddCallback(callback);
 }
 #endif
 

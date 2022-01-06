@@ -47,15 +47,15 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
                         "Too many OpKernel attribute values, expected maximum "
                         "value is 64, received value is %d.",
                         cur_loc));
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   std::hash<int> hasher;
   size_t seed = 0;
   seed ^= hasher(place + data_type + data_layout + library_type +
                  customized_value) +
           0x9e3779b9 + (seed << 6) + (seed >> 2) + 4;
-  if (platform::is_pluggable_device_place(key.place_)) {
+  if (platform::is_custom_place(key.place_)) {
     seed ^= std::hash<std::string>{}(
-                BOOST_GET_CONST(platform::PluggableDevicePlace, key.place_)
+                BOOST_GET_CONST(platform::CustomPlace, key.place_)
                     .GetDeviceType()) +
             0x9e3779b9 + (seed << 6) + (seed >> 2) + 4;
   }
@@ -68,7 +68,7 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
 }
 
 bool OpKernelType::operator==(const OpKernelType& o) const {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   bool same_device_type = platform::PlaceHelper::GetDeviceType(place_) ==
                           platform::PlaceHelper::GetDeviceType(o.place_);
   return same_device_type && data_type_ == o.data_type_ &&

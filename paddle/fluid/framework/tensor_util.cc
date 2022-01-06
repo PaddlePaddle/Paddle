@@ -90,7 +90,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     auto stream =
@@ -464,7 +464,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) { /* pluggable_device -> cpu*/
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
@@ -1104,7 +1104,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
           "NPUPlace is not supported when not compiled with NPU"));
 #endif
     } else if (platform::is_custom_place(tensor.place())) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& pluggable_device_context =

@@ -20,7 +20,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/device/device_guard.h"
 #include "paddle/fluid/platform/device/device_manager.h"
 #endif
@@ -737,15 +737,14 @@ uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
 #endif
 }
 
-// For PluggableDevice
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+// For CustomDevice
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 class BuddyAllocatorList {
  private:
   explicit BuddyAllocatorList(const std::string &device_type)
       : device_type_(device_type) {
-    // pluggable device use logical id
-    auto device_count =
-        platform::DeviceManager::VisibleDevicesCount(device_type);
+    // custom device use logical id
+    auto device_count = platform::DeviceManager::GetDeviceCount(device_type);
 
     allocators_.resize(device_count);
     init_flags_.reserve(device_count);
@@ -777,11 +776,11 @@ class BuddyAllocatorList {
 
     std::call_once(*init_flags_[dev_id], [this, dev_id] {
       platform::DeviceManager::SetDevice(device_type_, dev_id);
-      platform::PluggableDevicePlace place(device_type_, dev_id);
+      platform::CustomPlace place(device_type_, dev_id);
 
       allocators_[dev_id].reset(new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(
-              new detail::PluggableDeviceAllocator(device_type_, dev_id)),
+              new detail::CustomDeviceAllocator(device_type_, dev_id)),
           platform::DeviceManager::GetMinChunkSize(place),
           platform::DeviceManager::GetMaxChunkSize(place),
           platform::DeviceManager::GetExtraPaddingSize(place),
@@ -800,21 +799,21 @@ class BuddyAllocatorList {
 
 BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
   VLOG(10) << "GetBuddyAllocator place = " << place;
-  if (platform::is_pluggable_device_place(place)) {
+  if (platform::is_custom_place(place)) {
     return BuddyAllocatorList::Instance(
                platform::PlaceHelper::GetDeviceType(place))
         ->Get(platform::PlaceHelper::GetDeviceId(place));
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "place must be PluggableDevicePlace"));
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("place must be CustomPlace"));
   }
 }
 #endif
 
 template <>
-void *Alloc<platform::PluggableDevicePlace>(
-    const platform::PluggableDevicePlace &place, size_t size) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
+                                   size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   auto *buddy_allocator = GetBuddyAllocator(place);
   auto *ptr = buddy_allocator->Alloc(size);
@@ -839,41 +838,39 @@ void *Alloc<platform::PluggableDevicePlace>(
   return ptr;
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'PluggableDevicePlace' is not supported in CPU only device."));
+      "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
 
 template <>
-void Free<platform::PluggableDevicePlace>(
-    const platform::PluggableDevicePlace &place, void *p, size_t size) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+void Free<platform::CustomPlace>(const platform::CustomPlace &place, void *p,
+                                 size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetBuddyAllocator(place)->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'PluggableDevicePlace' is not supported in CPU only device."));
+      "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
 
 template <>
-uint64_t Release<platform::PluggableDevicePlace>(
-    const platform::PluggableDevicePlace &place) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+uint64_t Release<platform::CustomPlace>(const platform::CustomPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'PluggableDevicePlace' is not supported in CPU only device."));
+      "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
 
 template <>
-size_t Used<platform::PluggableDevicePlace>(
-    const platform::PluggableDevicePlace &place) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Used();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "'PluggableDevicePlace' is not supported in CPU only device."));
+      "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
 

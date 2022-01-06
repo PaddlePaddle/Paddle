@@ -373,7 +373,7 @@ packages=['paddle',
           'paddle.device.cuda',
           'paddle.version',
           'paddle.plugins',
-          'paddle.plugins.pluggable_devices',
+          'paddle.plugins.custom_devices',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:

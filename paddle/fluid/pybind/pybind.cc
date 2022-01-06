@@ -166,7 +166,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
 USE_DEVICE(gpu);
 #endif
@@ -1667,79 +1667,79 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   m.def("list_all_device_type", []() {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-    auto device_types = platform::DeviceManager::AllDeviceTypes();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = platform::DeviceManager::GetAllDeviceTypes();
     return device_types;
 #else
   LOG(ERROR) << string::Sprintf(
       "Cannot use list_all_device_type because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
       "If you want to use list_all_device_type, please try to install"
-      "PluggableDevice version "
+      "CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
   std::exit(-1);
 #endif
   });
-  m.def("list_all_pluggable_device_type", []() {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-    auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+  m.def("list_all_custom_device_type", []() {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
     return device_types;
 #else
   LOG(ERROR) << string::Sprintf(
-      "Cannot use list_all_pluggable_device_type because you have installed"
+      "Cannot use list_all_custom_device_type because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use list_all_pluggable_device_type, please try to "
-      "install PluggableDevice version "
+      "If you want to use list_all_custom_device_type, please try to "
+      "install CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
     std::exit(-1);
 #endif
   });
   m.def("list_visible_devices", [] {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-    auto devices = platform::DeviceManager::ListAllVisibleDevices();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto devices = platform::DeviceManager::GetAllDeviceList();
     return devices;
 #else
   LOG(ERROR) << string::Sprintf(
       "Cannot use list_visible_devices because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
       "If you want to use list_visible_devices, please try to install"
-      "PluggableDevice version "
+      "CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
   std::exit(-1);
 #endif
   });
-  m.def("list_visible_pluggable_devices", [] {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-    auto devices = platform::DeviceManager::ListAllVisiblePluggableDevices();
+  m.def("list_visible_custom_devices", [] {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto devices = platform::DeviceManager::GetAllCustomDeviceList();
     return devices;
 #else
   LOG(ERROR) << string::Sprintf(
-      "Cannot use list_visible_pluggable_devices because you have installed"
+      "Cannot use list_visible_custom_devices because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use list_visible_pluggable_devices, please try to install"
-      "PluggableDevice version "
+      "If you want to use list_visible_custom_devices, please try to install"
+      "CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
   std::exit(-1);
 #endif
   });
-  py::class_<platform::PluggableDevicePlace>(m, "PluggableDevicePlace",
-                                             R"DOC(
-    PluggableDevicePlace is a descriptor of a device.
-    It represents a pluggable device on which a tensor will be allocated and a model will run.
+  py::class_<platform::CustomPlace>(m, "CustomPlace",
+                                    R"DOC(
+    CustomPlace is a descriptor of a device.
+    It represents a custom device on which a tensor will be allocated and a model will run.
 
     Examples:
         .. code-block:: python
 
           import paddle
-          fake_cpu_place = paddle.PluggableDevicePlace("FakeCPU", 0)
+          fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
                                              )DOC")
       .def("__init__",
-           [](platform::PluggableDevicePlace &self,
-              const std::string &device_type, int dev_id) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+           [](platform::CustomPlace &self, const std::string &device_type,
+              int dev_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
              if (UNLIKELY(dev_id < 0)) {
                LOG(ERROR) << string::Sprintf(
-                   "Invalid PluggableDevicePlace(%s, %d), device id must be 0 "
+                   "Invalid CustomPlace(%s, %d), device id must be 0 "
                    "or "
                    "positive integer",
                    device_type, dev_id);
@@ -1747,9 +1747,9 @@ All parameter, weight, gradient are variables in Paddle.
              }
 
              if (LIKELY(platform::DeviceManager::HasDeviceType(device_type) &&
-                        platform::DeviceManager::IsPluggable(device_type))) {
+                        platform::DeviceManager::IsCustom(device_type))) {
                int dev_count = static_cast<int>(
-                   platform::DeviceManager::VisibleDevicesCount(device_type));
+                   platform::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
                    LOG(ERROR) << "Cannot use " << device_type
@@ -1759,7 +1759,7 @@ All parameter, weight, gradient are variables in Paddle.
                    std::exit(-1);
                  } else {
                    LOG(ERROR) << string::Sprintf(
-                       "Invalid PluggableDevicePlace(%s, %d), dev_id must "
+                       "Invalid CustomPlace(%s, %d), dev_id must "
                        "inside "
                        "[0, %d), because %s "
                        "number on your machine is %d",
@@ -1767,40 +1767,36 @@ All parameter, weight, gradient are variables in Paddle.
                    std::exit(-1);
                  }
                }
-               new (&self) platform::PluggableDevicePlace(device_type, dev_id);
+               new (&self) platform::CustomPlace(device_type, dev_id);
              } else {
                LOG(ERROR) << string::Sprintf(
-                   "Invalid PluggableDevicePlace(%s, %d), the device type is "
+                   "Invalid CustomPlace(%s, %d), the device type is "
                    "not registered "
-                   "as a pluggable device.",
+                   "as a custom device.",
                    device_type, dev_id);
                std::exit(-1);
              }
 #else
              LOG(ERROR) << string::Sprintf(
-                 "Cannot use PluggableDevice because you have installed CPU/GPU"
+                 "Cannot use CustomDevice because you have installed CPU/GPU"
                  "version PaddlePaddle.\n"
-                 "If you want to use PluggableDevice, please try to install"
-                 "PluggableDevice version "
+                 "If you want to use CustomDevice, please try to install"
+                 "CustomDevice version "
                  "PaddlePaddle by: pip install paddlepaddle-core\n"
                  "If you only have CPU, please change "
-                 "PluggableDevicePlace(%s, %d) to be CPUPlace().\n",
+                 "CustomPlace(%s, %d) to be CPUPlace().\n",
                  device_type, dev_id);
              std::exit(-1);
 #endif
            })
       .def("get_device_id",
-           [](const platform::PluggableDevicePlace &self) {
-             return self.GetDeviceId();
-           })
+           [](const platform::CustomPlace &self) { return self.GetDeviceId(); })
       .def("get_device_type",
-           [](const platform::PluggableDevicePlace &self) {
+           [](const platform::CustomPlace &self) {
              return self.GetDeviceType();
            })
-      .def("__repr__",
-           string::to_string<const platform::PluggableDevicePlace &>)
-      .def("__str__",
-           string::to_string<const platform::PluggableDevicePlace &>);
+      .def("__repr__", string::to_string<const platform::CustomPlace &>)
+      .def("__str__", string::to_string<const platform::CustomPlace &>);
   py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
@@ -2294,8 +2290,7 @@ All parameter, weight, gradient are variables in Paddle.
              self = mlu_place;
            })
       .def("set_place",
-           [](platform::Place &self,
-              const platform::PluggableDevicePlace &plug_place) {
+           [](platform::Place &self, const platform::CustomPlace &plug_place) {
              self = plug_place;
            })
       .def("__repr__", string::to_string<const platform::Place &>)

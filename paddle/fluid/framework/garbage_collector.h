@@ -200,11 +200,20 @@ class MLUStreamGarbageCollector : public GarbageCollector {
 };
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-class PluggableDeviceDefaultStreamGarbageCollector : public GarbageCollector {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class UnsafeFastCustomGarbageCollector : public GarbageCollector {
  public:
-  PluggableDeviceDefaultStreamGarbageCollector(
-      const platform::PluggableDevicePlace &place, size_t max_memory_size);
+  UnsafeFastCustomGarbageCollector(const platform::CustomPlace &place,
+                                   size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class CustomDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  CustomDefaultStreamGarbageCollector(const platform::CustomPlace &place,
+                                      size_t max_memory_size);
 
   void Wait() const override;
 
@@ -212,13 +221,32 @@ class PluggableDeviceDefaultStreamGarbageCollector : public GarbageCollector {
   void ClearCallback(const std::function<void()> &callback) override;
 };
 
-class PluggableDeviceUnsafeFastGarbageCollector : public GarbageCollector {
+class CustomDeviceUnsafeFastGarbageCollector : public GarbageCollector {
  public:
-  PluggableDeviceUnsafeFastGarbageCollector(
-      const platform::PluggableDevicePlace &place, size_t max_memory_size);
+  CustomDeviceUnsafeFastGarbageCollector(const platform::CustomPlace &place,
+                                         size_t max_memory_size);
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class CustomStreamGarbageCollector : public GarbageCollector {
+ public:
+  CustomStreamGarbageCollector(const platform::CustomPlace &place,
+                               size_t max_memory_size);
+
+  ~CustomStreamGarbageCollector();
+
+  void Wait() const override;
+
+  platform::stream::Stream *stream() const;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+
+ private:
+  std::unique_ptr<platform::stream::Stream> stream_;
+  std::unique_ptr<platform::CallbackManager> callback_manager_;
 };
 #endif
 

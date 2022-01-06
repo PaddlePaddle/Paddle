@@ -256,14 +256,14 @@ DeviceContextPool::DeviceContextPool(
           "WITH_ASCEND_CL "
           "option."));
 #endif
-    } else if (platform::is_pluggable_device_place(p)) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-      EmplaceDeviceContext<PluggableDeviceContext, PluggableDevicePlace>(
-          &device_contexts_, p);
+    } else if (platform::is_custom_place(p)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      EmplaceDeviceContext<CustomDeviceContext, CustomPlace>(&device_contexts_,
+                                                             p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
-          "PluggableDevicePlace is not supported. Please re-compile with "
-          "WITH_PLUGGABLE_DEVICE "
+          "CustomPlace is not supported. Please re-compile with "
+          "WITH_CUSTOM_DEVICE "
           "option."));
 #endif
     }
@@ -896,21 +896,20 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-PluggableDeviceContext::PluggableDeviceContext(PluggableDevicePlace place)
-    : place_(place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+CustomDeviceContext::CustomDeviceContext(CustomPlace place) : place_(place) {
   DeviceGuard guard(place_);
   stream_.reset(new stream::Stream());
   stream_->Init(place_);
 }
 
-PluggableDeviceContext::~PluggableDeviceContext() {}
+CustomDeviceContext::~CustomDeviceContext() {}
 
-Place PluggableDeviceContext::GetPlace() const { return place_; }
+Place CustomDeviceContext::GetPlace() const { return place_; }
 
-void PluggableDeviceContext::Wait() const {
+void CustomDeviceContext::Wait() const {
   // platform::RecordEvent record_event("NPUDeviceContext/wait");
-  VLOG(4) << "PluggableDevice context(" << this << ")  Wait";
+  VLOG(4) << "CustomDevice context(" << this << ")  Wait";
   stream_->Wait();
 }
 #endif

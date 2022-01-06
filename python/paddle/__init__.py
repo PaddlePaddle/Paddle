@@ -293,7 +293,7 @@ from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
 from .framework import MLUPlace  # noqa: F401
-from .framework import PluggableDevicePlace  # noqa: F401
+from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401

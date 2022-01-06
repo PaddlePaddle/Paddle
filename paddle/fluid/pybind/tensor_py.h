@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/device/device_guard.h"
 #endif
 #include "paddle/fluid/platform/device/device_manager.h"
@@ -251,10 +251,10 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
-  } else if (platform::is_pluggable_device_place(self.place())) {
-#if defined(PADDLE_WITH_PLUGGABLE_DEVICE)
+  } else if (platform::is_custom_place(self.place())) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::PluggableDevicePlace, self.place());
+    auto p = BOOST_GET_CONST(platform::CustomPlace, self.place());
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -300,9 +300,9 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
 #endif
-  } else if (platform::is_pluggable_device_place(self->place())) {
-#if defined(PADDLE_WITH_PLUGGABLE_DEVICE)
-    auto p = BOOST_GET_CONST(platform::PluggableDevicePlace, self->place());
+  } else if (platform::is_custom_place(self->place())) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    auto p = BOOST_GET_CONST(platform::CustomPlace, self->place());
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -386,8 +386,8 @@ void SetTensorFromPyArrayT(
         "Cannot use MLUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with MLU support."));
 #endif
-  } else if (paddle::platform::is_pluggable_device_place(place)) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  } else if (paddle::platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::Place tmp_place = place;
     platform::DeviceGuard guard(tmp_place);
     auto dst = self->mutable_data<T>(place);
@@ -401,8 +401,8 @@ void SetTensorFromPyArrayT(
     ctx.Wait();
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use PluggableDevice in CPU/GPU/XPU version. "
-        "Please recompile or reinstall Paddle with PluggableDevice support."));
+        "Cannot use CustomDevice in CPU/GPU/XPU version. "
+        "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -791,8 +791,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
   bool is_npu_tensor = platform::is_npu_place(tensor.place());
   bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
-  bool is_pluggable_device_tensor =
-      platform::is_pluggable_device_place(tensor.place());
+  bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = tensor.type();
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
@@ -812,7 +811,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
   if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor &&
-      !is_pluggable_device_tensor) {
+      !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()), py_dims, py_strides,
@@ -937,8 +936,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
         "Cannot use MLUPlace in CPU/GPU/XPU/NPU version, "
         "Please recompile or reinstall Paddle with MLU support."));
 #endif
-  } else if (is_pluggable_device_tensor) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+  } else if (is_custom_device_tensor) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
     py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
     PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
                       platform::errors::InvalidArgument(
@@ -955,16 +954,15 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
         platform::CPUPlace(), py_arr.mutable_data(),
-        BOOST_GET_CONST(platform::PluggableDevicePlace, tensor.place()),
-        tensor_buf_ptr, copy_bytes,
-        reinterpret_cast<const platform::PluggableDeviceContext &>(ctx)
-            .stream());
+        BOOST_GET_CONST(platform::CustomPlace, tensor.place()), tensor_buf_ptr,
+        copy_bytes,
+        reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
     ctx.Wait();
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use PluggableDevicePlace in CPU/GPU/XPU/NPU version, "
-        "Please recompile or reinstall Paddle with PluggableDevicePlace "
+        "Cannot use CustomPlace in CPU/GPU/XPU/NPU version, "
+        "Please recompile or reinstall Paddle with CustomPlace "
         "support."));
 #endif
   }

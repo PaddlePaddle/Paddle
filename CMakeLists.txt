@@ -243,6 +243,7 @@ option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup ji
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
+option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 
 if(WITH_RECORD_BUILDTIME)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
@@ -251,7 +252,6 @@ else()
     include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
 endif()
 unset(WITH_RECORD_BUILDTIME CACHE)
-option(WITH_PLUGGABLE_DEVICE "Compile with pluggable device support"    OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)

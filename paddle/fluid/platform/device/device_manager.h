@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 
 #include "paddle/fluid/platform/device/device_base.h"
 #include "paddle/fluid/platform/device/device_ext.h"
@@ -98,12 +98,12 @@ class DeviceManager {
   static bool Register(std::unique_ptr<DeviceInterface> device);
   static bool RegisterPinnedDevice(DeviceInterface* device);
   static Device* GetDeviceWithPlace(const Place& place);
-  static std::vector<std::string> AllDeviceTypes();
-  static std::vector<std::string> AllPluggableDeviceTypes();
-  static std::vector<std::string> ListAllVisibleDevices();
-  static std::vector<std::string> ListAllVisiblePluggableDevices();
+  static std::vector<std::string> GetAllDeviceTypes();
+  static std::vector<std::string> GetAllCustomDeviceTypes();
+  static std::vector<std::string> GetAllDeviceList();
+  static std::vector<std::string> GetAllCustomDeviceList();
   static bool HasDeviceType(const std::string& device_type);
-  static bool IsPluggable(const std::string& device_type);
+  static bool IsCustom(const std::string& device_type);
 
   // platform & device
   static void Initialize(const std::string& device_type);
@@ -136,7 +136,9 @@ class DeviceManager {
 
   static void MemoryStats(const Place& place, size_t* total, size_t* free);
 
-  static size_t VisibleDevicesCount(const std::string& device_type);
+  static size_t GetDeviceCount(const std::string& device_type);
+
+  static std::vector<size_t> GetDeviceList(const std::string& device_type);
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);
@@ -158,7 +160,7 @@ bool LoadRuntimePlugin(const RuntimePluginParams& plugin_params,
                        std::unique_ptr<C_DeviceInterface> device_interface,
                        void* dso_handle);
 
-bool LoadPluggableDevice(const std::string& library_path);
+bool LoadCustomDevice(const std::string& library_path);
 
 class Registrar {
  public:

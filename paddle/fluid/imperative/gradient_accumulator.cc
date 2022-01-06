@@ -179,7 +179,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
         "is not supported in imperative mode",
         place));
   }
-  void operator()(const platform::PluggableDevicePlace& place) {
+  void operator()(const platform::CustomPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -318,8 +318,8 @@ void TensorAdd(const VarType& src, VarType* dst) {
     return;
   }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-  if (platform::is_pluggable_device_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Gradient accumulation of data type (%s) on place (%s) is not "
         "supported in imperative mode",

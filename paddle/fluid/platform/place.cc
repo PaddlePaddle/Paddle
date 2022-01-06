@@ -48,6 +48,30 @@ namespace platform {
 // };
 
 // }  // namespace detail
+namespace detail {
+
+class PlacePrinter : public boost::static_visitor<> {
+ public:
+  explicit PlacePrinter(std::ostream &os) : os_(os) {}
+  void operator()(const CPUPlace &) { os_ << "CPUPlace"; }
+  void operator()(const CUDAPlace &p) {
+    os_ << "CUDAPlace(" << p.device << ")";
+  }
+  void operator()(const XPUPlace &p) { os_ << "XPUPlace(" << p.device << ")"; }
+  void operator()(const MLUPlace &p) { os_ << "MLUPlace(" << p.device << ")"; }
+  void operator()(const NPUPlace &p) { os_ << "NPUPlace(" << p.device << ")"; }
+  void operator()(const NPUPinnedPlace &p) { os_ << "NPUPinnedPlace"; }
+  void operator()(const IPUPlace &p) { os_ << "IPUPlace(" << p.device << ")"; }
+  void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
+  void operator()(const CustomPlace &p) {
+    os_ << "CustomPlace(" << p.device_type << ": " << p.device << ")";
+  }
+
+ private:
+  std::ostream &os_;
+};
+
+}  // namespace detail
 
 bool is_gpu_place(const Place &p) {
   return p.GetType() == pten::AllocationType::GPU;
@@ -81,8 +105,8 @@ bool is_npu_pinned_place(const Place &p) {
   return p.GetType() == pten::AllocationType::NPUPINNED;
 }
 
-bool is_pluggable_device_place(const Place &p) {
-  return boost::apply_visitor(IsPluggableDevicePlace(), p);
+bool is_custom_place(const Place &p) {
+  return boost::apply_visitor(IsCustomPlace(), p);
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
@@ -102,7 +126,7 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return p1 == p2;
     } else if (is_ipu_place(p1)) {
       return p1 == p2;
-    } else if (is_pluggable_device_place(p1)) {
+    } else if (is_custom_place(p1)) {
       return p1 == p2;
     } else {
       return p1 == p2;

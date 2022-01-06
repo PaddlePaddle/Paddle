@@ -140,10 +140,10 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use MLU device since it's not compiled with MLU,"
           "Please recompile or reinstall Paddle with MLU support."));
 #endif
-    } else if (platform::is_pluggable_device_place(place)) {
-#if defined(PADDLE_WITH_PLUGGABLE_DEVICE)
-      gc.reset(new framework::PluggableDeviceUnsafeFastGarbageCollector(
-          BOOST_GET_CONST(platform::PluggableDevicePlace, place), 0));
+    } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      gc.reset(new framework::CustomDeviceUnsafeFastGarbageCollector(
+          BOOST_GET_CONST(platform::CustomPlace, place), 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -236,13 +236,13 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with MLU if use MLUPlace."));
 #endif
-    } else if (platform::is_pluggable_device_place(place)) {
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+    } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
       platform::DeviceManager::SetDevice(place);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with PluggableDevice if use "
-          "PluggableDevicePlace."));
+          "PaddlePaddle should compile with CustomDevice if use "
+          "CustomPlace."));
 #endif
     }
     if (!override_default_attr_map) {

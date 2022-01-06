@@ -62,7 +62,7 @@
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/memory/allocation/plug_allocator.h"
 #include "paddle/fluid/platform/device/device_manager.h"
 #endif
@@ -192,14 +192,14 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
         }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-        auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
           for (size_t dev_id = 0;
-               dev_id < platform::DeviceManager::VisibleDevicesCount(dev_type);
+               dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
                ++dev_id) {
-            InitNaiveBestFitPluggableDeviceAllocator(
-                platform::PluggableDevicePlace(dev_type, dev_id));
+            InitNaiveBestFitCustomDeviceAllocator(
+                platform::CustomPlace(dev_type, dev_id));
           }
         }
 #endif
@@ -239,15 +239,14 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
         }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-        auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
           for (size_t dev_id = 0;
-               dev_id < platform::DeviceManager::VisibleDevicesCount(dev_type);
+               dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
                ++dev_id) {
-            InitAutoGrowthPluggableDeviceAllocator(
-                platform::PluggableDevicePlace(dev_type, dev_id),
-                allow_free_idle_chunk);
+            InitAutoGrowthCustomDeviceAllocator(
+                platform::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
           }
         }
 #endif
@@ -728,17 +727,15 @@ class AllocatorFacadePrivate {
   }
 #endif
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-  void InitNaiveBestFitPluggableDeviceAllocator(
-      platform::PluggableDevicePlace p) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  void InitNaiveBestFitCustomDeviceAllocator(platform::CustomPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 
-  void InitAutoGrowthPluggableDeviceAllocator(platform::PluggableDevicePlace p,
-                                              bool allow_free_idle_chunk) {
+  void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
+                                           bool allow_free_idle_chunk) {
     auto plug_allocator =
-        std::make_shared<paddle::memory::allocation::PluggableDeviceAllocator>(
-            p);
+        std::make_shared<paddle::memory::allocation::CustomDeviceAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         plug_allocator, platform::DeviceManager::GetMinChunkSize(p),
         allow_free_idle_chunk);
@@ -815,13 +812,13 @@ class AllocatorFacadePrivate {
       places.emplace_back(platform::MLUPlace(dev_id));
     }
 #endif
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
-    auto device_types = platform::DeviceManager::AllPluggableDeviceTypes();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
       for (size_t dev_id = 0;
-           dev_id < platform::DeviceManager::VisibleDevicesCount(dev_type);
+           dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
            dev_id++) {
-        places.emplace_back(platform::PluggableDevicePlace(dev_type, dev_id));
+        places.emplace_back(platform::CustomPlace(dev_type, dev_id));
       }
     }
 #endif

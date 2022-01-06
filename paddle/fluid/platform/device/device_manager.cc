@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_PLUGGABLE_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/device/device_manager.h"
 
 #if !defined(_WIN32)
@@ -113,19 +113,19 @@ bool DeviceManager::Register(std::unique_ptr<DeviceInterface> device_impl) {
     dev_impl_map.insert({device_type, std::move(device_impl)});
     auto& dev_impl = dev_impl_map[device_type];
     auto& dev_vec = dev_map[device_type];
-    VLOG(4) << "VisibleDevicesCount is " << dev_impl->VisibleDevicesCount();
-    for (size_t i = 0; i < dev_impl->VisibleDevicesCount(); ++i) {
+    VLOG(4) << "GetDeviceCount is " << dev_impl->GetDeviceCount();
+    for (size_t i = 0; i < dev_impl->GetDeviceCount(); ++i) {
       dev_vec.emplace_back(new Device(i, dev_impl.get()));
     }
   } else {
     auto& plat = dev_impl_map[device_type];
-    if (plat->IsPluggable() && plat->Priority() > device_impl->Priority()) {
+    if (plat->IsCustom() && plat->Priority() > device_impl->Priority()) {
       dev_impl_map[device_type] = std::move(device_impl);
       auto& dev_impl = dev_impl_map[device_type];
       auto& dev_vec = dev_map[device_type];
       dev_vec.clear();
-      VLOG(4) << "VisibleDevicesCount is " << dev_impl->VisibleDevicesCount();
-      for (size_t i = 0; i < dev_impl->VisibleDevicesCount(); ++i) {
+      VLOG(4) << "GetDeviceCount is " << dev_impl->GetDeviceCount();
+      for (size_t i = 0; i < dev_impl->GetDeviceCount(); ++i) {
         dev_vec.emplace_back(new Device(i, dev_impl.get()));
       }
     } else {
@@ -167,7 +167,7 @@ Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
   return dev_vec[dev_id].get();
 }
 
-std::vector<std::string> DeviceManager::AllDeviceTypes() {
+std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
   paddle::framework::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
@@ -177,24 +177,24 @@ std::vector<std::string> DeviceManager::AllDeviceTypes() {
   return devices;
 }
 
-std::vector<std::string> DeviceManager::AllPluggableDeviceTypes() {
+std::vector<std::string> DeviceManager::GetAllCustomDeviceTypes() {
   paddle::framework::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    if (iter->second->IsPluggable()) {
+    if (iter->second->IsCustom()) {
       devices.push_back(iter->first);
     }
   }
   return devices;
 }
 
-std::vector<std::string> DeviceManager::ListAllVisibleDevices() {
+std::vector<std::string> DeviceManager::GetAllDeviceList() {
   paddle::framework::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    size_t device_count = iter->second->VisibleDevicesCount();
+    size_t device_count = iter->second->GetDeviceCount();
     std::string dev_type = iter->second->Type();
     if (device_count == 1) {
       devices.push_back(dev_type);
@@ -207,14 +207,14 @@ std::vector<std::string> DeviceManager::ListAllVisibleDevices() {
   return devices;
 }
 
-std::vector<std::string> DeviceManager::ListAllVisiblePluggableDevices() {
+std::vector<std::string> DeviceManager::GetAllCustomDeviceList() {
   paddle::framework::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    size_t device_count = iter->second->VisibleDevicesCount();
+    size_t device_count = iter->second->GetDeviceCount();
     std::string dev_type = iter->second->Type();
-    if (iter->second->IsPluggable()) {
+    if (iter->second->IsCustom()) {
       if (device_count == 1) {
         devices.push_back(dev_type);
       } else {
@@ -232,9 +232,9 @@ bool DeviceManager::HasDeviceType(const std::string& device_type) {
   return dev_impl != nullptr;
 }
 
-bool DeviceManager::IsPluggable(const std::string& device_type) {
+bool DeviceManager::IsCustom(const std::string& device_type) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  return dev_impl->IsPluggable();
+  return dev_impl->IsCustom();
 }
 
 void DeviceManager::Initialize(const std::string& device_type) {
@@ -335,9 +335,15 @@ void DeviceManager::MemoryStats(const Place& place, size_t* total,
   dev_impl->MemoryStats(device_id, total, free);
 }
 
-size_t DeviceManager::VisibleDevicesCount(const std::string& device_type) {
+size_t DeviceManager::GetDeviceCount(const std::string& device_type) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  return dev_impl->VisibleDevicesCount();
+  return dev_impl->GetDeviceCount();
+}
+
+std::vector<size_t> DeviceManager::GetDeviceList(
+    const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetDeviceList();
 }
 
 DeviceManager& DeviceManager::Instance() {
@@ -355,14 +361,14 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
 
   dir = opendir(library_dir.c_str());
   if (dir == nullptr) {
-    VLOG(4) << "open PluggableDevice library_dir: " << library_dir << " failed";
+    VLOG(4) << "open CustomDevice library_dir: " << library_dir << " failed";
   } else {
     while ((ptr = readdir(dir)) != nullptr) {
       std::string filename(ptr->d_name);
       if (std::regex_match(filename.begin(), filename.end(), results,
                            express)) {
         libraries.push_back(library_dir + filename);
-        VLOG(4) << "found PluggableDevice library: " << libraries.back()
+        VLOG(4) << "found CustomDevice library: " << libraries.back()
                 << std::endl;
       }
     }
@@ -375,7 +381,7 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   return libraries;
 }
 
-bool LoadPluggableDevice(const std::string& library_dir) {
+bool LoadCustomDevice(const std::string& library_dir) {
   std::vector<std::string> libs = ListAllLibraries(library_dir);
   for (auto& lib_path : libs) {
     LoadRuntimePlugin(lib_path);

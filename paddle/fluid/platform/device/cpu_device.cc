@@ -21,11 +21,17 @@ namespace platform {
 
 class CpuDevice : public DeviceInterface {
  public:
-  CpuDevice(const std::string& type, int priority, bool is_pluggable)
-      : DeviceInterface(type, priority, is_pluggable) {}
+  CpuDevice(const std::string& type, int priority, bool is_custom)
+      : DeviceInterface(type, priority, is_custom) {}
   ~CpuDevice() {}
 
-  size_t VisibleDevicesCount() override { return 1; }
+  size_t GetDeviceCount() override { return 1; }
+
+  std::vector<size_t> GetDeviceList() override {
+    std::vector<size_t> devices;
+    devices.push_back(0);
+    return devices;
+  }
 
   void SetDevice(size_t dev_id) override {}
 

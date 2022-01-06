@@ -24,9 +24,8 @@ namespace paddle {
 namespace platform {
 
 #define NOT_IMPL                                \
-  std::string func_name(__func__);              \
   PADDLE_THROW(platform::errors::Unimplemented( \
-      func_name + " is not implemented on " + Type() + " device."));
+      "%s is not implemented on %s device.", __func__, Type()));
 
 void DeviceInterface::Initialize() { NOT_IMPL; }
 
@@ -136,7 +135,7 @@ size_t DeviceInterface::AllocSize(size_t dev_id, bool realloc) {
   size_t available_to_alloc = AvailableAllocSize(dev_id);
   PADDLE_ENFORCE_GT(available_to_alloc, 0,
                     platform::errors::ResourceExhausted(
-                        "Not enough available " + Type() + " memory."));
+                        "Not enough available %s memory.", Type()));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
@@ -146,7 +145,7 @@ size_t DeviceInterface::AllocSize(size_t dev_id, bool realloc) {
                                            FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(available_to_alloc, alloc_bytes,
                     platform::errors::ResourceExhausted(
-                        "Not enough available " + Type() + " memory."));
+                        "Not enough available %s memory.", Type()));
   return alloc_bytes;
 }
 
@@ -192,6 +191,21 @@ size_t DeviceInterface::GetMaxChunkSize(size_t dev_id) {
 
 size_t DeviceInterface::GetExtraPaddingSize(size_t dev_id) {
   VLOG(10) << Type() + " extra padding size " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetComputeCapability() {
+  VLOG(10) << Type() + " get compute capability " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetRuntimeVersion() {
+  VLOG(10) << Type() + " get runtime version " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetDriverVersion() {
+  VLOG(10) << Type() + " get driver version " << 0;
   return 0;
 }
 
