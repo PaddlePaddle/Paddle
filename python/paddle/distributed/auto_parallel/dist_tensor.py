@@ -289,7 +289,7 @@ class DistributedTensor:
         local_tensor = block.create_var(*args, **kwargs)
 
         # TODO: Set original id when set original_id is approved
-        # local_tensor.desc.set_original_id(self.serial_tensor.desc.id())
+        local_tensor.desc.set_original_id(self.serial_tensor.desc.id())
         self._local_tensor_map[rank] = local_tensor
         return local_tensor
 

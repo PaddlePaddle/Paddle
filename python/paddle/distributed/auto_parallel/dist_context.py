@@ -14,8 +14,6 @@
 
 import copy
 from collections import defaultdict
-
-import paddle
 from paddle.fluid import framework
 from paddle.fluid import core
 from .dist_attribute import TensorDistributedAttribute
@@ -63,8 +61,6 @@ class DistributedContext:
         # Other data members
         self._dist_op_context = DistributedOperatorContext()
         self._process_meshes = []
-        self._dist_main_programs = {}
-        self._dist_startup_programs = {}
 
     @property
     def serial_program(self):
@@ -87,14 +83,6 @@ class DistributedContext:
     @property
     def dist_op_context(self):
         return self._dist_op_context
-
-    @property
-    def dist_main_programs(self):
-        return self._dist_main_programs
-
-    @property
-    def dist_startup_programs(self):
-        return self._dist_startup_programs
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(process_mesh, ProcessMesh), \
@@ -378,67 +366,12 @@ class DistributedContext:
                         dist_op.serial_op.type, dist_tensor.dist_attr)
         return True
 
-    def new_local_tensor(self, *args, **kwargs):
-        """Create local tensor in specified program."""
-
-        def _remove_no_need_keys():
-            if "rank" in kwargs:
-                kwargs.pop("rank")
-            if "block_id" in kwargs:
-                kwargs.pop("block_id")
-            if "dist_tensor" in kwargs:
-                kwargs.pop("dist_tensor")
-            if "original_id" in kwargs:
-                kwargs.pop("original_id")
-            if "main_program" in kwargs:
-                kwargs.pop("main_program")
-
-        program = None
-        rank = None
-        block_id = None
-        dist_tensor = None
-        local_tensor = None
-
-        if "rank" in kwargs:
-            rank = kwargs["rank"]
-        else:
-            rank = paddle.distributed.get_rank()
-        assert rank in self.dist_main_programs, "The rank {} is not in dist context.".format(
-            rank)
-
-        if "block_id" in kwargs:
-            block_id = kwargs["block_id"]
-        else:
-            block_id = 0
-
-        program = self.dist_main_programs[
-            rank] if not "main_program" in kwargs or kwargs[
-                "main_program"] else self.dist_startup_programs[rank]
-        block = program.block(block_id)
-
-        # create local tensor by framework or dist tensor
-        if "dist_tensor" not in kwargs:
-            # remove some keys to create vars
-            _remove_no_need_keys()
-            local_tensor = block.create_var(*args, **kwargs)
-
-            # TODO: set original id manually
-            # if "original_id" in kwargs:
-            #     local_tensor.desc.set_original_id(kwargs["original_id"])
-        else:
-            dist_tensor = kwargs["dist_tensor"]
-            _remove_no_need_keys()
-            local_tensor = dist_tensor.new_local_tensor(block, rank, *args,
-                                                        **kwargs)
-
-        return local_tensor
-
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_program" or k == "_serial_graph" or k == "_dist_startup_programs" or k == "_dist_main_programs":
+            if k == "_serial_program" or k == "_serial_graph":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
