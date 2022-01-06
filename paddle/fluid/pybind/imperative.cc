@@ -1850,21 +1850,24 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("uva",
            [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
+             platform::DeviceContextPool &pool =
+                 platform::DeviceContextPool::Instance();
+             auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
+             VLOG(4) << "Just init the DeviceContext, the place is "
+                     << dev_ctx->GetPlace();
              auto *self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              const auto &data_numel = self_tensor->numel();
-             float *data_ptr = self_tensor->data<float>();
-
-             // Reallocate the pageable memory to the page-locked memory
-             // const size_t& memory_block = 1000000000;
              const size_t &need_allocate_size =
                  data_numel * framework::SizeOfType(self_tensor->type());
-             VLOG(4) << "Mapped memory to page-locked memory";
+             void *data_ptr = self_tensor->data<void>();
              auto result = cudaHostRegister(data_ptr, need_allocate_size,
-                                            cudaHostRegisterMapped);
+                                            cudaHostRegisterDefault);
+             VLOG(0) << "failed allocate:" << need_allocate_size
+                     << ", error:" << result;
              if (result != 0) {
                VLOG(0) << "failed allocate:" << need_allocate_size
-                       << ", error code:" << result;
+                       << ", error:" << result;
              }
 
              // Get device pointer from the function of cudaHostGetDevicePointer
