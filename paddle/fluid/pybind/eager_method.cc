@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -262,15 +261,6 @@ static PyObject* eager_tensor_method_detach(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_tensor_method_clone(EagerTensorObject* self,
-                                           PyObject* args, PyObject* kwargs) {
-  EAGER_SYNC_TRY
-  paddle::framework::AttributeMap attr_map;
-  auto out = assign_dygraph_function(self->eager_tensor, attr_map);
-  return ToPyObject(out);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -289,8 +279,6 @@ PyMethodDef variable_methods[] = {
     {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"detach", (PyCFunction)(void (*)(void))eager_tensor_method_detach,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"clone", (PyCFunction)(void (*)(void))eager_tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

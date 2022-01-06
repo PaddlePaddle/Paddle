@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, _in_eager_mode
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, _in_eager_mode, EagerParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -763,8 +763,13 @@ def monkey_patch_varbase():
         else:
             return None
 
+    @framework.dygraph_only
     def _set_grad_ivar(self, value):
-        self.grad = value
+        if isinstance(self, EagerParamBase):
+            self.grad = value
+        else:
+            raise TypeError(
+                "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
     def clear_gradient(self, set_to_zero=True):
@@ -772,6 +777,10 @@ def monkey_patch_varbase():
             self._zero_grads()
         else:
             self._clear_gradient()
+
+    @framework.dygraph_only
+    def clone(self):
+        return _C_ops_.assign(self)
 
     if core._in_eager_mode() and not hasattr(core, "eager"):
         return
