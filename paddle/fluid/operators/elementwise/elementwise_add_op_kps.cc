@@ -12,41 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#if defined(__CUDA_ARCH__)
-  #undef __CUDA_ARCH__
-#endif
-
-#if defined(__CUDACC__)
-  #undef __CUDACC__
-#endif
-
-#if defined(__CUDA__)
-  #undef __CUDA__
-#endif
-
-#if defined(__NVCC__)
-  #undef __NVCC__
-#endif
-
-// Note(liuxiandong)
-#ifdef __xpu_on_host__
-#include <xpu/runtime.h>
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include <xpu/runtime.h>
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
-
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::cout << "lxd_debug: elementwise_add forward" << std::endl;
+    XPUElementwise<T, XPUType>(ctx, xpu::broadcast_add<XPUType>);
   }
 };
 
@@ -72,4 +55,3 @@ REGISTER_OP_KERNEL(elementwise_add, KP, plat::XPUPlace,
 REGISTER_OP_KERNEL(elementwise_add_grad, KP, plat::XPUPlace,
                    ops::ElementwiseAddGradXPUKernel<float>,
                    ops::ElementwiseAddGradXPUKernel<paddle::platform::float16>);
-#endif

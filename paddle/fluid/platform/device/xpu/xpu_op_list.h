@@ -21,10 +21,13 @@ namespace platform {
 using pOpKernelType = paddle::framework::OpKernelType;
 
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type);
+bool is_in_xpu_black_list(const std::string& op_name);
+
+#ifdef PADDLE_WITH_XPU_KP
 bool is_xpu_kp_support_op(const std::string& op_name,
                           const pOpKernelType& type);
-bool is_in_xpu_black_list(const std::string& op_name);
 bool is_in_xpu_kpwhite_list(const std::string& op_name);
+#endif
 
 }  // namespace platform
 }  // namespace paddle

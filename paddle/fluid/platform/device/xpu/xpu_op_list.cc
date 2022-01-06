@@ -46,22 +46,6 @@ bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
   return false;
 }
 
-bool is_xpu_kp_support_op(const std::string& op_name,
-                          const pOpKernelType& type) {
-  auto& ops = get_kl1_ops();
-  auto v =
-      get_xpu_version(BOOST_GET_CONST(platform::XPUPlace, type.place_).device);
-  if (v == XPU2) {
-    ops = get_kp_ops();
-  }
-
-  if (ops.find(op_name) != ops.end() &&
-      ops[op_name].find(type) != ops[op_name].end()) {
-    return true;
-  }
-  return false;
-}
-
 // ops_string contains op_list(e.g., 'mul,mul_grad'), parse the op string and
 // insert op to op set
 static void tokenize(const std::string& ops, char delim,
@@ -101,6 +85,23 @@ bool is_in_xpu_black_list(const std::string& op_name) {
   return false;
 }
 
+#ifdef PADDLE_WITH_XPU_KP
+bool is_xpu_kp_support_op(const std::string& op_name,
+                          const pOpKernelType& type) {
+  auto& ops = get_kl1_ops();
+  auto v =
+      get_xpu_version(BOOST_GET_CONST(platform::XPUPlace, type.place_).device);
+  if (v == XPU2) {
+    ops = get_kp_ops();
+  }
+
+  if (ops.find(op_name) != ops.end() &&
+      ops[op_name].find(type) != ops[op_name].end()) {
+    return true;
+  }
+  return false;
+}
+
 bool is_in_xpu_kpwhite_list(const std::string& op_name) {
   static bool inited = false;
   static std::unordered_set<std::string> xpu_kpwhite_list;
@@ -125,6 +126,7 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
   }
   return false;
 }
+#endif
 
 }  // namespace platform
 }  // namespace paddle
