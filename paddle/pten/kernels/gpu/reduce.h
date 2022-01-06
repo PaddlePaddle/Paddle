@@ -42,6 +42,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -1062,23 +1063,6 @@ static
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
-static void AsyncCopy(const pten::DenseTensor& src, pten::DenseTensor* dst) {
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  const paddle::platform::CUDADeviceContext* dev_ctx;
-  if (paddle::platform::is_gpu_place(dst->place()) ||
-      paddle::platform::is_npu_place(dst->place())) {
-    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(dst->place()));
-
-  } else {
-    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(src.place()));
-  }
-
-  pten::Copy(*dev_ctx, src, false, dst);
-}
-
 template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
@@ -1111,13 +1095,12 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(x.place()));
   if (config.reduce_num == 1) {
-    auto out_dims = y->dims();
-    if (x.dtype() == y->dtype()) {
-      AsyncCopy(x, y);
-      y->Resize(out_dims);
-    } else {
-      pten::CastKernel<Tx>(*dev_ctx, x, y->dtype(), y);
-    }
+    std::vector<const DenseTensor*> inputs;
+    std::vector<DenseTensor*> outputs;
+    inputs.emplace_back(&x);
+    outputs.emplace_back(y);
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
+        *dev_ctx, inputs, &outputs, transform);
     return;
   }
 
