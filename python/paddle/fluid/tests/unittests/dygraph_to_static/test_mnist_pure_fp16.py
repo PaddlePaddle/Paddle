@@ -36,7 +36,6 @@ class TestPureFP16(TestMNIST):
         if paddle.fluid.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
-            # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             self.assertTrue(
                 np.allclose(dygraph_loss, static_loss),
                 msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
@@ -52,6 +51,8 @@ class TestPureFP16(TestMNIST):
         if to_static:
             print("Successfully to apply @to_static.")
             build_strategy = paddle.static.BuildStrategy()
+            # Why set `build_strategy.enable_inplace = False` here?
+            # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
             build_strategy.enable_inplace = False
             mnist = paddle.jit.to_static(mnist, build_strategy=build_strategy)
 

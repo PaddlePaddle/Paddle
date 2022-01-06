@@ -107,6 +107,8 @@ class TestResnet(unittest.TestCase):
     def train(self, to_static):
         program_translator.enable(to_static)
         build_strategy = paddle.static.BuildStrategy()
+        # Why set `build_strategy.enable_inplace = False` here?
+        # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
         build_strategy.enable_inplace = False
         return train(to_static, build_strategy)
 
@@ -114,7 +116,6 @@ class TestResnet(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)
             dygraph_loss = self.train(to_static=False)
-            # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             self.assertTrue(
                 np.allclose(static_loss, dygraph_loss),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
