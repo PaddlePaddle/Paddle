@@ -168,7 +168,7 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
   EAGER_SYNC_TRY
   VLOG(4) << "ClearGradient " << self->eager_tensor.name();
 
-  egr::EagerTensor grad;
+  egr::EagerTensor* grad;
   if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
     std::shared_ptr<egr::GradNodeBase> grad_node =
@@ -183,14 +183,14 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
     grad = accumulation_grad_node->Grad();
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    grad = meta->Grad();
+    grad = meta->MutableGrad();
   }
 
-  if (grad.initialized()) {
+  if (grad->initialized()) {
     VLOG(4) << "Gradient of " << self->eager_tensor.name()
             << " is initialized, will be released.";
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
+        std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
     dense_tensor->release();
   }
   Py_INCREF(Py_None);
@@ -214,11 +214,11 @@ static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    if (accumulation_grad_node->Grad().initialized()) {
-      accumulation_grad_node->Grad().set_tensor(
+    if (accumulation_grad_node->Grad()->initialized()) {
+      accumulation_grad_node->Grad()->set_tensor(
           std::make_shared<paddle::experimental::Tensor>(
               paddle::experimental::zeros_like(
-                  *(accumulation_grad_node->Grad().Tensor().get()))));
+                  *(accumulation_grad_node->Grad()->Tensor().get()))));
     }
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
