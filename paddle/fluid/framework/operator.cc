@@ -1090,7 +1090,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
-  this->InferShape(&infer_shape_ctx);
+  this->Info().infer_shape_(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
@@ -1178,7 +1178,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
-    this->InferShape(&infer_shape_ctx);
+    this->Info().infer_shape_(&infer_shape_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {
