@@ -75,7 +75,7 @@ struct DivideFunctor {
  */
 
 template <typename T, typename Context>
-void MeanKernel(const Context& ctx,
+void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
@@ -83,7 +83,7 @@ void MeanKernel(const Context& ctx,
                 DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
-      ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 // Create the definition of Add
@@ -96,7 +96,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 template <typename T, typename Context>
-void SumKernel(const Context& ctx,
+void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
@@ -104,7 +104,7 @@ void SumKernel(const Context& ctx,
                DataType out_dtype,
                DenseTensor* out) {
   pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 }  // namespace pten

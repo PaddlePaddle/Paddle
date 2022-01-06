@@ -55,7 +55,7 @@ namespace pten {
   }
 
 template <typename T, typename Context>
-void MeanKernel(const Context& ctx,
+void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
@@ -63,11 +63,11 @@ void MeanKernel(const Context& ctx,
                 DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<CPUContext, T, pten::funcs::MeanFunctor>(
-      ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T, typename Context>
-void DivideKernel(const Context& ctx,
+void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   int axis,
@@ -76,22 +76,22 @@ void DivideKernel(const Context& ctx,
   out->mutable_data<T>();
   if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
     SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
-        ctx, x, y, out);
+        dev_ctx, x, y, out);
   } else {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
       ElementwiseCompute<funcs::DivideFunctor<T>, T>(
-          ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
+          dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
     } else {
       ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
-          ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
+          dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
     }
   }
 }
 
 template <typename T, typename Context>
-void SumKernel(const Context& ctx,
+void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
@@ -99,7 +99,7 @@ void SumKernel(const Context& ctx,
                DataType out_dtype,
                DenseTensor* out) {
   pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
-      ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 // Create the definition of Add
