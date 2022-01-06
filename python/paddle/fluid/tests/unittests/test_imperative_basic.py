@@ -267,7 +267,7 @@ class TestImperative(unittest.TestCase):
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp
+            y = paddle.add(l0(x), tmp)
             o = l1(y)
             o.backward()
 
@@ -285,7 +285,7 @@ class TestImperative(unittest.TestCase):
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp
+            y = paddle.add(l0(x), tmp)
             o = l1(y)
             o.backward()
 
@@ -306,7 +306,7 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(tmp.stop_gradient)
                 self.assertTrue(tmp2.stop_gradient is False)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp2
+            y = paddle.add(l0(x), tmp2)
             o = l1(y)
             o.backward()
 
@@ -329,7 +329,7 @@ class TestImperative(unittest.TestCase):
                 tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs.append(tmp)
-            ret = fluid.layers.sums(inputs)
+            ret = paddle.add_n(inputs)
             loss = fluid.layers.reduce_sum(ret)
             loss.backward()
         with fluid.dygraph.guard():
