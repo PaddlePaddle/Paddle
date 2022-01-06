@@ -2627,11 +2627,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             should be one of float32, float64.
         y (Tensor): A tensor with shape ``(*, M, K)`` , the data type of the input Tensor ``y`` 
             should be one of float32, float64.
-        rcond(float, optional): A float pointing number used to determine the effective rank of ``x``.
-            If ``rcond`` is None, it will be set to max(M, N) times the machine precision of x_dtype.
-        driver(str, optional):  The name of LAPACK method to be used. For CPU inputs the valid values 
-            are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only valid driver is ‘gels’. If 
-            ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’ for CUDA inputs.
+        rcond(float, optional): The default value is None. A float pointing number used to determine 
+            the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the 
+            machine precision of x_dtype.
+        driver(str, optional): The default value is None. The name of LAPACK method to be used. For 
+            CPU inputs the valid values are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only 
+            valid driver is ‘gels’. If ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’ 
+            for CUDA inputs.
         name(str, optional): The default value is None. Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2649,7 +2651,6 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.set_device("cpu")
             x = paddle.to_tensor([[1, 3], [3, 2], [5, 6.]])
