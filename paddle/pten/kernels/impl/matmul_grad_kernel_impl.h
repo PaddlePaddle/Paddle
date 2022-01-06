@@ -22,6 +22,9 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/pten/kernels/gpu/reduce.h"
 #endif
@@ -29,21 +32,40 @@ limitations under the License. */
 namespace pten {
 
 template <typename Context, typename T>
-void ReduceSumForMatmulGrad(const Context& dev_ctx,
-                            const DenseTensor& input,
-                            DenseTensor* output,
-                            const std::vector<int>& reduce_dims) {
+struct ReduceSumForMatmulGrad {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  DenseTensor* output,
+                  const std::vector<int>& reduce_dims);
+};
+
+template <typename T>
+struct ReduceSumForMatmulGrad<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
+                  const DenseTensor& input,
+                  DenseTensor* output,
+                  const std::vector<int>& reduce_dims) {
+    std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
+                                         reduce_dims.end());
+    eigen::ReduceKernelImpl<CPUContext, T, T, pten::eigen::SumFunctor>(
+        dev_ctx, input, output, reduce_dims_tmp, true, false);
+  }
+};
+
 #if defined(__NVCC__) || defined(__HIPCC__)
-  auto stream = dev_ctx.stream();
-  kernels::
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
-#else
-  std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(), reduce_dims.end());
-  eigen::ReduceKernelImpl<Context, T, T, pten::eigen::SumFunctor>(
-      dev_ctx, input, output, reduce_dims_tmp, true, false);
+template <typename T>
+struct ReduceSumForMatmulGrad<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
+                  const DenseTensor& input,
+                  DenseTensor* output,
+                  const std::vector<int>& reduce_dims) {
+    auto stream = dev_ctx.stream();
+    kernels::
+        TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+            input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
+  }
+};
 #endif
-}
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
@@ -60,23 +82,23 @@ static DenseTensor FoldInitDims(const DenseTensor& input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename Context, typename T>
-static DenseTensor FoldHeadAndLastDims(const Context& context,
+static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
                                        const DenseTensor& input) {
   auto in_dims = input.dims();
   if (in_dims.size() != 3) {
     return input;
   }
-  DenseTensor output = EmptyLike<T, Context>(context, input);
+  DenseTensor output = EmptyLike<T, Context>(dev_ctx, input);
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   std::vector<int> axis = {1, 0, 2};
   math::Transpose<Context, T, 3> trans;
-  trans(context, input, &output, axis);
+  trans(dev_ctx, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
   return output;
 }
 
 template <typename Context, typename T>
-void MatMul(const Context& context,
+void MatMul(const Context& dev_ctx,
             const DenseTensor& a,
             bool trans_a,
             const DenseTensor& b,
@@ -84,7 +106,7 @@ void MatMul(const Context& context,
             DenseTensor* out,
             bool flag = false) {
   out->mutable_data<T>();
-  auto blas = paddle::operators::math::GetBlas<Context, T>(context);
+  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
   auto mat_dim_a =
       paddle::operators::math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
   auto mat_dim_b =
@@ -172,7 +194,7 @@ static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
 }
 
 template <typename T, typename Context>
-void CalcInputGrad(const Context& context,
+void CalcInputGrad(const Context& dev_ctx,
                    const DenseTensor& a,
                    bool trans_a,
                    bool is_fold_init_dims_a,
@@ -185,15 +207,15 @@ void CalcInputGrad(const Context& context,
   bool need_combine =
       (a.dims().size() == 3 || b.dims().size() == 3) && out->dims().size() == 2;
   if (!need_combine) {
-    MatMul<Context, T>(context, a, trans_a, b, trans_b, out, flag);
+    MatMul<Context, T>(dev_ctx, a, trans_a, b, trans_b, out, flag);
   } else {
     MatMul<Context, T>(
-        context,
+        dev_ctx,
         is_fold_init_dims_a ? FoldInitDims(a)
-                            : FoldHeadAndLastDims<Context, T>(context, a),
+                            : FoldHeadAndLastDims<Context, T>(dev_ctx, a),
         trans_a,
         is_fold_init_dims_b ? FoldInitDims(b)
-                            : FoldHeadAndLastDims<Context, T>(context, b),
+                            : FoldHeadAndLastDims<Context, T>(dev_ctx, b),
         trans_b,
         out,
         flag);
@@ -201,7 +223,7 @@ void CalcInputGrad(const Context& context,
 }
 
 template <typename T, typename Context>
-void MatmulGradKernel(const Context& context,
+void MatmulGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& out_grad,
@@ -223,7 +245,7 @@ void MatmulGradKernel(const Context& context,
     if (dx) dx->mutable_data<T>();
     if (dy) dy->mutable_data<T>();
     if (out_grad.numel() == 1) {
-      DotGradFunction<Context, T>()(context, &x, &y, &out_grad, dx, dy);
+      DotGradFunction<Context, T>()(dev_ctx, &x, &y, &out_grad, dx, dy);
       return;
     }
   }
@@ -258,7 +280,7 @@ void MatmulGradKernel(const Context& context,
         dx->Resize(x_help.dims());
       }
 
-      y_conj = Conj<T>(context, y_help);
+      y_conj = Conj<T>(dev_ctx, y_help);
     }
 
     DDim dy_dims;
@@ -268,29 +290,29 @@ void MatmulGradKernel(const Context& context,
         dy->Resize(y_help.dims());
       }
 
-      x_conj = Conj<T>(context, x_help);
+      x_conj = Conj<T>(dev_ctx, x_help);
     }
 
     if (transpose_x && transpose_y) {
       CalcInputGrad<T>(
-          context, y_conj, true, true, out_grad_help, true, false, dx);
+          dev_ctx, y_conj, true, true, out_grad_help, true, false, dx);
       CalcInputGrad<T>(
-          context, out_grad_help, true, true, x_conj, true, false, dy);
+          dev_ctx, out_grad_help, true, true, x_conj, true, false, dy);
     } else if (transpose_x) {
       CalcInputGrad<T>(
-          context, y_conj, false, false, out_grad_help, true, false, dx);
+          dev_ctx, y_conj, false, false, out_grad_help, true, false, dx);
       CalcInputGrad<T>(
-          context, x_conj, false, false, out_grad_help, false, true, dy);
+          dev_ctx, x_conj, false, false, out_grad_help, false, true, dy);
     } else if (transpose_y) {
       CalcInputGrad<T>(
-          context, out_grad_help, false, false, y_conj, false, true, dx);
+          dev_ctx, out_grad_help, false, false, y_conj, false, true, dx);
       CalcInputGrad<T>(
-          context, out_grad_help, true, true, x_conj, false, true, dy);
+          dev_ctx, out_grad_help, true, true, x_conj, false, true, dy);
     } else {
       CalcInputGrad<T>(
-          context, out_grad_help, false, false, y_conj, true, false, dx);
+          dev_ctx, out_grad_help, false, false, y_conj, true, false, dx);
       CalcInputGrad<T>(
-          context, x_conj, true, true, out_grad_help, false, true, dy);
+          dev_ctx, x_conj, true, true, out_grad_help, false, true, dy);
     }
 
     if (dx) {
@@ -309,17 +331,17 @@ void MatmulGradKernel(const Context& context,
     // So we should avoid the case in reality.
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
-    x_conj = Conj<T>(context, x);
-    y_conj = Conj<T>(context, y);
+    x_conj = Conj<T>(dev_ctx, x);
+    y_conj = Conj<T>(dev_ctx, y);
 
-    DenseTensor dx_help = Empty<T, Context>(context);
-    DenseTensor dy_help = Empty<T, Context>(context);
+    DenseTensor dx_help = Empty<T, Context>(dev_ctx);
+    DenseTensor dy_help = Empty<T, Context>(dev_ctx);
 
     if (transpose_x) {
       if (transpose_y) {
         // X'Y': dA = Y'G', dB = G'X'
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      y_conj,
                                      out_grad,
                                      y_dims,
@@ -328,7 +350,7 @@ void MatmulGradKernel(const Context& context,
                                      true,
                                      true);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      out_grad,
                                      x_conj,
                                      dout_dims,
@@ -339,7 +361,7 @@ void MatmulGradKernel(const Context& context,
       } else {
         // X'Y: dX = YG', dY = XG
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      y_conj,
                                      out_grad,
                                      y_dims,
@@ -348,7 +370,7 @@ void MatmulGradKernel(const Context& context,
                                      false,
                                      true);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      x_conj,
                                      out_grad,
                                      x_dims,
@@ -361,7 +383,7 @@ void MatmulGradKernel(const Context& context,
       if (transpose_y) {
         // XY': dX = GY, dY = G'X
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      out_grad,
                                      y_conj,
                                      dout_dims,
@@ -370,7 +392,7 @@ void MatmulGradKernel(const Context& context,
                                      false,
                                      false);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      out_grad,
                                      x_conj,
                                      dout_dims,
@@ -381,7 +403,7 @@ void MatmulGradKernel(const Context& context,
       } else {
         // XY: dX = GY', dY = X'G
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      out_grad,
                                      y_conj,
                                      dout_dims,
@@ -390,7 +412,7 @@ void MatmulGradKernel(const Context& context,
                                      false,
                                      true);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      x_conj,
                                      out_grad,
                                      x_dims,
@@ -434,8 +456,8 @@ void MatmulGradKernel(const Context& context,
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, dx_help, dx, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
     }
@@ -443,8 +465,8 @@ void MatmulGradKernel(const Context& context,
       if (dy_reduce_dims.empty()) {
         *dy = std::move(dy_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, dy_help, dy, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
     }
@@ -453,7 +475,7 @@ void MatmulGradKernel(const Context& context,
 }
 
 template <typename T, typename Context>
-void MatmulDoubleGradKernel(const Context& context,
+void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
@@ -476,7 +498,7 @@ void MatmulDoubleGradKernel(const Context& context,
   // Case1 : x's or y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
     DotDoubleGradFunction<Context, T>()(
-        context, &x, &y, &dout, ddx.get_ptr(), ddy.get_ptr(), dx, dy, ddout);
+        dev_ctx, &x, &y, &dout, ddx.get_ptr(), ddy.get_ptr(), dx, dy, ddout);
     return;
   }
 
@@ -525,12 +547,12 @@ void MatmulDoubleGradKernel(const Context& context,
         ddout->Resize(dout_help.dims());
       }
 
-      x_conj = Conj<T>(context, x_help);
-      y_conj = Conj<T>(context, y_help);
+      x_conj = Conj<T>(dev_ctx, x_help);
+      y_conj = Conj<T>(dev_ctx, y_help);
     }
 
     if (dx || dy) {
-      dout_conj = Conj<T>(context, dout_help);
+      dout_conj = Conj<T>(dev_ctx, dout_help);
     }
 
     bool ddout_flag = false;
@@ -543,10 +565,10 @@ void MatmulDoubleGradKernel(const Context& context,
         if (transpose_x && transpose_y) {
           // dy = dout' * ddx'
           CalcInputGrad<T>(
-              context, dout_conj, true, true, ddx_mat, true, false, dy, false);
+              dev_ctx, dout_conj, true, true, ddx_mat, true, false, dy, false);
         } else if (transpose_x) {
           // dy = ddx * dout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            ddx_mat,
                            false,
                            false,
@@ -558,16 +580,16 @@ void MatmulDoubleGradKernel(const Context& context,
         } else if (transpose_y) {
           // dy = dout' * ddx
           CalcInputGrad<T>(
-              context, dout_conj, true, true, ddx_mat, false, true, dy, false);
+              dev_ctx, dout_conj, true, true, ddx_mat, false, true, dy, false);
         } else {
           // dy = ddx' * dout
           CalcInputGrad<T>(
-              context, ddx_mat, true, true, dout_conj, false, true, dy, false);
+              dev_ctx, ddx_mat, true, true, dout_conj, false, true, dy, false);
         }
       }
 
       if (ddout) {
-        CalcInputGrad<T>(context,
+        CalcInputGrad<T>(dev_ctx,
                          ddx_mat,
                          transpose_x,
                          true,
@@ -589,10 +611,10 @@ void MatmulDoubleGradKernel(const Context& context,
         if (transpose_x && transpose_y) {
           // dx = ddy' * dout'
           CalcInputGrad<T>(
-              context, ddy_mat, true, true, dout_conj, true, false, dx, false);
+              dev_ctx, ddy_mat, true, true, dout_conj, true, false, dx, false);
         } else if (transpose_x) {
           // dx = ddy * dout'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            ddy_mat,
                            false,
                            false,
@@ -603,7 +625,7 @@ void MatmulDoubleGradKernel(const Context& context,
                            false);
         } else if (transpose_y) {
           // dx = dout * ddy
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            dout_conj,
                            false,
                            false,
@@ -614,7 +636,7 @@ void MatmulDoubleGradKernel(const Context& context,
                            false);
         } else {
           // dx = dout * ddy'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            dout_conj,
                            false,
                            false,
@@ -627,7 +649,7 @@ void MatmulDoubleGradKernel(const Context& context,
       }
 
       if (ddout) {
-        CalcInputGrad<T>(context,
+        CalcInputGrad<T>(dev_ctx,
                          x_conj,
                          transpose_x,
                          true,
@@ -663,20 +685,20 @@ void MatmulDoubleGradKernel(const Context& context,
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
     if (dx || dy) {
-      dout_conj = Conj<T>(context, dout);
+      dout_conj = Conj<T>(dev_ctx, dout);
     }
     if (ddout) {
-      x_conj = Conj<T>(context, x);
-      y_conj = Conj<T>(context, y);
+      x_conj = Conj<T>(dev_ctx, x);
+      y_conj = Conj<T>(dev_ctx, y);
     }
 
-    DenseTensor dx_help = Empty<T>(context);
-    DenseTensor dy_help = Empty<T>(context);
+    DenseTensor dx_help = Empty<T>(dev_ctx);
+    DenseTensor dy_help = Empty<T>(dev_ctx);
 
     if (transpose_x) {
       if (transpose_y) {
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddy.get(),
                                      dout_conj,
                                      y_dims,
@@ -685,7 +707,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                      true,
                                      true);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddx.get(),
                                      dout_dims,
@@ -695,7 +717,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                      true);
       } else {
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddy.get(),
                                      dout_conj,
                                      y_dims,
@@ -704,7 +726,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                      false,
                                      true);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddx.get(),
                                      dout_conj,
                                      x_dims,
@@ -716,7 +738,7 @@ void MatmulDoubleGradKernel(const Context& context,
     } else {
       if (transpose_y) {
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddy.get(),
                                      dout_dims,
@@ -725,7 +747,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                      false,
                                      false);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddx.get(),
                                      dout_dims,
@@ -735,7 +757,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                      false);
       } else {
         if (dx)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      dout_conj,
                                      ddy.get(),
                                      dout_dims,
@@ -744,7 +766,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                      false,
                                      true);
         if (dy)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddx.get(),
                                      dout_conj,
                                      x_dims,
@@ -788,8 +810,8 @@ void MatmulDoubleGradKernel(const Context& context,
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, dx_help, dx, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
     }
@@ -797,15 +819,15 @@ void MatmulDoubleGradKernel(const Context& context,
       if (dy_reduce_dims.empty()) {
         *dy = std::move(dy_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, dy_help, dy, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
     }
 
     if (ddout) {
       // Calculate the gradient of OutputGrad(Out)
-      MatMulFunction<Context, T>(context,
+      MatMulFunction<Context, T>(dev_ctx,
                                  ddx.get(),
                                  y_conj,
                                  x_dims,
@@ -813,7 +835,7 @@ void MatmulDoubleGradKernel(const Context& context,
                                  ddout,
                                  transpose_x,
                                  transpose_y);
-      MatMulFunction<Context, T>(context,
+      MatMulFunction<Context, T>(dev_ctx,
                                  x_conj,
                                  ddy.get(),
                                  x_dims,
@@ -827,7 +849,7 @@ void MatmulDoubleGradKernel(const Context& context,
 }
 
 template <typename T, typename Context>
-void MatmulTripleGradKernel(const Context& context,
+void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
@@ -855,7 +877,7 @@ void MatmulTripleGradKernel(const Context& context,
   // Case1 : x's and y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
     VLOG(3) << "========  MatMulV2TripleGradKernel, Compute ====== Case 1";
-    DotTripleGradFunction<Context, T>()(context,
+    DotTripleGradFunction<Context, T>()(dev_ctx,
                                         &x,
                                         &y,
                                         &ddx,
@@ -930,8 +952,8 @@ void MatmulTripleGradKernel(const Context& context,
         out_d_dout->Resize(dout_help.dims());
       }
 
-      ddx_conj = Conj<T>(context, ddx_help);
-      ddy_conj = Conj<T>(context, ddy_help);
+      ddx_conj = Conj<T>(dev_ctx, ddx_help);
+      ddy_conj = Conj<T>(dev_ctx, ddy_help);
     }
 
     DDim out_d_ddx_dims;
@@ -951,9 +973,9 @@ void MatmulTripleGradKernel(const Context& context,
     }
 
     if (out_d_ddx || out_d_ddy) {
-      x_conj = Conj<T>(context, x_help);
-      y_conj = Conj<T>(context, y_help);
-      dout_conj = Conj<T>(context, dout_help);
+      x_conj = Conj<T>(dev_ctx, x_help);
+      y_conj = Conj<T>(dev_ctx, y_help);
+      dout_conj = Conj<T>(dev_ctx, dout_help);
     }
 
     bool d_dout_flag = false;
@@ -969,7 +991,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (out_d_y) {
         if (transpose_x && transpose_y) {
           // out_d_y = d_ddout' * ddx'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            true,
                            true,
@@ -980,7 +1002,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else if (transpose_x) {
           // out_d_y = ddx * d_ddout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            ddx_conj,
                            false,
                            false,
@@ -991,7 +1013,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else if (transpose_y) {
           // out_d_y = d_ddout' * ddx
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            true,
                            true,
@@ -1002,7 +1024,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else {
           // out_d_y = ddx' * d_ddout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            ddx_conj,
                            true,
                            true,
@@ -1016,7 +1038,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (out_d_x) {
         if (transpose_x && transpose_y) {
           // out_d_x = ddy' * d_ddout'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            ddy_conj,
                            true,
                            true,
@@ -1027,7 +1049,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else if (transpose_x) {
           // out_d_x = ddy * d_ddout'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            ddy_conj,
                            false,
                            false,
@@ -1038,7 +1060,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else if (transpose_y) {
           // out_d_x = d_ddout * ddy
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            false,
                            false,
@@ -1049,7 +1071,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else {
           // out_d_x = d_ddout * ddy'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            false,
                            false,
@@ -1078,7 +1100,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (out_d_ddx) {
         if (transpose_x && transpose_y) {
           // out_d_ddx1 = y' * d_ddout'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            y_conj,
                            true,
                            true,
@@ -1089,7 +1111,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddx_flag);
         } else if (transpose_x) {
           // out_d_ddx1 = y * d_ddout'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            y_conj,
                            false,
                            false,
@@ -1100,7 +1122,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddx_flag);
         } else if (transpose_y) {
           // out_d_ddx1 = d_ddout * y
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            false,
                            false,
@@ -1111,7 +1133,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddx_flag);
         } else {
           // out_d_ddx1 = d_ddout * y'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            false,
                            false,
@@ -1128,7 +1150,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (out_d_ddy) {
         if (transpose_x && transpose_y) {
           // out_d_ddy1 = d_ddout' * x'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            true,
                            true,
@@ -1139,7 +1161,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else if (transpose_x) {
           // out_d_ddy1 = x * d_ddout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            x_conj,
                            false,
                            false,
@@ -1150,7 +1172,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else if (transpose_y) {
           // out_d_ddy1 = d_ddout' * x
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_ddout_mat,
                            true,
                            true,
@@ -1161,7 +1183,7 @@ void MatmulTripleGradKernel(const Context& context,
                            false);
         } else {
           // out_d_ddy1 = x' * d_ddout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            x_conj,
                            true,
                            true,
@@ -1183,7 +1205,7 @@ void MatmulTripleGradKernel(const Context& context,
 
       // compute d_dout1
       if (out_d_dout) {
-        CalcInputGrad<T>(context,
+        CalcInputGrad<T>(dev_ctx,
                          ddx_conj,
                          transpose_x,
                          true,
@@ -1199,7 +1221,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (out_d_ddx) {
         if (transpose_x && transpose_y) {
           // out_d_ddx2 = D_DY' * DOut'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_dy_mat,
                            true,
                            true,
@@ -1210,7 +1232,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddx_flag);
         } else if (transpose_x) {
           // out_d_ddx2 = D_DY * Dout'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_dy_mat,
                            false,
                            false,
@@ -1221,7 +1243,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddx_flag);
         } else if (transpose_y) {
           // out_d_ddx2 = Dout * D_DY
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            dout_conj,
                            false,
                            false,
@@ -1232,7 +1254,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddx_flag);
         } else {
           // out_d_ddx2 = Dout * D_DY'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            dout_conj,
                            false,
                            false,
@@ -1253,7 +1275,7 @@ void MatmulTripleGradKernel(const Context& context,
 
       // compute d_dout2
       if (out_d_dout) {
-        CalcInputGrad<T>(context,
+        CalcInputGrad<T>(dev_ctx,
                          d_dx_mat,
                          transpose_x,
                          true,
@@ -1268,7 +1290,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (out_d_ddy) {
         if (transpose_x && transpose_y) {
           // out_d_ddy2 = dout' * d_dx'
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            dout_conj,
                            true,
                            true,
@@ -1279,7 +1301,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddy_flag);
         } else if (transpose_x) {
           // out_d_ddy2 = d_dx * dout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_dx_mat,
                            false,
                            false,
@@ -1290,7 +1312,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddy_flag);
         } else if (transpose_y) {
           // out_d_ddy2 = dout' * d_dx
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            dout_conj,
                            true,
                            true,
@@ -1301,7 +1323,7 @@ void MatmulTripleGradKernel(const Context& context,
                            d_ddy_flag);
         } else {
           // out_d_ddy2 = d_dx' * dout
-          CalcInputGrad<T>(context,
+          CalcInputGrad<T>(dev_ctx,
                            d_dx_mat,
                            true,
                            true,
@@ -1351,26 +1373,26 @@ void MatmulTripleGradKernel(const Context& context,
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
 
-    DenseTensor out_dx_help = Empty<T>(context);
-    DenseTensor out_dy_help = Empty<T>(context);
-    DenseTensor out_d_ddx_help = Empty<T>(context);
-    DenseTensor out_d_ddy_help = Empty<T>(context);
+    DenseTensor out_dx_help = Empty<T>(dev_ctx);
+    DenseTensor out_dy_help = Empty<T>(dev_ctx);
+    DenseTensor out_d_ddx_help = Empty<T>(dev_ctx);
+    DenseTensor out_d_ddy_help = Empty<T>(dev_ctx);
 
     if (out_d_dout) {
-      ddx_conj = Conj<T>(context, ddx);
-      ddy_conj = Conj<T>(context, ddy);
+      ddx_conj = Conj<T>(dev_ctx, ddx);
+      ddy_conj = Conj<T>(dev_ctx, ddy);
     }
     if (out_d_ddx || out_d_ddy) {
-      x_conj = Conj<T>(context, x);
-      y_conj = Conj<T>(context, y);
-      dout_conj = Conj<T>(context, dout);
+      x_conj = Conj<T>(dev_ctx, x);
+      y_conj = Conj<T>(dev_ctx, y);
+      dout_conj = Conj<T>(dev_ctx, dout);
     }
 
     if (transpose_x) {
       if (transpose_y) {
         // dX = ddY' d_ddout’, dY = d_ddout’ ddX'
         if (out_d_x)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddy_conj,
                                      d_ddout.get(),
                                      y_dims,
@@ -1379,7 +1401,7 @@ void MatmulTripleGradKernel(const Context& context,
                                      true,
                                      true);
         if (out_d_y)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      d_ddout.get(),
                                      ddx_conj,
                                      dout_dims,
@@ -1390,7 +1412,7 @@ void MatmulTripleGradKernel(const Context& context,
       } else {
         // dX = ddY d_ddout', dY = ddX d_ddout
         if (out_d_x)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddy_conj,
                                      d_ddout.get(),
                                      y_dims,
@@ -1399,7 +1421,7 @@ void MatmulTripleGradKernel(const Context& context,
                                      false,
                                      true);
         if (out_d_y)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddx_conj,
                                      d_ddout.get(),
                                      x_dims,
@@ -1412,7 +1434,7 @@ void MatmulTripleGradKernel(const Context& context,
       if (transpose_y) {
         // dX = d_ddout ddY, dY = d_ddout’ ddX
         if (out_d_x)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      d_ddout.get(),
                                      ddy_conj,
                                      dout_dims,
@@ -1421,7 +1443,7 @@ void MatmulTripleGradKernel(const Context& context,
                                      false,
                                      false);
         if (out_d_y)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      d_ddout.get(),
                                      ddx_conj,
                                      dout_dims,
@@ -1432,7 +1454,7 @@ void MatmulTripleGradKernel(const Context& context,
       } else {
         // dX = d_ddout ddY', dY = ddX' d_ddout
         if (out_d_x)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      d_ddout.get(),
                                      ddy_conj,
                                      dout_dims,
@@ -1441,7 +1463,7 @@ void MatmulTripleGradKernel(const Context& context,
                                      false,
                                      true);
         if (out_d_y)
-          MatMulFunction<Context, T>(context,
+          MatMulFunction<Context, T>(dev_ctx,
                                      ddx_conj,
                                      d_ddout.get(),
                                      x_dims,
@@ -1487,8 +1509,8 @@ void MatmulTripleGradKernel(const Context& context,
       if (dx_reduce_dims.empty()) {
         *out_d_x = std::move(out_dx_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, out_dx_help, out_d_x, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, out_dx_help, out_d_x, dx_reduce_dims);
       }
       out_d_x->Resize(x.dims());
     }
@@ -1497,15 +1519,15 @@ void MatmulTripleGradKernel(const Context& context,
       if (dy_reduce_dims.empty()) {
         *out_d_y = std::move(out_dy_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, out_dy_help, out_d_y, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, out_dy_help, out_d_y, dy_reduce_dims);
       }
       out_d_y->Resize(y.dims());
     }
 
     // compute d_dout
     if (out_d_dout) {
-      MatMulFunction<Context, T>(context,
+      MatMulFunction<Context, T>(dev_ctx,
                                  d_dx.get(),
                                  ddy_conj,
                                  x_dims,
@@ -1513,7 +1535,7 @@ void MatmulTripleGradKernel(const Context& context,
                                  out_d_dout,
                                  transpose_x,
                                  transpose_y);
-      MatMulFunction<Context, T>(context,
+      MatMulFunction<Context, T>(dev_ctx,
                                  ddx_conj,
                                  d_dy.get(),
                                  x_dims,
@@ -1527,7 +1549,7 @@ void MatmulTripleGradKernel(const Context& context,
     if (out_d_ddx) {
       if (transpose_x && transpose_y) {
         // out_d_ddx1 = y' * d_ddout'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    y_conj,
                                    d_ddout.get(),
                                    y_dims,
@@ -1536,7 +1558,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true,
                                    true);
         // out_d_ddx2 = D_DY' * DOut'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_dy.get(),
                                    dout_conj,
                                    y_dims,
@@ -1547,7 +1569,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true);
       } else if (transpose_x) {
         // out_d_ddx1 = y * d_ddout'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    y_conj,
                                    d_ddout.get(),
                                    y_dims,
@@ -1556,7 +1578,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    false,
                                    true);
         // out_d_ddx2 = D_DY * Dout'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_dy.get(),
                                    dout_conj,
                                    y_dims,
@@ -1567,7 +1589,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true);
       } else if (transpose_y) {
         // out_d_ddx1 = d_ddout * y
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_ddout.get(),
                                    y_conj,
                                    dout_dims,
@@ -1576,7 +1598,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    false,
                                    false);
         // out_d_ddx2 = Dout * D_DY
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    dout_conj,
                                    d_dy.get(),
                                    dout_dims,
@@ -1587,7 +1609,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true);
       } else {
         // out_d_ddx1 = d_ddout * y'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_ddout.get(),
                                    y_conj,
                                    dout_dims,
@@ -1596,7 +1618,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    false,
                                    true);
         // out_d_ddx2 = Dout * D_DY'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    dout_conj,
                                    d_dy.get(),
                                    dout_dims,
@@ -1609,8 +1631,8 @@ void MatmulTripleGradKernel(const Context& context,
       if (dx_reduce_dims.empty()) {
         *out_d_ddx = std::move(out_d_ddx_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, out_d_ddx_help, out_d_ddx, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, out_d_ddx_help, out_d_ddx, dx_reduce_dims);
       }
       out_d_ddx->Resize(x.dims());
     }
@@ -1619,7 +1641,7 @@ void MatmulTripleGradKernel(const Context& context,
     if (out_d_ddy) {
       if (transpose_x && transpose_y) {
         // out_d_ddy1 = d_ddout' * x'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_ddout.get(),
                                    x_conj,
                                    dout_dims,
@@ -1628,7 +1650,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true,
                                    true);
         // out_d_ddy2 = dout' * d_dx'
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    dout_conj,
                                    d_dx.get(),
                                    dout_dims,
@@ -1639,7 +1661,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true);
       } else if (transpose_x) {
         // out_d_ddy1 = x * d_ddout
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    x_conj,
                                    d_ddout.get(),
                                    x_dims,
@@ -1648,7 +1670,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    false,
                                    false);
         // out_d_ddy2 = d_dx * dout
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_dx.get(),
                                    dout_conj,
                                    x_dims,
@@ -1659,7 +1681,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true);
       } else if (transpose_y) {
         // out_d_ddy1 = d_ddout' * x
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_ddout.get(),
                                    x_conj,
                                    dout_dims,
@@ -1668,7 +1690,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true,
                                    false);
         // out_d_ddy2 = dout' * d_dx
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    dout_conj,
                                    d_dx.get(),
                                    dout_dims,
@@ -1679,7 +1701,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true);
       } else {
         // out_d_ddy1 = x' * d_ddout
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    x_conj,
                                    d_ddout.get(),
                                    x_dims,
@@ -1688,7 +1710,7 @@ void MatmulTripleGradKernel(const Context& context,
                                    true,
                                    false);
         // out_d_ddy2 = d_dx' * dout
-        MatMulFunction<Context, T>(context,
+        MatMulFunction<Context, T>(dev_ctx,
                                    d_dx.get(),
                                    dout_conj,
                                    x_dims,
@@ -1702,8 +1724,8 @@ void MatmulTripleGradKernel(const Context& context,
       if (dy_reduce_dims.empty()) {
         *out_d_ddy = std::move(out_d_ddy_help);
       } else {
-        ReduceSumForMatmulGrad<Context, T>(
-            context, out_d_ddy_help, out_d_ddy, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>()(
+            dev_ctx, out_d_ddy_help, out_d_ddy, dy_reduce_dims);
       }
       out_d_ddy->Resize(y.dims());
     }

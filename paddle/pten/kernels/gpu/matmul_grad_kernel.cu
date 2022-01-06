@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/pten/kernels/matmul_grad_kernel.h"
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/kernels/impl/matmul_grad_kernel_impl.h"

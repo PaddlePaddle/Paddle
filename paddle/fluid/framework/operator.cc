@@ -1881,10 +1881,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
         if (buffer_tensor) {
           experimental::ReMakePtenDenseTensorFromVar(outs_vector[offset],
                                                      out_def, buffer_tensor);
-        } else {
-          pt_kernel_context_->SetOutputWithoutSetRange(
-              start_idx + offset, experimental::MakePtenTensorBaseFromVar(
-                                      outs_vector[offset], out_def));
         }
       } else {
         pt_kernel_context_->EmplaceBackOutputWithoutSetRange(

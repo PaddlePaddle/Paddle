@@ -19,8 +19,8 @@
 
 namespace pten {
 
-template <typename T, typename DevCtx>
-void MatmulGradKernel(const DevCtx& dev_ctx,
+template <typename T, typename Context>
+void MatmulGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& dout,
@@ -29,8 +29,8 @@ void MatmulGradKernel(const DevCtx& dev_ctx,
                       DenseTensor* dx,
                       DenseTensor* dy);
 
-template <typename T, typename DevCtx>
-void MatmulDoubleGradKernel(const DevCtx& dev_ctx,
+template <typename T, typename Context>
+void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
@@ -42,8 +42,8 @@ void MatmulDoubleGradKernel(const DevCtx& dev_ctx,
                             DenseTensor* dy,
                             DenseTensor* ddout);
 
-template <typename T, typename DevCtx>
-void MatmulTripleGradKernel(const DevCtx& dev_ctx,
+template <typename T, typename Context>
+void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
