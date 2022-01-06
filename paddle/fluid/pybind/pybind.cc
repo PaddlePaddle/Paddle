@@ -1761,6 +1761,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+  m.def("get_xpu_device_support_types",
+        [](const std::string &op_name, platform::XPUVersion version) {
+          return platform::get_xpu_support_type(op_name, version);
+        });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
     return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
