@@ -19,8 +19,8 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Scale(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void Scale(const Context& dev_ctx,
            const DenseTensor& x,
            const Scalar& scale,
            float bias,

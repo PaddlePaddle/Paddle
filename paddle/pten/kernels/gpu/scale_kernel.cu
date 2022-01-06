@@ -16,10 +16,53 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/scale_kernel_impl.h"
-
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/float16.h"
+
+namespace pten {
+
+template <typename InT>
+struct ScaleFunctor {
+  InT bias;
+  InT scale;
+  bool bias_after_scale;
+
+  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle) {
+    scale = scale_data;
+    bias = bias_data;
+    bias_after_scale = is_bias_after_sacle;
+  }
+
+  __device__ __forceinline__ InT operator()(const InT& x) const {
+    if (bias_after_scale) {
+      return scale * x + bias;
+    } else {
+      return scale * (x + bias);
+    }
+  }
+};
+
+template <typename T, typename ContextT>
+void Scale(const ContextT& dev_ctx,
+           const DenseTensor& x,
+           const Scalar& scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  outputs.emplace_back(out);
+  out->mutable_data<T>();
+  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+      dev_ctx,
+      inputs,
+      &outputs,
+      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+}
+
+}  // namespace pten
 
 PT_REGISTER_CTX_KERNEL(scale,
                        GPU,

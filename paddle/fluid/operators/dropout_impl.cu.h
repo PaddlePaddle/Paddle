@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise_no_broadcast.cu.h"
+#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 
 namespace paddle {
 namespace operators {
@@ -193,7 +193,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     // VectorizedRandomGenerator use curand_uniform4, so we only support
     // vec_size is 4;
     int vec_size = (platform::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
-    int block_size = pten::GetThreadsConfig(dev_ctx, x_numel, vec_size);
+    int block_size = pten::funcs::GetThreadsConfig(dev_ctx, x_numel, vec_size);
     int grid_size =
         ((x_numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
 

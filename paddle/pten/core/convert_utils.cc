@@ -63,21 +63,6 @@ paddle::experimental::DataType TransToPtenDataType(
   }
 }
 
-DataLayout TransToPtenDataLayout(const paddle::framework::DataLayout& layout) {
-  switch (layout) {
-    case paddle::framework::DataLayout::kNHWC:
-      return DataLayout::NHWC;
-    case paddle::framework::DataLayout::kNCHW:
-      return DataLayout::NCHW;
-    case paddle::framework::DataLayout::kAnyLayout:
-      return DataLayout::ANY;
-    case paddle::framework::DataLayout::kMKLDNN:
-      return DataLayout::MKLDNN;
-    default:
-      return DataLayout::UNDEFINED;
-  }
-}
-
 paddle::platform::Place TransToFluidPlace(const Backend& backend) {
   // TODO(chenweihang): add other trans cases later
   switch (backend) {
@@ -138,24 +123,6 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
           "Unsupported data type `%s` when casting it into "
           "paddle data type.",
           dtype));
-  }
-}
-
-paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
-  switch (layout) {
-    case DataLayout::NHWC:
-      return paddle::framework::DataLayout::kNHWC;
-    case DataLayout::NCHW:
-      return paddle::framework::DataLayout::kNCHW;
-    case DataLayout::ANY:
-      return paddle::framework::DataLayout::kAnyLayout;
-    case DataLayout::MKLDNN:
-      return paddle::framework::DataLayout::kMKLDNN;
-    default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported data layout `%s` when casting it into "
-          "paddle data layout.",
-          layout));
   }
 }
 

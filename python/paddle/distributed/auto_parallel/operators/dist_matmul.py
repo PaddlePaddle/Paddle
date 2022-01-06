@@ -25,6 +25,7 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
@@ -35,9 +36,10 @@ from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
 
-def copy_op_with_new_input_output(block, src_op, **kwargs):
+def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
     dist_op_desc = block.desc.append_op()
     dist_op_desc.copy_from(src_op.desc)
+    set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
     for input_name in src_op.desc.input_names():
         assert input_name in kwargs
         dist_op_desc.set_input(input_name, kwargs[input_name])
@@ -253,7 +255,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             new_kwargs = copy.deepcopy(kwargs)
             new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
             matmul_op_desc = copy_op_with_new_input_output(
-                main_block, backward_op, **new_kwargs)
+                ctx, main_block, backward_op, **new_kwargs)
         else:
             # col parallel: matmul + allreduce
             assert Y_var_dim_mapping[0] < 0
@@ -281,7 +283,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 new_kwargs['X@GRAD'] = [intermediate_var_0.name]
 
             matmul_op_desc = copy_op_with_new_input_output(
-                main_block, backward_op, **new_kwargs)
+                ctx, main_block, backward_op, **new_kwargs)
 
             # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad
             if has_x_grad:
@@ -304,8 +306,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                                   X_grad_dist_attr, ctx)
     else:
         # replicate
-        matmul_op_desc = copy_op_with_new_input_output(main_block, backward_op,
-                                                       **kwargs)
+        matmul_op_desc = copy_op_with_new_input_output(ctx, main_block,
+                                                       backward_op, **kwargs)
 
     main_block._sync_with_cpp()
 
