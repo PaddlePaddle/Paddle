@@ -388,6 +388,9 @@ class MoeLayer(nn.Layer):
         d_model = self.d_model
 
         def experts_fwd(x, fwd_expert_count, experts):
+
+            if x.shape[0] == 0:
+                return paddle.empty(x.shape, x.dtype)
             y = []
             last_index = 0
             assert isinstance(fwd_expert_count, np.ndarray)
