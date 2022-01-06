@@ -194,6 +194,48 @@ struct FMinFunctor<paddle::platform::float16> {
   }
 };
 
+template <typename T>
+struct MulGradFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+};
+template <typename T>
+struct MulGradFunctor<Complex<T>> {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
+                                          const Complex<T>& b) const {
+    Complex<T> b_conj(b.real, -b.imag);
+    return a * b_conj;
+  }
+};
+
+template <typename InT, typename OutT>
+struct MulGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT& a,
+                                                                 const InT& b,
+                                                                 const InT& c) {
+    paddle::framework::Array<OutT, 2> outs;
+    // dx = dout * y
+    outs[0] = a * b;
+    // dy = dout * x
+    outs[1] = a * c;
+    return outs;
+  }
+};
+
+template <typename InT, typename OutT>
+struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
+  inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
+      const Complex<InT>& a, const Complex<InT>& b, const Complex<InT>& c) {
+    paddle::framework::Array<Complex<OutT>, 2> outs;
+    // dx = dout * y
+    Complex<InT> b_conj(b.real, -b.imag);
+    outs[0] = a * b_conj;
+    // dy = dout * x
+    Complex<InT> c_conj(c.real, -c.imag);
+    outs[1] = a * c_conj;
+    return outs;
+  }
+};
+
 // Ternary compare
 template <typename T>
 struct TernaryGreaterThanFunctor {
@@ -205,48 +247,22 @@ template <typename T>
 struct TernaryLessEqualThanFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
     return (a < b || a == b) ? c : static_cast<T>(0);
-    template <typename T>
-    struct MulGradFunctor {
-      inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-        return a * b;
-      }
-    };
-    template <typename T>
-    struct MulGradFunctor<Complex<T>> {
-      inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
-                                              const Complex<T>& b) const {
-        Complex<T> b_conj(b.real, -b.imag);
-        return a * b_conj;
-      }
-    };
+  }
+};
 
-    template <typename InT, typename OutT>
-    struct MulGradXYFunctor {
-      inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
-          const InT& a, const InT& b, const InT& c) {
-        paddle::framework::Array<OutT, 2> outs;
-        // dx = dout * y
-        outs[0] = a * b;
-        // dy = dout * x
-        outs[1] = a * c;
-        return outs;
-      }
-    };
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT& a,
+                                                                 const InT& b,
+                                                                 const InT& c) {
+    paddle::framework::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = a > b ? c : static_cast<InT>(0);
+    // dy = dout * (x <= y)
+    outs[1] = (a < b || a == b) ? c : static_cast<InT>(0);
+    return outs;
+  }
+};
 
-    template <typename InT, typename OutT>
-    struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
-      inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
-          const Complex<InT>& a, const Complex<InT>& b, const Complex<InT>& c) {
-        paddle::framework::Array<Complex<OutT>, 2> outs;
-        // dx = dout * y
-        Complex<InT> b_conj(b.real, -b.imag);
-        outs[0] = a * b_conj;
-        // dy = dout * x
-        Complex<InT> c_conj(c.real, -c.imag);
-        outs[1] = a * c_conj;
-        return outs;
-      }
-    };
-
-  }  // namespace operators
+}  // namespace operators
 }  // namespace paddle
