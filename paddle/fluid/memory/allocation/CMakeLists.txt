@@ -82,7 +82,11 @@ endif()
 cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
 cc_test(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS aligned_allocator)
 cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags ${AllocatorFacadeDeps})
-cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy )
+cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
+
+if (WITH_GPU)
+  target_link_libraries(allocator_facade cuda_graph)
+endif()
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator locked_allocator cpu_allocator)
 if (WITH_TESTING)

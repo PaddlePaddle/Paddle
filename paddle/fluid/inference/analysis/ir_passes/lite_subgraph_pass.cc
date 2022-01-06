@@ -243,6 +243,7 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_gpu = Get<bool>("use_gpu");
   bool enable_int8 = Get<bool>("enable_int8");
   bool use_xpu = Get<bool>("use_xpu");
+  int xpu_device_id = Get<int>("xpu_device_id");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
   bool locked = Get<bool>("locked");
@@ -305,6 +306,7 @@ void LiteSubgraphPass::SetUpEngine(
   };
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
+  config.device_id = xpu_device_id;
   config.locked = locked;
   config.autotune = autotune;
   config.autotune_file = autotune_file;

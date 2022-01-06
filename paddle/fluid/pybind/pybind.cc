@@ -125,6 +125,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -485,6 +487,17 @@ static int GetNCCLVersion() {
 }
 #endif
 
+template <typename PlaceType>
+static void TensorCopyFrom(framework::Tensor *dst, const framework::Tensor &src,
+                           const PlaceType &place, int64_t batch_size) {
+  if (batch_size < 0) {
+    framework::TensorCopy(src, place, dst);
+  } else {
+    auto sliced = src.Slice(0, batch_size);
+    framework::TensorCopy(sliced, place, dst);
+  }
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -514,10 +527,28 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("gpu_memory_available", []() {
+    size_t available = 0;
+    size_t total = 0;
+    paddle::platform::GpuMemoryUsage(&available, &total);
+    return available;
+  });
 #endif
-
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
+#endif
+
+  m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+      .def_static("begin_capture",
+                  [](platform::CUDAPlace place, int mode) {
+                    platform::BeginCUDAGraphCapture(
+                        place, static_cast<cudaStreamCaptureMode>(mode));
+                  })
+      .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def("replay", &platform::CUDAGraph::Replay)
+      .def("reset", &platform::CUDAGraph::Reset);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -721,6 +752,18 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
@@ -1213,6 +1256,18 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) {
              return py::bytes(*self.GetMutable<std::string>());
            })
+      .def("set_string_list",
+           [](Variable &self, Strings str_list) {
+             *self.GetMutable<Strings>() = str_list;
+           })
+      .def("set_vocab", [](Variable &self,
+                           Vocab vocab) { *self.GetMutable<Vocab>() = vocab; })
+      .def("get_string_tensor",
+           [](Variable &self) { return self.GetMutable<Strings>(); },
+           py::return_value_policy::reference)
+      .def("get_map_tensor",
+           [](Variable &self) { return self.GetMutable<Vocab>(); },
+           py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
@@ -1846,20 +1901,20 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static("create",
-                  [](py::bytes protobin) {
-                    proto::OpDesc desc;
-                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
-                                      true,
-                                      platform::errors::InvalidArgument(
-                                          "Cannot parse user input to OpDesc"));
-                    PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
-                                      platform::errors::InvalidArgument(
-                                          "The provided OpDesc is not "
-                                          "initialized, the reason is: %s",
-                                          desc.InitializationErrorString()));
-                    return OpRegistry::CreateOp(desc);
-                  })
+      .def_static(
+          "create",
+          [](py::bytes protobin) {
+            proto::OpDesc desc;
+            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
+                              platform::errors::InvalidArgument(
+                                  "Cannot parse user input to OpDesc"));
+            PADDLE_ENFORCE_EQ(
+                desc.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "The provided OpDesc is not initialized, the reason is: %s",
+                    desc.InitializationErrorString()));
+            return OpRegistry::CreateOp(desc);
+          })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) {
@@ -1916,7 +1971,8 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetWorkerScope(thread_id);
            },
            py::return_value_policy::reference)
-      .def("finalize", &TrainerBase::Finalize);
+      .def("finalize", &TrainerBase::Finalize)
+      .def("ResetDataset", &TrainerBase::ResetDataset);
 
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
@@ -2113,7 +2169,12 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-  m.def("set_feed_variable", framework::SetFeedVariable);
+  m.def("set_feed_variable",
+        static_cast<void (*)(Scope *, const LoDTensor &, const std::string &,
+                             size_t)>(&framework::SetFeedVariable));
+  m.def("set_feed_variable",
+        static_cast<void (*)(Scope *, const Strings &, const std::string &,
+                             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope, const std::string &var_name,
            size_t index) -> py::object {
@@ -2284,7 +2345,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
-  m.def("cuda_empty_cache", platform::EmptyCache);
+  m.def("cuda_empty_cache", [] {
+    for (int dev_id : platform::GetSelectedDevices()) {
+      auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
+          platform::CUDAPlace(dev_id));
+      dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+    }
+    platform::EmptyCache();
+  });
   m.def("get_device_properties",
         [](int id) -> const gpuDeviceProp & {
           return platform::GetDeviceProperties(id);
@@ -3196,6 +3264,13 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
+      .def_property("allow_cuda_graph_capture",
+                    [](const BuildStrategy &self) {
+                      return self.allow_cuda_graph_capture_;
+                    },
+                    [](BuildStrategy &self, bool allow_cuda_graph_capture) {
+                      self.allow_cuda_graph_capture_ = allow_cuda_graph_capture;
+                    })
       .def("_copy",
            [](const BuildStrategy &self) {
              auto new_bs = self;

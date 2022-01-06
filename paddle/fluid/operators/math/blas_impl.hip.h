@@ -90,6 +90,12 @@ struct CUBlas<float> {
     PADDLE_THROW(platform::errors::Unimplemented(
         "cublasSmatinvBatched is not supported on HIP platform."));
   }
+
+  template <typename... ARGS>
+  static void TRSM_BATCH(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasStrsmBatched is not supported on HIP platform."));
+  }
 };
 
 template <>
@@ -152,6 +158,12 @@ struct CUBlas<double> {
   static void MATINV_BATCH(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "cublasDmatinvBatched is not supported on HIP platform."));
+  }
+
+  template <typename... ARGS>
+  static void TRSM_BATCH(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasDtrsmBatched is not supported on HIP platform."));
   }
 };
 
@@ -730,6 +742,32 @@ void Blas<platform::CUDADeviceContext>::BatchedGETRS(
                            batch_size);
   });
 }
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedTRSM(
+    CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA, CBLAS_DIAG diag,
+    int M, int N, T alpha, const T **A, int lda, T **B, int ldb,
+    int batch_size) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  rocblas_side cuSide =
+      (side == CblasLeft) ? rocblas_side_right : rocblas_side_left;
+  rocblas_fill cuUplo =
+      (uplo == CblasLower) ? rocblas_fill_upper : rocblas_fill_lower;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_diagonal cuDiag =
+      (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
+
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::TRSM_BATCH(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M,
+                          &alpha, A, lda, B, ldb, batch_size);
+  });
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

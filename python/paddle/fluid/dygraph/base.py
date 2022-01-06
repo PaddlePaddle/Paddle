@@ -33,6 +33,17 @@ __all__ = [
     'enabled', 'to_variable'
 ]
 
+# Flag that indicates whether running code under `@declarative`
+_in_declarative_mode_ = False
+
+
+def in_declarative_mode():
+    """
+    Return a bool value that indicates whether running code under `@declarative`
+
+    """
+    return _in_declarative_mode_
+
 
 def _switch_to_static_graph_(func):
     def __impl__(*args, **kwargs):
@@ -43,6 +54,16 @@ def _switch_to_static_graph_(func):
 
 
 switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
+
+
+@signature_safe_contextmanager
+def _switch_declarative_mode_guard_(is_declarative=True):
+
+    global _in_declarative_mode_
+    original_val = _in_declarative_mode_
+    _in_declarative_mode_ = is_declarative
+    yield
+    _in_declarative_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -63,7 +84,6 @@ _functional_dygraph_context_manager = None
 
 @signature_safe_contextmanager
 def param_guard(parameters):
-    from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()

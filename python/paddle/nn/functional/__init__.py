@@ -112,6 +112,8 @@ from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
+from .sparse_attention import sparse_attention
+
 __all__ = [     #noqa
            'conv1d',
            'conv1d_transpose',
@@ -207,4 +209,5 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+           'sparse_attention',
 ]

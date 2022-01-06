@@ -147,9 +147,10 @@ class BatchNormOpConverter : public OpConverter {
       X = expand_layer->getOutput(0);
     }
 
-    layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *X, nvinfer1::ScaleMode::kCHANNEL, shift_weights.get(),
-        scale_weights.get(), power_weights.get());
+    layer = TRT_ENGINE_ADD_LAYER(engine_, ScaleNd, *X,
+                                 nvinfer1::ScaleMode::kCHANNEL,
+                                 shift_weights.get(), scale_weights.get(),
+                                 power_weights.get(), dynamic_shape_offset);
 
     auto output_name = op_desc.Output("Y").front();
     engine_->SetWeights(op_desc.Input("Bias").front(),

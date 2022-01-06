@@ -18,6 +18,9 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -53,6 +56,11 @@ class AllocatorFacade {
   // Release unused memory pool.
   uint64_t Release(const platform::Place& place);
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+
+#ifdef PADDLE_WITH_CUDA
+  void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
+  void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);
+#endif
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

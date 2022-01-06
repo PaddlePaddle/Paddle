@@ -18,10 +18,12 @@
 #include <string>
 #include <tuple>
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
@@ -162,8 +164,8 @@ struct VarTypeRegistryImpl {
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
-    operators::reader::LoDTensorBlockingQueueHolder, FetchList,
+    Strings, LoDTensorArray, platform::PlaceList, ReaderHolder, String, Scope *,
+    operators::reader::LoDTensorBlockingQueueHolder, FetchList, FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -177,8 +179,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
-    int, float>;
-
+    int, float, Vocab>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -208,9 +209,13 @@ REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
+REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
+REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
+REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
+REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
 
 /** End of variable type registration */
 

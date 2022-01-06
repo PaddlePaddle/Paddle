@@ -238,6 +238,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
+  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir, NNAdapterModelCacheDir,

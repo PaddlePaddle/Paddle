@@ -333,7 +333,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             lr_ratio=simple_lr_fun)
 
         loss_ref = np.array(
-            [4.8383293, 3.0854003, 1.33299, -0.418993, -2.171043])
+            [4.8383293, 3.084947, 1.3323904, -0.41943002, -2.1710064])
         for i in range(5):
             a1 = linear1(a)
             out = linear2(a1)

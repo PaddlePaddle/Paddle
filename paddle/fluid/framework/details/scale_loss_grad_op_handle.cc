@@ -86,19 +86,28 @@ struct ScaleLossGradFunctor {
   }
 };
 
+std::string ScaleLossGradOpHandle::LossGradName() const {
+  return static_cast<VarHandle *>(this->outputs_[0])->name();
+}
+
 void ScaleLossGradOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
-  // Doesn't wait any event
-  std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name();
+  RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
+}
 
-  auto *tensor =
-      local_exec_scopes_[0]->FindVar(var_name)->GetMutable<LoDTensor>();
+void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
+  auto *tensor = var->GetMutable<LoDTensor>();
   tensor->Resize(make_ddim({1}));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,
                             this->dev_ctxes_.at(place_));
-  this->RunAndRecordEvent([&] { framework::VisitDataType(out_dtype_, func); });
+  if (record_event) {
+    this->RunAndRecordEvent(
+        [&] { framework::VisitDataType(out_dtype_, func); });
+  } else {
+    framework::VisitDataType(out_dtype_, func);
+  }
 #else
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_, nullptr);
   framework::VisitDataType(out_dtype_, func);

@@ -116,6 +116,17 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             input, ShapeStr(shape)));
       }
       return nvinfer1::Dims2(shape[1], shape[2]);
+    } else if (shape.size() == 2UL) {
+      if (shape[1] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
+      nvinfer1::Dims dims;
+      dims.nbDims = 1;
+      dims.d[0] = shape[1];
+      return dims;
     }
     return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
@@ -262,7 +273,14 @@ class TensorRTEngine {
         infer_engine_,
         platform::errors::InvalidArgument(
             "The TensorRT engine must be built first before serialization"));
+#if IS_TRT_VERSION_LT(8000)
     ihost_memory_.reset(infer_engine_->serialize());
+#else
+    PADDLE_ENFORCE_NOT_NULL(
+        ihost_memory_,
+        platform::errors::InvalidArgument(
+            "TensorRT >= 8.0 requires that buildSerializedNetwork is called"));
+#endif
     return ihost_memory_.get();
   }
 

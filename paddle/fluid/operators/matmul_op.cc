@@ -336,6 +336,7 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
                         dim));
+  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,
@@ -355,6 +356,43 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
             "Ranks of shape_%s and axis_%s attributes of MatMulOp "
             "must be equal.",
             input_name, input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative, 1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name, num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i, dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name, i, dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+    // if "-1" is present then one of reshape dims must be infered
+    auto it_negative = std::find(shape.begin(), shape.end(), -1);
+    if (it_negative != shape.end()) {
+      int64_t dim_product = 1;
+      for (int i = 0; i < dim.size(); i++) {
+        dim_product *= dim.at(i);
+      }
+
+      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                              std::multiplies<int>());
+      int index = std::distance(shape.begin(), it_negative);
+      shape[index] = dim_product / shape_product;
+    }
+
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;

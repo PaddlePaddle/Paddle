@@ -102,14 +102,18 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
+
+        VLOG(3) << "Initialize Variable " << var->Name();
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+                << " global, which pointer is " << ptr << " type is "
+                << static_cast<int>(var->GetType());
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+                << " locally, which pointer is " << ptr << "Variable Type "
+                << static_cast<int>(var->GetType());
       }
     }
   } else {
@@ -125,7 +129,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 std::shared_ptr<TrainerBase> Executor::InitForDataset(
     const ProgramDesc& main_program, const std::string& trainer_desc_str,
     Scope* scope, Dataset* dataset) {
-  VLOG(3) << "Start to RunFromDataset in executor";
+  VLOG(3) << "Start to InitForDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
   PADDLE_ENFORCE_EQ(success, true,

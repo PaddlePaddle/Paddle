@@ -528,13 +528,20 @@ static void ParseIndexingSlice(
   // specified_dims is the number of dimensions which indexed by Interger,
   // Slices.
   int specified_dims = 0;
+  int ell_count = 0;
   for (int dim = 0; dim < size; ++dim) {
     PyObject *slice_item = PyTuple_GetItem(index, dim);
     if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
       specified_dims++;
+    } else if (slice_item == Py_Ellipsis) {
+      ell_count++;
     }
   }
 
+  PADDLE_ENFORCE_LE(ell_count, 1,
+                    platform::errors::InvalidArgument(
+                        "An index can only have a single ellipsis ('...')"));
+  int none_count = 0;
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
 
@@ -580,7 +587,8 @@ static void ParseIndexingSlice(
     } else if (slice_item == Py_Ellipsis) {
       dim += rank - specified_dims;
     } else if (slice_item == Py_None) {
-      none_axes->push_back(dim);
+      none_axes->push_back(dim + none_count);
+      none_count++;
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
       PADDLE_ENFORCE_EQ(
@@ -639,7 +647,7 @@ static void ParseIndexingSlice(
   }
 
   // valid_index is the number of dimensions exclude None index
-  const int valid_indexs = size - none_axes->size();
+  const int valid_indexs = size - none_axes->size() - ell_count;
   PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
@@ -932,6 +940,11 @@ void BindImperative(py::module *m_ptr) {
               }
             };
 
+            // NOTE(liym27):
+            // Increase the version of VarBase self because __setitem__ is an
+            // inplace operator for the VarBase self.
+            self->BumpInplaceVersion();
+
             // 1. Check argumnets
             bool parse_index = true;
 
@@ -985,6 +998,12 @@ void BindImperative(py::module *m_ptr) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
+
+                // pass the stop_gradient from value to tensor
+                if (!value_tensor->OverridedStopGradient() &&
+                    self->OverridedStopGradient()) {
+                  self->SetOverridedStopGradient(false);
+                }
               } else if (py::isinstance<py::array>(value_obj)) {
                 auto value_tensor = std::shared_ptr<imperative::VarBase>(
                     new imperative::VarBase(false,
@@ -1093,10 +1112,6 @@ void BindImperative(py::module *m_ptr) {
               SetTensorFromPyArray(self_tensor, self_numpy,
                                    self_tensor->place(), false);
             }
-            // NOTE(liym27):
-            // Increase the version of VarBase self because __setitem__ is an
-            // inplace operator for the VarBase self.
-            self->BumpInplaceVersion();
           })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -1168,29 +1183,6 @@ void BindImperative(py::module *m_ptr) {
                      }
                    }
                    axis -= len;
-                 }
-
-                 // Deal with cases that there are more than one
-                 // prefix none index, For example:
-                 // [None, None, :, :, None]
-                 // the none_axes int the return of ParseIndexingSlice is:
-                 // [0,    0,          2   ]
-                 // according to the interface of "unsqueeze2",
-                 // we should convert it to:
-                 // [0,    0,          4   ]
-                 int prefix_zero_cnt = 0;
-                 for (const auto &axis : none_axes) {
-                   if (axis == 0) {
-                     prefix_zero_cnt++;
-                   } else {
-                     break;
-                   }
-                 }
-                 if (prefix_zero_cnt > 0) {
-                   int none_axes_num = static_cast<int>(none_axes.size());
-                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
-                     none_axes[i] += prefix_zero_cnt;
-                   }
                  }
 
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
@@ -1875,6 +1867,12 @@ void BindImperative(py::module *m_ptr) {
             } else if (self.Var().IsType<framework::SelectedRows>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
+            } else if (self.Var().IsType<framework::Strings>()) {
+              return std::vector<int>{static_cast<int>(
+                  self.Var().Get<framework::Strings>().size())};
+            } else if (self.Var().IsType<framework::Vocab>()) {
+              return std::vector<int>{
+                  static_cast<int>(self.Var().Get<framework::Vocab>().size())};
             } else {
               VLOG(2) << "It is meaningless to get shape of "
                          "variable type "
@@ -1940,6 +1938,13 @@ void BindImperative(py::module *m_ptr) {
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
+  py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
+      .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("O1", paddle::imperative::AmpLevel::O1)
+      .value("O2", paddle::imperative::AmpLevel::O2)
+      .value("O3", paddle::imperative::AmpLevel::O3)
+      .export_values();
+
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
       .def("__init__",
@@ -1947,8 +1952,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_amp_level", &imperative::Tracer::AMPLevel,
-                    &imperative::Tracer::SetAMPLevel)
+      .def_property("_amp_level", &imperative::Tracer::GetAmpLevel,
+                    &imperative::Tracer::SetAmpLevel)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(

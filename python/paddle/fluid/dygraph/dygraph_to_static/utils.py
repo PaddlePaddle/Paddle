@@ -546,7 +546,11 @@ def func_to_source_code(function, dedent=True):
         raise TypeError(
             "The type of 'function' should be a function or method, but received {}.".
             format(type(function).__name__))
-    source_code = inspect.getsource(function)
+    source_code_list, _ = inspect.getsourcelines(function)
+    source_code_list = [
+        line for line in source_code_list if not line.lstrip().startswith('#')
+    ]
+    source_code = ''.join(source_code_list)
     if dedent:
         source_code = textwrap.dedent(source_code)
 
@@ -1044,7 +1048,8 @@ class ForNodeVisitor(object):
             gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        if isinstance(self.node.iter, (gast.Name, gast.Attribute)):
+        if isinstance(self.node.iter,
+                      (gast.Name, gast.Attribute, gast.List, gast.Tuple)):
             return True
         elif isinstance(self.node.iter, gast.Call) and isinstance(
                 self.node.iter.func,

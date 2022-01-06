@@ -1293,6 +1293,59 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     return out
 
 
+def bincount(x, weights=None, minlength=0, name=None):
+    """
+    Computes frequency of each value in the input tensor. 
+
+    Args:
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
+        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
+        minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor of frequency.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 1, 4, 5])
+            result1 = paddle.bincount(x)
+            print(result1) # [0, 2, 1, 0, 1, 1]
+
+            w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
+            result2 = paddle.bincount(x, weights=w)
+            print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
+    """
+    if x.dtype not in [paddle.int32, paddle.int64]:
+        raise TypeError("Elements in Input(x) should all be integers")
+
+    if in_dygraph_mode():
+        return _C_ops.bincount(x, weights, "minlength", minlength)
+
+    helper = LayerHelper('bincount', **locals())
+
+    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
+
+    if weights is not None:
+        check_variable_and_dtype(weights, 'Weights',
+                                 ['int32', 'int64', 'float32', 'float64'],
+                                 'bincount')
+        out = helper.create_variable_for_type_inference(dtype=weights.dtype)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bincount',
+        inputs={'X': x,
+                'Weights': weights},
+        outputs={'Out': out},
+        attrs={'minlength': minlength})
+    return out
+
+
 def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
@@ -1520,7 +1573,7 @@ def svd(x, full_matrices=False, name=None):
         outputs={'U': u,
                  'VH': vh,
                  'S': s},
-        attr=attrs, )
+        attrs=attrs, )
     return u, s, vh
 
 
@@ -2260,3 +2313,143 @@ def solve(x, y, name=None):
         type="solve", inputs={"X": x,
                               "Y": y}, outputs={"Out": out})
     return out
+
+
+def triangular_solve(x,
+                     y,
+                     upper=True,
+                     transpose=False,
+                     unitriangular=False,
+                     name=None):
+    r"""
+    Computes the solution of a system of equations with a triangular coefficient matrix `x` and
+    multiple right-hand sides `y` .
+
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
+    is also batches.
+
+    Args:
+        x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+            zero or more batch dimensions. Its data type should be float32 or float64.
+        upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular 
+            system of equations. Default: True.
+        transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
+        unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed 
+            to be 1 and not referenced from `x` . Default: False.
+        name(str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
+
+    Examples:
+    .. code-block:: python
+
+        # a square system of linear equations:
+        # x1 +   x2  +   x3 = 0
+        #      2*x2  +   x3 = -9
+        #               -x3 = 5
+
+        import paddle
+        import numpy as np
+
+        x = paddle.to_tensor([[1, 1, 1], 
+                              [0, 2, 1],
+                              [0, 0,-1]], dtype="float64")
+        y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+        out = paddle.linalg.triangular_solve(x, y, upper=True)
+
+        print(out)
+        # [7, -2, -5]
+    """
+    if in_dygraph_mode():
+        return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
+                                       transpose, 'unitriangular',
+                                       unitriangular)
+
+    inputs = {"X": [x], "Y": [y]}
+    helper = LayerHelper("triangular_solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'triangular_solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'triangular_solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='triangular_solve',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={
+            'upper': upper,
+            'transpose': transpose,
+            'unitriangular': unitriangular
+        })
+    return out
+
+
+def eigvalsh(x, UPLO='L', name=None):
+    """
+    Computes the eigenvalues of a 
+    complex Hermitian (conjugate symmetric) or a real symmetric matrix.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+            should be one of float32, float64, complex64, complex128.
+        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor eigenvalues in ascending order.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x_data = np.array([[1, -2j], [2j, 5]])
+            x = paddle.to_tensor(x_data)
+            out_value = paddle.eigvalsh(x, UPLO='L')
+            print(out_value)
+            #[0.17157288, 5.82842712]
+    """
+    if in_dygraph_mode():
+        is_test = x.stop_gradient
+        values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
+        return values
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape))
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".
+                format(x_shape))
+        if UPLO is not 'L' and UPLO is not 'U':
+            raise ValueError(
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+
+    __check_input(x, UPLO)
+
+    helper = LayerHelper('eigvalsh', **locals())
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'eigvalsh')
+
+    out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    is_test = x.stop_gradient
+    helper.append_op(
+        type='eigvalsh',
+        inputs={'X': x},
+        outputs={'Eigenvalues': out_value,
+                 'Eigenvectors': out_vector},
+        attrs={'UPLO': UPLO,
+               'is_test': is_test})
+    return out_value

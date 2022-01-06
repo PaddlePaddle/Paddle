@@ -351,8 +351,9 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 
   gpd(graph, handler);
   AddStatis(found_layer_norm_count);
-  PrettyLogDetail("---    Fused %d subgraphs into layer_norm op.",
-                  found_layer_norm_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    Fused %d subgraphs into layer_norm op.",
+                    found_layer_norm_count);
 }
 
 }  // namespace ir

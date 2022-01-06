@@ -396,6 +396,8 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
+        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+            self.dataset = core.Dataset("SlotRecordDataset")
 
     @deprecated(
         since="2.0.0",

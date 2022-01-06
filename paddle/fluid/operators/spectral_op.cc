@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/complex.h"
 
 #if defined(PADDLE_WITH_ONEMKL)
-#include <mkl_dfti.h>
+#include "paddle/fluid/platform/dynload/mklrt.h"
 #elif defined(PADDLE_WITH_POCKETFFT)
 #include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
@@ -357,46 +357,45 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
 // FFT Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
+#define MKL_DFTI_CHECK(expr)                                       \
+  do {                                                             \
+    MKL_LONG status = (expr);                                      \
+    if (!platform::dynload::DftiErrorClass(status, DFTI_NO_ERROR)) \
+      PADDLE_THROW(platform::errors::External(                     \
+          platform::dynload::DftiErrorMessage(status)));           \
+  } while (0);
+
 namespace {
-static inline void MKL_DFTI_CHECK(MKL_INT status) {
-  if (status && !DftiErrorClass(status, DFTI_NO_ERROR)) {
-    PADDLE_THROW(platform::errors::External(DftiErrorMessage(status)));
-  }
-}
 
 struct DftiDescriptorDeleter {
   void operator()(DFTI_DESCRIPTOR_HANDLE handle) {
     if (handle != nullptr) {
-      MKL_DFTI_CHECK(DftiFreeDescriptor(&handle));
+      MKL_DFTI_CHECK(platform::dynload::DftiFreeDescriptor(&handle));
     }
   }
 };
 
+// A RAII wrapper for MKL_DESCRIPTOR*
 class DftiDescriptor {
  public:
   void init(DFTI_CONFIG_VALUE precision, DFTI_CONFIG_VALUE signal_type,
             MKL_LONG signal_ndim, MKL_LONG* sizes) {
-    if (desc_ != nullptr) {
-      PADDLE_THROW(platform::errors::AlreadyExists(
-          "DFT DESCRIPTOR can only be initialized once."));
-    }
+    PADDLE_ENFORCE_EQ(desc_.get(), nullptr,
+                      platform::errors::AlreadyExists(
+                          "DftiDescriptor has already been initialized."));
+
     DFTI_DESCRIPTOR* raw_desc;
-    if (signal_ndim == 1) {
-      MKL_DFTI_CHECK(
-          DftiCreateDescriptor(&raw_desc, precision, signal_type, 1, sizes[0]));
-    } else {
-      MKL_DFTI_CHECK(DftiCreateDescriptor(&raw_desc, precision, signal_type,
-                                          signal_ndim, sizes));
-    }
+    MKL_DFTI_CHECK(platform::dynload::DftiCreateDescriptorX(
+        &raw_desc, precision, signal_type, signal_ndim, sizes));
     desc_.reset(raw_desc);
   }
 
   DFTI_DESCRIPTOR* get() const {
-    if (desc_ == nullptr) {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "DFTI DESCRIPTOR has not been initialized."));
-    }
-    return desc_.get();
+    DFTI_DESCRIPTOR* raw_desc = desc_.get();
+    PADDLE_ENFORCE_NOT_NULL(raw_desc,
+                            platform::errors::PreconditionNotMet(
+                                "DFTI DESCRIPTOR has not been initialized."));
+    return raw_desc;
   }
 
  private:
@@ -421,7 +420,9 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
         return DFTI_DOUBLE;
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Input data type should be FP32, FP64, COMPLEX64 or COMPLEX128."));
+            "Invalid input datatype (%s), input data type should be FP32, "
+            "FP64, COMPLEX64 or COMPLEX128.",
+            framework::DataTypeToString(in_dtype)));
     }
   }();
 
@@ -430,35 +431,27 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
   const DFTI_CONFIG_VALUE domain =
       (fft_type == FFTTransformType::C2C) ? DFTI_COMPLEX : DFTI_REAL;
 
-  // const bool complex_input = framework::IsComplexType(in_dtype);
-  // const bool complex_output = framework::IsComplexType(out_dtype);
-  // const DFTI_CONFIG_VALUE domain = [&] {
-  //   if (forward) {
-  //     return complex_input ? DFTI_COMPLEX : DFTI_REAL;
-  //   } else {
-  //     return complex_output ? DFTI_COMPLEX : DFTI_REAL;
-  //   }
-  // }();
-
   DftiDescriptor descriptor;
   std::vector<MKL_LONG> fft_sizes(signal_sizes.cbegin(), signal_sizes.cend());
   const MKL_LONG signal_ndim = fft_sizes.size() - 1;
   descriptor.init(precision, domain, signal_ndim, fft_sizes.data() + 1);
 
   // placement inplace or not inplace
-  MKL_DFTI_CHECK(
-      DftiSetValue(descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
 
   // number of transformations
   const MKL_LONG batch_size = fft_sizes[0];
-  MKL_DFTI_CHECK(
-      DftiSetValue(descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
 
   // input & output distance
   const MKL_LONG idist = in_strides[0];
   const MKL_LONG odist = out_strides[0];
-  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_INPUT_DISTANCE, idist));
-  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_OUTPUT_DISTANCE, odist));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
+                                                 DFTI_INPUT_DISTANCE, idist));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
+                                                 DFTI_OUTPUT_DISTANCE, odist));
 
   // input & output stride
   std::vector<MKL_LONG> mkl_in_stride(1 + signal_ndim, 0);
@@ -467,15 +460,15 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
     mkl_in_stride[i] = in_strides[i];
     mkl_out_stride[i] = out_strides[i];
   }
-  MKL_DFTI_CHECK(
-      DftiSetValue(descriptor.get(), DFTI_INPUT_STRIDES, mkl_in_stride.data()));
-  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_OUTPUT_STRIDES,
-                              mkl_out_stride.data()));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_INPUT_STRIDES, mkl_in_stride.data()));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_OUTPUT_STRIDES, mkl_out_stride.data()));
 
   // conjugate even storage
   if (!(fft_type == FFTTransformType::C2C)) {
-    MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE,
-                                DFTI_COMPLEX_COMPLEX));
+    MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+        descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX));
   }
 
   MKL_LONG signal_numel =
@@ -496,11 +489,12 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
         return DFTI_BACKWARD_SCALE;
       }
     }();
-    MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), scale_direction, scale));
+    MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
+                                                   scale_direction, scale));
   }
 
   // commit the descriptor
-  MKL_DFTI_CHECK(DftiCommitDescriptor(descriptor.get()));
+  MKL_DFTI_CHECK(platform::dynload::DftiCommitDescriptor(descriptor.get()));
   return descriptor;
 }
 
@@ -592,15 +586,16 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
                                   collapsed_input.numel(),
                                   collapsed_input_conj.data<Ti>());
     for_range(functor);
-    MKL_DFTI_CHECK(DftiComputeBackward(desc.get(),
-                                       collapsed_input_conj.data<void>(),
-                                       collapsed_output.data<void>()));
+    MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
+        desc.get(), collapsed_input_conj.data<void>(),
+        collapsed_output.data<void>()));
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     framework::Tensor collapsed_output_conj(collapsed_output.type());
     collapsed_output_conj.mutable_data<To>(collapsed_output.dims(),
                                            ctx.GetPlace());
-    MKL_DFTI_CHECK(DftiComputeForward(desc.get(), collapsed_input.data<void>(),
-                                      collapsed_output_conj.data<void>()));
+    MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
+        desc.get(), collapsed_input.data<void>(),
+        collapsed_output_conj.data<void>()));
     // conjugate the output
     platform::ForRange<DeviceContext> for_range(ctx, collapsed_output.numel());
     math::ConjFunctor<To> functor(collapsed_output_conj.data<To>(),
@@ -609,13 +604,13 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     for_range(functor);
   } else {
     if (forward) {
-      MKL_DFTI_CHECK(DftiComputeForward(desc.get(),
-                                        collapsed_input.data<void>(),
-                                        collapsed_output.data<void>()));
+      MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
+          desc.get(), collapsed_input.data<void>(),
+          collapsed_output.data<void>()));
     } else {
-      MKL_DFTI_CHECK(DftiComputeBackward(desc.get(),
-                                         collapsed_input.data<void>(),
-                                         collapsed_output.data<void>()));
+      MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
+          desc.get(), collapsed_input.data<void>(),
+          collapsed_output.data<void>()));
     }
   }
 

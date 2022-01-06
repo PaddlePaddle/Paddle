@@ -1001,9 +1001,7 @@ def ctc_loss(log_probs,
              label_lengths,
              blank=0,
              reduction='mean',
-             norm_by_times=False,
-             norm_by_batchsize=False,
-             norm_by_total_logits_len=False):
+             norm_by_times=False):
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1019,9 +1017,7 @@ def ctc_loss(log_probs,
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
         norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
-        norm_by_batchsize (bool): normalize the loss by the batch size (default: `False`). If `True`, supersedes `norm_by_times` (default: `False`)
-        norm_by_total_logits_len (bool): normalize the loss by the total number of frames in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times` (default: `False`)
-            
+
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
 
@@ -1029,7 +1025,6 @@ def ctc_loss(log_probs,
 
         .. code-block:: python
 
-            # required: skiptest
             # declarative mode
             import paddle.nn.functional as F
             import numpy as np
@@ -1086,10 +1081,9 @@ def ctc_loss(log_probs,
     """
 
     loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,
-                                    input_lengths, label_lengths,
-                                    norm_by_batchsize, norm_by_total_logits_len)
+                                    input_lengths, label_lengths)
 
-    loss_out = fluid.layers.squeeze(loss_out, [-1])  # (B)
+    loss_out = fluid.layers.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths)
@@ -1544,7 +1538,7 @@ def cross_entropy(input,
             Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            If :attr:`norm_by_batchsize` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
 
@@ -1668,12 +1662,13 @@ def cross_entropy(input,
                     format(invalid_label[0], 0))
             # TODO: Temporarily use paddle.nonzero instead of paddle.max 
             # to detect and find out possible illegal label values
-            if len(paddle.nonzero(valid_label >= input.shape[-1])) > 0:
+            if len(paddle.nonzero(valid_label >= input.shape[axis])) > 0:
                 invalid_label = paddle.gather_nd(
-                    valid_label, paddle.nonzero(valid_label >= input.shape[-1]))
+                    valid_label,
+                    paddle.nonzero(valid_label >= input.shape[axis]))
                 raise ValueError(
                     "Target({}) is out of class_dimension's upper bound({})".
-                    format(invalid_label[0], input.shape[-1] - 1))
+                    format(invalid_label[0], input.shape[axis] - 1))
 
         _, out = _C_ops.softmax_with_cross_entropy(
             input, label, 'soft_label', soft_label, 'ignore_index',
@@ -1700,19 +1695,28 @@ def cross_entropy(input,
                 out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
-                if input.shape[-1] != weight.shape[-1]:
+                if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
-                        "input's class_dimension({}) must equal to \
-                        weight's class_dimension({}) \
-                            when weight is provided"
-                        .format(input.shape[-1], weight.shape[-1]))
+                        "input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                            "when weight is provided"\
+                        .format(input.shape[axis], weight.shape[-1]))
 
                 ignore_weight_mask = paddle.cast((label != ignore_index),
                                                  out.dtype)
                 if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
-                        -1] == 1:
-                    ignore_weight_mask.squeeze_(-1)
-                weight_gather = _C_ops.gather_nd(weight, valid_label)
+                        axis] == 1:
+                    # TODO: Temporarily use squeeze instead of squeeze_
+                    ignore_weight_mask = paddle.squeeze(ignore_weight_mask,
+                                                        axis)
+                if axis != -1 and axis != valid_label.ndim - 1:
+                    temp_perm = list(range(axis % valid_label.ndim)) \
+                                + list(range((axis % valid_label.ndim + 1) , valid_label.ndim)) \
+                                + [axis % valid_label.ndim]
+                    weight_gather = _C_ops.gather_nd(
+                        weight, valid_label.transpose(temp_perm))
+                else:
+                    weight_gather = _C_ops.gather_nd(weight, valid_label)
                 weight_gather = _C_ops.elementwise_mul(weight_gather,
                                                        ignore_weight_mask)
                 input_shape = list(label.shape)
@@ -1807,20 +1811,27 @@ def cross_entropy(input,
             weight_gather_reshape = reshape(weight_gather, shape=out_shape)
             out = paddle.cast(out, weight_gather_reshape.dtype)
         else:
-            if input.shape[-1] != weight.shape[-1]:
-                raise ValueError("input's class_dimension({}) must equal to "\
-                        "weight's class_dimension({}) "\
-                            "when weight is provided"
-                                 .format(input.shape[-1], weight.shape[-1]))
+            if input.shape[axis] != weight.shape[-1]:
+                raise ValueError("input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                            "when weight is provided"\
+                                 .format(input.shape[axis], weight.shape[-1]))
 
             valid_label = paddle.where(label == ignore_index,
                                        paddle.zeros_like(label), label)
             ignore_weight_mask = paddle.cast((label != ignore_index),
                                              input.dtype)
             if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
-                    -1] == 1:
-                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, -1)
-            weight_gather = paddle.gather_nd(weight, valid_label)
+                    axis] == 1:
+                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, axis)
+            if axis != -1 and axis != valid_label.ndim - 1:
+                temp_perm = list(range(axis % valid_label.ndim)) \
+                            + list(range((axis % valid_label.ndim + 1), valid_label.ndim)) \
+                            + [axis % valid_label.ndim]
+                weight_gather = paddle.gather_nd(
+                    weight, paddle.transpose(valid_label, temp_perm))
+            else:
+                weight_gather = paddle.gather_nd(weight, valid_label)
             weight_gather = paddle.multiply(weight_gather, ignore_weight_mask)
 
             input_shape = list(label.shape)

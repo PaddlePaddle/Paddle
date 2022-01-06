@@ -102,6 +102,41 @@ def select_input(inputs, mask):
     return out
 
 
+def select_input_with_buildin_type(inputs, mask):
+    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+    support_ret_buildin_type = (bool, float, six.integer_types)
+    false_var, true_var = inputs
+
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return select_input(inputs, mask)
+
+    elif (isinstance(false_var, (support_ret_buildin_type)) and
+          isinstance(false_var, type(true_var))):
+        if false_var == true_var:
+            return false_var
+        else:
+            inputs = [
+                to_static_variable(false_var), to_static_variable(true_var)
+            ]
+    # Deal with the situations like this: false_var is int and true_var is Variable
+    elif ((isinstance(false_var, support_ret_buildin_type) and
+           isinstance(true_var, Variable)) or
+          (isinstance(true_var, support_ret_buildin_type) and
+           isinstance(false_var, Variable))):
+        inputs = [to_static_variable(false_var), to_static_variable(true_var)]
+        warnings.warn(
+            "Return results from different branches in cond are not same type: "
+            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "'{}'".format(type(false_var), type(true_var)))
+    else:
+        raise TypeError(
+            "Unsupported return type of true_fn and false_fn in cond: false_var "
+            "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".
+            format(type(false_var), type(true_var)))
+
+    return select_input(inputs, mask)
+
+
 def split_lod_tensor(input, mask, level=0):
     """
     This function takes in an input that contains the complete lod information,
@@ -2282,8 +2317,8 @@ class ConditionalBlock(object):
 
 
 def copy_var_to_parent_block(var, layer_helper):
-    if var is None:
-        return None
+    if not isinstance(var, Variable):
+        return var
     prog = layer_helper.main_program
     parent_idx = prog.current_block().parent_idx
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
@@ -2316,10 +2351,13 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         the same shape because of dataflow model of PaddlePaddle while the
         tensors in the tuples or the lists can have different shapes.
 
-        2. Any tensors or operations created outside of ``true_fn`` and
-        ``false_fn`` will be executed regardless of which branch is selected at
-        runtime. This has frequently surprised users who expected a lazy
-        semantics. For example:
+        2. This API could be used under both static mode or dygraph mode. If it
+        is in dygraph mode, the API only runs one branch based on condition.
+
+        3. If it is in static mode, any tensors or operations created outside 
+        or inside of ``true_fn`` and ``false_fn`` will be in net building
+        regardless of which branch is selected at runtime. This has frequently
+        surprised users who expected a lazy semantics. For example:
 
         .. code-block:: python
 
@@ -2328,9 +2366,11 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             a = paddle.zeros((1, 1))
             b = paddle.zeros((1, 1))
             c = a * b
-            out = paddle.nn.cond(a < b, lambda: a + c, lambda: b * b)
+            out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
-        No matter whether ``a < b`` , ``c = a * b`` will run.
+        No matter whether ``a < b`` , ``c = a * b`` will be in net building and
+        run. ``a + c`` and ``b * b`` will be in net building, but only one
+        branch will be executed during runtime.
 
     Args:
         pred(Tensor): A boolean tensor whose numel should be 1. The boolean
@@ -2366,24 +2406,24 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #     return 3, 2
             #
 
-
             def true_func():
-                return paddle.fill_constant(shape=[1, 2], dtype='int32',
-                                            value=1), paddle.fill_constant(shape=[2, 3],
-                                                                           dtype='bool',
-                                                                           value=True)
+                return paddle.full(shape=[1, 2], dtype='int32',
+                                   fill_value=1), paddle.full(shape=[2, 3],
+                                                              dtype='bool',
+                                                              fill_value=True)
 
 
             def false_func():
-                return paddle.fill_constant(shape=[3, 4], dtype='float32',
-                                            value=3), paddle.fill_constant(shape=[4, 5],
-                                                                           dtype='int64',
-                                                                           value=2)
+                return paddle.full(shape=[3, 4], dtype='float32',
+                                   fill_value=3), paddle.full(shape=[4, 5],
+                                                              dtype='int64',
+                                                              fill_value=2)
 
-            x = paddle.fill_constant(shape=[1], dtype='float32', value=0.1)
-            y = paddle.fill_constant(shape=[1], dtype='float32', value=0.23)
+
+            x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
+            y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
             pred = paddle.less_than(x=x, y=y, name=None)
-            ret = paddle.nn.cond(pred, true_func, false_func)
+            ret = paddle.static.nn.cond(pred, true_func, false_func)
             # ret is a tuple containing 2 tensors
             # ret[0] = [[1 1]]
             # ret[1] = [[ True  True  True]
@@ -2461,7 +2501,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             format(e))
 
     mask = cast(pred, dtype='int32')
-    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
+    merge_func = lambda false_var, true_var : select_input_with_buildin_type([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output
 

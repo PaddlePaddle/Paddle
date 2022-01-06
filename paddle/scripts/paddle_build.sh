@@ -223,7 +223,7 @@ function cmake_base() {
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
-        -DLITE_GIT_TAG=_release/v2.10
+        -DLITE_GIT_TAG=release/v2.10
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
         -DWITH_ARM=${WITH_ARM:-OFF}
@@ -266,7 +266,7 @@ EOF
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
-        -DLITE_GIT_TAG=_release/v2.10 \
+        -DLITE_GIT_TAG=release/v2.10 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
@@ -2373,6 +2373,25 @@ function reuse_so_cache() {
     fi
 }
 
+function trt_convert_test() {
+     set +e
+     cd ${PADDLE_ROOT}
+     result_num=0
+     export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python
+     for file_name in `find python/ -name 'test_trt_convert*'`;do
+         echo "----- test trt ut: $file_name -----"
+         python $file_name
+         res=$?
+         if [ "$res" != "0" ];then
+             echo "$file_name convert test failed " >&2
+             result_num=11
+         fi
+     done
+     if [ "$result_num" != "0" ];then
+         exit 11
+     fi
+ }
+
 function find_temporary_files() {
     set +x
     jsonData=`curl \
@@ -2639,6 +2658,10 @@ function main() {
       test_model_benchmark)
         test_model_benchmark
         ;;
+      trt_convert_test)
+         # only test trt convert.
+         trt_convert_test
+         ;;
       *)
         print_usage
         exit 1

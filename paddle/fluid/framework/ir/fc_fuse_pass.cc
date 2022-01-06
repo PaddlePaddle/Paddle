@@ -51,7 +51,12 @@ FCFusePass::FCFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumGE(1)
+      .IsNumMatch<int>([](int axis) -> bool {
+        if (axis == -1 || axis >= 1) {
+          return true;
+        }
+        return false;
+      })
       .End();
 
   AddOpCompat(OpCompat("relu"))

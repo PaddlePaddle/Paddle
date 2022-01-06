@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
@@ -196,28 +197,9 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                     config.thread_per_block.x * vec_size) +
                    1) *
                   vec_size;
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()).GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
-    if ((seed) && platform::is_gpu_place(seed->place())) {
-      framework::Tensor seed_cpu_tensor;
-      TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
-      seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
-      increment = offset;
-    } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {
-      auto seed_offset = gen_cuda->IncrementOffset(offset);
-      seed_data = seed_offset.first;
-      increment = seed_offset.second;
-    } else {
-      if (seed) {
-        seed_data = *(seed->data<int>());
-      } else {
-        std::random_device rnd;
-        seed_data = is_fix_seed ? seed_val : rnd();
-      }
-      increment = offset;
-    }
+    GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
+                            &seed_data, &increment);
 
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {
@@ -262,34 +244,42 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                 const std::string dropout_implementation,
                                 float dropout_prob, const Tensor& grad_y,
                                 const Tensor& mask, int64_t size,
-                                Tensor* grad_x) {
-  auto M = EigenVector<uint8_t>::Flatten(mask);
+                                Tensor* grad_x, bool is_test = false) {
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(grad_y);
 
   auto& place = *dev_ctx.eigen_device();
-  if (dropout_implementation == "upscale_in_train") {
-    if (dropout_prob == 1.0f) {
-      dX.device(place) = static_cast<T>(0) * dY;
+  if (is_test) {
+    if (dropout_implementation == "upscale_in_train") {
+      dX.device(place) = static_cast<T>(1) * dY;
     } else {
-      int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
-      if (vec_size == 4 && size % 4 == 0) {
-        auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-        auto stream = dev_ctx.stream();
-        platform::GpuLaunchConfig config =
-            platform::GetGpuLaunchConfig1D(dev_ctx, size);
-        DropoutGradCUDAKernel<
-            T, uint8_t,
-            4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-            grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
-            grad_x->data<T>());
-      } else {
-        dX.device(place) =
-            dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
-      }
+      dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
     }
   } else {
-    dX.device(place) = dY * M.cast<T>();
+    auto M = EigenVector<uint8_t>::Flatten(mask);
+    if (dropout_implementation == "upscale_in_train") {
+      if (dropout_prob == 1.0f) {
+        dX.device(place) = static_cast<T>(0) * dY;
+      } else {
+        int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
+        if (vec_size == 4 && size % 4 == 0) {
+          auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+          auto stream = dev_ctx.stream();
+          platform::GpuLaunchConfig config =
+              platform::GetGpuLaunchConfig1D(dev_ctx, size);
+          DropoutGradCUDAKernel<
+              T, uint8_t,
+              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+              grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
+              grad_x->data<T>());
+        } else {
+          dX.device(place) =
+              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+        }
+      }
+    } else {
+      dX.device(place) = dY * M.cast<T>();
+    }
   }
 }
 

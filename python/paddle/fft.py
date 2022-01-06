@@ -15,30 +15,30 @@
 from typing import Sequence
 import numpy as np
 import paddle
-from .attribute import is_complex, is_floating_point, is_interger, _real_to_complex_dtype, _complex_to_real_dtype
-from ..fluid.framework import in_dygraph_mode
-from .. import _C_ops
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
+from .tensor.attribute import is_complex, is_floating_point, is_interger, _real_to_complex_dtype, _complex_to_real_dtype
+from .fluid.framework import in_dygraph_mode
+from . import _C_ops
+from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.layer_helper import LayerHelper
 
 __all__ = [
     'fft',
-    'fft2',
-    'fftn',
     'ifft',
-    'ifft2',
-    'ifftn',
     'rfft',
-    'rfft2',
-    'rfftn',
     'irfft',
-    'irfft2',
-    'irfftn',
     'hfft',
-    'hfft2',
-    'hfftn',
     'ihfft',
+    'fft2',
+    'ifft2',
+    'rfft2',
+    'irfft2',
+    'hfft2',
     'ihfft2',
+    'fftn',
+    'ifftn',
+    'rfftn',
+    'irfftn',
+    'hfftn',
     'ihfftn',
     'fftfreq',
     'rfftfreq',
@@ -362,7 +362,7 @@ def irfft(x, n=None, axis=-1, norm="backward", name=None):
             xp = paddle.to_tensor(x)
             irfft_xp = paddle.fft.irfft(xp).numpy()
             print(irfft_xp)
-            #  [0. 0. 0. 4.]
+            #  [0. 1. 0. 0.]
 
     """
     return fft_c2r(x, n, axis, norm, forward=False, name=name)
@@ -500,7 +500,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             import numpy as np
             import paddle
 
-            x = x = np.mgrid[:4, :4, :4][1]
+            x = np.mgrid[:4, :4, :4][1]
             xp = paddle.to_tensor(x)
             fftn_xp = paddle.fft.fftn(xp, axes=(1, 2)).numpy()
             print(fftn_xp)
@@ -654,9 +654,9 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
         # use axes(2, 0)
         print(paddle.fft.rfftn(x, axes=(2, 0)))
         # Tensor(shape=[2, 3, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
-        #        [[[(24+0j), 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ]],
+        #        [[[(8+0j), 0j     , 0j     ],
+        #          [(8+0j), 0j     , 0j     ],
+        #          [(8+0j), 0j     , 0j     ]],
         #
         #         [[0j     , 0j     , 0j     ],
         #          [0j     , 0j     , 0j     ],
@@ -1135,7 +1135,24 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
             refer to :ref:`api_guide_Name` . 
 
     Returns:
-        out(Tensor) : The result of the inverse real 2-D FFT.
+        out(Tensor) : The result of the inverse hermitian 2-D FFT.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = np.mgrid[:5, :5][0].astype(np.float64)
+            xp = paddle.to_tensor(x)
+            ihfft2_xp = paddle.fft.ihfft2(xp).numpy()
+            print(ihfft2_xp)
+            # [[ 2. +0.j          0. +0.j          0. +0.j        ]
+            #  [-0.5-0.68819096j  0. +0.j          0. +0.j        ]
+            #  [-0.5-0.16245985j  0. +0.j          0. +0.j        ]
+            #  [-0.5+0.16245985j  0. +0.j          0. +0.j        ]
+            #  [-0.5+0.68819096j  0. +0.j          0. +0.j        ]]
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
@@ -1273,9 +1290,8 @@ def fftshift(x, axes=None, name=None):
             import paddle
 
             x = np.array([3, 1, 2, 2, 3], dtype=float)
-            scalar_temp = 0.3
             n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
             res = paddle.fft.fftshift(fftfreq_xp).numpy()
             print(res)
             #  [-1.3333334 -0.6666667  0.         0.6666667  1.3333334]
@@ -1284,13 +1300,13 @@ def fftshift(x, axes=None, name=None):
     shape = paddle.shape(x)
     if axes is None:
         # shift all axes
-        rank = paddle.rank(x).reshape([1])
-        axes = axes or paddle.arange(0, rank)
-        shifts = [size // 2 for size in shape]
+        rank = len(x.shape)
+        axes = list(range(0, rank))
+        shifts = shape // 2
     elif isinstance(axes, int):
         shifts = shape[axes] // 2
     else:
-        shifts = [shape[ax] // 2 for ax in axes]
+        shifts = paddle.concat([shape[ax] // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 
@@ -1317,9 +1333,8 @@ def ifftshift(x, axes=None, name=None):
             import paddle
 
             x = np.array([3, 1, 2, 2, 3], dtype=float)
-            scalar_temp = 0.3
             n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
             res = paddle.fft.ifftshift(fftfreq_xp).numpy()
             print(res)
             #  [ 1.3333334 -1.3333334 -0.6666667  0.         0.6666667]
@@ -1328,13 +1343,13 @@ def ifftshift(x, axes=None, name=None):
     shape = paddle.shape(x)
     if axes is None:
         # shift all axes
-        rank = paddle.rank(x).reshape([1])
-        axes = axes or paddle.arange(0, rank)
-        shifts = [-size // 2 for size in shape]
+        rank = len(x.shape)
+        axes = list(range(0, rank))
+        shifts = -shape // 2
     elif isinstance(axes, int):
         shifts = -shape[axes] // 2
     else:
-        shifts = [-shape[ax] // 2 for ax in axes]
+        shifts = paddle.concat([-shape[ax] // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 
@@ -1346,7 +1361,7 @@ def fft_c2c(x, n, axis, norm, forward, name):
         x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
     _check_normalization(norm)
 
-    axis = axis or -1
+    axis = axis if axis is not None else -1
     _check_fft_axis(x, axis)
     axes = [axis]
     axes = _normalize_axes(x, axes)
@@ -1376,7 +1391,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
     if is_interger(x):
         x = paddle.cast(x, paddle.get_default_dtype())
     _check_normalization(norm)
-    axis = axis or -1
+    axis = axis if axis is not None else -1
     _check_fft_axis(x, axis)
     axes = [axis]
     axes = _normalize_axes(x, axes)
@@ -1415,7 +1430,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
     elif is_floating_point(x):
         x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
     _check_normalization(norm)
-    axis = axis or -1
+    axis = axis if axis is not None else -1
     _check_fft_axis(x, axis)
     axes = [axis]
     axes = _normalize_axes(x, axes)

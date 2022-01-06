@@ -702,6 +702,11 @@ class TestVarBase(unittest.TestCase):
         assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
         assert_getitem_ellipsis_index(var_int, np_int_value)
 
+        # test 1 dim tensor
+        var_one_dim = paddle.to_tensor([1, 2, 3, 4])
+        self.assertTrue(
+            np.array_equal(var_one_dim[..., 0].numpy(), np.array([1])))
+
     def _test_none_index(self):
         shape = (8, 64, 5, 256)
         np_value = np.random.random(shape).astype('float32')
@@ -718,6 +723,7 @@ class TestVarBase(unittest.TestCase):
             var_tensor[None].numpy(),
             var_tensor[0, 0, None, 0, 0, None].numpy(),
             var_tensor[None, None, 0, ..., None].numpy(),
+            var_tensor[..., None, :, None].numpy(),
             var_tensor[0, 1:10:2, None, None, ...].numpy(),
         ]
 
@@ -733,11 +739,12 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
         self.assertTrue(
             np.array_equal(var[9], np_value[None, None, 0, ..., None]))
+        self.assertTrue(np.array_equal(var[10], np_value[..., None, :, None]))
 
         # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
         #              indexs has int type 
         # self.assertTrue(
-        #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
+        #     np.array_equal(var[11], np_value[0, 1:10:2, None, None, ...]))
 
     def _test_bool_index(self):
         shape = (4, 2, 5, 64)

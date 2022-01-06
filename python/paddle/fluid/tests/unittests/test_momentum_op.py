@@ -138,50 +138,70 @@ class TestMomentumOp2(OpTest):
                  "core is not compiled with CUDA")
 class TestLarsMomentumOpWithMP(OpTest):
     def setUp(self):
+        self.config()
         self.op_type = "lars_momentum"
-
-        master_param = np.random.random((123, 321)).astype("float32")
-        param = master_param.astype("float16")
-        grad = np.random.random((123, 321)).astype("float16")
-        velocity = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.001]).astype("float32")
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
         rescale_grad = 1.0
 
+        params = []
+        grads = []
+        velocitys = []
+        learning_rates = []
+        master_params = []
+        param_outs = []
+        velocity_outs = []
+        master_param_outs = []
+        for i in range(self.params_num):
+            master_param = np.random.random((123, 321)).astype("float32")
+            param = master_param.astype("float16")
+            grad = np.random.random((123, 321)).astype("float16")
+            velocity = np.zeros((123, 321)).astype("float32")
+            learning_rate = np.array([0.001]).astype("float32")
+
+            fp32_grad = grad.astype("float32")
+            pnorm = np.sqrt(np.square(master_param).sum())
+            gnorm = np.sqrt(np.square(fp32_grad).sum())
+            local_lr = learning_rate * lars_coeff * pnorm / (
+                gnorm + lars_weight_decay * pnorm)
+            fp32_grad = fp32_grad * rescale_grad
+            velocity_out = mu * velocity + local_lr * (
+                fp32_grad + lars_weight_decay * master_param)
+            p_new = master_param - velocity_out
+            param_out = p_new.astype("float16")
+            master_param_out = p_new
+
+            params.append(("SubParam_" + str(i), param))
+            grads.append(("SubGrad_" + str(i), grad))
+            velocitys.append(("SubVelocity_" + str(i), velocity))
+            learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
+            velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
+            param_outs.append(("SubParam_out_" + str(i), param_out))
+            master_params.append(("SubMasterParam_" + str(i), master_param))
+            master_param_outs.append(
+                ("SubMasterParamOut_" + str(i), master_param_out))
+
         self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Velocity': velocity,
-            'LearningRate': learning_rate,
-            'MasterParam': master_param,
+            'Param': params,
+            'Grad': grads,
+            'Velocity': velocitys,
+            'LearningRate': learning_rates,
+            'MasterParam': master_params,
         }
 
         self.attrs = {
             'mu': mu,
             'lars_coeff': lars_coeff,
-            'lars_weight_decay': lars_weight_decay,
+            'lars_weight_decay': [lars_weight_decay],
             'multi_precision': True,
             'rescale_grad': rescale_grad
         }
 
-        fp32_grad = grad.astype("float32")
-        pnorm = np.sqrt(np.square(master_param).sum())
-        gnorm = np.sqrt(np.square(fp32_grad).sum())
-        local_lr = learning_rate * lars_coeff * pnorm / (
-            gnorm + lars_weight_decay * pnorm)
-        fp32_grad = fp32_grad * rescale_grad
-        velocity_out = mu * velocity + local_lr * (fp32_grad + lars_weight_decay
-                                                   * master_param)
-        p_new = master_param - velocity_out
-        param_out = p_new.astype("float16")
-        master_param_out = p_new
-
         self.outputs = {
-            'ParamOut': param_out,
-            'VelocityOut': velocity_out,
-            'MasterParamOut': master_param_out
+            'ParamOut': param_outs,
+            'VelocityOut': velocity_outs,
+            'MasterParamOut': master_param_outs
         }
 
     def test_check_output(self):
@@ -191,45 +211,64 @@ class TestLarsMomentumOpWithMP(OpTest):
             if core.is_float16_supported(place):
                 self.check_output_with_place(place)
 
+    def config(self):
+        self.params_num = 1
+
 
 class TestLarsMomentumOp(OpTest):
     def setUp(self):
+        self.config()
         self.op_type = "lars_momentum"
-
-        param = np.random.random((123, 321)).astype("float32")
-        grad = np.random.random((123, 321)).astype("float32")
-        velocity = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.001]).astype("float32")
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
 
+        params = []
+        grads = []
+        velocitys = []
+        param_outs = []
+        velocity_outs = []
+        learning_rates = []
+        for i in range(self.params_num):
+            param = np.random.random((123, 321)).astype("float32")
+            grad = np.random.random((123, 321)).astype("float32")
+            velocity = np.zeros((123, 321)).astype("float32")
+            learning_rate = np.array([0.001]).astype("float32")
+            pnorm = np.sqrt(np.square(param).sum())
+            gnorm = np.sqrt(np.square(grad).sum())
+            local_lr = learning_rate * lars_coeff * pnorm / (
+                gnorm + lars_weight_decay * param)
+            velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay
+                                                       * param)
+            param_out = param - velocity_out
+
+            params.append(("SubParam_" + str(i), param))
+            grads.append(("SubGrad_" + str(i), grad))
+            velocitys.append(("SubVelocity_" + str(i), velocity))
+            learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
+            velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
+            param_outs.append(("SubParam_out_" + str(i), param_out))
+
         self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Velocity': velocity,
-            'LearningRate': learning_rate
+            'Param': params,
+            'Grad': grads,
+            'Velocity': velocitys,
+            'LearningRate': learning_rates
         }
 
         self.attrs = {
             'mu': mu,
             'lars_coeff': lars_coeff,
-            'lars_weight_decay': lars_weight_decay
+            'lars_weight_decay': [lars_weight_decay]
         }
-
-        pnorm = np.sqrt(np.square(param).sum())
-        gnorm = np.sqrt(np.square(grad).sum())
-        local_lr = learning_rate * lars_coeff * pnorm / (
-            gnorm + lars_weight_decay * param)
-        velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay *
-                                                   param)
-        param_out = param - velocity_out
-
-        self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
+        self.outputs = {'ParamOut': param_outs, 'VelocityOut': velocity_outs}
 
     def test_check_output(self):
         paddle.enable_static()
         self.check_output()
+
+    def config(self):
+        self.params_num = 1
 
 
 class TestSparseMomentumOp(unittest.TestCase):

@@ -31,7 +31,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
  public:
   AutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-      size_t chunk_size = 0);
+      size_t chunk_size = 0, bool allow_free_idle_chunk = true);
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -86,6 +86,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   std::list<Chunk> chunks_;
   size_t alignment_;
   size_t chunk_size_;
+  bool allow_free_idle_chunk_;
 
   SpinLock spinlock_;
 };

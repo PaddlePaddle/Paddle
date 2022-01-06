@@ -54,6 +54,25 @@ def get_minor():
 def get_patch():
     return str(_get_version_detail(2))
 
+def get_cuda_version():
+    if '@WITH_GPU@' == 'ON':
+        return '@CUDA_VERSION@'
+    else:
+        return 'False'
+
+def get_cudnn_version():
+    if '@WITH_GPU@' == 'ON':
+        temp_cudnn_version = ''
+        if '@CUDNN_MAJOR_VERSION@':
+            temp_cudnn_version += '@CUDNN_MAJOR_VERSION@'
+            if '@CUDNN_MINOR_VERSION@':
+                temp_cudnn_version += '.@CUDNN_MINOR_VERSION@'
+                if '@CUDNN_PATCHLEVEL_VERSION@':
+                    temp_cudnn_version += '.@CUDNN_PATCHLEVEL_VERSION@'
+        return temp_cudnn_version
+    else:
+        return 'False'
+
 def is_taged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
@@ -67,7 +86,7 @@ def is_taged():
     else:
         return False
 
-def write_version_py(filename='paddle/version.py'):
+def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
 full_version    = '%(major)d.%(minor)d.%(patch)s'
@@ -75,9 +94,13 @@ major           = '%(major)d'
 minor           = '%(minor)d'
 patch           = '%(patch)s'
 rc              = '%(rc)d'
+cuda_version    = '%(cuda)s'
+cudnn_version   = '%(cudnn)s'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
 with_mkl        = '%(with_mkl)s'
+
+__all__ = ['cuda', 'cudnn']
 
 def show():
     if istaged:
@@ -91,8 +114,51 @@ def show():
 
 def mkl():
     return with_mkl
+
+def cuda():
+    """Get cuda version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda. If paddle package is CPU version, it will return False.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cuda()
+            # '10.2'
+
+    """
+    return cuda_version
+
+def cudnn():
+    """Get cudnn version of paddle package.
+
+    Returns:
+        string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cudnn()
+            # '7.6.5'
+
+    """
+    return cudnn_version
 '''
     commit = git_commit()
+
+    dirname = os.path.dirname(filename)
+
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     with open(filename, 'w') as f:
         f.write(cnt % {
             'major': get_major(),
@@ -100,11 +166,13 @@ def mkl():
             'patch': get_patch(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
+            'cuda': get_cuda_version(),
+            'cudnn': get_cudnn_version(),
             'commit': commit,
             'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
 
-write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
+write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
 def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
     cnt = ""
@@ -163,6 +231,7 @@ packages=['paddle',
           'paddle.incubate.checkpoint',
           'paddle.incubate.operators',
           'paddle.incubate.tensor',
+          'paddle.incubate.nn',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
@@ -230,6 +299,9 @@ packages=['paddle',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
+          'paddle.incubate.nn',
+          'paddle.incubate.nn.functional',
+          'paddle.incubate.nn.layer',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -242,11 +314,13 @@ packages=['paddle',
           'paddle.static',
           'paddle.static.nn',
           'paddle.static.amp',
+          'paddle.static.sparsity',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
           'paddle.device',
           'paddle.device.cuda',
+          'paddle.version',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:

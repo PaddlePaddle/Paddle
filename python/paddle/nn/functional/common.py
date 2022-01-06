@@ -235,8 +235,8 @@ def interpolate(x,
     Examples:
         .. code-block:: python
 
-	    import paddle
-	    import numpy as np
+	        import paddle
+	        import numpy as np
             import paddle.nn.functional as F
             
             # given out size
@@ -244,7 +244,7 @@ def interpolate(x,
             x = paddle.to_tensor(input_data)
             output_1 = F.interpolate(x=x, size=[12,12])
     	    print(output_1.shape)
-	    # [2L, 3L, 12L, 12L]
+	        # [2L, 3L, 12L, 12L]
             
             # given scale
             output_2 = F.interpolate(x=x, scale_factor=[2,1])
@@ -939,6 +939,8 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
+            if not in_dygraph_mode():
+                input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
@@ -948,8 +950,12 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            for i in drop_axes:
-                mask_shape[i] = input_shape[i]
+            if not in_dygraph_mode():
+                for i in drop_axes:
+                    mask_shape[i] = input_shape_tensor[i]
+            else:
+                for i in drop_axes:
+                    mask_shape[i] = input_shape[i]
 
             #get mask
             random_tensor = paddle.uniform(

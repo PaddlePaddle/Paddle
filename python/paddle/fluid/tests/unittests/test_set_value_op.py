@@ -408,6 +408,14 @@ class TestSetValueItemNone9(TestSetValueApi):
         self.data[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
 
+class TestSetValueItemNone10(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
+
+    def _get_answer(self):
+        self.data[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
+
+
 # 1.5 item is list or Tensor of bol
 class TestSetValueItemBool1(TestSetValueApi):
     def _call_setitem(self, x):
@@ -1153,6 +1161,18 @@ class TestGradientTruncated(unittest.TestCase):
             np.array_equal(value.grad.numpy(), value_grad),
             msg="The gradient of input should be \n{},\n but reveived {}".
             format(value_grad, value.grad.numpy()))
+
+        # case 6: pass stop_gradient from value to x
+        x = paddle.zeros([8, 8], dtype='float32')
+        value = paddle.to_tensor([10], dtype='float32', stop_gradient=False)
+
+        self.assertTrue(x.stop_gradient)
+        self.assertTrue(x.is_leaf)
+
+        x[0, :] = value
+
+        self.assertTrue(~x.stop_gradient)
+        self.assertTrue(~x.is_leaf)
 
     def test_static_graph(self):
         paddle.enable_static()

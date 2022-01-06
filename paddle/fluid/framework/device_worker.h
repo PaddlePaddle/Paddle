@@ -614,5 +614,95 @@ class SectionWorker : public DeviceWorker {
 };
 #endif
 
+#if defined(PADDLE_WITH_PSCORE)
+class HeterSectionWorker : public DeviceWorker {
+ public:
+  HeterSectionWorker() {}
+  ~HeterSectionWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override;
+
+  void BindingDataFeedMemory() override {}
+  void BindingDataFeedMemory(int micro_id);
+  void PrintFetchVars() override;
+  const platform::Place& place() const { return place_; }
+
+  void SetDeviceIndex(int tid) override { thread_id_ = tid; }
+  void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
+  std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
+    return microbatch_scopes_;
+  }
+  void SetMicrobatchScopes(
+      std::shared_ptr<std::vector<Scope*>> microbatch_scopes) {
+    microbatch_scopes_ = microbatch_scopes;
+  }
+  using SHARED_THREAD_QUEUE = std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>;
+
+  SHARED_THREAD_QUEUE GetThreadQueue() { return thread_queue_; }
+  void SetThreadQueue(SHARED_THREAD_QUEUE thread_queue) {
+    thread_queue_ = thread_queue;
+  }
+  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+                      const platform::Place& place);
+  void SetMinibatchScope(Scope* scope) { minibatch_scope_ = scope; }
+  void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
+  void SetTrainers(int trainers) { this->trainers_ = trainers; }
+  void CreateMicrobatchScopes();
+  void RunForward(int micro_id);
+  void RunBackward(int micro_id);
+  void RunListen();
+  void MiniBatchBarrier();
+  void Run();
+  void BatchPostProcess();
+  void SetDebug(bool debug) { debug_ = debug; }
+  Scope* GetThreadScope() override { return minibatch_scope_; }
+
+  // multi-stream
+  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  //  void SetStream(const gpuStream_t stream) override {}
+  //  void SetEvent(const gpuEvent_t event) override {}
+  // #endif
+
+ protected:
+  int trainer_id_;
+  int trainers_;
+  int thread_num_;
+  int thread_id_;
+  int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  bool epoch_finish_;
+
+  std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
+  Scope* minibatch_scope_;
+  std::vector<int> micro_ids_{};
+  std::unique_ptr<OperatorBase> listen_op_{nullptr};
+  std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
+  std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
+  std::shared_ptr<framework::ProgramDesc> program_;
+  std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>
+      thread_queue_;
+  static uint64_t batch_id_;
+  uint64_t total_ins_num_ = 0;
+  platform::DeviceContext* dev_ctx_ = nullptr;
+
+  bool debug_ = false;
+  std::vector<double> op_total_time_;
+  std::vector<std::string> op_name_;
+  platform::Timer timeline_;
+  double total_time_ = 0.0;
+  double read_time_ = 0.0;
+};
+#endif
+
 }  // namespace framework
 }  // namespace paddle

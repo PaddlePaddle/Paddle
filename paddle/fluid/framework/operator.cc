@@ -76,6 +76,8 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
     } else {
       return var->Get<SelectedRows>().GetCompleteDims();
     }
+  } else if (var->IsType<Strings>()) {
+    return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
   } else {
     return DDim({-1});
   }
@@ -106,6 +108,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     } else {
       return DataTypeToString(tensor.type());
     }
+  } else if (var->IsType<Strings>()) {
+    return "strings";
   } else {
     return "";
   }
@@ -1062,8 +1066,9 @@ bool OperatorWithKernel::SupportsMKLDNN(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  bool use_mkldnn_ctx =
-      ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
+  bool use_mkldnn_ctx = ctx.HasAttr("use_mkldnn") &&
+                        ctx.Attr<bool>("use_mkldnn") &&
+                        platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 

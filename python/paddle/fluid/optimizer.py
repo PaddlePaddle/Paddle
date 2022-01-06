@@ -2064,8 +2064,9 @@ class LarsMomentumOptimizer(Optimizer):
         attrs = {
             "mu": self._momentum,
             "lars_coeff": self._lars_coeff,
-            "lars_weight_decay": _lars_weight_decay,
+            "lars_weight_decay": [_lars_weight_decay],
             "multi_precision": find_master,
+            "epsilon": self._epsilon,
             "rescale_grad": self._rescale_grad
         }
 
@@ -2084,7 +2085,7 @@ class LarsMomentumOptimizer(Optimizer):
 
         # create the momentum optimize op
         momentum_op = block.append_op(
-            type=self.type,
+            type=self.type if _lars_weight_decay != 0.0 else 'momentum',
             inputs=inputs,
             outputs=outputs,
             attrs=attrs,

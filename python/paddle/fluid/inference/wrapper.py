@@ -29,10 +29,14 @@ def tensor_copy_from_cpu(self, data):
     '''
     Support input type check based on tensor.copy_from_cpu.
     '''
-    if not isinstance(data, np.ndarray):
+    if isinstance(data, np.ndarray) or (isinstance(data, list) and
+                                        len(data) > 0 and
+                                        isinstance(data[0], str)):
+        self.copy_from_cpu_bind(data)
+    else:
         raise TypeError(
-            "In copy_from_cpu, we only support numpy ndarray data type.")
-    self.copy_from_cpu_bind(data)
+            "In copy_from_cpu, we only support numpy ndarray and list[str] data type."
+        )
 
 
 Tensor.copy_from_cpu = tensor_copy_from_cpu

@@ -48,7 +48,7 @@ def is_compiled_with_npu():
         .. code-block:: python
 
             import paddle
-            support_npu = paddle.is_compiled_with_npu()
+            support_npu = paddle.device.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
 
@@ -63,7 +63,7 @@ def is_compiled_with_xpu():
         .. code-block:: python
 
             import paddle
-            support_xpu = paddle.is_compiled_with_xpu()
+            support_xpu = paddle.device.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
 
@@ -77,10 +77,11 @@ def XPUPlace(dev_id):
 
     Examples:
         .. code-block:: python
+
             # required: xpu
             
             import paddle
-            place = paddle.XPUPlace(0)
+            place = paddle.device.XPUPlace(0)
     """
     return core.XPUPlace(dev_id)
 
@@ -98,7 +99,7 @@ def get_cudnn_version():
             
             import paddle
 
-            cudnn_version = paddle.get_cudnn_version()
+            cudnn_version = paddle.device.get_cudnn_version()
 
 
 
@@ -195,7 +196,7 @@ def set_device(device):
             
         import paddle
 
-        paddle.set_device("cpu")
+        paddle.device.set_device("cpu")
         x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
         data = paddle.stack([x1,x2], axis=1)
@@ -217,7 +218,7 @@ def get_device():
      .. code-block:: python
             
         import paddle
-        device = paddle.get_device()
+        device = paddle.device.get_device()
 
     """
     device = ''
