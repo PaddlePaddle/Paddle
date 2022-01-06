@@ -114,36 +114,6 @@ class InternalThreadId {
   ThreadId id_;
 };
 
-/*class ThreadIdRegistry {
- public:
-  // Singleton
-  static ThreadIdRegistry& GetInstance() {
-    static ThreadIdRegistry instance;
-    return instance;
-  }
-
-  void RegisterThread(const ThreadIdHolder& id) {
-    std::lock_guard<std::mutex> lock(lock_);
-    id_map_[id.GetMainTid()] = &id;
-  }
-
-  void UnregisterThread(const ThreadIdHolder& id) {
-    std::lock_guard<std::mutex> lock(lock_);
-    id_map_.erase(id.GetMainTid());
-  }
-
-  // Returns current snapshot of all threads.
-  std::vector<ThreadId> AllThreadIds();
-
- private:
-  ThreadIdRegistry() = default;
-
-  DISABLE_COPY_AND_ASSIGN(ThreadIdRegistry);
-
-  std::mutex lock_;
-  std::unordered_map<uint64_t, const ThreadIdHolder*> id_map_;
-};*/
-
 InternalThreadId::InternalThreadId() {
   // C++ std tid
   id_.std_tid = std::hash<std::thread::id>()(std::this_thread::get_id());
@@ -161,18 +131,6 @@ InternalThreadId::InternalThreadId() {
   id_.cupti_tid = static_cast<uint32_t>(std::stoull(ss.str()));
 }
 
-/*std::vector<ThreadId> ThreadIdRegistry::AllThreadIds() {
-  std::vector<ThreadId> ids;
-  std::lock_guard<std::mutex> lock(lock_);
-  ids.reserve(id_map_.size());
-  for (const auto& kv : id_map_) {
-    ids.push_back(kv.second->GetTid());
-  }
-  return std::move(ids);
-}
-
-static thread_local ThreadIdHolder thread_id;
-*/
 }  // namespace internal
 
 uint64_t GetCurrentThreadMainId() {
