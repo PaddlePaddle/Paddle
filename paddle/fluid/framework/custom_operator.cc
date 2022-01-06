@@ -828,7 +828,6 @@ void RegisterOperatorWithMetaInfo(
         //    use grad input shape as grad output shape
         //    [Suitable for the situation that forward input is not used as
         //    backward input]
-        // TODO(chenweihang): support set grad op infershape func if needed
         for (auto& out_name : grad_op_outputs) {
           auto fwd_name = detail::NoGrad(out_name);
           if (detail::IsDuplicableVar(fwd_name)) {
