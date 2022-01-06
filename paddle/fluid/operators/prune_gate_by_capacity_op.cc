@@ -29,10 +29,6 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
 
     OP_INOUT_CHECK(ctx->HasOutput("NewGateIdx"), "Output", "NewGateIdx",
                    "prun_gate_by_capacity");
-    // OP_INOUT_CHECK(ctx->HasOutput("ExpertCountOut"), "Output",
-    // "ExpertCountOut",
-    //                "prun_gate_by_capacity");
-    // auto gate_idx_dims = ctx->GetInputDim("GateIdx");
     auto expert_count_dims = ctx->GetInputDim("ExpertCount");
 
     int64_t n_expert = ctx->Attrs().Get<int64_t>("n_expert");
@@ -93,11 +89,6 @@ class PruneGateByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("NewGateIdx",
               "(Tensor), The gate_id sequence corresponding to the new input "
               "data after passing through prune.");
-    // AddOutput(
-    //     "ExpertCountOut",
-    //     "(Tensor), The copy quantity value counted on the gate_id sequence of
-    //     "
-    //     "the input data.");
 
     AddComment(R"DOC(
 prune_gate_by_capacity Operator.
