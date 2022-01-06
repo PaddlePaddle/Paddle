@@ -97,13 +97,17 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _apply_serial_pass(self, main_program, startup_program):
+    def _apply_serial_pass(self, main_program, startup_program, loss,
+                           params_grads):
 
         # apply amp pass
         if self._dist_strategy.amp:
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp_pass",
-                                              self._dist_strategy.amp_configs)
-            auto_parallel_amp_pass.apply(main_program, startup_program,
+            config = copy.deepcopy(self._dist_strategy.amp_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["loss"] = loss
+            auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+            auto_parallel_amp_pass.apply([main_program], [startup_program],
                                          self._pass_context)
 
         # apply recompute pass
@@ -185,7 +189,8 @@ class AutoParallelizer:
             self._parameter_list, self._no_grad_set, self._callbacks)
 
         # serial forward pass
-        self._apply_serial_pass(completed_main_program, serial_startup_program)
+        self._apply_serial_pass(completed_main_program, serial_startup_program,
+                                serial_loss, params_grads)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
