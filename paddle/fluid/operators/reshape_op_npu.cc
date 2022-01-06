@@ -38,13 +38,12 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
     if (shape_tensor_vector.size() > 0) {
       for (auto* shape_tensor : shape_tensor_vector) {
         PADDLE_ENFORCE_EQ(
-            shape_tensor->dims(), framework::make_ddim({1}),
+            shape_tensor->dims().size(), 1,
             platform::errors::InvalidArgument(
-                "If the element type of 'shape' in ReshapeOp is Tensor, "
+                "If the element type of 'shape' in Reshape Op is Tensor, "
                 "the element's shape must be [1]. But received the element's "
-                "shape "
-                "is [%d]",
-                shape_tensor->dims()));
+                "shape is [%d]",
+                shape_tensor->dims().size()));
 
         target_shape_vector.push_back(GetDataFromTensor<int>(shape_tensor)[0]);
       }
@@ -66,11 +65,12 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
 
     int num_negative =
         std::count(target_shape_vector.begin(), target_shape_vector.end(), -1);
-    PADDLE_ENFORCE_LE(num_negative, 1,
-                      platform::errors::InvalidArgument(
-                          "The max number of -1 in shape attribute is 1 "
-                          "but received %d.",
-                          num_negative));
+    PADDLE_ENFORCE_LE(
+        num_negative, 1,
+        platform::errors::InvalidArgument(
+            "The max number of -1 in shape attribute or shape tensor is 1 "
+            "but received %d.",
+            num_negative));
     auto it_zero =
         std::find(target_shape_vector.begin(), target_shape_vector.end(), 0);
     if (it_zero != target_shape_vector.end()) {
@@ -80,7 +80,7 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_LT(
               i, x_rank,
               platform::errors::InvalidArgument(
-                  "The index of 0 in shape attribute ",
+                  "The index of 0 in shape attribute or shape tensor",
                   "should be less than input dim size, ",
                   "but the index is %d and input dim size is %d", i, x_rank));
           target_shape_vector[i] = x->dims().at(i);
@@ -105,6 +105,7 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out_dims, place);
 
     NpuOpRunner runner;
+    // the shape input must be on the host side
     runner.SetType("Reshape")
         .AddInput(*x)
         .AddInput(std::vector<int32_t>(target_shape_vector))
