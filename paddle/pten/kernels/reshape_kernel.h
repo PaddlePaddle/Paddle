@@ -16,20 +16,32 @@ limitations under the License. */
 
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
-template <typename ContextT>
-void Reshape(const ContextT& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
+template <typename Context>
+void ReshapeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const ScalarArray& shape,
+                   DenseTensor* out);
 
-template <typename ContextT>
-void ReshapeWithXShape(const ContextT& dev_ctx,
+template <typename Context>
+void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        const ScalarArray& shape,
                        DenseTensor* xshape,
                        DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Reshape(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<int64_t>& shape) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
+  auto dense_out = Empty<T, Context>(dev_ctx, std::move(out_meta));
+  ReshapeKernel<Context>(dev_ctx, x, ScalarArray(shape), &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten
