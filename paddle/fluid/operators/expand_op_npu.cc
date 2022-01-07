@@ -81,24 +81,24 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
       out_dims[i] *= expand_times[i];
     }
 
-    out0->Resize(out_dims);
-    out0->mutable_data<T>(context.device_context().GetPlace());
+    auto place = context.GetPlace();
+    auto stream =
+        context.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
 
-    bool is_expand_times_all_one = true;
-    for (auto val : expand_times) {
-      if (val != 1) {
-        is_expand_times_all_one = false;
-      }
-    }
+    out0->Resize(out_dims);
+    out0->mutable_data<T>(place);
+
+    bool is_expand_times_all_one = (out_dims == in_dims) ? true : false;
 
     if (is_expand_times_all_one) {
-      TensorCopySync(*in0, context.device_context().GetPlace(), out0);
+      memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place),
+                   out0->mutable_data<T>(place),
+                   BOOST_GET_CONST(platform::NPUPlace, place), in0->data<T>(),
+                   in0->numel() * sizeof(T), stream);
     } else {
       const auto& runner =
           NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
-      auto stream =
-          context.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
       runner.Run(stream);
     }
   }
