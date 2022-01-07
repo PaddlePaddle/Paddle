@@ -31,6 +31,9 @@ namespace paddle {
 namespace platform {
 namespace internal {
 
+static uint64_t main_tid =
+    std::hash<std::thread::id>()(std::this_thread::get_id());
+
 template <typename T>
 class ThreadDataRegistry {
   class ThreadDataHolder;
@@ -63,6 +66,9 @@ class ThreadDataRegistry {
   }
 
   void UnregisterData(uint64_t tid) {
+    if (std::hash<std::thread::id>()(std::this_thread::get_id()) == main_tid) {
+      return;
+    }
     std::lock_guard<std::mutex> lock(lock_);
     tid_map_.erase(tid);
   }
