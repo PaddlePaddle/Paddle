@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
