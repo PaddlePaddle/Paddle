@@ -28,6 +28,7 @@ from paddle.fluid.optimizer import ModelAverage, DGCMomentumOptimizer, Exponenti
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -220,8 +221,13 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
             boundaries=bd, values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]))
         return optimizer
 
-    def test_sgd(self):
+    def func_test_sgd(self):
         self._check_mlp()
+
+    def test_sgd(self):
+        with _test_eager_guard():
+            self.func_test_sgd()
+        self.func_test_sgd()
 
 
 class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
