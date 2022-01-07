@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/os_info.h"
+#include <functional>
 #include <mutex>
 #include <sstream>
 #include <thread>
@@ -55,12 +56,6 @@ class ThreadDataRegistry {
     }
     return std::move(data_copy);
   }
-
-  // Returns current snapshot of all threads. Make sure there is no thread
-  // create/destory when using it.
-  // std::vector<std::reference_wrapper<T>> GetAllThreadDataByRef() {
-
-  //}
 
   void RegisterData(uint64_t tid, ThreadDataHolder* tls_obj) {
     std::lock_guard<std::mutex> lock(lock_);
@@ -119,9 +114,9 @@ InternalThreadId::InternalThreadId() {
   id_.std_tid = std::hash<std::thread::id>()(std::this_thread::get_id());
 // system tid
 #if defined(__linux__)
-  id_.sys_tid = syscall(SYS_gettid);
+  id_.sys_tid = static_cast<uint64_t>(syscall(SYS_gettid));
 #elif defined(_MSC_VER)
-  id_.sys_tid = GetCurrentThreadId();
+  id_.sys_tid = static_cast<uint64_t>(GetCurrentThreadId());
 #else  // unsupported platforms, use std_tid
   id_.sys_tid = id_.std_tid;
 #endif
