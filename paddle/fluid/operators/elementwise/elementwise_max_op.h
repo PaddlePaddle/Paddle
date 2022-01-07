@@ -98,10 +98,11 @@ class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = dout;  // out is not necessary
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    ElementwiseMaxGrad<DeviceContext, T>(ctx, x, y, nullptr, dout, dx, dy);
+    ElementwiseMaxGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
   }
 };
 
