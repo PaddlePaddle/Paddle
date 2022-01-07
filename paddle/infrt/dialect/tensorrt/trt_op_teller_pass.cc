@@ -20,7 +20,6 @@
 
 namespace infrt {
 namespace trt {
-
 // Implementation of the trtOpTellerPass。
 void trtOpTellerPass::runOnFunction() {
   ::mlir::Block &body = getFunction().front();
@@ -60,6 +59,5 @@ void trtOpTellerPass::runOnFunction() {
     builder.create<mlir::pd::FetchOp>(loc, op->getResults());
   }
 }
-
 }  // namespace trt
 }  // namespace infrt

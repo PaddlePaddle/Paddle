@@ -72,6 +72,7 @@ class ShardingStage3(nn.Layer):
                  pertrain_sync_models=True,
                  accumulate_grads=False,
                  offload=False,
+                 sync_comm=False,
                  not_update_list=[]):
         super().__init__()
 
@@ -82,6 +83,7 @@ class ShardingStage3(nn.Layer):
         self.__sync_buffers = sync_buffers
         self._accumulate_grads = accumulate_grads
         self._offload = offload
+        self._sync_comm = sync_comm
 
         # Communication group establishment
         self._group = dist.new_group(_get_global_group()
@@ -308,10 +310,12 @@ class ShardingStage3(nn.Layer):
         """
         Register pylayer to manage memory slices.
         There are four stages:
-        1.
-        2.
-        3.
-        4.
+        FW
+        1. Before the forward layers, synchronize the full parameters.
+        2. After the forward layers, release the full parameter and keep the parameter slice.
+        BW
+        3. Before the backward layers, synchronize the full parameters and create param's grad.
+        4. After the gradient accumulation, release the full parameter and keep the parameter slice.
         """
         current_layer_params = _current_layer_params(layer)
         if current_layer_params:
@@ -322,15 +326,13 @@ class ShardingStage3(nn.Layer):
 
     def _register_forward_all_hooks(self, sub_layer, task_flow):
         def _forward_pre_hook(layer, inputs):
-            return ForwardPreHooks.apply(
-                inputs, layer, self._order_tracer, self._trainable_params,
-                self._param2buffer, self._rank, self._group, task_flow)
+            return ForwardPreHooks(layer, self._order_tracer, self._trainable_params, self._param2buffer, self._rank, self._group, self._sync_comm, task_flow)
 
         def _forward_post_hook(layer, inputs, outputs):
             return ForwardPostHooks.apply(
                 outputs, layer, self._order_tracer, self._trainable_params,
                 self._param2buffer, self._param2buffer_size, self._rank,
-                self._group, task_flow)
+                self._group, self._sync_comm, task_flow)
 
         # register previous forward hooks
         sub_layer.register_forward_pre_hook(_forward_pre_hook)
@@ -493,95 +495,58 @@ class ShardingStage3(nn.Layer):
         self._optim.clear_grad = MethodType(_opt_clear, self._optim)
 
 
-class ForwardPreHooks(PyLayer):
-    @staticmethod
-    def forward(ctx, inputs, layer, order_tracer, trainable_params,
-                param2buffer, rank, group, task_flow):
-        # Record layer's id
-        layer_id = id(layer)
-        use_calc, sync_wait = False, False
+def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank, group, sync_comm, task_flow):
 
-        ctx.rank = rank
-        ctx.layer = layer
-        ctx.task_flow = task_flow
-        ctx.trainable_params = trainable_params
-        ctx.param2buffer = param2buffer
+    # Record layer's id
+    layer_id = id(layer)
+    use_calc, sync_wait = False, False
 
-        if layer_id not in order_tracer.keys():
-            use_calc, sync_wait = True, True
+    if layer_id not in order_tracer.keys() or sync_comm:
+        use_calc, sync_wait = True, True
 
-            # Whether to use calc stream
-            task_flow.use_calc[layer_id] = use_calc
-        else:
-            # Whether to use calc stream
-            task_flow.use_calc[layer_id] = use_calc
-            order_ = order_tracer[layer_id]
-            if not order_:
-                # Allgather current layer in the 1st step of the 1st layer
-                _allgather_buffer(
-                    layer_id,
-                    trainable_params,
-                    group,
-                    use_calc_stream=use_calc,
-                    task_flow=task_flow,
-                    sync_wait=True)
+        # Whether to use calc stream
+        task_flow.use_calc[layer_id] = use_calc
+    else:
+        # Whether to use calc stream
+        task_flow.use_calc[layer_id] = use_calc
+        # wait current layer params
+        _wait_layer(trainable_params, layer_id, task_flow, group, use_calc)
+        
+        if layer_id == order_tracer["layer"][-1]:return
+        order_ = order_tracer[layer_id]
+        layer_id = order_tracer["layer"][order_ + 1]
 
-            if layer_id == order_tracer["layer"][-1]:
-                return inputs
-            layer_id = order_tracer["layer"][order_ + 1]
-        _allgather_buffer(
-            layer_id,
-            trainable_params,
-            group,
-            use_calc_stream=use_calc,
-            task_flow=task_flow,
-            sync_wait=sync_wait)
+    _allgather_buffer(
+        layer_id,
+        trainable_params,
+        group,
+        use_calc_stream=use_calc,
+        task_flow=task_flow,
+        sync_wait=sync_wait)
 
-        return inputs
-
-    @staticmethod
-    def backward(ctx, *args):
-        rank = ctx.rank
-        layer = ctx.layer
-        task_flow = ctx.task_flow
-        trainable_params = ctx.trainable_params
-        param2buffer = ctx.param2buffer
-
-        # release current layer full params
-        _release_param(layer, trainable_params, param2buffer, rank, task_flow)
-
-        return args
-
+    return
 
 class ForwardPostHooks(PyLayer):
     @staticmethod
     def forward(ctx, inputs, layer, order_tracer, trainable_params,
-                param2buffer, param2buffer_size, rank, group, task_flow):
+                param2buffer, param2buffer_size, rank, group, sync_comm, task_flow):
 
         # release current layer full params
         _release_param(layer, trainable_params, param2buffer, rank, task_flow)
 
         layer_id = id(layer)
-        use_calc_stream = task_flow.use_calc[layer_id]
         if layer_id not in order_tracer.keys():
             order_ = order_tracer["order"]
             order_tracer[layer_id] = order_
             order_tracer["order"] += 1
             order_tracer["layer"].append(layer_id)
 
-        # wait next layer params
-        if not use_calc_stream:
-            next_index = order_tracer[layer_id] + 1
-            if next_index < order_tracer["order"]:
-                next_layer_id = order_tracer["layer"][next_index]
-                _wait_layer(trainable_params, next_layer_id, task_flow, group,
-                            use_calc_stream)
-
         #Record bw info 
         ctx.order_tracer = order_tracer
         ctx.task_flow = task_flow
         ctx.group = group
         ctx.layer = layer
+        ctx.sync_comm = sync_comm
         ctx.trainable_params = trainable_params
         ctx.param2buffer_size = param2buffer_size
 
@@ -596,19 +561,20 @@ class ForwardPostHooks(PyLayer):
         layer = ctx.layer
         trainable_params = ctx.trainable_params
         param2buffer_size = ctx.param2buffer_size
+        sync_comm = ctx.sync_comm
         layer_id = id(layer)
-        last_layer = layer_id == ctx.order_tracer["layer"][-1]
         use_calc, sync_wait = False, False
 
-        # Allgather params in last layer or wait next layer params
-        if last_layer:
+        # Allgather params synchronization
+        if sync_comm:
+            use_calc, sync_wait = True, True
             _allgather_buffer(
                 layer_id,
                 trainable_params,
                 group,
                 use_calc_stream=use_calc,
                 task_flow=task_flow,
-                sync_wait=True)
+                sync_wait=sync_wait)
         else:
             _wait_layer(trainable_params, layer_id, task_flow, group, use_calc)
 
@@ -618,7 +584,7 @@ class ForwardPostHooks(PyLayer):
 
         # Whether to use calc stream
         task_flow.use_calc[layer_id] = use_calc
-        if layer_id != order_tracer["layer"][0]:
+        if layer_id != order_tracer["layer"][0] and not sync_comm:
             layer_next_id = order_tracer["layer"][order_tracer[layer_id] - 1]
             _allgather_buffer(
                 layer_next_id,
@@ -649,6 +615,7 @@ class TaskFlow:
 
 def _release_param(layer, trainable_params, param2buffer, rank, task_flow):
     for param in trainable_params[id(layer)]:
+        # async communicate share weight not clear
         param.use_count -= 1
         if param.use_count == 0:
             param._clear()
@@ -664,18 +631,20 @@ def _release_param(layer, trainable_params, param2buffer, rank, task_flow):
     return
 
 
-def _wait_layer(trainable_params, next_layer_id, task_flow, group,
+def _wait_layer(trainable_params, layer_id, task_flow, group,
                 use_calc_stream):
-    for param in trainable_params[next_layer_id]:
+    for param in trainable_params[layer_id]:
         if param.status == "all":
+            param.use_count += 1
             continue
         if param.name in task_flow.full_param.keys():
             full_param = task_flow.full_param[param.name]
             with paddle.amp.auto_cast(enable=False):
-                dist.wait(
-                    tensor=full_param,
-                    group=group,
-                    use_calc_stream=use_calc_stream)
+                paddle.device.cuda.synchronize()
+                # dist.wait(
+                #     tensor=full_param,
+                #     group=group,
+                #     use_calc_stream=use_calc_stream)
             core.VarBase(full_param._slice(0, param._numel()))._share_buffer_to(
                 param)
             param.value().get_tensor()._set_dims(param.shape)
@@ -683,6 +652,9 @@ def _wait_layer(trainable_params, next_layer_id, task_flow, group,
             param.fw_storage = None
             param.status = "all"
             param.use_count += 1
+        else:
+            _allgather_buffer(layer_id, trainable_params, group, use_calc_stream, task_flow, sync_wait=True)
+            break
     return task_flow
 
 

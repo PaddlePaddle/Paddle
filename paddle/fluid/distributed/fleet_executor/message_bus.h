@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -51,13 +52,15 @@ class MessageBus final {
   // called by Interceptor, send InterceptorMessage to dst
   bool Send(int64_t dst_rank, const InterceptorMessage& interceptor_message);
 
+  void IncreaseBarrierCount();
+  void Barrier();
+  bool DispatchMsgToCarrier(const InterceptorMessage& interceptor_message);
+
  private:
   DISABLE_COPY_AND_ASSIGN(MessageBus);
 
   // function keep listen the port and handle the message
   void ListenPort();
-
-  void TestConnection();
 
   const std::string& GetAddr(int64_t rank) const;
 
@@ -84,6 +87,11 @@ class MessageBus final {
   // brpc server
   brpc::Server server_;
 #endif
+
+  // for barrier
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  int count_{0};
 };
 
 }  // namespace distributed

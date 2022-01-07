@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/backends/npu/npu_context.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
 
 namespace pten {

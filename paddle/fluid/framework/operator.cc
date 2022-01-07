@@ -56,6 +56,7 @@ DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
 DECLARE_bool(run_pten_kernel);
+DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
 namespace framework {
@@ -1790,6 +1791,9 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
 
 void OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
+  if (pt_kernel_context_ == nullptr) {
+    pt_kernel_context_.reset(new pten::KernelContext());
+  }
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
