@@ -45,7 +45,7 @@ class DistModelConfig {
 class DistModel {
  public:
   explicit DistModel(const DistModelConfig& config) : config_(config) {}
-  void Init();
+  bool Init();
   void Run(const std::vector<framework::Tensor>& input_data,
            std::vector<framework::Tensor>* output_data);
   ~DistModel() = default;
