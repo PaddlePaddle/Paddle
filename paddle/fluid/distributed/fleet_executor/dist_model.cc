@@ -18,7 +18,9 @@
 namespace paddle {
 namespace distributed {
 
-bool DistModel::Init() { /* TODO(fleet exe dev): implement this funct */
+bool DistModel::Init() {
+  /* TODO(fleet exe dev): implement this funct */
+  return true;
 }
 
 void DistModel::Run(const std::vector<framework::Tensor> &input_data,
