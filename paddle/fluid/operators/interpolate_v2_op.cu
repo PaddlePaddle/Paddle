@@ -51,7 +51,8 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
     const size_t out_img_w, const size_t output_h, const size_t output_w,
     const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+    const bool align_corners, const DataLayout data_layout,
+    FastDivModForInterpolate divmods) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -59,10 +60,6 @@ __global__ void KeNearestNeighborInterpFw(
   int out_img_size = out_img_h * out_img_w;
 
   for (; tid < nthreads; tid += stride) {
-    int outimgw_mul_channels = out_img_w * num_channels;
-    FastDivModForInterpolate divmods(num_channels, output_w, out_img_w,
-                                     out_img_size, outimgw_mul_channels);
-
     auto out_id_divmod = divmods.output_w_.Divmod(tid);
     int out_id_h = out_id_divmod.val[0];
     int out_id_w = out_id_divmod.val[1];
@@ -80,12 +77,12 @@ __global__ void KeNearestNeighborInterpFw(
       out_img_idx = divmods.channels_.Divmod(outimg_id_divmod.val[1]).val[0];
     }
 
-    int in_img_idx = ratio_w * out_img_idx;
-    int in_img_idy = ratio_h * out_img_idy;
-    if (align_corners) {
-      in_img_idx += 0.5;
-      in_img_idy += 0.5;
-    }
+    int in_img_idy = (align_corners)
+                         ? static_cast<int>(ratio_h * out_img_idy + 0.5)
+                         : static_cast<int>(ratio_h * out_img_idy);
+    int in_img_idx = (align_corners)
+                         ? static_cast<int>(ratio_w * out_img_idx + 0.5)
+                         : static_cast<int>(ratio_w * out_img_idx);
 
     if (data_layout == DataLayout::kNCHW) {
       out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
@@ -1210,11 +1207,16 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
+    int64_t cw = c * out_w;
+    auto interp_divmods =
+        FastDivModForInterpolate(c, out_chw, out_w, out_hw, cw);
     KeNearestNeighborInterpFw<
         T><<<config.block_per_grid, config.thread_per_block, 0,
              ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-        out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+        out_chw, c, ratio_h, ratio_w, align_corners, data_layout,
+        interp_divmods);
+
   } else if ("bilinear" == interp_method) {
     dim3 thread_num = config.thread_per_block;
 #ifdef WITH_NV_JETSON
