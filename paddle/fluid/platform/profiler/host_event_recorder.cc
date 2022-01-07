@@ -16,7 +16,7 @@ namespace paddle {
 namespace platform {
 
 ThreadEventRecorder::ThreadEventRecorder() {
-  thread_id_ = ThreadId::CurrentThreadId().MainTid();
+  thread_id_ = GetCurrentThreadMainId();
   HostEventRecorder::GetInstance().RegisterThreadRecorder(thread_id_, this);
 }
 

@@ -14,15 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <mutex>
-#include <thread>
+#include <string>
 #include <unordered_map>
-#include "paddle/fluid/platform/enforce.h"  // import LIKELY
-#include "paddle/fluid/platform/macros.h"   // import DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/platform/port.h"
 #ifdef _POSIX_C_SOURCE
 #include <time.h>
 #endif
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -41,66 +38,38 @@ inline uint64_t PosixInNsec() {
 }
 
 // All kinds of Ids for OS thread
-class ThreadId {
+struct ThreadId {
  public:
-  static const ThreadId& CurrentThreadId() {
-    static thread_local ThreadId tid;
-    return tid;
-  }
+  uint64_t MainTid() const { return sys_tid; }
 
-  uint64_t MainTid() const { return SysTid(); }
-
-  uint64_t StdTid() const { return std_tid_; }
-
-  uint32_t CuptiTid() const { return cupti_tid_; }
-
-  uint64_t SysTid() const { return sys_tid_ != 0 ? sys_tid_ : std_tid_; }
-
- private:
-  ThreadId();
-
-  DISABLE_COPY_AND_ASSIGN(ThreadId);
-
-  ~ThreadId();
-
-  uint64_t std_tid_ = 0;    // std::hash<std::thread::id>
-  uint32_t cupti_tid_ = 0;  // thread_id used by Nvidia CUPTI
-  uint64_t sys_tid_ = 0;    // OS-specific, Linux: gettid
+  uint64_t std_tid = 0;    // std::hash<std::thread::id>
+  uint64_t sys_tid = 0;    // OS-specific, Linux: gettid
+  uint32_t cupti_tid = 0;  // thread_id used by Nvidia CUPTI
 };
 
-class ThreadIdRegistry {
- public:
-  // Singleton
-  static ThreadIdRegistry& GetInstance() {
-    static ThreadIdRegistry instance;
-    return instance;
-  }
+// Better performance than GetCurrentThreadId
+uint64_t GetCurrentThreadMainId();
 
-  // Returns current snapshot of all threads.
-  // The snapshot holds referrences, make sure there is no thread
-  // create/destory when using it.
-  std::vector<std::reference_wrapper<const ThreadId>> AllThreadIds();
+ThreadId GetCurrentThreadId();
 
- private:
-  friend ThreadId;
+// Return the map from MainTid to ThreadId
+// Returns current snapshot of all threads. Make sure there is no thread
+// create/destory when using it.
+std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
 
-  ThreadIdRegistry() = default;
+// Returns 'unset' if SetCurrentThreadName is never called.
+std::string GetCurrentThreadName();
 
-  DISABLE_COPY_AND_ASSIGN(ThreadIdRegistry);
+// Return the map from MainTid to ThreadName
+// Returns current snapshot of all threads. Make sure there is no thread
+// create/destory when using it.
+std::unordered_map<uint64_t, std::string> GetAllThreadNames();
 
-  void RegisterThread(const ThreadId& id) {
-    std::lock_guard<std::mutex> lock(lock_);
-    id_map_[id.MainTid()] = &id;
-  }
+// Thread name is immutable, only the first call will succeed.
+// Returns false on failure.
+bool SetCurrentThreadName(const std::string& name);
 
-  void UnregisterThread(const ThreadId& id) {
-    std::lock_guard<std::mutex> lock(lock_);
-    id_map_.erase(id.MainTid());
-  }
-
-  std::mutex lock_;
-  std::unordered_map<uint64_t, const ThreadId*> id_map_;
-};
+uint32_t GetProcessId();
 
 }  // namespace platform
 }  // namespace paddle
