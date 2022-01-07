@@ -99,7 +99,6 @@ class AutoParallelizer:
 
     def _apply_serial_pass(self, main_program, startup_program, loss,
                            params_grads):
-
         # apply amp pass
         if self._dist_strategy.amp:
             config = copy.deepcopy(self._dist_strategy.amp_configs)
@@ -191,7 +190,6 @@ class AutoParallelizer:
         # serial forward pass
         self._apply_serial_pass(completed_main_program, serial_startup_program,
                                 serial_loss, params_grads)
-
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
