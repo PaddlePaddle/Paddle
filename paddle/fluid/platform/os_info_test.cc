@@ -31,8 +31,8 @@ TEST(ThreadInfo, TestThreadNameUtils) {
   using paddle::platform::SetCurrentThreadName;
   using paddle::platform::GetAllThreadNames;
   EXPECT_EQ("unset", GetCurrentThreadName());
-  EXPECT_EQ(true, SetCurrentThreadName("MainThread"));
-  EXPECT_EQ(false, SetCurrentThreadName("MainThread"));
+  EXPECT_TRUE(SetCurrentThreadName("MainThread"));
+  EXPECT_FALSE(SetCurrentThreadName("MainThread"));
   auto names = GetAllThreadNames();
   EXPECT_EQ(1u, names.size());
   EXPECT_EQ("MainThread", names.begin()->second);
