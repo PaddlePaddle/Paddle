@@ -673,6 +673,14 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
 
+pten::Kernel* Instruction::PtenKernel() const {
+  return op_func_node_.pt_kernel_;
+}
+
+pten::KernelContext* Instruction::PtenKernelContext() const {
+  return op_func_node_.pt_kernel_context_;
+}
+
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
 
 OperatorBase* Instruction::OpBase() const {

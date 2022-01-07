@@ -478,8 +478,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     # auto completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
-    parallelizer._apply_serial_forward_pass(complete_train_program,
-                                            startup_program)
+
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,
