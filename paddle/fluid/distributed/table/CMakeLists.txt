@@ -19,6 +19,8 @@ get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/")
 include_directories(${PADDLE_LIB_THIRD_PARTY_PATH}libmct/src/extern_libmct/libmct/include)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+
 set(EXTERN_DEP "")
 if(WITH_HETERPS)
     set(TABLE_SRC common_sparse_table.cc ssd_sparse_table.cc common_dense_table.cc sparse_geo_table.cc barrier_table.cc common_graph_table.cc)
@@ -47,4 +49,4 @@ cc_library(memory_sparse_table SRCS memory_sparse_table.cc DEPS ps_framework_pro
 
 cc_library(table SRCS table.cc DEPS memory_sparse_table common_table tensor_accessor tensor_table ps_framework_proto string_helper device_context gflags glog boost)
 
-target_link_libraries(table -lgomp)
+target_link_libraries(table -fopenmp)
