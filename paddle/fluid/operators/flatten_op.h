@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/flatten_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -134,8 +134,8 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Flatten<T, DeviceContext>(dev_ctx, *pt_x.get(), start_axis, stop_axis,
-                                    pt_out.get());
+    pten::FlattenKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), start_axis,
+                                          stop_axis, pt_out.get());
   }
 };
 
