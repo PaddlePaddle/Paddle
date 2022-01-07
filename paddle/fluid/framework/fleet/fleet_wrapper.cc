@@ -688,8 +688,8 @@ void FleetWrapper::PullDenseVarsSync(
   int32_t status = -1;
   int32_t cnt = 0;
   while (true) {
-    auto tt =
-        pslib_ptr_->_worker_ptr->pull_dense(regions.data(), regions.size(), tid);
+    auto tt = pslib_ptr_->_worker_ptr->pull_dense(regions.data(),
+                                                  regions.size(), tid);
     bool flag = true;
 
     tt.wait();
@@ -1490,6 +1490,10 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->shrink(table_id);
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Shrink Sparse Table failed";
+  }
 #else
   VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
 #endif
@@ -1499,6 +1503,10 @@ void FleetWrapper::ClearModel() {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->clear();
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Clear Model failed";
+  }
 #else
   VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
 #endif
@@ -1508,6 +1516,10 @@ void FleetWrapper::ClearOneTable(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->clear(table_id);
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Clear One Table failed table_id: " << table_id;
+  }
 #else
   VLOG(0) << "FleetWrapper::ClearOneTable does nothing when no pslib";
 #endif
@@ -1568,6 +1580,10 @@ void FleetWrapper::ClientFlush() {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->flush();
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Client Flush failed";
+  }
 #else
   VLOG(0) << "FleetWrapper::ServerFlush does nothing when no pslib";
 #endif
