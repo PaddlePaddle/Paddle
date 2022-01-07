@@ -56,6 +56,7 @@ void BindFleetExecutor(py::module* m) {
       .def("set_program", &TaskNode::SetProgram);
 
   py::class_<DistModelConfig>(*m, "DistModelConfig")
+      .def(py::init<>())
       .def_readwrite("model_dir", &DistModelConfig::model_dir)
       .def_readwrite("trainer_endpoints", &DistModelConfig::trainer_endpoints)
       .def_readwrite("current_endpoint", &DistModelConfig::current_endpoint)
