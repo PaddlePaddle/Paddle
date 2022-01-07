@@ -41,8 +41,7 @@ class intrusive_ptr {
   }
 
   intrusive_ptr& operator=(intrusive_ptr&& rhs) {
-    px = rhs.px;
-    rhs.px = nullptr;
+    swap(rhs);
     return *this;
   }
 

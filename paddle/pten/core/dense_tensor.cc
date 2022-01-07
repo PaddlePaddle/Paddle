@@ -233,7 +233,6 @@ DenseTensor::DenseTensor() {
   storage_ = make_intrusive<paddle::experimental::SharedStorage>(
       paddle::platform::CPUPlace());
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
-  meta_ = DenseTensorMeta();
   meta_.dtype = paddle::experimental::DataType::FLOAT32;
   meta_.offset = 0;
 }
@@ -242,7 +241,6 @@ DenseTensor::DenseTensor(const paddle::framework::proto::VarType::Type& dtype) {
   storage_ = make_intrusive<paddle::experimental::SharedStorage>(
       paddle::platform::CPUPlace());
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
-  meta_ = DenseTensorMeta();
   meta_.dtype = TransToPtenDataType(dtype);
   meta_.offset = 0;
 }
@@ -464,7 +462,7 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 /*   From framework::LoDTensor    */
 /* ------------------------------ */
 
-DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
+DenseTensor::DenseTensor(const LoD& lod) { meta_.lod = lod; }
 
 void DenseTensor::set_lod(const LoD& lod) { meta_.lod = lod; }
 
