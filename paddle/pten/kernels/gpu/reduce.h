@@ -42,12 +42,10 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/cast_kernel.h"
-#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/pten/kernels/elementwise.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -1095,11 +1093,9 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(x.place()));
   if (config.reduce_num == 1) {
-    std::vector<const DenseTensor*> inputs;
-    std::vector<DenseTensor*> outputs;
-    inputs.emplace_back(&x);
-    outputs.emplace_back(y);
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
+    std::vector<const DenseTensor*> inputs = {&x};
+    std::vector<DenseTensor*> outputs = {y};
+    pten::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
         *dev_ctx, inputs, &outputs, transform);
     return;
   }
