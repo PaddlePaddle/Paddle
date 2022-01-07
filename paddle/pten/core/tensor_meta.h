@@ -41,18 +41,20 @@ struct DenseTensorMeta {
 
   DenseTensorMeta() = default;
   DenseTensorMeta(DataType dtype, const DDim& dims);
-  DenseTensorMeta(DataType dtype, const DDim& dims, DataLayout layout);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
-                  const LoD& lod);
+                  size_t offset = 0);
+  DenseTensorMeta(DataType dtype,
+                  const DDim& dims,
+                  DataLayout layout,
+                  const LoD& lod,
+                  size_t offset = 0);
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  /// During the entire life cycle of a DenseTensor, the following attributes
-  /// marked with `const` are expected to remain unchanged.
   bool is_scalar{false};
   DDim dims;
   DataType dtype{DataType::UNDEFINED};

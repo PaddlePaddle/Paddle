@@ -13,19 +13,39 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/label_smooth_op.h"
 namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void LabelSmoothRunOriginKernel(const int N, const float epsilon,
-                                           const int label_dim, const T* src,
-                                           T* dst) {
-  CUDA_KERNEL_LOOP(idx, N) {
-    dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
-               static_cast<T>(epsilon / label_dim);
+struct LabelSmoothFunctor {
+  T epsilon;
+  T label_dim;
+
+  __forceinline__ LabelSmoothFunctor(float epsilon_data, int label_dim_data) {
+    epsilon = static_cast<T>(epsilon_data);
+    label_dim = static_cast<T>(label_dim_data);
   }
-}
+
+  __device__ __forceinline__ T operator()(const T& x) const {
+    return (static_cast<T>(1 - epsilon) * x +
+            static_cast<T>(epsilon / label_dim));
+  }
+};
+
+template <typename T>
+struct LabelSmoothGradFunctor {
+  T epsilon;
+
+  __forceinline__ LabelSmoothGradFunctor(float epsilon_data) {
+    epsilon = static_cast<T>(epsilon_data);
+  }
+
+  __device__ __forceinline__ T operator()(const T& x) const {
+    return static_cast<T>(1 - epsilon) * x;
+  }
+};
 
 template <typename T>
 __global__ void LabelSmoothRunDistKernel(const int N, const float epsilon,
@@ -35,14 +55,6 @@ __global__ void LabelSmoothRunDistKernel(const int N, const float epsilon,
     int dist_idx = idx % dist_numel;
     dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
                static_cast<T>(epsilon) * dist_data[dist_idx];
-  }
-}
-
-template <typename T>
-__global__ void LabelSmoothGradRunKernel(const int N, const float epsilon,
-                                         const T* src, T* dst) {
-  CUDA_KERNEL_LOOP(idx, N) {
-    dst[idx] = static_cast<T>(1 - epsilon) * src[idx];
   }
 }
 
@@ -69,8 +81,14 @@ class LabelSmoothGPUKernel : public framework::OpKernel<T> {
           size_prob, epsilon, dist_numel, in_data, dist_data, out_data);
 
     } else {
-      LabelSmoothRunOriginKernel<T><<<grid, threads, 0, stream>>>(
-          size_prob, epsilon, label_dim, in_data, out_data);
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+
+      std::vector<const framework::Tensor*> ins = {in_t};
+      std::vector<framework::Tensor*> outs = {out_t};
+      auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+          dev_ctx, ins, &outs, functor);
     }
   }
 };
@@ -84,15 +102,13 @@ class LabelSmoothGradGPUKernel : public framework::OpKernel<T> {
     d_in_t->mutable_data<T>(ctx.GetPlace());
 
     auto epsilon = ctx.Attr<float>("epsilon");
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    const T* in_data = d_out_t->data<T>();
-    auto size_prob = d_out_t->numel();
-    T* out_data = d_in_t->mutable_data<T>(ctx.GetPlace());
-    int threads = 512;
-    int grid = (size_prob + threads - 1) / threads;
-    auto stream = ctx.cuda_device_context().stream();
-    LabelSmoothGradRunKernel<T><<<grid, threads, 0, stream>>>(
-        size_prob, epsilon, in_data, out_data);
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+
+    std::vector<const framework::Tensor*> ins = {d_out_t};
+    std::vector<framework::Tensor*> outs = {d_in_t};
+    auto functor = LabelSmoothGradFunctor<T>(epsilon);
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+        dev_ctx, ins, &outs, functor);
   }
 };
 }  // namespace operators

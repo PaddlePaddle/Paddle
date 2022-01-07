@@ -58,10 +58,9 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
 
-void MovesSharedStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
+void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
 
-void MovesSharedStorage(pten::DenseTensor* src,
-                        paddle::framework::LoDTensor* dst);
+void SharesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
 
 /**
  * In order to improve the compatibility state performance, some tricky tool
@@ -72,19 +71,19 @@ void MovesSharedStorage(pten::DenseTensor* src,
  * the overhead caused by frequent construction and destruction of the
  * DenseTensor.
  */
-void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
-                           pten::DenseTensor* dst);
-
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            pten::DenseTensor* dst);
 
-void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
-                           const pten::TensorArgDef& arg_def,
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
                            pten::DenseTensor* dst);
 
-void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
-                           const pten::TensorArgDef& arg_def,
-                           pten::DenseTensor* dst);
+void ReMakePtenDenseTensorByArgDef(const paddle::framework::Tensor& src,
+                                   const pten::TensorArgDef& arg_def,
+                                   pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensorByArgDef(const paddle::framework::LoDTensor& src,
+                                   const pten::TensorArgDef& arg_def,
+                                   pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
                                   const pten::TensorArgDef& arg_def,
