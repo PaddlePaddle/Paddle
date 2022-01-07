@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/expand_as_v2_op.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -50,6 +51,10 @@ class ExpandAsV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
              "X is the input to be expanded.");
+    AddInput("Y",
+             "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+             "Expand X according to the shape of Y.")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
               "The rank of Output(Out) have the same with Input(X). "
@@ -144,3 +149,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
+
+REGISTER_OP_VERSION(expand_as_v2)
+    .AddCheckpoint(
+        R"ROC(fix expand_as_v2 and add new input [Y])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "Y", "Expand X according to the shape of Y"));
