@@ -26,20 +26,15 @@ class Tensor;
 
 namespace distributed {
 
-class DistModelConfig {
- public:
-  DistModelConfig() = default;
-  ~DistModelConfig() = default;
-
- private:
-  std::string model_dir_;
+struct DistModelConfig {
+  std::string model_dir_{};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoints_{};
-  int64_t nranks_;
-  int64_t local_rank_;
-  int64_t device_id_;
-  int64_t mp_degree_;
-  int64_t pp_degree_;
+  int64_t nranks_{1};
+  int64_t local_rank_{0};
+  int64_t device_id_{0};
+  int64_t mp_degree_{1};
+  int64_t pp_degree_{1};
 };
 
 class DistModel {
