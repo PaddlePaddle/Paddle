@@ -78,7 +78,6 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
-set WITH_TPCACHE=OFF
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -262,6 +261,7 @@ set ON_INFER=ON
 set WITH_TESTING=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set WITH_TPCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -333,7 +333,7 @@ echo %task_name%|findstr wincheck_inference >nul && (
 )
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
-::set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
 rem Use 64-bit ToolSet to compile
 set PreferredToolArchitecture=x64
 
