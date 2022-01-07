@@ -46,6 +46,7 @@ from .layer.activation import Softplus  # noqa: F401
 from .layer.activation import Softshrink  # noqa: F401
 from .layer.activation import Softsign  # noqa: F401
 from .layer.activation import Swish  # noqa: F401
+from .layer.activation import Mish  # noqa: F401
 from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
@@ -294,6 +295,7 @@ __all__ = [     #noqa
            'LogSoftmax',
            'Sigmoid',
            'Swish',
+           'Mish',
            'PixelShuffle',
            'ELU',
            'ReLU6',
