@@ -87,7 +87,7 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Returns the batch_size of original dense tensor.
   /// \return The batch_size of original dense tensor.
-  const int64_t batch_size() const { return non_zero_nums_.numel(); }
+  int64_t batch_size() const { return non_zero_nums_.numel(); }
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
