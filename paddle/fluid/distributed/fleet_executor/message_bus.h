@@ -54,6 +54,7 @@ class MessageBus final {
 
   void IncreaseBarrierCount();
   void Barrier();
+  bool DispatchMsgToCarrier(const InterceptorMessage& interceptor_message);
 
  private:
   DISABLE_COPY_AND_ASSIGN(MessageBus);

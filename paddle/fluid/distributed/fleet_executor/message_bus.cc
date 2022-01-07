@@ -17,6 +17,8 @@
 #include <set>
 #include <thread>
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
@@ -81,6 +83,10 @@ const std::string& MessageBus::GetAddr(int64_t rank) const {
 
 bool MessageBus::Send(int64_t dst_rank,
                       const InterceptorMessage& interceptor_message) {
+  PADDLE_ENFORCE_EQ(
+      IsInit(), true,
+      platform::errors::PreconditionNotMet(
+          "Using message bus since it has not been initialized."));
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   int retry_time = 0;  // message bus will retry sending for 10 times
@@ -152,6 +158,22 @@ void MessageBus::Barrier() {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [this] { return count_ == 1; });
     count_ = 0;
+  }
+}
+
+bool MessageBus::DispatchMsgToCarrier(
+    const InterceptorMessage& interceptor_message) {
+  if (interceptor_message.ctrl_message()) {
+    VLOG(3) << "Receiving control message from rank "
+            << interceptor_message.src_id() << " to rank "
+            << interceptor_message.dst_id();
+    // for barrier
+    IncreaseBarrierCount();
+    return true;
+  } else {
+    const std::string& carrier_id = *GlobalVal<std::string>::Get();
+    return GlobalMap<std::string, Carrier>::Get(carrier_id)
+        ->EnqueueInterceptorMessage(interceptor_message);
   }
 }
 
