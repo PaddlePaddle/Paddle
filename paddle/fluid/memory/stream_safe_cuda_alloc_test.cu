@@ -85,7 +85,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       workspaces_.emplace_back(allocation);
     }
 
-    result_ = AllocShared(place_, stream_num_ * workspace_size_);
+    result_ = Alloc(place_, stream_num_ * workspace_size_);
   }
 
   void SingleStreamRun(size_t idx) {
@@ -185,7 +185,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   platform::CUDAPlace place_;
   std::vector<gpuStream_t> streams_;
   std::vector<std::shared_ptr<Allocation>> workspaces_;
-  std::shared_ptr<Allocation> result_;
+  allocation::AllocationPtr result_;
 };
 
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
@@ -225,21 +225,22 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
 
 TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
+  size_t alloc_size = 256;
+
+  allocation::AllocationPtr allocation_implicit_stream =
+      Alloc(place, alloc_size);
+  EXPECT_GE(allocation_implicit_stream->size(), alloc_size);
+  void *address = allocation_implicit_stream->ptr();
+  allocation_implicit_stream.reset();
+
   auto &instance = allocation::AllocatorFacade::Instance();
   const std::shared_ptr<Allocator> &allocator = instance.GetAllocator(place);
 
-  size_t alloc_size = 256;
-  std::shared_ptr<Allocation> allocation_from_allocator =
+  allocation::AllocationPtr allocation_from_allocator =
       allocator->Allocate(alloc_size);
   EXPECT_GE(allocation_from_allocator->size(), alloc_size);
-  void *address = allocation_from_allocator->ptr();
+  EXPECT_EQ(allocation_from_allocator->ptr(), address);
   allocation_from_allocator.reset();
-
-  std::shared_ptr<Allocation> allocation_implicit_stream =
-      AllocShared(place, alloc_size);
-  EXPECT_GE(allocation_implicit_stream->size(), alloc_size);
-  EXPECT_EQ(allocation_implicit_stream->ptr(), address);
-  allocation_implicit_stream.reset();
 
   Release(place);
   CheckMemLeak(place);
@@ -347,16 +348,12 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   // so the second alloc will fail and retry
   size_t alloc_size = available_size / 4 * 3;
 
-  std::shared_ptr<Allocation> allocation1 = AllocShared(
-      place, alloc_size,
-      platform::Stream(reinterpret_cast<platform::StreamId>(stream1)));
-  std::shared_ptr<Allocation> allocation2;
+  allocation::AllocationPtr allocation1 = Alloc(place, alloc_size, stream1);
+  allocation::AllocationPtr allocation2;
 
   std::thread th([&allocation2, &place, &stream2, alloc_size]() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    allocation2 = AllocShared(
-        place, alloc_size,
-        platform::Stream(reinterpret_cast<platform::StreamId>(stream2)));
+    allocation2 = Alloc(place, alloc_size, stream2);
   });
   allocation1.reset();  // free but not release
   th.join();

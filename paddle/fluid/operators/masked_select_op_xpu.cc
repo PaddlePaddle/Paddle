@@ -57,7 +57,7 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_XPU_SUCCESS(
         xpu::masked_select(dev_ctx.x_context(), input_data, mask_data, out_data,
-                           input_shape, mask_shape));
+                           input_shape, mask_shape, out_size_cpu));
   }
 };
 
