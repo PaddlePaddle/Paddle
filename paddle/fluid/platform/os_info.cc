@@ -116,7 +116,7 @@ InternalThreadId::InternalThreadId() {
 #if defined(__linux__)
   id_.sys_tid = static_cast<uint64_t>(syscall(SYS_gettid));
 #elif defined(_MSC_VER)
-  id_.sys_tid = static_cast<uint64_t>(GetCurrentThreadId());
+  id_.sys_tid = static_cast<uint64_t>(::GetCurrentThreadId());
 #else  // unsupported platforms, use std_tid
   id_.sys_tid = id_.std_tid;
 #endif
