@@ -18,9 +18,10 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/elementwise_impl.h"
+#include "paddle/pten/kernels/cpu/elementwise.h"
 #include "paddle/pten/kernels/cpu/reduce.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/pten/kernels/funcs/reduce_functor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -61,7 +62,7 @@ void MeanKernel(const Context& dev_ctx,
                 bool reduce_all,
                 DenseTensor* out) {
   auto out_dtype = x.dtype();
-  pten::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
+  pten::Reduce<CPUContext, T, pten::funcs::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -97,7 +98,7 @@ void SumKernel(const Context& dev_ctx,
                bool reduce_all,
                DataType out_dtype,
                DenseTensor* out) {
-  pten::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
+  pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
