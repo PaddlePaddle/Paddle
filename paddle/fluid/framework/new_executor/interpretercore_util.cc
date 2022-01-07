@@ -19,10 +19,13 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
+DECLARE_bool(run_pten_kernel);
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -338,6 +341,8 @@ void build_op_func_list(const platform::Place& place,
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
     } else {
+      auto op_with_kernel =
+          static_cast<const framework::OperatorWithKernel*>(op);
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
@@ -350,8 +355,7 @@ void build_op_func_list(const platform::Place& place,
         // TODO(Aurelius84): In case of control flow ops, they are NOT
         // inheritted
         // from OperatorWithKernel.
-        static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
-            &infer_shape_ctx);
+        op_with_kernel->InferShape(&infer_shape_ctx);
       }
 
       auto kernels_iter = all_op_kernels.find(op->Type());
@@ -367,10 +371,8 @@ void build_op_func_list(const platform::Place& place,
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
       Scope scope;
-      auto expected_kernel_key =
-          dynamic_cast<const framework::OperatorWithKernel*>(op)
-              ->GetExpectedKernelType(
-                  ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+      auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(
+          ExecutionContext(*op, scope, *dev_ctx, runtime_context));
 
       // change device by the device_guard()
       apply_device_guard(op, place, &expected_kernel_key);
@@ -378,10 +380,16 @@ void build_op_func_list(const platform::Place& place,
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
+
+      // NOTE(zhiqiu): op_func_node->operator_base_ maybe changed in
+      // ApplyDataTransform
       ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
                          &op_func_node, vec_func_list, use_local_scope);
+      op_with_kernel = static_cast<const framework::OperatorWithKernel*>(
+          op_func_node.operator_base_.get());
+
       // step 4. Run op kernel
-      VLOG(3) << op->Type()
+      VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
 
       if (platform::is_gpu_place(expected_kernel_key.place_)) {
@@ -397,7 +405,8 @@ void build_op_func_list(const platform::Place& place,
       }
       op_func_node.dev_ctx_ = dev_ctx;
 
-      auto exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
+      auto exec_ctx =
+          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       auto kernel_iter = kernels.find(expected_kernel_key);
       PADDLE_ENFORCE_NE(
@@ -406,8 +415,27 @@ void build_op_func_list(const platform::Place& place,
               "Operator (%s) does not have kernel for %s.", op->Type(),
               KernelTypeToString(expected_kernel_key)));
 
-      op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-      op_func_node.kernel_func_(exec_ctx);
+      auto run_pten_kernel = false;
+
+      if (FLAGS_run_pten_kernel &&
+          pten::KernelFactory::Instance().HasCompatiblePtenKernel(
+              op_with_kernel->Type())) {
+        op_with_kernel->ChoosePtenKernel(exec_ctx);
+        run_pten_kernel = op_with_kernel->PtenKernel()->IsValid();
+      }
+
+      if (run_pten_kernel) {
+        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx);
+        op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
+        op_func_node.pt_kernel_context_ = op_with_kernel->PtenKernelContext();
+
+        (*op_func_node.pt_kernel_)(op_func_node.pt_kernel_context_);
+        op_with_kernel->WriteBackToOutputs(&runtime_context);
+        op_func_node.pt_kernel_context_->ClearData();
+      } else {
+        op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
+        op_func_node.kernel_func_(exec_ctx);
+      }
 
       // post-process grad_op.outputs if need cast complex grad into real grad.
       // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
