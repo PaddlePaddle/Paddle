@@ -685,9 +685,36 @@ void FleetWrapper::PullDenseVarsSync(
     paddle::ps::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
-  auto status =
-      pslib_ptr_->_worker_ptr->pull_dense(regions.data(), regions.size(), tid);
-  status.wait();
+  int32_t status = -1;
+  int32_t cnt = 0;
+  while (true) {
+    auto tt =
+        pslib_ptr_->_worker_ptr->pull_dense(regions.data(), regions.size(), tid);
+    bool flag = true;
+
+    tt.wait();
+
+    try {
+      status = tt.get();
+    } catch (const std::future_error& e) {
+      VLOG(0) << "Caught a future_error with code" << e.code()
+              << ", Message:" << e.what();
+    }
+    if (status != 0) {
+      VLOG(0) << "fleet pull dense sync failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
+      flag = false;
+      cnt++;
+    }
+    if (cnt > 3) {
+      VLOG(0) << "fleet pull dense sync failed, retry 3 times";
+      exit(-1);
+    }
+
+    if (flag) {
+      break;
+    }
+  }
 #endif
 }
 
