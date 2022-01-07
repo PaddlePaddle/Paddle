@@ -26,7 +26,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _k
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-
 global_process_mesh = get_world_process_groups().ranks
 
 
@@ -321,7 +320,7 @@ class AMPState(object):
                     if out_var_name_prefix in self._var_name_dict[fwd_op_id]:
                         # NOTE: if out_var of consume grad_op has been casted before,
                         # it should be renamed and reset dist_attr, then we insert cast op to
-                        # convert the cast_var to original out_var
+                        # convert the cast_var to original dtype
                         consume_op_attr = dist_context.get_op_dist_attr_for_program(
                             grad_op)
                         fwd_cast_name = self._var_name_dict[fwd_op_id][
@@ -627,7 +626,7 @@ class AMPPass(PassBase):
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name,
                                              self._scaled_loss_grad.name)
-            # FIXME(JZ-LIANG) need a better way to append backward op in program
+            # FIXME(JZ-LIANG) a trick to insert backward op
             main_block._sync_with_cpp()
             elementwise_mul_grad_op_desc = main_block.desc._insert_op(
                 loss_op_idx + 3)
