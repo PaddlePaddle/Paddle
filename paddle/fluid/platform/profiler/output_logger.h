@@ -27,9 +27,9 @@ class BaseLogger {
  public:
   BaseLogger() {}
   virtual ~BaseLogger() {}
-  virtual void LogDeviceRecordNode(DeviceRecordNode&) {}
-  virtual void LogHostRecordNode(HostRecordNode&) {}
-  virtual void LogRuntimeRecordNode(CudaRuntimeRecordNode&) {}
+  virtual void LogDeviceRecordNode(const DeviceRecordNode&) {}
+  virtual void LogHostRecordNode(const HostRecordNode&) {}
+  virtual void LogRuntimeRecordNode(const CudaRuntimeRecordNode&) {}
   virtual void LogMetaInfo() {}
 };
 
@@ -39,16 +39,16 @@ class ChromeTracingLogger : public BaseLogger {
   explicit ChromeTracingLogger(const char* filename);
   ~ChromeTracingLogger();
   std::string filename() { return filename_; }
-  void LogDeviceRecordNode(DeviceRecordNode&) override;
-  void LogHostRecordNode(HostRecordNode&) override;
-  void LogRuntimeRecordNode(CudaRuntimeRecordNode&) override;
+  void LogDeviceRecordNode(const DeviceRecordNode&) override;
+  void LogHostRecordNode(const HostRecordNode&) override;
+  void LogRuntimeRecordNode(const CudaRuntimeRecordNode&) override;
   void LogMetaInfo();
 
  private:
   void OpenFile();
-  void HandleTypeKernel(DeviceRecordNode&);
-  void HandleTypeMemset(DeviceRecordNode&);
-  void HandleTypeMemcpy(DeviceRecordNode&);
+  void HandleTypeKernel(const DeviceRecordNode&);
+  void HandleTypeMemset(const DeviceRecordNode&);
+  void HandleTypeMemcpy(const DeviceRecordNode&);
   void StartLog();
   void EndLog();
   std::string filename_;

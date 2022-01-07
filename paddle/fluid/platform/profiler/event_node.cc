@@ -126,8 +126,8 @@ void NodeTrees::BuildTrees(
 }
 
 HostRecordNode* NodeTrees::BuildTreeRelationship(
-    std::vector<HostRecordNode*>& host_record_nodes,
-    std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes) {
+    std::vector<HostRecordNode*> host_record_nodes,
+    std::vector<CudaRuntimeRecordNode*> runtime_record_nodes) {
   // a stack used for analyse relationship
   auto node_stack = std::vector<HostRecordNode*>();
   // root node, top level
@@ -174,8 +174,7 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(
   return root_node;
 }
 
-const std::map<uint64_t, std::vector<HostRecordNode*>> NodeTrees::Traverse(
-    bool bfs) {
+std::map<uint64_t, std::vector<HostRecordNode*>> NodeTrees::Traverse(bool bfs) {
   // traverse the tree, provide two methods: bfs(breadth first search) or
   // dfs(depth first search)
   std::map<uint64_t, std::vector<HostRecordNode*>> thread2host_record_nodes;
@@ -218,7 +217,7 @@ const std::map<uint64_t, std::vector<HostRecordNode*>> NodeTrees::Traverse(
   return thread2host_record_nodes;
 }
 
-void NodeTrees::LogMe(BaseLogger& logger) {
+void NodeTrees::LogMe(BaseLogger* logger) {
   // log all nodes except root node, root node is a helper node.
   const std::map<uint64_t, std::vector<HostRecordNode*>>
       thread2host_record_nodes = Traverse(true);

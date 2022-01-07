@@ -88,7 +88,7 @@ ChromeTracingLogger::~ChromeTracingLogger() {
   output_file_stream_.close();
 }
 
-void ChromeTracingLogger::LogHostRecordNode(HostRecordNode& host_node) {
+void ChromeTracingLogger::LogHostRecordNode(const HostRecordNode& host_node) {
   if (!output_file_stream_) {
     return;
   }
@@ -110,7 +110,7 @@ void ChromeTracingLogger::LogHostRecordNode(HostRecordNode& host_node) {
 }
 
 void ChromeTracingLogger::LogRuntimeRecordNode(
-    CudaRuntimeRecordNode& runtime_node) {
+    const CudaRuntimeRecordNode& runtime_node) {
   if (!output_file_stream_) {
     return;
   }
@@ -132,7 +132,8 @@ void ChromeTracingLogger::LogRuntimeRecordNode(
       runtime_node.correlation_id());
 }
 
-void ChromeTracingLogger::LogDeviceRecordNode(DeviceRecordNode& device_node) {
+void ChromeTracingLogger::LogDeviceRecordNode(
+    const DeviceRecordNode& device_node) {
   if (!output_file_stream_) {
     return;
   }
@@ -150,7 +151,8 @@ void ChromeTracingLogger::LogDeviceRecordNode(DeviceRecordNode& device_node) {
   }
 }
 
-void ChromeTracingLogger::HandleTypeKernel(DeviceRecordNode& device_node) {
+void ChromeTracingLogger::HandleTypeKernel(
+    const DeviceRecordNode& device_node) {
   KernelRecordInfo kernel_info = device_node.kernel_info();
   // todo: calculate blocks_per_sm, warps_per_sm, occupancy
   float blocks_per_sm = 0;
@@ -189,7 +191,8 @@ void ChromeTracingLogger::HandleTypeKernel(DeviceRecordNode& device_node) {
       kernel_info.block_z, occupancy);
 }
 
-void ChromeTracingLogger::HandleTypeMemcpy(DeviceRecordNode& device_node) {
+void ChromeTracingLogger::HandleTypeMemcpy(
+    const DeviceRecordNode& device_node) {
   MemcpyRecordInfo memcpy_info = device_node.memcpy_info();
   // todo: calculate memory bandwidth
   float memory_bandwidth = 0;
@@ -214,7 +217,8 @@ void ChromeTracingLogger::HandleTypeMemcpy(DeviceRecordNode& device_node) {
       memcpy_info.num_bytes, memory_bandwidth);
 }
 
-void ChromeTracingLogger::HandleTypeMemset(DeviceRecordNode& device_node) {
+void ChromeTracingLogger::HandleTypeMemset(
+    const DeviceRecordNode& device_node) {
   MemsetRecordInfo memset_info = device_node.memset_info();
   output_file_stream_ << string_format(
       std::string(
