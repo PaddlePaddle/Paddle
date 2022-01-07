@@ -26,10 +26,10 @@ class Tensor;
 
 namespace distributed {
 
-class BigModelInfConfig {
+class DistModelConfig {
  public:
-  BigModelInfConfig() = default;
-  ~BigModelInfConfig() = default;
+  DistModelConfig() = default;
+  ~DistModelConfig() = default;
 
  private:
   std::string model_dir_;
@@ -42,20 +42,17 @@ class BigModelInfConfig {
   int64_t pp_degree_;
 };
 
-class BigModelInf {
+class DistModel {
  public:
-  explicit BigModelInf(const BigModelInfConfig& config) : config_(config) {}
-  void Init() { /* TODO(fleet exe dev): implement this funct */
-  }
+  explicit DistModel(const DistModelConfig& config) : config_(config) {}
+  void Init();
   void Run(const std::vector<framework::Tensor>& input_data,
-           std::vector<framework::Tensor>* output_data) {
-    /* TODO(fleet exe dev): implement this funct */
-  }
-  ~BigModelInf() = default;
+           std::vector<framework::Tensor>* output_data);
+  ~DistModel() = default;
 
  private:
-  DISABLE_COPY_AND_ASSIGN(BigModelInf);
-  BigModelInfConfig config_;
+  DISABLE_COPY_AND_ASSIGN(DistModel);
+  DistModelConfig config_;
 };
 
 }  // namespace distributed
