@@ -1579,4 +1579,4 @@ class MultiplicativeDecay(LRScheduler):
         if self.last_epoch > 0:
             return self.last_lr * self.lr_lambda(self.last_epoch)
         else:
-            return self.last_lr
+            return self.base_lr
