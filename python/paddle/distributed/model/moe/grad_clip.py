@@ -18,7 +18,6 @@ from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import core, layers, framework
 from paddle.distributed import collective
-
 import six
 import warnings
 import copy
@@ -112,7 +111,6 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-
             sum_square = _squared_l2_norm(merge_grad)
             if sum_square.dtype == core.VarDesc.VarType.FP16:
                 sum_square_list_fp16.append(sum_square)
@@ -167,8 +165,6 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
         # why to return sum_dtype?
         # we will call `get_l2_norm_pow` twice and the precisions may be different.
-        # For example, the first dtype is float64 while the second is float32
-        # So we shuold give the first retuned dtype to the second calling to keep a higher precision.
         # For convenience and simplification, we use sum_dtype directly instead of global_norm_var_normal.dtype
         global_norm_var_normal, sum_dtype \
             = self.get_l2_norm_pow(normal_params_grads)
@@ -215,52 +211,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                           if g.dtype == core.VarDesc.VarType.FP16 else clip_var)
             new_grad = layers.elementwise_mul(x=g, y=clip_input)
             params_and_grads.append((p, new_grad))
-
         return params_and_grads
-
-    def _process_context(self, context, param, grad):
-        if self.group_name not in context:
-            context[self.group_name] = []
-            context[self.group_name + "_clip_value"] = self.clip_norm
-            context[self.group_name + "_clip"] = layers.fill_constant(
-                shape=[1], dtype=grad.dtype, value=self.clip_norm)
-        else:
-            if not self.clip_norm == context[self.group_name + "_clip_value"]:
-                raise ValueError(
-                    "All parameters' 'clip_norm' of a same group should be the same"
-                )
-
-        merge_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            merge_grad = layers.merge_selected_rows(grad)
-            merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-
-        local_norm_var = _squared_l2_norm(merge_grad)
-        context[self.group_name].append(local_norm_var)
-
-        self.context = context
-
-    def _create_operators(self, param, grad):
-        group_scale_name = self.group_name + "_scale"
-        if group_scale_name not in self.context:
-            group_norm_var = layers.sums(input=self.context[self.group_name])
-            group_norm_var = layers.sqrt(x=group_norm_var)
-            clip_var = self.context[self.group_name + "_clip"]
-            group_scale_var = layers.elementwise_div(
-                x=clip_var,
-                y=layers.elementwise_max(
-                    x=clip_var, y=group_norm_var))
-            assert group_scale_var.shape == (1, )
-            self.context[group_scale_name] = group_scale_var
-
-        # inplace
-        param.block.append_op(
-            type='elementwise_mul',
-            inputs={'X': grad,
-                    'Y': self.context[group_scale_name]},
-            outputs={'Out': grad})
-
-        return param, grad
 
 
 ClipGradByGlobalNorm = ClipGradForMOEByGlobalNorm
