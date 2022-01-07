@@ -191,7 +191,6 @@ class AutoParallelizer:
         self._apply_serial_pass(completed_main_program, serial_startup_program,
                                 serial_loss, params_grads)
         # Logical partition 
-        rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
             completed_main_program, serial_startup_program, params_grads)
