@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/metrics.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
 namespace paddle {
@@ -29,6 +30,7 @@ class Variable;
 
 namespace paddle {
 namespace framework {
+std::shared_ptr<Metric> Metric::s_instance_ = nullptr;
 
 void DownpourWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
@@ -737,6 +739,21 @@ void DownpourWorker::TrainFilesWithProfiler() {
   }
 }
 
+/**
+ * @brief add auc monitor
+ */
+inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
+  auto metric_ptr = Metric::GetInstance();
+  auto& metric_list = metric_ptr->GetMetricList();
+  for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
+    auto* metric_msg = iter->second;
+    if (metric_ptr->Phase() != metric_msg->MetricPhase()) {
+      continue;
+    }
+    metric_msg->add_data(scope, place);
+  }
+}
+
 void DownpourWorker::TrainFiles() {
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
@@ -832,6 +849,11 @@ void DownpourWorker::TrainFiles() {
         op->Run(*thread_scope_, place_);
 #endif
       }
+    }
+
+    // add data for MetricMsg
+    if (Metric::GetInstance() != nullptr) {
+      AddAucMonitor(thread_scope_, place_);
     }
 
     // check inf and nan
