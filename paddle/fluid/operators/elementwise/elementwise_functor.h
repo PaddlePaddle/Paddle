@@ -240,13 +240,13 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
 template <typename T>
 struct MaxGradXFunctor {
   inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
-    return x > y ? dout : static_cast<T>(0);
+    return dout * static_cast<T>(x > y);
   }
 };
 template <typename T>
 struct MaxGradYFunctor {
   inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
-    return x <= y ? dout : static_cast<T>(0);
+    return dout * static_cast<T>(x <= y);
   }
 };
 
