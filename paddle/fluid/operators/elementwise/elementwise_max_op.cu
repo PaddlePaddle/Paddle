@@ -34,12 +34,12 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename DeviceContext, typename T>
-void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
-                           const framework::Tensor* x,
-                           const framework::Tensor* y,
-                           const framework::Tensor* out,
-                           const framework::Tensor* dout, framework::Tensor* dx,
-                           framework::Tensor* dy) {
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+ElementwiseMaxGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
@@ -61,31 +61,13 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
     }
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     GetGradXOrYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dx, MaxGreaterThanFunctor<T>());
+        dev_ctx, place, axis, ins, dout, dx, MaxGradXFunctor<T>());
   } else if (dx == nullptr && dy != nullptr) {
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     GetGradXOrYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dy, MaxLessEqualThanFunctor<T>());
+        dev_ctx, place, axis, ins, dout, dy, MaxGradYFunctor<T>());
   }
 }
-
-template <typename T>
-class ElementwiseMaxGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto* out = dout;  // Fake out, not used
-    DefaultElementMaxGrad<platform::CUDADeviceContext, T>(ctx, x, y, out, dout,
-                                                          dx, dy);
-  }
-};
 
 }  // namespace operators
 }  // namespace paddle

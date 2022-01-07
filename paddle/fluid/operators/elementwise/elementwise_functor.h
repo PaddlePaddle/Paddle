@@ -238,33 +238,27 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
 
 // Ternary compare
 template <typename T>
-struct MaxGreaterThanFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
-    return a > b ? c : static_cast<T>(0);
+struct MaxGradXFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return x > y ? dout : static_cast<T>(0);
   }
 };
 template <typename T>
-struct MaxLessEqualThanFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
-    return a <= b ? c : static_cast<T>(0);
+struct MaxGradYFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return x <= y ? dout : static_cast<T>(0);
   }
 };
 
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT& a,
-                                                                 const InT& b,
-                                                                 const InT& c) {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+      const InT& x, const InT& y, const InT& dout) {
     paddle::framework::Array<OutT, 2> outs;
     // dx = dout * (x > y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
     // dy = dout * (x <= y)
-    if (a > b) {
-      outs[0] = c;
-      outs[1] = static_cast<InT>(0);
-    } else {
-      outs[0] = static_cast<InT>(0);
-      outs[1] = c;
-    }
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
     return outs;
   }
 };
