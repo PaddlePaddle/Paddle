@@ -93,17 +93,14 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       return "Undefined(AnyLayout)";
     case DataLayout::kMKLDNN:
       return "MKLDNN";
-<<<<<<< HEAD:paddle/phi/common/layout.h
     case DataLayout::SPARSE_COO:
       return "SPARSE_COO";
     case DataLayout::SPARSE_CSR:
       return "SPARSE_CSR";
-=======
     case DataLayout::kNDHWC:
       return "NDHWC";
     case DataLayout::kNCDHW:
       return "NCDHW";
->>>>>>> [NPU] delete debug codes:paddle/pten/common/layout.h
     default:
       PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
   }

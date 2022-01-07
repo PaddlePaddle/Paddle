@@ -420,17 +420,9 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
                                      "= [%d]",
                                      groups));
 
-    const bool channel_last = data_format == "NDHWC";
-
-    if (channel_last) {
-      input->set_layout(DataLayout::kNDHWC);
-      filter->set_layout(DataLayout::kNDHWC);
-      output->set_layout(DataLayout::kNDHWC);
-    } else {
-      input->set_layout(DataLayout::kNCDHW);
-      filter->set_layout(DataLayout::kNCDHW);
-      output->set_layout(DataLayout::kNCDHW);
-    }
+    input->set_layout(DataLayout::kNCDHW);
+    filter->set_layout(DataLayout::kNCDHW);
+    output->set_layout(DataLayout::kNCDHW);
 
     // update padding and dilation
     auto in_dims = input->dims();
@@ -438,14 +430,10 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
     framework::DDim in_data_dims;
     framework::DDim filter_data_dims;
 
-    if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -457,25 +445,14 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
 
-    if (channel_last) {
-      input_tensor.set_layout(DataLayout::kNDHWC);
-      output_tensor.set_layout(DataLayout::kNDHWC);
-      strides_vec[1] = strides[0];
-      strides_vec[2] = strides[1];
-      strides_vec[3] = strides[2];
-      dilations_vec[1] = dilations[0];
-      dilations_vec[2] = dilations[1];
-      dilations_vec[3] = dilations[2];
-    } else {
-      input_tensor.set_layout(DataLayout::kNCDHW);
-      output_tensor.set_layout(DataLayout::kNCDHW);
-      strides_vec[2] = strides[0];
-      strides_vec[3] = strides[1];
-      strides_vec[4] = strides[2];
-      dilations_vec[2] = dilations[0];
-      dilations_vec[3] = dilations[1];
-      dilations_vec[4] = dilations[2];
-    }
+    input_tensor.set_layout(DataLayout::kNCDHW);
+    output_tensor.set_layout(DataLayout::kNCDHW);
+    strides_vec[2] = strides[0];
+    strides_vec[3] = strides[1];
+    strides_vec[4] = strides[2];
+    dilations_vec[2] = dilations[0];
+    dilations_vec[3] = dilations[1];
+    dilations_vec[4] = dilations[2];
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     const auto& runner =
@@ -508,28 +485,27 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
 
-    const bool channel_last = data_format == "NDHWC";
+    PADDLE_ENFORCE_EQ(data_format, "NCDHW",
+                      platform::errors::Unimplemented(
+                          "the data_format must be NCDHW in "
+                          "the npu kernel of conv3d, but got data_format "
+                          "= [%s]",
+                          data_format));
 
-    if (channel_last) {
-      input->set_layout(DataLayout::kNDHWC);
-      filter->set_layout(DataLayout::kNDHWC);
-      output_grad->set_layout(DataLayout::kNDHWC);
-      if (input_grad) {
-        input_grad->set_layout(DataLayout::kNDHWC);
-      }
-      if (filter_grad) {
-        filter_grad->set_layout(DataLayout::kNDHWC);
-      }
-    } else {
-      input->set_layout(DataLayout::kNCDHW);
-      filter->set_layout(DataLayout::kNCDHW);
-      output_grad->set_layout(DataLayout::kNCDHW);
-      if (input_grad) {
-        input_grad->set_layout(DataLayout::kNCDHW);
-      }
-      if (filter_grad) {
-        filter_grad->set_layout(DataLayout::kNCDHW);
-      }
+    PADDLE_ENFORCE_EQ(groups, 1, platform::errors::Unimplemented(
+                                     "the groups must be 1 in "
+                                     "the npu kernel of conv3d, but got groups "
+                                     "= [%d]",
+                                     groups));
+
+    input->set_layout(DataLayout::kNCDHW);
+    filter->set_layout(DataLayout::kNCDHW);
+    output_grad->set_layout(DataLayout::kNCDHW);
+    if (input_grad) {
+      input_grad->set_layout(DataLayout::kNCDHW);
+    }
+    if (filter_grad) {
+      filter_grad->set_layout(DataLayout::kNCDHW);
     }
 
     // update padding and dilation
@@ -538,14 +514,10 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
     framework::DDim in_data_dims;
     framework::DDim filter_data_dims;
 
-    if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -557,31 +529,20 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
 
-    if (channel_last) {
-      input_tensor.set_layout(DataLayout::kNDHWC);
-      output_grad_tensor.set_layout(DataLayout::kNDHWC);
-      strides_vec[1] = strides[0];
-      strides_vec[2] = strides[1];
-      strides_vec[3] = strides[2];
-      dilations_vec[1] = dilations[0];
-      dilations_vec[2] = dilations[1];
-      dilations_vec[3] = dilations[2];
-    } else {
-      input_tensor.set_layout(DataLayout::kNCDHW);
-      output_grad_tensor.set_layout(DataLayout::kNCDHW);
-      strides_vec[2] = strides[0];
-      strides_vec[3] = strides[1];
-      strides_vec[4] = strides[2];
-      dilations_vec[2] = dilations[0];
-      dilations_vec[3] = dilations[1];
-      dilations_vec[4] = dilations[2];
-    }
+    input_tensor.set_layout(DataLayout::kNCDHW);
+    output_grad_tensor.set_layout(DataLayout::kNCDHW);
+    strides_vec[2] = strides[0];
+    strides_vec[3] = strides[1];
+    strides_vec[4] = strides[2];
+    dilations_vec[2] = dilations[0];
+    dilations_vec[3] = dilations[1];
+    dilations_vec[4] = dilations[2];
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> filter_shape_vec =
-          framework::vectorize<int>(filter->dims());
+          phi::vectorize<int>(filter->dims());
 
       const auto& runner = NpuOpRunner(
           "Conv3DBackpropFilterD", {input_tensor, output_grad_tensor},
@@ -596,16 +557,12 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> input_shape_vec =
-          framework::vectorize<int>(input->dims());
+          phi::vectorize<int>(input->dims());
 
       Tensor input_grad_tensor;
 
       input_grad_tensor.ShareDataWith(*input_grad);
-      if (channel_last) {
-        input_grad_tensor.set_layout(DataLayout::kNDHWC);
-      } else {
-        input_grad_tensor.set_layout(DataLayout::kNCDHW);
-      }
+      input_grad_tensor.set_layout(DataLayout::kNCDHW);
 
       const auto& runner =
           NpuOpRunner("Conv3DBackpropInputD", {*filter, output_grad_tensor},
