@@ -66,8 +66,8 @@ class TestLayerChildren(unittest.TestCase):
         self.ori_y1, self.ori_y2 = self.func_apply_init_weight()
 
         # compare ori dygraph and new egr
-        np.testing.assert_allclose(self.ori_y1.numpy(), self.new_y1.numpy())
-        np.testing.assert_allclose(self.ori_y2.numpy(), self.new_y2.numpy())
+        np.testing.assert_equal(self.ori_y1.numpy(), self.new_y1.numpy())
+        np.testing.assert_equal(self.ori_y2.numpy(), self.new_y2.numpy())
 
 
 if __name__ == '__main__':
