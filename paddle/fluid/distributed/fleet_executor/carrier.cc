@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/global_map.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -30,11 +30,9 @@ USE_INTERCEPTOR(Amplifier);
 
 void Carrier::Init(
     int64_t rank,
-    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-    const std::unordered_set<int64_t>& interceptor_ids) {
+    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
-  interceptor_ids_ = interceptor_ids;
 
   // TODO(fleet_exe dev): thread pool
   thread_num_ = 1;
@@ -45,14 +43,12 @@ void Carrier::Init(
 void Carrier::Init(
     int64_t rank,
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-    const std::unordered_set<int64_t>& interceptor_ids,
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
     framework::Scope* root_scope, framework::Scope* minibatch_scope,
     const std::vector<framework::Scope*>& microbatch_scopes,
     const platform::Place& place) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
-  interceptor_ids_ = interceptor_ids;
   interceptor_id_to_node_ = interceptor_id_to_node;
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
@@ -75,17 +71,13 @@ Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
-  if (interceptor_message.ctrl_message()) {
-    VLOG(3) << "Receiving control message from rank "
-            << interceptor_message.src_id() << " to rank "
-            << interceptor_message.dst_id();
-    // for barrier
-    msg_bus_->IncreaseBarrierCount();
-  } else {
-    int64_t dst_id = interceptor_message.dst_id();
-    Interceptor* dst_interceptor = GetInterceptor(dst_id);
-    dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
-  }
+  PADDLE_ENFORCE_EQ(
+      interceptor_message.ctrl_message(), false,
+      platform::errors::Fatal(
+          "Control message should be only send inter rank using message bus."));
+  int64_t dst_id = interceptor_message.dst_id();
+  Interceptor* dst_interceptor = GetInterceptor(dst_id);
+  dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
   return true;
 }
 
@@ -110,11 +102,6 @@ void Carrier::WakeUp() {
 }
 
 void Carrier::Start() {
-  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
-                    platform::errors::PreconditionNotMet(
-                        "Using message bus since it has not been initialized. "
-                        "Please invoke MessageBus::Init() before using it or "
-                        "neccessary components are not ready."));
   PADDLE_ENFORCE_EQ(is_init_, true, platform::errors::PreconditionNotMet(
                                         "Using carrier before initialized."));
   for (int64_t id : source_interceptor_ids_) {
@@ -156,23 +143,12 @@ bool Carrier::Send(const InterceptorMessage& msg) {
   if (src_rank == dst_rank) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
-    int64_t carrier_id = *GlobalMap<int64_t, int64_t>::Get(dst_id);
-    return GlobalMap<int64_t, Carrier>::Get(carrier_id)
-        ->EnqueueInterceptorMessage(msg);
+    return EnqueueInterceptorMessage(msg);
   } else {
-    PADDLE_ENFORCE_NOT_NULL(
-        msg_bus_.get(),
-        platform::errors::Unavailable("Message bus is released accidently"));
-    PADDLE_ENFORCE_EQ(
-        msg_bus_->IsInit(), true,
-        platform::errors::PreconditionNotMet(
-            "Using message bus since it has not been initialized. "
-            "Please invoke MessageBus::Init() before using it or "
-            "neccessary components are not ready."));
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id
             << ", which are in different ranks.";
-    return msg_bus_->Send(dst_rank, msg);
+    return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
   }
 }
 
@@ -191,9 +167,6 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   PADDLE_ENFORCE_NOT_NULL(
       loop, platform::errors::Fatal("thread task loop must not null"));
   interceptor->RegisterTaskLoop(loop);
-
-  // TODO(liyurui): Using struct InterceptorID replace int64_t
-  GlobalMap<int64_t, int64_t>::Create(interceptor_id, carrier_id_);
 
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
@@ -220,19 +193,15 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 }
 
 void Carrier::CreateInterceptors() {
-  if (interceptor_ids_.empty()) return;
+  if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
 
   // create each Interceptor
   // no auto init since there is no config
-  for (int64_t interceptor_id : interceptor_ids_) {
-    const auto& task_node_iter = interceptor_id_to_node_.find(interceptor_id);
-    PADDLE_ENFORCE_NE(
-        task_node_iter, interceptor_id_to_node_.end(),
-        platform::errors::NotFound("Can not find task node for interceptor %ld",
-                                   interceptor_id));
-    TaskNode* task_node = task_node_iter->second;
+  for (const auto& item : interceptor_id_to_node_) {
+    int64_t interceptor_id = item.first;
+    TaskNode* task_node = item.second;
 
     PADDLE_ENFORCE_LT(
         task_node->run_at_offset(), task_node->run_per_steps(),
