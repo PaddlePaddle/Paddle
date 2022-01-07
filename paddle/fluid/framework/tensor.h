@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -81,6 +82,7 @@ class TensorInplaceVersion {
   bool IsUnique() const { return inplace_version_ == 0; }
   void Bump() { ++inplace_version_; }
   uint32_t CurrentVersion() const { return inplace_version_; }
+  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
  private:
   uint32_t inplace_version_;
@@ -110,16 +112,6 @@ class Tensor {
 #endif
 
  public:
-  template <typename T, size_t D, int MajorType, typename IndexType>
-  friend struct EigenTensor;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenMatrix;
-
-  template <typename T, int MajorType, typename IndexType>
-  friend struct EigenVector;
-
- public:
   Tensor()
       : type_(proto::VarType::FP32),
         offset_(0),
@@ -128,6 +120,8 @@ class Tensor {
   explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
+  const void* data() const;
+
   template <typename T>
   T* data();
 
@@ -148,6 +142,9 @@ class Tensor {
                      size_t requested_size = 0);
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
+
+  void* mutable_data(const platform::Place& place, proto::VarType::Type type,
+                     const platform::Stream& stream);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -260,12 +257,15 @@ class Tensor {
     // should not be copied.
   }
 
+  void ShareDataTypeWith(const Tensor& tensor) { type_ = tensor.type_; }
+
   bool IsSharedBufferWith(const Tensor& src) const {
     return holder_ && holder_ == src.Holder();
   }
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
+  void set_offset(size_t offset) { offset_ = offset; }
 
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);

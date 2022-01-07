@@ -19,9 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
-// only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/sign_kernel.h"
 
 namespace paddle {
 namespace operators {

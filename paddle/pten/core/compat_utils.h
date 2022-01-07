@@ -48,16 +48,16 @@ class CompatibleDenseTensorUtils {
     }
   }
 
-  static DenseTensor Slice(DenseTensor* tensor,
+  static DenseTensor Slice(const DenseTensor& tensor,
                            int64_t begin_idx,
                            int64_t end_idx) {
-    size_t bytes = tensor->numel() * SizeOf(tensor->dtype());
-    PADDLE_ENFORCE_GE(tensor->capacity(),
+    size_t bytes = tensor.numel() * SizeOf(tensor.dtype());
+    PADDLE_ENFORCE_GE(tensor.capacity(),
                       bytes,
                       paddle::platform::errors::InvalidArgument(
                           "The memory size %d should be enough to meet the "
                           "volume required by metadata %d.",
-                          tensor->capacity(),
+                          tensor.capacity(),
                           bytes));
     PADDLE_ENFORCE_GE(begin_idx,
                       0,
@@ -66,7 +66,7 @@ class CompatibleDenseTensorUtils {
                           "But received the start index is d%.",
                           begin_idx));
     PADDLE_ENFORCE_LE(end_idx,
-                      tensor->dims()[0],
+                      tensor.dims()[0],
                       paddle::platform::errors::OutOfRange(
                           "The end row index is out of bound."));
     PADDLE_ENFORCE_LT(
@@ -77,13 +77,12 @@ class CompatibleDenseTensorUtils {
             "But received the start index = %d, the end index = %d.",
             begin_idx,
             end_idx));
-    DenseTensor ret =
-        DenseTensor(copy_intrusive(tensor->storage_), tensor->meta_);
-    if (tensor->dims()[0] != 1) {
+    DenseTensor ret(tensor);
+    if (tensor.dims()[0] != 1) {
       ret.meta_.dims[0] = end_idx - begin_idx;
-      ret.meta_.offset = tensor->meta_.offset +
-                         begin_idx * (tensor->numel() / tensor->dims()[0]) *
-                             paddle::experimental::SizeOf(tensor->dtype());
+      ret.meta_.offset = tensor.meta_.offset +
+                         begin_idx * (tensor.numel() / tensor.dims()[0]) *
+                             paddle::experimental::SizeOf(tensor.dtype());
     }
     return ret;
   }

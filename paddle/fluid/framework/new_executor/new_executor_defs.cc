@@ -309,7 +309,7 @@ bool InterpretercoreInferShapeContext::IsRuntime() const { return true; }
 
 // TODO(paddle-dev): Can this be template?
 std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
-    const std::string& name) {
+    const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());
@@ -318,7 +318,8 @@ std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
 }
 
 std::vector<InferShapeVarPtr>
-InterpretercoreInferShapeContext::GetOutputVarPtrs(const std::string& name) {
+InterpretercoreInferShapeContext::GetOutputVarPtrs(
+    const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());
@@ -670,6 +671,14 @@ const std::unordered_set<int>& Instruction::NoDataTransformVars() const {
 
 OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
+}
+
+pten::Kernel* Instruction::PtenKernel() const {
+  return op_func_node_.pt_kernel_;
+}
+
+pten::KernelContext* Instruction::PtenKernelContext() const {
+  return op_func_node_.pt_kernel_context_;
 }
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
