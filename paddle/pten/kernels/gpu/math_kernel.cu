@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/pten/kernels/gpu/elementwise.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
-#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -30,11 +30,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
-
-namespace kps = paddle::operators::kernel_primitives;
 
 namespace pten {
 
