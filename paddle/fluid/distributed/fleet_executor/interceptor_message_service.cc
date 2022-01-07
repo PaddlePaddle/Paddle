@@ -15,8 +15,8 @@
     !defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/global_map.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
 namespace paddle {
 namespace distributed {
@@ -29,9 +29,7 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
   VLOG(3) << "Interceptor Message Service receives a message from interceptor "
           << request->src_id() << " to interceptor " << request->dst_id()
           << ", with the message: " << request->message_type();
-  const auto& carrier_id = GlobalVal<std::string>::Get();
-  bool flag = GlobalMap<std::string, Carrier>::Get(carrier_id)
-                  ->EnqueueInterceptorMessage(*request);
+  bool flag = GlobalVal<MessageBus>::Get()->DispatchMsgToCarrier(*request);
   response->set_rst(flag);
 }
 
