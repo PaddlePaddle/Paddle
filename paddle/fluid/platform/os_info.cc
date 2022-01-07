@@ -31,7 +31,8 @@ namespace paddle {
 namespace platform {
 namespace internal {
 
-static main_tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+static uint64_t main_tid =
+    std::hash<std::thread::id>()(std::this_thread::get_id());
 
 template <typename T>
 class ThreadDataRegistry {
