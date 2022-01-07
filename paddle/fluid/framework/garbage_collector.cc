@@ -18,9 +18,7 @@
 #endif
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_guard.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_double(memory_fraction_of_eager_deletion);

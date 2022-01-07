@@ -28,10 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_guard.h"
-#endif
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -392,10 +389,10 @@ void SetTensorFromPyArrayT(
     platform::DeviceGuard guard(tmp_place);
     auto dst = self->mutable_data<T>(place);
 
-    platform::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopy(
+    platform::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
-        array.nbytes(), platform::Device::MemoryCpyKind::HostToDevice);
+        array.nbytes());
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
     ctx.Wait();

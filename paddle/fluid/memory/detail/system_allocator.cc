@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);

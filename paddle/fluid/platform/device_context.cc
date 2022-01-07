@@ -29,9 +29,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_guard.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {

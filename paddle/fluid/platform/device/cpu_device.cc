@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/event.h"
 #include "paddle/fluid/platform/device/stream.h"
 
@@ -35,21 +35,16 @@ class CpuDevice : public DeviceInterface {
 
   void SetDevice(size_t dev_id) override {}
 
-  void MemoryCopy(size_t dev_id /* note: dst_place */, void* dst,
-                  const void* src, size_t size, MemoryCpyKind kind,
-                  const stream::Stream* stream = nullptr) override {
+  void MemoryCopyD2H(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     std::memcpy(dst, src, size);
   }
 
-  void* MemoryAllocate(
-      size_t dev_id, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
+  void* MemoryAllocate(size_t dev_id, size_t size) override {
     return malloc(size);
   }
 
-  void MemoryDeallocate(
-      size_t dev_id, void* ptr, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
+  void MemoryDeallocate(size_t dev_id, void* ptr, size_t size) override {
     free(ptr);
   }
 

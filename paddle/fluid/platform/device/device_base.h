@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,19 +22,6 @@ namespace platform {
 
 class DeviceInterface {  // Driver / Runtime
  public:
-  enum MemoryCpyKind {
-    HostToDevice = 0,
-    DeviceToHost = 1,
-    DeviceToDevice = 2,
-    HostToHost = 3,
-  };
-
-  enum MemoryAllocKind {
-    Normal = 0,
-    Host = 1,
-    Unified = 2,
-  };
-
   DeviceInterface(const std::string& type, uint8_t priority, bool is_custom)
       : type_(type), priority_(priority), is_custom_(is_custom) {}
   uint8_t Priority() { return priority_; }
@@ -42,8 +29,13 @@ class DeviceInterface {  // Driver / Runtime
   bool IsCustom() { return is_custom_; }
 
   virtual ~DeviceInterface() {}
-  virtual size_t GetDeviceCount() = 0;
-  virtual std::vector<size_t> GetDeviceList() = 0;
+
+  // Info
+  virtual size_t GetComputeCapability();
+
+  virtual size_t GetRuntimeVersion();
+
+  virtual size_t GetDriverVersion();
 
   // Platform
   //! Initialize
@@ -53,6 +45,9 @@ class DeviceInterface {  // Driver / Runtime
   virtual void Finalize();
 
   // Device
+  virtual size_t GetDeviceCount() = 0;
+  virtual std::vector<size_t> GetDeviceList() = 0;
+
   //! Wait for compute device to finish.
   virtual void SynchronizeDevice(size_t dev_id);
 
@@ -111,23 +106,36 @@ class DeviceInterface {  // Driver / Runtime
                                const event::Event* event);
 
   // Memory
-  virtual void MemoryCopy(size_t dev_id, void* dst, const void* src,
-                          size_t size, MemoryCpyKind kind,
-                          const stream::Stream* stream = nullptr);
+  virtual void MemoryCopyH2D(size_t dev_id, void* dst, const void* src,
+                             size_t size,
+                             const stream::Stream* stream = nullptr);
 
-  virtual void MemoryCopyPeer(const Place& dst_place, void* dst, size_t src_id,
-                              const void* src, size_t size,
-                              const stream::Stream* stream = nullptr);
+  virtual void MemoryCopyD2H(size_t dev_id, void* dst, const void* src,
+                             size_t size,
+                             const stream::Stream* stream = nullptr);
 
-  virtual void* MemoryAllocate(size_t dev_id, size_t size,
-                               MemoryAllocKind kind = MemoryAllocKind::Normal);
+  virtual void MemoryCopyD2D(size_t dev_id, void* dst, const void* src,
+                             size_t size,
+                             const stream::Stream* stream = nullptr);
 
-  virtual void MemoryDeallocate(size_t dev_id, void* ptr, size_t size,
-                                MemoryAllocKind kind = MemoryAllocKind::Normal);
+  virtual void MemoryCopyP2P(const Place& dst_place, void* dst, size_t src_id,
+                             const void* src, size_t size,
+                             const stream::Stream* stream = nullptr);
+
+  virtual void* MemoryAllocate(size_t dev_id, size_t size);
+
+  virtual void MemoryDeallocate(size_t dev_id, void* ptr, size_t size);
+
+  virtual void* MemoryAllocateHost(size_t dev_id, size_t size);
+
+  virtual void MemoryDeallocateHost(size_t dev_id, void* ptr, size_t size);
+
+  virtual void* MemoryAllocateUnified(size_t dev_id, size_t size);
+
+  virtual void MemoryDeallocateUnified(size_t dev_id, void* ptr, size_t size);
 
   virtual void MemorySet(size_t dev_id, void* ptr, uint8_t value, size_t size);
 
-  // Info
   virtual void MemoryStats(size_t dev_id, size_t* total, size_t* free);
 
   virtual size_t GetMinChunkSize(size_t dev_id);
@@ -141,12 +149,6 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetMaxChunkSize(size_t dev_id);
 
   virtual size_t GetExtraPaddingSize(size_t dev_id);
-
-  virtual size_t GetComputeCapability();
-
-  virtual size_t GetRuntimeVersion();
-
-  virtual size_t GetDriverVersion();
 
  private:
   const std::string type_;

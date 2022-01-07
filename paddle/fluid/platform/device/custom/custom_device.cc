@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device/device_base.h"
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/event.h"
 #include "paddle/fluid/platform/device/stream.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -66,7 +66,7 @@ class CustomDevice : public DeviceInterface {
 
   void Initialize() override {
     if (pimpl_->initialize && pimpl_->initialize() != C_SUCCESS) {
-      LOG(ERROR) << "Initialize " + Type() + " Failed\n";
+      LOG(ERROR) << "Initialize " << Type() << " Failed\n";
       exit(-1);
     }
     auto devices = GetDeviceList();
@@ -88,7 +88,7 @@ class CustomDevice : public DeviceInterface {
 
     bool ok = true;
     if (pimpl_->finalize && pimpl_->finalize() != C_SUCCESS) {
-      LOG(ERROR) << "Finalize " + Type() + " Failed\n";
+      LOG(ERROR) << "Finalize " << Type() << " Failed\n";
       ok = false;
     }
     if (dso_handle_) {
@@ -177,7 +177,7 @@ class CustomDevice : public DeviceInterface {
                    stream::Stream::Callback* callback) override {
     if (!pimpl_->stream_add_callback) {
       PADDLE_THROW(platform::errors::Unavailable(
-          "AddCallback is not supported on " + Type() + "."));
+          "AddCallback is not supported on %s.", Type()));
     } else {
       const auto device = &devices_pool[dev_id];
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->stream_add_callback(
@@ -248,64 +248,70 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Event>(event->raw_event())));
   }
 
-  void MemoryCopy(size_t dev_id, void* dst, const void* src, size_t size,
-                  MemoryCpyKind kind,
-                  const stream::Stream* stream = nullptr) override {
+  void MemoryCopyH2D(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     const auto device = &devices_pool[dev_id];
     auto place = platform::CustomPlace(Type(), dev_id);
 
-    if (kind == MemoryCpyKind::HostToDevice) {
-      if (stream && stream->raw_stream() && pimpl_->async_memory_copy_h2d) {
-        C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->async_memory_copy_h2d(device, c_stream, dst, src, size));
-      } else {
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
-        pool.Get(place)->Wait();
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->memory_copy_h2d(device, dst, src, size));
-      }
-    } else if (kind == MemoryCpyKind::DeviceToHost) {
-      if (stream && stream->raw_stream() && pimpl_->async_memory_copy_d2h) {
-        C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->async_memory_copy_d2h(device, c_stream, dst, src, size));
-      } else {
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
-        pool.Get(place)->Wait();
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->memory_copy_d2h(device, dst, src, size));
-      }
-    } else if (kind == MemoryCpyKind::DeviceToDevice) {
-      if (stream && stream->raw_stream() && pimpl_->async_memory_copy_d2d) {
-        C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->async_memory_copy_d2d(device, c_stream, dst, src, size));
-      } else {
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
-        pool.Get(place)->Wait();
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->memory_copy_d2d(device, dst, src, size));
-      }
+    if (stream && stream->raw_stream() && pimpl_->async_memory_copy_h2d) {
+      C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->async_memory_copy_h2d(device, c_stream, dst, src, size));
     } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryCpyKind."));
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      pool.Get(place)->Wait();
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->memory_copy_h2d(device, dst, src, size));
     }
   }
 
-  void MemoryCopyPeer(const Place& dst_place, void* dst, size_t src_dev_id,
-                      const void* src, size_t size,
-                      const stream::Stream* stream = nullptr) override {
+  void MemoryCopyD2H(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
+    const auto device = &devices_pool[dev_id];
+    auto place = platform::CustomPlace(Type(), dev_id);
+
+    if (stream && stream->raw_stream() && pimpl_->async_memory_copy_d2h) {
+      C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->async_memory_copy_d2h(device, c_stream, dst, src, size));
+    } else {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      pool.Get(place)->Wait();
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->memory_copy_d2h(device, dst, src, size));
+    }
+  }
+
+  void MemoryCopyD2D(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
+    const auto device = &devices_pool[dev_id];
+    auto place = platform::CustomPlace(Type(), dev_id);
+
+    if (stream && stream->raw_stream() && pimpl_->async_memory_copy_d2d) {
+      C_Stream c_stream = reinterpret_cast<C_Stream>(stream->raw_stream());
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->async_memory_copy_d2d(device, c_stream, dst, src, size));
+    } else {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      pool.Get(place)->Wait();
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->memory_copy_d2d(device, dst, src, size));
+    }
+  }
+
+  void MemoryCopyP2P(const Place& dst_place, void* dst, size_t src_dev_id,
+                     const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     int dst_dev_id = PlaceToId(dst_place);
     auto dst_device = &devices_pool[dst_dev_id];
     auto src_device = &devices_pool[src_dev_id];
 
     if (stream && stream->raw_stream()) {
       if (!pimpl_->async_memory_copy_p2p) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "AsyncMemoryCopyPeer is not supported on " + Type() + "."));
+        MemoryCopyP2P(dst_place, dst, src_dev_id, src, size);
       } else {
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->async_memory_copy_p2p(
             dst_device, src_device,
@@ -313,8 +319,9 @@ class CustomDevice : public DeviceInterface {
       }
     } else {
       if (!pimpl_->memory_copy_p2p) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "MemoryCopyPeer is not supported on " + Type() + "."));
+        std::unique_ptr<uint8_t> tmp(new uint8_t[size]);
+        MemoryCopyD2H(src_dev_id, tmp.get(), src, size);
+        MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
         auto src_place = platform::CustomPlace(Type(), src_dev_id);
         platform::DeviceContextPool& pool =
@@ -326,63 +333,71 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
-  void* MemoryAllocate(
-      size_t dev_id, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
+  void* MemoryAllocate(size_t dev_id, size_t size) override {
     void* ptr = nullptr;
     const auto device = &devices_pool[dev_id];
 
-    if (kind == MemoryAllocKind::Normal) {
-      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-          pimpl_->device_memory_allocate(device, &ptr, size));
-    } else if (kind == MemoryAllocKind::Host) {
-      if (!pimpl_->unified_memory_allocate) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "MemoryAllocKind::Host is not supported on " + Type() + "."));
-      } else {
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->host_memory_allocate(device, &ptr, size));
-      }
-    } else if (kind == MemoryAllocKind::Unified) {
-      if (!pimpl_->unified_memory_allocate) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "MemoryAllocKind::Unified is not supported on " + Type() + "."));
-      } else {
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->unified_memory_allocate(device, &ptr, size));
-      }
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->device_memory_allocate(device, &ptr, size));
+    return ptr;
+  }
+
+  void MemoryDeallocate(size_t dev_id, void* ptr, size_t size) override {
+    const auto device = &devices_pool[dev_id];
+
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->device_memory_deallocate(device, ptr, size));
+  }
+
+  void* MemoryAllocateHost(size_t dev_id, size_t size) override {
+    void* ptr = nullptr;
+    const auto device = &devices_pool[dev_id];
+
+    if (!pimpl_->unified_memory_allocate) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "MemoryAllocKind::Host is not supported on %s.", Type()));
     } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->host_memory_allocate(device, &ptr, size));
     }
     return ptr;
   }
 
-  void MemoryDeallocate(
-      size_t dev_id, void* ptr, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
+  void MemoryDeallocateHost(size_t dev_id, void* ptr, size_t size) override {
     const auto device = &devices_pool[dev_id];
 
-    if (kind == MemoryAllocKind::Normal) {
-      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-          pimpl_->device_memory_deallocate(device, ptr, size));
-    } else if (kind == MemoryAllocKind::Host) {
-      if (!pimpl_->host_memory_deallocate) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "MemoryAllocKind::Host is not supported on " + Type() + "."));
-      } else {
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->host_memory_deallocate(device, ptr, size));
-      }
-    } else if (kind == MemoryAllocKind::Unified) {
-      if (!pimpl_->unified_memory_deallocate) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "MemoryAllocKind::Host is not supported on " + Type() + "."));
-      } else {
-        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
-            pimpl_->unified_memory_deallocate(device, ptr, size));
-      }
+    if (!pimpl_->host_memory_deallocate) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "MemoryAllocKind::Host is not supported on %s.", Type()));
     } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->host_memory_deallocate(device, ptr, size));
+    }
+  }
+
+  void* MemoryAllocateUnified(size_t dev_id, size_t size) override {
+    void* ptr = nullptr;
+    const auto device = &devices_pool[dev_id];
+
+    if (!pimpl_->unified_memory_allocate) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "MemoryAllocKind::Unified is not supported on %s.", Type()));
+    } else {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->unified_memory_allocate(device, &ptr, size));
+    }
+    return ptr;
+  }
+
+  void MemoryDeallocateUnified(size_t dev_id, void* ptr, size_t size) override {
+    const auto device = &devices_pool[dev_id];
+
+    if (!pimpl_->unified_memory_deallocate) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "MemoryAllocKind::Host is not supported on %s.", Type()));
+    } else {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->unified_memory_deallocate(device, ptr, size));
     }
   }
 
@@ -394,9 +409,9 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_memory_set(device, ptr, value, size));
     } else {
-      void* tmp = new uint8_t[size];
-      memset(tmp, value, size);
-      MemoryCopy(dev_id, ptr, tmp, size, MemoryCpyKind::HostToDevice);
+      std::unique_ptr<uint8_t> tmp(new uint8_t[size]);
+      memset(tmp.get(), value, size);
+      MemoryCopyH2D(dev_id, ptr, tmp.get(), size);
     }
   }
 
@@ -407,7 +422,7 @@ class CustomDevice : public DeviceInterface {
         pimpl_->device_memory_stats(device, total, free));
 
     size_t used = *total - *free;
-    VLOG(10) << Type() + " memory usage " << (used >> 20) << "M/"
+    VLOG(10) << Type() << " memory usage " << (used >> 20) << "M/"
              << (*total >> 20) << "M, " << (*free >> 20)
              << "M available to allocate";
   }
@@ -417,7 +432,7 @@ class CustomDevice : public DeviceInterface {
 
     size_t size = 0;
     pimpl_->device_min_chunk_size(device, &size);
-    VLOG(10) << Type() + " min chunk size " << size << "B";
+    VLOG(10) << Type() << " min chunk size " << size << "B";
     return size;
   }
 
@@ -427,7 +442,7 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_max_chunk_size) {
       pimpl_->device_max_chunk_size(device, &size);
-      VLOG(10) << Type() + " max chunk size " << size << "B";
+      VLOG(10) << Type() << " max chunk size " << size << "B";
     } else {
       return DeviceInterface::GetMaxChunkSize(dev_id);
     }
@@ -440,7 +455,7 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_max_alloc_size) {
       pimpl_->device_max_alloc_size(device, &size);
-      VLOG(10) << Type() + " max alloc size " << (size >> 20) << "M";
+      VLOG(10) << Type() << " max alloc size " << (size >> 20) << "M";
     } else {
       return DeviceInterface::GetMaxAllocSize(dev_id);
     }
@@ -452,7 +467,7 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_init_alloc_size) {
       pimpl_->device_init_alloc_size(device, &size);
-      VLOG(10) << Type() + " init alloc size " << (size >> 20) << "M";
+      VLOG(10) << Type() << " init alloc size " << (size >> 20) << "M";
     } else {
       return DeviceInterface::GetInitAllocSize(dev_id);
     }
@@ -464,7 +479,7 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_realloc_size) {
       pimpl_->device_realloc_size(device, &size);
-      VLOG(10) << Type() + " realloc size " << (size >> 20) << "M";
+      VLOG(10) << Type() << " realloc size " << (size >> 20) << "M";
     } else {
       return DeviceInterface::GetReallocSize(dev_id);
     }
@@ -478,7 +493,7 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->device_extra_padding_size) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_extra_padding_size(device, &padding_size));
-      VLOG(10) << Type() + " extra padding size " << (padding_size >> 20)
+      VLOG(10) << Type() << " extra padding size " << (padding_size >> 20)
                << "M";
     } else {
       return DeviceInterface::GetExtraPaddingSize(dev_id);
@@ -491,7 +506,7 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_compute_capability) {
       pimpl_->get_compute_capability(&compute_capability);
     }
-    VLOG(10) << Type() + " get compute capability " << compute_capability;
+    VLOG(10) << Type() << " get compute capability " << compute_capability;
     return compute_capability;
   }
 
@@ -500,7 +515,7 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_runtime_version) {
       pimpl_->get_runtime_version(&version);
     }
-    VLOG(10) << Type() + " get runtime version " << version;
+    VLOG(10) << Type() << " get runtime version " << version;
     return version;
   }
 
@@ -509,7 +524,7 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_driver_version) {
       pimpl_->get_driver_version(&version);
     }
-    VLOG(10) << Type() + " get driver version " << version;
+    VLOG(10) << Type() << " get driver version " << version;
     return version;
   }
 

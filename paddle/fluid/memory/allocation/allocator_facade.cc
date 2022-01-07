@@ -63,8 +63,8 @@
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/memory/allocation/plug_allocator.h"
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/memory/allocation/custom_allocator.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #endif
 
 PADDLE_DEFINE_EXPORTED_int64(
@@ -734,10 +734,10 @@ class AllocatorFacadePrivate {
 
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
                                            bool allow_free_idle_chunk) {
-    auto plug_allocator =
+    auto custom_allocator =
         std::make_shared<paddle::memory::allocation::CustomDeviceAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        plug_allocator, platform::DeviceManager::GetMinChunkSize(p),
+        custom_allocator, platform::DeviceManager::GetMinChunkSize(p),
         allow_free_idle_chunk);
   }
 #endif

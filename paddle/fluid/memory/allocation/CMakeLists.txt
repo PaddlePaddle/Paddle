@@ -59,8 +59,8 @@ else ()
 endif()
 
 if (WITH_CUSTOM_DEVICE)
-  cc_library(plug_allocator SRCS plug_allocator.cc DEPS allocator device_manager)
-  set(AllocatorFacadeDeps ${AllocatorFacadeDeps} plug_allocator)
+  cc_library(custom_allocator SRCS custom_allocator.cc DEPS allocator device_manager)
+  set(AllocatorFacadeDeps ${AllocatorFacadeDeps} custom_allocator)
 endif()
 
 if (WITH_GPU)

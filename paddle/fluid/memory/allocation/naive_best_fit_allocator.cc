@@ -20,10 +20,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_guard.h"
-#include "paddle/fluid/platform/device/device_manager.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -34,7 +31,6 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#include "paddle/fluid/platform/device/device_wrapper.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     init_allocated_mem, false,
@@ -743,13 +739,9 @@ class BuddyAllocatorList {
  private:
   explicit BuddyAllocatorList(const std::string &device_type)
       : device_type_(device_type) {
-    // custom device use logical id
-    auto device_count = platform::DeviceManager::GetDeviceCount(device_type);
-
-    allocators_.resize(device_count);
-    init_flags_.reserve(device_count);
-    for (size_t i = 0; i < device_count; ++i) {
-      init_flags_.emplace_back(new std::once_flag());
+    auto devices = platform::DeviceManager::GetDeviceList(device_type);
+    for (auto dev_id : devices) {
+      init_flags_[dev_id].reset(new std::once_flag());
     }
   }
 
@@ -768,11 +760,10 @@ class BuddyAllocatorList {
   }
 
   BuddyAllocator *Get(int dev_id) {
-    PADDLE_ENFORCE_LT(dev_id, allocators_.size(),
+    PADDLE_ENFORCE_NE(init_flags_.find(dev_id), init_flags_.end(),
                       platform::errors::OutOfRange(
-                          "The index exceeds the size of devices, the size of "
-                          "devices is %d, the index is %d",
-                          allocators_.size(), dev_id));
+                          "Cannot find %s %d, please check visible devices.",
+                          device_type_, dev_id));
 
     std::call_once(*init_flags_[dev_id], [this, dev_id] {
       platform::DeviceManager::SetDevice(device_type_, dev_id);
@@ -793,8 +784,8 @@ class BuddyAllocatorList {
 
  private:
   std::string device_type_;
-  std::vector<std::unique_ptr<std::once_flag>> init_flags_;
-  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
+  std::unordered_map<size_t, std::unique_ptr<std::once_flag>> init_flags_;
+  std::unordered_map<size_t, std::unique_ptr<BuddyAllocator>> allocators_;
 };
 
 BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {

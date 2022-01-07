@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,22 +76,48 @@ void Device::StreamWaitEvent(const stream::Stream* stream,
   impl_->StreamWaitEvent(dev_id_, stream, event);
 }
 
-void Device::MemoryCopy(void* dst, const void* src, size_t size,
-                        MemoryCpyKind kind, const stream::Stream* stream) {
-  impl_->MemoryCopy(dev_id_, dst, src, size, kind, stream);
+void Device::MemoryCopyH2D(void* dst, const void* src, size_t size,
+                           const stream::Stream* stream) {
+  impl_->MemoryCopyH2D(dev_id_, dst, src, size, stream);
 }
 
-void Device::MemoryCopyPeer(const Place& dst_place, void* dst, const void* src,
-                            size_t size, const stream::Stream* stream) {
-  impl_->MemoryCopyPeer(dst_place, dst, dev_id_, src, size, stream);
+void Device::MemoryCopyD2H(void* dst, const void* src, size_t size,
+                           const stream::Stream* stream) {
+  impl_->MemoryCopyD2H(dev_id_, dst, src, size, stream);
 }
 
-void* Device::MemoryAllocate(size_t size, MemoryAllocKind kind) {
-  return impl_->MemoryAllocate(dev_id_, size, kind);
+void Device::MemoryCopyD2D(void* dst, const void* src, size_t size,
+                           const stream::Stream* stream) {
+  impl_->MemoryCopyD2D(dev_id_, dst, src, size, stream);
 }
 
-void Device::MemoryDeallocate(void* ptr, size_t size, MemoryAllocKind kind) {
-  impl_->MemoryDeallocate(dev_id_, ptr, size, kind);
+void Device::MemoryCopyP2P(const Place& dst_place, void* dst, const void* src,
+                           size_t size, const stream::Stream* stream) {
+  impl_->MemoryCopyP2P(dst_place, dst, dev_id_, src, size, stream);
+}
+
+void* Device::MemoryAllocate(size_t size) {
+  return impl_->MemoryAllocate(dev_id_, size);
+}
+
+void Device::MemoryDeallocate(void* ptr, size_t size) {
+  impl_->MemoryDeallocate(dev_id_, ptr, size);
+}
+
+void* Device::MemoryAllocateHost(size_t size) {
+  return impl_->MemoryAllocateHost(dev_id_, size);
+}
+
+void Device::MemoryDeallocateHost(void* ptr, size_t size) {
+  impl_->MemoryDeallocateHost(dev_id_, ptr, size);
+}
+
+void* Device::MemoryAllocateUnified(size_t size) {
+  return impl_->MemoryAllocateUnified(dev_id_, size);
+}
+
+void Device::MemoryDeallocateUnified(void* ptr, size_t size) {
+  impl_->MemoryDeallocateUnified(dev_id_, ptr, size);
 }
 
 void Device::MemorySet(void* ptr, uint8_t value, size_t size) {

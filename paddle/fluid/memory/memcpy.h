@@ -39,15 +39,18 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 /**
  * \brief   Copy memory from one place to another place.
  *
- * \param[in]  DstPlace Destination allocation place (CPU or GPU).
+ * \param[in]  DstPlace Destination allocation place (CPU or GPU or XPU or
+ * CustomDevice).
  * \param[in]  dst      Destination memory address.
- * \param[in]  SrcPlace Source allocation place (CPU or GPU).
+ * \param[in]  SrcPlace Source allocation place (CPU or GPU or XPU or
+ * CustomDevice).
  * \param[in]  src      Source memory address.
  * \param[in]  num      memory size in bytes to copy.
- * \param[in]  stream   CUDA stream.
+ * \param[in]  stream   stream for asynchronously memory copy.
  *
- * \note    For GPU memory copy, CUDA stream need to be specified
- *          for asynchronously memory copy.
+ * \note    For GPU/XPU/CustomDevice memory copy, stream need to be specified
+ *          for asynchronously memory copy, and type is restored in the
+ *          implementation.
  *
  */
 template <typename DstPlace, typename SrcPlace>

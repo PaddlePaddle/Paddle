@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,11 +26,12 @@ extern "C" {
 #define PADDLE_DEVICE_PLUGIN_PATCH_VERSION 1
 
 typedef enum {
-  C_SUCCESS = 0,
-  C_WARNING,
-  C_FAILED,
-  C_ERROR,
-  C_INTERNAL_ERROR
+  C_SUCCESS = 0,    // success
+  C_WARNING,        // results may not meet expectation (such as an asynchronous
+                    // interface is actually synchronous)
+  C_FAILED,         // resource exhausted/query failed
+  C_ERROR,          // invalid argument/wrong usage/uninitialized
+  C_INTERNAL_ERROR  // plugin error
 } C_Status;
 
 typedef struct C_Device_st { int id; } * C_Device;

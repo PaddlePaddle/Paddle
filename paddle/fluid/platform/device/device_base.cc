@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,113 +23,163 @@ constexpr static float fraction_reserve_gpu_memory = 0.05f;
 namespace paddle {
 namespace platform {
 
-#define NOT_IMPL                                \
+#define INTERFACE_UNIMPLEMENT                   \
   PADDLE_THROW(platform::errors::Unimplemented( \
       "%s is not implemented on %s device.", __func__, Type()));
 
-void DeviceInterface::Initialize() { NOT_IMPL; }
+// info
+size_t DeviceInterface::GetComputeCapability() {
+  VLOG(10) << Type() + " get compute capability " << 0;
+  return 0;
+}
 
-void DeviceInterface::Finalize() { NOT_IMPL; }
+size_t DeviceInterface::GetRuntimeVersion() {
+  VLOG(10) << Type() + " get runtime version " << 0;
+  return 0;
+}
 
-void DeviceInterface::SynchronizeDevice(size_t dev_id) { NOT_IMPL; }
+size_t DeviceInterface::GetDriverVersion() {
+  VLOG(10) << Type() + " get driver version " << 0;
+  return 0;
+}
 
-void DeviceInterface::InitDevice(size_t dev_id) { NOT_IMPL; }
+// device manage
+void DeviceInterface::Initialize() { INTERFACE_UNIMPLEMENT; }
 
-void DeviceInterface::DeInitDevice(size_t dev_id) { NOT_IMPL; }
+void DeviceInterface::Finalize() { INTERFACE_UNIMPLEMENT; }
 
-void DeviceInterface::SetDevice(size_t dev_id) { NOT_IMPL; }
+void DeviceInterface::SynchronizeDevice(size_t dev_id) {
+  INTERFACE_UNIMPLEMENT;
+}
 
-int DeviceInterface::GetDevice() { NOT_IMPL; }
+void DeviceInterface::InitDevice(size_t dev_id) { INTERFACE_UNIMPLEMENT; }
 
+void DeviceInterface::DeInitDevice(size_t dev_id) { INTERFACE_UNIMPLEMENT; }
+
+void DeviceInterface::SetDevice(size_t dev_id) { INTERFACE_UNIMPLEMENT; }
+
+int DeviceInterface::GetDevice() { INTERFACE_UNIMPLEMENT; }
+
+// stream manage
 void DeviceInterface::CreateStream(size_t dev_id, stream::Stream* stream,
                                    const stream::Stream::Priority& priority,
                                    const stream::Stream::Flag& flag) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::DestroyStream(size_t dev_id, stream::Stream* stream) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::SynchronizeStream(size_t dev_id,
                                         const stream::Stream* stream) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
 }
 
 bool DeviceInterface::QueryStream(size_t dev_id, const stream::Stream* stream) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
   return true;
 }
 
 void DeviceInterface::AddCallback(size_t dev_id, stream::Stream* stream,
                                   stream::Stream::Callback* callback) {
-  NOT_IMPL;
-}
-
-void DeviceInterface::CreateEvent(size_t dev_id, event::Event* event,
-                                  event::Event::Flag flags) {
-  NOT_IMPL;
-}
-
-void DeviceInterface::DestroyEvent(size_t dev_id, event::Event* event) {
-  NOT_IMPL;
-}
-
-void DeviceInterface::RecordEvent(size_t dev_id, const event::Event* event,
-                                  const stream::Stream* stream) {
-  NOT_IMPL;
-}
-
-void DeviceInterface::SynchronizeEvent(size_t dev_id,
-                                       const event::Event* event) {
-  NOT_IMPL;
-}
-
-bool DeviceInterface::QueryEvent(size_t dev_id, const event::Event* event) {
-  NOT_IMPL;
-  return true;
+  INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::StreamWaitEvent(size_t dev_id,
                                       const stream::Stream* stream,
                                       const event::Event* event) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::MemoryCopy(size_t dev_id, void* dst, const void* src,
-                                 size_t size, MemoryCpyKind kind,
-                                 const stream::Stream* stream) {
-  NOT_IMPL;
+// event manage
+void DeviceInterface::CreateEvent(size_t dev_id, event::Event* event,
+                                  event::Event::Flag flags) {
+  INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::MemoryCopyPeer(const Place& dst_place, void* dst,
-                                     size_t src_id, const void* src,
-                                     size_t size,
-                                     const stream::Stream* stream) {
-  NOT_IMPL;
+void DeviceInterface::DestroyEvent(size_t dev_id, event::Event* event) {
+  INTERFACE_UNIMPLEMENT;
 }
 
-void* DeviceInterface::MemoryAllocate(size_t dev_id, size_t size,
-                                      MemoryAllocKind kind) {
-  NOT_IMPL;
+void DeviceInterface::RecordEvent(size_t dev_id, const event::Event* event,
+                                  const stream::Stream* stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::SynchronizeEvent(size_t dev_id,
+                                       const event::Event* event) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+bool DeviceInterface::QueryEvent(size_t dev_id, const event::Event* event) {
+  INTERFACE_UNIMPLEMENT;
+  return true;
+}
+
+// memery manage
+void DeviceInterface::MemoryCopyH2D(size_t dev_id, void* dst, const void* src,
+                                    size_t size, const stream::Stream* stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::MemoryCopyD2H(size_t dev_id, void* dst, const void* src,
+                                    size_t size, const stream::Stream* stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::MemoryCopyD2D(size_t dev_id, void* dst, const void* src,
+                                    size_t size, const stream::Stream* stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::MemoryCopyP2P(const Place& dst_place, void* dst,
+                                    size_t src_id, const void* src, size_t size,
+                                    const stream::Stream* stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void* DeviceInterface::MemoryAllocate(size_t dev_id, size_t size) {
+  INTERFACE_UNIMPLEMENT;
   return nullptr;
 }
 
-void DeviceInterface::MemoryDeallocate(size_t dev_id, void* ptr, size_t size,
-                                       MemoryAllocKind kind) {
-  NOT_IMPL;
+void DeviceInterface::MemoryDeallocate(size_t dev_id, void* ptr, size_t size) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void* DeviceInterface::MemoryAllocateHost(size_t dev_id, size_t size) {
+  INTERFACE_UNIMPLEMENT;
+  return nullptr;
+}
+
+void DeviceInterface::MemoryDeallocateHost(size_t dev_id, void* ptr,
+                                           size_t size) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void* DeviceInterface::MemoryAllocateUnified(size_t dev_id, size_t size) {
+  INTERFACE_UNIMPLEMENT;
+  return nullptr;
+}
+
+void DeviceInterface::MemoryDeallocateUnified(size_t dev_id, void* ptr,
+                                              size_t size) {
+  INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::MemorySet(size_t dev_id, void* ptr, uint8_t value,
                                 size_t size) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::MemoryStats(size_t dev_id, size_t* total, size_t* free) {
-  NOT_IMPL;
+  INTERFACE_UNIMPLEMENT;
 }
 
-size_t DeviceInterface::GetMinChunkSize(size_t dev_id) { NOT_IMPL; }
+size_t DeviceInterface::GetMinChunkSize(size_t dev_id) {
+  INTERFACE_UNIMPLEMENT;
+}
 
 size_t DeviceInterface::AllocSize(size_t dev_id, bool realloc) {
   size_t available_to_alloc = AvailableAllocSize(dev_id);
@@ -191,21 +241,6 @@ size_t DeviceInterface::GetMaxChunkSize(size_t dev_id) {
 
 size_t DeviceInterface::GetExtraPaddingSize(size_t dev_id) {
   VLOG(10) << Type() + " extra padding size " << 0;
-  return 0;
-}
-
-size_t DeviceInterface::GetComputeCapability() {
-  VLOG(10) << Type() + " get compute capability " << 0;
-  return 0;
-}
-
-size_t DeviceInterface::GetRuntimeVersion() {
-  VLOG(10) << Type() + " get runtime version " << 0;
-  return 0;
-}
-
-size_t DeviceInterface::GetDriverVersion() {
-  VLOG(10) << Type() + " get driver version " << 0;
   return 0;
 }
 

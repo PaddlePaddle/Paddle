@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/event.h"
 #include "paddle/fluid/platform/device/stream.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -173,26 +173,13 @@ class NpuDevice : public DeviceInterface {
         reinterpret_cast<aclrtEvent>(event->raw_event())));
   }
 
-  void MemoryCopy(size_t dev_id, void* dst, const void* src, size_t size,
-                  MemoryCpyKind kind,
-                  const stream::Stream* stream = nullptr) override {
+  void MemoryCopyH2D(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
     if (stream && stream->raw_stream()) {
-      if (kind == MemoryCpyKind::HostToDevice) {
-        PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
-            dst, size, src, size, ACL_MEMCPY_HOST_TO_DEVICE,
-            reinterpret_cast<aclrtStream>(stream->raw_stream())));
-      } else if (kind == MemoryCpyKind::DeviceToHost) {
-        PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
-            dst, size, src, size, ACL_MEMCPY_DEVICE_TO_HOST,
-            reinterpret_cast<aclrtStream>(stream->raw_stream())));
-      } else if (kind == MemoryCpyKind::DeviceToDevice) {
-        PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
-            dst, size, src, size, ACL_MEMCPY_DEVICE_TO_DEVICE,
-            reinterpret_cast<aclrtStream>(stream->raw_stream())));
-      } else {
-        PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryCpyKind."));
-      }
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
+          dst, size, src, size, ACL_MEMCPY_HOST_TO_DEVICE,
+          reinterpret_cast<aclrtStream>(stream->raw_stream())));
     } else {
       // On NPU, async operation after sync operation is ok, while sync
       // operation
@@ -203,24 +190,58 @@ class NpuDevice : public DeviceInterface {
           platform::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
 
-      if (kind == MemoryCpyKind::HostToDevice) {
-        PADDLE_ENFORCE_NPU_SUCCESS(
-            aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_HOST_TO_DEVICE));
-      } else if (kind == MemoryCpyKind::DeviceToHost) {
-        PADDLE_ENFORCE_NPU_SUCCESS(
-            aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_DEVICE_TO_HOST));
-      } else if (kind == MemoryCpyKind::DeviceToDevice) {
-        PADDLE_ENFORCE_NPU_SUCCESS(
-            aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_DEVICE_TO_DEVICE));
-      } else {
-        PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryCpyKind."));
-      }
+      PADDLE_ENFORCE_NPU_SUCCESS(
+          aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_HOST_TO_DEVICE));
     }
   }
 
-  void MemoryCopyPeer(const Place& dst_place, void* dst, size_t src_dev_id,
-                      const void* src, size_t size,
-                      const stream::Stream* stream = nullptr) override {
+  void MemoryCopyD2H(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
+    if (stream && stream->raw_stream()) {
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
+          dst, size, src, size, ACL_MEMCPY_DEVICE_TO_HOST,
+          reinterpret_cast<aclrtStream>(stream->raw_stream())));
+    } else {
+      // On NPU, async operation after sync operation is ok, while sync
+      // operation
+      // after async is not ok, since the async operation may not done.
+      // So, its needed to do wait before sync operation.
+      auto place = platform::NPUPlace(dev_id);
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      pool.Get(place)->Wait();
+
+      PADDLE_ENFORCE_NPU_SUCCESS(
+          aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_DEVICE_TO_HOST));
+    }
+  }
+
+  void MemoryCopyD2D(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
+    if (stream && stream->raw_stream()) {
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
+          dst, size, src, size, ACL_MEMCPY_DEVICE_TO_DEVICE,
+          reinterpret_cast<aclrtStream>(stream->raw_stream())));
+    } else {
+      // On NPU, async operation after sync operation is ok, while sync
+      // operation
+      // after async is not ok, since the async operation may not done.
+      // So, its needed to do wait before sync operation.
+      auto place = platform::NPUPlace(dev_id);
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      pool.Get(place)->Wait();
+
+      PADDLE_ENFORCE_NPU_SUCCESS(
+          aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_DEVICE_TO_DEVICE));
+    }
+  }
+
+  void MemoryCopyP2P(const Place& dst_place, void* dst, size_t src_dev_id,
+                     const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(src_dev_id));
     auto dst_dev_id = BOOST_GET_CONST(NPUPlace, dst_place).GetDeviceId();
     bool can_access_peer = NPUCanAccessPeer(src_dev_id, dst_dev_id);
@@ -253,38 +274,39 @@ class NpuDevice : public DeviceInterface {
     }
   }
 
-  void* MemoryAllocate(
-      size_t dev_id, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
+  void* MemoryAllocate(size_t dev_id, size_t size) override {
     void* ptr = nullptr;
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
-    if (kind == MemoryAllocKind::Normal) {
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclrtMalloc(&ptr, size, ACL_MEM_MALLOC_HUGE_FIRST));
-    } else if (kind == MemoryAllocKind::Host) {
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtMallocHost(&ptr, size));
-    } else if (kind == MemoryAllocKind::Unified) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "MemoryAllocKind::Unified on NpuDevice places is not allowed."));
-    } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
-    }
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclrtMalloc(&ptr, size, ACL_MEM_MALLOC_HUGE_FIRST));
     return ptr;
   }
 
-  void MemoryDeallocate(
-      size_t dev_id, void* ptr, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
-    if (kind == MemoryAllocKind::Normal) {
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtFree(&ptr));
-    } else if (kind == MemoryAllocKind::Host) {
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtFreeHost(&ptr));
-    } else if (kind == MemoryAllocKind::Unified) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "MemoryAllocKind::Unified on NpuDevice places is not allowed."));
-    } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
-    }
+  void MemoryDeallocate(size_t dev_id, void* ptr, size_t size) override {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtFree(&ptr));
+  }
+
+  void* MemoryAllocateHost(size_t dev_id, size_t size) override {
+    void* ptr = nullptr;
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtMallocHost(&ptr, size));
+    return ptr;
+  }
+
+  void MemoryDeallocateHost(size_t dev_id, void* ptr, size_t size) override {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtFreeHost(&ptr));
+  }
+
+  void* MemoryAllocateUnified(size_t dev_id, size_t size) override {
+    void* ptr = nullptr;
+    PADDLE_THROW(platform::errors::Unavailable(
+        "MemoryAllocKind::Unified on NPU places is not allowed."));
+    return ptr;
+  }
+
+  void MemoryDeallocateUnified(size_t dev_id, void* ptr, size_t size) override {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "MemoryAllocKind::Unified on NPU places is not allowed."));
   }
 
   void MemorySet(size_t dev_id, void* ptr, uint8_t value,

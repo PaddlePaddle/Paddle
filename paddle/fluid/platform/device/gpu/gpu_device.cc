@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/event.h"
 #include "paddle/fluid/platform/device/stream.h"
 
@@ -190,41 +190,42 @@ class CudaDevice : public GpuDevice {
         reinterpret_cast<cudaEvent_t>(event->raw_event()), 0));
   }
 
-  void MemoryCopy(size_t dev_id, void* dst, const void* src, size_t size,
-                  MemoryCpyKind kind,
-                  const stream::Stream* stream = nullptr) override {
+  void MemoryCopyH2D(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     if (stream && stream->raw_stream()) {
-      if (kind == MemoryCpyKind::HostToDevice) {
-        platform::GpuMemcpyAsync(
-            dst, src, size, cudaMemcpyHostToDevice,
-            reinterpret_cast<cudaStream_t>(stream->raw_stream()));
-      } else if (kind == MemoryCpyKind::DeviceToHost) {
-        platform::GpuMemcpyAsync(
-            dst, src, size, cudaMemcpyDeviceToHost,
-            reinterpret_cast<cudaStream_t>(stream->raw_stream()));
-      } else if (kind == MemoryCpyKind::DeviceToDevice) {
-        platform::GpuMemcpyAsync(
-            dst, src, size, cudaMemcpyDeviceToDevice,
-            reinterpret_cast<cudaStream_t>(stream->raw_stream()));
-      } else {
-        PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryCpyKind."));
-      }
+      platform::GpuMemcpyAsync(
+          dst, src, size, cudaMemcpyHostToDevice,
+          reinterpret_cast<cudaStream_t>(stream->raw_stream()));
     } else {
-      if (kind == MemoryCpyKind::HostToDevice) {
-        platform::GpuMemcpySync(dst, src, size, cudaMemcpyHostToDevice);
-      } else if (kind == MemoryCpyKind::DeviceToHost) {
-        platform::GpuMemcpySync(dst, src, size, cudaMemcpyDeviceToHost);
-      } else if (kind == MemoryCpyKind::DeviceToDevice) {
-        platform::GpuMemcpySync(dst, src, size, cudaMemcpyDeviceToDevice);
-      } else {
-        PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryCpyKind."));
-      }
+      platform::GpuMemcpySync(dst, src, size, cudaMemcpyHostToDevice);
     }
   }
 
-  void MemoryCopyPeer(const Place& dst_place, void* dst, size_t src_dev_id,
-                      const void* src, size_t size,
-                      const stream::Stream* stream = nullptr) override {
+  void MemoryCopyD2H(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
+    if (stream && stream->raw_stream()) {
+      platform::GpuMemcpyAsync(
+          dst, src, size, cudaMemcpyDeviceToHost,
+          reinterpret_cast<cudaStream_t>(stream->raw_stream()));
+    } else {
+      platform::GpuMemcpySync(dst, src, size, cudaMemcpyDeviceToHost);
+    }
+  }
+
+  void MemoryCopyD2D(size_t dev_id, void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
+    if (stream && stream->raw_stream()) {
+      platform::GpuMemcpyAsync(
+          dst, src, size, cudaMemcpyDeviceToDevice,
+          reinterpret_cast<cudaStream_t>(stream->raw_stream()));
+    } else {
+      platform::GpuMemcpySync(dst, src, size, cudaMemcpyDeviceToDevice);
+    }
+  }
+
+  void MemoryCopyP2P(const Place& dst_place, void* dst, size_t src_dev_id,
+                     const void* src, size_t size,
+                     const stream::Stream* stream = nullptr) override {
     if (stream && stream->raw_stream()) {
       platform::GpuMemcpyPeerAsync(
           dst, BOOST_GET_CONST(CUDAPlace, dst_place).device, src, src_dev_id,
@@ -236,36 +237,38 @@ class CudaDevice : public GpuDevice {
     }
   }
 
-  void* MemoryAllocate(
-      size_t dev_id, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
+  void* MemoryAllocate(size_t dev_id, size_t size) override {
     void* ptr;
-    if (kind == MemoryAllocKind::Normal) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&ptr, size));
-    } else if (kind == MemoryAllocKind::Host) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
-    } else if (kind == MemoryAllocKind::Unified) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaMallocManaged(&ptr, size, cudaMemAttachGlobal));
-    } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
-    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&ptr, size));
     return ptr;
   }
 
-  void MemoryDeallocate(
-      size_t dev_id, void* ptr, size_t size,
-      MemoryAllocKind kind = MemoryAllocKind::Normal) override {
-    if (kind == MemoryAllocKind::Normal) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(&ptr));
-    } else if (kind == MemoryAllocKind::Host) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(&ptr));
-    } else if (kind == MemoryAllocKind::Unified) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(&ptr));
-    } else {
-      PADDLE_THROW(platform::errors::Unavailable("Unknow MemoryAllocKind."));
-    }
+  void MemoryDeallocate(size_t dev_id, void* ptr, size_t size) override {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(&ptr));
+  }
+
+  void* MemoryAllocateHost(size_t dev_id, size_t size) override {
+    void* ptr;
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
+    return ptr;
+  }
+
+  void MemoryDeallocateHost(size_t dev_id, void* ptr, size_t size) override {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(&ptr));
+  }
+
+  void* MemoryAllocateUnified(size_t dev_id, size_t size) override {
+    void* ptr;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMallocManaged(&ptr, size, cudaMemAttachGlobal));
+    return ptr;
+  }
+
+  void MemoryDeallocateUnified(size_t dev_id, void* ptr, size_t size) override {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(&ptr));
   }
 
   void MemorySet(size_t dev_id, void* ptr, uint8_t value,

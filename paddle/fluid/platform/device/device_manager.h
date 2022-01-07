@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,6 @@ namespace paddle {
 namespace platform {
 class Device final {
  public:
-  using MemoryCpyKind = DeviceInterface::MemoryCpyKind;
-  using MemoryAllocKind = DeviceInterface::MemoryAllocKind;
-
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
 
   // Stream
@@ -72,17 +69,29 @@ class Device final {
   void StreamWaitEvent(const stream::Stream* stream, const event::Event* event);
 
   // Memory
-  void MemoryCopy(void* dst, const void* src, size_t size, MemoryCpyKind kind,
-                  const stream::Stream* stream = nullptr);
+  void MemoryCopyH2D(void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr);
 
-  void MemoryCopyPeer(const Place& dst_place, void* dst, const void* src,
-                      size_t size, const stream::Stream* stream = nullptr);
+  void MemoryCopyD2H(void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr);
 
-  void* MemoryAllocate(size_t size,
-                       MemoryAllocKind kind = MemoryAllocKind::Normal);
+  void MemoryCopyD2D(void* dst, const void* src, size_t size,
+                     const stream::Stream* stream = nullptr);
 
-  void MemoryDeallocate(void* ptr, size_t size,
-                        MemoryAllocKind kind = MemoryAllocKind::Normal);
+  void MemoryCopyP2P(const Place& dst_place, void* dst, const void* src,
+                     size_t size, const stream::Stream* stream = nullptr);
+
+  void* MemoryAllocate(size_t size);
+
+  void MemoryDeallocate(void* ptr, size_t size);
+
+  void* MemoryAllocateHost(size_t size);
+
+  void MemoryDeallocateHost(void* ptr, size_t size);
+
+  void* MemoryAllocateUnified(size_t size);
+
+  void MemoryDeallocateUnified(void* ptr, size_t size);
 
   void MemorySet(void* ptr, uint8_t value, size_t size);
 

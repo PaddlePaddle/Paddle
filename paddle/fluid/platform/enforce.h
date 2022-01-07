@@ -743,41 +743,5 @@ inline void retry_sleep(unsigned millisecond) {
 
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-namespace details {
-template <typename T>
-struct CustomDeviceStatusType {};
-
-#define DEFINE_CUSTOM_DEVICE_STATUS_TYPE(type, success_value) \
-  template <>                                                 \
-  struct CustomDeviceStatusType<type> {                       \
-    using Type = type;                                        \
-    static constexpr Type kSuccess = success_value;           \
-  }
-
-DEFINE_CUSTOM_DEVICE_STATUS_TYPE(C_Status, C_SUCCESS);
-}  // namespace details
-
-inline std::string build_custom_device_error_msg(C_Status stat) {
-  std::ostringstream sout;
-  sout << " CustomDevice error, the error code is : " << stat << ". ";
-  return sout.str();
-}
-
-#define PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(COND)                      \
-  do {                                                                  \
-    auto __cond__ = (COND);                                             \
-    using __CUSTOM_DEVICE_STATUS_TYPE__ = decltype(__cond__);           \
-    constexpr auto __success_type__ =                                   \
-        ::paddle::platform::details::CustomDeviceStatusType<            \
-            __CUSTOM_DEVICE_STATUS_TYPE__>::kSuccess;                   \
-    if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = ::paddle::platform::errors::External(          \
-          ::paddle::platform::build_custom_device_error_msg(__cond__)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                            \
-    }                                                                   \
-  } while (0)
-#endif  // PADDLE_WITH_CUSTOM_DEVICE
 }  // namespace platform
 }  // namespace paddle
