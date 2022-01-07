@@ -728,6 +728,9 @@ def max_unpool1d(x,
 
     """
     """NCL to NCHW"""
+    if data_format not in ["NCL"]:
+        raise ValueError("Attr(data_format) should be 'NCL'. Received "
+                         "Attr(data_format): %s." % str(data_format))
     data_format = "NCHW"
     x = unsqueeze(x, [2])
     indices = unsqueeze(indices, [2])
@@ -739,10 +742,6 @@ def max_unpool1d(x,
     padding, padding_algorithm = _update_padding_nd(padding, 1)
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
-
-    if data_format not in ["NCHW"]:
-        raise ValueError("Attr(data_format) should be 'NCHW'. Received "
-                         "Attr(data_format): %s." % str(data_format))
 
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
