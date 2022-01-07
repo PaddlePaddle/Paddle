@@ -14,6 +14,9 @@
 
 #pragma once
 
+// CUDA and HIP use same api
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -40,9 +43,9 @@ namespace cub = hipcub;
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/cast_kernel.h"
-#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/pten/kernels/gpu/elementwise.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -1058,23 +1061,6 @@ static
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
-static void AsyncCopy(const pten::DenseTensor& src, pten::DenseTensor* dst) {
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  const paddle::platform::CUDADeviceContext* dev_ctx;
-  if (paddle::platform::is_gpu_place(dst->place()) ||
-      paddle::platform::is_npu_place(dst->place())) {
-    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(dst->place()));
-
-  } else {
-    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(src.place()));
-  }
-
-  pten::Copy(*dev_ctx, src, false, dst);
-}
-
 template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
@@ -1107,13 +1093,10 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(x.place()));
   if (config.reduce_num == 1) {
-    auto out_dims = y->dims();
-    if (x.dtype() == y->dtype()) {
-      AsyncCopy(x, y);
-      y->Resize(out_dims);
-    } else {
-      pten::CastKernel<Tx>(*dev_ctx, x, y->dtype(), y);
-    }
+    std::vector<const DenseTensor*> inputs = {&x};
+    std::vector<DenseTensor*> outputs = {y};
+    pten::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
+        *dev_ctx, inputs, &outputs, transform);
     return;
   }
 
@@ -1230,4 +1213,48 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
 }
 
 }  // namespace kernels
+
+template <typename T,
+          template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
+void Reduce(const GPUContext& dev_ctx,
+            const DenseTensor& x,
+            bool reduce_all,
+            const std::vector<int64_t>& dims,
+            bool keep_dim,
+            DataType out_dtype,
+            DenseTensor* out) {
+  std::vector<int> reduce_dims =
+      pten::kernels::details::GetReduceDim(dims, x.dims().size(), reduce_all);
+
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (x.dims())[i];
+  }
+
+  gpuStream_t stream = dev_ctx.stream();
+
+  if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(
+        pten::DataType::INT32,
+        pten::DataType::INT64,
+        out_dtype,
+        "TensorReduceFunctorImpl",
+        ([&] {
+          using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
+          pten::kernels::TensorReduceFunctorImpl<T,
+                                                 data_t,
+                                                 ReduceOp,
+                                                 TransformOp<T, MPType>>(
+              x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+        }));
+  } else {
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    pten::kernels::
+        TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+            x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+  }
+}
 }  // namespace pten
+
+#endif

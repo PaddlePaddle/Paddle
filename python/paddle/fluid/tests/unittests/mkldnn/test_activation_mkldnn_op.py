@@ -349,6 +349,16 @@ class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
         self.alpha = 2.5
 
 
+class TestMKLDNNExpOp(TestActivation):
+    def setUp(self):
+        self.op_type = "exp"
+        x = np.random.random((5, 5, 4)).astype("float32")
+
+        self.inputs = {'X': x}
+        self.attrs = {'use_mkldnn': True}
+        self.outputs = {'Out': np.exp(x)}
+
+
 # Check if primitives already exist in backward
 class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):

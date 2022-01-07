@@ -46,7 +46,7 @@ class TestShardingPass(AutoPallelPassTestBase):
         dist_strategy.sharding = True
         dist_strategy.sharding_configs = {
             "sharding_degree": 2,
-            "stage": 3,
+            "stage": 2,
         }
         fleet.init(is_collective=True, strategy=dist_strategy)
 
