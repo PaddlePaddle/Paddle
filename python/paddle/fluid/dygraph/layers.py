@@ -1537,7 +1537,6 @@ class Layer(object):
         if include_sublayers:
             for layer in self.children():
                 layer._apply(func, device, dtype, blocking, include_sublayers)
-                layer._dtype = dtype
 
         for key, param in self._parameters.items():
             if param is not None:
@@ -1551,6 +1550,8 @@ class Layer(object):
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
+
+        self._dtype = dtype
 
     def _to_impl(self,
                  device=None,
