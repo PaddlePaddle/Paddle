@@ -884,10 +884,6 @@ class TestGPTPartitioner(unittest.TestCase):
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
 
-        # serial forward pass
-        parallelizer._apply_serial_forward_pass(complete_train_program,
-                                                startup_program)
-
         # serial backward pass
         params_grads = parallelizer._generate_backward(
             complete_train_program,
