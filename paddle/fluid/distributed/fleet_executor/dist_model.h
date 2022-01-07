@@ -27,14 +27,14 @@ class Tensor;
 namespace distributed {
 
 struct DistModelConfig {
-  std::string model_dir_{};
-  std::vector<std::string> trainer_endpoints_{};
-  std::string current_endpoints_{};
-  int64_t nranks_{1};
-  int64_t local_rank_{0};
-  int64_t device_id_{0};
-  int64_t mp_degree_{1};
-  int64_t pp_degree_{1};
+  std::string model_dir{};
+  std::vector<std::string> trainer_endpoints{};
+  std::string current_endpoint{};
+  int64_t nranks{1};
+  int64_t local_rank{0};
+  int64_t device_id{0};
+  int64_t mp_degree{1};
+  int64_t pp_degree{1};
 };
 
 class DistModel {
