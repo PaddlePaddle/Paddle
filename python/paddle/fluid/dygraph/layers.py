@@ -1537,6 +1537,7 @@ class Layer(object):
         if include_sublayers:
             for layer in self.children():
                 layer._apply(func, device, dtype, blocking, include_sublayers)
+                layer._dtype = dtype
 
         for key, param in self._parameters.items():
             if param is not None:
