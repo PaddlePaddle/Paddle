@@ -127,8 +127,7 @@ DenseTensor Mean(const Context& dev_ctx,
                  bool keep_dim) {
   auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
   auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
-  bool reduce_all = false;
-  MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
+  MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
   return dense_out;
 }
 
@@ -141,12 +140,7 @@ DenseTensor Sum(const Context& dev_ctx,
   auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim, dtype);
   auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
 
-  // The real value of reduce_all will be get in kernel
-  // so use default value(false) is OK.
-  bool reduce_all = false;
-
-  SumKernel<T, Context>(
-      dev_ctx, x, axis, keep_dim, reduce_all, out_meta.dtype, &dense_out);
+  SumKernel<T, Context>(dev_ctx, x, axis, keep_dim, out_meta.dtype, &dense_out);
   return dense_out;
 }
 
