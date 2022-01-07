@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
+#include <string>
 #include "paddle/fluid/platform/event.h"  // removed later
 
 namespace paddle {
