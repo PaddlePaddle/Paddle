@@ -17,43 +17,44 @@ limitations under the License. */
 #include <fstream>
 #include <ostream>
 
-namespace paddle{
+namespace paddle {
 namespace platform {
-class DeviceRecordNode; // forward declaration
-class HostRecordNode; // forward declaration
-class CudaRuntimeRecordNode; // forward declaration
+class DeviceRecordNode;       // forward declaration
+class HostRecordNode;         // forward declaration
+class CudaRuntimeRecordNode;  // forward declaration
 
-class BaseLogger{
-  public:
-    BaseLogger() {}
-    virtual ~BaseLogger() { }
-    virtual void LogDeviceRecordNode(DeviceRecordNode&) {}
-    virtual void LogHostRecordNode(HostRecordNode&) {}
-    virtual void LogRuntimeRecordNode(CudaRuntimeRecordNode&) {}
-    virtual void LogMetaInfo() {}
+class BaseLogger {
+ public:
+  BaseLogger() {}
+  virtual ~BaseLogger() {}
+  virtual void LogDeviceRecordNode(DeviceRecordNode&) {}
+  virtual void LogHostRecordNode(HostRecordNode&) {}
+  virtual void LogRuntimeRecordNode(CudaRuntimeRecordNode&) {}
+  virtual void LogMetaInfo() {}
 };
 
-class ChromeTracingLogger: public BaseLogger{
-  public:
-    ChromeTracingLogger(const std::string& filename);
-    ChromeTracingLogger(const char* filename);
-    ~ChromeTracingLogger();
-    std::string filename() { return filename_; }
-    void LogDeviceRecordNode(DeviceRecordNode&) override;
-    void LogHostRecordNode(HostRecordNode&) override;
-    void LogRuntimeRecordNode(CudaRuntimeRecordNode&) override;
-    void LogMetaInfo();
-  private:
-    void OpenFile();
-    void HandleTypeKernel(DeviceRecordNode&);
-    void HandleTypeMemset(DeviceRecordNode&);
-    void HandleTypeMemcpy(DeviceRecordNode&);
-    void StartLog();
-    void EndLog();
-    std::string filename_;
-    std::ofstream output_file_stream_;  
-    static const char* categary_name_[];
+class ChromeTracingLogger : public BaseLogger {
+ public:
+  explicit ChromeTracingLogger(const std::string& filename);
+  explicit ChromeTracingLogger(const char* filename);
+  ~ChromeTracingLogger();
+  std::string filename() { return filename_; }
+  void LogDeviceRecordNode(DeviceRecordNode&) override;
+  void LogHostRecordNode(HostRecordNode&) override;
+  void LogRuntimeRecordNode(CudaRuntimeRecordNode&) override;
+  void LogMetaInfo();
+
+ private:
+  void OpenFile();
+  void HandleTypeKernel(DeviceRecordNode&);
+  void HandleTypeMemset(DeviceRecordNode&);
+  void HandleTypeMemcpy(DeviceRecordNode&);
+  void StartLog();
+  void EndLog();
+  std::string filename_;
+  std::ofstream output_file_stream_;
+  static const char* categary_name_[];
 };
 
-} // namespace platform
-} // namespace paddle
+}  // namespace platform
+}  // namespace paddle

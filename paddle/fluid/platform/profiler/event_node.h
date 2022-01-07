@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
-#include <functional>
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
 
-namespace paddle{
+namespace paddle {
 namespace platform {
-class BaseLogger; // forward declaration
+class BaseLogger;  // forward declaration
 
 enum class TracerEventType {
   // Used to mark operator record
@@ -71,26 +71,30 @@ struct KernelRecordInfo {
   // The total amount of local memory reserved for the kernel, in bytes.
   uint32_t local_memory_total;
   // The timestamp when the kernel is queued up in the command buffer, in ns.
-  // This timestamp is not collected by default. Use API cuptiActivityEnableLatencyTimestamps() to enable collection.
+  // This timestamp is not collected by default. Use API
+  // cuptiActivityEnableLatencyTimestamps() to enable collection.
   uint64_t queued;
-  // The timestamp when the command buffer containing the kernel launch is submitted to the GPU, in ns.
-  // This timestamp is not collected by default. Use API cuptiActivityEnableLatencyTimestamps() to enable collection.
+  // The timestamp when the command buffer containing the kernel launch is
+  // submitted to the GPU, in ns.
+  // This timestamp is not collected by default. Use API
+  // cuptiActivityEnableLatencyTimestamps() to enable collection.
   uint64_t submitted;
-  // The completed timestamp for the kernel execution, in ns. 
+  // The completed timestamp for the kernel execution, in ns.
   uint64_t completed;
-  
 };
 
 struct MemcpyRecordInfo {
   // The number of bytes transferred by the memory copy.
   uint64_t num_bytes;
   // The kind of the memory copy.
-  // Each kind represents the source and destination targets of a memory copy. Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
+  // Each kind represents the source and destination targets of a memory copy.
+  // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
   uint8_t copy_kind;
   // The source memory kind read by the memory copy.
-  // Each kind represents the type of the memory accessed by a memory operation/copy. Refer to CUpti_ActivityMemoryKind
+  // Each kind represents the type of the memory accessed by a memory
+  // operation/copy. Refer to CUpti_ActivityMemoryKind
   uint8_t src_kind;
-  // The destination memory kind read by the memory copy. 
+  // The destination memory kind read by the memory copy.
   uint8_t dst_kind;
 };
 
@@ -103,237 +107,263 @@ struct MemsetRecordInfo {
   uint32_t value;
 };
 
-class DeviceRecordNode{
-  public:
-    // constructor
-    DeviceRecordNode(const std::string &name, TracerEventType type,
-                     uint64_t start_ns, uint64_t end_ns,
-                     uint64_t device_id, uint64_t context_id,
-                     uint64_t stream_id, uint32_t correlation_id,
-                     const KernelRecordInfo& kernel_info):
-                     name_(name), type_(type), start_ns_(start_ns),
-                     end_ns_(end_ns), device_id_(device_id), 
-                     context_id_(context_id), stream_id_(stream_id),
-                     correlation_id_(correlation_id), kernel_info_(kernel_info) {}
-    DeviceRecordNode(const std::string &name, TracerEventType type,
-                     uint64_t start_ns, uint64_t end_ns,
-                     uint64_t device_id, uint64_t context_id,
-                     uint64_t stream_id, uint32_t correlation_id,
-                     const MemcpyRecordInfo& memcpy_info):
-                     name_(name), type_(type), start_ns_(start_ns),
-                     end_ns_(end_ns), device_id_(device_id), 
-                     context_id_(context_id), stream_id_(stream_id),
-                     correlation_id_(correlation_id), memcpy_info_(memcpy_info) {}
-    DeviceRecordNode(const std::string &name, TracerEventType type,
-                     uint64_t start_ns, uint64_t end_ns,
-                     uint64_t device_id, uint64_t context_id,
-                     uint64_t stream_id, uint32_t correlation_id,
-                     const MemsetRecordInfo& memset_info):
-                     name_(name), type_(type), start_ns_(start_ns),
-                     end_ns_(end_ns), device_id_(device_id), 
-                     context_id_(context_id), stream_id_(stream_id),
-                     correlation_id_(correlation_id), memset_info_(memset_info) {}
-    
-    // destructor
-    ~DeviceRecordNode() {};
-    // getter
-    std::string name() { return name_; }
-    TracerEventType type() { return type_; }
-    uint64_t start_ns() { return start_ns_; }
-    uint64_t end_ns() { return end_ns_; }
-    uint64_t device_id() { return device_id_; }
-    uint64_t context_id() { return context_id_; }
-    uint64_t stream_id() { return stream_id_; }
-    uint64_t duration() { return end_ns_ - start_ns_; }
-    uint32_t correlation_id() { return correlation_id_; }
-    KernelRecordInfo kernel_info() { 
-      PADDLE_ENFORCE_EQ(type_, TracerEventType::Kernel, 
-                        platform::errors::Unavailable("to get kernel_info, \
-                        TracerEventType in node must be TracerEventType::Kernel")
-                      );
-      return kernel_info_; 
-      }
-    MemcpyRecordInfo memcpy_info() { 
-      PADDLE_ENFORCE_EQ(type_, TracerEventType::Memcpy, 
-                        platform::errors::Unavailable("to get memcpy_info, \
-                        TracerEventType in node must be TracerEventType::Memcpy")
-                      );
-      return memcpy_info_; 
-      }
-    MemsetRecordInfo memset_info() { 
-      PADDLE_ENFORCE_EQ(type_, TracerEventType::Memset, 
-                        platform::errors::Unavailable( "to get memset_info, \
-                        TracerEventType in node must be TracerEventType::Memset")
-                      );
-      return memset_info_; 
-      }
-    
-    // member function
-    void LogMe(BaseLogger& logger) { logger.LogDeviceRecordNode(*this); };
+class DeviceRecordNode {
+ public:
+  // constructor
+  DeviceRecordNode(const std::string& name, TracerEventType type,
+                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
+                   uint64_t context_id, uint64_t stream_id,
+                   uint32_t correlation_id, const KernelRecordInfo& kernel_info)
+      : name_(name),
+        type_(type),
+        start_ns_(start_ns),
+        end_ns_(end_ns),
+        device_id_(device_id),
+        context_id_(context_id),
+        stream_id_(stream_id),
+        correlation_id_(correlation_id),
+        kernel_info_(kernel_info) {}
+  DeviceRecordNode(const std::string& name, TracerEventType type,
+                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
+                   uint64_t context_id, uint64_t stream_id,
+                   uint32_t correlation_id, const MemcpyRecordInfo& memcpy_info)
+      : name_(name),
+        type_(type),
+        start_ns_(start_ns),
+        end_ns_(end_ns),
+        device_id_(device_id),
+        context_id_(context_id),
+        stream_id_(stream_id),
+        correlation_id_(correlation_id),
+        memcpy_info_(memcpy_info) {}
+  DeviceRecordNode(const std::string& name, TracerEventType type,
+                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
+                   uint64_t context_id, uint64_t stream_id,
+                   uint32_t correlation_id, const MemsetRecordInfo& memset_info)
+      : name_(name),
+        type_(type),
+        start_ns_(start_ns),
+        end_ns_(end_ns),
+        device_id_(device_id),
+        context_id_(context_id),
+        stream_id_(stream_id),
+        correlation_id_(correlation_id),
+        memset_info_(memset_info) {}
 
-  private:
-    // record name
-    std::string name_;
-    // record type, one of TracerEventType
-    TracerEventType type_;
-    // start timestamp of the record
-    uint64_t start_ns_;
-    // end timestamp of the record
-    uint64_t end_ns_;
-    // device id
-    uint64_t device_id_;
-    // context id
-    uint64_t context_id_;
-    // stream id
-    uint64_t stream_id_;
-    // correlation id, used for correlating async activities happened on device 
-    uint32_t correlation_id_;
-    // union, specific device record type has different detail information
-    union {
-      // used for TracerEventType::Kernel
-      KernelRecordInfo kernel_info_;
-      // used for TracerEventType::Memcpy
-      MemcpyRecordInfo memcpy_info_;
-      // used for TracerEventType::Memset
-      MemsetRecordInfo memset_info_;
-    };   
+  // destructor
+  ~DeviceRecordNode() {}
+  // getter
+  std::string name() { return name_; }
+  TracerEventType type() { return type_; }
+  uint64_t start_ns() { return start_ns_; }
+  uint64_t end_ns() { return end_ns_; }
+  uint64_t device_id() { return device_id_; }
+  uint64_t context_id() { return context_id_; }
+  uint64_t stream_id() { return stream_id_; }
+  uint64_t duration() { return end_ns_ - start_ns_; }
+  uint32_t correlation_id() { return correlation_id_; }
+  KernelRecordInfo kernel_info() {
+    PADDLE_ENFORCE_EQ(
+        type_, TracerEventType::Kernel,
+        platform::errors::Unavailable(
+            "to get kernel_info, "
+            "TracerEventType in node must be TracerEventType::Kernel"));
+    return kernel_info_;
+  }
+  MemcpyRecordInfo memcpy_info() {
+    PADDLE_ENFORCE_EQ(
+        type_, TracerEventType::Memcpy,
+        platform::errors::Unavailable(
+            "to get memcpy_info, "
+            "TracerEventType in node must be TracerEventType::Memcpy"));
+    return memcpy_info_;
+  }
+  MemsetRecordInfo memset_info() {
+    PADDLE_ENFORCE_EQ(
+        type_, TracerEventType::Memset,
+        platform::errors::Unavailable(
+            "to get memset_info, "
+            "TracerEventType in node must be TracerEventType::Memset"));
+    return memset_info_;
+  }
+
+  // member function
+  void LogMe(const BaseLogger& logger) { logger.LogDeviceRecordNode(*this); }
+
+ private:
+  // record name
+  std::string name_;
+  // record type, one of TracerEventType
+  TracerEventType type_;
+  // start timestamp of the record
+  uint64_t start_ns_;
+  // end timestamp of the record
+  uint64_t end_ns_;
+  // device id
+  uint64_t device_id_;
+  // context id
+  uint64_t context_id_;
+  // stream id
+  uint64_t stream_id_;
+  // correlation id, used for correlating async activities happened on device
+  uint32_t correlation_id_;
+  // union, specific device record type has different detail information
+  union {
+    // used for TracerEventType::Kernel
+    KernelRecordInfo kernel_info_;
+    // used for TracerEventType::Memcpy
+    MemcpyRecordInfo memcpy_info_;
+    // used for TracerEventType::Memset
+    MemsetRecordInfo memset_info_;
+  };
 };
 
-class CudaRuntimeRecordNode{
-  public:
-    // constructor
-    CudaRuntimeRecordNode(const std::string &name, 
-                          uint64_t start_ns, uint64_t end_ns,
-                          uint64_t process_id, uint64_t thread_id,
-                          uint32_t correlation_id, uint32_t callback_id):
-                          name_(name), start_ns_(start_ns),
-                          end_ns_(end_ns), process_id_(process_id), 
-                          thread_id_(thread_id), correlation_id_(correlation_id),
-                          callback_id_(callback_id) {}
-    
-    // destructor
-    ~CudaRuntimeRecordNode();
-    // getter
-    std::string name() { return name_; }
-    TracerEventType type() { return type_; }
-    uint64_t start_ns() { return start_ns_; }
-    uint64_t end_ns() { return end_ns_; }
-    uint64_t process_id() { return process_id_; }
-    uint64_t thread_id() { return thread_id_; }
-    uint64_t duration() { return end_ns_ - start_ns_; }
-    uint32_t correlation_id() { return correlation_id_; }
-    uint32_t callback_id() {return callback_id_; }
-    // member function
-    void AddDeviceRecordNode(DeviceRecordNode* node) { device_node_ptrs_.push_back(node); };
-    void LogMe(BaseLogger& logger) { logger.LogRuntimeRecordNode(*this); };
-    std::vector<DeviceRecordNode*>& GetDeviceRecordNodes() { return device_node_ptrs_; };
+class CudaRuntimeRecordNode {
+ public:
+  // constructor
+  CudaRuntimeRecordNode(const std::string& name, uint64_t start_ns,
+                        uint64_t end_ns, uint64_t process_id,
+                        uint64_t thread_id, uint32_t correlation_id,
+                        uint32_t callback_id)
+      : name_(name),
+        start_ns_(start_ns),
+        end_ns_(end_ns),
+        process_id_(process_id),
+        thread_id_(thread_id),
+        correlation_id_(correlation_id),
+        callback_id_(callback_id) {}
 
-  private:
-    // record name
-    std::string name_;
-    // record type, one of TracerEventType
-    TracerEventType type_{TracerEventType::CudaRuntime};
-    // start timestamp of the record
-    uint64_t start_ns_;
-    // end timestamp of the record
-    uint64_t end_ns_;
-    // process id of the record
-    uint64_t process_id_;
-    // thread id of the record
-    uint64_t thread_id_;
-    // correlation id, used for correlating async activities happened on device 
-    uint32_t correlation_id_;
-    // callback id, used to identify which cuda runtime api is called
-    uint32_t callback_id_;
-    // device records called by this
-    std::vector<DeviceRecordNode*> device_node_ptrs_; 
+  // destructor
+  ~CudaRuntimeRecordNode();
+  // getter
+  std::string name() { return name_; }
+  TracerEventType type() { return type_; }
+  uint64_t start_ns() { return start_ns_; }
+  uint64_t end_ns() { return end_ns_; }
+  uint64_t process_id() { return process_id_; }
+  uint64_t thread_id() { return thread_id_; }
+  uint64_t duration() { return end_ns_ - start_ns_; }
+  uint32_t correlation_id() { return correlation_id_; }
+  uint32_t callback_id() { return callback_id_; }
+  // member function
+  void AddDeviceRecordNode(DeviceRecordNode* node) {
+    device_node_ptrs_.push_back(node);
+  }
+  void LogMe(const BaseLogger& logger) { logger.LogRuntimeRecordNode(*this); }
+  std::vector<DeviceRecordNode*>& GetDeviceRecordNodes() {
+    return device_node_ptrs_;
+  }
+
+ private:
+  // record name
+  std::string name_;
+  // record type, one of TracerEventType
+  TracerEventType type_{TracerEventType::CudaRuntime};
+  // start timestamp of the record
+  uint64_t start_ns_;
+  // end timestamp of the record
+  uint64_t end_ns_;
+  // process id of the record
+  uint64_t process_id_;
+  // thread id of the record
+  uint64_t thread_id_;
+  // correlation id, used for correlating async activities happened on device
+  uint32_t correlation_id_;
+  // callback id, used to identify which cuda runtime api is called
+  uint32_t callback_id_;
+  // device records called by this
+  std::vector<DeviceRecordNode*> device_node_ptrs_;
 };
-
 
 class HostRecordNode {
-  public:
-    // constructor
-    HostRecordNode(const std::string &name, TracerEventType type,
-                  uint64_t start_ns, uint64_t end_ns):
-                  name_(name), type_(type), start_ns_(start_ns),
-                  end_ns_(end_ns) {}
-    HostRecordNode(const std::string &name, TracerEventType type,
-                   uint64_t start_ns, uint64_t end_ns,
-                   uint64_t process_id, uint64_t thread_id):
-                   name_(name), type_(type), start_ns_(start_ns),
-                   end_ns_(end_ns), process_id_(process_id), thread_id_(thread_id){}
-    
-    // destructor
-    ~HostRecordNode();
+ public:
+  // constructor
+  HostRecordNode(const std::string& name, TracerEventType type,
+                 uint64_t start_ns, uint64_t end_ns)
+      : name_(name), type_(type), start_ns_(start_ns), end_ns_(end_ns) {}
+  HostRecordNode(const std::string& name, TracerEventType type,
+                 uint64_t start_ns, uint64_t end_ns, uint64_t process_id,
+                 uint64_t thread_id)
+      : name_(name),
+        type_(type),
+        start_ns_(start_ns),
+        end_ns_(end_ns),
+        process_id_(process_id),
+        thread_id_(thread_id) {}
 
-    // getter
-    std::string name() { return name_; }
-    TracerEventType type() { return type_; }
-    uint64_t start_ns() { return start_ns_; }
-    uint64_t end_ns() { return end_ns_; }
-    uint64_t process_id() { return process_id_; }
-    uint64_t thread_id() { return thread_id_; }
-    uint64_t duration() { return end_ns_ - start_ns_; }
+  // destructor
+  ~HostRecordNode();
 
-    // member function
-    void AddChild(HostRecordNode* node) { children_.push_back(node); };
-    void AddCudaRuntimeNode(CudaRuntimeRecordNode* node) { runtime_node_ptrs_.push_back(node); };
-    std::vector<HostRecordNode*>& GetChildren() { return children_; };
-    std::vector<CudaRuntimeRecordNode*>& GetRuntimeRecordNodes() { return runtime_node_ptrs_; };
-    void LogMe(BaseLogger& logger) { logger.LogHostRecordNode(*this); };
+  // getter
+  std::string name() { return name_; }
+  TracerEventType type() { return type_; }
+  uint64_t start_ns() { return start_ns_; }
+  uint64_t end_ns() { return end_ns_; }
+  uint64_t process_id() { return process_id_; }
+  uint64_t thread_id() { return thread_id_; }
+  uint64_t duration() { return end_ns_ - start_ns_; }
 
-  private:
-    // record name
-    std::string name_;
-    // record type, one of TracerEventType
-    TracerEventType type_;
-    // start timestamp of the record
-    uint64_t start_ns_;
-    // end timestamp of the record
-    uint64_t end_ns_;
-    // process id of the record
-    uint64_t process_id_;
-    // thread id of the record
-    uint64_t thread_id_;
-    // cuda runtime records called by this
-    std::vector<CudaRuntimeRecordNode*> runtime_node_ptrs_;
-    // host records called by this
-    std::vector<HostRecordNode*> children_;
+  // member function
+  void AddChild(HostRecordNode* node) { children_.push_back(node); }
+  void AddCudaRuntimeNode(CudaRuntimeRecordNode* node) {
+    runtime_node_ptrs_.push_back(node);
+  }
+  std::vector<HostRecordNode*>& GetChildren() { return children_; }
+  std::vector<CudaRuntimeRecordNode*>& GetRuntimeRecordNodes() {
+    return runtime_node_ptrs_;
+  }
+  void LogMe(const BaseLogger& logger) { logger.LogHostRecordNode(*this); }
+
+ private:
+  // record name
+  std::string name_;
+  // record type, one of TracerEventType
+  TracerEventType type_;
+  // start timestamp of the record
+  uint64_t start_ns_;
+  // end timestamp of the record
+  uint64_t end_ns_;
+  // process id of the record
+  uint64_t process_id_;
+  // thread id of the record
+  uint64_t thread_id_;
+  // cuda runtime records called by this
+  std::vector<CudaRuntimeRecordNode*> runtime_node_ptrs_;
+  // host records called by this
+  std::vector<HostRecordNode*> children_;
 };
-
 
 class NodeTrees {
-  public:
-    // constructor
-    NodeTrees(const std::vector<HostRecordNode*>& host_record_nodes, 
-              const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
-              const std::vector<DeviceRecordNode*>& device_record_nodes) 
-              {
-                BuildTrees(host_record_nodes, runtime_record_nodes, device_record_nodes);
-              };
-    
-    // destructor
-    ~NodeTrees();
-    
-    void LogMe(BaseLogger& logger);
-    void HandleTrees(std::function<void (HostRecordNode*)>, 
-                  std::function<void (CudaRuntimeRecordNode*)>, 
-                  std::function<void (DeviceRecordNode*)>);
-    const std::map<uint64_t, HostRecordNode*>& GetNodeTrees() { return thread_record_trees_map_; }
-    const std::map<uint64_t, std::vector<HostRecordNode*>> Traverse(bool bfs);
-    
+ public:
+  // constructor
+  NodeTrees(const std::vector<HostRecordNode*>& host_record_nodes,
+            const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
+            const std::vector<DeviceRecordNode*>& device_record_nodes) {
+    BuildTrees(host_record_nodes, runtime_record_nodes, device_record_nodes);
+  }
 
-  private:
-    std::map<uint64_t, HostRecordNode*> thread_record_trees_map_;
-    void BuildTrees(const std::vector<HostRecordNode*>& host_record_nodes, 
-                    const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
-                    const std::vector<DeviceRecordNode*>& device_record_nodes);
-    HostRecordNode* BuildTreeRelationship(std::vector<HostRecordNode*>& host_record_nodes, 
-                               std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes);
-    
+  // destructor
+  ~NodeTrees();
 
+  void LogMe(const BaseLogger& logger);
+  void HandleTrees(std::function<void(HostRecordNode*)>,
+                   std::function<void(CudaRuntimeRecordNode*)>,
+                   std::function<void(DeviceRecordNode*)>);
+  const std::map<uint64_t, HostRecordNode*>& GetNodeTrees() {
+    return thread_record_trees_map_;
+  }
+  const std::map<uint64_t, std::vector<HostRecordNode*>> Traverse(bool bfs);
+
+ private:
+  std::map<uint64_t, HostRecordNode*> thread_record_trees_map_;
+  void BuildTrees(
+      const std::vector<HostRecordNode*>& host_record_nodes,
+      const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
+      const std::vector<DeviceRecordNode*>& device_record_nodes);
+  HostRecordNode* BuildTreeRelationship(
+      const std::vector<HostRecordNode*>& host_record_nodes,
+      const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes);
 };
 
-} // namespace platform
-} // namespace paddle
-
+}  // namespace platform
+}  // namespace paddle
