@@ -34,6 +34,36 @@ void CudaTracer::PrepareTracing() { EnableCuptiActivity(); }
 
 void CudaTracer::StopTracing() { DisableCuptiActivity(); }
 
+int CudaTracer::ProcessCuptiActivity() {
+#ifdef PADDLE_WITH_CUPTI
+  int record_cnt = 0;
+  CUPTI_CALL(dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+  std::vector<ActivityBuffer> buffers = ConsumeBuffers();
+
+  for (auto& buffer : buffers) {
+    if (buffer.addr == nullptr || buffer.valid_size == 0) {
+      continue;
+    }
+
+    CUpti_Activity* record = nullptr;
+    while (true) {
+      CUptiResult status = dynload::cuptiActivityGetNextRecord(
+          buffer.addr, buffer.valid_size, &record);
+      if (status == CUPTI_SUCCESS) {
+        ++record_cnt;
+      } else if (status == CUPTI_ERROR_MAX_LIMIT_REACHED) {
+        break;
+      } else {
+        CUPTI_CALL(status);
+      }
+    }
+
+    ReleaseBuffer(buffer.addr);
+  }
+  return record_cnt;
+#endif
+}
+
 void CudaTracer::EnableCuptiActivity() {
 #ifdef PADDLE_WITH_CUPTI
   CUPTI_CALL(dynload::cuptiActivityRegisterCallbacks(BufferRequestedCallback,
@@ -56,8 +86,6 @@ void CudaTracer::DisableCuptiActivity() {
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
-
-  CUPTI_CALL(dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 #endif
 }
 
@@ -72,7 +100,7 @@ void CUPTIAPI CudaTracer::BufferCompletedCallback(CUcontext ctx,
                                                   uint32_t stream_id,
                                                   uint8_t* buffer, size_t size,
                                                   size_t valid_size) {
-  GetInstance().ReclaimBuffer(buffer, valid_size);
+  GetInstance().ProduceBuffer(buffer, valid_size);
 #ifdef PADDLE_WITH_CUPTI
   size_t dropped = 0;
   CUPTI_CALL(
@@ -92,9 +120,22 @@ void CudaTracer::AllocateBuffer(uint8_t** buffer, size_t* size) {
   *size = kBufSize;
 }
 
-void CudaTracer::ReclaimBuffer(uint8_t* buffer, size_t valid_size) {
+void CudaTracer::ProduceBuffer(uint8_t* buffer, size_t valid_size) {
   std::lock_guard<std::mutex> guard(activity_buffer_lock_);
   activity_buffers_.emplace_back(buffer, valid_size);
+}
+
+std::vector<CudaTracer::ActivityBuffer> CudaTracer::ConsumeBuffers() {
+  std::vector<ActivityBuffer> buffers;
+  {
+    std::lock_guard<std::mutex> guard(activity_buffer_lock_);
+    buffers.swap(activity_buffers_);
+  }
+  return std::move(buffers);
+}
+
+void CudaTracer::ReleaseBuffer(uint8_t* buffer) {
+  paddle::framework::AlignedFree(buffer);
 }
 
 }  // namespace platform

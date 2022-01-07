@@ -22,6 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+// Based on CUDA CUPTI
 class CudaTracer {
  public:
   // Singleton. CUPTI imposes this restriction.
@@ -53,7 +54,9 @@ class CudaTracer {
 
   void DisableCuptiActivity();
 
-  void ProcessCuptiActivity();
+  int ProcessCuptiActivity();
+
+  void ProcessCuptiActivityRecord(const CUpti_Activity* record);
 
   // Used by CUPTI Activity API to request buffer
   static void CUPTIAPI BufferRequestedCallback(uint8_t** buffer, size_t* size,
@@ -67,7 +70,11 @@ class CudaTracer {
 
   void AllocateBuffer(uint8_t** buffer, size_t* size);
 
-  void ReclaimBuffer(uint8_t* buffer, size_t valid_size);
+  void ProduceBuffer(uint8_t* buffer, size_t valid_size);
+
+  std::vector<ActivityBuffer> ConsumeBuffers();
+
+  void ReleaseBuffer(uint8_t* buffer);
 
   std::mutex activity_buffer_lock_;
   std::vector<ActivityBuffer> activity_buffers_;
