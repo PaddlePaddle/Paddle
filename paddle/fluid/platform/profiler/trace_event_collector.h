@@ -14,25 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstring>
-#include <mutex>
-#include <string>
-#include <type_traits>
-#include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/profiler/tracer_base.h"
 
 namespace paddle {
 namespace platform {
 
-class HostTracer : public TracerBase {
+class TraceEventCollector {
  public:
-  void StartTracing() override;
-
-  void StopTracing() override;
-
-  void CollectTraceData(TraceEventCollector *collector) override;
 };
 
 }  // namespace platform

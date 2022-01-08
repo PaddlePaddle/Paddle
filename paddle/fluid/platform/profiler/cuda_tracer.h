@@ -18,12 +18,13 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/profiler/tracer_base.h"
 
 namespace paddle {
 namespace platform {
 
 // Based on CUDA CUPTI
-class CudaTracer {
+class CudaTracer : public TracerBase {
  public:
   // Singleton. CUPTI imposes this restriction.
   static CudaTracer& GetInstance() {
@@ -31,13 +32,13 @@ class CudaTracer {
     return instance;
   }
 
-  void PrepareTracing();
+  void PrepareTracing() override;
 
-  void StartTracing();
+  void StartTracing() override;
 
-  void StopTracing();
+  void StopTracing() override;
 
-  void CollectTraceData(TraceDataCollector* collector);
+  void CollectTraceData(TraceEventCollector* collector) override;
 
  private:
   struct ActivityBuffer {
