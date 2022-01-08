@@ -22,9 +22,9 @@ namespace platform {
 class TracerBase {
  public:
   // The state machine for a Tracer.
-  enum class TracerState { READY, STARTED, STOPED };
+  enum class TracerState { UNINITED, READY, STARTED, STOPED };
 
-  virtual void PrepareTracing() {}
+  virtual void PrepareTracing() { state_ = TracerState::READY; }
 
   virtual void StartTracing() = 0;
 
@@ -35,7 +35,7 @@ class TracerBase {
   virtual ~TracerBase() {}
 
  protected:
-  TracerState state = TracerState::READY;
+  TracerState state_ = TracerState::UNINITED;
 };
 
 }  // namespace platform

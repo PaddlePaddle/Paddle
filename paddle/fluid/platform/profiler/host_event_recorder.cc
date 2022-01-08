@@ -21,7 +21,7 @@ ThreadEventRecorder::ThreadEventRecorder() {
 }
 
 ThreadEventRecorder::~ThreadEventRecorder() {
-  HostEventRecorder::GetInstance().UnregisterThreadRecorder(thread_id_);
+  // HostEventRecorder::GetInstance().UnregisterThreadRecorder(thread_id_);
 }
 
 HostEventSection HostEventRecorder::GatherEvents() {
