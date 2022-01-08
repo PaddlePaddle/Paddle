@@ -262,10 +262,12 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
     if (size == in_dims[axis]) {
       thrust::sequence(thrust::device, ids_data, ids_data + size);
       thrust::copy(thrust::device, in_data, in_data + size, out_data);
-      thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
+      // remove reverse step
       if (descending) {
-        thrust::reverse(thrust::device, out_data, out_data + size);
-        thrust::reverse(thrust::device, ids_data, ids_data + size);
+        thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data,thrust::greater<T>());
+      }
+      else{
+        thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
       }
       return;
     }
