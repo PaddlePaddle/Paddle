@@ -397,7 +397,9 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                        (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                    1) *
                   vec_size;
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(rank);
+    int device_id =
+        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && (!fix_seed)) {
       auto seed_offset = gen_cuda->IncrementOffset(offset);
       seed_data = seed_offset.first;
