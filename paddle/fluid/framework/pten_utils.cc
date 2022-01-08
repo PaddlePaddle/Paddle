@@ -98,7 +98,8 @@ KernelSignatureMap& KernelSignatureMap::Instance() {
     for (const auto& pair : OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
       const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+          op_proto != nullptr) {
         KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
         auto success = kernel_signature_map_->map_
