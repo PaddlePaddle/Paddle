@@ -64,6 +64,7 @@ void CudaTracer::DisableCuptiActivity() {
 #endif
 }
 
+#ifdef PADDLE_WITH_CUPTI
 void CUPTIAPI CudaTracer::BufferRequestedCallback(uint8_t** buffer,
                                                   size_t* size,
                                                   size_t* max_num_records) {
@@ -76,7 +77,6 @@ void CUPTIAPI CudaTracer::BufferCompletedCallback(CUcontext ctx,
                                                   uint8_t* buffer, size_t size,
                                                   size_t valid_size) {
   GetInstance().ProduceBuffer(buffer, valid_size);
-#ifdef PADDLE_WITH_CUPTI
   size_t dropped = 0;
   CUPTI_CALL(
       dynload::cuptiActivityGetNumDroppedRecords(ctx, stream_id, &dropped));
@@ -84,8 +84,8 @@ void CUPTIAPI CudaTracer::BufferCompletedCallback(CUcontext ctx,
     LOG(WARNING) << "Stream " << stream_id << " Dropped " << dropped
                  << " activity records";
   }
-#endif
 }
+#endif
 
 void CudaTracer::AllocateBuffer(uint8_t** buffer, size_t* size) {
   constexpr size_t kBufSize = 1 << 23;  // 8 MB
