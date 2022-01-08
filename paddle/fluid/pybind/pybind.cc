@@ -955,24 +955,28 @@ PYBIND11_MODULE(core_noavx, m) {
              ostr << self;
              return ostr.str();
            }) /* ------ End of original Tensor ------ */
+      .def(
+          "__init__",
+          [](framework::Tensor &instance, const std::vector<std::vector<size_t>>
+                                              &recursive_sequence_lengths) {
+            LoD new_lod;
+            new_lod.reserve(recursive_sequence_lengths.size());
+            std::copy(recursive_sequence_lengths.begin(),
+                      recursive_sequence_lengths.end(),
+                      std::back_inserter(new_lod));
+            LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+            PADDLE_ENFORCE_EQ(
+                CheckLoD(new_offset_lod, -1), true,
+                platform::errors::InvalidArgument(
+                    "The provided recursive_sequence_lengths info is invalid, "
+                    "the LoD converted by recursive_sequence_lengths is %s",
+                    new_lod));
+            new (&instance) framework::Tensor(new_offset_lod);
+          })
       .def("__init__",
-           [](Tensor &instance, const std::vector<std::vector<size_t>>
-                                    &recursive_sequence_lengths) {
-             LoD new_lod;
-             new_lod.reserve(recursive_sequence_lengths.size());
-             std::copy(recursive_sequence_lengths.begin(),
-                       recursive_sequence_lengths.end(),
-                       std::back_inserter(new_lod));
-             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE_EQ(
-                 CheckLoD(new_offset_lod, -1), true,
-                 platform::errors::InvalidArgument(
-                     "The provided recursive_sequence_lengths info is invalid, "
-                     "the LoD converted by recursive_sequence_lengths is %s",
-                     new_lod));
-             new (&instance) Tensor(new_offset_lod);
+           [](framework::Tensor &instance) {
+             new (&instance) framework::Tensor();
            })
-      .def("__init__", [](Tensor &instance) { new (&instance) Tensor(); })
       // We implement offset based LOD in C++ while we use length based with
       // Python API. So we changed set_lod to set_recursive_sequence_lengths
       // to
@@ -980,7 +984,8 @@ PYBIND11_MODULE(core_noavx, m) {
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
-           [](Tensor &self, const std::vector<std::vector<size_t>> &lod) {
+           [](framework::Tensor &self,
+              const std::vector<std::vector<size_t>> &lod) {
              // the input lod is offset-based level-of-detail info
              LoD new_lod;
              new_lod.reserve(lod.size());
@@ -1012,8 +1017,8 @@ PYBIND11_MODULE(core_noavx, m) {
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
       .def("set_recursive_sequence_lengths",
-           [](Tensor &self, const std::vector<std::vector<size_t>>
-                                &recursive_sequence_lengths) {
+           [](framework::Tensor &self, const std::vector<std::vector<size_t>>
+                                           &recursive_sequence_lengths) {
              // the input recursive_sequence_lengths is length-based
              // level-of-detail info
              LoD new_lod;
@@ -1057,7 +1062,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
-           [](Tensor &self) -> std::vector<std::vector<size_t>> {
+           [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the offset-based lod info
              LoD lod = self.lod();
              std::vector<std::vector<size_t>> new_lod;
@@ -1084,7 +1089,7 @@ PYBIND11_MODULE(core_noavx, m) {
            )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
-           [](Tensor &self) -> std::vector<std::vector<size_t>> {
+           [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
              LoD lod = ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
@@ -1111,7 +1116,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
       .def("has_valid_recursive_sequence_lengths",
-           [](Tensor &self) -> bool {
+           [](framework::Tensor &self) -> bool {
              // Check that the lod info is valid and match the outermost
              // dimension of the Tensor data
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
@@ -1133,73 +1138,75 @@ PYBIND11_MODULE(core_noavx, m) {
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.has_valid_recursive_sequence_lengths()) # True
            )DOC")
-      .def(
-          "_as_type",
-          [](const Tensor &self, paddle::framework::proto::VarType::Type type) {
-            Tensor dst;
-            if (self.IsInitialized() && self.numel() > 0) {
-              TransDataType(self, type, &dst);
-            }
-            return dst;
-          })
-      .def("_copy", [](const Tensor &self, const platform::Place &place) {
-        // follow fetch_op's inplementation
-        Tensor dst;
-        if (self.IsInitialized() && self.numel() > 0) {
-          TensorCopySync(self, place, &dst);
-        } else {
-          // Not copy, if the src tensor is empty.
-          dst.clear();
-          dst.Resize({0});
-        }
-        dst.set_lod(self.lod());
-        return dst;
+      .def("_as_type",
+           [](const framework::Tensor &self,
+              paddle::framework::proto::VarType::Type type) {
+             framework::Tensor dst;
+             if (self.IsInitialized() && self.numel() > 0) {
+               TransDataType(self, type, &dst);
+             }
+             return dst;
+           })
+      .def("_copy",
+           [](const framework::Tensor &self, const platform::Place &place) {
+             // follow fetch_op's inplementation
+             framework::Tensor dst;
+             if (self.IsInitialized() && self.numel() > 0) {
+               TensorCopySync(self, place, &dst);
+             } else {
+               // Not copy, if the src tensor is empty.
+               dst.clear();
+               dst.Resize({0});
+             }
+             dst.set_lod(self.lod());
+             return dst;
 #ifdef _WIN32
-      });
+           });
 #else
            })
       .def(py::pickle(
-          [](const Tensor &t) {  // __getstate__
+          [](const framework::Tensor &t) {  // __getstate__
             auto holder = t.Holder();
-            PADDLE_ENFORCE_EQ(
-              platform::is_cpu_place(holder->place()), true,
-              platform::errors::PreconditionNotMet(
-                  "Tensor is not on CPU."
-                  "Now only Tensor on CPU can be serialized."));
-            auto* mmap_writer_allocation =
-              dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
-                holder.get());
-            PADDLE_ENFORCE_NOT_NULL(mmap_writer_allocation,
-              platform::errors::PreconditionNotMet(
-                "Tensor is not in shared memory."
-                "Now only Tensor on shared memory can be serialized."));
+            PADDLE_ENFORCE_EQ(platform::is_cpu_place(holder->place()), true,
+                              platform::errors::PreconditionNotMet(
+                                  "Tensor is not on CPU."
+                                  "Now only Tensor on CPU can be serialized."));
+            auto *mmap_writer_allocation =
+                dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+                    holder.get());
+            PADDLE_ENFORCE_NOT_NULL(
+                mmap_writer_allocation,
+                platform::errors::PreconditionNotMet(
+                    "Tensor is not in shared memory."
+                    "Now only Tensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
 
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
-                                  mmap_writer_allocation->size(),
-                                  type_idx, vectorize(t.dims()), t.lod());
+                                  mmap_writer_allocation->size(), type_idx,
+                                  vectorize(t.dims()), t.lod());
           },
           [](py::tuple t) {  // __setstate__
             if (t.size() != 5)
               throw std::runtime_error("Invalid Tensor state!");
 
             // 1. Create a new C++ instance
-            Tensor tensor;
+            framework::Tensor tensor;
 
             // 2. Rebuild Allocation
             const std::string &ipc_name = t[0].cast<std::string>();
             size_t size = t[1].cast<size_t>();
             auto shared_reader_holder =
-              memory::allocation::RebuildMemoryMapReaderAllocation(
-                ipc_name, size);
+                memory::allocation::RebuildMemoryMapReaderAllocation(ipc_name,
+                                                                     size);
 
             // 3. Maintain global fd set
             VLOG(3) << "Tensor ipc name: " << ipc_name;
             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
 
             // 4. Rebuild Tensor
-            tensor.ResetHolderWithType(shared_reader_holder,
-              static_cast<proto::VarType::Type>(t[2].cast<int>()));
+            tensor.ResetHolderWithType(
+                shared_reader_holder,
+                static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
@@ -1257,7 +1264,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_float",
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def("get_tensor",
-           [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
+           [](Variable &self) -> framework::Tensor * {
+             return self.GetMutable<framework::Tensor>();
+           },
            py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
@@ -2198,7 +2207,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
-              std::map<std::string, const Tensor *> *feed_targets,
+              std::map<std::string, const framework::Tensor *> *feed_targets,
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true, bool create_vars = true,
               const std::string &feed_holder_name = "feed",
@@ -2388,8 +2397,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("set_feed_variable",
-        static_cast<void (*)(Scope *, const Tensor &, const std::string &,
-                             size_t)>(&framework::SetFeedVariable));
+        static_cast<void (*)(Scope *, const framework::Tensor &,
+                             const std::string &, size_t)>(
+            &framework::SetFeedVariable));
   m.def("set_feed_variable",
         static_cast<void (*)(Scope *, const Strings &, const std::string &,
                              size_t)>(&framework::SetFeedVariable));
@@ -2398,7 +2408,7 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(BOOST_GET(Tensor, var));
+            return py::cast(BOOST_GET(framework::Tensor, var));
           } else {
             return py::cast(BOOST_GET(LoDTensorArray, var));
           }
@@ -2443,7 +2453,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](LoDTensorArray &self, size_t i, const Tensor &t) {
+           [](LoDTensorArray &self, size_t i, const framework::Tensor &t) {
              PADDLE_ENFORCE_LT(i, self.size(),
                                platform::errors::InvalidArgument(
                                    "The index to set is larger than the size "
@@ -2452,7 +2462,7 @@ All parameter, weight, gradient are variables in Paddle.
              self[i].set_lod(t.lod());
            })
       .def("append",
-           [](LoDTensorArray &self, const Tensor &t) {
+           [](LoDTensorArray &self, const framework::Tensor &t) {
              self.emplace_back();
              self.back().ShareDataWith(t);
              self.back().set_lod(t.lod());
@@ -2496,7 +2506,7 @@ All parameter, weight, gradient are variables in Paddle.
              py::list res(self.size());
              for (size_t i = 0; i < self.size(); ++i) {
                if (data_is_lod_tensor(self[i])) {
-                 auto &data = BOOST_GET(Tensor, self[i]);
+                 auto &data = BOOST_GET(framework::Tensor, self[i]);
                  res[i] = py::cast(std::move(data));
                } else {
                  auto &data = BOOST_GET(LoDTensorArray, self[i]);
@@ -2513,9 +2523,9 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::take_ownership)
 
       .def("append",
-           [](FetchList &self, const Tensor &t) {
+           [](FetchList &self, const framework::Tensor &t) {
              self.emplace_back();
-             auto &lod_tensor = BOOST_GET(Tensor, self.back());
+             auto &lod_tensor = BOOST_GET(framework::Tensor, self.back());
              lod_tensor.ShareDataWith(t);
              lod_tensor.set_lod(t.lod());
            },
@@ -2542,7 +2552,7 @@ All parameter, weight, gradient are variables in Paddle.
                py::list tmp(self[i].size());
                for (size_t j = 0; j < self[i].size(); ++j) {
                  if (data_is_lod_tensor(self[i][j])) {
-                   auto &var = BOOST_GET(Tensor, self[i][j]);
+                   auto &var = BOOST_GET(framework::Tensor, self[i][j]);
                    tmp[j] = py::cast(std::move(var));
                  } else {
                    auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
@@ -2717,7 +2727,7 @@ All parameter, weight, gradient are variables in Paddle.
         []() { framework::ExecutorInfoCache::Instance().Finalize(); });
 
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, Tensor>>;
+      std::unordered_map<std::string, std::pair<bool, framework::Tensor>>;
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
