@@ -27,15 +27,11 @@ namespace platform {
 
 class HostTracer {
  public:
-  // Returns a reference to singleton.
-  static HostTracer& GetInstance() {
-    static HostTracer instance;
-    return instance;
-  }
+  void StartTracing();
 
-  void StartTrace();
+  void StopTracing();
 
-  void StopTrace(TraceDataCollector* collector);
+  void CollectTraceData(*);
 
  private:
   DISABLE_COPY_AND_ASSIGN(HostTracer);

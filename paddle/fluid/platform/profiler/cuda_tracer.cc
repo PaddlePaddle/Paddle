@@ -50,6 +50,7 @@ int CudaTracer::ProcessCuptiActivity() {
       CUptiResult status = dynload::cuptiActivityGetNextRecord(
           buffer.addr, buffer.valid_size, &record);
       if (status == CUPTI_SUCCESS) {
+        ProcessCuptiActivityRecord(record);
         ++record_cnt;
       } else if (status == CUPTI_ERROR_MAX_LIMIT_REACHED) {
         break;
@@ -61,6 +62,32 @@ int CudaTracer::ProcessCuptiActivity() {
     ReleaseBuffer(buffer.addr);
   }
   return record_cnt;
+#endif
+}
+
+void CudaTracer::ProcessCuptiActivityRecord(const CUpti_Activity* record) {
+#ifdef PADDLE_WITH_CUPTI
+  switch (record->kind) {
+    case CUPTI_ACTIVITY_KIND_KERNEL:
+    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
+      auto* kernel = reinterpret_cast<const CUpti_ActivityKernel4*>(record);
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMCPY:
+      auto* memcpy = reinterpret_cast<const CUpti_ActivityMemcpy*>(record);
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMCPY2:
+      auto* memcpy = reinterpret_cast<const CUpti_ActivityMemcpy2*>(record);
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMSET:
+      auto* memset = reinterpret_cast<const CUpti_ActivityMemset*>(record);
+      break;
+    case CUPTI_ACTIVITY_KIND_DRIVER:
+    case CUPTI_ACTIVITY_KIND_RUNTIME:
+      auto* api = reinterpret_cast<const CUpti_ActivityAPI*>(record);
+      break;
+    default:
+      break;
+  }
 #endif
 }
 

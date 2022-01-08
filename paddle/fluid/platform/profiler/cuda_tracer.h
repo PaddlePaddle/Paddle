@@ -37,7 +37,7 @@ class CudaTracer {
 
   void StopTracing();
 
-  // void StopTrace(TraceDataCollector* collector);
+  void CollectTraceData(TraceDataCollector* collector);
 
  private:
   struct ActivityBuffer {
