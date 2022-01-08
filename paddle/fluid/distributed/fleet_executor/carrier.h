@@ -73,10 +73,6 @@ class Carrier final {
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
 
-  void SetMsgBus(const std::shared_ptr<MessageBus>& msg_bus) {
-    msg_bus_ = msg_bus;
-  }
-
   void Start();
 
   bool IsInit() const;
@@ -107,7 +103,6 @@ class Carrier final {
   framework::Scope* minibatch_scope_;
   paddle::platform::Place place_;
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
-  std::shared_ptr<MessageBus> msg_bus_;
   int64_t rank_;
   std::string carrier_id_;
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
