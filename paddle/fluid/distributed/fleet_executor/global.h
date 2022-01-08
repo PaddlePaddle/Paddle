@@ -14,24 +14,41 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace distributed {
 
-// TODO(liyurui): Change this file to global.h
 template <typename T>
 class GlobalVal final {
  public:
-  static T Get() { return *GetPtr(); }
-  static T Set(T val) {
-    auto* ptr = GetPtr();
-    *ptr = val;
-    return val;
+  static T* Get() {
+    T* ptr = GetPPtr()->get();
+    PADDLE_ENFORCE_NOT_NULL(
+        ptr, platform::errors::NotFound("This value is not global value."));
+    return ptr;
+  }
+  template <typename... Args>
+  static T* Create(Args&&... args) {
+    auto* ptr = GetPPtr();
+    PADDLE_ENFORCE_EQ(ptr->get(), nullptr,
+                      platform::errors::AlreadyExists(
+                          "This value is already a global value."));
+    T* item = new T(std::forward<Args>(args)...);
+    ptr->reset(item);
+    return item;
+  }
+
+  static T* Set(T* new_item) {
+    auto* ptr = GetPPtr();
+    ptr->reset(new_item);
+    return ptr->get();
   }
 
  private:
-  static T* GetPtr() {
-    static T value;
-    return &value;
+  static std::unique_ptr<T>* GetPPtr() {
+    static std::unique_ptr<T> ptr;
+    return &ptr;
   }
 };
 
