@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-// developer apis
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/include/linalg.h"
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/core/dense_tensor.h"
+
+namespace pten {
+
+template <typename T, typename Context>
+void FlattenGradKernel(const Context& dev_ctx,
+                       const DenseTensor& out_grad,
+                       const DenseTensor& xshape,
+                       DenseTensor* x_grad);
+
+}  // namespace pten
