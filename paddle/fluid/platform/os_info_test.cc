@@ -22,11 +22,11 @@ TEST(ThreadInfo, TestThreadIdUtils) {
   EXPECT_EQ(std::hash<std::thread::id>()(std::this_thread::get_id()),
             GetCurrentThreadId().std_tid);
   auto ids = GetAllThreadIds();
-  EXPECT_EQ(1u, ids.size());
-  EXPECT_EQ(GetCurrentThreadId().sys_tid, ids.begin()->second.sys_tid);
+  EXPECT_TRUE(ids.find(GetCurrentThreadMainId()) != ids.end());
 }
 
 TEST(ThreadInfo, TestThreadNameUtils) {
+  using paddle::platform::GetCurrentThreadMainId;
   using paddle::platform::GetCurrentThreadName;
   using paddle::platform::SetCurrentThreadName;
   using paddle::platform::GetAllThreadNames;
@@ -34,7 +34,7 @@ TEST(ThreadInfo, TestThreadNameUtils) {
   EXPECT_TRUE(SetCurrentThreadName("MainThread"));
   EXPECT_FALSE(SetCurrentThreadName("MainThread"));
   auto names = GetAllThreadNames();
-  EXPECT_EQ(1u, names.size());
-  EXPECT_EQ("MainThread", names.begin()->second);
+  EXPECT_TRUE(names.find(GetCurrentThreadMainId()) != names.end());
+  EXPECT_EQ("MainThread", names[GetCurrentThreadMainId()]);
   EXPECT_EQ("MainThread", GetCurrentThreadName());
 }
