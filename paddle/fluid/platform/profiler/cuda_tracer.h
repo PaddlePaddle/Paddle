@@ -57,6 +57,7 @@ class CudaTracer : public TracerBase {
 
   int ProcessCuptiActivity();
 
+#ifdef PADDLE_WITH_CUPTI
   void ProcessCuptiActivityRecord(const CUpti_Activity* record);
 
   // Used by CUPTI Activity API to request buffer
@@ -68,6 +69,7 @@ class CudaTracer : public TracerBase {
                                                uint32_t stream_id,
                                                uint8_t* buffer, size_t size,
                                                size_t valid_size);
+#endif
 
   void AllocateBuffer(uint8_t** buffer, size_t* size);
 
