@@ -94,7 +94,7 @@ class PySimpleRNN2(PyRNNBase):
 
 
 def create_tensor(np_data, place):
-    tensor = core.LoDTensor()
+    tensor = core.Tensor()
     tensor.set(np_data, place)
     return tensor
 

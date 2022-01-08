@@ -136,23 +136,23 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
   XPUStream stream =
       use_calc_stream ? dev_ctx->x_context()->xpu_stream : comm->stream();
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<framework::Tensor>()) {
+    if (!dst->IsType<framework::Tensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), stream, comm);
+    AllReduce(src.Get<framework::Tensor>(),
+              dst->GetMutable<framework::Tensor>(), stream, comm);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "XPU unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor are supported.",
+        "Tensor are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 
 void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  framework::Tensor *src_tensor = src->GetMutable<framework::Tensor>();
   const auto &place = src_tensor->place();
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);

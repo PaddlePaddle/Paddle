@@ -39,7 +39,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         )).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
 
-        image_tensor = fluid.LoDTensor()
+        image_tensor = fluid.Tensor()
         np_image = np.random.uniform(
             low=-10, high=10, size=self.image_shape).astype('float32')
         image_tensor.set(np_image, place)

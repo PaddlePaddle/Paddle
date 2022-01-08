@@ -264,7 +264,7 @@ def match_matrix_tensor(x,
 
     .. code-block:: text
 
-            Given a 1-level LoDTensor x:
+            Given a 1-level Tensor x:
                 x.lod =  [
                     [2,                     3,                               ]]
                 x.data = [[0.3, 0.1], [0.2, 0.3], [
@@ -274,7 +274,7 @@ def match_matrix_tensor(x,
                 y.lod =  [[3,                                 1,       ]]
                 y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
                 y.dims = [4, 2]
-            set channel_num 2, then we get a 1-level LoDTensor:
+            set channel_num 2, then we get a 1-level Tensor:
                 # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
                 out.lod =  [[12, 6]]
                 out.dims = [18, 1]     # where 18 = 12 + 6
@@ -341,15 +341,15 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
 
     .. code-block:: text
 
-            If channel_num is 2 and given row LoDTensor and col LoDTensor as follows:
+            If channel_num is 2 and given row Tensor and col Tensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
 
-            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i]
+            input is a Tensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i]
                 input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
                 input.dims = [116, 1]   # where 116 = 60 + 56
 
-            If topks is [1, 3, 5], then we get a 1-level LoDTensor:
+            If topks is [1, 3, 5], then we get a 1-level Tensor:
                 out.lod =  [[5, 4]] 	# share Lod info with row LodTensor
                 out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
 
@@ -570,7 +570,7 @@ def multiclass_nms2(bboxes,
                            N is the batch size. Each bounding box has four
                            coordinate values and the layout is
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
-                           2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
+                           2. (Tensor) A 3-D Tensor with shape [M, C, 4]
                            M is the number of bounding boxes, C is the
                            class number
         scores (Variable): Two types of scores are supported:
@@ -581,7 +581,7 @@ def multiclass_nms2(bboxes,
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
                            of BBoxes.
-                           2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
+                           2. (Tensor) A 2-D Tensor with shape [M, C].
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
                            case with shape [M, C, 4].
@@ -605,14 +605,14 @@ def multiclass_nms2(bboxes,
     Returns:
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, a tuple with one Variable(Out) is returned.
-        Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Out: A 2-D Tensor with shape [No, 6] represents the detections.
         Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-        or A 2-D LoDTensor with shape [No, 10] represents the detections.
+        or A 2-D Tensor with shape [No, 10] represents the detections.
         Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3,
         x4, y4]. No is the total number of detections.
         If all images have not detected results, all elements in LoD will be
         0, and output tensor is empty (None).
-        Index: Only return when return_index is True. A 2-D LoDTensor with
+        Index: Only return when return_index is True. A 2-D Tensor with
         shape [No, 1] represents the selected index which type is Integer.
         The index is the absolute value cross batches. No is the same number
         as Out. If the index is used to gather other attribute such as age,
@@ -688,7 +688,7 @@ def search_pyramid_hash(input,
     **Pyramid hash embedding**
 
     Args:
-        input (Variable): LoDTensor<int32> Variable contained the IDs' information.
+        input (Variable): Tensor<int32> Variable contained the IDs' information.
         num_emb (int): The embedding size of output.
         space_len (int): The length of pyramid hash embedding space.
         pyramid_layer (int): The number of pyramid layers. It should be greater than 2.
@@ -715,7 +715,7 @@ def search_pyramid_hash(input,
             For more information, please refer to :ref:`api_guide_Name` .
         dtype(str): The data type of output variable, float32.
     Returns:
-        Variable: LoDTensor of pyramid hash embedding.
+        Variable: Tensor of pyramid hash embedding.
     """
     helper = LayerHelper('search_pyramid_hash', **locals())
 
@@ -784,9 +784,9 @@ def search_pyramid_hash(input,
 
 def shuffle_batch(x, seed=None):
     """
-    This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
+    This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D Tensor.
 
-    :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
+    :attr:`x` is a Tensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
     :math:`N_1 * N_2 * ... * N_k` numbers of elements with length :math:`D` will be shuffled randomly.
 
     For Example:
@@ -805,12 +805,12 @@ def shuffle_batch(x, seed=None):
         Out.dims = [4, 2]
 
     Args:
-        x (Variable): The input variable. The input variable is a N-D LoDTensor with type int, float32 or float64.
+        x (Variable): The input variable. The input variable is a N-D Tensor with type int, float32 or float64.
         seed (None|int|Variable): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
                 If not set(Default), start up seed of shuffle engine will be generated randomly.
 
     Returns:
-        Variables: The shuffled LoDTensor with the same shape and lod as input.
+        Variables: The shuffled Tensor with the same shape and lod as input.
 
     Examples:
 
@@ -1010,12 +1010,12 @@ def sparse_embedding(input,
         
         Case 2:
 
-        input is a LoDTensor with 1-level LoD. padding_idx = 0
+        input is a Tensor with 1-level LoD. padding_idx = 0
             input.lod = [[2, 3]]
             input.data = [[1], [3], [2], [4], [0]]
             input.shape = [5, 1]
         Given size = [128, 16]
-        output is a LoDTensor:
+        output is a Tensor:
             out.lod = [[2, 3]]
             out.shape = [5, 1, 16]
             out.data = [[[0.129435295, 0.244512452, ..., 0.436322452]],
@@ -1026,7 +1026,7 @@ def sparse_embedding(input,
         It will pad all-zero data when ids is 0.
 
     Args:
-        input(Variable): A Tensor or LoDTensor with type int64, which contains the id 
+        input(Variable): A Tensor or Tensor with type int64, which contains the id 
             information. The value of the input id should satisfy :math:`0<= id < size[0]` .
         size(tuple|list): The shape of lookup table parameter (vocab_size, emb_size). It 
             should have two elements which indicates the size of the dictionary of embeddings 
@@ -1054,7 +1054,7 @@ def sparse_embedding(input,
             float64. Default: float32.
             
     Returns:
-        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+        Variable: Embedding Tensor or Tensor mapped by input. The data type is the same as :attr:`dtype` .
     
     Examples:
         .. code-block:: python

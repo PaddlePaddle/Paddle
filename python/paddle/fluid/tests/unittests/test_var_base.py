@@ -210,8 +210,8 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(isinstance(x.item(), complex))
 
                 numpy_array = np.random.randn(3, 4)
-                # covert core.LoDTensor to paddle.Tensor
-                lod_tensor = paddle.fluid.core.LoDTensor()
+                # covert core.Tensor to paddle.Tensor
+                lod_tensor = paddle.fluid.core.Tensor()
                 place = paddle.fluid.framework._current_expected_place()
                 lod_tensor.set(numpy_array, place)
                 x = paddle.to_tensor(lod_tensor)
@@ -287,13 +287,13 @@ class TestVarBase(unittest.TestCase):
         if core.is_compiled_with_cuda():
             a_np = np.random.rand(1024, 1024)
             with paddle.fluid.dygraph.guard(core.CPUPlace()):
-                lod_tensor = core.LoDTensor()
+                lod_tensor = core.Tensor()
                 lod_tensor.set(a_np, core.CPUPlace())
                 a = paddle.to_tensor(lod_tensor)
                 self.assertTrue(np.array_equal(a_np, a.numpy()))
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
-                lod_tensor = core.LoDTensor()
+                lod_tensor = core.Tensor()
                 lod_tensor.set(a_np, core.CUDAPlace(0))
                 a = paddle.to_tensor(lod_tensor, place=core.CPUPlace())
                 self.assertTrue(np.array_equal(a_np, a.numpy()))

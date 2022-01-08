@@ -24,8 +24,8 @@ template <typename DeviceContext, typename T>
 class SequenceEraseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(

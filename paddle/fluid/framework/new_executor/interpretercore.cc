@@ -103,7 +103,7 @@ void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<framework::Tensor>& feed_tensors) {
   bool is_build = is_build_;
   global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
@@ -319,8 +319,8 @@ void InterpreterCore::BuildInplace() {
           if (iterout != outputs.end() && !iterout->second.empty()) {
             auto invar = global_scope_->Var(iter->second[0]);
             auto outvar = global_scope_->Var(iterout->second[0]);
-            if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>()) {
+            if (invar && outvar && invar->IsType<Tensor>() &&
+                outvar->IsType<Tensor>()) {
               instr.AddInplace(invar, outvar);
               VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
                       << " " << global_scope_->GetNameById(iter->second[0])
@@ -366,8 +366,8 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
     bool can_skip_lod = true;
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
-        if (var->IsType<LoDTensor>()) {
-          if (var->Get<LoDTensor>().lod().size() != 0) {
+        if (var->IsType<Tensor>()) {
+          if (var->Get<Tensor>().lod().size() != 0) {
             can_skip_lod = false;
             break;
           }
@@ -669,8 +669,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       continue;
     }
 
-    if (var->IsType<LoDTensor>()) {
-      TensorRecordStream(*(var->GetMutable<LoDTensor>()));
+    if (var->IsType<Tensor>()) {
+      TensorRecordStream(*(var->GetMutable<Tensor>()));
     } else if (var->IsType<
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
@@ -732,7 +732,7 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
 
 void InterpreterCore::Prepare(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors, bool prepare_feed) {
+    const std::vector<framework::Tensor>& feed_tensors, bool prepare_feed) {
   PADDLE_ENFORCE_EQ(feed_names.size(), feed_tensors.size(),
                     platform::errors::PreconditionNotMet(
                         "Required feed_names.size() == feed_tensors.size(), "
@@ -747,7 +747,7 @@ void InterpreterCore::Prepare(
           feed_var, platform::errors::NotFound(
                         "Variable %s should not be nullptr.", feed_names[i]));
 
-      auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
+      auto feed_tensor = feed_var->GetMutable<framework::Tensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }
@@ -775,7 +775,7 @@ void InterpreterCore::Prepare(
 
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<framework::Tensor>& feed_tensors) {
   global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;

@@ -686,14 +686,14 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
 
     """
     support_type = (list, tuple, np.ndarray, core.VarBase, framework.Variable,
-                    core.Tensor, core.LoDTensor)
+                    core.Tensor, core.Tensor)
     if not isinstance(value, support_type):
         raise TypeError(
             "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value)))
     if isinstance(value, (core.VarBase, framework.Variable)):
         return value
-    elif isinstance(value, (core.Tensor, core.LoDTensor)):
+    elif isinstance(value, (core.Tensor, core.Tensor)):
         return core.VarBase(value)
     else:
         if isinstance(framework._current_expected_place(),

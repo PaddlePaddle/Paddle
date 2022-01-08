@@ -21,7 +21,7 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Emission",
-        "(Tensor/LoDTensor). For a LoDTensor input, its shape is [N x D] "
+        "(Tensor/Tensor). For a Tensor input, its shape is [N x D] "
         "where N is the total sequence length of the mini-batch and D is "
         "the total tag number. While for a tensor input, its shape is "
         "[B X S X D] with B the batch size and S the sequence length of each "
@@ -39,14 +39,14 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "The data type is the same as Input(Emission).");
     AddInput(
         "Label",
-        "(Tensor/LoDTensor). The ground truth with shape "
-        "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
+        "(Tensor/Tensor). The ground truth with shape "
+        "[N x 1] (for Tensor) or [B x S] (for Tensor). This input is "
         "optional. See more details in the operator's comments. The data type "
         "is int64.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
-        "(Tensor/LoDTensor). The decoding results. What to "
+        "(Tensor/Tensor). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment. "
         "The data type is int64.");

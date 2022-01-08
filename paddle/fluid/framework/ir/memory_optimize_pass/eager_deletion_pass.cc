@@ -47,12 +47,12 @@ static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
   return result;
 }
 
-// Check whether the variable is LoDTensor based on static VarDesc info
+// Check whether the variable is Tensor based on static VarDesc info
 static bool IsLoDTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::LOD_TENSOR;
 }
 
-// Get memory size of LoDTensor
+// Get memory size of Tensor
 static int64_t GetMemorySize(
     const std::unordered_map<std::string, std::vector<details::VarHandle *>>
         &vars,
@@ -61,16 +61,16 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
       platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
-  PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc), true,
-                    platform::errors::InvalidArgument(
-                        "Var(%s) must be LoDTensor.", var_name));
+  PADDLE_ENFORCE_EQ(
+      IsLoDTensor(var_desc), true,
+      platform::errors::InvalidArgument("Var(%s) must be Tensor.", var_name));
   auto dims = var_desc->GetShape();
   return SizeOfType(var_desc->GetDataType()) *
          std::accumulate(dims.begin(), dims.end(), static_cast<int64_t>(1),
                          std::multiplies<int64_t>());
 }
 
-// Split all variables in the graph into LoDTensor and Non-LoDTensor (e.g.
+// Split all variables in the graph into Tensor and Non-Tensor (e.g.
 // SelectedRows, LoDTensorArray)
 // Since partial GC is based on static analysis of memory size of each variable
 // So we should skip SelectedRows and LoDTensorArray here
@@ -119,7 +119,7 @@ static OpToVarNameSetMap ShrinkGCVars(
   if (fraction_of_memory_size <= 0.0) return {};
 
   /**
-   * Step 1: Split all variables into LoDTensor and Non-LoDTensor.
+   * Step 1: Split all variables into Tensor and Non-Tensor.
    * We can only calculate memory size of LoDTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;

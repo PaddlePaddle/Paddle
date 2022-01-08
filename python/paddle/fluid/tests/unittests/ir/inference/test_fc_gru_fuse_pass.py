@@ -37,7 +37,7 @@ class FcGruFusePassTest(InferencePassTest):
                 is_reverse=True)
 
         batch = 16
-        lod_tensor = fluid.LoDTensor()
+        lod_tensor = fluid.Tensor()
         lod_tensor.set(np.random.randint(
             0, dict_dim, size=[batch]).astype("int64"),
                        fluid.CPUPlace())
@@ -68,7 +68,7 @@ class MulGruFusePassTest(InferencePassTest):
                 is_reverse=True)
 
         batch = 16
-        lod_tensor = fluid.LoDTensor()
+        lod_tensor = fluid.Tensor()
         lod_tensor.set(np.random.randint(
             0, dict_dim, size=[batch]).astype("int64"),
                        fluid.CPUPlace())

@@ -32,7 +32,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 

@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
+class Tensor;
 class Scope;
 
 void DeviceWorker::SetRootScope(Scope* root_scope) { root_scope_ = root_scope; }
@@ -67,7 +67,7 @@ std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end) {
   return out_val;
 }
 
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
+std::pair<int64_t, int64_t> GetTensorBound(Tensor* tensor, int index) {
   auto& dims = tensor->dims();
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
@@ -77,7 +77,7 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
   }
 }
 
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
+bool CheckValidOutput(Tensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
@@ -101,8 +101,8 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    framework::LoDTensor cpu_tensor;
+    Tensor* tensor = var->GetMutable<Tensor>();
+    framework::Tensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
@@ -170,13 +170,13 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
               << "] cannot be find in scope, so it was skipped.";
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     if (!tensor->IsInitialized()) {
       VLOG(0) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;
     }
-    framework::LoDTensor cpu_tensor;
+    framework::Tensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());

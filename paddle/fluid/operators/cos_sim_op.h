@@ -28,9 +28,9 @@ class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get Tensor
-    auto* in_x = context.Input<framework::LoDTensor>("X");
+    auto* in_x = context.Input<framework::Tensor>("X");
     auto* in_y = context.Input<Tensor>("Y");
-    auto* out_z = context.Output<framework::LoDTensor>("Out");
+    auto* out_z = context.Output<framework::Tensor>("Out");
     auto* out_x_norm = context.Output<Tensor>("XNorm");
     auto* out_y_norm = context.Output<Tensor>("YNorm");
 

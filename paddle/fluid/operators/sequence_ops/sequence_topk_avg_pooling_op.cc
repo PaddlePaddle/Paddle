@@ -63,9 +63,9 @@ class SequenceTopkAvgPoolingOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The variable-length input of SequenceTopkPoolingOp");
-    AddInput("ROW", "(LoDTensor) the row info");
-    AddInput("COLUMN", "(LoDTensor) the column info");
+             "(Tensor) The variable-length input of SequenceTopkPoolingOp");
+    AddInput("ROW", "(Tensor) the row info");
+    AddInput("COLUMN", "(Tensor) the column info");
     AddOutput(
         "Out",
         "(Tensor) The output of SequenceTopkPoolingOp does not contain LoD "

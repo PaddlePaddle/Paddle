@@ -33,24 +33,24 @@ template <typename DeviceContext, typename T, typename Tout, int64_t Rank,
           ArgMinMaxType argMinMaxValue>
 struct ArgMinMaxFunctor {};
 
-#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_value)      \
-  template <typename DeviceContext, typename T, typename Tout, int64_t Rank>  \
-  struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                       \
-                          enum_argminmax_value> {                             \
-    void operator()(const DeviceContext& ctx, const framework::LoDTensor& in, \
-                    framework::LoDTensor* out, framework::DDim x_dims,        \
-                    int64_t axis, bool keepdims) {                            \
-      auto in_eigen = framework::EigenTensor<T, Rank>::From(in, x_dims);      \
-      if (keepdims) {                                                         \
-        auto out_eigen = framework::EigenTensor<Tout, Rank>::From(*out);      \
-        out_eigen.device(*(ctx.eigen_device())) =                             \
-            in_eigen.eigen_op_type(axis).template cast<Tout>();               \
-      } else {                                                                \
-        auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(*out);  \
-        out_eigen.device(*(ctx.eigen_device())) =                             \
-            in_eigen.eigen_op_type(axis).template cast<Tout>();               \
-      }                                                                       \
-    }                                                                         \
+#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_value)     \
+  template <typename DeviceContext, typename T, typename Tout, int64_t Rank> \
+  struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                      \
+                          enum_argminmax_value> {                            \
+    void operator()(const DeviceContext& ctx, const framework::Tensor& in,   \
+                    framework::Tensor* out, framework::DDim x_dims,          \
+                    int64_t axis, bool keepdims) {                           \
+      auto in_eigen = framework::EigenTensor<T, Rank>::From(in, x_dims);     \
+      if (keepdims) {                                                        \
+        auto out_eigen = framework::EigenTensor<Tout, Rank>::From(*out);     \
+        out_eigen.device(*(ctx.eigen_device())) =                            \
+            in_eigen.eigen_op_type(axis).template cast<Tout>();              \
+      } else {                                                               \
+        auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(*out); \
+        out_eigen.device(*(ctx.eigen_device())) =                            \
+            in_eigen.eigen_op_type(axis).template cast<Tout>();              \
+      }                                                                      \
+    }                                                                        \
   }
 
 DECLARE_ARG_MIN_MAX_FUNCTOR(argmin, ArgMinMaxType::kArgMin);
@@ -64,8 +64,8 @@ struct VisitDataArgMinMaxFunctor {
       : ctx(ctx) {}
   template <typename Tout>
   void apply() const {
-    auto& x = *(ctx.Input<framework::LoDTensor>("X"));
-    auto& out = *(ctx.Output<framework::LoDTensor>("Out"));
+    auto& x = *(ctx.Input<framework::Tensor>("X"));
+    auto& out = *(ctx.Output<framework::Tensor>("Out"));
     out.template mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
     auto keepdims = ctx.Attr<bool>("keepdims");

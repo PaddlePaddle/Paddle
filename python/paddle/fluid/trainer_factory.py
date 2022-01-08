@@ -176,7 +176,7 @@ class FetchHandlerMonitor(object):
                                             hold LoD information. \
                                             They can not be completely cast \
                                             to Python ndarray. We can \
-                                            not return LoDTensor itself directly, \
+                                            not return Tensor itself directly, \
                                             please choose another targets")
                     if res_dict[user_name]._is_initialized():
                         res_dict[user_name] = np.array(res_dict[user_name])

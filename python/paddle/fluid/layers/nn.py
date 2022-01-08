@@ -222,7 +222,7 @@ def fc(input,
     **Fully Connected Layer**
 
     This operator creates a fully connected layer in the network. It can take
-    a Tensor(or LoDTensor) or a list of Tensor(or LoDTensor) as its inputs(see
+    a Tensor(or Tensor) or a list of Tensor(or Tensor) as its inputs(see
     Args in detail). It creates a variable called weight for each input Tensor,
     which represents a fully connected weight matrix from each input unit to
     each output unit. The fully connected layer multiplies each input Tensor
@@ -232,13 +232,13 @@ def fc(input,
     is not None, a bias variable will be created and added to the output.
     Finally, if :attr:`act` is not None, it will be applied to the output as well.
 
-    When the input is a single Tensor(or LoDTensor):
+    When the input is a single Tensor(or Tensor):
 
     .. math::
 
         Out = Act({XW + b})
 
-    When the input is a list of Tensor(or LoDTensor):
+    When the input is a list of Tensor(or Tensor):
 
     .. math::
 
@@ -283,11 +283,11 @@ def fc(input,
             out.shape = (1, 2)
 
     Args:
-        input (Variable|list of Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` or
-            a list of Tensor(or LoDTensor). The dimensions of the input Tensor is at least 2 and the data
+        input (Variable|list of Variable): A Tensor(or Tensor) with shape :math:`[N_1, N_2,..., N_k]` or
+            a list of Tensor(or Tensor). The dimensions of the input Tensor is at least 2 and the data
             type should be float32 or float64.
         size(int): The number of output units in this layer, which also means the feature size of output
-            Tensor(or LoDTensor).
+            Tensor(or Tensor).
         num_flatten_dims (int): The fc layer can accept an input Tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
             into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
@@ -307,7 +307,7 @@ def fc(input,
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by fc layer. The data type is same with input.
+        Variable: Tensor or Tensor calculated by fc layer. The data type is same with input.
 
     Raises:
         ValueError: If dimensions of the input Tensor is less than 2.
@@ -420,12 +420,12 @@ def embedding(input,
 
         Case 2:
 
-        input is a LoDTensor with 1-level LoD. padding_idx = 0
+        input is a Tensor with 1-level LoD. padding_idx = 0
             input.lod = [[2, 3]]
             input.data = [[1], [3], [2], [4], [0]]
             input.shape = [5, 1]
         Given size = [128, 16]
-        output is a LoDTensor:
+        output is a Tensor:
             out.lod = [[2, 3]]
             out.shape = [5, 16]
             out.data = [[0.129435295, 0.244512452, ..., 0.436322452],
@@ -436,7 +436,7 @@ def embedding(input,
         It will pad all-zero data when ids is 0.
 
     Args:
-        input(Variable): A Tensor or LoDTensor with type int64, which contains the id information.
+        input(Variable): A Tensor or Tensor with type int64, which contains the id information.
             The last dimension of Tensor shape must be equal to 1. The value of the input id should
             satisfy :math:`0<= id < size[0]` .
         size(tuple|list): The shape of lookup table parameter. It should have two elements which
@@ -465,7 +465,7 @@ def embedding(input,
             It must be float32 or float64. Default: float32.
 
     Returns:
-        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+        Variable: Embedding Tensor or Tensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Examples:
         .. code-block:: python
@@ -832,7 +832,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(startup_program)
-            #define data, using LoDTensor
+            #define data, using Tensor
             a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
             b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
             feed1 = {'input_data':a,'label':b}
@@ -941,7 +941,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
            import paddle
            paddle.enable_static()
 
-           # LoDTensor-based example
+           # Tensor-based example
            num_labels = 10
            feature = paddle.static.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
            label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
@@ -5190,8 +5190,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     removed after matrix multiplication.
 
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor.
-        y (Variable): The input variable which is a Tensor or LoDTensor.
+        x (Variable): The input variable which is a Tensor or Tensor.
+        y (Variable): The input variable which is a Tensor or Tensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
         alpha (float): The scale of output. Default 1.0.
@@ -5199,7 +5199,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor (or LoDTensor) variable.
+        Variable: The product Tensor (or Tensor) variable.
 
     Examples:
         .. code-block:: python
@@ -5409,7 +5409,7 @@ def ctc_greedy_decoder(input,
        blanks and delete all blanks.
 
     This op is implemented in two modes: lod and padding, either of them can be used.
-    The input can be either LoDTensor or Tensor, corresponding to lod and padding
+    The input can be either Tensor or Tensor, corresponding to lod and padding
     mode respectively.
 
     A simple example as below:
@@ -5476,7 +5476,7 @@ def ctc_greedy_decoder(input,
     Parameters:
 
         input(Variable): the probabilities of variable-length sequences. When in lod mode,
-                         it is a 2-D LoDTensor with LoD information. It's shape is [Lp, num_classes + 1]
+                         it is a 2-D Tensor with LoD information. It's shape is [Lp, num_classes + 1]
                          where Lp is the sum of all input sequences' length and
                          num_classes is the true number of classes. When in padding mode,
                          it is a 3-D Tensor with padding, It's shape is [batch_size, N, num_classes + 1].
@@ -5484,7 +5484,7 @@ def ctc_greedy_decoder(input,
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in the half-opened
                     interval [0, num_classes + 1).
-        input_length(Variable, optional): 2-D LoDTensor, shape is [batch_size, 1], data type is int64.
+        input_length(Variable, optional): 2-D Tensor, shape is [batch_size, 1], data type is int64.
                                  It is used for padding mode. In lod mode, input_length is None.
         padding_value(int): padding value.
         name(str, optional): The default value is None.
@@ -5492,9 +5492,9 @@ def ctc_greedy_decoder(input,
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        For lod mode, returns the result of CTC greedy decoder, 2-D LoDTensor, shape is [Lp, 1], \
+        For lod mode, returns the result of CTC greedy decoder, 2-D Tensor, shape is [Lp, 1], \
         data type is int64. 'Lp' is the sum of all output sequences' length. If all the sequences \
-        in result were empty, the result LoDTensor will be [-1] with  empty \
+        in result were empty, the result Tensor will be [-1] with  empty \
         LoD [[]].
 
         For padding mode, returns a tuple of (output, output_length), which was described as below:
@@ -5701,7 +5701,7 @@ def im2sequence(input,
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-            The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
+            The output is a 2-D Tensor with shape {input.batch\_size * output\_height * output\_width, \
             filter\_size\_height * filter\_size\_width * input.channels}. The data type is float32.
 
     Return Type: Variable
@@ -5927,10 +5927,10 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
-            A LoDTensor or Tensor with type float32.
+            A Tensor or Tensor with type float32.
         y (Variable): A tensor with rank at least 2. The target value of smooth
             L1 loss op with same shape as :attr:`x`.
-            A LoDTensor or Tensor with type float32.
+            A Tensor or Tensor with type float32.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with :attr:`x`. If
             provided, the result of (:attr:`x` - :attr:`y`) will be multiplied
@@ -6003,7 +6003,7 @@ def one_hot(input, depth, allow_out_of_range=False):
     :attr:`depth` length. The value in the vector dimension corresponding to the id
     is 1, and the value in the remaining dimension is 0.
 
-    The shape of output Tensor or LoDTensor is generated by adding :attr:`depth` dimension
+    The shape of output Tensor or Tensor is generated by adding :attr:`depth` dimension
     behind the last dimension of the input shape.
 
     .. code-block:: text
@@ -6051,7 +6051,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             so it throws an exception.
 
     Args:
-        input(Variable): Tensor or LoDTensor with shape :math:`[N_1, N_2, ..., N_k, 1]` ,
+        input(Variable): Tensor or Tensor with shape :math:`[N_1, N_2, ..., N_k, 1]` ,
             which contains at least one dimension and the last dimension must be 1.
             The data type is int32 or int64.
         depth(scalar): An integer defining the :attr:`depth` of the one hot dimension. If input
@@ -6063,7 +6063,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             Default: False.
 
     Returns:
-        Variable: The one-hot representations of input. A Tensor or LoDTensor with type float32.
+        Variable: The one-hot representations of input. A Tensor or Tensor with type float32.
 
     Examples:
         .. code-block:: python
@@ -6207,7 +6207,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
-        actual_shape(variable, optional): An 1-D ``Tensor`` or ``LoDTensor`` . The data type is ``int32`` . If provided, reshape
+        actual_shape(variable, optional): An 1-D ``Tensor`` or ``Tensor`` . The data type is ``int32`` . If provided, reshape
                                 according to this given shape rather than ``shape`` specifying shape.
                                 That is to say ``actual_shape`` has a higher priority
                                 than ``shape(list|tuple)`` but not ``shape(Tensor)``. \
@@ -6500,21 +6500,21 @@ def lod_reset(x, y=None, target_lod=None):
 
         * Example 1:
 
-            Given a 1-level LoDTensor x:
+            Given a 1-level Tensor x:
                 x.lod =  [[ 2,           3,                   1 ]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             target_lod: [4, 2]
 
-            then we get a 1-level LoDTensor:
+            then we get a 1-level Tensor:
                 out.lod =  [[4,                          2]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
         * Example 2:
 
-            Given a 1-level LoDTensor x:
+            Given a 1-level Tensor x:
                 x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
@@ -6523,30 +6523,30 @@ def lod_reset(x, y=None, target_lod=None):
                 y.data = [[2, 4]]
                 y.dims = [1, 3]
 
-            then we get a 1-level LoDTensor:
+            then we get a 1-level Tensor:
                 out.lod =  [[2,            4]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
         * Example 3:
 
-            Given a 1-level LoDTensor x:
+            Given a 1-level Tensor x:
                 x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
-            y is a 2-level LoDTensor:
+            y is a 2-level Tensor:
                 y.lod =  [[2, 2], [2, 2, 1, 1]]
                 y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
                 y.dims = [6, 1]
 
-            then we get a 2-level LoDTensor:
+            then we get a 2-level Tensor:
                 out.lod =  [[2, 2], [2, 2, 1, 1]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor. 
+        x (Variable): Input variable which could be a Tensor or Tensor. 
                       The data type should be int32, int64, float32 or float64.
         y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`. 
                                 If y's lod level>0, the data type can be any type. 
@@ -6597,20 +6597,20 @@ def lod_append(x, level):
 
         * Example 1:
 
-            given a 1-level LoDTensor x:
+            given a 1-level Tensor x:
                 x.lod =  [[ 2,           3,                   1 ]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             level: [1, 1, 1, 1, 1, 1, 1]
 
-            then we get a 2-level LoDTensor:
+            then we get a 2-level Tensor:
                 x.lod =  [[ 2, 3, 1 ], [1, 1, 1, 1, 1, 1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a tensor or LoDTensor. 
+        x (Variable): Input variable which could be a tensor or Tensor. 
                       The data type should be int32, int64, float32 or float64.
         level (list|tuple|Variable, optional): The LoD level to be appended into LoD of x. 
                                                If level is variable and its lod level>0, the data type can be any type.
@@ -7017,7 +7017,7 @@ def roi_pool(input,
 
     Args:
         input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32 or float64.
-        rois (Variable): ROIs (Regions of Interest) to pool over. 2D-LoDTensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        rois (Variable): ROIs (Regions of Interest) to pool over. 2D-Tensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
         pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
@@ -7115,7 +7115,7 @@ def roi_align(input,
     Args:
         input (Variable): ${x_comment}
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-            a 2-D LoDTensor of shape (num_rois, 4), the lod level is 1. The
+            a 2-D Tensor of shape (num_rois, 4), the lod level is 1. The
             data type is float32 or float64. Given as [[x1, y1, x2, y2], ...],
             (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
             right coordinates.
@@ -8602,7 +8602,7 @@ def scatter(input, index, updates, name=None, overwrite=True):
 	    Default value is True.
 
     Returns:
-        Variable(Tensor|LoDTensor): The output is a Tensor with the same shape as input.
+        Variable(Tensor|Tensor): The output is a Tensor with the same shape as input.
 
     Examples:
 
@@ -8946,7 +8946,7 @@ def selu(x, scale=None, alpha=None, name=None):
 
 
     Returns:
-        Variable(Tensor|LoDTensor): The output Tensor or LoDTensor with the same shape and LoD information as input.
+        Variable(Tensor|Tensor): The output Tensor or Tensor with the same shape and LoD information as input.
 
     Examples:
 
@@ -9637,12 +9637,12 @@ def pow(x, factor=1.0, name=None):
     :math:`out = x^{factor}`
 
     Args:
-        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
+        x(Variable): A ``Tensor`` or ``Tensor`` . The data type is ``float32`` or ``float64``.
         factor(float32|Variable, optional): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.  The exponential factor of Pow. Default 1.0.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``.
+        Variable: A ``Tensor`` or ``Tensor``. The data type is same as ``x``.
 
     Examples:
 
@@ -9783,7 +9783,7 @@ def swish(x, beta=1.0, name=None):
         out = \\frac{x}{1 + e^{- beta * x}}
 
     Args:
-        x(Variable): Tensor or LoDTensor, dtype: float32 or float64, the input of swish activation.
+        x(Variable): Tensor or Tensor, dtype: float32 or float64, the input of swish activation.
 
         beta(float): Constant beta of swish operator, default 1.0.
 
@@ -9791,7 +9791,7 @@ def swish(x, beta=1.0, name=None):
 
     Returns:
 
-        Variable: Output of the swish activation, Tensor or LoDTensor, with the same dtype and shape with the input x.
+        Variable: Output of the swish activation, Tensor or Tensor, with the same dtype and shape with the input x.
 
     Examples:
 
@@ -9871,7 +9871,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
 
     Parameters:
     
-        x (Tensor): The input Tensor or LoDTensor with data type float32.
+        x (Tensor): The input Tensor or Tensor with data type float32.
 
         mode (str): The mode for weight sharing.
 
@@ -10040,7 +10040,7 @@ def soft_relu(x, threshold=40.0, name=None):
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable(Tensor|LoDTensor)): Output of soft_relu operator, shape and LoD same as input.
+        Variable(Tensor|Tensor)): Output of soft_relu operator, shape and LoD same as input.
 
     Examples:
 
@@ -10318,9 +10318,9 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
     lod_tensor with all 1, similar to the example above.
 
     Args:
-        ins (Variable): Input Variable (LoDTensor), usually it is 2D tensor
+        ins (Variable): Input Variable (Tensor), usually it is 2D tensor
                         And first dimension can have lod info or not.
-        ins_tag (Variable): Input Variable (LoDTensor), usually it is 1D list
+        ins_tag (Variable): Input Variable (Tensor), usually it is 1D list
                         And split them by lod info
         filter_tag (Variable): Input Variable (1D Tensor/List), usually it is
                         list that holds the tags.
@@ -10329,7 +10329,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
                         will be set to Output tensor.
 
     Returns:
-        Variable: filtered ins (LoDTensor) and loss weight (Tensor)
+        Variable: filtered ins (Tensor) and loss weight (Tensor)
 
     Examples:
         .. code-block:: python
@@ -10453,14 +10453,14 @@ def expand(x, expand_times, name=None):
                 ]
 
     Args:
-        x (Variable): A ``Tensor`` or ``LoDTensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``, ``float64`` or ``int32`` .
+        x (Variable): A ``Tensor`` or ``Tensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``, ``float64`` or ``int32`` .
         expand_times (list|tuple|Variable): The data type is ``int32`` . If ``expand_times`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``expand_times`` is an Variable, it should be an 1-D Tensor.
                 Expand times number for each dimension of ``x`` .
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. After expanding, size of each dimension of output is equal to the size of the corresponding dimension of ``x`` multiplying the corresponding value given by ``expand_times`` .
+        Variable: A ``Tensor`` or ``Tensor``. The data type is same as ``x``. After expanding, size of each dimension of output is equal to the size of the corresponding dimension of ``x`` multiplying the corresponding value given by ``expand_times`` .
 
     Raises:
         TypeError: The type of ``expand_times`` must be list, tuple or Variable.
@@ -11268,7 +11268,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Then:
                 result = [ [2], ]
     Args:
-        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        input (Variable): An N-D ``Tensor`` or ``Tensor`` . The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
@@ -11282,7 +11282,7 @@ def strided_slice(input, axes, starts, ends, strides):
                 It represents slice step of corresponding axis in ``axes``.
 
     Returns:
-        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
+        Variable:  A ``Tensor`` or ``Tensor`` with the same dimension as ``input``. The data type is same as ``input``.
 
     Raises:
         TypeError: The type of ``starts`` must be list, tuple or Variable.
@@ -12719,14 +12719,14 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $x$.
 
     Args:
-        x (Variable): The first input Tensor/LoDTensor of mul_op.
-        y (Variable): The second input Tensor/LoDTensor of mul_op.
+        x (Variable): The first input Tensor/Tensor of mul_op.
+        y (Variable): The second input Tensor/Tensor of mul_op.
         x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1.
         y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. Default is 1.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
+        Variable(Tensor/Tensor): The output Tensor/Tensor of mul op.
 
     Examples:
         ..  code-block:: python
@@ -13106,15 +13106,15 @@ def hash(input, hash_size, num_hash=1, name=None):
     (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
 
     Args:
-        input(Variable): A **Two-Dimensional** LoDTensor with type int32, int64.
-             **Only support LoDTensor**.
+        input(Variable): A **Two-Dimensional** Tensor with type int32, int64.
+             **Only support Tensor**.
         num_hash(int, optional): The times of hash, default is 1.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-       Variable: A LoDTensor with the same data type as input.
+       Variable: A Tensor with the same data type as input.
 
     Examples:
         .. code-block:: python
@@ -13341,10 +13341,10 @@ def add_position_encoding(input, alpha, beta, name=None):
       - :math:`PE(pos, 2i + 1)` : the value at odd index `2i+1` for encoding of position `pos`
 
     Args:
-        input(Variable): A Tensor or LoDTensor (lod level is 1). If it is a
+        input(Variable): A Tensor or Tensor (lod level is 1). If it is a
             Tensor, the shape should be `[N, M, P]`, where `N` stands for
             batch size, `M` for sequence length, `P` for the size of feature
-            dimension. If it is a LoDTensor, the shape should be `[N, P]`,
+            dimension. If it is a Tensor, the shape should be `[N, P]`,
             where `N` stands for the total sequence lengths in this mini-batch,
             `P` for the size of feature. The data type should be float32 or float64.
         alpha(float): Indicate the weight coefficient for `input` when performing
@@ -13356,7 +13356,7 @@ def add_position_encoding(input, alpha, beta, name=None):
             None by default.
 
     Returns:
-        Variable: A Tensor or LoDTensor. It has the same shape, data type and lod as `input`.
+        Variable: A Tensor or Tensor. It has the same shape, data type and lod as `input`.
 
     Examples:
         .. code-block:: python
@@ -13464,7 +13464,7 @@ def bilinear_tensor_product(x,
 @templatedoc()
 def get_tensor_from_selected_rows(x, name=None):
     """
-    This operator gets tensor data from input with SelectedRows type, and outputs a LoDTensor.
+    This operator gets tensor data from input with SelectedRows type, and outputs a Tensor.
 
     .. code-block:: text
 
@@ -13473,7 +13473,7 @@ def get_tensor_from_selected_rows(x, name=None):
            x.height = 20
            x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
 
-        Ouput is LoDTensor:
+        Ouput is Tensor:
            out.shape = [5, 2]
            out.data = [[1, 1],
                        [2, 2],
@@ -13487,7 +13487,7 @@ def get_tensor_from_selected_rows(x, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: LoDTensor transformed from SelectedRows. The data type is same with input.
+        Variable: Tensor transformed from SelectedRows. The data type is same with input.
 
     Examples:
         .. code-block:: python
@@ -13710,14 +13710,14 @@ class PyFuncRegistry(object):
 
         ret = []
         for each_ret in func_ret:
-            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+            if each_ret is None or isinstance(each_ret, core.Tensor):
                 ret.append(each_ret)
                 continue
 
             if not isinstance(each_ret, np.ndarray):
                 each_ret = np.array(each_ret)
 
-            tensor = core.LoDTensor()
+            tensor = core.Tensor()
             tensor.set(each_ret, core.CPUPlace())
             ret.append(tensor)
 
@@ -13981,8 +13981,8 @@ def psroi_pool(input,
 
     Parameters:
         input (Variable): ${x_comment}
-        rois (Variable): LoDTensor, ROIs (Regions of Interest) to pool over.It should be
-                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+        rois (Variable): Tensor, ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D Tensor of shape (num_rois, 4), the lod level
                          is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                          the top left coordinates, and (x2, y2) is the bottom
                          right coordinates. The data type is the same as `input`
@@ -14053,8 +14053,8 @@ def prroi_pool(input,
                         [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
-                        is 1 when it is LoDTensor. The LoD include the rois's batch index
+                        a 2-D Tensor or Tensor of shape (num_rois, 4), the lod level
+                        is 1 when it is Tensor. The LoD include the rois's batch index
                         information. If rois is Tensor, its batch index information should
                         be provided by batch_index.
                         Given as [[x1, y1, x2, y2], ...], (x1, y1) is
@@ -14245,7 +14245,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
     :attr:`cvm` is show_click info, whose shape is :math:`[N, 2]` .
 
     Args:
-        input (Variable): The input variable. A 2-D LoDTensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
+        input (Variable): The input variable. A 2-D Tensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
         A Tensor with type float32, float64.
         cvm (Variable): Show and click variable. A 2-D Tensor with shape :math:`[N, 2]` , where N is the batch size, 2 is show and click.
         A Tensor with type float32, float64.
@@ -14863,7 +14863,7 @@ def deformable_roi_pooling(input,
                          [N, C, H, W]. Where N is batch size, C is number of input channels,
                          H is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) with type float32 to pool over. It should be
-                         a 2-D LoDTensor of shape (num_rois, 4), and the lod level
+                         a 2-D Tensor of shape (num_rois, 4), and the lod level
                          is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                          the top left coordinates, and (x2, y2) is the bottom
                          right coordinates, which value type is float32.

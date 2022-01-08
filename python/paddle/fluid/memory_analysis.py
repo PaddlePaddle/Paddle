@@ -38,7 +38,7 @@ def get_var_and_memory_size(block, var_name, batch_size=None):
 
 
 def pre_allocate_memory(size, place):
-    t = core.LoDTensor()
+    t = core.Tensor()
     t._set_dims([size])
     t._mutable_data(place, core.VarDesc.VarType.INT8)
     del t

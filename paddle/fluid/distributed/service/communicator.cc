@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::LoDTensor;
+using framework::Tensor;
 using framework::SelectedRows;
 
 inline double GetCurrentUS() {
@@ -75,7 +75,7 @@ void Communicator::InitBrpcClient(
     regions.reserve(var_names.size());
     for (auto &t : var_names) {
       Variable *var = recv_scope_->FindVar(t);
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      Tensor *tensor = var->GetMutable<Tensor>();
       float *w = tensor->data<float>();
       paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -116,11 +116,11 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
     Variable *var = scope->Var(t);
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    Tensor *tensor = var->GetMutable<Tensor>();
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
-      LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
+      Tensor *temp_tensor = temp_var->GetMutable<Tensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       paddle::distributed::Region reg(temp_data, tensor->numel());
@@ -141,7 +141,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 
   for (auto &t : varnames) {
     Variable *var = scope->FindVar(t);
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    Tensor *tensor = var->GetMutable<Tensor>();
     VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
 
@@ -151,8 +151,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-      LoDTensor *temp_tensor =
-          xpu_temp_scope_->FindVar(t)->GetMutable<LoDTensor>();
+      Tensor *temp_tensor = xpu_temp_scope_->FindVar(t)->GetMutable<Tensor>();
       framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
@@ -173,11 +172,11 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
   for (auto &t : varnames) {
     Variable *var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    Tensor *tensor = var->GetMutable<Tensor>();
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
-      LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
+      Tensor *temp_tensor = temp_var->GetMutable<Tensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
@@ -216,7 +215,7 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
   float *data = dense_data->data();
   uint32_t pos = 0;
   for (size_t i = 0; i < var_names.size(); ++i) {
-    const LoDTensor tensor = scope.FindVar(var_names[i])->Get<LoDTensor>();
+    const Tensor tensor = scope.FindVar(var_names[i])->Get<Tensor>();
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
     CHECK(pos + count <= dense_data->size())
@@ -253,7 +252,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(varname);
-  auto *tensor = send_var->GetMutable<framework::LoDTensor>();
+  auto *tensor = send_var->GetMutable<framework::Tensor>();
   auto dim = tensor->dims()[1];
   uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
   std::vector<uint64_t> sparse_push_keys(sparse_num);
@@ -338,7 +337,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
                                  Scope *scope) {
   platform::RecordEvent record_event("Communicator->RpcRecvSparse");
   auto *send_var = scope->Var(varname);
-  auto *tensor = send_var->GetMutable<framework::LoDTensor>();
+  auto *tensor = send_var->GetMutable<framework::Tensor>();
   auto dim = tensor->dims()[1];
   uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
 
@@ -410,7 +409,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
 
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
-  auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+  auto *out_t = out_var->GetMutable<framework::Tensor>();
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
@@ -464,13 +463,12 @@ void AsyncCommunicator::RecvNoBarrier() {
     auto var_names = iter.second;
     for (auto &t : var_names) {
       Variable *var = recv_scope_->FindVar(t);
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      Tensor *tensor = var->GetMutable<Tensor>();
       VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
               << platform::is_gpu_place(tensor->place());
       if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-        LoDTensor *temp_tensor =
-            xpu_temp_scope_->FindVar(t)->GetMutable<LoDTensor>();
+        Tensor *temp_tensor = xpu_temp_scope_->FindVar(t)->GetMutable<Tensor>();
         framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
 #endif
       }
@@ -674,7 +672,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
   if (table_name == STEP_COUNTER) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
-    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = tmp_var->GetMutable<framework::Tensor>();
     tensor->Resize(framework::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
@@ -945,13 +943,13 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
   // copy to old_scope
   for (auto &t : varnames) {
     auto *global_var = recv_scope_->FindVar(t);
-    global_var->GetMutable<framework::LoDTensor>();
+    global_var->GetMutable<framework::Tensor>();
     auto *old_var = old_scope_->Var(t);
-    old_var->GetMutable<framework::LoDTensor>();
+    old_var->GetMutable<framework::Tensor>();
     framework::CopyVariable(*global_var, old_var);
     // init pserver_scope_
     auto *pserver_var = pserver_scope_->Var(t);
-    pserver_var->GetMutable<framework::LoDTensor>();
+    pserver_var->GetMutable<framework::Tensor>();
     framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
@@ -973,12 +971,12 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
                       platform::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
 
-    auto &t_latest = var_latest->Get<framework::LoDTensor>();
-    auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+    auto &t_latest = var_latest->Get<framework::Tensor>();
+    auto t_timestamp = var_timestamp->GetMutable<framework::Tensor>();
 
     auto cpu_ctx = paddle::platform::CPUDeviceContext();
     auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+    auto *t_delta = var_delta->GetMutable<framework::Tensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
     auto blas =
@@ -1009,16 +1007,16 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
-    auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
+    auto t_latest = var_latest->GetMutable<framework::Tensor>();
 
     auto *var_old = old_scope_->FindVar(varname);
-    auto t_old = var_old->GetMutable<framework::LoDTensor>();
+    auto t_old = var_old->GetMutable<framework::Tensor>();
 
     auto *var_pserver = pserver_scope_->FindVar(varname);
-    auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+    auto t_pserver = var_pserver->Get<framework::Tensor>();
 
     auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+    auto *t_delta = var_delta->GetMutable<framework::Tensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
     auto blas =
@@ -1106,8 +1104,8 @@ void GeoCommunicator::SendSparse(const std::string &varname,
                     platform::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
 
-  auto &t_latest = var_latest->Get<framework::LoDTensor>();
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+  auto &t_latest = var_latest->Get<framework::Tensor>();
+  auto *t_old = var_old->GetMutable<framework::Tensor>();
 
   auto dims1 = t_latest.dims()[1];
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
@@ -1175,8 +1173,8 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   auto *var_latest = recv_scope_->FindVar(param);
   auto *var_old = old_scope_->FindVar(param);
 
-  auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+  auto *t_latest = var_latest->GetMutable<framework::Tensor>();
+  auto *t_old = var_old->GetMutable<framework::Tensor>();
 
   auto dims1 = t_latest->dims()[1];
   auto numel = keys.size() * dims1;

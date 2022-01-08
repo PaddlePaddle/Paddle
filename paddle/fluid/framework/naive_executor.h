@@ -31,7 +31,7 @@ namespace framework {
  * Simple, intuitive and effective. Only single thread is supported, and
  * currently designed for inference.
  */
-class LoDTensor;
+class Tensor;
 class ProgramDesc;
 class Scope;
 
@@ -57,7 +57,7 @@ class NaiveExecutor {
   void Run();
 
   // Get an tensor to operating directly, without the need for feed_ops.
-  LoDTensor* FindTensor(const std::string& name);
+  Tensor* FindTensor(const std::string& name);
 
   Scope* scope() { return scope_; }
 

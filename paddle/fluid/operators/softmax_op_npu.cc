@@ -22,13 +22,13 @@ template <typename DeviceContext, typename T>
 class SoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* in = ctx.Input<framework::Tensor>("X");
     auto axis = ctx.Attr<int>("axis");
     std::vector<int> axes;
     axes.push_back(axis);
     framework::NPUAttributeMap attr_input = {{"axes", axes}};
 
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("SoftmaxV2", {*in}, {*out}, attr_input);
@@ -44,8 +44,8 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<framework::LoDTensor>("Out");
-    auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<framework::Tensor>("Out");
+    auto* dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
 
     auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
 

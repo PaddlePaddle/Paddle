@@ -143,7 +143,7 @@ class QuantDequantTest(unittest.TestCase):
             tensor = predictor.get_input_tensor(name)
             feed_data = list(self.feeds.values())[i]
             tensor.copy_from_cpu(np.array(feed_data))
-            if type(feed_data) == fluid.LoDTensor:
+            if type(feed_data) == fluid.Tensor:
                 tensor.set_lod(feed_data.lod())
 
         predictor.zero_copy_run()

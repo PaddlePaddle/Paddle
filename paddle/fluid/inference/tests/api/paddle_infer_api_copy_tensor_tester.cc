@@ -29,7 +29,7 @@ class InferApiTesterUtils {
   static std::unique_ptr<Tensor> CreateInferTensorForTest(
       const std::string &name, PlaceType place, void *p_scope) {
     auto var = static_cast<paddle::framework::Scope *>(p_scope)->Var(name);
-    var->GetMutable<paddle::framework::LoDTensor>();
+    var->GetMutable<paddle::framework::Tensor>();
     std::unique_ptr<Tensor> res(new Tensor(p_scope));
     res->input_or_output_ = true;
     res->SetName(name);

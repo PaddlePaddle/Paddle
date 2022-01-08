@@ -41,25 +41,25 @@ class ConditionalOp : public framework::OperatorBase {
   static const char kSkipEagerDeletionVars[];
 
  protected:
-  std::vector<const framework::LoDTensor *> InputTensors(
+  std::vector<const framework::Tensor *> InputTensors(
       const framework::Scope &scope, const std::string &in_name) const {
-    std::vector<const framework::LoDTensor *> retv;
+    std::vector<const framework::Tensor *> retv;
     auto xs = Inputs(in_name);
     retv.resize(xs.size(), nullptr);
     std::transform(
         xs.begin(), xs.end(), retv.begin(),
-        [&scope](const std::string &var_name) -> const framework::LoDTensor * {
+        [&scope](const std::string &var_name) -> const framework::Tensor * {
           auto *var = scope.FindVar(var_name);
           PADDLE_ENFORCE_NOT_NULL(
               var, platform::errors::InvalidArgument("Cannot find variable %s",
                                                      var_name));
-          return &var->Get<framework::LoDTensor>();
+          return &var->Get<framework::Tensor>();
         });
     return retv;
   }
 
   bool ScalarCondition(
-      const std::vector<const framework::LoDTensor *> &ips) const {
+      const std::vector<const framework::Tensor *> &ips) const {
     PADDLE_ENFORCE_EQ(
         ips.size() == 1UL && ips[0]->IsInitialized(), true,
         platform::errors::InvalidArgument(
@@ -74,14 +74,14 @@ class ConditionalOp : public framework::OperatorBase {
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      framework::LoDTensor cpu_tensor;
+      framework::Tensor cpu_tensor;
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (platform::is_npu_place(ips[0]->place())) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      framework::LoDTensor cpu_tensor;
+      framework::Tensor cpu_tensor;
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];

@@ -64,8 +64,8 @@ TEST(AccumulationNode, EagerTensor) {
           return grad_et;
         } else {
           grad_et.MutableVar()
-              ->GetMutable<paddle::framework::LoDTensor>()
-              ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
+              ->GetMutable<paddle::framework::Tensor>()
+              ->ShareDataWith(t.Var().Get<paddle::framework::Tensor>());
           return grad_et;
         }
       };

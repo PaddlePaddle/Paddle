@@ -124,7 +124,7 @@ class TestOneHotOp_exception(unittest.TestCase):
         self.depth = 10
         self.place = core.CPUPlace()
         self.dimension = 12
-        self.x = core.LoDTensor()
+        self.x = core.Tensor()
         x_lod = [[4, 1, 3, 3]]
         data = [np.random.randint(11, 20) for i in range(sum(x_lod[0]))]
         data = np.array(data).astype('int').reshape([sum(x_lod[0]), 1])

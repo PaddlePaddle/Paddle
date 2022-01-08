@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class PositiveNegativePairKernel : public framework::OpKernel<T> {

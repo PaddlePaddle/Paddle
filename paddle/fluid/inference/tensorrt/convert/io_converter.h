@@ -23,7 +23,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-using framework::LoDTensor;
+using framework::Tensor;
 
 /*
  * Convert Input from Fluid to TensorRT Engine.
@@ -37,12 +37,12 @@ class EngineIOConverter {
  public:
   EngineIOConverter() {}
 
-  virtual void operator()(const LoDTensor& in, void* out, size_t max_size) {}
-  virtual void operator()(const void* in, LoDTensor* out, size_t max_size) {}
+  virtual void operator()(const Tensor& in, void* out, size_t max_size) {}
+  virtual void operator()(const void* in, Tensor* out, size_t max_size) {}
 
   void SetStream(cudaStream_t* stream) { stream_ = stream; }
 
-  static void ConvertInput(const std::string& op_type, const LoDTensor& in,
+  static void ConvertInput(const std::string& op_type, const Tensor& in,
                            void* out, size_t max_size, cudaStream_t* stream) {
     PADDLE_ENFORCE_NOT_NULL(stream,
                             platform::errors::InvalidArgument(
@@ -57,7 +57,7 @@ class EngineIOConverter {
   }
 
   static void ConvertOutput(const std::string& op_type, const void* in,
-                            LoDTensor* out, size_t max_size,
+                            Tensor* out, size_t max_size,
                             cudaStream_t* stream) {
     PADDLE_ENFORCE_NOT_NULL(stream,
                             platform::errors::InvalidArgument(

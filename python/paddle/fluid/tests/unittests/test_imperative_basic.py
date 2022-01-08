@@ -226,7 +226,7 @@ class TestImperative(unittest.TestCase):
             egr_tmp3 = paddle.to_tensor(x)
             egr_tmp4 = fluid.core.eager.EagerTensor(y)
             # egr_tmp5 = fluid.core.eager.EagerTensor(value=x)
-            # TODO(jiabin): Support it when we merge LoDTensor with DenseTensor
+            # TODO(jiabin): Support it when we merge Tensor with DenseTensor
             egr_tmp6 = fluid.core.eager.EagerTensor(t)
 
             # self.assertTrue(np.array_equal(x, egr_tmp.numpy()))

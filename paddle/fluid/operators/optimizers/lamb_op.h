@@ -423,7 +423,7 @@ class LambOpKernel : public framework::OpKernel<T> {
           platform::errors::InvalidArgument(
               "When multi_precision=False, T and MT must be the same type."));
     }
-    const auto* skip_update = ctx.Input<framework::LoDTensor>("SkipUpdate");
+    const auto* skip_update = ctx.Input<framework::Tensor>("SkipUpdate");
     const bool* skip_update_flag = skip_update && skip_update->IsInitialized()
                                        ? skip_update->data<bool>()
                                        : nullptr;
@@ -436,44 +436,41 @@ class LambOpKernel : public framework::OpKernel<T> {
     auto beta1 = static_cast<MT>(ctx.Attr<float>("beta1"));
     auto beta2 = static_cast<MT>(ctx.Attr<float>("beta2"));
     auto epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
-    const auto& param = GET_DATA_SAFELY(
-        ctx.Input<framework::LoDTensor>("Param"), "Input", "Param", "Lamb");
+    const auto& param = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Param"),
+                                        "Input", "Param", "Lamb");
     const auto* grad_var = ctx.InputVar("Grad");
-    const auto& mom1 = GET_DATA_SAFELY(
-        ctx.Input<framework::LoDTensor>("Moment1"), "Input", "Moment1", "Lamb");
-    const auto& mom2 = GET_DATA_SAFELY(
-        ctx.Input<framework::LoDTensor>("Moment2"), "Input", "Moment2", "Lamb");
+    const auto& mom1 = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Moment1"),
+                                       "Input", "Moment1", "Lamb");
+    const auto& mom2 = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Moment2"),
+                                       "Input", "Moment2", "Lamb");
     const auto& lr =
-        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("LearningRate"),
-                        "Input", "LearningRate", "Lamb");
+        GET_DATA_SAFELY(ctx.Input<framework::Tensor>("LearningRate"), "Input",
+                        "LearningRate", "Lamb");
 
-    const auto& beta1_pow =
-        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta1Pow"), "Input",
-                        "Beta1Pow", "Lamb");
-    const auto& beta2_pow =
-        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta2Pow"), "Input",
-                        "Beta2Pow", "Lamb");
+    const auto& beta1_pow = GET_DATA_SAFELY(
+        ctx.Input<framework::Tensor>("Beta1Pow"), "Input", "Beta1Pow", "Lamb");
+    const auto& beta2_pow = GET_DATA_SAFELY(
+        ctx.Input<framework::Tensor>("Beta2Pow"), "Input", "Beta2Pow", "Lamb");
 
-    auto& param_out =
-        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("ParamOut"), "Output",
-                        "ParamOut", "Lamb");
+    auto& param_out = GET_DATA_SAFELY(ctx.Output<framework::Tensor>("ParamOut"),
+                                      "Output", "ParamOut", "Lamb");
     auto& mom1_out =
-        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Moment1Out"),
-                        "Output", "Moment1Out", "Lamb");
+        GET_DATA_SAFELY(ctx.Output<framework::Tensor>("Moment1Out"), "Output",
+                        "Moment1Out", "Lamb");
     auto& mom2_out =
-        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Moment2Out"),
-                        "Output", "Moment2Out", "Lamb");
+        GET_DATA_SAFELY(ctx.Output<framework::Tensor>("Moment2Out"), "Output",
+                        "Moment2Out", "Lamb");
     auto& beta1_pow_out =
-        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Beta1PowOut"),
-                        "Output", "Beta1PowOut", "Lamb");
+        GET_DATA_SAFELY(ctx.Output<framework::Tensor>("Beta1PowOut"), "Output",
+                        "Beta1PowOut", "Lamb");
     auto& beta2_pow_out =
-        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Beta2PowOut"),
-                        "Output", "Beta2PowOut", "Lamb");
-    const auto* master_param =
-        IsMultiPrecision ? ctx.Input<framework::LoDTensor>("MasterParam")
-                         : nullptr;
+        GET_DATA_SAFELY(ctx.Output<framework::Tensor>("Beta2PowOut"), "Output",
+                        "Beta2PowOut", "Lamb");
+    const auto* master_param = IsMultiPrecision
+                                   ? ctx.Input<framework::Tensor>("MasterParam")
+                                   : nullptr;
     auto* master_param_out =
-        IsMultiPrecision ? ctx.Output<framework::LoDTensor>("MasterParamOut")
+        IsMultiPrecision ? ctx.Output<framework::Tensor>("MasterParamOut")
                          : nullptr;
 
     if (IsMultiPrecision) {
@@ -507,8 +504,8 @@ class LambOpKernel : public framework::OpKernel<T> {
     MT *beta1_pow_out_ptr = nullptr, *beta2_pow_out_ptr = nullptr;
     VLOG(10) << "Beta1Pow place: " << beta1_pow.place()
              << " , Beta2Pow place: " << beta2_pow.place();
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = grad_var->Get<framework::LoDTensor>();
+    if (grad_var->IsType<framework::Tensor>()) {
+      auto& grad = grad_var->Get<framework::Tensor>();
       if (platform::is_gpu_place(ctx.GetPlace()) &&
           beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
@@ -631,7 +628,7 @@ class LambOpKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Variable type not supported by lamb_op. Expect LoDTensor or "
+          "Variable type not supported by lamb_op. Expect Tensor or "
           "SelectedRows, but got %s",
           framework::ToTypeName(grad_var->Type())));
     }

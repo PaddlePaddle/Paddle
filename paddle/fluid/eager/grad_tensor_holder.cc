@@ -26,7 +26,7 @@ static void FillUnderlyingVariableWithValue(
     const paddle::framework::proto::VarType::Type& dtype,
     egr::EagerTensor* target) {
   auto* dst_tensor =
-      target->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+      target->MutableVar()->GetMutable<paddle::framework::Tensor>();
   auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ddim);
   // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
@@ -102,7 +102,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
       auto type = paddle::framework::ToVarType(t.Var().Type());
       switch (type) {
         case paddle::framework::proto::VarType::LOD_TENSOR: {
-          auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
+          auto t_ftensor = t.Var().Get<paddle::framework::Tensor>();
           FillUnderlyingVariableWithValue(1.0, t_ftensor.dims(),
                                           t_ftensor.place(), t_ftensor.type(),
                                           &buffer_tensor);

@@ -1387,7 +1387,31 @@ std::ostream& print_tensor<paddle::platform::complex<double>>(
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  os << "{";
+  for (auto& v : lod) {
+    os << "{";
+    bool is_first = true;
+    for (auto& i : v) {
+      if (is_first) {
+        os << i;
+        is_first = false;
+      } else {
+        os << ", " << i;
+      }
+    }
+    os << "}";
+  }
+  os << "}";
+
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const Tensor& t) {
+  if (t.lod().size() > 0) {
+    os << "  - lod: " << t.lod() << "\n";
+  }
+
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << DataLayoutToString(t.layout()) << "\n";

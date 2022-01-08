@@ -62,14 +62,14 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto multi_layer_rois =
-        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelRois");
+        context.MultiInput<paddle::framework::Tensor>("MultiLevelRois");
 
     auto multi_layer_scores =
-        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
+        context.MultiInput<paddle::framework::Tensor>("MultiLevelScores");
     auto multi_rois_num = context.MultiInput<Tensor>("MultiLevelRoIsNum");
     int num_size = multi_rois_num.size();
 
-    auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");
+    auto* fpn_rois = context.Output<paddle::framework::Tensor>("FpnRois");
 
     int post_nms_topN = context.Attr<int>("post_nms_topN");
 
@@ -87,7 +87,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
             " be the same. But received number of RoIs is %d, number of Scores "
             "is %d",
             multi_layer_rois.size(), multi_layer_scores.size()));
-    // Check if the lod information of two LoDTensor is same
+    // Check if the lod information of two Tensor is same
     const int num_fpn_level = multi_layer_rois.size();
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
     for (int i = 0; i < num_fpn_level; ++i) {

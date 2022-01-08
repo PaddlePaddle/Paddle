@@ -262,7 +262,7 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 }
 
 template <typename T>
-void OpTester::SetupTensor(framework::LoDTensor *tensor,
+void OpTester::SetupTensor(framework::Tensor *tensor,
                            const std::vector<int64_t> &shape, T lower, T upper,
                            const std::string &initializer,
                            const std::string &filename) {
@@ -272,7 +272,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
 
   T *ptr = tensor->mutable_data<T>(framework::make_ddim(shape), place_);
 
-  framework::LoDTensor cpu_tensor;
+  framework::Tensor cpu_tensor;
   T *cpu_ptr = nullptr;
 
   if (!platform::is_cpu_place(place_)) {
@@ -339,7 +339,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     std::vector<int64_t> shape = var_desc->GetShape();
 
     auto *var = scope->Var(var_name);
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    auto *tensor = var->GetMutable<framework::Tensor>();
     const auto &data_type = var_desc->GetDataType();
     if (data_type == framework::proto::VarType::INT32) {
       SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer,

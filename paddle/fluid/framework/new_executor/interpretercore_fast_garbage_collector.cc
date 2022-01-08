@@ -22,8 +22,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     return;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+  if (var->IsType<Tensor>()) {
+    Add(var->GetMutable<Tensor>()->MoveMemoryHolder());
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {

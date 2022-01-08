@@ -33,12 +33,9 @@ namespace experimental {
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src);
 
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
-    const paddle::framework::LoDTensor& src);
+pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src);
 
-pten::Scalar MakePtenScalar(const paddle::framework::LoDTensor& src);
-
-pten::ScalarArray MakePtenScalarArray(const paddle::framework::LoDTensor& src);
+pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src);
 
 pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable);
 
@@ -56,17 +53,13 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
 
-void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
-
 void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
-
-void SharesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
 
 /**
  * In order to improve the compatibility state performance, some tricky tool
  * functions are added.
  *
- * The ReMake** function takes out the LoDTensor information and directly
+ * The ReMake** function takes out the Tensor information and directly
  * replaces it with the corresponding member of the DenseTensor to avoid
  * the overhead caused by frequent construction and destruction of the
  * DenseTensor.
@@ -74,14 +67,7 @@ void SharesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            pten::DenseTensor* dst);
 
-void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
-                           pten::DenseTensor* dst);
-
 void ReMakePtenDenseTensorByArgDef(const paddle::framework::Tensor& src,
-                                   const pten::TensorArgDef& arg_def,
-                                   pten::DenseTensor* dst);
-
-void ReMakePtenDenseTensorByArgDef(const paddle::framework::LoDTensor& src,
                                    const pten::TensorArgDef& arg_def,
                                    pten::DenseTensor* dst);
 

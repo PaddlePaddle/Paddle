@@ -48,7 +48,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(
         Y_v, platform::errors::NotFound("Variable %s not found in scope.",
                                         op_desc.Input("Y").front().c_str()));
-    auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+    auto* Y_t = Y_v->GetMutable<framework::Tensor>();
     float* weight_data = nullptr;
     weight_data =
         engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);

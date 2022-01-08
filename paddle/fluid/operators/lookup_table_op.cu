@@ -89,9 +89,9 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *table_t = context.Input<LoDTensor>("W");
-    auto *ids_t = context.Input<LoDTensor>("Ids");
-    auto *output_t = context.Output<LoDTensor>("Out");
+    auto *table_t = context.Input<Tensor>("W");
+    auto *ids_t = context.Input<Tensor>("Ids");
+    auto *output_t = context.Output<Tensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     auto id_name = context.InputNames("Ids").front();
@@ -148,9 +148,9 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *table = context.Input<LoDTensor>("W");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *ids = context.Input<Tensor>("Ids");
+      auto *table = context.Input<Tensor>("W");
+      auto *d_output = context.Input<Tensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
@@ -187,9 +187,9 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
                    d_output->numel() * sizeof(T), stream);
 
     } else {
-      auto ids_t = context.Input<LoDTensor>("Ids");
-      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+      auto ids_t = context.Input<Tensor>("Ids");
+      auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];

@@ -64,7 +64,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
  protected:
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
-    auto* in0 = context.Input<framework::LoDTensor>("X");
+    auto* in0 = context.Input<framework::Tensor>("X");
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
     PADDLE_ENFORCE_EQ(
@@ -74,7 +74,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
             "Op(expand) must be equal to the number "
             "of dimensions (%d) of the input.",
             expand_times.size(), static_cast<size_t>(in_dims.size())));
-    auto* out0 = context.Output<framework::LoDTensor>("Out");
+    auto* out0 = context.Output<framework::Tensor>("Out");
     framework::DDim out_dims(in_dims);
 
     for (size_t i = 0; i < expand_times.size(); ++i) {

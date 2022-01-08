@@ -38,7 +38,7 @@ class TensorToNumpyTest(unittest.TestCase):
                     np.array(six.moves.range(np.prod(self.shape))).astype(
                         dtype), self.shape)
 
-                t = fluid.LoDTensor()
+                t = fluid.Tensor()
                 t.set(np_arr, p)
 
                 ret_np_arr = np.array(t)

@@ -94,7 +94,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "Cannot get input Variable X, Variable name = %s.",
                           ctx.InputName("X")));
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* y = ctx.Input<framework::Tensor>("Y");
 
     framework::Tensor x, *z;
     if (x_var->IsType<framework::SelectedRows>()) {
@@ -119,9 +119,9 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       } else {
         default_elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
       }
-    } else if (x_var->IsType<framework::LoDTensor>()) {
-      auto* x_lod = ctx.Input<framework::LoDTensor>("X");
-      auto* z_lod = ctx.Output<framework::LoDTensor>("Out");
+    } else if (x_var->IsType<framework::Tensor>()) {
+      auto* x_lod = ctx.Input<framework::Tensor>("X");
+      auto* z_lod = ctx.Output<framework::Tensor>("Out");
       z_lod->mutable_data<T>(ctx.GetPlace());
 
       auto& dev_ctx = ctx.device_context<DeviceContext>();
@@ -134,7 +134,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "
-          "LoDTensor or SelectedRows.",
+          "Tensor or SelectedRows.",
           framework::ToTypeName(x_var->Type())));
     }
   }

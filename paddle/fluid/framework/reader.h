@@ -46,7 +46,7 @@ class ReaderBase {
             "and need_check_feed"));
   }
 
-  virtual void ReadNext(std::vector<LoDTensor>* out);
+  virtual void ReadNext(std::vector<Tensor>* out);
 
   virtual void Shutdown();
 
@@ -71,7 +71,7 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) {}
+  virtual void ReadNextImpl(std::vector<Tensor>* out) {}
 
   virtual void ShutdownImpl() {}
 
@@ -165,7 +165,7 @@ class ReaderHolder {
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
-  void ReadNext(std::vector<LoDTensor>* out) {
+  void ReadNext(std::vector<Tensor>* out) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
         platform::errors::InvalidArgument(

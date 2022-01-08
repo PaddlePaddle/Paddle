@@ -32,7 +32,7 @@ class CustomReader : public framework::DecoratedReader {
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::Tensor>* out) override;
 
  private:
   const framework::ProgramDesc program_;
@@ -150,9 +150,9 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
   }
 };
 
-void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
+void CustomReader::ReadNextImpl(std::vector<framework::Tensor>* out) {
   out->clear();
-  std::vector<framework::LoDTensor> underlying_outs;
+  std::vector<framework::Tensor> underlying_outs;
   reader_->ReadNext(&underlying_outs);
   if (underlying_outs.empty()) {
     // There is not next data.
@@ -172,7 +172,7 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   // 1. Copy LoDTensors from underlying reader's output to source variables.
   for (size_t i = 0; i < source_var_names_.size(); ++i) {
     framework::Variable* var = exe_scope->Var(source_var_names_[i]);
-    framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+    framework::Tensor* tensor = var->GetMutable<framework::Tensor>();
     tensor->ShareDataWith(underlying_outs[i]);
     tensor->set_lod(underlying_outs[i].lod());
   }
@@ -185,7 +185,7 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
                                      "The variable %s is not in current scope.",
                                      sink_var_names_[i]));
-    const auto& tensor = var->Get<framework::LoDTensor>();
+    const auto& tensor = var->Get<framework::Tensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);

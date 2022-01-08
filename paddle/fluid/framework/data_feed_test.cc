@@ -156,15 +156,14 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       std::unique_ptr<paddle::framework::Scope> scope(
           new paddle::framework::Scope());
       const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
-      std::map<std::string, const paddle::framework::LoDTensor*>
-          lodtensor_targets;
+      std::map<std::string, const paddle::framework::Tensor*> lodtensor_targets;
       for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
         const auto& slot = multi_slot_desc.slots(i);
         if (slot.is_used()) {
           const auto& name = slot.name();
           readers[idx]->AddFeedVar(scope->Var(name), name);
           lodtensor_targets[name] =
-              &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
+              &scope->FindVar(name)->Get<paddle::framework::Tensor>();
         }
       }
       readers[idx]->Start();
@@ -175,7 +174,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
           if (!slot.is_used()) {
             continue;
           }
-          const paddle::framework::LoDTensor* tens =
+          const paddle::framework::Tensor* tens =
               lodtensor_targets[slot.name()];
           if (slot.is_dense()) {  // dense branch
             if (slot.type() == "uint64") {

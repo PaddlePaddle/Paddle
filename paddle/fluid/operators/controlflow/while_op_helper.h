@@ -24,7 +24,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class ProgramDesc;
 }  // namespace framework
 }  // namespace paddle
@@ -50,7 +50,7 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const std::vector<OpVariant> &while_ops,
     const std::vector<OpVariant> &while_grad_ops);
 
-bool GetCondData(const framework::LoDTensor &cond);
+bool GetCondData(const framework::Tensor &cond);
 
 bool StrInVaraiableNameMap(const std::string &,
                            const framework::VariableNameMap &);

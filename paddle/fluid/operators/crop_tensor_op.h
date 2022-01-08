@@ -104,9 +104,8 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
     return res;
   }
 
-  auto* shape_tensor = ctx.HasInput("Shape")
-                           ? ctx.Input<framework::LoDTensor>("Shape")
-                           : nullptr;
+  auto* shape_tensor =
+      ctx.HasInput("Shape") ? ctx.Input<framework::Tensor>("Shape") : nullptr;
   if (shape_tensor) {
     auto* shape_data = shape_tensor->data<int>();
     framework::Tensor cpu_shape_tensor;

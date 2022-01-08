@@ -73,12 +73,12 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
         int tensor_dim =
-            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
+            root_scope_->FindVar(var->Name())->GetMutable<Tensor>()->numel();
         auto *ptr1 = thread_scope_->Var(var->Name());
         InitializeVariable(ptr1, var->GetType());
-        LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
-        LoDTensor *root_tensor =
-            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
+        Tensor *thread_tensor = ptr1->GetMutable<Tensor>();
+        Tensor *root_tensor =
+            root_scope_->FindVar(var->Name())->GetMutable<Tensor>();
 #define MemsetCallback(cpp_type, proto_type)                     \
   do {                                                           \
     if (root_tensor->type() == proto_type) {                     \
@@ -95,7 +95,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 }
 
 template <typename T>
-void HogwildWorker::SetZero(LoDTensor *tensor, LoDTensor *root_tensor,
+void HogwildWorker::SetZero(Tensor *tensor, Tensor *root_tensor,
                             int tensor_dim) {
   T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);

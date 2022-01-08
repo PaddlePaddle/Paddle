@@ -19,15 +19,15 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class BoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input_box = context.Input<LoDTensor>("Input");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
-    auto* output_box = context.Output<LoDTensor>("Output");
+    auto* input_box = context.Input<Tensor>("Input");
+    auto* im_info = context.Input<Tensor>("ImInfo");
+    auto* output_box = context.Output<Tensor>("Output");
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     output_box->mutable_data<T>(context.GetPlace());

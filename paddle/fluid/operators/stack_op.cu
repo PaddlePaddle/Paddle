@@ -45,7 +45,7 @@ __global__ void StackCUDAKernel(T** input_ptrs, int split_size, int rows,
 
 template <typename T>
 class StackGPUKernel : public framework::OpKernel<T> {
-  using Tensor = framework::LoDTensor;
+  using Tensor = framework::Tensor;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -126,7 +126,7 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
 
 template <typename T>
 class StackGradGPUKernel : public framework::OpKernel<T> {
-  using Tensor = framework::LoDTensor;
+  using Tensor = framework::Tensor;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

@@ -22,7 +22,7 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <class T>
 __global__ void Sum2CUDAKernel(const T *in_0, const T *in_1, T *out,
@@ -94,13 +94,13 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     blocks = dim3(tile_size, 1, 1);
   };
 
-  auto *out = context.Output<LoDTensor>("Out");
+  auto *out = context.Output<Tensor>("Out");
   bool in_place = in_vars[0] == context.OutputVar("Out");
 
   if (!in_place) {
     auto *out_ptr = out->mutable_data<T>(context.GetPlace());
-    if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
-      auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+    if (in_num >= 1 && in_vars[0]->IsType<framework::Tensor>()) {
+      auto &in_0_tensor = in_vars[0]->Get<framework::Tensor>();
       if (in_0_tensor.numel() > 0) {
         in_place = (in_0_tensor.data<T>() == out_ptr);
       }
@@ -108,10 +108,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
 
   // Sum of two tensors
-  if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
-      in_vars[1]->IsType<framework::LoDTensor>()) {
-    auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
-    auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
+  if (in_num == 2 && in_vars[0]->IsType<framework::Tensor>() &&
+      in_vars[1]->IsType<framework::Tensor>()) {
+    auto &in_0 = in_vars[0]->Get<framework::Tensor>();
+    auto &in_1 = in_vars[1]->Get<framework::Tensor>();
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
@@ -145,8 +145,8 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   int64_t lod_length = 0;
   bool dst_write = false;
   for (int i = start; i < in_num; ++i) {
-    if (in_vars[i]->IsType<framework::LoDTensor>()) {
-      auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
+    if (in_vars[i]->IsType<framework::Tensor>()) {
+      auto &in_i = in_vars[i]->Get<framework::Tensor>();
       lod_length = in_i.numel();
       if (lod_length && in_i.IsInitialized()) {
         in_data.emplace_back(in_i.data<T>());
@@ -234,7 +234,7 @@ class SumKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext &context) const override {
     auto out_var = context.OutputVar("Out");
 
-    if (out_var->IsType<framework::LoDTensor>()) {
+    if (out_var->IsType<framework::Tensor>()) {
       SumToLoDTensor<T>(context);
     } else if (out_var->IsType<framework::SelectedRows>()) {
       SelectedRowsCompute<platform::CUDADeviceContext, T>(context);

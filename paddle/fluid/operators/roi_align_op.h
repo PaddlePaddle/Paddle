@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 namespace {
 constexpr size_t get_offset(size_t x, size_t y, size_t width) {
@@ -218,7 +218,7 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -341,7 +341,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));

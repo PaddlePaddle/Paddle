@@ -38,7 +38,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
-                          "The output Out(%s)'s type should be LoDTensor, "
+                          "The output Out(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx->Outputs("Out").front(),
                           ctx->GetOutputsVarType("Out").front()));
@@ -58,7 +58,7 @@ class GetTensorFromSelectedRowsKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *x = ctx.Input<framework::SelectedRows>("X");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *out = ctx.Output<framework::Tensor>("Out");
 
     out->Resize(x->value().dims());
     out->mutable_data(ctx.GetPlace(), x->value().type());
@@ -72,7 +72,7 @@ class GetTensorFromSelectedRowsOpProtoMaker
  public:
   void Make() override {
     AddInput("X", "The input type is SelectedRows.");
-    AddOutput("Out", "The output type is LoDTensor.");
+    AddOutput("Out", "The output type is Tensor.");
     AddComment(
         R"DOC(
 GetTensorFromSelectedRows Operator

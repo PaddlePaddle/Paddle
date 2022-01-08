@@ -84,7 +84,7 @@ class BitwiseOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // BitwiseOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<framework::Tensor>("X")->place();
     return kt;
   }
 };

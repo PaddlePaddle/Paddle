@@ -27,7 +27,7 @@ namespace operators {
 namespace math {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -51,7 +51,7 @@ using LoDTensor = framework::LoDTensor;
  * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
  * time-steps:
  *
- * Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3,
+ * Assumed input (X) is a [4, M, N] float Tensor, and X->lod()[0] = [0, 3,
  * 4].
  * Besides, for the sake of simplicity, we assume M=1 and N=2.
  *
@@ -88,7 +88,7 @@ using LoDTensor = framework::LoDTensor;
 template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
-  void operator()(const DeviceContext& context, const LoDTensor& in,
+  void operator()(const DeviceContext& context, const Tensor& in,
                   const Tensor* padding_data, bool padding_trainable,
                   const int context_start, const int context_length,
                   const int context_stride, const int up_pad,
@@ -207,7 +207,7 @@ class ContextProjectFunctor {
 template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const LoDTensor& in,
+  void operator()(const DeviceContext& context, const Tensor& in,
                   bool padding_trainable, const int context_start,
                   const int context_length, const int context_stride,
                   const int up_pad, const int down_pad, bool pad_grad,

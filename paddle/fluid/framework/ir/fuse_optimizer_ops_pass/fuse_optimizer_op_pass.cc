@@ -361,7 +361,7 @@ void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
     PADDLE_ENFORCE_EQ(
         IsLoDTensorType(iter->second.front()->Var()->GetType()), true,
         platform::errors::InvalidArgument(
-            "Currently the gradient(%s) type only should be LoDTensor when "
+            "Currently the gradient(%s) type only should be Tensor when "
             "fusing optimizer ops.",
             grad_var_name));
     for (auto var : iter->second) {

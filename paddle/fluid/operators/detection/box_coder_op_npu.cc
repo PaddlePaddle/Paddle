@@ -323,7 +323,7 @@ class BoxCoderNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* prior_box = ctx.Input<Tensor>("PriorBox");
     auto* prior_box_var = ctx.Input<Tensor>("PriorBoxVar");
-    auto* target_box = ctx.Input<framework::LoDTensor>("TargetBox");
+    auto* target_box = ctx.Input<framework::Tensor>("TargetBox");
     auto* output_box = ctx.Output<Tensor>("OutputBox");
     std::vector<float> variance = ctx.Attr<std::vector<float>>("variance");
     const int axis = ctx.Attr<int>("axis");

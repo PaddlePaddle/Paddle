@@ -25,11 +25,11 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendMask(LoDTensor* out, int64_t offset, Tensor* to_add) {
+void AppendMask(Tensor* out, int64_t offset, Tensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -304,16 +304,16 @@ template <typename T>
 class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
-    auto* gt_classes = ctx.Input<LoDTensor>("GtClasses");
-    auto* is_crowd = ctx.Input<LoDTensor>("IsCrowd");
-    auto* gt_segms = ctx.Input<LoDTensor>("GtSegms");
-    auto* rois = ctx.Input<LoDTensor>("Rois");
-    auto* label_int32 = ctx.Input<LoDTensor>("LabelsInt32");
+    auto* im_info = ctx.Input<Tensor>("ImInfo");
+    auto* gt_classes = ctx.Input<Tensor>("GtClasses");
+    auto* is_crowd = ctx.Input<Tensor>("IsCrowd");
+    auto* gt_segms = ctx.Input<Tensor>("GtSegms");
+    auto* rois = ctx.Input<Tensor>("Rois");
+    auto* label_int32 = ctx.Input<Tensor>("LabelsInt32");
 
-    auto* mask_rois = ctx.Output<LoDTensor>("MaskRois");
-    auto* roi_has_mask_int32 = ctx.Output<LoDTensor>("RoiHasMaskInt32");
-    auto* mask_int32 = ctx.Output<LoDTensor>("MaskInt32");
+    auto* mask_rois = ctx.Output<Tensor>("MaskRois");
+    auto* roi_has_mask_int32 = ctx.Output<Tensor>("RoiHasMaskInt32");
+    auto* mask_int32 = ctx.Output<Tensor>("MaskInt32");
 
     int num_classes = ctx.Attr<int>("num_classes");
     int resolution = ctx.Attr<int>("resolution");
@@ -422,17 +422,17 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
     AddInput("GtClasses",
-             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "(Tensor), This input is a 2D Tensor with shape [M, 1]. "
              "M is the number of groundtruth, "
              "each element is a class label of groundtruth.");
     AddInput(
         "IsCrowd",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "(Tensor), This input is a 2D Tensor with shape [M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
     AddInput(
         "GtSegms",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [S, 2], it's LoD "
+        "(Tensor), This input is a 2D Tensor with shape [S, 2], it's LoD "
         "level is 3. The LoD[0] represents the gt objects number of each "
         "instance. LoD[1] represents the segmentation counts of each objects. "
         "LoD[2] represents the polygons number of each segmentation. S the "
@@ -440,24 +440,24 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "coordinate points.");
     AddInput(
         "Rois",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [R, 4]. "
+        "(Tensor), This input is a 2D Tensor with shape [R, 4]. "
         "R is the number of rois which is the output of "
         "generate_proposal_labels, "
         "each element is a bounding box with (xmin, ymin, xmax, ymax) format.");
     AddInput("LabelsInt32",
-             "(LoDTensor), This intput is a 2D LoDTensor with shape [R, 1], "
+             "(Tensor), This intput is a 2D Tensor with shape [R, 1], "
              "each element represents a class label of a roi");
     AddOutput(
         "MaskRois",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "(Tensor), This output is a 2D Tensor with shape [P, 4]. "
         "P is the number of mask, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("RoiHasMaskInt32",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
+              "(Tensor), This output is a 2D Tensor with shape [P, 1], "
               "each element represents the output mask rois index with regard "
               "to input rois");
     AddOutput("MaskInt32",
-              "(LoDTensor), This output is a 4D LoDTensor with shape [P, Q], "
+              "(Tensor), This output is a 4D Tensor with shape [P, Q], "
               "Q equal to num_classes * resolution * resolution");
 
     AddAttr<int>("num_classes", "Class number.");

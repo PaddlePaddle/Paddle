@@ -189,7 +189,7 @@ void BufferedReader::ReadAsync(size_t i) {
                          cpu_ptr, size, stream_.get());
           } else {
             platform::CUDAPinnedPlace cuda_pinned_place;
-            framework::LoDTensor cuda_pinned_tensor;
+            framework::Tensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
                 cuda_pinned_place, cpu[i].type());
@@ -276,7 +276,7 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+void BufferedReader::ReadNextImpl(std::vector<framework::Tensor> *out) {
   if (position_.empty()) {
     out->clear();
     return;

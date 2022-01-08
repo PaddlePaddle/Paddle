@@ -37,13 +37,13 @@ class DpsgdOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
+            "The input var's type should be Tensor, but the received is %s",
             ctx->GetInputsVarType("Param").front()));
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Grad").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
+            "The input var's type should be Tensor, but the received is %s",
             ctx->GetInputsVarType("Grad").front()));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,

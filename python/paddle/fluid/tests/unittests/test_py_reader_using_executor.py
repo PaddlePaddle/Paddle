@@ -28,13 +28,13 @@ os.environ['CPU_NUM'] = str(4)
 
 
 def as_tensor(np_array_or_tensor, place=None):
-    if isinstance(np_array_or_tensor, fluid.LoDTensor):
+    if isinstance(np_array_or_tensor, fluid.Tensor):
         return np_array_or_tensor
 
     if place is None:
         place = fluid.CPUPlace()
 
-    tensor = fluid.LoDTensor()
+    tensor = fluid.Tensor()
     tensor.set(np_array_or_tensor, place)
     return tensor
 
@@ -61,7 +61,7 @@ def sample_list_to_tensor_array(sample_list):
 
     tensor_array = fluid.LoDTensorArray()
     for slot in slots:
-        t = fluid.LoDTensor()
+        t = fluid.Tensor()
         t.set(np.array(slot), fluid.CPUPlace())
         tensor_array.append(t)
 

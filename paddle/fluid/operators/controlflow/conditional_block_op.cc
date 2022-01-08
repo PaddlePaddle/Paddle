@@ -51,7 +51,7 @@ class ConditionalBlockOp : public ConditionalOp {
       auto xs = InputTensors(scope, ConditionalOp::kInputs);
       need_run = std::all_of(
           xs.begin(), xs.end(),
-          [](const framework::LoDTensor *t) { return t->numel() != 0; });
+          [](const framework::Tensor *t) { return t->numel() != 0; });
     }
 
     if (need_run) {
@@ -106,7 +106,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto xs = this->InputTensors(scope, ConditionalOp::kInputs);
       need_run = std::all_of(
           xs.begin(), xs.end(),
-          [](const framework::LoDTensor *t) { return t->numel() != 0; });
+          [](const framework::Tensor *t) { return t->numel() != 0; });
     }
 
     const auto &inputs = Inputs(ConditionalOp::kInputs);
@@ -196,15 +196,15 @@ class ConditionalBlockGradOp : public ConditionalOp {
         continue;
       }
 
-      if (input_var->IsType<framework::LoDTensor>()) {
-        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensor>(), true,
+      if (input_var->IsType<framework::Tensor>()) {
+        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::Tensor>(), true,
                           platform::errors::InvalidArgument(
-                              "Type of outside_var %s is NOT LoDTensor, which "
+                              "Type of outside_var %s is NOT Tensor, which "
                               "doesn't match input_var %s.",
                               outside_grad_name, input_name));
-        AssignZeroToOutsideTensor(
-            place, scope, input_var->Get<framework::LoDTensor>(),
-            outside_var->GetMutable<framework::LoDTensor>());
+        AssignZeroToOutsideTensor(place, scope,
+                                  input_var->Get<framework::Tensor>(),
+                                  outside_var->GetMutable<framework::Tensor>());
       } else if (input_var->IsType<framework::LoDTensorArray>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                           true,
@@ -227,7 +227,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       } else {
         // TODO(huihuangzheng): add support for SelectedRows
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Conditional block grad op doesn't support non-LoDTensor output "
+            "Conditional block grad op doesn't support non-Tensor output "
             "now."));
       }
     }
@@ -235,8 +235,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
   void AssignZeroToOutsideTensor(const platform::Place &place,
                                  const framework::Scope &cur_scope,
-                                 const framework::LoDTensor &input_tensor,
-                                 framework::LoDTensor *outside_tensor) const {
+                                 const framework::Tensor &input_tensor,
+                                 framework::Tensor *outside_tensor) const {
     if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
       return;
     }

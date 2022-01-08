@@ -40,11 +40,11 @@ class PReluOpConverter : public OpConverter {
           BOOST_GET_CONST(std::string, op_desc.GetAttr("data_format"));
     }
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
-    auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
+    auto* alpha_tensor = alpha_var->GetMutable<framework::Tensor>();
 
     platform::CPUPlace cpu_place;
-    std::unique_ptr<framework::LoDTensor> alpha_tensor_temp(
-        new framework::LoDTensor());
+    std::unique_ptr<framework::Tensor> alpha_tensor_temp(
+        new framework::Tensor());
     alpha_tensor_temp->Resize(alpha_tensor->dims());
     TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);

@@ -112,7 +112,7 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             # prepare input words' idx
-            x_tensor = fluid.core.LoDTensor()
+            x_tensor = fluid.core.Tensor()
             idxs = np.random.randint(1, 10, (8)).astype("int64")
 
             x_tensor.set(idxs, place)

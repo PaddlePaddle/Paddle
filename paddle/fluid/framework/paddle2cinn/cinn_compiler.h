@@ -62,12 +62,12 @@ class CinnCompiler {
 
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
-      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const std::map<std::string, const Tensor*>& input_tensors,
       const ::cinn::common::Target& target, void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
       const std::string& compilation_key,
-      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const std::map<std::string, const Tensor*>& input_tensors,
       const ::cinn::common::Target& target, void* stream = nullptr);
 
   std::string AddGraph(std::unique_ptr<ir::Graph> graph);
@@ -90,7 +90,7 @@ class CinnCompiler {
   CinnCompiler() = default;
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
-      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const std::map<std::string, const Tensor*>& input_tensors,
       const ::cinn::common::Target& target, std::int64_t compiled_num,
       void* stream = nullptr) const;
 

@@ -23,16 +23,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
 class SequencePadOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* len_t = ctx.Output<LoDTensor>("Length");
+    const auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto* len_t = ctx.Output<Tensor>("Length");
     out->mutable_data<T>(ctx.GetPlace());
 
     PADDLE_ENFORCE_EQ(
@@ -40,7 +40,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
         platform::errors::NotFound("Input(X) Tensor of SequencePadOp does not "
                                    "contain LoD information."));
 
-    const auto* pad_value = ctx.Input<LoDTensor>("PadValue");
+    const auto* pad_value = ctx.Input<Tensor>("PadValue");
 
     int padded_length = ctx.Attr<int>("padded_length");
 
@@ -48,7 +48,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<DeviceContext>(), *x, out, *pad_value,
         padded_length, 0, false, math::kBatchLengthWidth);
 
-    LoDTensor seq_len;
+    Tensor seq_len;
     seq_len.Resize(len_t->dims());
     int64_t* len_data = seq_len.mutable_data<int64_t>(platform::CPUPlace());
     for (size_t i = 1; i < x->lod()[0].size(); ++i) {
@@ -63,9 +63,9 @@ template <typename DeviceContext, typename T>
 class SequencePadGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (d_x) {
-      const auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+      const auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
       d_x->mutable_data<T>(ctx.GetPlace());
 
       int padded_length = ctx.Attr<int>("padded_length");

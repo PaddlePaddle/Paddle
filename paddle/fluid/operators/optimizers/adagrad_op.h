@@ -47,9 +47,9 @@ class AdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
@@ -63,7 +63,7 @@ class AdagradOpKernel : public framework::OpKernel<T> {
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
     auto *grad_var = ctx.InputVar("Grad");
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<framework::Tensor>()) {
       auto param = framework::EigenVector<T>::Flatten(
           *ctx.Input<framework::Tensor>("Param"));
       auto grad = framework::EigenVector<T>::Flatten(

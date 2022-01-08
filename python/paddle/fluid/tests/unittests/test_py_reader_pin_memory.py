@@ -38,8 +38,8 @@ def batch_feeder(batch_reader, pin_memory=False, img_dtype="float32"):
             for sample, label in batch_data:
                 sample_batch.append(sample)
                 label_batch.append([label])
-            tensor = core.LoDTensor()
-            label = core.LoDTensor()
+            tensor = core.Tensor()
+            label = core.Tensor()
             place = core.CUDAPinnedPlace() if pin_memory else core.CPUPlace()
             tensor.set(np.array(sample_batch, dtype=img_dtype), place)
             label.set(np.array(label_batch, dtype="int64"), place)

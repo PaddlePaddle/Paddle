@@ -55,41 +55,41 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   w_var->GetMutable<framework::SelectedRows>();
 
   auto out_var = scope->Var("out");
-  out_var->GetMutable<framework::LoDTensor>();
+  out_var->GetMutable<framework::Tensor>();
 
   auto micro_var = scope->Var("microbatch_id");
-  micro_var->GetMutable<framework::LoDTensor>();
+  micro_var->GetMutable<framework::Tensor>();
 
   auto ids_var = scope->Var("ids");
-  ids_var->GetMutable<framework::LoDTensor>();
+  ids_var->GetMutable<framework::Tensor>();
 
   auto x_var = scope->Var("x");
-  x_var->GetMutable<framework::LoDTensor>();
+  x_var->GetMutable<framework::Tensor>();
 
   auto res_var = scope->Var("res");
-  res_var->GetMutable<framework::LoDTensor>();
+  res_var->GetMutable<framework::Tensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  auto ids_var = scope->Var("ids")->GetMutable<framework::Tensor>();
   int64_t* ids_ptr =
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
   auto micro_id_var =
-      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+      scope->Var("microbatch_id")->GetMutable<framework::Tensor>();
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
   micro_id_ptr[0] = 0;
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<framework::Tensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
-  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  auto res_var = scope->Var("res")->GetMutable<framework::Tensor>();
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
@@ -98,23 +98,23 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
 void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  auto ids_var = scope->Var("ids")->GetMutable<framework::Tensor>();
   int64_t* ids_ptr =
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
   auto micro_id_var =
-      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+      scope->Var("microbatch_id")->GetMutable<framework::Tensor>();
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
   micro_id_ptr[0] = 1;
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<framework::Tensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
-  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  auto res_var = scope->Var("res")->GetMutable<framework::Tensor>();
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;

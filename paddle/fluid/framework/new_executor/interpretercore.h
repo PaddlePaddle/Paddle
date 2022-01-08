@@ -45,13 +45,13 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+      const std::vector<framework::Tensor>& feed_tensors);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+      const std::vector<framework::Tensor>& feed_tensors);
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
@@ -69,7 +69,7 @@ class InterpreterCore {
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
   void Prepare(const std::vector<std::string>& feed_names,
-               const std::vector<framework::LoDTensor>& feed_tensors,
+               const std::vector<framework::Tensor>& feed_tensors,
                bool prepare_feed);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

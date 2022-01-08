@@ -40,7 +40,7 @@ class LoDRankTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto x = scope.FindVar(Input("X"))->Get<framework::Tensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
@@ -52,13 +52,12 @@ class LoDRankTableOp : public framework::OperatorBase {
 class LoDRankTableOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor) input lod tensor, must contain lod information.");
+    AddInput("X", "(Tensor) input lod tensor, must contain lod information.");
     AddOutput("Out", "(LoDRankTable) The rank table of specific level.");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
-    AddComment(R"DOC(Create LoDRanTable by LoDTensor
+    AddComment(R"DOC(Create LoDRanTable by Tensor
 
 LoD Rank Table stores the `level` of `lod` which is ordered by sequence
 length in descending order. It is useful when implement dynamic RNN and is

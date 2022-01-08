@@ -23,7 +23,7 @@ import unittest
 
 class TestLoDTensor(unittest.TestCase):
     def test_pybind_recursive_seq_lens(self):
-        tensor = fluid.LoDTensor()
+        tensor = fluid.Tensor()
         recursive_seq_lens = []
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
         recursive_seq_lens = [[], [1], [3]]
@@ -57,7 +57,7 @@ class TestLoDTensor(unittest.TestCase):
         self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
 
     def test_create_lod_tensor(self):
-        # Create LoDTensor from a list
+        # Create Tensor from a list
         data = [[np.int64(1), np.int64(2), np.int64(3)],
                 [np.int64(3), np.int64(4)]]
         wrong_recursive_seq_lens = [[2, 2]]
@@ -76,7 +76,7 @@ class TestLoDTensor(unittest.TestCase):
                 np.array([1, 2, 3, 3, 4]).reshape(tensor.shape()).astype(
                     'int64')))
 
-        # Create LoDTensor from numpy array
+        # Create Tensor from numpy array
         data = np.random.random([10, 1]).astype('float64')
         recursive_seq_lens = [[2, 1], [3, 3, 4]]
         tensor = create_lod_tensor(data, recursive_seq_lens, fluid.CPUPlace())
@@ -86,7 +86,7 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(tensor.shape(), [10, 1])
         self.assertTrue(np.array_equal(np.array(tensor), data))
 
-        # Create LoDTensor from another LoDTensor, they are differnt instances
+        # Create Tensor from another Tensor, they are differnt instances
         new_recursive_seq_lens = [[2, 2, 1], [1, 2, 2, 3, 2]]
         new_tensor = create_lod_tensor(tensor, new_recursive_seq_lens,
                                        fluid.CPUPlace())

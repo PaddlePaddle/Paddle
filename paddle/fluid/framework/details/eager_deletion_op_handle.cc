@@ -129,8 +129,8 @@ void EagerDeletionOpHandle::RunImpl() {
 
     Variable *var = vars_[i];
 
-    if (var->IsType<LoDTensor>()) {
-      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+    if (var->IsType<Tensor>()) {
+      garbages.emplace_back(var->GetMutable<Tensor>()->MoveMemoryHolder());
     } else if (var->IsType<SelectedRows>()) {
       garbages.emplace_back(
           var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());

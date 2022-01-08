@@ -394,14 +394,14 @@ class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
 
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
 
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
@@ -409,19 +409,19 @@ class AdamOpKernel : public framework::OpKernel<T> {
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
     VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
-    auto* param = ctx.Input<LoDTensor>("Param");
+    auto* param = ctx.Input<Tensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
-    auto* mom1 = ctx.Input<LoDTensor>("Moment1");
-    auto* mom2 = ctx.Input<LoDTensor>("Moment2");
-    auto* lr = ctx.Input<LoDTensor>("LearningRate");
-    auto* beta1_pow = ctx.Input<LoDTensor>("Beta1Pow");
-    auto* beta2_pow = ctx.Input<LoDTensor>("Beta2Pow");
+    auto* mom1 = ctx.Input<Tensor>("Moment1");
+    auto* mom2 = ctx.Input<Tensor>("Moment2");
+    auto* lr = ctx.Input<Tensor>("LearningRate");
+    auto* beta1_pow = ctx.Input<Tensor>("Beta1Pow");
+    auto* beta2_pow = ctx.Input<Tensor>("Beta2Pow");
 
-    auto* param_out = ctx.Output<LoDTensor>("ParamOut");
-    auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
-    auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
-    auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
-    auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+    auto* param_out = ctx.Output<Tensor>("ParamOut");
+    auto* mom1_out = ctx.Output<Tensor>("Moment1Out");
+    auto* mom2_out = ctx.Output<Tensor>("Moment2Out");
+    auto* beta1_pow_out = ctx.Output<Tensor>("Beta1PowOut");
+    auto* beta2_pow_out = ctx.Output<Tensor>("Beta2PowOut");
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
@@ -503,8 +503,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
                           "value is:%d.",
                           beta2_pow_out->numel()));
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto* grad = ctx.Input<LoDTensor>("Grad");
+    if (grad_var->IsType<framework::Tensor>()) {
+      auto* grad = ctx.Input<Tensor>("Grad");
 
       AdamFunctor<T, CPUAdam> functor(
           beta1, beta2, epsilon, beta1_pow->data<T>(), beta2_pow->data<T>(),

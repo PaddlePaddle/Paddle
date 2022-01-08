@@ -15,7 +15,7 @@
 import paddle
 import unittest
 import numpy as np
-from paddle.fluid.core import LoDTensor as Tensor
+from paddle.fluid.core import Tensor as Tensor
 
 
 class TestTensorCopyFrom(unittest.TestCase):

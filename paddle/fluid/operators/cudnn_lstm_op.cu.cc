@@ -33,7 +33,7 @@ struct CUDAPlace;
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using Tensor = framework::Tensor;
 
 template <typename T, typename Type>

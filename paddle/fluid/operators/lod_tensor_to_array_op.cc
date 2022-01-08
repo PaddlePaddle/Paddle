@@ -102,7 +102,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
                               "LoDTensorToArray")
-                  .Get<framework::LoDTensor>();
+                  .Get<framework::Tensor>();
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
                                        "Input", "RankTable", "LoDTensorToArray")
                            .Get<framework::LoDRankTable>();
@@ -116,7 +116,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         rank_level, x.lod().size(),
         platform::errors::InvalidArgument(
-            "Input should be a LoDTensor, and its lod_level should be at "
+            "Input should be a Tensor, and its lod_level should be at "
             "least %d, but given is %d.",
             rank_level + 1, x.lod().size()));
     out.resize(max_seq_len);
@@ -178,13 +178,13 @@ class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), the input lod tensor is a minibatch of sequences, "
+             "(Tensor), the input lod tensor is a minibatch of sequences, "
              "and will be split to a tensor_array according to "
              "Input(RankTable).");
     AddInput("RankTable", "(LoDRankTable), the rank table.");
     AddOutput("Out",
               "(LoDTensorArray), the result tensor_array, which is actually a "
-              "std::vector<LoDTensor>.");
+              "std::vector<Tensor>.");
     AddComment(R"DOC(LoDTensorToArray operator.
 Input(X) is a minibatch of sequences. Input(RankTable) stores the order of the input sequences.
 The lod_tensor_to_array operator will spilt the input sequences to a tensor_array, with each
@@ -219,9 +219,9 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     // kernel implementation.
     context->SetOutputDim("Out", x_dim);
 
-    // The output LoDTensor's lod_level should be input X's lod_level - 1.
+    // The output Tensor's lod_level should be input X's lod_level - 1.
     // For compile time, we call SetLoDLevel to set output's lod_level.
-    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // For runtime, output Tensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.

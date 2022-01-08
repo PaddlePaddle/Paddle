@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using Tensor = framework::Tensor;
 
 class FusionGRUOp : public framework::OperatorWithKernel {

@@ -23,23 +23,23 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Emission",
-             "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
+             "(Tensor/Tensor<float>). When a Tensor input,A 2-D Tensor"
              " with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. When a Tensor input,"
              "A Tensor with shape [N x S x D], where N is batch number,"
              "S is max length of sequences, D is the total tag number."
-             "A LoDTensor or Tensor with type float32, float64.");
+             "A Tensor or Tensor with type float32, float64.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
     AddInput("Label",
-             "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
+             "(Tensor/Tensor<int64_t>), when a Tensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
              "S is max length of sequences. The ground truth."
-             "A  LoDTensor or Tensor with int64.");
+             "A  Tensor or Tensor with int64.");
     AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch."
@@ -63,7 +63,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
         "backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
+        "A Tensor or Tensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
@@ -71,7 +71,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
         "will be reused in backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
+        "A Tensor or Tensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",

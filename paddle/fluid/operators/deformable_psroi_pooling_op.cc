@@ -31,9 +31,9 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(Tensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "ROIs should be a 2-D Tensor of shape (num_rois, 4) "
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -142,7 +142,7 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         rois_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "Input(ROIs) should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "Input(ROIs) should be a 2-D Tensor of shape (num_rois, 4) "
             "given as [[ x1, y1, x2, y2], ...]. The rank of Input(ROIs) should "
             "be 2, but received ROIs rank is:%d, ROIs shape is:[%s].",
             rois_dims.size(), rois_dims));

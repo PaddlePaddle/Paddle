@@ -24,8 +24,8 @@ template <typename DeviceContext, typename T>
 class LabelSmoothKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out_t = ctx.Output<framework::LoDTensor>("Out");
-    auto* in_t = ctx.Input<framework::LoDTensor>("X");
+    auto* out_t = ctx.Output<framework::Tensor>("Out");
+    auto* in_t = ctx.Input<framework::Tensor>("X");
     auto* dist_t = ctx.Input<framework::Tensor>("PriorDist");
     auto label_dim = in_t->dims()[in_t->dims().size() - 1];
     out_t->mutable_data<T>(ctx.GetPlace());

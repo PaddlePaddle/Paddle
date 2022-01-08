@@ -19,13 +19,13 @@ template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
                          const paddle::framework::LoD &lod,
                          const size_t sequence_width) {
-  paddle::framework::LoDTensor cpu_seq;
-  paddle::framework::LoDTensor cpu_seq_back;
-  paddle::framework::LoDTensor seq;
-  paddle::framework::LoDTensor seq_back;
-  paddle::framework::LoDTensor padding;
-  paddle::framework::LoDTensor cpu_pad_value;
-  paddle::framework::LoDTensor pad_value;
+  paddle::framework::Tensor cpu_seq;
+  paddle::framework::Tensor cpu_seq_back;
+  paddle::framework::Tensor seq;
+  paddle::framework::Tensor seq_back;
+  paddle::framework::Tensor padding;
+  paddle::framework::Tensor cpu_pad_value;
+  paddle::framework::Tensor pad_value;
 
   const size_t level = lod.size() - 1;
   auto seq_dims =

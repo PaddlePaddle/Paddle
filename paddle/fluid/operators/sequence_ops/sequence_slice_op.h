@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using LoD = framework::LoD;
 
 template <typename T>
@@ -43,10 +43,10 @@ template <typename DeviceContext, typename T>
 class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<LoDTensor>("X");
+    auto* in = ctx.Input<Tensor>("X");
     auto* offset = ctx.Input<Tensor>("Offset");
     auto* length = ctx.Input<Tensor>("Length");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.empty(), false,
@@ -138,13 +138,12 @@ template <typename DeviceContext, typename T>
 class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<LoDTensor>("X");
+    auto* in = ctx.Input<Tensor>("X");
     auto* offset = ctx.Input<Tensor>("Offset");
     auto* length = ctx.Input<Tensor>("Length");
     auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();

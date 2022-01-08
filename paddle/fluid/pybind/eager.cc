@@ -82,9 +82,9 @@ void EmptyEagerTensorInitializer(
     self->eager_tensor.set_impl(dense_tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "We only support LoDTensor to be constructed by this initializer, "
+        "We only support Tensor to be constructed by this initializer, "
         "please check your var type first and make sure you are going to "
-        "construct LoDTensor."));
+        "construct Tensor."));
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -107,7 +107,7 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
   pten::DenseTensor* impl_ptr =
       static_cast<pten::DenseTensor*>(self->eager_tensor.impl().get());
   paddle::platform::Place place = impl_ptr->place();
-  paddle::framework::LoDTensor temp_tensor = paddle::framework::LoDTensor();
+  paddle::framework::Tensor temp_tensor = paddle::framework::Tensor();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
         &temp_tensor, array, BOOST_GET_CONST(platform::CPUPlace, place),

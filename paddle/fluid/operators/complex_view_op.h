@@ -28,8 +28,8 @@ template <typename DeviceContext, typename T>
 class AsComplexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<framework::LoDTensor>("X");
-    auto* out = context.Output<framework::LoDTensor>("Out");
+    const auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<platform::complex<T>>(context.GetPlace());
 
     // TensorCopy also changes output's shape & dtype
@@ -45,8 +45,8 @@ template <typename DeviceContext, typename T>
 class AsRealKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<framework::LoDTensor>("X");
-    auto* out = context.Output<framework::LoDTensor>("Out");
+    const auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
 
     out->mutable_data<T>(context.GetPlace());
     const framework::DDim out_dims_original = out->dims();

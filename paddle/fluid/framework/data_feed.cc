@@ -186,7 +186,7 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
       if (var == nullptr) {
         feed_vec_[i] = nullptr;
       } else {
-        feed_vec_[i] = var->GetMutable<LoDTensor>();
+        feed_vec_[i] = var->GetMutable<Tensor>();
       }
     }
   }
@@ -248,7 +248,7 @@ void DataFeed::CheckStart() {
 void DataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
-    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<LoDTensor>();
+    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<Tensor>();
   }
 }
 
@@ -1819,7 +1819,7 @@ void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
   // set rank offset memory
   int phase = GetCurrentPhase();  // join: 1, update: 0
   if (enable_pv_merge_ && phase == 1) {
-    rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<LoDTensor>();
+    rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<Tensor>();
   }
 }
 

@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T, typename IndType>
 struct Argmax {
@@ -218,7 +218,7 @@ struct BinaryOperation {
 
 class TensorBuffer {
  public:
-  explicit TensorBuffer(const LoDTensor& in) : buffer_(in), offset_(0) {
+  explicit TensorBuffer(const Tensor& in) : buffer_(in), offset_(0) {
     buffer_.Resize({buffer_.numel()});
   }
   Tensor GetBufferBlock(std::initializer_list<int64_t> shape) {
@@ -231,7 +231,7 @@ class TensorBuffer {
   }
 
  private:
-  LoDTensor buffer_;  // need to resize 1-D Tensor
+  Tensor buffer_;  // need to resize 1-D Tensor
   int offset_;
 };
 
@@ -252,7 +252,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     // We create tensor buffer in order to avoid allocating memory frequently
     // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
     int buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
-    LoDTensor int_buffer;
+    Tensor int_buffer;
     int_buffer.Resize(framework::make_ddim({buffer_size}));
     int_buffer.mutable_data<int64_t>(ctx.GetPlace());
     TensorBuffer int_tensor_buffer(int_buffer);
@@ -260,7 +260,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     // 10 means allocate 10*batch_size*n_labels bytes, such as alpha, alpha_max
     buffer_size = batch_size * (seq_len + 10) * n_labels +
                   (batch_size + 2) * n_labels * n_labels;
-    LoDTensor float_buffer;
+    Tensor float_buffer;
     float_buffer.Resize(framework::make_ddim({buffer_size}));
     float_buffer.mutable_data<T>(ctx.GetPlace());
     TensorBuffer float_tensor_buffer(float_buffer);

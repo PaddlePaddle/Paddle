@@ -131,8 +131,8 @@ class FleetWrapper {
   // pull immediately to tensors
   void PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                               uint64_t padding_id, platform::Place place,
-                              std::vector<const LoDTensor*>* inputs,  // NOLINT
-                              std::vector<LoDTensor*>* outputs);      // NOLINT
+                              std::vector<const Tensor*>* inputs,  // NOLINT
+                              std::vector<Tensor*>* outputs);      // NOLINT
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -218,8 +218,8 @@ class FleetWrapper {
       uint64_t padding_id, bool scale_sparse, const std::string& accesor,
       const std::string& click_name, platform::Place place,
       const std::vector<std::string>& input_names,
-      std::vector<const LoDTensor*>* inputs,    // NOLINT
-      std::vector<const LoDTensor*>* outputs);  // NOLINT
+      std::vector<const Tensor*>* inputs,    // NOLINT
+      std::vector<const Tensor*>* outputs);  // NOLINT
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names

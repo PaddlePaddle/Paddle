@@ -22,7 +22,7 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input, T* output,
@@ -72,9 +72,9 @@ template <typename DeviceContext, typename T>
 class IndexSelectCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* index = context.Input<LoDTensor>("Index");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* index = context.Input<Tensor>("Index");
+    auto* out = context.Output<Tensor>("Out");
     int dim = context.Attr<int>("dim");
     auto input_dim = in->dims();
     auto output_dim = out->dims();
@@ -126,9 +126,9 @@ template <typename DeviceContext, typename T>
 class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* in_grad = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* index = context.Input<LoDTensor>("Index");
+    auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* index = context.Input<Tensor>("Index");
 
     auto* output_grad_data = output_grad->data<T>();
     auto* in_grad_data = in_grad->mutable_data<T>(context.GetPlace());

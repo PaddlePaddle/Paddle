@@ -21,7 +21,7 @@
 namespace paddle {
 namespace framework {
 TEST(LodTensor, PrintLodTensor) {
-  LoDTensor tensor1;
+  Tensor tensor1;
   tensor1.Resize({2});
   tensor1.mutable_data<float>(platform::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
@@ -31,7 +31,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor1, 0, 2);
   ASSERT_EQ(res, ":0.2:0.5");
 
-  LoDTensor tensor2;
+  Tensor tensor2;
   tensor2.Resize({2});
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
@@ -41,7 +41,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor2, 0, 2);
   ASSERT_EQ(res, ":1:2");
 
-  LoDTensor tensor3;
+  Tensor tensor3;
   tensor3.Resize({2});
   tensor3.mutable_data<double>(platform::CPUPlace());
   tensor3.data<double>()[0] = 0.1;
@@ -52,7 +52,7 @@ TEST(LodTensor, PrintLodTensor) {
 
 TEST(LodTensor, GetTensorBound) {
   LoD lod{{0, 2}};
-  LoDTensor tensor;
+  Tensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());
@@ -65,7 +65,7 @@ TEST(LodTensor, GetTensorBound) {
 
 TEST(LodTensor, CheckValidOutput) {
   LoD lod{{0, 1, 2}};
-  LoDTensor tensor;
+  Tensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());

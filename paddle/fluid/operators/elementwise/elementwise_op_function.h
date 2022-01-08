@@ -74,11 +74,11 @@ namespace operators {
 /*
 *  Pack input and output tensors into respective vectors with
 *  consideration of varible X`s class type.
-*  Input variable X is supported to be whether LoDTensor or
+*  Input variable X is supported to be whether Tensor or
 *  SelectedRows class type in this package function, once X
 *  was SelectedRows type, a valid pointer x_for_selectedrows
 *  is excepted to be passed in from op kernel for acquisition
-*  of the valid address of LoDTensor created ahead in the function.
+*  of the valid address of Tensor created ahead in the function.
 */
 template <typename OutT>
 int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
@@ -91,12 +91,12 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
       x_var, platform::errors::InvalidArgument(
                  "Unable to get input Variable X, Variable name is %s.\n",
                  ctx.InputName("X")));
-  auto *y = ctx.Input<framework::LoDTensor>("Y");
+  auto *y = ctx.Input<framework::Tensor>("Y");
   framework::Tensor *z;
 
-  if (x_var->IsType<framework::LoDTensor>()) {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
-    z = ctx.Output<framework::LoDTensor>("Out");
+  if (x_var->IsType<framework::Tensor>()) {
+    auto *x = ctx.Input<framework::Tensor>("X");
+    z = ctx.Output<framework::Tensor>("Out");
     ins->emplace_back(x);
   } else if (x_var->IsType<framework::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
@@ -123,7 +123,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "X's type[%s] is not supported by elementwise_op. X's type should be "
-        "LoDTensor or SelectedRows.",
+        "Tensor or SelectedRows.",
         framework::ToTypeName(x_var->Type())));
   }
   z->mutable_data<OutT>(ctx.GetPlace());

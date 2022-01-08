@@ -42,7 +42,7 @@ template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::LoDTensor;
+    using Tensor = framework::Tensor;
     auto* x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE_EQ(x != nullptr, true,
                       platform::errors::NotFound(

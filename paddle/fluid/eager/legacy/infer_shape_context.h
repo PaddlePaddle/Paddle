@@ -188,10 +188,9 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
                       paddle::platform::errors::PreconditionNotMet(
                           "The type of %s and %s is not the same.", in, out));
 
-    if (in_var->IsType<paddle::framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<paddle::framework::LoDTensor>();
-      auto* out_lod_tensor =
-          out_var->GetMutable<paddle::framework::LoDTensor>();
+    if (in_var->IsType<paddle::framework::Tensor>()) {
+      auto& in_lod_tensor = in_var->Get<paddle::framework::Tensor>();
+      auto* out_lod_tensor = out_var->GetMutable<paddle::framework::Tensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       auto& in_sele_rows = in_var->Get<paddle::framework::SelectedRows>();
@@ -345,13 +344,13 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   DDim GetDim(paddle::framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var, paddle::platform::errors::PreconditionNotMet(
                                      "Input variable should not be null"));
-    if (var->IsType<paddle::framework::LoDTensor>()) {
-      return var->Get<paddle::framework::LoDTensor>().dims();
+    if (var->IsType<paddle::framework::Tensor>()) {
+      return var->Get<paddle::framework::Tensor>().dims();
     } else if (var->IsType<paddle::framework::SelectedRows>()) {
       return var->Get<paddle::framework::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
+          "Only Tensor/SelectedRows support 'GetDim', but Variables "
           "type_id is xx."));
     }
   }
@@ -362,13 +361,13 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   }
 
   void SetDim(paddle::framework::Variable* var, const DDim& dim) {
-    if (var->IsType<paddle::framework::LoDTensor>()) {
-      var->GetMutable<paddle::framework::LoDTensor>()->Resize(dim);
+    if (var->IsType<paddle::framework::Tensor>()) {
+      var->GetMutable<paddle::framework::Tensor>()->Resize(dim);
     } else if (var->IsType<paddle::framework::SelectedRows>()) {
       var->GetMutable<paddle::framework::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-          "Variable type_id %s, expect LoDTensor/SelectedRows."));
+          "Variable type_id %s, expect Tensor/SelectedRows."));
     }
   }
 

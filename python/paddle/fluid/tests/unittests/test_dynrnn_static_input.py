@@ -45,7 +45,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
         lod = [[2, 1, 3]]
         shape = [sum(lod[0]), self.x_tensor_dim]
         self.x_tensor_data = np.random.random(shape).astype('float32')
-        self.x_tensor = core.LoDTensor()
+        self.x_tensor = core.Tensor()
         self.x_tensor.set_recursive_sequence_lengths(lod)
         self.x_tensor.set(self.x_tensor_data, self.place)
 
@@ -54,7 +54,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
         lod = [[1, 2, 3]]
         shape = [sum(lod[0]), self.static_input_tensor_dim]
         self.static_input_data = np.random.random(shape).astype('float32')
-        self.static_input_tensor = core.LoDTensor()
+        self.static_input_tensor = core.Tensor()
         self.static_input_tensor.set_recursive_sequence_lengths(lod)
         self.static_input_tensor.set(self.static_input_data, self.place)
 

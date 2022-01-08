@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ChunkEvalKernel : public framework::OpKernel<T> {
@@ -153,9 +153,9 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int>>("excluded_chunk_types").begin(),
         context.Attr<std::vector<int>>("excluded_chunk_types").end());
 
-    auto* inference = context.Input<LoDTensor>("Inference");
+    auto* inference = context.Input<Tensor>("Inference");
     auto place = inference->place();
-    auto* label = context.Input<LoDTensor>("Label");
+    auto* label = context.Input<Tensor>("Label");
     auto* precision = context.Output<Tensor>("Precision");
     auto* recall = context.Output<Tensor>("Recall");
     auto* f1 = context.Output<Tensor>("F1-Score");

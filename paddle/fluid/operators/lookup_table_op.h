@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
@@ -37,8 +37,8 @@ template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
-    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
+    auto *ids_t = context.Input<Tensor>("Ids");      // int tensor
+    auto *output_t = context.Output<Tensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");
 
     auto id_name = context.InputNames("Ids").front();
@@ -51,8 +51,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
     int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
     int64_t ids_numel = ids_t->numel();
 
-    if (table_var->IsType<LoDTensor>()) {
-      auto *table_t = context.Input<LoDTensor>("W");
+    if (table_var->IsType<Tensor>()) {
+      auto *table_t = context.Input<Tensor>("W");
       int64_t row_number = table_t->dims()[0];
       int64_t row_width = table_t->dims()[1];
 
@@ -153,15 +153,15 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
-    if (table_var->IsType<LoDTensor>()) {
-      table_dim = context.Input<LoDTensor>("W")->dims();
+    if (table_var->IsType<Tensor>()) {
+      table_dim = context.Input<Tensor>("W")->dims();
     } else if (table_var->IsType<SelectedRows>()) {
       auto *table_t = context.Input<SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The parameter W of a LookupTable "
-          "must be either LoDTensor or SelectedRows"));
+          "must be either Tensor or SelectedRows"));
     }
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
@@ -169,8 +169,8 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *ids = context.Input<Tensor>("Ids");
+      auto *d_output = context.Input<Tensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
@@ -201,9 +201,9 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
                             d_table_value->dims(), d_output_dims_2d));
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
+      auto *ids = context.Input<Tensor>("Ids");
+      auto *d_output = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto *d_table = context.Output<Tensor>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
 

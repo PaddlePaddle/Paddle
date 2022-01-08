@@ -32,7 +32,7 @@ paddle.enable_static()
 class TestPrintOpCPU(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CPUPlace()
-        self.x_tensor = fluid.core.LoDTensor()
+        self.x_tensor = fluid.core.Tensor()
         tensor_np = np.random.random(size=(2, 3)).astype('float32')
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
@@ -108,7 +108,7 @@ class TestPrintOpError(unittest.TestCase):
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.x_tensor = fluid.core.LoDTensor()
+        self.x_tensor = fluid.core.Tensor()
         tensor_np = np.random.random(size=(2, 3)).astype('float32')
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])

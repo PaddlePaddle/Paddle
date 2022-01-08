@@ -25,10 +25,10 @@ namespace framework {
 namespace details {
 
 struct ReduceLoDTensor {
-  const std::vector<const LoDTensor *> &src_tensors_;
-  LoDTensor &dst_tensor_;
+  const std::vector<const Tensor *> &src_tensors_;
+  Tensor &dst_tensor_;
 
-  ReduceLoDTensor(const std::vector<const LoDTensor *> &src, LoDTensor *dst)
+  ReduceLoDTensor(const std::vector<const Tensor *> &src, Tensor *dst)
       : src_tensors_(src), dst_tensor_(*dst) {}
 
   template <typename T>

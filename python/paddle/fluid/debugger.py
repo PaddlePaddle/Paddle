@@ -30,7 +30,7 @@ from .layer_helper import LayerHelper
 
 _vartype2str_ = [
     "UNK",
-    "LoDTensor",
+    "Tensor",
     "SelectedRows",
     "FeedMinibatch",
     "FetchList",
@@ -69,7 +69,7 @@ def repr_lodtensor(proto):
     level = proto.type.lod_tensor.lod_level
     reprs = repr_tensor(proto.type.lod_tensor.tensor)
     return reprtpl.format(
-        ttype="LoDTensor" if level > 0 else "Tensor",
+        ttype="Tensor" if level > 0 else "Tensor",
         name=proto.name,
         reprs="level=%d, %s" % (level, reprs) if level > 0 else reprs)
 

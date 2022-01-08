@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void sequence_expand_kernel(const T* x_data, const size_t* x_lod,
@@ -91,7 +91,7 @@ void GetOutputOffset(const framework::Vector<size_t>& x_lod,
 
 template <typename T>
 static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
-                              const LoDTensor& x, LoDTensor* out,
+                              const Tensor& x, Tensor* out,
                               const framework::Vector<size_t>& x_lod,
                               const framework::Vector<size_t>& ref_lod,
                               bool do_copy) {
@@ -136,10 +136,10 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
 template <typename T>
 struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
   void operator()(
-      const platform::CUDADeviceContext& context, const LoDTensor& x,
+      const platform::CUDADeviceContext& context, const Tensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out) {
+      Tensor* out) {
     int num_copys =
         ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, false);
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
@@ -180,10 +180,10 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const LoDTensor& dout,
+                  const Tensor& dout,
                   const framework::Vector<size_t>& x_lod, /*expand source lod*/
                   const framework::Vector<size_t>& ref_lod, /*expand based lod*/
-                  LoDTensor* dx) {
+                  Tensor* dx) {
     int x_item_length = framework::product(dx->dims()) / dx->dims()[0];
     framework::Vector<size_t> out_offset(x_lod.size());
     GetOutputOffset(x_lod, ref_lod, &out_offset);

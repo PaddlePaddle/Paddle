@@ -1265,7 +1265,7 @@ def lod_rank_table(x, level=0):
 
         .. code-block:: text
 
-            x is a LoDTensor:
+            x is a Tensor:
                 x.lod = [[2,                1],
                          [5,             1, 1]]
                 x.data = [a, b, c, d, e, f, g]
@@ -1285,7 +1285,7 @@ def lod_rank_table(x, level=0):
                     lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
 
     Args:
-        x (Variable): Input variable, a LoDTensor based which to create the lod
+        x (Variable): Input variable, a Tensor based which to create the lod
             rank table.
         level (int): Specify the LoD level, on which to create the lod rank
             table.
@@ -1347,17 +1347,17 @@ def max_sequence_len(rank_table):
 
 def lod_tensor_to_array(x, table):
     """
-    Convert a LoDTensor to a LoDTensorArray.
+    Convert a Tensor to a LoDTensorArray.
 
     This function split a LoDTesnor to a LoDTensorArray according to its LoD
-    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in
+    information. LoDTensorArray is an alias of C++ std::vector<Tensor> in
     PaddlePaddle. The generated LoDTensorArray of this function can be further read
     or written by `read_from_array()` and `write_to_array()` operators. However,
     this function is generally an internal component of PaddlePaddle `DynamicRNN`.
     Users should not use it directly.
 
     Args:
-        x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
+        x (Variable|list): The Tensor to be converted to a LoDTensorArray.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order. It is generally generated
@@ -1398,7 +1398,7 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """Convert a LoD_Tensor_Aarry to an LoDTensor.
+    """Convert a LoD_Tensor_Aarry to an Tensor.
 
     Args:
         x (Variable|list): The lod tensor array to be converted to a tensor.
@@ -1485,7 +1485,7 @@ def array_write(x, i, array=None):
 
     Args:
         x (Variable): The input data to be written into array. It's multi-dimensional
-            Tensor or LoDTensor. Data type: float32, float64, int32, int64.
+            Tensor or Tensor. Data type: float32, float64, int32, int64.
         i (Variable): 1-D Tensor with shape [1], which represents the position into which
             ``x`` is written. Data type: int64.
         array (LoDTensorArray, optional): The LoDTensorArray into which ``x`` is written. 
@@ -1507,13 +1507,13 @@ def array_write(x, i, array=None):
             # Now, arr is a LoDTensorArray with length 11. We can use array_read OP to read
             # the data at subscript 10 and print it out.
             item = fluid.layers.array_read(arr, i=i)
-            input = fluid.layers.Print(item, message="The content of i-th LoDTensor:")
+            input = fluid.layers.Print(item, message="The content of i-th Tensor:")
             main_program = fluid.default_main_program()
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(main_program)
 
             # The printed result is:
-            # 1570533133    The content of i-th LoDTensor:  The place is:CPUPlace
+            # 1570533133    The content of i-th Tensor:  The place is:CPUPlace
             # Tensor[array_read_0.tmp_0]
             #    shape: [3,2,]
             #    dtype: l
@@ -1961,7 +1961,7 @@ def array_read(array, i):
             specified read position of ``array``.
 
     Returns:
-        Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
+        Variable: The Tensor or Tensor that is read at the specified position of ``array``.
 
     Examples:
         .. code-block:: python
@@ -1979,14 +1979,14 @@ def array_read(array, i):
             item = fluid.layers.array_read(arr, i)
 
             # You can print out the data via executor.
-            input = fluid.layers.Print(item, message="The LoDTensor of the i-th position:")
+            input = fluid.layers.Print(item, message="The Tensor of the i-th position:")
             main_program = fluid.default_main_program()
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(main_program)
 
             # The printed result is:
 
-            # 1569588169  The LoDTensor of the i-th position: The place is:CPUPlace
+            # 1569588169  The Tensor of the i-th position: The place is:CPUPlace
             # Tensor[array_read_0.tmp_0]
             #    shape: [3,2,]
             #    dtype: l
@@ -2039,7 +2039,7 @@ def shrink_memory(x, i, table):
 
     Args:
         x(Variable): The memory object in the previous time step.
-        i(Variable): The step count variable. A int scalar as LoDTensor.
+        i(Variable): The step count variable. A int scalar as Tensor.
         table(Variable): The RNNRankTable object.
 
     Returns:
@@ -2972,7 +2972,7 @@ class DynamicRNN(object):
     """
     :api_attr: Static Graph
 
-    **Note: the input of this class should be LoDTensor which holds the
+    **Note: the input of this class should be Tensor which holds the
     information of variable-length sequences. If the input is fixed-length Tensor,
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **) for
     better performance.**
@@ -2988,9 +2988,9 @@ class DynamicRNN(object):
     length is larger than the time step will participate the remaining calculation.
 
     If defined :code:`drnn = DynamicRNN()`, then users can call :code:`drnn()`
-    to obtain the result sequences. It is a LoDTensor gained by merging all
+    to obtain the result sequences. It is a Tensor gained by merging all
     time steps's output. When RNN's input sequence x meets :code:`x.lod_level == 1`,
-    the output LoDTensor will have the same LoD with x. The result of :code:`drnn()`
+    the output Tensor will have the same LoD with x. The result of :code:`drnn()`
     includes RNN's outputs of all time steps, users can call
     :ref:`api_fluid_layers_sequence_last_step` to extract the data of the last time step.
 
@@ -3063,7 +3063,7 @@ class DynamicRNN(object):
         When all inputs' :code:`lod_level` are 1, all inputs should hold the
         same LoD. When :code:`x.lod_level >= 2` , the input sequence will be
         unfold along specified level, and the slice of each time step is a
-        LoDTensor whose lod_level is :code:`x.lod_level - level - 1` .
+        Tensor whose lod_level is :code:`x.lod_level - level - 1` .
         In this case, the specified LoD level of multiple inputs should be the same.
 
         - Case 1:
@@ -3102,7 +3102,7 @@ class DynamicRNN(object):
 
 
         Args:
-            x (Variable): The input LoDTensor which holds information of a
+            x (Variable): The input Tensor which holds information of a
                 minibatch of variable-length sequences and should meet :code:`x.lod_level >= 1` .
                 When RNN has multiple inputs, the first dimension should match
                 across all inputs, but other shape components may differ.
@@ -3116,7 +3116,7 @@ class DynamicRNN(object):
                 will only hold the :code:`step_idx` -th time step of those `num_sequences` sequences. \
                 The data type is the same as input. If :code:`x.lod_level == 1` , the return value is \
                 a Tensor of shape :math:`\{num\_sequences, x.shape[1], ...\}` , or it will \
-                be a variable-length LoDTensor.
+                be a variable-length Tensor.
 
         Raises:
             ValueError: When :code:`step_input()` is called outside :code:`block()` .
@@ -3264,19 +3264,19 @@ class DynamicRNN(object):
 
 
         Args:
-            x (Variable): The static input LoDTensor which should hold the same number of sequences
-                as RNN's input (the input LoDTensor set by :code:`step_input()` ). If the LoD is None,
+            x (Variable): The static input Tensor which should hold the same number of sequences
+                as RNN's input (the input Tensor set by :code:`step_input()` ). If the LoD is None,
                 the input x will be treated as a minibatch with :code:`x.shape[0]` sequences of length 1.
                 Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
 
         Returns:
-            Variable: The input LoDTensor after sorted and shrank. If there are :code:`num_sequences` \
-                sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
+            Variable: The input Tensor after sorted and shrank. If there are :code:`num_sequences` \
+                sequences in RNN's input Tensor whose length is larger than :code:`step_idx` , \
                 the static input Tensor will be sorted to the same order as RNN's input and \
                 will only retain data corresponding to those :code:`num_sequences` sequences. \
                 The data type is the same as input. If :code:`x.lod == None` , the return value is \
                 a Tensor of shape :math:`\{num\_sequences, x.shape[1], ...\}` , or it will \
-                be a variable-length LoDTensor.
+                be a variable-length Tensor.
 
         Raises:
             ValueError: When :code:`static_input()` is called outside :code:`block()` .
@@ -3398,9 +3398,9 @@ class DynamicRNN(object):
         dtype and shape.
 
         Args:
-            init (Variable, optional): LoDTensor used to initialize the memory.
+            init (Variable, optional): Tensor used to initialize the memory.
                 If init is not None, it should hold the same number of sequences
-                as RNN's input (the input LoDTensor set by :code:`step_input()` )
+                as RNN's input (the input Tensor set by :code:`step_input()` )
                 and the memory will be initialized to it. If init's LoD is None,
                 it will be treated as a minibatch with :code:`init.shape[0]` sequences
                 of length 1. The default value is None.
@@ -3420,8 +3420,8 @@ class DynamicRNN(object):
                 are: "float32", "float64", "int32", "int64".
 
         Returns:
-            Variable: The memory LoDTensor after shrank.  If there are :code:`num_sequences` \
-                sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
+            Variable: The memory Tensor after shrank.  If there are :code:`num_sequences` \
+                sequences in RNN's input Tensor whose length is larger than :code:`step_idx` , \
                 the memory Tensor also need to be shrank and will only retain data \
                 corresponding to those :code:`num_sequences` sequences.
 

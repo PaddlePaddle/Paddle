@@ -28,7 +28,7 @@ namespace paddle {
 namespace framework {
 
 typedef boost::variant<int, int64_t, float, double, std::string, Tensor,
-                       LoDTensor /*, ChannelHolder*/>
+                       Tensor /*, ChannelHolder*/>
     ElementVar;
 
 class Tuple {

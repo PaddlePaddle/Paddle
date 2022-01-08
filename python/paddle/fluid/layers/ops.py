@@ -597,13 +597,13 @@ cumsum.__doc__ = """
 The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
 Args:
-    x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
+    x (Variable): Input of cumsum operator, the Tensor/Tensor needed to be cumsumed. 
     axis (int, optional): The dimension to accumulate along. -1 means the last dimension. Default is -1.
     exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
     reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
 
 Returns:
-    Variable(Tensor/LoDTensor): The result of cumsum operator, output of cumsum operator. 
+    Variable(Tensor/Tensor): The result of cumsum operator, output of cumsum operator. 
 
 Examples:
     .. code-block:: python
@@ -646,13 +646,13 @@ Equation:
             \\end{cases}
 
 Args:
-    x(Variable): The input of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64.
+    x(Variable): The input of Thresholded ReLU op, Tensor or Tensor, dtype: float32 or float64.
         
     threshold(float, optional): The threshold value. Note that if the arg `threshold` is not set, the threshold in the equation is 1.0.
 
 Returns:
 
-    Variable: The output of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Variable: The output of Thresholded ReLU op, Tensor or Tensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     
@@ -733,11 +733,11 @@ Equation:
 
 Args:
 
-    x(Variable): The input of GeLU op, Tensor or LoDTensor, dtype: float32 or float64.
+    x(Variable): The input of GeLU op, Tensor or Tensor, dtype: float32 or float64.
 
 Returns:
 
-    Variable: The output of GeLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Variable: The output of GeLU op, Tensor or Tensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     

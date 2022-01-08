@@ -142,12 +142,12 @@ void DistMultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
+    Tensor *root_tensor = root_var->GetMutable<Tensor>();
     for (int j = 1; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
       Variable *thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
-      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+      Tensor *thread_tensor = thread_var->GetMutable<Tensor>();
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;
       }
@@ -180,8 +180,7 @@ void DistMultiTrainer::Finalize() {
 }
 
 template <typename T>
-void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
-                                        LoDTensor *tensor) {
+void DistMultiTrainer::MergeToRootScope(Tensor *root_tensor, Tensor *tensor) {
   T *root_data = root_tensor->data<T>();
   T *data = tensor->data<T>();
   for (int i = 0; i < tensor->numel(); i++) {

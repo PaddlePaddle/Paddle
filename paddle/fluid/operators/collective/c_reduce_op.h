@@ -128,8 +128,8 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto in = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();

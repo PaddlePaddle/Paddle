@@ -41,21 +41,21 @@ namespace details {
 
 // TODO(zjl): support SelectedRows
 static inline const Tensor &GetTensorFromVar(const Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    return var->Get<Tensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
+        "Variable must be type of Tensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
 
 static inline Tensor *GetMutableTensorFromVar(Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    return var->GetMutable<Tensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
+        "Variable must be type of Tensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }

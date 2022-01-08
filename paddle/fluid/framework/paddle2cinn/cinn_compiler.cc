@@ -66,7 +66,7 @@ CinnCompiler* CinnCompiler::GetInstance() {
 
 const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
-    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::map<std::string, const Tensor*>& input_tensors,
     const Target& target, void* stream) {
   VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKeyByAddress cur_key_by_address(graph, input_tensors,
@@ -109,7 +109,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
 
 const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
-    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::map<std::string, const Tensor*>& input_tensors,
     const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
   return Compile(graph, input_tensors, target, stream);
@@ -208,7 +208,7 @@ void CinnCompiler::Clear() {
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
-    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::map<std::string, const Tensor*>& input_tensors,
     const Target& target, std::int64_t compiled_num, void* stream) const {
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();

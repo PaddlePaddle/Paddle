@@ -464,7 +464,7 @@ class StaticGraphAdapter(object):
                 feed[n] = inputs[idx]
             if self._amp_level == 'O2' and input_dtypes[
                     idx] == core.VarDesc.VarType.FP16:
-                if isinstance(feed[n], core.LoDTensor):
+                if isinstance(feed[n], core.Tensor):
                     feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
                 elif isinstance(feed[n], numpy.array):
                     feed[n] = feed[n].astype('float16')
@@ -501,7 +501,7 @@ class StaticGraphAdapter(object):
             if len(name) > 0:
                 rets.insert(i, feed[name])
 
-        # LoDTensor cannot be fetch as numpy directly
+        # Tensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
             return rets[:]
@@ -721,10 +721,10 @@ class DynamicGraphAdapter(object):
                 level=self._amp_level):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
             else:
                 outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -745,7 +745,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -759,7 +759,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -790,7 +790,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -1910,8 +1910,8 @@ class Model(object):
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
-                is False. stack_outputs as False is used for LoDTensor output situation,
-                it is recommended set as True if outputs contains no LoDTensor. Default: False.
+                is False. stack_outputs as False is used for Tensor output situation,
+                it is recommended set as True if outputs contains no Tensor. Default: False.
             verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per batch. Default: 1.
             callbacks(Callback): A Callback instance, default None.
@@ -2078,7 +2078,7 @@ class Model(object):
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
             data = flatten(data)
-            # LoDTensor.shape is callable, where LoDTensor comes from
+            # Tensor.shape is callable, where Tensor comes from
             # DataLoader in static graph
 
             batch_size = data[0].shape()[0] if callable(data[

@@ -419,9 +419,9 @@ def _check_param_dict(param_dict):
                 raise TypeError(
                     "The type of key of 'param_dict' should be 'str', "
                     "but got '{}'.".format(str(type(name))))
-            if not isinstance(value, paddle.fluid.LoDTensor):
+            if not isinstance(value, paddle.fluid.Tensor):
                 raise TypeError(
-                    "The type of value of 'param_dict' should be 'LoDTensor', "
+                    "The type of value of 'param_dict' should be 'Tensor', "
                     "but got '{}'.".format(str(type(value))))
         return param_dict
 
@@ -800,8 +800,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
 
 def _slice_parameter_with_dist_attr(param, dist_attr):
     """ Slice parameter with distributed attribute """
-    param = np.array(param) if isinstance(param,
-                                          paddle.fluid.LoDTensor) else param
+    param = np.array(param) if isinstance(param, paddle.fluid.Tensor) else param
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]

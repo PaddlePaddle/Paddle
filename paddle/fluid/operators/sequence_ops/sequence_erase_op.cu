@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat, const int64_t in_len,
@@ -60,8 +60,8 @@ template <typename T>
 class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(

@@ -346,7 +346,7 @@ class DenseTensor : public TensorBase,
 #endif
 
   /* ------------------------------ */
-  /*   From framework::LoDTensor    */
+  /*   From framework::Tensor    */
   /* ------------------------------ */
   /* The following members & interfaces were copied from framework::Tensor,
      so as to facilitate the unification of different Tensors

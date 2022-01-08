@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
+using framework::Tensor;
 using framework::Tensor;
 using framework::ExecutionContext;
 

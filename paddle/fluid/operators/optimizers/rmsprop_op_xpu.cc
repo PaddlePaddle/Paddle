@@ -39,36 +39,36 @@ template <typename DeviceContext, typename T>
 class RmspropOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
 
     // check Param & Grad tensor type
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<Tensor>(), true,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong type，Expected Var(%s)'s "
-                          "type is LoDTensor, "
+                          "type is Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
 
     const auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<Tensor>(), true,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong type，Expected Var(%s)'s "
-                          "type is LoDTensor, "
+                          "type is Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(grad_var->Type())));
 
     // inputs
-    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
-                                  "Param", "Rmsprop");
-    auto& meanSquare = GET_DATA_SAFELY(ctx.Input<LoDTensor>("MeanSquare"),
-                                       "Input", "MeanSquare", "Rmsprop");
-    auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input", "Grad",
-                                 "Rmsprop");
-    auto& mom = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment"), "Input",
-                                "Moment", "Rmsprop");
+    auto& param = GET_DATA_SAFELY(ctx.Input<Tensor>("Param"), "Input", "Param",
+                                  "Rmsprop");
+    auto& meanSquare = GET_DATA_SAFELY(ctx.Input<Tensor>("MeanSquare"), "Input",
+                                       "MeanSquare", "Rmsprop");
+    auto& grad =
+        GET_DATA_SAFELY(ctx.Input<Tensor>("Grad"), "Input", "Grad", "Rmsprop");
+    auto& mom = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment"), "Input", "Moment",
+                                "Rmsprop");
 
     auto* learning_rate = ctx.Input<Tensor>("LearningRate");
     PADDLE_ENFORCE_EQ(learning_rate->dims().size(), 1,
@@ -84,11 +84,11 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
     T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
 
     // outputs
-    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
-                                      "Output", "ParamOut", "Rmsprop");
-    auto& mom_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("MomentOut"),
-                                    "Output", "MomentOut", "Rmsprop");
-    auto& mom_sqrt_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("MeanSquareOut"),
+    auto& param_out = GET_DATA_SAFELY(ctx.Output<Tensor>("ParamOut"), "Output",
+                                      "ParamOut", "Rmsprop");
+    auto& mom_out = GET_DATA_SAFELY(ctx.Output<Tensor>("MomentOut"), "Output",
+                                    "MomentOut", "Rmsprop");
+    auto& mom_sqrt_out = GET_DATA_SAFELY(ctx.Output<Tensor>("MeanSquareOut"),
                                          "Output", "MeanSquareOut", "Rmsprop");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 

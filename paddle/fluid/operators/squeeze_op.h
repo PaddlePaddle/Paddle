@@ -32,8 +32,8 @@ template <typename DeviceContext, typename T>
 class SqueezeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<framework::Tensor>("X");
+    auto *out = context.Output<framework::Tensor>("Out");
 
     auto &axes = context.Attr<std::vector<int>>("axes");
     auto x_dims = in->dims();
@@ -51,10 +51,9 @@ template <typename DeviceContext, typename T>
 class SqueezeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto in_dims = ctx.Input<framework::Tensor>("X")->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
@@ -66,8 +65,8 @@ template <typename DeviceContext, typename T>
 class Squeeze2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    auto *in = context.Input<framework::LoDTensor>("X");
+    auto *out = context.Output<framework::Tensor>("Out");
+    auto *in = context.Input<framework::Tensor>("X");
 
     auto &axes = context.Attr<std::vector<int>>("axes");
 
@@ -86,12 +85,11 @@ template <typename DeviceContext, typename T>
 class Squeeze2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     // auto in_dims = d_x->dims();
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<framework::Tensor>("XShape")->dims();
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());

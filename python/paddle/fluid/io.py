@@ -1619,7 +1619,7 @@ def _endpoints_replacement(program, endpoints):
 
 def get_parameter_value(para, executor):
     """
-    Get the LoDTensor value of the given parameter.
+    Get the Tensor value of the given parameter.
 
     Args:
         para(Parameter): The parameter to get value from.
@@ -1653,7 +1653,7 @@ def get_parameter_value(para, executor):
 
 def get_parameter_value_by_name(name, executor, program=None):
     """
-    Get the LoDTensor value of a certain parameter by its name.
+    Get the Tensor value of a certain parameter by its name.
 
     Args:
         name(str): The parameter's name.
@@ -1823,7 +1823,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
     def get_tensor(var):
         if isinstance(var, core.VarBase):
             return var.numpy()
-        elif isinstance(var, core.LoDTensor):
+        elif isinstance(var, core.Tensor):
             return np.array(var)
         return var
 

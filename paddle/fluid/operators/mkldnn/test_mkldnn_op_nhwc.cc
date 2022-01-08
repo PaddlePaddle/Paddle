@@ -35,7 +35,7 @@ namespace operators {
 
 struct InputVars {
   std::string name;
-  framework::LoDTensor *tensor;
+  framework::Tensor *tensor;
 };
 
 TEST(test_pool2d_transpose_nhwc, cpu_place) {
@@ -44,8 +44,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   platform::CPUPlace p;
   framework::Scope scope;
 
-  InputVars input_name = {"x",
-                          scope.Var("x")->GetMutable<framework::LoDTensor>()};
+  InputVars input_name = {"x", scope.Var("x")->GetMutable<framework::Tensor>()};
   // Initialize input data
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
@@ -57,8 +56,8 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
     data_ptr[i] = dist(engine);
   }
 
-  scope.Var("y")->GetMutable<framework::LoDTensor>();
-  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
+  scope.Var("y")->GetMutable<framework::Tensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::Tensor>();
 
   auto &pool = platform::DeviceContextPool::Instance();
 

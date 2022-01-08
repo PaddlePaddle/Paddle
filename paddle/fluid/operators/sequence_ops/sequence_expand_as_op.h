@@ -26,25 +26,25 @@ namespace operators {
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsFunctor {
   void operator()(
-      const DeviceContext &ctx, const framework::LoDTensor &x,
+      const DeviceContext &ctx, const framework::Tensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      framework::LoDTensor *out);
+      framework::Tensor *out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsGradFunctor {
   void operator()(
-      const DeviceContext &ctx, const framework::LoDTensor &dout,
+      const DeviceContext &ctx, const framework::Tensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      framework::LoDTensor *dx);
+      framework::Tensor *dx);
 };
 
 template <typename T>
 struct SequenceExpandAsFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext &context, const framework::LoDTensor &x,
+      const platform::CPUDeviceContext &context, const framework::Tensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      framework::LoDTensor *out) {
+      framework::Tensor *out) {
     int64_t height = x.dims()[0];
     int64_t width = framework::product(x.dims()) / height;
 
@@ -70,9 +70,9 @@ template <typename DeviceContext, typename T>
 class SequenceExpandAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<framework::LoDTensor>("X");
-    auto *y = context.Input<framework::LoDTensor>("Y");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *x = context.Input<framework::Tensor>("X");
+    auto *y = context.Input<framework::Tensor>("Y");
+    auto *out = context.Output<framework::Tensor>("Out");
 
     PADDLE_ENFORCE_EQ(
         y->lod().empty(), false,
@@ -116,10 +116,9 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
 template <typename T>
 struct SequenceExpandAsGradFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext &context,
-      const framework::LoDTensor &dout,
+      const platform::CPUDeviceContext &context, const framework::Tensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      framework::LoDTensor *dx) {
+      framework::Tensor *dx) {
     int64_t height = dx->dims()[0];
     int64_t width = framework::product(dx->dims()) / height;
 
@@ -146,10 +145,9 @@ class SequenceExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *g_out =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *y = context.Input<framework::LoDTensor>("Y");
-    auto *g_x =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *y = context.Input<framework::Tensor>("Y");
+    auto *g_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
 
     g_x->mutable_data<T>(context.GetPlace());
 

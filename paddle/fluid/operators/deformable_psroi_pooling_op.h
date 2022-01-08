@@ -33,7 +33,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 T bilinear_interp(const T* data, const T x, const T y, const int width,
@@ -64,7 +64,7 @@ void DeformablePSROIPoolForwardCPUKernel(
     const int group_width, const int part_height, const int part_width,
     const int num_classes, const int channels_each_class, T* top_data,
     T* top_count, const int batch_size, int* roi_batch_id_data,
-    const LoDTensor* rois) {
+    const Tensor* rois) {
   for (int ix = 0; ix < count; ix++) {
     int pw = ix % pooled_width;
     int ph = (ix / pooled_width) % pooled_height;
@@ -158,7 +158,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* trans = ctx.Input<Tensor>("Trans");
     auto* out = ctx.Output<Tensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
@@ -256,7 +256,7 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
     const bool no_trans, const float trans_std, const int sample_per_part,
     const int group_height, const int group_width, const int part_height,
     const int part_width, const int num_classes, const int channels_each_class,
-    const int batch_size, int* roi_batch_id_data, const LoDTensor* rois) {
+    const int batch_size, int* roi_batch_id_data, const Tensor* rois) {
   for (int index = 0; index < count; index++) {
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -416,7 +416,7 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* trans = ctx.Input<Tensor>("Trans");
     auto* top_count = ctx.Input<Tensor>("TopCount");
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));

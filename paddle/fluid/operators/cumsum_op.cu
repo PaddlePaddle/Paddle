@@ -27,7 +27,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 using Tensor = paddle::framework::Tensor;
-using LoDTensor = paddle::framework::LoDTensor;
+using Tensor = paddle::framework::Tensor;
 
 namespace paddle {
 namespace operators {

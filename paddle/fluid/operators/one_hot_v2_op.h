@@ -21,13 +21,13 @@ namespace operators {
 
 template <typename DeviceContext, typename InT>
 struct OneHotV2OpFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
+  const framework::Tensor* in_;
+  framework::Tensor* out_;
   int depth_;
   const DeviceContext& ctx_;
   bool allow_out_of_range_;
 
-  OneHotV2OpFunctor(const framework::LoDTensor* in, framework::LoDTensor* out,
+  OneHotV2OpFunctor(const framework::Tensor* in, framework::Tensor* out,
                     int depth, const DeviceContext& ctx,
                     bool allow_out_of_range = false)
       : in_(in),
@@ -70,14 +70,14 @@ struct OneHotV2OpFunctor {
   }
 };
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class OneHotV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     int depth = context.Attr<int>("depth");
     bool allow_out_of_range = context.Attr<bool>("allow_out_of_range");
     if (context.HasInput("depth_tensor")) {

@@ -33,7 +33,7 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Input(ShapeTensor) is not supported on NPU."));
     }
-    PADDLE_ENFORCE_EQ(ctx.Input<framework::LoDTensor>("Shape"), nullptr,
+    PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("Shape"), nullptr,
                       platform::errors::Unimplemented(
                           "Input(Shape) is not supported on NPU."));
     auto shape = out->dims();

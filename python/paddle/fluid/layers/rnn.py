@@ -2278,7 +2278,7 @@ def dynamic_lstm(input,
 	:api_attr: Static Graph
 
     **Note**:
-        1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
+        1. This OP only supports Tensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
         2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
     The implementation of this OP include diagonal/peephole connections.
@@ -2351,8 +2351,8 @@ def dynamic_lstm(input,
 
             The hidden state and cell state of LSTM
 
-                - hidden: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
-                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+                - hidden: Tensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+                - cell: Tensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
 
     Examples:
         .. code-block:: python
@@ -2732,8 +2732,8 @@ def dynamic_lstmp(input,
 
                 The hidden state and cell state of LSTMP
 
-                - hidden: LoDTensor with shape of :math:`[T, P]` , and its lod and dtype is the same as the input.
-                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+                - hidden: Tensor with shape of :math:`[T, P]` , and its lod and dtype is the same as the input.
+                - cell: Tensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
 
     Examples:
 
@@ -2849,7 +2849,7 @@ def dynamic_gru(input,
     r"""
 	:api_attr: Static Graph
 
-    **Note: The input type of this must be LoDTensor. If the input type to be
+    **Note: The input type of this must be Tensor. If the input type to be
     processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
 
     This operator is used to perform the calculations for a single layer of
@@ -2903,7 +2903,7 @@ def dynamic_gru(input,
 
 
     Args:
-        input(Variable): A LoDTensor whose lod level is 1, representing the input
+        input(Variable): A Tensor whose lod level is 1, representing the input
             after linear projection. Its shape should be :math:`[T, D \\times 3]` ,
             where :math:`T` stands for the total sequence lengths in this mini-batch,
             :math:`D` for the hidden size. The data type should be float32 or float64.
@@ -2929,7 +2929,7 @@ def dynamic_gru(input,
             same as ``input`` . Default None.
 
     Returns:
-        Variable: A LoDTensor whose lod level is 1 and shape is :math:`[T, D]` , \
+        Variable: A Tensor whose lod level is 1 and shape is :math:`[T, D]` , \
             where :math:`T` stands for the total sequence lengths in this mini-batch \
             :math:`D` for the hidden size. It represents GRU transformed sequence output, \
             and has the same lod and data type with ``input`` .
@@ -3174,7 +3174,7 @@ def beam_search(pre_ids,
     Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
 
-    **This operator only supports LoDTensor.** It is used after finishing
+    **This operator only supports Tensor.** It is used after finishing
     scores calculation to perform beam search for one time step. Specifically,
     after ``ids`` and ``scores`` have been produced, it selects the top-K
     ( `k` is ``beam_size`` ) candidate word ids of current step from ``ids``
@@ -3321,7 +3321,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     This operator is used after beam search has completed. It constructs the
     full predicted sequences for each sample by walking back along the search
     paths stored in lod of ``ids`` . The result sequences are stored in a
-    LoDTensor, which uses the following way to parse:
+    Tensor, which uses the following way to parse:
 
     .. code-block:: text
 
@@ -3340,11 +3340,11 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
 
     Args:
         ids(Variable): The LoDTensorArray variable containing the selected ids
-            of all steps. Each LoDTensor in it has int64 data type and 2 level
+            of all steps. Each Tensor in it has int64 data type and 2 level
             lod which can be used to get the search paths.
         scores(Variable): The LodTensorArray variable containing the accumulated
             scores corresponding to selected ids of all steps. It has the same size
-            as ``ids`` . Each LoDTensor in it has the same shape and lod as the
+            as ``ids`` . Each Tensor in it has the same shape and lod as the
             counterpart in ``ids`` , and has a float32 data type.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.

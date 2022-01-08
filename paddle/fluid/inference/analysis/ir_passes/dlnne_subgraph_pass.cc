@@ -317,7 +317,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
     for (auto param_name : params) {
       auto *var = scope->FindVar(param_name);
       if (var != nullptr) {
-        auto *var_t = var->GetMutable<framework::LoDTensor>();
+        auto *var_t = var->GetMutable<framework::Tensor>();
         ofstream p_stream;
         p_stream.open(dir_name + "/" + replace_name(param_name, "/", "."),
                       ios::out);

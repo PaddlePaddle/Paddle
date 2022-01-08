@@ -222,7 +222,7 @@ class ParallelExecutor(object):
                 This parameter has been deprecated. Default None.
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+                the type of the return value is a list of :code:`Tensor`. The default is True.
 
         Returns:
             List: The fetched result list.

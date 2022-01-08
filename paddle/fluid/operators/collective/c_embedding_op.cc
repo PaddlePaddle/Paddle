@@ -153,7 +153,7 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     VLOG(3) << "c_embedding_grad op " << framework::GradVarName("W")
-            << " is set to LoDTensor";
+            << " is set to Tensor";
     ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }

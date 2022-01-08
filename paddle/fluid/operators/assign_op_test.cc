@@ -27,7 +27,7 @@ TEST(AssignOp, AssignLoDTensor) {
   paddle::framework::Variable output;
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
 
-  paddle::framework::LoDTensor input;
+  paddle::framework::Tensor input;
   paddle::framework::DDim in_dims = paddle::framework::make_ddim({3, 4});
   int* in_data = input.mutable_data<int>(in_dims, cpu_place);
   for (int i = 0; i < 12; ++i) {
@@ -36,7 +36,7 @@ TEST(AssignOp, AssignLoDTensor) {
 
   assign_functor(input);
 
-  auto& out_tensor = output.Get<paddle::framework::LoDTensor>();
+  auto& out_tensor = output.Get<paddle::framework::Tensor>();
   paddle::framework::DDim out_dims = out_tensor.dims();
   EXPECT_EQ(in_dims, out_dims);
   auto* out_data = out_tensor.data<int>();
@@ -56,7 +56,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
   for (int i = 0; i < 5; ++i) {
     paddle::framework::DDim in_dims =
         paddle::framework::make_ddim({i + 1, i + 2});
-    paddle::framework::LoDTensor lod_tensor;
+    paddle::framework::Tensor lod_tensor;
     float* in_data = lod_tensor.mutable_data<float>(in_dims, cpu_place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       in_data[j] = static_cast<float>(j);

@@ -45,7 +45,7 @@ def data(name, shape, dtype=None, lod_level=0):
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: None. When `dtype` is not set, the dtype will get
            from the global dtype by `paddle.get_default_dtype()`.
-       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+       lod_level (int, optional): The LoD level of the Tensor. Usually users
            don't have to set this value. For more details about when and how to
            use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0.
 

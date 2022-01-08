@@ -24,7 +24,7 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T, size_t Rank>
 __global__ void RollCudaKernel(const T* input, T* output, int64_t N,
@@ -56,8 +56,8 @@ class RollKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     if (context.HasInput("ShiftsTensor")) {
       const auto* shifts_tensor =
@@ -141,8 +141,8 @@ class RollGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* out = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* in = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = context.Output<Tensor>(framework::GradVarName("X"));
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     if (context.HasInput("ShiftsTensor")) {
       const auto* shifts_tensor =

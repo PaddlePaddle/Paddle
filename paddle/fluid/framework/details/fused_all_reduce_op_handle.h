@@ -82,15 +82,14 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
 
   // Check the dtype of the input
   void GetDTypeAndNumel(
-      const std::vector<std::pair<std::string, const LoDTensor *>> &g_tensor,
+      const std::vector<std::pair<std::string, const Tensor *>> &g_tensor,
       proto::VarType::Type *dtype, int64_t *total_num) const;
 
-  // Get gradient's name and LoDTensor
-  void GetGradLoDTensor(const size_t &scope_idx,
-                        const std::vector<VarHandle *> &in_var_handles,
-                        const std::vector<VarHandle *> &out_var_handles,
-                        std::vector<std::pair<std::string, const LoDTensor *>>
-                            *grad_tensor) const;
+  // Get gradient's name and Tensor
+  void GetGradLoDTensor(
+      const size_t &scope_idx, const std::vector<VarHandle *> &in_var_handles,
+      const std::vector<VarHandle *> &out_var_handles,
+      std::vector<std::pair<std::string, const Tensor *>> *grad_tensor) const;
 
   bool InputIsInDifferentPlace(
       const std::vector<VarHandle *> &in_var_handles) const;

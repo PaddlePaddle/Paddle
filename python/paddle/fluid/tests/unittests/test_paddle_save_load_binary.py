@@ -155,7 +155,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             is_zeros = np.array(var.get_value())
 
             loaded_tensor = paddle.load(dirname + 'fc_vars.w_0')
-            self.assertTrue(isinstance(loaded_tensor, fluid.core.LoDTensor))
+            self.assertTrue(isinstance(loaded_tensor, fluid.core.Tensor))
             self.assertTrue(
                 list(loaded_tensor.shape()) == [IMAGE_SIZE, OUTPUT_NUM])
             to_array = np.array(loaded_tensor)
@@ -173,7 +173,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 paddle.load(path)
 
         with self.assertRaises(ValueError):
-            temp_lod = fluid.core.LoDTensor()
+            temp_lod = fluid.core.Tensor()
             paddle.save(temp_lod, path, use_binary_format=True)
 
         with self.assertRaises(RuntimeError):

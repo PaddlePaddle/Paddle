@@ -89,7 +89,7 @@ std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(
 
 template <typename T>
 std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
-    framework::LoDTensor const &lod_tensor) {
+    framework::Tensor const &lod_tensor) {
   PADDLE_ENFORCE_EQ(
       lod_tensor.lod().size(), 0UL,
       platform::errors::InvalidArgument("LoDTensor2IArray is Unimplemented"));

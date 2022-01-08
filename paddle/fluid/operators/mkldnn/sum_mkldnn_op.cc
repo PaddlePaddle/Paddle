@@ -50,7 +50,7 @@ class SumMKLDNNHandler
  public:
   SumMKLDNNHandler(dnnl::engine engine, platform::Place cpu_place,
                    const std::vector<framework::Variable*>& in_vars,
-                   framework::LoDTensor* z)
+                   framework::Tensor* z)
 
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
@@ -59,7 +59,7 @@ class SumMKLDNNHandler
 
     std::vector<dnnl::memory::desc> srcs_md;
     for (size_t i = 0; i < in_vars.size(); i++) {
-      auto& input_it = in_vars[i]->Get<framework::LoDTensor>();
+      auto& input_it = in_vars[i]->Get<framework::Tensor>();
       if (input_it.numel() == 0) {
         continue;
       }
@@ -117,8 +117,8 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE_NE(in_vars.empty(), true, platform::errors::InvalidArgument(
                                                  "Input variable is empty."));
-    auto& input0 = in_vars[0]->Get<LoDTensor>();
-    LoDTensor* output = ctx.Output<LoDTensor>("Out");
+    auto& input0 = in_vars[0]->Get<Tensor>();
+    Tensor* output = ctx.Output<Tensor>("Out");
 
     bool in_place = (input0.numel() > 0) && input0.IsSharedBufferWith(*output);
 
@@ -129,7 +129,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     srcs_mem.reserve(handler.GetNumInputs());
     int input_index = 0;
     for (size_t i = 0; i < in_vars.size(); i++) {
-      auto& input_it = in_vars[i]->Get<framework::LoDTensor>();
+      auto& input_it = in_vars[i]->Get<framework::Tensor>();
       if (input_it.numel() == 0) {
         continue;
       }
@@ -160,7 +160,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // For in-place execution which sum does not have we need to fake it
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
-      auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
+      auto& in_out = in_vars[0]->Get<framework::Tensor>();
       auto output_tz = framework::vectorize<int64_t>(output->dims());
       platform::ReorderMKLDNNHandler reorder_handler(
           output_tz, output->type(), framework::ToMKLDNNDataType(in_out.type()),

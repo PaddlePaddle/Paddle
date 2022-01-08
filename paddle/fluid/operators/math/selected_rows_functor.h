@@ -31,7 +31,7 @@ namespace operators {
 namespace math {
 
 // SelectedRows + SelectedRows will simplely concat value and rows.
-// The real computation happens in dealing with LoDTensor.
+// The real computation happens in dealing with Tensor.
 template <typename DeviceContext, typename T>
 struct SelectedRowsAdd {
   void operator()(const DeviceContext& context,

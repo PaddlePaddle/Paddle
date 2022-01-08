@@ -107,9 +107,9 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
 
 template <typename TIds, typename T>
 void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
-  auto *table_t = context.Input<LoDTensor>("W");
-  auto *ids_t = context.Input<LoDTensor>("Ids");
-  auto *output_t = context.Output<LoDTensor>("Out");
+  auto *table_t = context.Input<Tensor>("W");
+  auto *ids_t = context.Input<Tensor>("Ids");
+  auto *output_t = context.Output<Tensor>("Out");
   const int64_t start_idx = context.Attr<int64_t>("start_index");
 
   auto stream =
@@ -122,7 +122,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
 
   auto pad_shape =
       framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
-  framework::LoDTensor table_t_pad;
+  framework::Tensor table_t_pad;
 
   size_t mem_size = table_t->numel() * framework::SizeOfType(table_t->type());
   size_t line_mem_size =
@@ -158,7 +158,7 @@ template <typename T>
 class CEmbeddingNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *ids_t = context.Input<Tensor>("Ids");
 
     const auto &index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {
@@ -174,10 +174,10 @@ template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // get inputs
   const int64_t start_idx = context.Attr<int64_t>("start_index");
-  auto ids_t = context.Input<LoDTensor>("Ids");
-  auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+  auto ids_t = context.Input<Tensor>("Ids");
+  auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
   auto table_t = context.Input<Tensor>("W");
-  auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+  auto table_grad_t = context.Output<Tensor>(framework::GradVarName("W"));
 
   VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
            << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
@@ -194,7 +194,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // padding table_t -> table_t_pad
   auto pad_shape =
       framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
-  framework::LoDTensor table_t_pad;
+  framework::Tensor table_t_pad;
 
   // set table_t_pad to zero
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
@@ -232,7 +232,7 @@ template <typename T>
 class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *ids_t = context.Input<Tensor>("Ids");
 
     const auto &index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {

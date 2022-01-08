@@ -43,7 +43,7 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<f::Tensor>();
   std::vector<bool> init_x = {true, false, false, false};
   f::TensorFromVector<bool>(init_x, ctx, tensor_x);
   tensor_x->Resize(paddle::framework::make_ddim({2}));
@@ -52,7 +52,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<f::Tensor>();
 
   // run
   std::vector<int> axes;

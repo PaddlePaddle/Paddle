@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 bool GT_E(T a, T b) {
@@ -241,7 +241,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* mask = ctx.Output<framework::Tensor>("Mask");
     auto* out_transform_matrix =
@@ -383,7 +383,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
@@ -489,14 +489,14 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         rois_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D Tensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
             "rois dims is %d",
             rois_dims.size()));
     PADDLE_ENFORCE_EQ(
         rois_dims[1], 8,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D Tensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
             rois_dims[1]));
 
@@ -585,9 +585,9 @@ class ROIPerspectiveTransformOpMaker
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(Tensor), "
              "ROIs (Regions of Interest) to be transformed. "
-             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+             "should be a 2-D Tensor of shape (num_rois, 8)"
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"

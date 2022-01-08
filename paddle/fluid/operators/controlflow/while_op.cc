@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -58,7 +58,7 @@ class WhileOp : public framework::OperatorBase {
                             platform::errors::NotFound(
                                 "Input(Condition) of WhileOp is not found."));
 
-    auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
+    auto &cond = scope.FindVar(Input(kCondition))->Get<Tensor>();
     PADDLE_ENFORCE_EQ(
         cond.dims(), paddle::framework::make_ddim({1}),
         platform::errors::InvalidArgument(
@@ -121,11 +121,11 @@ class WhileOp : public framework::OperatorBase {
               no_copy_var_names.end()) {
             std::string input_var_rename = input_var_name + kSuffix;
             framework::Variable *input_var = scope.FindVar(input_var_name);
-            if (input_var->IsType<framework::LoDTensor>()) {
+            if (input_var->IsType<framework::Tensor>()) {
               rename_vars.push_back(input_var_rename);
-              auto input_var_tensor = input_var->Get<LoDTensor>();
+              auto input_var_tensor = input_var->Get<Tensor>();
               auto *rename_input_var_tensor =
-                  current_scope.Var(input_var_rename)->GetMutable<LoDTensor>();
+                  current_scope.Var(input_var_rename)->GetMutable<Tensor>();
               framework::TensorCopy(input_var_tensor, dev_place,
                                     rename_input_var_tensor);
               rename_input_var_tensor->set_lod(input_var_tensor.lod());
@@ -141,7 +141,7 @@ class WhileOp : public framework::OperatorBase {
           current_scope.Rename(var_rename, input_var_name);
         }
         cond_data =
-            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+            GetCondData(scope.FindVar(Input(kCondition))->Get<Tensor>());
       }
     } else {
       auto &current_scope = scope.NewScope();
@@ -149,9 +149,9 @@ class WhileOp : public framework::OperatorBase {
       while (cond_data) {
         for (auto &name : current_scope.LocalVarNames()) {
           auto *var = current_scope.Var(name);
-          if (var->IsType<framework::LoDTensor>()) {
+          if (var->IsType<framework::Tensor>()) {
             // Clear all lod information for all lod_tensors.
-            auto *t = var->GetMutable<framework::LoDTensor>();
+            auto *t = var->GetMutable<framework::Tensor>();
             framework::LoD empty_lod;
             t->set_lod(empty_lod);
           } else if (var->IsType<framework::LoDTensorArray>()) {
@@ -163,7 +163,7 @@ class WhileOp : public framework::OperatorBase {
         executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
                                     false);
         cond_data =
-            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+            GetCondData(scope.FindVar(Input(kCondition))->Get<Tensor>());
       }
       scope.DeleteScope(&current_scope);
     }
@@ -263,9 +263,9 @@ class WhileGradOp : public framework::OperatorBase {
 
         auto &og_outside = *scope.FindVar(outside_og_name);
         auto &og_inside = *cur_scope.Var(inside_og_name);
-        if (og_outside.IsType<framework::LoDTensor>()) {
-          auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
-          auto &inside_tensor = *og_inside.GetMutable<framework::LoDTensor>();
+        if (og_outside.IsType<framework::Tensor>()) {
+          auto &outside_tensor = og_outside.Get<framework::Tensor>();
+          auto &inside_tensor = *og_inside.GetMutable<framework::Tensor>();
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
@@ -296,7 +296,7 @@ class WhileGradOp : public framework::OperatorBase {
           }
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "Currently only support LoDTensor and LoDTensorArray in "
+              "Currently only support Tensor and LoDTensorArray in "
               "WhileGradOp."));
         }
       }
@@ -364,16 +364,14 @@ class WhileGradOp : public framework::OperatorBase {
               var, platform::errors::NotFound("Variable %s is not found.",
                                               inside_grad_name));
           PADDLE_ENFORCE_EQ(
-              var->IsType<framework::LoDTensorArray>() ||
-                  var->IsType<LoDTensor>(),
+              var->IsType<framework::LoDTensorArray>() || var->IsType<Tensor>(),
               true, platform::errors::InvalidArgument(
                         "Currently the type of var only can be LoDTensorArray, "
-                        "or LoDTensor, but the received var[%s] is %s.",
+                        "or Tensor, but the received var[%s] is %s.",
                         inside_grad_name, framework::ToTypeName(var->Type())));
 
-          if ((var_iter == outside_og_names.end()) &&
-              var->IsType<LoDTensor>()) {
-            auto &inside_tensor = var->Get<framework::LoDTensor>();
+          if ((var_iter == outside_og_names.end()) && var->IsType<Tensor>()) {
+            auto &inside_tensor = var->Get<framework::Tensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] = inside_tensor.type();
             attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
@@ -384,9 +382,8 @@ class WhileGradOp : public framework::OperatorBase {
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {var_name}}}, attrs);
             zero_op->Run(scope, dev_place);
-            scope.FindVar(var_name)
-                ->GetMutable<framework::LoDTensor>()
-                ->set_lod(inside_tensor.lod());
+            scope.FindVar(var_name)->GetMutable<framework::Tensor>()->set_lod(
+                inside_tensor.lod());
           }
         }
         auto var_outside = scope.FindVar(pg_ig_names[param_id]);

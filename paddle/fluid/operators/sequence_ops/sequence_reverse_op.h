@@ -51,14 +51,14 @@ class SequenceReverseOp : public framework::OperatorWithKernel {
 class SequenceReverseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input LoDTensor of sequence_reverse op.");
-    AddOutput("Y", "The output LoDTensor of sequence_reverse op.");
+    AddInput("X", "The input Tensor of sequence_reverse op.");
+    AddOutput("Y", "The output Tensor of sequence_reverse op.");
     AddComment(R"DOC(
 SequenceReverse Operator.
 
 Reverse each sequence in input X along dim 0.
 
-Assuming X is a LoDTensor with dims [5, 4] and lod [[0, 2, 5]], where:
+Assuming X is a Tensor with dims [5, 4] and lod [[0, 2, 5]], where:
 
 X.data() = [
   [1, 2, 3, 4],
@@ -68,7 +68,7 @@ X.data() = [
   [17, 18, 19, 20] # the 1-st sequence with length 3
 ]
 
-The output Y would be a LoDTensor sharing the same dims and lod with input X,
+The output Y would be a Tensor sharing the same dims and lod with input X,
 and:
 
 Y.data() = [
@@ -109,12 +109,12 @@ struct SequenceReverseFunctor {
 
 template <typename DeviceContext, typename T>
 class SequenceReverseOpKernel : public framework::OpKernel<T> {
-  using LoDTensor = framework::LoDTensor;
+  using Tensor = framework::Tensor;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &x = *ctx.Input<LoDTensor>("X");
-    auto *y = ctx.Output<LoDTensor>("Y");
+    auto &x = *ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Y");
 
     PADDLE_ENFORCE_EQ(x.lod().empty(), false,
                       platform::errors::NotFound(

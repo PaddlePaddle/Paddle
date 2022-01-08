@@ -27,11 +27,11 @@ class SumXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_vars = context.MultiInputVar("X");
     auto out_var = context.OutputVar("Out");
-    auto *out = context.Output<LoDTensor>("Out");
+    auto *out = context.Output<Tensor>("Out");
     bool in_place = out_var == in_vars[0];
     int N = in_vars.size();
     PADDLE_ENFORCE_EQ(
-        out_var->IsType<framework::LoDTensor>(), true,
+        out_var->IsType<framework::Tensor>(), true,
         platform::errors::InvalidArgument("XPU only surpport LodTensor"));
     if (!in_place) {
       out->mutable_data<T>(context.GetPlace());
@@ -40,9 +40,9 @@ class SumXPUKernel : public framework::OpKernel<T> {
     std::vector<const XPUType *> ptrs;
     for (int i = 0; i < N; ++i) {
       PADDLE_ENFORCE_EQ(
-          in_vars[i]->IsType<framework::LoDTensor>(), true,
+          in_vars[i]->IsType<framework::Tensor>(), true,
           platform::errors::InvalidArgument("XPU only surpport LodTensor"));
-      auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
+      auto &in_t = in_vars[i]->Get<framework::Tensor>();
       if (in_t.numel() == 0) {
         continue;
       }

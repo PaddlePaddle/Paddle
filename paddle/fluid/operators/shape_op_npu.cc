@@ -33,7 +33,7 @@ class ShapeNPUKernel : public framework::OpKernel<T> {
     if (in_var->IsType<SelectedRows>()) {
       in_dims = in_var->Get<SelectedRows>().value().dims();
     } else {
-      in_dims = in_var->Get<LoDTensor>().dims();
+      in_dims = in_var->Get<Tensor>().dims();
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});

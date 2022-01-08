@@ -166,7 +166,7 @@ void FleetWrapper::HeterPullSparseVars(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -253,7 +253,7 @@ void FleetWrapper::HeterPushSparseVars(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -268,7 +268,7 @@ void FleetWrapper::HeterPushSparseVars(
     if (g_var == nullptr) {
       continue;
     }
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    Tensor* g_tensor = g_var->GetMutable<Tensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -316,7 +316,7 @@ void FleetWrapper::HeterPushSparseVars(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -421,7 +421,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -482,7 +482,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -524,7 +524,7 @@ void FleetWrapper::PullSparseVarsSync(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -589,20 +589,20 @@ void FleetWrapper::PullSparseVarsSync(
 void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
-                                          std::vector<const LoDTensor*>* inputs,
-                                          std::vector<LoDTensor*>* outputs) {
+                                          std::vector<const Tensor*>* inputs,
+                                          std::vector<Tensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor* output = nullptr;
+  framework::Tensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const framework::Tensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -660,7 +660,7 @@ void FleetWrapper::PullDenseVarsAsync(
       varname = var_names[i] + "pin";
     }
     Variable* var = scope.FindVar(varname);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
@@ -680,7 +680,7 @@ void FleetWrapper::PullDenseVarsSync(
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -700,7 +700,7 @@ void FleetWrapper::PushDenseParamSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* g = tensor->mutable_data<float>(place);
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -728,12 +728,12 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
-    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+    Tensor* pin_tensor = pin_var->GetMutable<Tensor>();
     float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
                                                    platform::CUDAPinnedPlace());
     memory::Copy(platform::CUDAPinnedPlace(), pin_g,
@@ -785,12 +785,12 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
-    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+    Tensor* pin_tensor = pin_var->GetMutable<Tensor>();
     float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
     memory::Copy(platform::CPUPlace(), pin_g,
@@ -833,7 +833,7 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
     if (scale_datanorm >= 0) {
@@ -906,7 +906,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -933,7 +933,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (g_var == nullptr) {
       continue;
     }
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    Tensor* g_tensor = g_var->GetMutable<Tensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -981,7 +981,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1018,8 +1018,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     uint64_t padding_id, bool scale_sparse, const std::string& accesor,
     const std::string& click_name, platform::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<const LoDTensor*>* inputs,
-    std::vector<const LoDTensor*>* outputs) {
+    std::vector<const Tensor*>* inputs, std::vector<const Tensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -1058,7 +1057,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   CHECK(batch_size > 0);  // NOLINT
 
   std::vector<float> g;
-  for (const framework::LoDTensor* g_tensor : *outputs) {
+  for (const framework::Tensor* g_tensor : *outputs) {
     size_t origin = g.size();
     size_t add = g_tensor->numel();
     g.resize(origin + add);
@@ -1078,8 +1077,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t global_idx = 0;
   if (click_name != "") {
     CHECK(var != nullptr);  // NOLINT
-    framework::LoDTensor* label_tensor =
-        var->GetMutable<framework::LoDTensor>();
+    framework::Tensor* label_tensor = var->GetMutable<framework::Tensor>();
     CHECK(label_tensor != nullptr);  // NOLINT
     int64_t* label_ptr = label_tensor->data<int64_t>();
 
@@ -1107,7 +1105,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const framework::Tensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -1206,12 +1204,12 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
   for (auto& t : old_param_list) {
     Variable* old_var = old_scope->Var(t);
     // old model data, here we assume data type is float
-    LoDTensor* old_tensor = old_var->GetMutable<LoDTensor>();
+    Tensor* old_tensor = old_var->GetMutable<Tensor>();
     float* old_data = old_tensor->data<float>();
     // new model data, here we assume data type is float
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* data = tensor->data<float>();
     // copy from old data to new data
     if (old_tensor->numel() > tensor->numel()) {
@@ -1496,7 +1494,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
       VLOG(0) << "prepare shrink dense batch_sum";
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      Tensor* tensor = var->GetMutable<Tensor>();
       float* g = tensor->data<float>();
 
       // show_batch_sum += N * log(decay)
@@ -1506,7 +1504,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
-      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+      float* g_size = var_size->GetMutable<Tensor>()->data<float>();
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
@@ -1516,7 +1514,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
     } else {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      Tensor* tensor = var->GetMutable<Tensor>();
       float* g = tensor->data<float>();
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));

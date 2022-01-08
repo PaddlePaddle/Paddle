@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
 __global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {

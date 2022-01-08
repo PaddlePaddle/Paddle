@@ -19,13 +19,13 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class SequenceReshapeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     int out_width = context.Attr<int>("new_dim");
 
     auto in_dims = in->dims();
@@ -84,11 +84,10 @@ template <typename DeviceContext, typename T>
 class SequenceReshapeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x_tensor_ptr = context.Input<LoDTensor>("X");
+    auto* x_tensor_ptr = context.Input<Tensor>("X");
     auto* outg_tensor_ptr =
-        context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* xg_tensor_ptr =
-        context.Output<LoDTensor>(framework::GradVarName("X"));
+        context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* xg_tensor_ptr = context.Output<Tensor>(framework::GradVarName("X"));
 
     xg_tensor_ptr->mutable_data<T>(context.GetPlace());
     framework::TensorCopy(*outg_tensor_ptr, context.GetPlace(), xg_tensor_ptr);

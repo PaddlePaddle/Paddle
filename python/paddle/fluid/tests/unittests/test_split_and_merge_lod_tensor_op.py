@@ -32,24 +32,24 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         return core.CPUPlace()
 
     def test_split_and_merge_lod_tensor_no_lod(self):
-        tensor = core.LoDTensor()
+        tensor = core.Tensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
 
         mask_np = np.array([0, 0, 1, 1, 1, 1, 0, 0, 0, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
 
-        mask = core.LoDTensor()
+        mask = core.Tensor()
         mask.set(mask_np, self.place())
 
         expect_true_tensor = np.array([2, 3, 4, 5]).astype('int32')
         expect_true_tensor = np.expand_dims(expect_true_tensor, axis=1)
-        expect_true = core.LoDTensor()
+        expect_true = core.Tensor()
         expect_true.set(expect_true_tensor, self.place())
 
         expect_false_tensor = np.array([0, 1, 6, 7, 8, 9]).astype('int32')
         expect_false_tensor = np.expand_dims(expect_false_tensor, axis=1)
 
-        expect_false = core.LoDTensor()
+        expect_false = core.Tensor()
         expect_false.set(expect_false_tensor, self.place())
 
         self.main(
@@ -60,19 +60,19 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             expect_out=tensor)
 
     def split_and_merge_lod_tensor_level_0(self, use_merge_lod_infer=False):
-        tensor = core.LoDTensor()
+        tensor = core.Tensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
 
-        mask = core.LoDTensor()
+        mask = core.Tensor()
         mask.set(mask_np, self.place())
 
         expect_true_tensor = np.array([3, 4, 5, 6, 7, 8]).astype('int32')
         expect_true_tensor = np.expand_dims(expect_true_tensor, axis=1)
-        expect_true = core.LoDTensor()
+        expect_true = core.Tensor()
         expect_true.set(expect_true_tensor, self.place())
         expect_true.set_recursive_sequence_lengths([[6]])
 
@@ -80,7 +80,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect_false_tensor = np.expand_dims(expect_false_tensor, axis=1)
         expect_false_lod = [[3, 1]]
 
-        expect_false = core.LoDTensor()
+        expect_false = core.Tensor()
         expect_false.set(expect_false_tensor, self.place())
         expect_false.set_recursive_sequence_lengths(expect_false_lod)
 
@@ -192,14 +192,14 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
             append_backward(mean)
 
-        tensor = core.LoDTensor()
+        tensor = core.Tensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
 
-        mask = core.LoDTensor()
+        mask = core.Tensor()
         mask.set(mask_np, place)
 
         exe = Executor(place)

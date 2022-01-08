@@ -116,7 +116,7 @@ def scope_guard(scope):
 def as_numpy(tensor, copy=False):
     """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
-    For higher dimensional sequence data, please use LoDTensor directly.
+    For higher dimensional sequence data, please use Tensor directly.
 
     Examples:
         .. code-block:: python
@@ -141,13 +141,13 @@ def as_numpy(tensor, copy=False):
         return [as_numpy(t, copy) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t, copy) for t in tensor]
-    assert isinstance(tensor, core.LoDTensor)
+    assert isinstance(tensor, core.Tensor)
     lod = tensor.lod()
     if len(lod) > 0:
         raise RuntimeError("Some of your fetched tensors hold LoD information. \
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
-            return LoDTensor itself directly.")
+            return Tensor itself directly.")
     if tensor._is_initialized():
         if copy:
             return np.array(tensor)
@@ -223,7 +223,7 @@ def check_feed_shape_type(var, feed, num_places=1):
     
     Args:
         var (Variable): the Variable object
-        feed (LoDTensor): the fed value, which must be a LoDTensor
+        feed (Tensor): the fed value, which must be a Tensor
         num_places: an integer value indicating the number of places.
             ParallelExecutor will divide data into devices (CPU/GPU) evenly.
     Returns:
@@ -264,7 +264,7 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
         feed_targets: a dictionary of {feed_target_name: feed_target_data}
         feed_holder_name: the name of the variable that holds the data of
             all feed targets. The type of this feed_holder variable is
-            FEED_MINIBATCH, which is essentially vector<LoDTensor>.
+            FEED_MINIBATCH, which is essentially vector<Tensor>.
 
     Returns:
         A boolean value that indicates whether a block has feed operators
@@ -305,7 +305,7 @@ def has_fetch_operators(block,
         fetch_targets: a dictionary of {fetch_target_name: fetch_target_data}
         fetch_holder_name: the name of the variable that holds the data of
             all fetch targets. The type of this fetch_holder variable is
-            FETCH_LIST, which is essentially vector<LoDTensor>.
+            FETCH_LIST, which is essentially vector<Tensor>.
         fetch_op: the operator name of fetch
 
     Return:
@@ -428,7 +428,7 @@ def _get_program_cache_key(feed, fetch_list):
 def _as_lodtensor(data, place, dtype=None):
     """
         Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
-        For higher dimensional sequence data, please use LoDTensor directly.
+        For higher dimensional sequence data, please use Tensor directly.
 
         Examples:
             >>> import paddle.fluid as fluid
@@ -444,7 +444,7 @@ def _as_lodtensor(data, place, dtype=None):
             dtype(core.VarDesc.VarType|str): the expected data type of created tensor
 
         Returns:
-            LoDTensor
+            Tensor
         """
     #NOTE(zhiqiu): convert python builtin, like float, int, and list, to numpy ndarray
     if not isinstance(data, np.ndarray):
@@ -468,7 +468,7 @@ def _as_lodtensor(data, place, dtype=None):
                     type(data)))
 
     # convert numpy.ndarray to tensor
-    tensor = core.LoDTensor()
+    tensor = core.Tensor()
     tensor.set(data, place)
     return tensor
 
@@ -515,7 +515,7 @@ class _StandaloneExecutor(object):
                 after the model runs. The default is None. 
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+                the type of the return value is a list of :code:`Tensor`. The default is True.
         """
         fetch_list = self._check_fetch(fetch_list)
 
@@ -799,7 +799,7 @@ class Executor(object):
                 cur_feed = feed[feed_target_name]
                 var = global_block.var(feed_target_name)
                 if var.dtype != core.VarDesc.VarType.STRINGS:
-                    if not isinstance(cur_feed, core.LoDTensor):
+                    if not isinstance(cur_feed, core.Tensor):
                         cur_feed = _as_lodtensor(cur_feed, self.place,
                                                  var.dtype)
                     check_feed_shape_type(var, cur_feed)
@@ -1018,7 +1018,7 @@ class Executor(object):
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
                 var = global_block.var(feed_name) if need_check_feed else None
-                if not isinstance(feed_tensor, core.LoDTensor):
+                if not isinstance(feed_tensor, core.Tensor):
                     # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
                     feed_tensor = _as_lodtensor(feed[feed_name],
@@ -1040,7 +1040,7 @@ class Executor(object):
                     tensor = each[feed_name]
                     var = global_block.var(
                         feed_name) if need_check_feed else None
-                    if not isinstance(tensor, core.LoDTensor):
+                    if not isinstance(tensor, core.Tensor):
                         tensor = _as_lodtensor(each[feed_name],
                                                program._places[i], var.dtype
                                                if var else None)
@@ -1114,7 +1114,7 @@ class Executor(object):
                 it to different scope. default is :code:`paddle.static.global_scope()`
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+                the type of the return value is a list of :code:`Tensor`. The default is True.
             use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
                 If the parameter is True, the model may run faster in the following cases:
                 the input program is :code:`paddle.static.Program`, and the parameters(program, feed Tensor name

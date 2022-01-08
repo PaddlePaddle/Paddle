@@ -72,7 +72,7 @@ class CastOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
-    auto *tensor = ctx.Input<framework::LoDTensor>("X");
+    auto *tensor = ctx.Input<framework::Tensor>("X");
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
                       platform::errors::PreconditionNotMet(
                           "The tensor of Input(X) is not initialized."));

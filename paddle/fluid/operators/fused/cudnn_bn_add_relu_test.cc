@@ -151,17 +151,16 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
                              Tensor *cpu_saved_var, Tensor *cpu_y,
                              Tensor *saved_reserve_space) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
-  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
-  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
-  auto *saved_var =
-      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::Tensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::Tensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::Tensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<framework::Tensor>();
+  auto *var = scope.Var("Variance")->GetMutable<framework::Tensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::Tensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::Tensor>();
+  auto *saved_var = scope.Var("SavedVariance")->GetMutable<framework::Tensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
+      scope.Var("ReserveSpace")->GetMutable<framework::Tensor>();
 
   auto place = ctx.GetPlace();
   TensorCopySync(cpu_x, place, x);
@@ -212,18 +211,17 @@ void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
                                   Tensor *cpu_saved_var, Tensor *cpu_y,
                                   Tensor *saved_reserve_space) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
-  auto *z = scope.Var("Z")->GetMutable<framework::LoDTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
-  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
-  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
-  auto *saved_var =
-      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::Tensor>();
+  auto *z = scope.Var("Z")->GetMutable<framework::Tensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::Tensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::Tensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<framework::Tensor>();
+  auto *var = scope.Var("Variance")->GetMutable<framework::Tensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::Tensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::Tensor>();
+  auto *saved_var = scope.Var("SavedVariance")->GetMutable<framework::Tensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
+      scope.Var("ReserveSpace")->GetMutable<framework::Tensor>();
 
   auto place = ctx.GetPlace();
   TensorCopySync(cpu_x, place, x);
@@ -269,20 +267,19 @@ void ComputeFusedBNAddReluBackward(
     const Tensor &cpu_y, const Tensor &saved_reserve_space, Tensor *cpu_dx,
     Tensor *cpu_dz, Tensor *cpu_dscale, Tensor *cpu_dbias) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
-  auto *dy = scope.Var("Y@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
-  auto *saved_var =
-      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::Tensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::Tensor>();
+  auto *dy = scope.Var("Y@GRAD")->GetMutable<framework::Tensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::Tensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::Tensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::Tensor>();
+  auto *saved_var = scope.Var("SavedVariance")->GetMutable<framework::Tensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
-  auto *dx = scope.Var("X@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *dz = scope.Var("Z@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *dscale = scope.Var("Scale@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *dbias = scope.Var("Bias@GRAD")->GetMutable<framework::LoDTensor>();
+      scope.Var("ReserveSpace")->GetMutable<framework::Tensor>();
+  auto *dx = scope.Var("X@GRAD")->GetMutable<framework::Tensor>();
+  auto *dz = scope.Var("Z@GRAD")->GetMutable<framework::Tensor>();
+  auto *dscale = scope.Var("Scale@GRAD")->GetMutable<framework::Tensor>();
+  auto *dbias = scope.Var("Bias@GRAD")->GetMutable<framework::Tensor>();
 
   auto place = ctx.GetPlace();
   TensorCopySync(cpu_x, place, x);

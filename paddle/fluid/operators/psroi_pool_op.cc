@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -32,9 +32,9 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the input feature map, and "
              "W is the width. The data type can be float32 or float64");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(Tensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "should be a 2-D Tensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
@@ -98,16 +98,14 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(input_dims.size(), 4,
                       platform::errors::InvalidArgument(
                           "The format of input tensor is NCHW"));
-    PADDLE_ENFORCE_EQ(
-        rois_dims.size(), 2,
-        platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-            "given as [(x1, y1, x2, y2), ...]"));
-    PADDLE_ENFORCE_EQ(
-        rois_dims[1], 4,
-        platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-            "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(rois_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "ROIs should be a 2-D Tensor of shape (num_rois, 4) "
+                          "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(rois_dims[1], 4,
+                      platform::errors::InvalidArgument(
+                          "ROIs should be a 2-D Tensor of shape (num_rois, 4) "
+                          "given as [(x1, y1, x2, y2), ...]"));
     if (ctx->HasInput("RoisNum")) {
       auto rois_num_dims = ctx->GetInputDim("RoisNum");
       PADDLE_ENFORCE_EQ(rois_num_dims.size(), 1,

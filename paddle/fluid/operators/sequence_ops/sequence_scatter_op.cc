@@ -23,18 +23,18 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class SequenceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) The source input of sequence scatter op");
     AddInput("Ids",
-             "(LoDTensor) The index input of sequence scatter op where X"
-             " will be  updated, must be a LoDTensor");
+             "(Tensor) The index input of sequence scatter op where X"
+             " will be  updated, must be a Tensor");
     AddInput("Updates",
-             "(LoDTensor) The values to scatter to the input tensor "
-             "X, must be a LoDTensor with the same LoD information as Ids");
+             "(Tensor) The values to scatter to the input tensor "
+             "X, must be a Tensor with the same LoD information as Ids");
     AddOutput("Out",
               "(Tensor) The output tensor of sequence scatter op, which "
               "has the same dims as X");
@@ -53,7 +53,7 @@ Given an all-ones Tensor input(X)
               [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
               [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
     X.dims = [3, 6]
-a LoDTensor input(Ids)
+a Tensor input(Ids)
     Ids.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
     Ids.lod =  [[0,        3,                       8,                 12]]
 and a Tensor input(Updates)
@@ -101,8 +101,8 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
       framework::Variable* updates_var =
           BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Updates")[0]);
 
-      auto& ids_lod = ids_var->Get<LoDTensor>().lod();
-      auto& updates_lod = updates_var->Get<LoDTensor>().lod();
+      auto& ids_lod = ids_var->Get<Tensor>().lod();
+      auto& updates_lod = updates_var->Get<Tensor>().lod();
       PADDLE_ENFORCE_EQ(
           ids_lod.size(), 1,
           platform::errors::InvalidArgument(

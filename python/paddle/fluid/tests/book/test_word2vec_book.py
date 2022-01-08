@@ -193,7 +193,7 @@ def infer(target, save_dirname=None):
         # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
         # is simply an index to look up for the corresponding word vector and hence
         # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths,
-        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]]
+        # which is length-based level of detail (lod) of each Tensor, should be [[1]]
         # meaning there is only one level of detail and there is only one sequence of
         # one word on this level.
         # Note that recursive_sequence_lengths should be a list of lists.

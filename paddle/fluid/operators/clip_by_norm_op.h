@@ -38,7 +38,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
 
     Tensor* output = nullptr;
     const Tensor* input = nullptr;
-    if (in_var->IsType<framework::LoDTensor>()) {
+    if (in_var->IsType<framework::Tensor>()) {
       input = context.Input<Tensor>("X");
 
       output = context.Output<Tensor>("Out");

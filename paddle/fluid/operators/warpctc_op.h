@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ComputeCtcLossFunctor {
@@ -186,8 +186,8 @@ template <typename DeviceContext, typename T>
 class WarpCTCKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* logits = ctx.Input<LoDTensor>("Logits");
-    auto* label = ctx.Input<LoDTensor>("Label");
+    auto* logits = ctx.Input<Tensor>("Logits");
+    auto* label = ctx.Input<Tensor>("Label");
     auto* warpctc_grad = ctx.Output<Tensor>("WarpCTCGrad");
     auto* loss = ctx.Output<Tensor>("Loss");
 
@@ -289,7 +289,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
     // warpctc needs sequences data stored in transposed padding format
-    LoDTensor warpctc_logits;
+    Tensor warpctc_logits;
     auto warpctc_logits_dims =
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),
@@ -301,11 +301,11 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("LogitsLength")) {
       TensorCopySync(*logits, ctx.GetPlace(), &warpctc_logits);
     } else {
-      LoDTensor cpu_pad_value;
+      Tensor cpu_pad_value;
       T* pad_value_data =
           cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
       *pad_value_data = static_cast<T>(0);
-      LoDTensor pad_value;
+      Tensor pad_value;
       if (platform::is_cpu_place(ctx.GetPlace())) {
         pad_value = cpu_pad_value;
       } else {
@@ -337,7 +337,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         static_cast<T>(0));
 
     // warpctc accesses labels in CPU memory
-    LoDTensor warpctc_label;
+    Tensor warpctc_label;
     if (ctx.HasInput("LogitsLength")) {
       warpctc_label.mutable_data<int>(
           {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
@@ -352,7 +352,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
             &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
             false /*norm_by_times*/, math::kBatchLengthWidth);
       } else {
-        LoDTensor gpu_label;
+        Tensor gpu_label;
         gpu_label.mutable_data<int>(
             {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
             ctx.GetPlace());
@@ -389,8 +389,8 @@ template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
-    auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
+    auto* warpctc_grad = ctx.Input<Tensor>("WarpCTCGrad");
+    auto* logits_grad = ctx.Output<Tensor>(framework::GradVarName("Logits"));
     const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
     logits_grad->mutable_data<T>(ctx.GetPlace());

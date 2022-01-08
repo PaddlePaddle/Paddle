@@ -264,7 +264,7 @@ void Compiler::LowerWeights(const framework::ir::Graph* graph,
 
         auto var = scope_->FindVar(var_name);
         if (var) {
-          auto tensor = var->Get<framework::LoDTensor>();
+          auto tensor = var->Get<framework::Tensor>();
           auto dtype = VarType2PopartType(tensor.type());
           auto shape = std::vector<int64_t>();
           for (size_t i = 0; i < tensor.dims().size(); ++i) {

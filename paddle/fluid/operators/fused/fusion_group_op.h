@@ -22,9 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static void MutableMultiTypeData(
-    std::vector<paddle::framework::LoDTensor*>* var,
-    const std::vector<int>& data_type, const platform::Place& place) {
+static void MutableMultiTypeData(std::vector<paddle::framework::Tensor*>* var,
+                                 const std::vector<int>& data_type,
+                                 const platform::Place& place) {
   for (size_t i = 0; i < var->size(); i++) {
     if (data_type[i] == framework::proto::VarType::FP32) {
       (*var)[i]->mutable_data<float>(place);
@@ -40,8 +40,8 @@ template <typename DeviceContext, typename T>
 class FusionGroupKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("Inputs");
-    auto outs = ctx.MultiOutput<framework::LoDTensor>("Outs");
+    auto ins = ctx.MultiInput<framework::Tensor>("Inputs");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Outs");
     int type = ctx.Attr<int>("type");
     const auto& outs_dtype = ctx.Attr<std::vector<int>>("outs_dtype");
     const auto& inputs_dtype = ctx.Attr<std::vector<int>>("inputs_dtype");

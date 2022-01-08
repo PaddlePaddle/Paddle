@@ -104,7 +104,7 @@ class FcOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(
         Y_v, platform::errors::NotFound(
                  "Can not find %s presistale var of fc in scope.", w_name));
-    auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+    auto* Y_t = Y_v->GetMutable<framework::Tensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
             ? BOOST_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
@@ -227,7 +227,7 @@ class FcOpConverter : public OpConverter {
     int bias_num = 0;
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
-      auto* b_t = b_v->GetMutable<framework::LoDTensor>();
+      auto* b_t = b_v->GetMutable<framework::Tensor>();
       bias_data =
           engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t, false);
       bias_num = b_t->numel();

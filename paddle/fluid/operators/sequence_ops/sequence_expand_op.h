@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -30,28 +30,28 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& x,
+      const DeviceContext& ctx, const Tensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out);
+      Tensor* out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& dout,
+      const DeviceContext& ctx, const Tensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx);
+      Tensor* dx);
 };
 
 template <typename T>
 struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& x,
+      const platform::CPUDeviceContext& context, const Tensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out) {
+      Tensor* out) {
     int out_offset = 0;
     int x_item_length = x.numel() / x.dims()[0];
     auto out_data = out->data<T>();
@@ -84,9 +84,9 @@ template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* x = context.Input<Tensor>("X");
+    auto* y = context.Input<Tensor>("Y");
+    auto* out = context.Output<Tensor>("Out");
 
     int ref_level = context.Attr<int>("ref_level");
     auto& x_lod = x->lod();
@@ -155,10 +155,10 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
 template <typename T>
 struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& dout,
+      const platform::CPUDeviceContext& context, const Tensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx) {
+      Tensor* dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
       int repeat_num = ref_lod[i] - ref_lod[i - 1];
@@ -184,10 +184,10 @@ template <typename DeviceContext, typename T>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* g_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* g_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = context.Input<Tensor>("X");
+    auto* y = context.Input<Tensor>("Y");
+    auto* g_x = context.Output<Tensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
     g_x->mutable_data<T>(context.GetPlace());

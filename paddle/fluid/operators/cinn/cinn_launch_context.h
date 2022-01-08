@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 namespace details {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using CinnScope = ::cinn::hlir::framework::Scope;
 
@@ -71,7 +71,7 @@ class CinnLaunchContext {
   // Check whether tensors from Paddle and CINN of the same variable
   // are equivalent in type and dimension
   void CheckTensorEquivalent(const std::string& var_name,
-                             const LoDTensor& paddle_tensor,
+                             const Tensor& paddle_tensor,
                              const CinnTensor& cinn_tensor);
 
   // Set an argument with (cinn name)->(cinn_buffer_t) pair

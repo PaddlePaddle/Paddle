@@ -25,51 +25,51 @@ template <typename DeviceContext, typename T>
 class LambOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
 
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
 
     // inputs
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     T weight_decay = static_cast<T>(ctx.Attr<float>("weight_decay"));
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
-    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
-                                  "Param", "Lamb");
+    auto& param =
+        GET_DATA_SAFELY(ctx.Input<Tensor>("Param"), "Input", "Param", "Lamb");
     auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment1"), "Input",
+    auto& mom1 = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment1"), "Input",
                                  "Moment1", "Lamb");
-    auto& mom2 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment2"), "Input",
+    auto& mom2 = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment2"), "Input",
                                  "Moment2", "Lamb");
-    auto& lr = GET_DATA_SAFELY(ctx.Input<LoDTensor>("LearningRate"), "Input",
+    auto& lr = GET_DATA_SAFELY(ctx.Input<Tensor>("LearningRate"), "Input",
                                "LearningRate", "Lamb");
 
-    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta1Pow"), "Input",
+    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<Tensor>("Beta1Pow"), "Input",
                                       "Beta1Pow", "Lamb");
-    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta2Pow"), "Input",
+    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<Tensor>("Beta2Pow"), "Input",
                                       "Beta2Pow", "Lamb");
 
-    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
-                                      "Output", "ParamOut", "Lamb");
-    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment1Out"),
-                                     "Output", "Moment1Out", "Lamb");
-    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment2Out"),
-                                     "Output", "Moment2Out", "Lamb");
-    auto& beta1_pow_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Beta1PowOut"),
+    auto& param_out = GET_DATA_SAFELY(ctx.Output<Tensor>("ParamOut"), "Output",
+                                      "ParamOut", "Lamb");
+    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Moment1Out"), "Output",
+                                     "Moment1Out", "Lamb");
+    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Moment2Out"), "Output",
+                                     "Moment2Out", "Lamb");
+    auto& beta1_pow_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Beta1PowOut"),
                                           "Output", "Beta1PowOut", "Lamb");
-    auto& beta2_pow_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Beta2PowOut"),
+    auto& beta2_pow_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Beta2PowOut"),
                                           "Output", "Beta2PowOut", "Lamb");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = *ctx.Input<LoDTensor>("Grad");
+    if (grad_var->IsType<framework::Tensor>()) {
+      auto& grad = *ctx.Input<Tensor>("Grad");
       int r = xpu::lamb(dev_ctx.x_context(), grad.template data<T>(),
                         mom1.template data<T>(), mom2.template data<T>(),
                         param.template data<T>(), beta1_pow.template data<T>(),
@@ -110,7 +110,7 @@ class LambOpXPUKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Variable type not supported by lamb_op. Expect LoDTensor, "
+          "Variable type not supported by lamb_op. Expect Tensor, "
           "but got %s",
           framework::ToTypeName(param_var->Type())));
     }

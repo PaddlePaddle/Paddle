@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
+using paddle::framework::Tensor;
 using paddle::framework::Tensor;
 using paddle::platform::CPUDeviceContext;
 using paddle::platform::CreateKey;
@@ -61,11 +61,11 @@ class MultiGRUHandler {
         origin_mode_(ctx.Attr<bool>("origin_mode")),
         layers_(ctx.Attr<int>("layers")),
         concat_pds_(layers_, std::shared_ptr<dnnl::concat::primitive_desc>()),
-        x_(ctx.Input<LoDTensor>("X")),
+        x_(ctx.Input<Tensor>("X")),
         weights_x_(ctx.MultiInput<Tensor>("WeightX")),
         weights_h_(ctx.MultiInput<Tensor>("WeightH")),
         biases_(ctx.MultiInput<Tensor>("Bias")),
-        hidden_(ctx.Output<LoDTensor>("Hidden")),
+        hidden_(ctx.Output<Tensor>("Hidden")),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
         weights_x_.size(), layers_ * 2,
@@ -124,7 +124,7 @@ class MultiGRUHandler {
 
     if (is_int8) {
       // Add int8 attributes
-      const auto scale_weights = ctx.MultiInput<LoDTensor>("Scale_weights");
+      const auto scale_weights = ctx.MultiInput<Tensor>("Scale_weights");
       PADDLE_ENFORCE_EQ(
           scale_weights.size(), layers_ * 2,
           platform::errors::InvalidArgument(
@@ -635,11 +635,11 @@ class MultiGRUHandler {
   // on Ti size, thus we need another key to cache them
   std::string memory_key_;
 
-  const LoDTensor* x_;
+  const Tensor* x_;
   const std::vector<const Tensor*> weights_x_;
   const std::vector<const Tensor*> weights_h_;
   const std::vector<const Tensor*> biases_;
-  LoDTensor* hidden_;
+  Tensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
   const paddle::framework::Vector<size_t>& x_lod_;
 };

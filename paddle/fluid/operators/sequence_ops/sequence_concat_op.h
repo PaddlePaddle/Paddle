@@ -65,9 +65,9 @@ template <typename DeviceContext, typename T>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = detail::GetDataVectorSafely(
-        context.MultiInput<framework::LoDTensor>("X"));
-    auto &out = *context.Output<framework::LoDTensor>("Out");
+    auto xs =
+        detail::GetDataVectorSafely(context.MultiInput<framework::Tensor>("X"));
+    auto &out = *context.Output<framework::Tensor>("Out");
 
     size_t lod_size = 0;
     for (auto &x : xs) {
@@ -106,9 +106,9 @@ template <typename DeviceContext, typename T>
 class SeqConcatGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = context.MultiInput<framework::LoDTensor>("X");
+    auto xs = context.MultiInput<framework::Tensor>("X");
     auto dxs =
-        context.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+        context.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
     PADDLE_ENFORCE_EQ(xs.size(), dxs.size(),
                       platform::errors::InvalidArgument(
                           "The rank of Input X and Output Grad X must be "
@@ -127,10 +127,10 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
 
     for (size_t i = 1; i < xs[0]->lod()[0].size(); ++i) {
       for (size_t j = 0; j < xs.size(); ++j) {
-        const framework::LoDTensor *x = xs[j];
+        const framework::Tensor *x = xs[j];
         framework::DDim x_dims = x->dims();
 
-        framework::LoDTensor *dx = dxs[j];
+        framework::Tensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
         if (x_lod[i - 1] == x_lod[i]) continue;
 

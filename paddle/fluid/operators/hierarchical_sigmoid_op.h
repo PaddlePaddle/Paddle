@@ -35,9 +35,9 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 using platform::Transform;
-using framework::LoDTensor;
+using framework::Tensor;
 
-static std::vector<int64_t> PathToRows(const LoDTensor& path) {
+static std::vector<int64_t> PathToRows(const Tensor& path) {
   std::set<int64_t> rows;
   const int64_t* paths = path.data<int64_t>();
   for (int64_t i = 0; i < path.numel(); ++i) {
@@ -53,17 +53,17 @@ template <typename DeviceContext, typename T>
 class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& in = GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X",
+    auto& in = GET_DATA_SAFELY(ctx.Input<Tensor>("X"), "Input", "X",
                                "HierarchicalSigmoid");
-    auto& w = GET_DATA_SAFELY(ctx.Input<LoDTensor>("W"), "Input", "W",
+    auto& w = GET_DATA_SAFELY(ctx.Input<Tensor>("W"), "Input", "W",
                               "HierarchicalSigmoid");
-    auto* path = ctx.Input<LoDTensor>("PathTable");
-    auto* code = ctx.Input<LoDTensor>("PathCode");
-    auto& label = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Label"), "Input",
-                                  "Label", "HierarchicalSigmoid");
-    auto* bias = ctx.Input<LoDTensor>("Bias");
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* pre_out = ctx.Output<LoDTensor>("PreOut");
+    auto* path = ctx.Input<Tensor>("PathTable");
+    auto* code = ctx.Input<Tensor>("PathCode");
+    auto& label = GET_DATA_SAFELY(ctx.Input<Tensor>("Label"), "Input", "Label",
+                                  "HierarchicalSigmoid");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto* pre_out = ctx.Output<Tensor>("PreOut");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     // for remote prefetch
 
@@ -74,7 +74,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     int64_t code_length =
         path ? path->dims()[1] : math::FindLastSet(num_classes - 1);
     int64_t batch_size = in.dims()[0];
-    LoDTensor sum;
+    Tensor sum;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto* pre_out_data = pre_out->mutable_data<T>(
         framework::make_ddim({batch_size, code_length}), ctx.GetPlace());
@@ -125,24 +125,24 @@ template <typename DeviceContext, typename T>
 class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& in = GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X",
+    auto& in = GET_DATA_SAFELY(ctx.Input<Tensor>("X"), "Input", "X",
                                "HierarchicalSigmoidGrad");
-    auto& w = GET_DATA_SAFELY(ctx.Input<LoDTensor>("W"), "Input", "W",
+    auto& w = GET_DATA_SAFELY(ctx.Input<Tensor>("W"), "Input", "W",
                               "HierarchicalSigmoidGrad");
-    auto* path = ctx.Input<LoDTensor>("PathTable");
-    auto* code = ctx.Input<LoDTensor>("PathCode");
-    auto* in_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* path = ctx.Input<Tensor>("PathTable");
+    auto* code = ctx.Input<Tensor>("PathCode");
+    auto* in_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> zero;
-    auto& label = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Label"), "Input",
-                                  "Label", "HierarchicalSigmoidGrad");
-    auto& pre_out = GET_DATA_SAFELY(ctx.Input<LoDTensor>("PreOut"), "Input",
+    auto& label = GET_DATA_SAFELY(ctx.Input<Tensor>("Label"), "Input", "Label",
+                                  "HierarchicalSigmoidGrad");
+    auto& pre_out = GET_DATA_SAFELY(ctx.Input<Tensor>("PreOut"), "Input",
                                     "PreOut", "HierarchicalSigmoidGrad");
     auto& out_grad = GET_DATA_SAFELY(
-        ctx.Input<LoDTensor>(framework::GradVarName("Out")), "Input",
+        ctx.Input<Tensor>(framework::GradVarName("Out")), "Input",
         framework::GradVarName("Out"), "HierarchicalSigmoidGrad");
-    LoDTensor pre_out_grad;
+    Tensor pre_out_grad;
 
     pre_out_grad.mutable_data<T>(pre_out.dims(), ctx.GetPlace());
     in_grad->mutable_data<T>(ctx.GetPlace());
@@ -187,14 +187,14 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     }
     // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
     // be consistent with the clipping in forward.
-    auto* bias_grad = ctx.Output<LoDTensor>(framework::GradVarName("Bias"));
+    auto* bias_grad = ctx.Output<Tensor>(framework::GradVarName("Bias"));
     if (bias_grad) {
       bias_grad->mutable_data<T>(ctx.GetPlace());
       zero(dev_ctx, bias_grad, static_cast<T>(0.0));
       bit_code->AddGrad(pre_out_grad, bias_grad);
     }
     if (!is_sparse) {
-      auto* w_grad = ctx.Output<LoDTensor>(framework::GradVarName("W"));
+      auto* w_grad = ctx.Output<Tensor>(framework::GradVarName("W"));
       w_grad->mutable_data<T>(ctx.GetPlace());
       zero(dev_ctx, w_grad, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);

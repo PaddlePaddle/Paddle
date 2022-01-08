@@ -53,8 +53,8 @@ TEST(test_tracer, test_trace_op) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::Tensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::Tensor>();
   x_in_tensor->Resize(framework::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -79,8 +79,8 @@ TEST(test_tracer, test_trace_op) {
                , platform::EnforceNotMet);
 #endif
 
-  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::Tensor>();
+  for (int i = 0; i < vout->Var().Get<framework::Tensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -99,8 +99,8 @@ TEST(test_tracer, test_trace_op_with_backward) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::Tensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::Tensor>();
   x_in_tensor->Resize(framework::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -118,8 +118,8 @@ TEST(test_tracer, test_trace_op_with_backward) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
-  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::Tensor>();
+  for (int i = 0; i < vout->Var().Get<framework::Tensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -139,8 +139,8 @@ TEST(test_tracer, test_track_backward_output) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::Tensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::Tensor>();
   x_in_tensor->Resize(framework::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -178,8 +178,8 @@ TEST(test_tracer, test_track_backward_input) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::Tensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::Tensor>();
   x_in_tensor->Resize(framework::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -220,8 +220,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {2, 5};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::Tensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::Tensor>();
   x_in_tensor->Resize(framework::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -256,30 +256,29 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   engine.Init(tensors, grad_tensors);
   engine.Execute();
 
-  framework::LoDTensor rlt;
-  framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
-                            &rlt);
+  framework::Tensor rlt;
+  framework::TensorCopySync(vout->Var().Get<framework::Tensor>(), place, &rlt);
   for (int i = 0; i < rlt.numel(); i++) {
     ASSERT_EQ(rlt.data<float>()[i], 4.0);
   }
 
-  framework::LoDTensor out_grad;
-  framework::TensorCopySync(vout->GradVar().Get<framework::LoDTensor>(), place,
+  framework::Tensor out_grad;
+  framework::TensorCopySync(vout->GradVar().Get<framework::Tensor>(), place,
                             &out_grad);
   for (int i = 0; i < out_grad.numel(); ++i) {
     ASSERT_EQ(out_grad.data<float>()[i], 1.0);
   }
 
-  framework::LoDTensor x_grad;
-  framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
+  framework::Tensor x_grad;
+  framework::TensorCopySync(x_in->GradVar().Get<framework::Tensor>(), place,
                             &x_grad);
 
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 1.0);
   }
 
-  framework::LoDTensor y_grad;
-  framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
+  framework::Tensor y_grad;
+  framework::TensorCopySync(y_in->GradVar().Get<framework::Tensor>(), place,
                             &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
@@ -350,8 +349,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
 
-  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::Tensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::Tensor>();
   x_in_tensor->Resize(framework::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -370,8 +369,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
 
-  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  const auto& out_tensor = vout->Var().Get<framework::Tensor>();
+  for (int i = 0; i < vout->Var().Get<framework::Tensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 
@@ -386,16 +385,16 @@ TEST(test_tracer, test_var_without_grad_var) {
   engine.Execute();
 
   // check the grad
-  framework::LoDTensor x_grad;
-  framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
+  framework::Tensor x_grad;
+  framework::TensorCopySync(x_in->GradVar().Get<framework::Tensor>(), place,
                             &x_grad);
 
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 4.0);
   }
 
-  framework::LoDTensor y_grad;
-  framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
+  framework::Tensor y_grad;
+  framework::TensorCopySync(y_in->GradVar().Get<framework::Tensor>(), place,
                             &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
@@ -421,12 +420,12 @@ static void TestVarOpDestructionMain(const platform::Place& place,
     auto y = std::make_shared<VarBase>("y");
 
     x->MutableVar()
-        ->GetMutable<framework::LoDTensor>()
+        ->GetMutable<framework::Tensor>()
         ->Resize({tensor_size, tensor_size})
         .mutable_data<float>(place);
 
     y->MutableVar()
-        ->GetMutable<framework::LoDTensor>()
+        ->GetMutable<framework::Tensor>()
         ->Resize({tensor_size, tensor_size})
         .mutable_data<float>(place);
 

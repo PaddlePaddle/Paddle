@@ -116,11 +116,11 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
-             "(vector<LoDTensor>)"
+             "(vector<Tensor>)"
              "which are the input of graph inside the CinnLaunchOp.")
         .AsDuplicable();
     AddOutput(kOutputs,
-              "(vector<LoDTensor>)"
+              "(vector<Tensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
     AddAttr<std::string>(

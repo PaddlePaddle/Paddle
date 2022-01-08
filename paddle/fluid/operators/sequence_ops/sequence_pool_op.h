@@ -23,14 +23,14 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
     T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
 
@@ -89,8 +89,8 @@ template <typename DeviceContext, typename T>
 class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* out_g = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in_g = context.Output<Tensor>(framework::GradVarName("X"));
     std::string pooltype = context.Attr<std::string>("pooltype");
     const Tensor* index = nullptr;
     if (pooltype == "MAX") {

@@ -57,7 +57,7 @@ class FusionGroupPassTest(PassTest):
         feeds = {}
         for var in feed_vars:
             if var.type != fluid.core.VarDesc.VarType.LOD_TENSOR:
-                raise TypeError("Feed data of non LoDTensor is not supported.")
+                raise TypeError("Feed data of non Tensor is not supported.")
 
             shape = var.shape
             if var.dtype == fluid.core.VarDesc.VarType.FP32:

@@ -56,8 +56,8 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) "
-             "Box list X is a 2-D LoDTensor with shape [N, 4] holds N boxes, "
+             "(Tensor, default Tensor<float>) "
+             "Box list X is a 2-D Tensor with shape [N, 4] holds N boxes, "
              "each box is represented as [xmin, ymin, xmax, ymax], "
              "the shape of X is [N, 4]. [xmin, ymin] is the left top "
              "coordinate of the box if the input is image feature map, they "
@@ -78,7 +78,7 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether treat the priorbox as a normalized box")
         .SetDefault(true);
     AddOutput("Out",
-              "(LoDTensor, the lod is same as input X) The output of "
+              "(Tensor, the lod is same as input X) The output of "
               "iou_similarity op, a tensor with shape [N, M] "
               "representing pairwise iou scores.");
 
@@ -86,7 +86,7 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
 **IOU Similarity Operator**
 
 Computes intersection-over-union (IOU) between two box lists.
-Box list 'X' should be a LoDTensor and 'Y' is a common Tensor,
+Box list 'X' should be a Tensor and 'Y' is a common Tensor,
 boxes in 'Y' are shared by all instance of the batched inputs of X.
 Given two boxes A and B, the calculation of IOU is as follows:
 

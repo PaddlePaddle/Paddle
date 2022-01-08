@@ -54,7 +54,7 @@ def sequence_conv(input,
     r"""
 	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+    **Notes: The Op only receives Tensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -68,7 +68,7 @@ def sequence_conv(input,
 
             Here we will illustrate the details of the padding operation:
             For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
-            Assumed input (X) is a [4, N] float LoDTensor, and for the sake of simplicity, we assume N=2.
+            Assumed input (X) is a [4, N] float Tensor, and for the sake of simplicity, we assume N=2.
             input.data = [[1, 1],
                           [2, 2],
                           [3, 3],
@@ -101,7 +101,7 @@ def sequence_conv(input,
 
 
     Args:
-        input (Variable): LoDTensor with shape :math:`(M, K)`, where M is the total time-step of mini-batch
+        input (Variable): Tensor with shape :math:`(M, K)`, where M is the total time-step of mini-batch
             and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
             float64.
         num_filters (int): the number of filters.
@@ -133,7 +133,7 @@ def sequence_conv(input,
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
+        Variable: Tensor with the same length as input. The data type is float32 or float64, which is same as input.
 
     Examples:
 
@@ -181,7 +181,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
     **Note**:
     
-    **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
+    **The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
 
     A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
     The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
@@ -221,7 +221,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     
 
     Args:
-        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. 
+        input (Variable):A Tensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. 
                          Supported data types: float32, float64. 
         use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle 
                                     library is installed and GPU is used for training or reasoning. Default: False.
@@ -265,10 +265,10 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     r"""
 	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
+    **Notes: The Op only receives Tensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
 
-    This operator only supports LoDTensor as input. It will apply specified pooling
-    operation on the input LoDTensor. It pools features of all time-steps of each
+    This operator only supports Tensor as input. It will apply specified pooling
+    operation on the input Tensor. It pools features of all time-steps of each
     sequence at the last lod_level using :attr:`pool_type` mentioned in the parameters,
     such as sum, average, sqrt, etc.
 
@@ -286,12 +286,12 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     .. code-block:: text
 
         Case 1:
-        input is a 1-level LoDTensor and pad_value = 0.0:
+        input is a 1-level Tensor and pad_value = 0.0:
             input.lod = [[0, 2, 5, 7, 7]]
             input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
             input.shape = [7, 1]
 
-        output is LoDTensor:
+        output is Tensor:
             out.shape = [4, 1]
             with condition out.shape[0] == len(x.lod[-1]) == 4
 
@@ -306,7 +306,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             and all above [0.0] at last of out.data is padding data.
 
         Case 2:
-        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        input is a 2-level Tensor containing 3 sequences with length info [2, 0, 3],
         where 0 means empty sequence.
         The first sequence contains 2 subsequence with length info [1, 2];
         The last sequence contains 3 subsequence with length info [1, 0, 3].
@@ -315,7 +315,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             input.shape = [7, 1]
 
         If pool_typ = sum, it will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
-        output is LoDTensor:
+        output is Tensor:
             out.shape= [5, 1]
             out.lod = [[0, 2, 2, 5]]
             where out.shape[0] == len(x.lod[-1]) == 5
@@ -323,7 +323,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             where 1.=1., 5.=3. + 2., 4.=4., 0.0=pad_value, 12.=6. + 5. + 1.
 
     Args:
-        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32 or float64.
+        input (variable): Tensor with lod_level no more than 2. The data type should be float32 or float64.
         pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
         is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
             created to record the index information corresponding to the maximum value, which is used for backward
@@ -331,7 +331,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
     Returns:
-        Variable: LoDTensor after pooling with data type float32 or float64.
+        Variable: Tensor after pooling with data type float32 or float64.
 
     Examples:
 
@@ -381,14 +381,14 @@ def sequence_concat(input, name=None):
     """
 	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
+    **Notes: The Op only receives Tensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
 
-    This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
-    and outputs the concatenated LoDTensor.
+    This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
+    and outputs the concatenated Tensor.
 
     .. code-block:: text
 
-        input is a list of LoDTensor:
+        input is a list of Tensor:
             input = [x1, x2]
         where:
             x1.lod = [[0, 3, 5]]
@@ -400,19 +400,19 @@ def sequence_concat(input, name=None):
             x2.shape = [4, 1]
         and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
 
-        output is LoDTensor:
+        output is Tensor:
             out.lod = [[0, 3+2, 5+4]]
             out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
             out.shape = [9, 1]
 
     Args:
-        input(list of Variable): List of LoDTensor to be concatenated. The length of each LoDTensor should be same.
+        input(list of Variable): List of Tensor to be concatenated. The length of each Tensor should be same.
             The data type can be float32, float64 or int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Output the concatenated LoDTensor. The data type is same as input.
+        Variable: Output the concatenated Tensor. The data type is same as input.
 
     Examples:
         .. code-block:: python
@@ -444,24 +444,24 @@ def sequence_first_step(input):
     """
 	:api_attr: Static Graph
 
-    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    This operator only supports Tensor as input. Given the input Tensor, it will
     select first time-step feature of each sequence as output.
 
     .. code-block:: text
 
        Case 1:
-        input is 1-level LoDTensor:
+        input is 1-level Tensor:
             input.lod = [[0, 2, 5, 7]]
             input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
             input.shape = [7, 1]
 
-        output is a LoDTensor:
+        output is a Tensor:
             out.shape = [3, 1]
             out.shape[0] == len(x.lod[-1]) == 3
             out.data = [[1.], [2.], [5.]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
 
         Case 2:
-        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        input is a 2-level Tensor containing 3 sequences with length info [2, 0, 3],
         where 0 means empty sequence.
         The first sequence contains 2 subsequence with length info [1, 2];
         The last sequence contains 3 subsequence with length info [1, 0, 3].
@@ -470,7 +470,7 @@ def sequence_first_step(input):
             input.shape = [7, 1]
 
         It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
-        output is a LoDTensor:
+        output is a Tensor:
             out.shape= [5, 1]
             out.lod = [[0, 2, 2, 5]]
             out.shape[0] == len(x.lod[-1]) == 5
@@ -478,10 +478,10 @@ def sequence_first_step(input):
             where 1.=first(1.), 3.=first(3., 2.), 4.=first(4.), 0.0 = pad_value, 6.=first(6., 5., 1.)
 
     Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32 or float64.
+        input(Variable): Tensor with lod_level no more than 2. The data type should be float32 or float64.
 
     Returns:
-        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32 or float64.
+        Variable: Tensor consist of the sequence's first step vector. The data type is float32 or float64.
 
     Examples:
 
@@ -502,24 +502,24 @@ def sequence_last_step(input):
     """
 	:api_attr: Static Graph
 
-    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    This operator only supports Tensor as input. Given the input Tensor, it will
     select last time-step feature of each sequence as output.
 
     .. code-block:: text
 
         Case 1:
-        input is 1-level LoDTensor:
+        input is 1-level Tensor:
             input.lod = [[0, 2, 5, 7]]
             input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
             input.shape = [7, 1]
 
-        output is a LoDTensor:
+        output is a Tensor:
             out.shape = [3, 1]
             out.shape[0] == len(x.lod[-1]) == 3
             out.data = [[3.], [6.], [1.]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
 
         Case 2:
-        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        input is a 2-level Tensor containing 3 sequences with length info [2, 0, 3],
         where 0 means empty sequence.
         The first sequence contains 2 subsequence with length info [1, 2];
         The last sequence contains 3 subsequence with length info [1, 0, 3].
@@ -528,7 +528,7 @@ def sequence_last_step(input):
             input.shape = [7, 1]
 
         It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
-        output is a LoDTensor:
+        output is a Tensor:
             out.shape= [5, 1]
             out.lod = [[0, 2, 2, 5]]
             out.shape[0] == len(x.lod[-1]) == 5
@@ -537,10 +537,10 @@ def sequence_last_step(input):
 
 
     Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        input(Variable): Tensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
+        Variable: Tensor consist of the sequence's last step vector. The data type is float32.
 
     Examples:
 
@@ -566,7 +566,7 @@ def sequence_slice(input, offset, length, name=None):
     The layer crops a subsequence from given sequence with given start
     offset and subsequence length.
 
-    It only supports sequence data (LoDTensor with lod_level equal to 1).
+    It only supports sequence data (Tensor with lod_level equal to 1).
 
     .. code-block:: text
 
@@ -591,11 +591,11 @@ def sequence_slice(input, offset, length, name=None):
           should be equal. The **offset** should start from 0.
 
     Args:
-        input(Variable): LoDTensor, The input Variable which consists of the complete
+        input(Variable): Tensor, The input Variable which consists of the complete
                          sequences.The data type can be float32, float64, int32 or int64
-        offset(Variable): LoDTensor, The offset to slice each sequence. The data
+        offset(Variable): Tensor, The offset to slice each sequence. The data
                          type is int32 or int64.
-        length(Variable): LoDTensor, The length of each subsequence. The data
+        length(Variable): Tensor, The length of each subsequence. The data
                          type is int32 or int64.
         name(str|None): The default value is None.  Normally there is no need
                         for user to set this property.  For more information,
@@ -671,18 +671,18 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         Consider 2 sequences [a][b] and [c][d], now we want to expand them to [a][b], [a][b], [c][d] and [c][d].
         Sequence [a][b] expand twice and [c][d] expands twice, so the lod which according to is [2, 2].
 
-        Input x is a 1-level LoDTensor:
+        Input x is a 1-level Tensor:
             x.lod  = [[2,        2]]    #lod based on length may be easier to understand
             x.data = [[a], [b], [c], [d]]
             x.dims = [4, 1]
 
-        input y is a LoDTensor:
+        input y is a Tensor:
             y.lod = [[2,    2],    #the 0th level lod, according to this level
                      [3, 3, 1, 1]] #the 1st level lod, it has nothing to do with this level
 
         ref_level: 0
 
-        then output is a 1-level LoDTensor out:
+        then output is a 1-level Tensor out:
             out.lod =  [[2,        2,        2,        2]]    #lod based on offset
             out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
             out.dims = [8, 1]
@@ -697,7 +697,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             x.data = [[a], [b], [c]]
             x.dims = [3, 1]
 
-        y is a LoDTensor:
+        y is a Tensor:
             y.lod = [[2, 0, 3]]
 
         ref_level: -1
@@ -707,10 +707,10 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             out.dims = [5, 1]
 
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor, with the \
+        x (Variable): The input variable which is a Tensor or Tensor, with the \
             dims ``[M, K]``. The lod level is at most 1. The data type should be \
             float32, float64, int32 or int64.
-        y (Variable): The input variable which is a LoDTensor, the lod level is \
+        y (Variable): The input variable which is a Tensor, the lod level is \
             at least 1.
         ref_level (int): Lod level of ``y`` to be referred by ``x``. If set to -1, \
                          refer the last level of lod.
@@ -718,7 +718,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default. 
 
-    Returns: The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
+    Returns: The expanded variable which is a Tensor, with dims ``[N, K]``. \
             ``N`` depends on the lod info of ``x`` and ``y``. \
             The data type is same as input.
 
@@ -812,7 +812,7 @@ def sequence_expand_as(x, y, name=None):
         and input ``y``
             y.lod = [[3, 3, 1, 1]] #lod based on length may be easier to understand
 
-        then we get 1-level LoDTensor out:
+        then we get 1-level Tensor out:
             Out.lod =  [[0,            3,              6,  7,  8]] #based on offset
             Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
             Out.dims = [8, 1]
@@ -826,21 +826,21 @@ def sequence_expand_as(x, y, name=None):
         and input ``y``:
             y.lod = [[0, 2, 3, 6]]
 
-        then we get a 1-level LoDTensor:
+        then we get a 1-level Tensor:
             out.lod =  [[0,             2,     3,                    6]]
             out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
             out.dims = [6, 2]
 
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor, with the \
+        x (Variable): The input variable which is a Tensor or Tensor, with the \
             dims ``[M, K]``. The data type should be float32, float64, int32 \
             or int64.
-        y (Variable): The input variable which is a LoDTensor with 1-level lod.
+        y (Variable): The input variable which is a Tensor with 1-level lod.
         name (str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
+    Returns: The expanded variable which is a Tensor with the dims ``[N, K]``. \
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
             The data type is same as input.
 
@@ -920,7 +920,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     .. code-block:: text
 
         Case 1:
-        Given input 1-level LoDTensor x:
+        Given input 1-level Tensor x:
             x.lod = [[0,  2,   5]]
             x.data = [[a],[b],[c],[d],[e]]
         pad_value:
@@ -932,7 +932,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             Length.data = [2, 3]      #Original sequences length
 
         Case 2:
-        Given input 1-level LoDTensor x:
+        Given input 1-level Tensor x:
             x.lod =  [[0,             2,                     5]]
             x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
         pad_value:
@@ -944,7 +944,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             Length.data = [2, 3]
 
         Case 3:
-        Given input 1-level LoDTensor x:
+        Given input 1-level Tensor x:
             x.lod =  [[0,             2,                     5]]
             x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
         pad_value:
@@ -1026,9 +1026,9 @@ def sequence_unpad(x, length, name=None):
 
     **Note**:
     
-    **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
+    **The input of the OP is Tensor and the output is Tensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
      
-    The OP removes the padding data from the input based on the length information and returns a LoDTensor.
+    The OP removes the padding data from the input based on the length information and returns a Tensor.
 
     .. code-block:: text
 
@@ -1058,7 +1058,7 @@ def sequence_unpad(x, length, name=None):
                          For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
+        Variable: A Tensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
 
     Examples:
         .. code-block:: python
@@ -1101,18 +1101,18 @@ def sequence_reshape(input, new_dim):
     """
 	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
+    **Notes: The Op only receives Tensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
 
-    This operator only supports LoDTensor as input. Given :attr:`new_dim` ,
+    This operator only supports Tensor as input. Given :attr:`new_dim` ,
     it will compute new shape according to original length of each sequence,
-    original dimensions and :attr:`new_dim` . Then it will output a new LoDTensor
-    containing :attr:`new_dim` . Currently it only supports 1-level LoDTensor.
+    original dimensions and :attr:`new_dim` . Then it will output a new Tensor
+    containing :attr:`new_dim` . Currently it only supports 1-level Tensor.
     Please make sure that (original length * original dimensions) can be divided
     by the :attr:`new_dim` with no remainder for each sequence.
 
     .. code-block:: text
 
-        input is a LoDTensor:
+        input is a Tensor:
             input.lod  = [[0, 2, 6]]
             input.data = [[1,  2], [3,  4],
                           [5,  6], [7,  8],
@@ -1120,7 +1120,7 @@ def sequence_reshape(input, new_dim):
             input.shape = [6, 2]
 
         set new_dim = 4
-        out is a LoDTensor:
+        out is a Tensor:
             out.lod  = [[0, 1, 3]]
             out.data = [[1,  2,  3,  4],
                         [5,  6,  7,  8],
@@ -1130,12 +1130,12 @@ def sequence_reshape(input, new_dim):
 
     Args:
 
-       input (Variable): 1-level LoDTensor with shape :math:`[M, K]` . The data type should
+       input (Variable): 1-level Tensor with shape :math:`[M, K]` . The data type should
             be int32, int64, float32 or float64.
-       new_dim (int): New dimension that the input LoDTensor is reshaped to.
+       new_dim (int): New dimension that the input Tensor is reshaped to.
 
     Returns:
-        Variable: Reshaped LoDTensor according to new dimension. The data type is same as input.
+        Variable: Reshaped Tensor according to new dimension. The data type is same as input.
 
     Examples:
         .. code-block:: python
@@ -1167,7 +1167,7 @@ def sequence_scatter(input, index, updates, name=None):
 
     **Note**:
     
-    **The index and updates parameters of the OP must be LoDTensor.**
+    **The index and updates parameters of the OP must be Tensor.**
      
     Plus the updates data to the corresponding input according to the index.
  
@@ -1206,7 +1206,7 @@ def sequence_scatter(input, index, updates, name=None):
 
     Args:
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
-        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type can be int32 or int64.
+        index (Variable):  A Tensor contains index information. Its LoD level must be 1 and its data type can be int32 or int64.
         updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
                             same data type  with the input. Supported data types: float32, float64, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
@@ -1290,7 +1290,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The enumerate sequence variable which is a LoDTensor with \
+    Returns: The enumerate sequence variable which is a Tensor with \
             shape ``[d_1, win_size]`` and 1-level lod info. \
             The data type is same as ``input``.
 
@@ -1401,15 +1401,15 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 @templatedoc()
 def sequence_reverse(x, name=None):
     """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
+    **Notes: The Op only receives Tensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
 
-    This operator only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
-    Currently it only supports 1-level LoDTensor. This operator is very useful when building a
+    This operator only supports Tensor as input. It will reverse each sequence for input Tensor.
+    Currently it only supports 1-level Tensor. This operator is very useful when building a
     reverse :ref:`api_fluid_layers_DynamicRNN` network.
 
     .. code-block:: text
 
-        input(x) is a LoDTensor:
+        input(x) is a Tensor:
             x.lod  = [[0, 2, 5]]
             x.data = [[1,  2,  3,  4],
                       [5,  6,  7,  8],
@@ -1418,7 +1418,7 @@ def sequence_reverse(x, name=None):
                       [17,18, 19, 20]]
             x.shape = [5, 4]
 
-        output LoDTensor with same shape and LoD info:
+        output Tensor with same shape and LoD info:
             out.lod  = [[0, 2, 5]]
             out.data = [[5,  6,  7,  8],
                         [1,  2,  3,  4],
@@ -1428,13 +1428,13 @@ def sequence_reverse(x, name=None):
             out.shape = [5, 4]
 
     Args:
-        x(Variable): LoDTensor with 1-level LoD info. Currently it only supports 1-level LoDTensor.
+        x(Variable): Tensor with 1-level LoD info. Currently it only supports 1-level Tensor.
             The data type should be float32, float64, int8, int32 or int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: LoDTensor reversed from input. The data type is same with input.
+        Variable: Tensor reversed from input. The data type is same with input.
 
     Examples:
         .. code-block:: python

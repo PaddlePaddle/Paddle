@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class LoDRankTable;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -35,12 +35,12 @@ class ReorderLoDTensorByRankTableOpProtoMaker
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), the input lod tensor to be reordered according to "
+             "(Tensor), the input lod tensor to be reordered according to "
              "Input(RankTable).");
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "reordered.");
-    AddOutput("Out", "LoDTensor, the reordered lod tensor.");
+    AddOutput("Out", "Tensor, the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable operator.
 
 Input(X) is a batch of sequences. Input(RankTable) stores new orders of the
@@ -90,14 +90,14 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
                               "ReorderLoDTensorByRankTable")
-                  .Get<framework::LoDTensor>();
+                  .Get<framework::Tensor>();
     auto &rank_table =
         GET_DATA_SAFELY(scope.FindVar(Input("RankTable")), "Input", "RankTable",
                         "ReorderLoDTensorByRankTable")
             .Get<framework::LoDRankTable>();
     auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
                                   "ReorderLoDTensorByRankTable")
-                      .GetMutable<framework::LoDTensor>());
+                      .GetMutable<framework::Tensor>());
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
@@ -105,10 +105,9 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
   }
 
  protected:
-  virtual void process(const platform::Place &place,
-                       const framework::LoDTensor &x,
+  virtual void process(const platform::Place &place, const framework::Tensor &x,
                        const framework::LoDRankTable &rank_table,
-                       framework::LoDTensor *out) const = 0;
+                       framework::Tensor *out) const = 0;
 
   struct AbsoluteRankTableItem {
     size_t offset;  // the absolute/accumulated offset.
@@ -117,7 +116,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
   };
 
   std::vector<AbsoluteRankTableItem> GetAbsoluteOffsetAndLengthByLoDRankTable(
-      const framework::LoDTensor &x) const {
+      const framework::Tensor &x) const {
     std::vector<AbsoluteRankTableItem> absolute_table;
 
     if (x.lod().empty()) {
@@ -151,8 +150,8 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
   size_t CopyTensorAndLod(const platform::Place &place,
                           const AbsoluteRankTableItem &item,
-                          const framework::LoDTensor &x,
-                          framework::LoDTensor *out, size_t out_offset) const {
+                          const framework::Tensor &x, framework::Tensor *out,
+                          size_t out_offset) const {
     auto &out_lod = *out->mutable_lod();
     auto len = item.length;
     auto x_offset = item.offset;
@@ -192,9 +191,9 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
       : ReorderLoDTensorByRankTableBase(type, inputs, outputs, attrs) {}
 
  protected:
-  void process(const platform::Place &place, const framework::LoDTensor &x,
+  void process(const platform::Place &place, const framework::Tensor &x,
                const framework::LoDRankTable &rank_table,
-               framework::LoDTensor *out) const override {
+               framework::Tensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
     size_t out_offset = 0;
     out->mutable_lod()->clear();
@@ -245,9 +244,9 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
       : ReorderLoDTensorByRankTableBase(type, inputs, outputs, attrs) {}
 
  protected:
-  void process(const platform::Place &place, const framework::LoDTensor &x,
+  void process(const platform::Place &place, const framework::Tensor &x,
                const framework::LoDRankTable &rank_table,
-               framework::LoDTensor *out) const override {
+               framework::Tensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
 
     // offsets = enumerate([item.index for item in rank_table.items()])

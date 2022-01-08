@@ -31,7 +31,7 @@ class TestLoDRankTable(unittest.TestCase):
         exe = Executor(cpu)
         scope = core.Scope()
 
-        tensor = core.LoDTensor()
+        tensor = core.Tensor()
         tensor.set(numpy.random.random(size=(17, 100)), cpu)
         tensor.set_recursive_sequence_lengths(
             [[1, 2], [5, 1, 1], [3, 1, 5, 1, 3, 3, 1]])

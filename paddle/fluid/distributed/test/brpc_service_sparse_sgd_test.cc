@@ -32,7 +32,7 @@ class PSClient;
 class PSServer;
 }  // namespace distributed
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -46,14 +46,14 @@ namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
-  x_var->GetMutable<framework::LoDTensor>();
+  x_var->GetMutable<framework::Tensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<framework::Tensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
@@ -195,7 +195,7 @@ void RunBrpcPushSparse() {
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
   framework::Variable* var = client_scope.FindVar("x");
-  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+  framework::Tensor* tensor = var->GetMutable<framework::Tensor>();
 
   RunClient(dense_regions);
   std::vector<uint64_t> fea_keys(10);

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from ..fluid.core import LoDTensor
+from ..fluid.core import Tensor
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
 
@@ -55,7 +55,7 @@ def to_dlpack(x):
 
         return x.value().get_tensor()._to_dlpack()
 
-    check_type(x, 'x', (LoDTensor), 'to_dlpack')
+    check_type(x, 'x', (Tensor), 'to_dlpack')
     return x._to_dlpack()
 
 

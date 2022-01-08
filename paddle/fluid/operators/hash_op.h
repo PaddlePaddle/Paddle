@@ -42,8 +42,8 @@ template <typename T>
 class HashKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
-    auto* out_t = context.Output<framework::LoDTensor>("Out");
-    auto* in_t = context.Input<framework::LoDTensor>("X");
+    auto* out_t = context.Output<framework::Tensor>("Out");
+    auto* in_t = context.Input<framework::Tensor>("X");
     int64_t mod_by = context.Attr<int64_t>("mod_by");
     int num_hash = context.Attr<int>("num_hash");
 

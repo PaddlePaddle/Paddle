@@ -86,7 +86,7 @@ void CreateInputVariablesWithRandomData(
   std::uniform_real_distribution<float> dist(0.f, 2.f);
 
   for (const auto& var_name : variable_names) {
-    auto* tensor = scope->Var(var_name)->GetMutable<LoDTensor>();
+    auto* tensor = scope->Var(var_name)->GetMutable<Tensor>();
     auto* data = tensor->mutable_data<float>(common_ddim, platform::CPUPlace());
     for (auto i = 0; i < tensor->numel(); ++i) {
       data[i] = dist(engine);
@@ -98,8 +98,8 @@ void CopyInputDataToPlace(const framework::Scope& scope,
                           const platform::Place& dst_place,
                           framework::Scope* dst_scope) {
   for (const auto& var_name : scope.LocalVarNames()) {
-    const auto& src_tensor = scope.GetVar(var_name)->Get<LoDTensor>();
-    auto* dst_tensor = dst_scope->Var(var_name)->GetMutable<LoDTensor>();
+    const auto& src_tensor = scope.GetVar(var_name)->Get<Tensor>();
+    auto* dst_tensor = dst_scope->Var(var_name)->GetMutable<Tensor>();
     TensorCopySync(src_tensor, dst_place, dst_tensor);
   }
 }
@@ -127,17 +127,17 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   auto run_and_check_fn = [&](const platform::Place& place) {
     framework::Scope scope;
     CopyInputDataToPlace(init_scope, place, &scope);
-    scope.Var(test_out_name)->GetMutable<LoDTensor>();
-    scope.Var(expected_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_out_name)->GetMutable<Tensor>();
+    scope.Var(expected_out_name)->GetMutable<Tensor>();
 
     platform::Place run_place(place);
     cinn_launch_op->Run(scope, run_place);
     elementwise_add_op->Run(scope, run_place);
 
-    LoDTensor test_out, expected_out;
-    TensorCopySync(scope.Var(test_out_name)->Get<LoDTensor>(),
+    Tensor test_out, expected_out;
+    TensorCopySync(scope.Var(test_out_name)->Get<Tensor>(),
                    platform::CPUPlace(), &test_out);
-    TensorCopySync(scope.Var(expected_out_name)->Get<LoDTensor>(),
+    TensorCopySync(scope.Var(expected_out_name)->Get<Tensor>(),
                    platform::CPUPlace(), &expected_out);
 
     ASSERT_TRUE(test_out.IsInitialized());

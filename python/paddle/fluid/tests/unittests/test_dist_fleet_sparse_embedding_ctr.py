@@ -190,7 +190,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 batch_size(int): the size of mini-batch for training
                 lr(float): learning rate of training
             Returns:
-                avg_cost: LoDTensor of cost.
+                avg_cost: Tensor of cost.
             """
             dnn_input_dim, lr_input_dim = 10, 10
 

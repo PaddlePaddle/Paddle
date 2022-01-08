@@ -34,7 +34,7 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     auto* lr = learning_rate->data<T>();
 
     auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::Tensor>(), true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type of Param & Grad in "
                           "MomentumOp-XPU. Excepted "

@@ -208,13 +208,13 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 }
 
 // Make while_op could run on GPU place
-bool GetCondData(const framework::LoDTensor &cond) {
+bool GetCondData(const framework::Tensor &cond) {
   if (platform::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
   // when platform::is_gpu_place(cond.place()) or
   // platform::is_npu_place(cond.place()) is true
-  std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
+  std::unique_ptr<framework::Tensor> cpu_cond{new framework::Tensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_ASCEND_CL)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());

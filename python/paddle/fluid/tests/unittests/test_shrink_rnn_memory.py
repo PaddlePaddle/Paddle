@@ -58,12 +58,12 @@ class TestShrinkRNNMemoryBase(unittest.TestCase):
 class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
     def test_refer_lod(self):
         cpu = core.CPUPlace()
-        x_tensor = core.LoDTensor()
+        x_tensor = core.Tensor()
         x_tensor.set_recursive_sequence_lengths([[2, 3, 1]])
         tensor_np = np.random.random(size=(6, 100)).astype('float32')
         x_tensor.set(tensor_np, cpu)
 
-        rank_table_tensor = core.LoDTensor()
+        rank_table_tensor = core.Tensor()
         rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
         rank_table_tensor.set(np.random.random(size=(6, 1)).astype('float32'),
                               cpu)
@@ -83,11 +83,11 @@ class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
 class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
     def test_no_lod(self):
         cpu = core.CPUPlace()
-        x_tensor = core.LoDTensor()
+        x_tensor = core.Tensor()
         tensor_np = np.random.random(size=(3, 100)).astype('float32')
         x_tensor.set(tensor_np, cpu)
 
-        rank_table_tensor = core.LoDTensor()
+        rank_table_tensor = core.Tensor()
         rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
         rank_table_tensor.set(np.random.random(size=(6, 1)).astype('float32'),
                               cpu)
@@ -109,7 +109,7 @@ class TestShrinkRNNMemoryOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             x = layers.zeros(dtype='int64', shape=[3, 100])
             i = layers.zeros(dtype='int64', shape=[1])
-            rank_table_tensor = core.LoDTensor()
+            rank_table_tensor = core.Tensor()
             rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
             rank_table_tensor.set(
                 np.random.random(size=(6, 1)).astype('float32'),

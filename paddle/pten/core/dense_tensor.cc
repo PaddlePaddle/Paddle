@@ -459,7 +459,7 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From framework::Tensor    */
 /* ------------------------------ */
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }

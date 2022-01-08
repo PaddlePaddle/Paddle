@@ -44,7 +44,7 @@ template <typename DeviceContext, typename T>
 class WhereGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* condition = context.Input<framework::LoDTensor>("Condition");
+    auto* condition = context.Input<framework::Tensor>("Condition");
     const auto* cond_data = condition->data<bool>();
     auto numel = condition->numel();
 

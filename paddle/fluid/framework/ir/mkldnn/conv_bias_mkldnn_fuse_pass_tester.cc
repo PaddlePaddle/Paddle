@@ -94,7 +94,7 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<Tensor>();
   tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 

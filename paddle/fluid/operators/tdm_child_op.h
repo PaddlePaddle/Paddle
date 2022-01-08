@@ -28,14 +28,14 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
 
 template <typename T, typename InfoT = int, typename OutT = int>
 void TDMChildInner(const framework::ExecutionContext &context,
-                   const LoDTensor &input, const LoDTensor &tree_info,
-                   LoDTensor *child, LoDTensor *mask) {
+                   const Tensor &input, const Tensor &tree_info, Tensor *child,
+                   Tensor *mask) {
   auto child_nums = context.Attr<int>("child_nums");
   auto info_dims = tree_info.dims();
   int node_nums = info_dims[0];
@@ -107,7 +107,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *input_var = ctx.InputVar("X");
     auto *tree_info_var = ctx.InputVar("TreeInfo");
 
-    auto &input_tensor = input_var->Get<LoDTensor>();
+    auto &input_tensor = input_var->Get<Tensor>();
     const auto &input_type = input_tensor.type();
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
@@ -121,7 +121,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    auto &tree_info_tensor = tree_info_var->Get<LoDTensor>();
+    auto &tree_info_tensor = tree_info_var->Get<Tensor>();
     const auto &info_type = tree_info_tensor.type();
     bool info_type_match = info_type == framework::proto::VarType::INT32 ||
                            info_type == framework::proto::VarType::INT64;
@@ -138,8 +138,8 @@ class TDMChildKernel : public framework::OpKernel<T> {
 
     auto *child_var = ctx.OutputVar("Child");
     auto *leaf_mask_var = ctx.OutputVar("LeafMask");
-    auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
-    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
+    auto *child_tensor = child_var->GetMutable<framework::Tensor>();
+    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::Tensor>();
 
     auto output_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

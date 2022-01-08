@@ -37,7 +37,7 @@ class LoadOp : public framework::OperatorWithKernel {
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
+    AddOutput("Out", "The Tensor / SelectedRows need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
         "If true, the tensor will be first loaded and then "
@@ -54,7 +54,7 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                                   "(vector<int64_t>) The shape of the output")
         .SetDefault({});
     AddComment(
-        "Load operator will load a LoDTensor / SelectedRows variable from "
+        "Load operator will load a Tensor / SelectedRows variable from "
         "disk "
         "file.");
   }

@@ -53,9 +53,9 @@ template <typename T>
 class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::LoDTensor& seq_tensor,
-                  framework::LoDTensor* pad_tensor,
-                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
+                  const framework::Tensor& seq_tensor,
+                  framework::Tensor* pad_tensor,
+                  const framework::Tensor& pad_value, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
@@ -115,8 +115,8 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::LoDTensor& pad_tensor,
-                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
+                  const framework::Tensor& pad_tensor,
+                  framework::Tensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];

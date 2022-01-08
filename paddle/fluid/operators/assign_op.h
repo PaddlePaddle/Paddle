@@ -27,7 +27,7 @@ class DeviceContext;
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -40,8 +40,8 @@ class AssignFunctor {
                 const platform::DeviceContext &dev_ctx)
       : out_(out), dev_ctx_(dev_ctx) {}
 
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+  void operator()(const framework::Tensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<framework::Tensor>();
     copy_tensor(lod_tensor, &out_tensor);
   }
 
@@ -72,8 +72,8 @@ class AssignFunctor {
   }
 
  private:
-  void copy_tensor(const framework::LoDTensor &lod_tensor,
-                   framework::LoDTensor *out) const {
+  void copy_tensor(const framework::Tensor &lod_tensor,
+                   framework::Tensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
     TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);

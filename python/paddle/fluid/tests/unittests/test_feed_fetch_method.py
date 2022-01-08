@@ -26,7 +26,7 @@ class TestFeedFetch(unittest.TestCase):
         input_array = np.ones((4, 4, 6)).astype("float32")
         input_array[0, 0, 0] = 3
         input_array[3, 3, 5] = 10
-        input_tensor = core.LoDTensor([[2, 2]])
+        input_tensor = core.Tensor([[2, 2]])
         input_tensor.set(input_array, place)
 
         core.set_feed_variable(scope, input_tensor, "feed", 0)

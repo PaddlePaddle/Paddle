@@ -240,8 +240,8 @@ void ProgramDescTracer::InsertVarIfNotExist(
   PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
                     platform::errors::InvalidArgument(
                         "The variable to insert is not initialized."));
-  if (inner_var.IsType<framework::LoDTensor>()) {
-    const auto &tensor = inner_var.Get<framework::LoDTensor>();
+  if (inner_var.IsType<framework::Tensor>()) {
+    const auto &tensor = inner_var.Get<framework::Tensor>();
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
     new_var_desc->SetShape(framework::vectorize<int64_t>(tensor.dims()));
     new_var_desc->SetLoDLevel(tensor.lod().size());

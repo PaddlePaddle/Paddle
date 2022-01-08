@@ -54,8 +54,8 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
-    auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
+    auto *out_tensor = out_var->GetMutable<framework::Tensor>();
+    auto &mem_tensor = mem_var->Get<framework::Tensor>();
     framework::TensorCopy(mem_tensor, dev_place, dev_ctx, out_tensor);
     out_tensor->set_lod(mem_tensor.lod());
   }
@@ -113,11 +113,11 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     // var.tensor.holder will be delete instead of variable. So we need exam the
     // IsInitialized().
     if (out_grad_var == nullptr ||
-        !out_grad_var->Get<framework::LoDTensor>().IsInitialized()) {
+        !out_grad_var->Get<framework::Tensor>().IsInitialized()) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
       auto in_var_name = Input("X");
       auto *in_var = scope.FindVar(in_var_name);
-      auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
+      auto &in_var_tensor = in_var->Get<framework::Tensor>();
 
       framework::AttributeMap attrs;
       attrs["dtype"] = in_var_tensor.type();
@@ -128,8 +128,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
           "fill_constant", {}, {{"Out", {in_grad_var_name}}}, attrs);
       zero_op->Run(scope, dev_place);
     } else {
-      auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
-      auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
+      auto &out_grad_tensor = out_grad_var->Get<framework::Tensor>();
+      auto *in_grad_tensor = in_grad_var->GetMutable<framework::Tensor>();
       framework::TensorCopy(out_grad_tensor, dev_place, dev_ctx,
                             in_grad_tensor);
       in_grad_tensor->set_lod(out_grad_tensor.lod());

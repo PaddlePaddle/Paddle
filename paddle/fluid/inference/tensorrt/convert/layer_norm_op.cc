@@ -43,13 +43,11 @@ class LayerNormOpConverter : public OpConverter {
         Scale_v, platform::errors::InvalidArgument(
                      "Input(Scale) of layer_norm should not be null."));
 
-    auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
-    auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
+    auto* Bias_t = Bias_v->GetMutable<framework::Tensor>();
+    auto* Scale_t = Scale_v->GetMutable<framework::Tensor>();
 
-    std::unique_ptr<framework::LoDTensor> bias_tensor(
-        new framework::LoDTensor());
-    std::unique_ptr<framework::LoDTensor> scale_tensor(
-        new framework::LoDTensor());
+    std::unique_ptr<framework::Tensor> bias_tensor(new framework::Tensor());
+    std::unique_ptr<framework::Tensor> scale_tensor(new framework::Tensor());
 
     bias_tensor->Resize(Bias_t->dims());
     scale_tensor->Resize(Scale_t->dims());

@@ -118,15 +118,15 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
-             "could be LoDTensor, SelectedRows or LoDTensorArray.")
+             "(Tensor, SelectedRows or LoDTensorArray) The input variable "
+             "could be Tensor, SelectedRows or LoDTensorArray.")
         .AsDispensable();
     AddOutput("Out",
-              "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
+              "(Tensor, SelectedRows or LoDTensorArray) The type of output "
               "is the same as input X.");
     AddComment(R"DOC(Assign Operator
 
-Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
+Out = X,  when type in [Tensor/SelectedRows/LoDTensorArray]
 raise error if the type is not listed above.
 )DOC");
   }

@@ -82,20 +82,20 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.template Attr<int>("y_num_col_dims");
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
     auto x_matrix = x->dims().size() > 2
                         ? framework::ReshapeToMatrix(*x, x_num_col_dims)
                         : static_cast<const Tensor&>(*x);
     auto y_matrix = y->dims().size() > 2
                         ? framework::ReshapeToMatrix(*y, y_num_col_dims)
                         : static_cast<const Tensor&>(*y);
-    auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     Tensor dout_mat;
     dout_mat.Resize({framework::flatten_to_2d(x->dims(), x_num_col_dims)[0],
                      framework::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
-    auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
     if (dx != nullptr) {
       dx->set_lod(x->lod());
     }

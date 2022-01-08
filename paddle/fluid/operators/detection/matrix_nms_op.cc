@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class MatrixNMSOp : public framework::OperatorWithKernel {
  public:
@@ -238,10 +238,10 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* boxes = ctx.Input<LoDTensor>("BBoxes");
-    auto* scores = ctx.Input<LoDTensor>("Scores");
-    auto* outs = ctx.Output<LoDTensor>("Out");
-    auto* index = ctx.Output<LoDTensor>("Index");
+    auto* boxes = ctx.Input<Tensor>("BBoxes");
+    auto* scores = ctx.Input<Tensor>("Scores");
+    auto* outs = ctx.Output<Tensor>("Out");
+    auto* index = ctx.Output<Tensor>("Index");
 
     auto background_label = ctx.Attr<int>("background_label");
     auto nms_top_k = ctx.Attr<int>("nms_top_k");
@@ -358,14 +358,14 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
     AddOutput("Out",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+              "(Tensor) A 2-D Tensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax]. "
               "the offsets in first dimension are called LoD, the number of "
               "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
               "no detected bbox.");
     AddOutput("Index",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+              "(Tensor) A 2-D Tensor with shape [No, 1] represents the "
               "index of selected bbox. The index is the absolute index cross "
               "batches.");
     AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
@@ -382,7 +382,7 @@ Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of LoDTensor are called LoD, the number
+image, the offsets in first dimension of Tensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image. Now this operator has one more
 ouput, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of 

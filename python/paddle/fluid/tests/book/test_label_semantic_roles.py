@@ -255,14 +255,14 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        # Setup input by creating LoDTensor to represent sequence of words.
-        # Here each word is the basic element of the LoDTensor and the shape of
+        # Setup input by creating Tensor to represent sequence of words.
+        # Here each word is the basic element of the Tensor and the shape of
         # each word (base_shape) should be [1] since it is simply an index to
         # look up for the corresponding word vector.
         # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
-        # which has only one level of detail. Then the created LoDTensor will have only
+        # which has only one level of detail. Then the created Tensor will have only
         # one higher level structure (sequence of words, or sentence) than the basic
-        # element (word). Hence the LoDTensor will hold data for three sentences of
+        # element (word). Hence the Tensor will hold data for three sentences of
         # length 3, 4 and 2, respectively.
         # Note that recursive_sequence_lengths should be a list of lists.
         recursive_seq_lens = [[3, 4, 2]]

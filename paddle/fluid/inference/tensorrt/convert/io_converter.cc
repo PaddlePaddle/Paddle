@@ -27,7 +27,7 @@ class DefaultIOConverter : public EngineIOConverter {
  public:
   DefaultIOConverter() {}
   // NOTE out is GPU memory.
-  virtual void operator()(const LoDTensor& in, void* out,
+  virtual void operator()(const Tensor& in, void* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(out,
                             platform::errors::InvalidArgument(
@@ -59,7 +59,7 @@ class DefaultIOConverter : public EngineIOConverter {
     cudaStreamSynchronize(*stream_);
   }
   // NOTE in is GPU memory.
-  virtual void operator()(const void* in, LoDTensor* out,
+  virtual void operator()(const void* in, Tensor* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(in,
                             platform::errors::InvalidArgument(

@@ -36,8 +36,8 @@ class FakeInitOp : public framework::OperatorBase {
 
     auto &out_var = *scope.FindVar(Output("Out"));
 
-    if (out_var.IsType<framework::LoDTensor>()) {
-      tensor = out_var.GetMutable<framework::LoDTensor>();
+    if (out_var.IsType<framework::Tensor>()) {
+      tensor = out_var.GetMutable<framework::Tensor>();
       tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else if (out_var.IsType<framework::SelectedRows>()) {
       tensor = out_var.GetMutable<framework::SelectedRows>()->mutable_value();
@@ -45,7 +45,7 @@ class FakeInitOp : public framework::OperatorBase {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "fake init op's output only"
-          "supports SelectedRows and LoDTensor"));
+          "supports SelectedRows and Tensor"));
     }
   }
 };

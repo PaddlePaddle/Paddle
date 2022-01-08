@@ -56,7 +56,7 @@ TEST(Benchmark, FluidScaleCUDA) {
     std::vector<float> src_data(128, 5.0);
     std::vector<int64_t> dims = {2, 4, 4, 4};
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<framework::Tensor>();
     x_tensor->Resize(framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
 
@@ -118,14 +118,14 @@ TEST(Benchmark, FluidMatmulCUDA) {
         dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<framework::Tensor>();
     x_tensor->Resize(framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, platform::CPUPlace(),
                          x_src_data.data(), sizeof(float) * x_src_data.size(),
                          stream);
 
-    auto* y_tensor = Y->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* y_tensor = Y->MutableVar()->GetMutable<framework::Tensor>();
     y_tensor->Resize(framework::make_ddim(dims));
     auto* mutable_y = y_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_y, platform::CPUPlace(),
@@ -183,7 +183,7 @@ TEST(Benchmark, FluidMLPCUDA) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<framework::Tensor>();
     x_tensor->Resize(framework::make_ddim(x_dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, platform::CPUPlace(),
@@ -200,14 +200,14 @@ TEST(Benchmark, FluidMLPCUDA) {
           new imperative::VarBase(true, "B"));
       B->SetOverridedStopGradient(false);
 
-      auto* w_tensor = W->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* w_tensor = W->MutableVar()->GetMutable<framework::Tensor>();
       w_tensor->Resize(framework::make_ddim(w_dims));
       auto* mutable_w = w_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place, mutable_w, platform::CPUPlace(),
                            w_src_data.data(), sizeof(float) * w_src_data.size(),
                            stream);
 
-      auto* b_tensor = B->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* b_tensor = B->MutableVar()->GetMutable<framework::Tensor>();
       b_tensor->Resize(framework::make_ddim(b_dims));
       auto* mutable_b = b_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place, mutable_b, platform::CPUPlace(),

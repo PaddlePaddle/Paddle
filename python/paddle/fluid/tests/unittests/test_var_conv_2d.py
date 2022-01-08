@@ -245,7 +245,7 @@ class TestVarConv2DOpCase5(TestVarConv2DOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
+    reason="[skip shape check] Use shape of input_channel, row and col all is 1 to test special Tensor."
 )
 class TestVarConv2DOpCase6(TestVarConv2DOp):
     def set_data(self):

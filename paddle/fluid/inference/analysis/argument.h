@@ -45,7 +45,7 @@ using framework::ir::Graph;
 
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, framework::Tensor>>;
 #endif
 
 /*

@@ -79,7 +79,7 @@ std::unordered_set<std::string> CinnLaunchContext::GetInternalVariableNames() {
 }
 
 void CinnLaunchContext::CheckTensorEquivalent(
-    const std::string& paddle_var_name, const LoDTensor& paddle_tensor,
+    const std::string& paddle_var_name, const Tensor& paddle_tensor,
     const CinnTensor& cinn_tensor) {
   // check dimension
   auto cinn_dims = framework::make_ddim(cinn_tensor->shape().data());
@@ -101,7 +101,7 @@ void CinnLaunchContext::AssignExternalVariable(
 
   const auto& cinn_var_name = paddle2cinn_varmap_.at(paddle_var_name);
   const auto& paddle_tensor =
-      cached_scope_->GetVar(paddle_var_name)->Get<LoDTensor>();
+      cached_scope_->GetVar(paddle_var_name)->Get<Tensor>();
   CinnTensor cinn_tensor = GetCinnTensor(cinn_var_name);
   if (paddle_tensor.IsInitialized()) {
     CheckTensorEquivalent(paddle_var_name, paddle_tensor, cinn_tensor);
@@ -114,7 +114,7 @@ void CinnLaunchContext::AssignExternalVariable(
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, paddle_var_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
-            cached_scope_->GetVar(paddle_var_name)->GetMutable<LoDTensor>();
+            cached_scope_->GetVar(paddle_var_name)->GetMutable<Tensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(
             tensor->mutable_data<float>(*cached_place_));
@@ -146,7 +146,7 @@ void CinnLaunchContext::AssignInternalVariable(
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, cinn_var_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
-            cached_temp_scope_->Var(cinn_var_name)->GetMutable<LoDTensor>();
+            cached_temp_scope_->Var(cinn_var_name)->GetMutable<Tensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(
             tensor->mutable_data<float>(*cached_place_));
@@ -158,7 +158,7 @@ void CinnLaunchContext::AssignInternalVariable(
   cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
       [this, cinn_var_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
-            cached_temp_scope_->GetVar(cinn_var_name)->GetMutable<LoDTensor>();
+            cached_temp_scope_->GetVar(cinn_var_name)->GetMutable<Tensor>();
         tensor->clear();
         return 0;
       });

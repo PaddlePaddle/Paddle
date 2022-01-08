@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
@@ -79,8 +79,8 @@ void prepare_csr_data(const std::vector<uint64_t> &offset,
 template <typename T>
 struct EmbeddingVSumFunctor {
   void operator()(const framework::ExecutionContext &context,
-                  const LoDTensor *table_t, const LoDTensor *ids_t,
-                  LoDTensor *output_t) {
+                  const Tensor *table_t, const Tensor *ids_t,
+                  Tensor *output_t) {
     auto *table = table_t->data<T>();
     int64_t table_height = table_t->dims()[0];
     int64_t table_width = table_t->dims()[1];
@@ -129,9 +129,9 @@ template <typename T>
 class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const LoDTensor *ids_t = context.Input<LoDTensor>("Ids");  // int tensor
-    LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
-    const LoDTensor *table_var = context.Input<LoDTensor>("W");
+    const Tensor *ids_t = context.Input<Tensor>("Ids");  // int tensor
+    Tensor *output_t = context.Output<Tensor>("Out");    // float tensor
+    const Tensor *table_var = context.Input<Tensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
 
     int64_t last_dim =
@@ -198,23 +198,23 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
-    if (table_var->IsType<LoDTensor>()) {
-      table_dim = context.Input<LoDTensor>("W")->dims();
+    if (table_var->IsType<Tensor>()) {
+      table_dim = context.Input<Tensor>("W")->dims();
     } else if (table_var->IsType<SelectedRows>()) {
       auto *table_t = context.Input<SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "The parameter W of a LookupTable "
-          "must be either LoDTensor or SelectedRows."));
+          "must be either Tensor or SelectedRows."));
     }
 
     bool is_sparse = context.Attr<bool>("is_sparse");
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *ids = context.Input<Tensor>("Ids");
+      auto *d_output = context.Input<Tensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
       // runtime shape
       d_table->set_height(table_dim[0]);
@@ -245,9 +245,9 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     } else {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
+      auto *ids = context.Input<Tensor>("Ids");
+      auto *d_output = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto *d_table = context.Output<Tensor>(framework::GradVarName("W"));
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
       d_table->Resize(table_dim);

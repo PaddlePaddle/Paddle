@@ -319,8 +319,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                                       var_name, op_type));
 
   const Tensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  if (var->IsType<framework::Tensor>()) {
+    tensor = &var->Get<framework::Tensor>();
   } else if (var->IsType<framework::SelectedRows>()) {
     tensor = &var->Get<framework::SelectedRows>().value();
   } else {
@@ -381,7 +381,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       return;
     }
 
-    framework::LoDTensor cpu_tensor;
+    framework::Tensor cpu_tensor;
     cpu_tensor.Resize(tensor->dims());
     float* cpu_data = static_cast<float*>(
         cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
@@ -466,8 +466,8 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
                      const framework::Variable* var,
                      const platform::Place& place) {
   const Tensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  if (var->IsType<framework::Tensor>()) {
+    tensor = &var->Get<framework::Tensor>();
   } else if (var->IsType<framework::SelectedRows>()) {
     tensor = &var->Get<framework::SelectedRows>().value();
   } else {

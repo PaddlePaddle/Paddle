@@ -485,10 +485,10 @@ class PartialProgramLayer:
 
     def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient
-        # will be SelectedRows, not LoDTensor. But tracer will just
-        # set param grad VarBase by forward VarBase(LoDTensor)
+        # will be SelectedRows, not Tensor. But tracer will just
+        # set param grad VarBase by forward VarBase(Tensor)
         # If we don't change grad_var type here, RunProgramOp need
-        # transform SelectedRows to LoDTensor forcibly, it may not
+        # transform SelectedRows to Tensor forcibly, it may not
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()

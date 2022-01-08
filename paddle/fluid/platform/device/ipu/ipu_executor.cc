@@ -177,7 +177,7 @@ void Executor::SetWeightsIO() {
       }
 
       auto var = scope_->GetVar(paddle_var_name);
-      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<float>();
+      auto data_ptr = var->GetMutable<framework::Tensor>()->data<float>();
 
       auto tensor_info = session_->getInfo(popart_var_name);
       weights_io_.insert(popart_var_name, {data_ptr, tensor_info});
@@ -195,7 +195,7 @@ void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
 
 float Executor::GetLRFromScope() {
   auto lr_var = scope_->GetVar(opt_info.GetLRVarName());
-  auto tensor = lr_var->Get<framework::LoDTensor>();
+  auto tensor = lr_var->Get<framework::Tensor>();
 
   PADDLE_ENFORCE_EQ(tensor.type(), framework::proto::VarType::FP32,
                     platform::errors::InvalidArgument(

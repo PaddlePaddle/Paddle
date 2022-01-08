@@ -64,7 +64,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         cpu = core.CPUPlace()
         for i in range(10):
-            t = core.LoDTensor()
+            t = core.Tensor()
             if i == 0:
                 t.set(numpy.array([[i], [i]], dtype='float32'), cpu)
             else:

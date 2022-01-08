@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class ConcatXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
     int axis = ctx.Attr<int>("axis");
     PADDLE_ENFORCE_NE(ins[0], nullptr, platform::errors::InvalidArgument(
                                            "The input should not be null."));
@@ -109,10 +109,9 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
-    auto outs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto outs = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
     {
       auto dx = outs;
       auto x = ins;

@@ -53,8 +53,8 @@ class InstanceNormOpConverter : public OpConverter {
         bias_var,
         platform::errors::InvalidArgument(
             "Input [Bias] of instance_norm op converter should not be null"));
-    auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
-    auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
+    auto* scale_tensor = scale_var->GetMutable<framework::Tensor>();
+    auto* bias_tensor = bias_var->GetMutable<framework::Tensor>();
     PADDLE_ENFORCE_EQ(
         scale_tensor->numel(), bias_tensor->numel(),
         platform::errors::InvalidArgument(

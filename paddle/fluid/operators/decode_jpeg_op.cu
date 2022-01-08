@@ -112,7 +112,7 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
 
     int sz = widths[0] * heights[0];
 
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     std::vector<int64_t> out_shape = {output_components, height, width};
     out->Resize(framework::make_ddim(out_shape));
 

@@ -121,7 +121,7 @@ class SumOp : public framework::OperatorWithKernel {
         x_vars[0], platform::errors::NotFound(
                        "Input var[%s] should not be nullptr", x_vars_name[0]));
 
-    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+    if (x_vars[0]->IsType<framework::Tensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE_NOT_NULL(
@@ -151,10 +151,10 @@ class SumOp : public framework::OperatorWithKernel {
           this->CanMKLDNNBeUsed(ctx, data_type) &&
           (data_type == framework::proto::VarType::FP32 ||
            data_type == framework::proto::VarType::BF16) &&
-          ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
+          ctx.OutputVar("Out")->IsType<framework::Tensor>()) {
         if (std::all_of(x_vars.begin(), x_vars.end(),
                         [](const framework::Variable* v) {
-                          return v->IsType<framework::LoDTensor>();
+                          return v->IsType<framework::Tensor>();
                         })) {
           return framework::OpKernelType(data_type, ctx.GetPlace(),
                                          framework::DataLayout::kMKLDNN,
@@ -206,7 +206,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "A Varaible list. The shape and data type of the list elements"
              "should be consistent. Variable can be multi-dimensional Tensor"
-             "or LoDTensor, and data types can be: float32, float64, int32, "
+             "or Tensor, and data types can be: float32, float64, int32, "
              "int64.")
         .AsDuplicable();
     AddOutput("Out",
@@ -220,8 +220,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"});
-    AddComment(R"DOC(This OP is used to sum one or more Tensor or LoDTensor
-                    of the input. If the input is LoDTensor, the output only
+    AddComment(R"DOC(This OP is used to sum one or more Tensor or Tensor
+                    of the input. If the input is Tensor, the output only
                     shares LoD information with the first input.)DOC");
   }
 };

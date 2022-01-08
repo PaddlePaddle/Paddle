@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
  public:
@@ -441,8 +441,8 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     auto boxes = ctx.MultiInput<Tensor>("BBoxes");
     auto scores = ctx.MultiInput<Tensor>("Scores");
     auto anchors = ctx.MultiInput<Tensor>("Anchors");
-    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
-    auto* outs = ctx.Output<LoDTensor>("Out");
+    auto* im_info = ctx.Input<Tensor>("ImInfo");
+    auto* outs = ctx.Output<Tensor>("Out");
 
     std::vector<Tensor> boxes_list(boxes.size());
     std::vector<Tensor> scores_list(scores.size());
@@ -533,7 +533,7 @@ class RetinanetDetectionOutputOpMaker
              "[xmin, ymin, xmax, ymax].")
         .AsDuplicable();
     AddInput("ImInfo",
-             "(LoDTensor) A 2-D LoDTensor with shape [N, 3] represents the "
+             "(Tensor) A 2-D Tensor with shape [N, 3] represents the "
              "image information. N is the batch size, each image information "
              "includes height, width and scale.");
     AddAttr<float>("score_threshold",
@@ -556,7 +556,7 @@ class RetinanetDetectionOutputOpMaker
         "Number of total bounding boxes to be kept per image after NMS "
         "step.");
     AddOutput("Out",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+              "(Tensor) A 2-D Tensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax]"
               "No is the total number of detections in this mini-batch."
@@ -597,7 +597,7 @@ After NMS step, at most keep_top_k number of total bounding boxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of LoDTensor are called LoD, the number
+image, the offsets in first dimension of Tensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bounding box for this image. If there is no detected boxes
 for all images, all the elements in LoD are set to 0, and the output tensor is

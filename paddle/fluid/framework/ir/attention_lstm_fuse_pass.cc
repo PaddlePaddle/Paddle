@@ -183,16 +183,14 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   CHECK_P4(x0, x1, x2, x3);          \
   CHECK_P1(x4);
 
-void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
-                       const LoDTensor& W_forget_w1,
-                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
-                       const LoDTensor& W_output_w0,
-                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
-                       const LoDTensor& W_cell_w1, LoDTensor* out);
+void PrepareLSTMWeight(const Tensor& W_forget_w0, const Tensor& W_forget_w1,
+                       const Tensor& W_input_w0, const Tensor& W_input_w1,
+                       const Tensor& W_output_w0, const Tensor& W_output_w1,
+                       const Tensor& W_cell_w0, const Tensor& W_cell_w1,
+                       Tensor* out);
 
-void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
-                     const LoDTensor& B_output, const LoDTensor& B_cell,
-                     LoDTensor* out);
+void PrepareLSTMBias(const Tensor& B_forget, const Tensor& B_input,
+                     const Tensor& B_output, const Tensor& B_cell, Tensor* out);
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
@@ -203,8 +201,8 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
 
   // Create new parameters.
   // AddInput
-  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();
-  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMWeight)->GetMutable<Tensor>();
+  scope.Var(param.LSTMBias)->GetMutable<Tensor>();
 // AddOutput
 #define IR_NODE(x)                                 \
   VarDesc key_##x(param.x);                        \
@@ -220,20 +218,20 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   IR_NODE(LSTMOUT);
 #undef IR_NODE
 
-#define GATE_W(name__)                                               \
-  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");             \
-  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");             \
-  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");             \
-  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);       \
-  VLOG(4) << #name__ "_w0"                                           \
-          << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_w1"                                           \
-          << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_b0"                                           \
-          << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
-  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();       \
-  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();       \
-  auto& W_##name__##_b0_t = W_##name__##_b0->Get<LoDTensor>();
+#define GATE_W(name__)                                            \
+  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");          \
+  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");          \
+  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");          \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);    \
+  VLOG(4) << #name__ "_w0"                                        \
+          << " shape: " << W_##name__##_w0->Get<Tensor>().dims(); \
+  VLOG(4) << #name__ "_w1"                                        \
+          << " shape: " << W_##name__##_w1->Get<Tensor>().dims(); \
+  VLOG(4) << #name__ "_b0"                                        \
+          << " shape: " << W_##name__##_b0->Get<Tensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<Tensor>();       \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<Tensor>();       \
+  auto& W_##name__##_b0_t = W_##name__##_b0->Get<Tensor>();
 
   GATE_W(forget);
   GATE_W(input);
@@ -249,13 +247,13 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
            attention_output_b);
 
   auto* lstm_weight = scope.Var(param.LSTMWeight);
-  auto* lstm_weight_t = lstm_weight->GetMutable<LoDTensor>();
+  auto* lstm_weight_t = lstm_weight->GetMutable<Tensor>();
   auto* lstm_bias = scope.Var(param.LSTMBias);
-  auto* lstm_bias_t = lstm_bias->GetMutable<LoDTensor>();
+  auto* lstm_bias_t = lstm_bias->GetMutable<Tensor>();
 
   // reshape attention_bias
   auto* attention_bias_t =
-      scope.FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
+      scope.FindVar(param.AttentionBias)->GetMutable<Tensor>();
   PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1,
                     platform::errors::InvalidArgument(
                         "Tensor attention bias dimension size(%d) must be 1.",
@@ -263,7 +261,7 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   attention_bias_t->Resize(make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
-      scope.FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
+      scope.FindVar(param.AttentionScalarBias)->GetMutable<Tensor>();
   attention_scalar_bias_t->Resize(
       make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
@@ -275,12 +273,11 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
 }
 
 // Prepare parameters
-void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
-                       const LoDTensor& W_forget_w1,
-                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
-                       const LoDTensor& W_output_w0,
-                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
-                       const LoDTensor& W_cell_w1, LoDTensor* out) {
+void PrepareLSTMWeight(const Tensor& W_forget_w0, const Tensor& W_forget_w1,
+                       const Tensor& W_input_w0, const Tensor& W_input_w1,
+                       const Tensor& W_output_w0, const Tensor& W_output_w1,
+                       const Tensor& W_cell_w0, const Tensor& W_cell_w1,
+                       Tensor* out) {
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
   out->Resize(make_ddim({D + M, 4 * D}));
@@ -311,9 +308,9 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   }
 }
 
-void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
-                     const LoDTensor& B_output, const LoDTensor& B_cell,
-                     LoDTensor* out) {
+void PrepareLSTMBias(const Tensor& B_forget, const Tensor& B_input,
+                     const Tensor& B_output, const Tensor& B_cell,
+                     Tensor* out) {
   std::array<const float*, 4> tensors{
       B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
       B_cell.data<float>()};

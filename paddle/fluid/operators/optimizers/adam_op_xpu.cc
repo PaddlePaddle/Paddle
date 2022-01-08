@@ -26,39 +26,39 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong type，Expected Var(%s)'s "
-                          "type is LoDTensor, "
+                          "type is Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
 
-    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
-                                  "Param", "Adam");
-    // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
+    auto& param =
+        GET_DATA_SAFELY(ctx.Input<Tensor>("Param"), "Input", "Param", "Adam");
+    // auto& grad = Ref(ctx.Input<Tensor>("Grad"), "Must set Grad");
     auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment1"), "Input",
+    auto& mom1 = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment1"), "Input",
                                  "Moment1", "Adam");
-    auto& mom2 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment2"), "Input",
+    auto& mom2 = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment2"), "Input",
                                  "Moment2", "Adam");
-    auto& lr = GET_DATA_SAFELY(ctx.Input<LoDTensor>("LearningRate"), "Input",
+    auto& lr = GET_DATA_SAFELY(ctx.Input<Tensor>("LearningRate"), "Input",
                                "LearningRate", "Adam");
-    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta1Pow"), "Input",
+    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<Tensor>("Beta1Pow"), "Input",
                                       "Beta1Pow", "Adam");
-    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta2Pow"), "Input",
+    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<Tensor>("Beta2Pow"), "Input",
                                       "Beta2Pow", "Adam");
 
-    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
-                                      "Output", "ParamOut", "Adam");
-    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment1Out"),
-                                     "Output", "Moment1Out", "Adam");
-    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment2Out"),
-                                     "Output", "Moment2Out", "Adam");
+    auto& param_out = GET_DATA_SAFELY(ctx.Output<Tensor>("ParamOut"), "Output",
+                                      "ParamOut", "Adam");
+    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Moment1Out"), "Output",
+                                     "Moment1Out", "Adam");
+    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Moment2Out"), "Output",
+                                     "Moment2Out", "Adam");
 
-    auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
-    auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+    auto* beta1_pow_out = ctx.Output<Tensor>("Beta1PowOut");
+    auto* beta2_pow_out = ctx.Output<Tensor>("Beta2PowOut");
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
@@ -128,9 +128,9 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
       epsilon = static_cast<float>(GetAttrFromTensor(epsilon_tensor));
     }
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input",
-                                   "Grad", "Adam");
+    if (grad_var->IsType<framework::Tensor>()) {
+      auto& grad =
+          GET_DATA_SAFELY(ctx.Input<Tensor>("Grad"), "Input", "Grad", "Adam");
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       const float* beta1_pow_ptr = beta1_pow.template data<float>();
       const float* beta2_pow_ptr = beta2_pow.template data<float>();

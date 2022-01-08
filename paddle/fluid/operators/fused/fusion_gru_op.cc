@@ -145,9 +145,9 @@ framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
 
 void FusionGRUOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
+           "(Tensor) the input is a LodTensor, which support "
            "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "this Tensor is a matrix with shape (T X M), where T is the "
            "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("H0",
            "(Tensor, optional) The initial hidden state is an optional "
@@ -171,18 +171,18 @@ void FusionGRUOpMaker::Make() {
   AddOutput("ReorderedH0", "(Tensor) (N x D), which N is the min-batch size.")
       .AsIntermediate();
   AddOutput("XX",
-            "(LoDTensor) the result after X * WeightX (size is T x 3D)"
+            "(Tensor) the result after X * WeightX (size is T x 3D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
   AddOutput("BatchedInput",
-            "(LoDTensor) This is the batched result of input X"
+            "(Tensor) This is the batched result of input X"
             "or the batched result after fc, shape (T x 3D)")
       .AsIntermediate();
-  AddOutput("BatchedOut", "(LoDTensor) (T X D) save batched hidden.")
+  AddOutput("BatchedOut", "(Tensor) (T X D) save batched hidden.")
       .AsIntermediate();
-  AddOutput("Hidden", "(LoDTensor) (T x D) Same as GRUOp");
+  AddOutput("Hidden", "(Tensor) (T x D) Same as GRUOp");
   AddAttr<std::string>("activation",
                        "(string, default tanh) "
                        "The activation type used for output candidate {h}_t.")
@@ -247,9 +247,9 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
 #define INIT_BASE_DEFINES                                     \
-  auto* x = ctx.Input<LoDTensor>("X");                        \
+  auto* x = ctx.Input<Tensor>("X");                           \
   auto* wh = ctx.Input<Tensor>("WeightH");                    \
-  auto* xx = ctx.Output<LoDTensor>("XX");                     \
+  auto* xx = ctx.Output<Tensor>("XX");                        \
   auto x_lod = x->lod();                                      \
   auto x_dims = x->dims(); /* T x M*/                         \
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)    \
@@ -263,7 +263,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   auto* h0 = ctx.Input<Tensor>("H0");                                        \
   auto* wx = ctx.Input<Tensor>("WeightX");                                   \
   auto* bias = ctx.Input<Tensor>("Bias");                                    \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");                        \
+  auto* hidden_out = ctx.Output<Tensor>("Hidden");                           \
   bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
   const int M = x_mat_dims[1];                                               \
   const int D = wh_dims[0];                                                  \
@@ -361,8 +361,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     }
     INIT_OTHER_DEFINES;
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
-    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
-    auto* batched_out = ctx.Output<LoDTensor>("BatchedOut");
+    auto* batched_input = ctx.Output<Tensor>("BatchedInput");
+    auto* batched_out = ctx.Output<Tensor>("BatchedOut");
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_out_data = batched_out->mutable_data<T>(place);
     hidden_out->mutable_data<T>(place);

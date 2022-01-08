@@ -38,7 +38,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {
@@ -169,7 +169,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* input = ctx.Input<Tensor>("Input");
-    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
+    const Tensor* rois = ctx.Input<Tensor>("ROIs");
     const Tensor* trans = ctx.Input<Tensor>("Trans");
     Tensor* out = ctx.Output<Tensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
@@ -428,7 +428,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* input = ctx.Input<Tensor>("Input");
-    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
+    const Tensor* rois = ctx.Input<Tensor>("ROIs");
     const Tensor* trans = ctx.Input<Tensor>("Trans");
     const Tensor* top_count = ctx.Input<Tensor>("TopCount");
     const Tensor* output_grad =

@@ -35,9 +35,8 @@ namespace operators {
 
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
-                          const LoDTensorArray& step_scores,
-                          LoDTensor* id_tensor, LoDTensor* score_tensor,
-                          size_t beam_size, int end_id)
+                          const LoDTensorArray& step_scores, Tensor* id_tensor,
+                          Tensor* score_tensor, size_t beam_size, int end_id)
       : beam_size_(beam_size),
         end_id_(end_id),
         step_ids_origin_(step_ids),
@@ -59,7 +58,7 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
-        framework::LoDTensor out;
+        framework::Tensor out;
         if (step_id.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -84,7 +83,7 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
-        framework::LoDTensor out;
+        framework::Tensor out;
         if (step_score.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -114,8 +113,8 @@ struct BeamSearchDecodeFunctor {
   const LoDTensorArray& step_scores_origin_;
   LoDTensorArray step_ids_ = LoDTensorArray();
   LoDTensorArray step_scores_ = LoDTensorArray();
-  LoDTensor* id_tensor_;
-  LoDTensor* score_tensor_;
+  Tensor* id_tensor_;
+  Tensor* score_tensor_;
 };
 
 template <typename T>
@@ -188,8 +187,8 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     int end_id = ctx.Attr<int>("end_id");
 
     // prepare output
-    LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
-    LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
+    Tensor* sentenceIds = ctx.Output<Tensor>("SentenceIds");
+    Tensor* sentenceScores = ctx.Output<Tensor>("SentenceScores");
 
     framework::VisitDataType(
         scores->at(0).type(),

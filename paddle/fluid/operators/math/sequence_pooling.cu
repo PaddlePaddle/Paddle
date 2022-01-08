@@ -160,9 +160,8 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const std::string pooltype, T pad_value,
-                  const framework::LoDTensor& input,
-                  framework::LoDTensor* output, bool is_test,
-                  framework::Tensor* index = nullptr) {
+                  const framework::Tensor& input, framework::Tensor* output,
+                  bool is_test, framework::Tensor* index = nullptr) {
     auto lod_level = input.lod().size();
     auto& lod = input.lod()[lod_level - 1];
     const size_t item_dim = output->numel() / output->dims()[0];
@@ -325,9 +324,8 @@ template <typename T>
 class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const std::string pooltype,
-                  const framework::LoDTensor& out_grad,
-                  framework::LoDTensor* in_grad,
+                  const std::string pooltype, const framework::Tensor& out_grad,
+                  framework::Tensor* in_grad,
                   /* max pool has index */
                   const framework::Tensor* index = nullptr) {
     auto lod_level = in_grad->lod().size();

@@ -55,9 +55,9 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* input = ctx.Input<framework::Tensor>("X");
+    auto* index = ctx.Input<framework::Tensor>("Index");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = index->type();
@@ -106,11 +106,10 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
+    auto* index = ctx.Input<framework::Tensor>("Index");
     auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = index->type();

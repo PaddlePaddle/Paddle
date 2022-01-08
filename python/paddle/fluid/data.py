@@ -63,7 +63,7 @@ def data(name, shape, dtype='float32', lod_level=0):
        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32.
-       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+       lod_level (int, optional): The LoD level of the Tensor. Usually users
            don't have to set this value. For more details about when and how to
            use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0.
 

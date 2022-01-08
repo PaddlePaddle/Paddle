@@ -501,7 +501,7 @@ def warpctc(input,
        label (Variable): The ground truth of variable-length sequence,
          which must be a 2-D Tensor with LoD information or a 3-D Tensor without
          LoD information, needs to be consistent with the coressponding input. 
-         When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum 
+         When it is a 2-D Tensor, its shape is `[Lg, 1]`, where `Lg` is the sum 
          of all labels' length. When it is a 3-D Tensor, its shape is 
          `[batch_size, max_label_length]`, where `max_label_length` is the longest
          length of label sequence. Data type must be int32.
@@ -526,7 +526,7 @@ def warpctc(input,
 
         .. code-block:: python
 
-            # using LoDTensor
+            # using Tensor
             import paddle
             import paddle.fluid as fluid
             import numpy as np

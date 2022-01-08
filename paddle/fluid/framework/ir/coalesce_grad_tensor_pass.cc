@@ -169,7 +169,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
                         true,
                         platform::errors::InvalidArgument(
-                            "Parameter@Grad %s is not LoDTensor.", p_g.second));
+                            "Parameter@Grad %s is not Tensor.", p_g.second));
     }
   }
 

@@ -259,7 +259,7 @@ class StateCell(object):
                     raise ValueError('Unknown decoder type, only support '
                                      '[TRAINING, BEAM_SEARCH]')
 
-            # Read back, since current state should be LoDTensor
+            # Read back, since current state should be Tensor
             self._cur_states[state_name] = \
                 self._states_holder[state_name][
                     id(self._cur_decoder_obj)].get_state()

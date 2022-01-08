@@ -23,7 +23,7 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 // function borrowed from repeat_interleave_op
 template <typename T, typename IndexT>
@@ -73,9 +73,9 @@ template <typename DeviceContext, typename T>
 class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    // auto* index = context.Input<LoDTensor>("RepeatsTensor");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    // auto* index = context.Input<Tensor>("RepeatsTensor");
+    auto* out = context.Output<Tensor>("Out");
     int dim = context.Attr<int>("dim");
     auto input_dim = in->dims();
     dim = dim >= 0 ? dim : dim + input_dim.size();
@@ -86,11 +86,10 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
         context.template device_context<platform::CUDADeviceContext>().stream();
 
     int repeats = context.Attr<int>("Repeats");
-    framework::LoDTensor index;
+    framework::Tensor index;
     auto* in_data = in->data<T>();
     if (context.HasInput("RepeatsTensor")) {
-      auto repeats_tensor =
-          context.Input<framework::LoDTensor>("RepeatsTensor");
+      auto repeats_tensor = context.Input<framework::Tensor>("RepeatsTensor");
 
       PADDLE_ENFORCE_EQ(repeats_tensor->dims()[0] == in->dims()[dim], true,
                         platform::errors::InvalidArgument(
@@ -184,8 +183,8 @@ template <typename DeviceContext, typename T>
 class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* in_grad = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = context.Output<Tensor>(framework::GradVarName("X"));
 
     auto* output_grad_data = output_grad->data<T>();
     auto* in_grad_data = in_grad->mutable_data<T>(context.GetPlace());
@@ -210,10 +209,9 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
              PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_grad_data, numel);
 
     int repeats = context.Attr<int>("Repeats");
-    framework::LoDTensor index;
+    framework::Tensor index;
     if (context.HasInput("RepeatsTensor")) {
-      auto repeats_tensor =
-          context.Input<framework::LoDTensor>("RepeatsTensor");
+      auto repeats_tensor = context.Input<framework::Tensor>("RepeatsTensor");
 
       const auto& index_type = repeats_tensor->type();
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||

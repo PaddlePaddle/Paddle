@@ -23,7 +23,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Scope;
 class SelectedRows;
 }  // namespace framework
@@ -38,7 +38,7 @@ struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
     constexpr auto kTensorId = framework::VarTypeTrait<framework::Tensor>::kId;
     constexpr auto kLoDTensorId =
-        framework::VarTypeTrait<framework::LoDTensor>::kId;
+        framework::VarTypeTrait<framework::Tensor>::kId;
     constexpr auto kSelectedRowsId =
         framework::VarTypeTrait<framework::SelectedRows>::kId;
     constexpr auto kFetchListId =
@@ -48,7 +48,7 @@ struct TensorArrayBatchCleaner {
     valid_types_.insert(kSelectedRowsId);
     valid_types_.insert(kFetchListId);
   }
-  // Collect the variables that are not Tensor or LoDTensor, and reset them to a
+  // Collect the variables that are not Tensor or Tensor, and reset them to a
   // bool(trick), because some of them are containers, and some operators just
   // keep inserting new items without clearing the containers first; So the
   // memory grow larger and larger in inference service deployed online.

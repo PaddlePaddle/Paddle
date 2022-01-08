@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 static __global__ void sequence_expand_as_kernel(const T *in_data,
@@ -64,9 +64,9 @@ static __global__ void sequence_expand_as_grad_kernel(
 template <typename T>
 struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
   void operator()(
-      const platform::CUDADeviceContext &context, const LoDTensor &x,
+      const platform::CUDADeviceContext &context, const Tensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      LoDTensor *out) {
+      Tensor *out) {
     int height = x.dims()[0];
     int width = framework::product(x.dims()) / height;
 
@@ -90,9 +90,9 @@ struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &dout,
+                  const Tensor &dout,
                   const framework::Vector<size_t> &ref_lod, /*expand based lod*/
-                  LoDTensor *dx) {
+                  Tensor *dx) {
     int height = dx->dims()[0];
     int width = framework::product(dx->dims()) / height;
 

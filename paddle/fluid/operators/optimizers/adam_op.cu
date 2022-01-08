@@ -141,14 +141,14 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
 
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
     using MPDType = typename details::MPTypeTrait<T>::Type;
 
     int64_t min_row_size_to_use_multithread =
@@ -157,20 +157,20 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
     VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
-    auto* param = ctx.Input<LoDTensor>("Param");
+    auto* param = ctx.Input<Tensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
-    auto* mom1 = ctx.Input<LoDTensor>("Moment1");
-    auto* mom2 = ctx.Input<LoDTensor>("Moment2");
-    auto* lr = ctx.Input<LoDTensor>("LearningRate");
+    auto* mom1 = ctx.Input<Tensor>("Moment1");
+    auto* mom2 = ctx.Input<Tensor>("Moment2");
+    auto* lr = ctx.Input<Tensor>("LearningRate");
 
-    auto* beta1_pow = ctx.Input<LoDTensor>("Beta1Pow");
-    auto* beta2_pow = ctx.Input<LoDTensor>("Beta2Pow");
+    auto* beta1_pow = ctx.Input<Tensor>("Beta1Pow");
+    auto* beta2_pow = ctx.Input<Tensor>("Beta2Pow");
 
-    auto* param_out = ctx.Output<LoDTensor>("ParamOut");
-    auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
-    auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
-    auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
-    auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+    auto* param_out = ctx.Output<Tensor>("ParamOut");
+    auto* mom1_out = ctx.Output<Tensor>("Moment1Out");
+    auto* mom2_out = ctx.Output<Tensor>("Moment2Out");
+    auto* beta1_pow_out = ctx.Output<Tensor>("Beta1PowOut");
+    auto* beta2_pow_out = ctx.Output<Tensor>("Beta2PowOut");
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
@@ -251,8 +251,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                           beta2_pow_out->numel()));
 
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    const LoDTensor* master_param = nullptr;
-    LoDTensor* master_param_out = nullptr;
+    const Tensor* master_param = nullptr;
+    Tensor* master_param_out = nullptr;
     if (multi_precision) {
       bool has_master =
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
@@ -261,8 +261,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
-      master_param = ctx.Input<LoDTensor>("MasterParam");
-      master_param_out = ctx.Output<LoDTensor>("MasterParamOut");
+      master_param = ctx.Input<Tensor>("MasterParam");
+      master_param_out = ctx.Output<Tensor>("MasterParamOut");
     }
     const MPDType* master_in_data =
         multi_precision ? master_param->data<MPDType>() : nullptr;
@@ -273,8 +273,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto* grad = ctx.Input<LoDTensor>("Grad");
+    if (grad_var->IsType<framework::Tensor>()) {
+      auto* grad = ctx.Input<Tensor>("Grad");
 
       // update param and moment
       int threads = 512;

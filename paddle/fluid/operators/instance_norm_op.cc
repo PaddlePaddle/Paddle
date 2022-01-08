@@ -299,8 +299,8 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<Tensor>()) {
+    t = &var->Get<Tensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
@@ -462,8 +462,8 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<Tensor>()) {
+    t = &var->Get<Tensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

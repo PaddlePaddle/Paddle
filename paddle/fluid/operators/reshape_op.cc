@@ -372,8 +372,8 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
-    auto *in = ctx.Input<framework::LoDTensor>("X");
+    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *in = ctx.Input<framework::Tensor>("X");
     // framework::DDim out_dims = out->dims();
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
 
@@ -401,9 +401,8 @@ class ReshapeKernel {
 
     auto list_new_shape_tensor =
         ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    auto *shape_tensor = ctx.HasInput("Shape")
-                             ? ctx.Input<framework::LoDTensor>("Shape")
-                             : nullptr;
+    auto *shape_tensor =
+        ctx.HasInput("Shape") ? ctx.Input<framework::Tensor>("Shape") : nullptr;
     pten::ScalarArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor

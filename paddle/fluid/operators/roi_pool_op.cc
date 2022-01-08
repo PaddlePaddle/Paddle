@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
@@ -52,14 +52,14 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         rois_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor with shape (num_rois, 4)"
+            "ROIs should be a 2-D Tensor with shape (num_rois, 4)"
             "given as [[x1, y1, x2, y2], ...], but received ROIs is "
-            "%d-dimensional LoDTensor",
+            "%d-dimensional Tensor",
             rois_dims.size()));
     PADDLE_ENFORCE_EQ(
         rois_dims[1], kROISize,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor with shape (num_rois, 4)"
+            "ROIs should be a 2-D Tensor with shape (num_rois, 4)"
             "given as [[x1, y1, x2, y2], ...]. But the second dimension of  "
             "the received data is %d",
             rois_dims[1]));
@@ -135,9 +135,9 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(Tensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "should be a 2-D Tensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], ...]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "

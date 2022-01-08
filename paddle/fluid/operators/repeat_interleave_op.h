@@ -23,12 +23,12 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
 template <typename DeviceContext, typename RepeatsT = int>
-void RepeatsTensor2IndexTensor(const LoDTensor& repeats, LoDTensor* index) {
-  LoDTensor repeats_cpu_copy;
+void RepeatsTensor2IndexTensor(const Tensor& repeats, Tensor* index) {
+  Tensor repeats_cpu_copy;
   if (!platform::is_cpu_place(repeats.place())) {
     framework::TensorCopySync(repeats, platform::CPUPlace(), &repeats_cpu_copy);
   }
@@ -57,8 +57,8 @@ template <typename DeviceContext, typename T>
 class RepeatInterleaveKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto inputs = *context.Input<framework::LoDTensor>("X");
-    auto* output = context.Output<framework::LoDTensor>("Out");
+    auto inputs = *context.Input<framework::Tensor>("X");
+    auto* output = context.Output<framework::Tensor>("Out");
 
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
@@ -66,10 +66,9 @@ class RepeatInterleaveKernel : public framework::OpKernel<T> {
     }
 
     int repeats = context.Attr<int>("Repeats");
-    framework::LoDTensor index;
+    framework::Tensor index;
     if (context.HasInput("RepeatsTensor")) {
-      auto repeats_tensor =
-          context.Input<framework::LoDTensor>("RepeatsTensor");
+      auto repeats_tensor = context.Input<framework::Tensor>("RepeatsTensor");
 
       PADDLE_ENFORCE_EQ(repeats_tensor->dims()[0] == inputs.dims()[dim], true,
                         platform::errors::InvalidArgument(
@@ -135,9 +134,9 @@ class RepeatInterleaveGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x_grad =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+        context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* out_grad =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
 
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
@@ -145,10 +144,9 @@ class RepeatInterleaveGradKernel : public framework::OpKernel<T> {
     }
 
     int repeats = context.Attr<int>("Repeats");
-    framework::LoDTensor index;
+    framework::Tensor index;
     if (context.HasInput("RepeatsTensor")) {
-      auto repeats_tensor =
-          context.Input<framework::LoDTensor>("RepeatsTensor");
+      auto repeats_tensor = context.Input<framework::Tensor>("RepeatsTensor");
       const auto& index_type = repeats_tensor->type();
 
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||

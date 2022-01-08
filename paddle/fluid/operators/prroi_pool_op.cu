@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
@@ -178,7 +178,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* out = ctx.Output<Tensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
@@ -263,13 +263,12 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* out = ctx.Input<framework::Tensor>("Out");
 
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* input_roi_grad =
-        ctx.Output<LoDTensor>(framework::GradVarName("ROIs"));
+    auto* input_roi_grad = ctx.Output<Tensor>(framework::GradVarName("ROIs"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");

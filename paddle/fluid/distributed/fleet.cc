@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::LoDTensor;
+using framework::Tensor;
 using framework::ProgramDesc;
 using framework::VarDesc;
 using framework::Variable;
@@ -160,7 +160,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -202,7 +202,7 @@ void FleetWrapper::PullSparseVarsSync(
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -252,19 +252,19 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
                                           bool is_training,
-                                          std::vector<const LoDTensor*>* inputs,
-                                          std::vector<LoDTensor*>* outputs) {
+                                          std::vector<const Tensor*>* inputs,
+                                          std::vector<Tensor*>* outputs) {
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor* output = nullptr;
+  framework::Tensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const framework::Tensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -313,7 +313,7 @@ void FleetWrapper::PullDenseVarsAsync(
       varname = var_names[i] + "pin";
     }
     Variable* var = scope.FindVar(varname);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* w = tensor->data<float>();
     paddle::distributed::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
@@ -331,7 +331,7 @@ void FleetWrapper::PullDenseVarsSync(
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* w = tensor->data<float>();
     paddle::distributed::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -350,7 +350,7 @@ void FleetWrapper::PushDenseParamSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* g = tensor->mutable_data<float>(place);
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -377,7 +377,7 @@ void FleetWrapper::PushDenseVarsAsync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     float* g = tensor->mutable_data<float>(place);
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -427,17 +427,15 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     uint64_t padding_id, bool scale_sparse, const std::string& accesor,
     const std::string& click_name, platform::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<const LoDTensor*>* inputs,
-    std::vector<const LoDTensor*>* outputs) {
+    std::vector<const Tensor*>* inputs, std::vector<const Tensor*>* outputs) {
   // not support
   return;
 }
 
 void FleetWrapper::PushSparseFromTensorAsync(
     const uint64_t table_id, int fea_dim, uint64_t padding_id,
-    platform::Place place, std::vector<const LoDTensor*>* inputs,
-    const LoDTensor* shows, const LoDTensor* clks,
-    std::vector<LoDTensor*>* outputs) {
+    platform::Place place, std::vector<const Tensor*>* inputs,
+    const Tensor* shows, const Tensor* clks, std::vector<Tensor*>* outputs) {
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
@@ -461,7 +459,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   CHECK(clk_size == batch_size || clk_size == 1);
 
   std::vector<float> g;
-  for (framework::LoDTensor* g_tensor : *outputs) {
+  for (framework::Tensor* g_tensor : *outputs) {
     float* g_ori = g_tensor->data<float>();
     // no cvm
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
@@ -495,7 +493,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   const int64_t* clk_tensor = clks->data<int64_t>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const framework::Tensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
 
@@ -662,7 +660,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
       VLOG(3) << "prepare shrink dense batch_sum";
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      Tensor* tensor = var->GetMutable<Tensor>();
       float* g = tensor->data<float>();
 
       // show_batch_sum += N * log(decay)
@@ -672,7 +670,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
-      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+      float* g_size = var_size->GetMutable<Tensor>()->data<float>();
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
@@ -682,7 +680,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
     } else {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      Tensor* tensor = var->GetMutable<Tensor>();
       float* g = tensor->data<float>();
       paddle::distributed::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));

@@ -32,15 +32,15 @@ using Tensor = framework::Tensor;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
 template <typename T, typename TreeT = int, typename OutT = int>
 void TDMSamplerInner(const framework::ExecutionContext &context,
-                     const LoDTensor &input_tensor,
-                     const LoDTensor &travel_lod_tensor,
-                     const LoDTensor &layer_lod_tensor, LoDTensor *out_tensor,
-                     LoDTensor *label_tensor, LoDTensor *mask_tensor) {
+                     const Tensor &input_tensor,
+                     const Tensor &travel_lod_tensor,
+                     const Tensor &layer_lod_tensor, Tensor *out_tensor,
+                     Tensor *label_tensor, Tensor *mask_tensor) {
   auto neg_samples_num_vec =
       context.Attr<std::vector<int>>("neg_samples_num_list");
   auto layer_offset_lod = context.Attr<std::vector<int>>("layer_offset_lod");
@@ -240,9 +240,9 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *layer_var = context.InputVar("Layer");
 
     // get all tensor
-    auto &input_tensor = input_var->Get<framework::LoDTensor>();
-    auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
-    auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
+    auto &input_tensor = input_var->Get<framework::Tensor>();
+    auto &travel_lod_tensor = travel_var->Get<framework::Tensor>();
+    auto &layer_lod_tensor = layer_var->Get<framework::Tensor>();
 
     const auto &input_type = input_tensor.type();
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
@@ -294,9 +294,9 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *out_var = context.OutputVar("Out");
     auto *label_var = context.OutputVar("Labels");
     auto *mask_var = context.OutputVar("Mask");
-    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
-    auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
-    auto *mask_tensor = mask_var->GetMutable<framework::LoDTensor>();
+    auto *out_tensor = out_var->GetMutable<framework::Tensor>();
+    auto *label_tensor = label_var->GetMutable<framework::Tensor>();
+    auto *mask_tensor = mask_var->GetMutable<framework::Tensor>();
 
     auto output_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));

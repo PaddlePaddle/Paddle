@@ -278,7 +278,7 @@ def convert_len(var):
             return control_flow.array_length(var)
         else:
             raise TypeError(
-                'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
+                'len(var) only supports Tensor/LoDTensorArray/SelectedRows, but received %s.'
                 % type(var))
     else:
         return len(var)

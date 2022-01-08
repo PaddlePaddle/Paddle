@@ -40,9 +40,9 @@ def accuracy(input, label, k=1, correct=None, total=None):
     Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
 
     Args:
-        input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
+        input(Variable): The input of accuracy layer, which is the predictions of network. A Tensor or Tensor with type float32,float64.
             The shape is ``[sample_number, class_dim]`` .
-        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
+        label(Variable): The label of dataset.  Tensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
         correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
         total(Variable): The total entries count. A tensor with type int64 or int32.
@@ -154,10 +154,10 @@ def auc(input,
                          [0, 1]. Each row is sorted in descending order. This
                          input should be the output of topk. Typically, this
                          Variable indicates the probability of each label.
-                         A LoDTensor or Tensor with type float32,float64.
+                         A Tensor or Tensor with type float32,float64.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
-                         A LoDTensor or Tensor with type int32,int64.
+                         A Tensor or Tensor with type int32,int64.
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
         num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 200.

@@ -299,7 +299,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
@@ -444,7 +444,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* out = ctx.Input<framework::Tensor>("Out");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* output_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* input_grad =

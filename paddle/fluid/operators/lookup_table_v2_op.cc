@@ -183,7 +183,7 @@ class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
                          framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+              << " is set to Tensor";
       ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));

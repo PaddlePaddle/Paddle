@@ -189,8 +189,7 @@ class DlnneEngineOp : public framework::OperatorBase {
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
       // convert input and copy to Dlnne engine's buffer
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<framework::Tensor>(scope, x);
 
       const int bind_index = index;
       index++;
@@ -266,7 +265,7 @@ class DlnneEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in DLNNE subgraph.", y));
 
-      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      auto *fluid_t = fluid_v->GetMutable<framework::Tensor>();
 
       VLOG(4) << "out_shapes[bind_index] dim:" << out_shapes[bind_index].size();
       fluid_t->Resize(framework::make_ddim(out_shapes[bind_index]));

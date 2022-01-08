@@ -142,10 +142,10 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input parameter that has to be updated.");
     AddInput("Grad",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input gradient of the parameter.");
     AddInput("LearningRate", "(Tensor) Learning rate.");
     AddInput("Moment1", "(Tensor) Input first moment.");
@@ -153,7 +153,7 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator.");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator.");
     AddInput("MasterParam",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input master parameter that has to be updated.")
         .AsDispensable();
     AddInput(

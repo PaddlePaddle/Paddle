@@ -129,9 +129,9 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(LoDTensor) the first input is a LodTensor, which support "
+             "(Tensor) the first input is a LodTensor, which support "
              "variable-time length input sequence. The underlying tensor in "
-             "this LoDTensor is a matrix with shape (T X 4D), where T is the "
+             "this Tensor is a matrix with shape (T X 4D), where T is the "
              "total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
              "(Tensor, optional) the initial hidden state is an optional "
@@ -158,15 +158,15 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              " - The shape is (1 x 7D). "
              " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("Hidden",
-              "(LoDTensor) the hidden state of LSTM operator. "
+              "(Tensor) the hidden state of LSTM operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("Cell",
-              "(LoDTensor) the cell state of LSTM operator. "
+              "(Tensor) the cell state of LSTM operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("BatchGate",
-              "(LoDTensor) This LoDTensor contains input gate, forget gate "
+              "(Tensor) This Tensor contains input gate, forget gate "
               "and output gate after the nonlinear computation. This "
-              "LoDTensor has the same shape as the reorganized input, which "
+              "Tensor has the same shape as the reorganized input, which "
               "is also be called batch input. The LoD size is 2. The first "
               "LoD is the batch offsets and the second LoD contains the "
               "indexes, which denote the position of reorganized sequence "
@@ -174,7 +174,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate()
         .AsExtra();
     AddOutput("BatchCellPreAct",
-              "(LoDTensor) This LoDTensor is obtained in the forward and used "
+              "(Tensor) This Tensor is obtained in the forward and used "
               "in the backward.")
         .AsIntermediate()
         .AsExtra();

@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using framework::Tensor;
 
 namespace {
@@ -307,9 +307,9 @@ class RowConvKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<LoDTensor>("X");
+    auto *X = context.Input<Tensor>("X");
     auto *Filter = context.Input<Tensor>("Filter");
-    auto *Out = context.Output<LoDTensor>("Out");
+    auto *Out = context.Output<Tensor>("Out");
 
     const T *in = X->data<T>();
     const T *weight = Filter->data<T>();
@@ -360,14 +360,14 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<LoDTensor>("X");
+    auto *X = context.Input<Tensor>("X");
     auto *Filter = context.Input<Tensor>("Filter");
-    auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     const T *in = X->data<T>();
     const T *weights = Filter->data<T>();
     const T *dout = dOut->data<T>();
 
-    Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
+    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
     Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
     int batch_size = 0;
     bool is_tensor = X->lod().empty();

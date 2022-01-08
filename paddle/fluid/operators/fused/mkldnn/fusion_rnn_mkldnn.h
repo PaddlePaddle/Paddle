@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
+using paddle::framework::Tensor;
 using paddle::framework::Tensor;
 using paddle::platform::CPUDeviceContext;
 using paddle::platform::CreateKey;
@@ -31,7 +31,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
   RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
                    const dnnl::engine mkldnn_engine, platform::Place cpu_place,
-                   const LoDTensor* input, const Tensor* weight_h,
+                   const Tensor* input, const Tensor* weight_h,
                    const Tensor* h0, const bool is_reverse, const int64_t N,
                    const int64_t Ti, const int64_t IC, const int64_t OC,
                    const int64_t G, const std::string& unique_name)
@@ -134,7 +134,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
   }
 
   std::shared_ptr<dnnl::memory> AcquireInputMemoryWithReorder(
-      const LoDTensor* input, const bool is_reverse) {
+      const Tensor* input, const bool is_reverse) {
     const auto name = this->key_ + "@input_mem";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(name));

@@ -86,7 +86,7 @@ class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), "
+             "(Tensor), "
              "the input of SequenceSliceOp.");
     AddInput("Offset",
              "(Tensor), "
@@ -96,7 +96,7 @@ class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor), "
              "a vector<int> to describe the length of every input sequence for "
              "sub sequence item.");
-    AddOutput("Out", "(LoDTensor), the output of SequenceSliceOp.");
+    AddOutput("Out", "(Tensor), the output of SequenceSliceOp.");
     AddComment(R"DOC(
 Sequence slice operator
 

@@ -92,7 +92,7 @@ class MomentumOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
+            "The input var's type should be Tensor, but the received is %s",
             ctx->GetInputsVarType("Param").front()));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
@@ -506,7 +506,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
                         : nullptr;
 
     auto* grad_var = ctx.InputVar("Grad");
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<framework::Tensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       if (platform::is_cpu_place(ctx.GetPlace())) {
         CPUDenseMomentumFunctor<MT> functor;

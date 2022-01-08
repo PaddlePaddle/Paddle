@@ -23,10 +23,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
+class Tensor;
 class Scope;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
+void SetFeedVariable(Scope* scope, const Tensor& input,
                      const std::string& var_name, size_t index);
 
 void SetFeedVariable(Scope* scope, const Strings& input,
@@ -35,7 +35,7 @@ void SetFeedVariable(Scope* scope, const Strings& input,
 FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
                             size_t index);
 
-LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);
+Tensor& GetVariableTensor(const Scope& scope, const std::string& var_name);
 
 }  // namespace framework
 }  // namespace paddle

@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 inline void CheckTableValid() {}
 
@@ -53,9 +53,9 @@ template <typename T>
 class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* table_t = ctx.Input<LoDTensor>("W");
-    auto* ids_t = ctx.Input<LoDTensor>("Ids");
-    auto* output_t = ctx.Output<LoDTensor>("Out");
+    auto* table_t = ctx.Input<Tensor>("W");
+    auto* ids_t = ctx.Input<Tensor>("Ids");
+    auto* output_t = ctx.Output<Tensor>("Out");
     const int64_t start_idx = ctx.Attr<int64_t>("start_index");
 
     VLOG(10) << "table_dims:" << table_t->dims();
@@ -101,10 +101,10 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const int64_t start_idx = context.Attr<int64_t>("start_index");
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto table_t = context.Input<LoDTensor>("W");
-    auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<Tensor>("Ids");
+    auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto table_t = context.Input<Tensor>("W");
+    auto table_grad_t = context.Output<Tensor>(framework::GradVarName("W"));
 
     T* table_grad_data =
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());

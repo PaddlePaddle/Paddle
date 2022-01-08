@@ -18,7 +18,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -28,8 +28,8 @@ namespace framework {
 namespace details {
 template <typename Func>
 static void VisitVariable(Variable* var, Func* func) {
-  if (var->IsType<LoDTensor>()) {
-    (*func)(var->GetMutable<LoDTensor>());
+  if (var->IsType<Tensor>()) {
+    (*func)(var->GetMutable<Tensor>());
   } else if (var->IsType<SelectedRows>()) {
     (*func)(var->GetMutable<SelectedRows>());
   } else {
@@ -41,8 +41,8 @@ static void VisitVariable(Variable* var, Func* func) {
 
 template <typename Func>
 static void VisitVariable(const Variable& var, Func* func) {
-  if (var.IsType<LoDTensor>()) {
-    (*func)(var.Get<LoDTensor>());
+  if (var.IsType<Tensor>()) {
+    (*func)(var.Get<Tensor>());
   } else if (var.IsType<SelectedRows>()) {
     (*func)(var.Get<SelectedRows>());
   } else {
@@ -54,7 +54,7 @@ static void VisitVariable(const Variable& var, Func* func) {
 struct TensorVisitor {
   Tensor* result_{nullptr};
 
-  void operator()(LoDTensor* tensor) { result_ = tensor; }
+  void operator()(Tensor* tensor) { result_ = tensor; }
 
   void operator()(SelectedRows* selected_rows) {
     result_ = selected_rows->mutable_value();
@@ -75,8 +75,8 @@ Tensor& VariableVisitor::GetMutableTensor(Variable* var) {
 
 struct ShareDimsAndLoDVisitor {
   Variable* trg_;
-  void operator()(const LoDTensor& val) {
-    auto* tensor = trg_->GetMutable<LoDTensor>();
+  void operator()(const Tensor& val) {
+    auto* tensor = trg_->GetMutable<Tensor>();
     tensor->set_layout(val.layout());
     tensor->set_lod(val.lod());
     tensor->Resize(val.dims());
@@ -104,8 +104,8 @@ void VariableVisitor::ShareDimsAndLoD(const Variable& src, Variable* trg) {
 struct EnforceShapeAndDTypeEQVisitor {
   const Variable* dst_;
 
-  void operator()(const LoDTensor& src) {
-    auto& tensor = dst_->Get<LoDTensor>();
+  void operator()(const Tensor& src) {
+    auto& tensor = dst_->Get<Tensor>();
     PADDLE_ENFORCE_EQ(src.place().which(), tensor.place().which(),
                       platform::errors::PreconditionNotMet(
                           "The place type of the two variables is not equal."));

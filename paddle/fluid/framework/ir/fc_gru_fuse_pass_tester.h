@@ -25,7 +25,7 @@ namespace ir {
 namespace fc_gru_test {
 void AddVarToScope(Scope* param_scope, const std::string& name,
                    const DDim& dims) {
-  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  auto* tensor = param_scope->Var(name)->GetMutable<Tensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(platform::CPUPlace());
 }

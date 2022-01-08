@@ -31,8 +31,8 @@ static constexpr double kMB = 1 / (1024 * 1024);
 
 static void GetTensors(Variable *var,
                        std::unordered_set<Tensor *> *tensor_set) {
-  if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<LoDTensor>());
+  if (var->IsType<Tensor>() && var->Get<Tensor>().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<Tensor>());
   } else if (var->IsType<SelectedRows>() &&
              var->Get<SelectedRows>().value().IsInitialized()) {
     tensor_set->insert(var->GetMutable<SelectedRows>()->mutable_value());

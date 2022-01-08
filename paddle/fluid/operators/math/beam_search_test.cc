@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
-                       paddle::framework::LoDTensor* scores,
-                       paddle::framework::LoDTensor* pre_ids,
-                       paddle::framework::LoDTensor* pre_scores) {
+void PrepareCPUTensors(paddle::framework::Tensor* ids,
+                       paddle::framework::Tensor* scores,
+                       paddle::framework::Tensor* pre_ids,
+                       paddle::framework::Tensor* pre_scores) {
   // lod
   paddle::framework::LoD lod;
   std::vector<size_t> level0({0, 2, 4});
@@ -63,20 +63,20 @@ void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
 
 template <typename DeviceContext, typename Place>
 void TestBeamSearch() {
-  paddle::framework::LoDTensor ids;
-  paddle::framework::LoDTensor scores;
-  paddle::framework::LoDTensor pre_ids;
-  paddle::framework::LoDTensor pre_scores;
+  paddle::framework::Tensor ids;
+  paddle::framework::Tensor scores;
+  paddle::framework::Tensor pre_ids;
+  paddle::framework::Tensor pre_scores;
 
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
   if (paddle::platform::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);
   } else {
-    paddle::framework::LoDTensor cpu_ids;
-    paddle::framework::LoDTensor cpu_scores;
-    paddle::framework::LoDTensor cpu_pre_ids;
-    paddle::framework::LoDTensor cpu_pre_scores;
+    paddle::framework::Tensor cpu_ids;
+    paddle::framework::Tensor cpu_scores;
+    paddle::framework::Tensor cpu_pre_ids;
+    paddle::framework::Tensor cpu_pre_scores;
 
     PrepareCPUTensors(&cpu_ids, &cpu_scores, &cpu_pre_ids, &cpu_pre_scores);
 
@@ -91,9 +91,9 @@ void TestBeamSearch() {
     pre_scores.set_lod(cpu_pre_scores.lod());
   }
 
-  paddle::framework::LoDTensor selected_ids;
-  paddle::framework::LoDTensor selected_scores;
-  paddle::framework::LoDTensor parent_idx;
+  paddle::framework::Tensor selected_ids;
+  paddle::framework::Tensor selected_scores;
+  paddle::framework::Tensor parent_idx;
 
   size_t level = 0;
   size_t beam_size = 2;
@@ -104,8 +104,8 @@ void TestBeamSearch() {
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());
 
-  paddle::framework::LoDTensor cpu_selected_ids;
-  paddle::framework::LoDTensor cpu_selected_scores;
+  paddle::framework::Tensor cpu_selected_ids;
+  paddle::framework::Tensor cpu_selected_scores;
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_selected_ids = selected_ids;
     cpu_selected_scores = selected_scores;

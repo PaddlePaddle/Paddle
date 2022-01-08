@@ -137,7 +137,7 @@ class TestTensor(unittest.TestCase):
     def test_lod_tensor_init(self):
         place = core.CPUPlace()
         lod_py = [[2, 1], [1, 2, 2]]
-        lod_tensor = core.LoDTensor()
+        lod_tensor = core.Tensor()
 
         lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
@@ -157,7 +157,7 @@ class TestTensor(unittest.TestCase):
             return
         place = core.CUDAPlace(0)
         lod_py = [[2, 1], [1, 2, 2]]
-        lod_tensor = core.LoDTensor()
+        lod_tensor = core.Tensor()
 
         lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)

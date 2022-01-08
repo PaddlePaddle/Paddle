@@ -34,14 +34,14 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
+            "The input var's type should be Tensor, but the received is %s",
             ctx->Inputs("Param").front(),
             ctx->GetInputsVarType("Param").front()));
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Grad").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
+            "The input var's type should be Tensor, but the received is %s",
             ctx->Inputs("Grad").front(),
             ctx->GetInputsVarType("Grad").front()));
 

@@ -48,7 +48,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     auto* grad_var = ctx.InputVar("Grad");
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<framework::Tensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       Tensor mu_tensor;
       mu_tensor.mutable_data<T>(framework::make_ddim({1}), ctx.GetPlace());

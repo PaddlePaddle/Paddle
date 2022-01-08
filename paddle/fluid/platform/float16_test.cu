@@ -314,9 +314,9 @@ TEST(float16, conversion_on_gpu) {
 }
 
 TEST(float16, lod_tensor_on_gpu) {
-  framework::LoDTensor src_tensor;
-  framework::LoDTensor gpu_tensor;
-  framework::LoDTensor dst_tensor;
+  framework::Tensor src_tensor;
+  framework::Tensor gpu_tensor;
+  framework::Tensor dst_tensor;
 
   float16 *src_ptr = src_tensor.mutable_data<float16>(
       framework::make_ddim({2, 2}), CPUPlace());
@@ -325,12 +325,12 @@ TEST(float16, lod_tensor_on_gpu) {
                     float16(0.0f)};
   memcpy(src_ptr, arr, 4 * sizeof(float16));
 
-  // CPU LoDTensor to GPU LoDTensor
+  // CPU Tensor to GPU Tensor
   CUDAPlace gpu_place(0);
   CUDADeviceContext gpu_ctx(gpu_place);
   framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
 
-  // GPU LoDTensor to CPU LoDTensor
+  // GPU Tensor to CPU Tensor
   framework::TensorCopy(gpu_tensor, CPUPlace(), gpu_ctx, &dst_tensor);
 
   // Sync before comparing LoDTensors

@@ -63,7 +63,7 @@ TEST(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   framework::Scope scope;
   auto launch_context = CreateDefaultLaunchContext();
   launch_context->UpdateCapturedEnv(scope, place);
-  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  auto* tensor1 = scope.Var("var1")->GetMutable<Tensor>();
 
   // CheckTensorEquivalent: tensor dimension not equivalent
   tensor1->mutable_data<float>(framework::make_ddim({3, 5}), place);
@@ -76,7 +76,7 @@ TEST(CinnLaunchContextTest, TestAssignVariablePreCondition) {
   framework::Scope scope;
   auto launch_context = CreateDefaultLaunchContext();
   launch_context->UpdateCapturedEnv(scope, place);
-  auto* tensor4 = scope.Var("var4")->GetMutable<LoDTensor>();
+  auto* tensor4 = scope.Var("var4")->GetMutable<Tensor>();
 
   // not used
   ASSERT_THROW(launch_context->AssignExternalVariable("var4"),
@@ -94,14 +94,14 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
   launch_context->UpdateCapturedEnv(scope, place);
 
   // assign external variables
-  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  auto* tensor1 = scope.Var("var1")->GetMutable<Tensor>();
   float* data1 =
       tensor1->mutable_data<float>(framework::make_ddim({3, 4}), place);
   data1[0] = 9.99f;
   data1[10] = 19.99f;
   ASSERT_NO_THROW(launch_context->AssignExternalVariable("var1"));
 
-  auto* tensor3 = scope.Var("var3")->GetMutable<LoDTensor>();
+  auto* tensor3 = scope.Var("var3")->GetMutable<Tensor>();
   tensor3->mutable_data<float>(framework::make_ddim({10, 16}), place);
   ASSERT_NO_THROW(launch_context->AssignExternalVariable("var3"));
 
@@ -113,7 +113,7 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
   ASSERT_EQ(internal_variable_names.size(), 1);
   EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
 
-  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
+  auto* tensor2 = scope.Var("var2")->GetMutable<Tensor>();
   tensor2->mutable_data<float>(framework::make_ddim({6, 7, 8}), place);
   ASSERT_NO_THROW(launch_context->AssignInternalVariable("cinn_var2"));
 

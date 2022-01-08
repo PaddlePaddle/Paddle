@@ -29,8 +29,8 @@ class SumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
+    if (out_var->IsType<framework::Tensor>()) {
+      auto *out = out_var->GetMutable<framework::Tensor>();
       auto x = ctx.MultiInput<Tensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
 

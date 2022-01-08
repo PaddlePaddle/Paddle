@@ -22,7 +22,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -136,12 +136,12 @@ class SumKernel : public framework::OpKernel<T> {
 
     bool in_place = out_var == in_vars[0];
 
-    if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
+    if (out_var->IsType<framework::Tensor>()) {
+      auto *out = out_var->GetMutable<framework::Tensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
-      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>() &&
-          in_vars[0]->Get<framework::LoDTensor>().IsInitialized()) {
-        auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+      if (in_num >= 1 && in_vars[0]->IsType<framework::Tensor>() &&
+          in_vars[0]->Get<framework::Tensor>().IsInitialized()) {
+        auto &in_0_tensor = in_vars[0]->Get<framework::Tensor>();
         if (in_0_tensor.numel() > 0) {
           in_place = (in_0_tensor.data<T>() == out_ptr);
         }
@@ -152,12 +152,12 @@ class SumKernel : public framework::OpKernel<T> {
           *context.template device_context<DeviceContext>().eigen_device();
       int start = in_place ? 1 : 0;
       if (!in_place) {
-        if ((in_num >= 2) && in_vars[0]->IsType<framework::LoDTensor>() &&
-            in_vars[1]->IsType<framework::LoDTensor>() &&
-            in_vars[0]->Get<framework::LoDTensor>().IsInitialized() &&
-            in_vars[1]->Get<framework::LoDTensor>().IsInitialized()) {
-          auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
-          auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
+        if ((in_num >= 2) && in_vars[0]->IsType<framework::Tensor>() &&
+            in_vars[1]->IsType<framework::Tensor>() &&
+            in_vars[0]->Get<framework::Tensor>().IsInitialized() &&
+            in_vars[1]->Get<framework::Tensor>().IsInitialized()) {
+          auto &in_0 = in_vars[0]->Get<framework::Tensor>();
+          auto &in_1 = in_vars[1]->Get<framework::Tensor>();
           if (in_0.numel() && in_1.numel()) {
             auto in_0_e = EigenVector<T>::Flatten(in_0);
             auto in_1_e = EigenVector<T>::Flatten(in_1);
@@ -176,8 +176,8 @@ class SumKernel : public framework::OpKernel<T> {
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;
       // If in_place, just skip the first tensor
       for (size_t i = start; i < in_num; i++) {
-        if (in_vars[i]->IsType<framework::LoDTensor>()) {
-          auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
+        if (in_vars[i]->IsType<framework::Tensor>()) {
+          auto &in_t = in_vars[i]->Get<framework::Tensor>();
           if (!in_t.IsInitialized() || in_t.numel() == 0) {
             continue;
           }

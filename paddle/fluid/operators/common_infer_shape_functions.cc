@@ -134,7 +134,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
       ctx->GetInputsVarType(y_name).front(),
       framework::proto::VarType::LOD_TENSOR,
       platform::errors::InvalidArgument(
-          "The var type of input %s should be LoDTensor, but got %s.",
+          "The var type of input %s should be Tensor, but got %s.",
           ctx->Inputs(y_name).front(), ctx->GetInputsVarType(y_name).front()));
 
   if (ctx->GetInputsVarType(x_name).front() ==

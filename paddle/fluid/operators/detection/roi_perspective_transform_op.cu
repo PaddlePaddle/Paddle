@@ -342,7 +342,7 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* out2in_idx = ctx.Output<framework::Tensor>("Out2InIdx");
     auto* out2in_w = ctx.Output<framework::Tensor>("Out2InWeights");
@@ -473,8 +473,8 @@ template <typename T>
 class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out2in_idx = ctx.Input<framework::LoDTensor>("Out2InIdx");
-    auto* out2in_w = ctx.Input<framework::LoDTensor>("Out2InWeights");
+    auto* out2in_idx = ctx.Input<framework::Tensor>("Out2InIdx");
+    auto* out2in_w = ctx.Input<framework::Tensor>("Out2InWeights");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));

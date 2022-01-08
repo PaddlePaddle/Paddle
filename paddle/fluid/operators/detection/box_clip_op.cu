@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTenso = framework::LoDTensor;
+using LoDTenso = framework::Tensor;
 
 static constexpr int ImInfoSize = 3;
 
@@ -46,9 +46,9 @@ template <typename DeviceContext, typename T>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *input = context.Input<LoDTensor>("Input");
+    auto *input = context.Input<Tensor>("Input");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto *output = context.Output<LoDTensor>("Output");
+    auto *output = context.Output<Tensor>("Output");
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;
     auto lod = input->lod();

@@ -43,8 +43,8 @@ bool cpu_place_used(const paddle::PaddlePlace& place) {
 }  // namespace paddle
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor* input,
-                 paddle::framework::DDim dims, T lower, T upper) {
+void SetupTensor(paddle::framework::Tensor* input, paddle::framework::DDim dims,
+                 T lower, T upper) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -56,15 +56,15 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor* input,
-                 paddle::framework::DDim dims, const std::vector<T>& data) {
+void SetupTensor(paddle::framework::Tensor* input, paddle::framework::DDim dims,
+                 const std::vector<T>& data) {
   CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor* input,
+void SetupLoDTensor(paddle::framework::Tensor* input,
                     const paddle::framework::LoD& lod, T lower, T upper) {
   input->set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
@@ -72,7 +72,7 @@ void SetupLoDTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor* input,
+void SetupLoDTensor(paddle::framework::Tensor* input,
                     paddle::framework::DDim dims,
                     const paddle::framework::LoD lod,
                     const std::vector<T>& data) {
@@ -83,8 +83,8 @@ void SetupLoDTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void CheckError(const paddle::framework::LoDTensor& output1,
-                const paddle::framework::LoDTensor& output2) {
+void CheckError(const paddle::framework::Tensor& output1,
+                const paddle::framework::Tensor& output2) {
   // Check lod information
   EXPECT_EQ(output1.lod(), output2.lod());
 
@@ -158,7 +158,7 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
 
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
-                   const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
+                   const std::vector<paddle::framework::Tensor*>& cpu_feeds,
                    const std::vector<paddle::framework::FetchType*>& cpu_fetchs,
                    const int repeat = 1, const bool is_combined = false) {
   // 1. Define place, executor, scope
@@ -205,7 +205,7 @@ void TestInference(const std::string& dirname,
       inference_program->GetFetchTargetNames();
 
   // 4. Prepare inputs: set up maps for feed targets
-  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+  std::map<std::string, const paddle::framework::Tensor*> feed_targets;
   for (size_t i = 0; i < feed_target_names.size(); ++i) {
     // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
     feed_targets[feed_target_names[i]] = cpu_feeds[i];

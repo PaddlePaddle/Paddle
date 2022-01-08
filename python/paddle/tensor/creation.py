@@ -139,9 +139,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+        elif isinstance(data, (core.Tensor, core.Tensor)):
             # Note(zhouwei25): should't expose it to users, just for internal use.
-            # convert core.Tensor/core.LoDTensor to VarBase first
+            # convert core.Tensor/core.Tensor to VarBase first
             # Currenly, there is no copy when places are same
             data = paddle.Tensor(data)
             if not data.place._equals(place):
@@ -404,7 +404,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
+        Tensor: An identity Tensor or Tensor of shape [num_rows, num_columns].
 
     Examples:
         .. code-block:: python

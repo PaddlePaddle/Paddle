@@ -49,7 +49,7 @@ namespace reader = operators::reader;
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
 static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
-    const framework::LoDTensor &tensor, const framework::VarDesc &var_desc,
+    const framework::Tensor &tensor, const framework::VarDesc &var_desc,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
   auto desc_shape = var_desc.GetShape();
@@ -115,8 +115,8 @@ template <typename QueueType>
 class MultiDeviceFeedReader {
  public:
   using ResultDictList =
-      std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
-  using ResultList = std::vector<std::vector<framework::LoDTensor>>;
+      std::vector<std::unordered_map<std::string, framework::Tensor>>;
+  using ResultList = std::vector<std::vector<framework::Tensor>>;
 
   static constexpr bool kKeepOrder =
       std::is_same<QueueType,
@@ -325,7 +325,7 @@ class MultiDeviceFeedReader {
   std::vector<std::future<Status>> futures_;
   std::vector<std::exception_ptr> exceptions_;
 
-  std::vector<std::vector<framework::LoDTensor>> ret_;
+  std::vector<std::vector<framework::Tensor>> ret_;
   bool drop_last_;
   bool pin_memory_;
 };
@@ -346,7 +346,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
              auto &tensor_list = result_list[0];
              std::vector<std::shared_ptr<imperative::VarBase>> var_list;
              var_list.reserve(tensor_list.size());
-             auto func = [](framework::LoDTensor &lod_tensor) {
+             auto func = [](framework::Tensor &lod_tensor) {
                std::string act_name =
                    imperative::GetCurrentTracer()->GenerateUniqueName(
                        "generated_var");
@@ -355,7 +355,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
                new_var->SetType(framework::proto::VarType::LOD_TENSOR);
                new_var->SetDataType(lod_tensor.type());
                auto *tensor =
-                   new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+                   new_var->MutableVar()->GetMutable<framework::Tensor>();
                *tensor = std::move(lod_tensor);
                return new_var;
              };
@@ -374,16 +374,16 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
 void BindReader(py::module *module) {
   auto &m = *module;
 
-  m.def("diff_tensor_shape", [](const framework::LoDTensor &tensor,
-                                const framework::VarDesc &var_desc,
-                                size_t num_places) -> py::object {
-    auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
-    if (diff) {
-      return py::cast(std::move(diff.get()));
-    } else {
-      return py::cast(nullptr);
-    }
-  });
+  m.def("diff_tensor_shape",
+        [](const framework::Tensor &tensor, const framework::VarDesc &var_desc,
+           size_t num_places) -> py::object {
+          auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
+          if (diff) {
+            return py::cast(std::move(diff.get()));
+          } else {
+            return py::cast(nullptr);
+          }
+        });
 
   m.def("init_lod_tensor_blocking_queue",
         [](framework::Variable &var, size_t capacity,
@@ -412,7 +412,7 @@ void BindReader(py::module *module) {
       m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](reader::LoDTensorBlockingQueue &self,
-              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+              const std::vector<framework::Tensor> &lod_tensor_vec) {
              return self.Push(lod_tensor_vec);
            },
            py::call_guard<py::gil_scoped_release>())
@@ -428,7 +428,7 @@ void BindReader(py::module *module) {
       m, "OrderedMultiDeviceLoDTensorBlockingQueue", "")
       .def("push",
            [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
-              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+              const std::vector<framework::Tensor> &lod_tensor_vec) {
              return self.Push(lod_tensor_vec);
            },
            py::call_guard<py::gil_scoped_release>())

@@ -30,7 +30,7 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* argmax = ctx.Output<framework::Tensor>("Argmax");
 
@@ -170,7 +170,7 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
     auto* argmax = ctx.Input<framework::Tensor>("Argmax");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));

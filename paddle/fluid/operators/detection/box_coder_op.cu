@@ -133,7 +133,7 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* prior_box = context.Input<framework::Tensor>("PriorBox");
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
-    auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
+    auto* target_box = context.Input<framework::Tensor>("TargetBox");
     auto* output_box = context.Output<framework::Tensor>("OutputBox");
     std::vector<float> variance = context.Attr<std::vector<float>>("variance");
     const T* prior_box_data = prior_box->data<T>();

@@ -79,14 +79,14 @@ class ReverseOpVarTypeInference : public framework::VarTypeInference {
 class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The LoDTensor to be flipped.");
-    AddOutput("Out", "The LoDTensor after flipping.");
+    AddInput("X", "The Tensor to be flipped.");
+    AddOutput("Out", "The Tensor after flipping.");
     AddAttr<std::vector<int>>(
         "axis", "The axises that along which order of elements is reversed.");
     AddComment(R"DOC(
       Reverse Operator.
 
-      Reverse the order of elements in the input LoDTensor along given axises.
+      Reverse the order of elements in the input Tensor along given axises.
 
       Case 1:
         Given

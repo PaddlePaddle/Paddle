@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -28,7 +28,7 @@ template <typename T>
 class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context, const T* scales,
-                  framework::LoDTensor* seq) {
+                  framework::Tensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;

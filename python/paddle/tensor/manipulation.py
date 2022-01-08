@@ -447,14 +447,14 @@ def flip(x, axis, name=None):
     Reverse the order of a n-D tensor along given axis in axis.
 
     Args:
-        x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
+        x (Tensor): A Tensor(or Tensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
         axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
+        Tensor: Tensor or Tensor calculated by flip layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
@@ -502,7 +502,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
     Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
     Args:
-        x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
+        x (Tensor): The input Tensor(or Tensor). The data type of the input Tensor x
             should be float16, float32, float64, int32, int64, bool. float16 is only supported on gpu.
         k (int, optional): Direction and number of times to rotate, default value: 1.
         axes (list|tuple, optional): Axes to rotate, dimension must be 2. default value: [0, 1].
@@ -510,7 +510,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
+        Tensor: Tensor or Tensor calculated by rot90 layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python

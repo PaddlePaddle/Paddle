@@ -159,14 +159,14 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
 
-    using paddle::framework::LoDTensor;
+    using paddle::framework::Tensor;
     bool skip_update = false;
     // TODO(liupeng):
     if (ctx.HasInput("SkipUpdate")) {
@@ -191,15 +191,15 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
 
     T coeff = static_cast<T>(ctx.Attr<float>("coeff"));
     T lr_ratio = static_cast<T>(ctx.Attr<float>("lr_ratio"));
-    auto* lr = ctx.Input<LoDTensor>("LearningRate");
+    auto* lr = ctx.Input<Tensor>("LearningRate");
 
-    LoDTensor* param;
+    Tensor* param;
 
     if (ctx.HasInput("MasterParam")) {
       // TODO(liupeng): master
-      param = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("MasterParam"));
+      param = const_cast<Tensor*>(ctx.Input<Tensor>("MasterParam"));
     } else {
-      param = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Param"));
+      param = const_cast<Tensor*>(ctx.Input<Tensor>("Param"));
     }
 
     AdamWFunctor<T, CPUAdamW> functor(coeff, lr_ratio, lr->data<T>(),

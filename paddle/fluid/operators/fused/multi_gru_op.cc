@@ -127,9 +127,9 @@ framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
 
 void MultiGRUOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) the input is an LodTensor, which support "
+           "(Tensor) the input is an LodTensor, which support "
            "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "this Tensor is a matrix with shape (T X M), where T is the "
            "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("WeightX",
            "(MultiTensor) The FC weight with shape (M x 3D),"
@@ -154,7 +154,7 @@ void MultiGRUOpMaker::Make() {
       "Only used with MKL-DNN INT8.")
       .AsDuplicable()
       .AsDispensable();
-  AddOutput("Hidden", "(LoDTensor) (T x D) Same as GRUOp");
+  AddOutput("Hidden", "(Tensor) (T x D) Same as GRUOp");
   AddAttr<std::string>("activation",
                        "(string, default tanh) "
                        "The activation type used for output candidate {h}_t.")

@@ -31,7 +31,7 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def append_lod_tensor(self, tensor_array, lod, data):
-        lod_tensor = core.LoDTensor()
+        lod_tensor = core.Tensor()
         lod_tensor.set_lod(lod)
         lod_tensor.set(data, self.place)
         tensor_array.append(lod_tensor)

@@ -483,8 +483,8 @@ def _py_reader(capacity,
                 for tensors in func():
                     array = core.LoDTensorArray()
                     for item in tensors:
-                        if not isinstance(item, core.LoDTensor):
-                            tmp = core.LoDTensor()
+                        if not isinstance(item, core.Tensor):
+                            tmp = core.Tensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp
 
@@ -915,10 +915,10 @@ def read_file(reader):
 
 def load(out, file_path, load_as_fp16=None):
     """
-    Load operator will load a LoDTensor / SelectedRows variable from disk file.
+    Load operator will load a Tensor / SelectedRows variable from disk file.
 
     Args:
-        out(Variable): The LoDTensor / SelectedRows need to be loaded..
+        out(Variable): The Tensor / SelectedRows need to be loaded..
 
         file_path(STRING): Variable will be loaded from "file_path".
 

@@ -64,16 +64,16 @@ class BatchNormOpConverter : public OpConverter {
             "Variable of Variance of batch_norm TRT converter is not found."));
 
     // get tensor
-    auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
-    auto* Mean_t = Mean_v->GetMutable<framework::LoDTensor>();
-    auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
-    auto* Variance_t = Variance_v->GetMutable<framework::LoDTensor>();
+    auto* Bias_t = Bias_v->GetMutable<framework::Tensor>();
+    auto* Mean_t = Mean_v->GetMutable<framework::Tensor>();
+    auto* Scale_t = Scale_v->GetMutable<framework::Tensor>();
+    auto* Variance_t = Variance_v->GetMutable<framework::Tensor>();
 
     // create temp tensor for weights
-    framework::LoDTensor bias_tensor;
-    framework::LoDTensor mean_tensor;
-    framework::LoDTensor scale_tensor;
-    framework::LoDTensor variance_tensor;
+    framework::Tensor bias_tensor;
+    framework::Tensor mean_tensor;
+    framework::Tensor scale_tensor;
+    framework::Tensor variance_tensor;
 
     bias_tensor.Resize(Bias_t->dims());
     mean_tensor.Resize(Mean_t->dims());
@@ -93,10 +93,10 @@ class BatchNormOpConverter : public OpConverter {
     auto* variance_data =
         variance_tensor.mutable_data<float>(platform::CPUPlace());
 
-    std::unique_ptr<framework::LoDTensor> combile_scale_tensor(
-        new framework::LoDTensor());
-    std::unique_ptr<framework::LoDTensor> combile_bias_tensor(
-        new framework::LoDTensor());
+    std::unique_ptr<framework::Tensor> combile_scale_tensor(
+        new framework::Tensor());
+    std::unique_ptr<framework::Tensor> combile_bias_tensor(
+        new framework::Tensor());
 
     combile_scale_tensor->Resize(scale_tensor.dims());
     combile_bias_tensor->Resize(bias_tensor.dims());

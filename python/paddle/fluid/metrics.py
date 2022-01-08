@@ -821,16 +821,16 @@ class DetectionMAP(object):
       https://arxiv.org/abs/1512.02325
 
     Args:
-        input (Variable): LoDTensor, The detection results, which is a LoDTensor with shape
+        input (Variable): Tensor, The detection results, which is a Tensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
             The data type is float32 or float64.
-        gt_label (Variable): LoDTensor, The ground truth label index, which is a LoDTensor
+        gt_label (Variable): Tensor, The ground truth label index, which is a Tensor
             with shape [N, 1].The data type is float32 or float64.
-        gt_box (Variable): LoDTensor, The ground truth bounding box (bbox), which is a
-            LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
+        gt_box (Variable): Tensor, The ground truth bounding box (bbox), which is a
+            Tensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
             The data type is float32 or float64.
-        gt_difficult (Variable|None): LoDTensor, Whether this ground truth is a difficult
-            bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
+        gt_difficult (Variable|None): Tensor, Whether this ground truth is a difficult
+            bounding bbox, which can be a Tensor [N, 1] or not set. If None,
             it means all the ground truth labels are not difficult bbox.The
             data type is int.
         class_num (int): The class number.

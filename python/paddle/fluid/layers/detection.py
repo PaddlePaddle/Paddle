@@ -145,17 +145,17 @@ def retinanet_target_assign(bbox_pred,
             The data type of :attr:`anchor_var` is float32 or float64. Please refer
             to the OP :ref:`api_fluid_layers_anchor_generator`
             for the generation of :attr:`anchor_var`.
-        gt_boxes(Variable): A 1-level 2-D LoDTensor with shape :math:`[G, 4]` represents
+        gt_boxes(Variable): A 1-level 2-D Tensor with shape :math:`[G, 4]` represents
             locations of all ground-truth boxes. :math:`G` is the total number of
             all ground-truth boxes in a mini-batch, and each ground-truth box has 4
             coordinate values. The data type of :attr:`gt_boxes` is float32 or
             float64.
-        gt_labels(variable): A 1-level 2-D LoDTensor with shape :math:`[G, 1]` represents
+        gt_labels(variable): A 1-level 2-D Tensor with shape :math:`[G, 1]` represents
             categories of all ground-truth boxes, and the values are in the range of
             :math:`[1, C]`. :math:`G` is the total number of all ground-truth boxes
             in a mini-batch, and each ground-truth box has one category. The data type
             of :attr:`gt_labels` is int32.
-        is_crowd(Variable): A 1-level 1-D LoDTensor with shape :math:`[G]` which
+        is_crowd(Variable): A 1-level 1-D Tensor with shape :math:`[G]` which
             indicates whether a ground-truth box is a crowd. If the value is 1, the
             corresponding box is a crowd, it is ignored during training. :math:`G` is
             the total number of all ground-truth boxes in a mini-batch. The data type
@@ -358,11 +358,11 @@ def rpn_target_assign(bbox_pred,
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors. The data type can be float32 or float64.
         gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
-            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            Tensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input. The data type can be float32 or float64.
-        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        is_crowd (Variable): A 1-D Tensor which indicates groud-truth is crowd.
                              The data type must be int32.
-        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+        im_info (Variable): A 2-D Tensor with shape [N, 3]. N is the batch size,
         3 is the height, width and scale.
         rpn_batch_size_per_im(int): Total number of RPN examples per image.
                                     The data type must be int32.
@@ -679,7 +679,7 @@ def detection_output(loc,
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, a tuple with one Variable(Out) is returned. 
 
-        Out (Variable): The detection outputs is a LoDTensor with shape [No, 6].
+        Out (Variable): The detection outputs is a Tensor with shape [No, 6].
         Data type is the same as input (loc). Each row has six values:
         [label, confidence, xmin, ymin, xmax, ymax]. `No` is
         the total number of detections in this mini-batch. For each instance,
@@ -687,7 +687,7 @@ def detection_output(loc,
         N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]`
         detected results, if it is 0, the i-th image has no detected results.
 
-        Index (Variable): Only return when return_index is True. A 2-D LoDTensor
+        Index (Variable): Only return when return_index is True. A 2-D Tensor
         with shape [No, 1] represents the selected index which type is Integer.
         The index is the absolute value cross batches. No is the same number
         as Out. If the index is used to gather other attribute such as age,
@@ -876,7 +876,7 @@ def box_coder(prior_box,
             data type is float32 or float64. The second is list consist of 
             4 elements shared by all boxes and data type is float32 or float64. 
             Other is None and not involved in calculation. 
-        target_box(Variable): This input can be a 2-D LoDTensor with shape 
+        target_box(Variable): This input can be a 2-D Tensor with shape 
             [N, 4] when code_type is 'encode_center_size'. This input also can 
             be a 3-D Tensor with shape [N, M, 4] when code_type is 
             'decode_center_size'. Each box is represented as 
@@ -1342,15 +1342,15 @@ def bipartite_match(dist_matrix,
     in each row of ColToRowMatchIndices. If the column entity is not matched
     any row entity, set -1 in ColToRowMatchIndices.
 
-    NOTE: the input DistMat can be LoDTensor (with LoD) or Tensor.
-    If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
+    NOTE: the input DistMat can be Tensor (with LoD) or Tensor.
+    If Tensor with LoD, the height of ColToRowMatchIndices is batch size.
     If Tensor, the height of ColToRowMatchIndices is 1.
 
     NOTE: This API is a very low level API. It is used by :code:`ssd_loss`
     layer. Please consider to use :code:`ssd_loss` instead.
 
     Args:
-        dist_matrix(Variable): This input is a 2-D LoDTensor with shape
+        dist_matrix(Variable): This input is a 2-D Tensor with shape
             [K, M]. The data type is float32 or float64. It is pair-wise 
             distance matrix between the entities represented by each row and 
             each column. For example, assumed one entity is A with shape [K], 
@@ -1455,7 +1455,7 @@ def target_assign(input,
             out_weight[i][id] = 1.0
 
     Args:
-       input (Variable): This input is a 3D LoDTensor with shape [M, P, K].
+       input (Variable): This input is a 3D Tensor with shape [M, P, K].
            Data type should be int32 or float32.
        matched_indices (Variable): The input matched indices
            is 2D Tenosr<int32> with shape [N, P], If MatchIndices[i][j] is -1,
@@ -1588,9 +1588,9 @@ def ssd_loss(location,
             `location`, C is the class number.The data type is float32 or
             float64.
         gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
-            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            Tensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.The data type is float32 or float64.
-        gt_label (Variable): The ground-truth labels are a 2D LoDTensor
+        gt_label (Variable): The ground-truth labels are a 2D Tensor
             with shape [Ng, 1].Ng is the total number of ground-truth bboxes of
             mini-batch input, 1 is the number of class. The data type is float32
             or float64.
@@ -2515,7 +2515,7 @@ def roi_perspective_transform(input,
                               spatial_scale=1.0,
                               name=None):
     """
-    **The** `rois` **of this op should be a LoDTensor.**
+    **The** `rois` **of this op should be a Tensor.**
 
     ROI perspective transform op applies perspective transform to map each roi into an 
     rectangular region. Perspective transform is a type of transformation in linear algebra.
@@ -2525,8 +2525,8 @@ def roi_perspective_transform(input,
                           input tensor is NCHW. Where N is batch size, C is the
                           number of input channels, H is the height of the feature,
                           and W is the width of the feature. The data type is float32.
-        rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed. 
-                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as 
+        rois (Variable):  2-D Tensor, ROIs (Regions of Interest) to be transformed. 
+                          It should be a 2-D Tensor of shape (num_rois, 8). Given as 
                           [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
                           top left coordinates, and (x2, y2) is the top right 
                           coordinates, and (x3, y3) is the bottom right coordinates, 
@@ -2637,11 +2637,11 @@ def generate_proposal_labels(rpn_rois,
     Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it would contribute to training loss.
 
     Args:
-        rpn_rois(Variable): A 2-D LoDTensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format. The data type can be float32 or float64.
-        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth. The data type must be int32.
-        is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd. The data type must be int32.
-        gt_boxes(Variable): A 2-D LoDTensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
-        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
+        rpn_rois(Variable): A 2-D Tensor with shape [N, 4]. N is the number of the GenerateProposalOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format. The data type can be float32 or float64.
+        gt_classes(Variable): A 2-D Tensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth. The data type must be int32.
+        is_crowd(Variable): A 2-D Tensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd. The data type must be int32.
+        gt_boxes(Variable): A 2-D Tensor with shape [M, 4]. M is the number of groundtruth, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
+        im_info(Variable): A 2-D Tensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
 
         batch_size_per_im(int): Batch size of rois per images. The data type must be int32.
         fg_fraction(float): Foreground fraction in total batch_size_per_im. The data type must be float32.
@@ -2660,12 +2660,12 @@ def generate_proposal_labels(rpn_rois,
         tuple:
         A tuple with format``(rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, max_overlap)``.
 
-        - **rois**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4]``. The data type is the same as ``rpn_rois``.
-        - **labels_int32**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 1]``. The data type must be int32.
-        - **bbox_targets**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The regression targets of all RoIs. The data type is the same as ``rpn_rois``.
-        - **bbox_inside_weights**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of foreground boxes' regression loss. The data type is the same as ``rpn_rois``.
-        - **bbox_outside_weights**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of regression loss. The data type is the same as ``rpn_rois``.
-        - **max_overlap**: 1-D LoDTensor with shape ``[P]``. P is the number of output ``rois``. The maximum overlap between each sampled RoI and ground-truth.
+        - **rois**: 2-D Tensor with shape ``[batch_size_per_im * batch_size, 4]``. The data type is the same as ``rpn_rois``.
+        - **labels_int32**: 2-D Tensor with shape ``[batch_size_per_im * batch_size, 1]``. The data type must be int32.
+        - **bbox_targets**: 2-D Tensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The regression targets of all RoIs. The data type is the same as ``rpn_rois``.
+        - **bbox_inside_weights**: 2-D Tensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of foreground boxes' regression loss. The data type is the same as ``rpn_rois``.
+        - **bbox_outside_weights**: 2-D Tensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of regression loss. The data type is the same as ``rpn_rois``.
+        - **max_overlap**: 1-D Tensor with shape ``[P]``. P is the number of output ``rois``. The maximum overlap between each sampled RoI and ground-truth.
 
     Examples:
         .. code-block:: python
@@ -2797,13 +2797,13 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             [height, width, scale] of image. Image scale is
             target_size / original_size, target_size is the size after resize,
             original_size is the original image size.
-        gt_classes (Variable): A 2-D LoDTensor with shape [M, 1]. Data type
+        gt_classes (Variable): A 2-D Tensor with shape [M, 1]. Data type
             should be int. M is the total number of ground-truth, each
             element is a class label.
-        is_crowd (Variable): A 2-D LoDTensor with same shape and same data type
+        is_crowd (Variable): A 2-D Tensor with same shape and same data type
             as gt_classes, each element is a flag indicating whether a
             groundtruth is crowd.
-        gt_segms (Variable): This input is a 2D LoDTensor with shape [S, 2] and
+        gt_segms (Variable): This input is a 2D Tensor with shape [S, 2] and
             float32 data type, it's LoD level is 3.
             Usually users do not needs to understand LoD,
             The users should return correct data format in reader.
@@ -2812,26 +2812,26 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             objects. LoD[2] represents the polygons number of each segmentation.
             S the total number of polygons coordinate points. Each element is
             (x, y) coordinate points.
-        rois (Variable): A 2-D LoDTensor with shape [R, 4] and float32 data type
+        rois (Variable): A 2-D Tensor with shape [R, 4] and float32 data type
             float32. R is the total number of RoIs, each element is a bounding
             box with (xmin, ymin, xmax, ymax) format in the range of original image.
-        labels_int32 (Variable): A 2-D LoDTensor in shape of [R, 1] with type
+        labels_int32 (Variable): A 2-D Tensor in shape of [R, 1] with type
             of int32. R is the same as it in `rois`. Each element represents
             a class label of a RoI.
         num_classes (int): Class number.
         resolution (int): Resolution of mask predictions.
 
     Returns:
-        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4] and same data
+        mask_rois (Variable):  A 2D Tensor with shape [P, 4] and same data
         type as `rois`. P is the total number of sampled RoIs. Each element
         is a bounding box with [xmin, ymin, xmax, ymax] format in range of
         original image size.
 
-        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1]
+        mask_rois_has_mask_int32 (Variable): A 2D Tensor with shape [P, 1]
         and int data type, each element represents the output mask RoI
         index with regard to input RoIs.
 
-        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M] and int
+        mask_int32 (Variable): A 2D Tensor with shape [P, K * M * M] and int
         data type, K is the classes number and M is the resolution of mask
         predictions. Each element represents the binary mask targets.
 
@@ -3186,7 +3186,7 @@ def retinanet_detection_output(bboxes,
 
     Returns:
         Variable(The data type is float32 or float64):
-            The detection output is a 1-level LoDTensor with shape :math:`[No, 6]`.
+            The detection output is a 1-level Tensor with shape :math:`[No, 6]`.
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             :math:`No` is the total number of detections in this mini-batch.
             The :math:`i`-th image has `LoD[i + 1] - LoD[i]` detected
@@ -3323,7 +3323,7 @@ def multiclass_nms(bboxes,
                            coordinate values and the layout is 
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
                            The data type is float32 or float64.
-                           2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
+                           2. (Tensor) A 3-D Tensor with shape [M, C, 4]
                            M is the number of bounding boxes, C is the 
                            class number. The data type is float32 or float64.   
         scores (Variable): Two types of scores are supported:
@@ -3334,7 +3334,7 @@ def multiclass_nms(bboxes,
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
                            of BBoxes.The data type is float32 or float64. 
-                           2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
+                           2. (Tensor) A 2-D Tensor with shape [M, C].
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
                            case with shape [M, C, 4].The data type is float32 or float64. 
@@ -3355,9 +3355,9 @@ def multiclass_nms(bboxes,
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Variable: A 2-D Tensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-             or A 2-D LoDTensor with shape [No, 10] represents the detections.
+             or A 2-D Tensor with shape [No, 10] represents the detections.
              Each row has 10 values: 
              [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the 
              total number of detections. If there is no detected boxes for all
@@ -3479,9 +3479,9 @@ def locality_aware_nms(bboxes,
                           Default: None.
 
     Returns:
-        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Variable: A 2-D Tensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-             or A 2-D LoDTensor with shape [No, 10] represents the detections.
+             or A 2-D Tensor with shape [No, 10] represents the detections.
              Each row has 10 values:
              [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the
              total number of detections. If there is no detected boxes for all
@@ -3610,13 +3610,13 @@ def matrix_nms(bboxes,
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, one Variable(Out) is returned.
 
-        Out (Variable): A 2-D LoDTensor with shape [No, 6] containing the
+        Out (Variable): A 2-D Tensor with shape [No, 6] containing the
              detection results.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              (After version 1.3, when no boxes detected, the lod is changed
              from {0} to {1})
 
-        Index (Variable): A 2-D LoDTensor with shape [No, 1] containing the
+        Index (Variable): A 2-D Tensor with shape [No, 1] containing the
             selected indices, which are absolute values cross batches.
 
     Examples:
@@ -3686,7 +3686,7 @@ def distribute_fpn_proposals(fpn_rois,
                              name=None):
     r"""
 	
-    **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
+    **This op only takes Tensor as input.** In Feature Pyramid Networks 
     (FPN) models, it is needed to distribute all proposals into different FPN 
     level, with respect to scale of the proposals, the referring scale and the 
     referring level. Besides, to restore the order of proposals, we return an 
@@ -3723,7 +3723,7 @@ def distribute_fpn_proposals(fpn_rois,
     Returns:
         Tuple:
 
-        multi_rois(List) : A list of 2-D LoDTensor with shape [M, 4] 
+        multi_rois(List) : A list of 2-D Tensor with shape [M, 4] 
         and data type of float32 and float64. The length is 
         max_level-min_level+1. The proposals in each FPN level.
 
@@ -3884,7 +3884,7 @@ def collect_fpn_proposals(multi_rois,
                           name=None):
     """
 	
-    **This OP only supports LoDTensor as input**. Concat multi-level RoIs 
+    **This OP only supports Tensor as input**. Concat multi-level RoIs 
     (Region of Interest) and select N RoIs with respect to multi_scores. 
     This operation performs the following steps:
 
@@ -3896,10 +3896,10 @@ def collect_fpn_proposals(multi_rois,
 
     Args:
         multi_rois(list): List of RoIs to collect. Element in list is 2-D 
-            LoDTensor with shape [N, 4] and data type is float32 or float64, 
+            Tensor with shape [N, 4] and data type is float32 or float64, 
             N is the number of RoIs.
         multi_scores(list): List of scores of RoIs to collect. Element in list 
-            is 2-D LoDTensor with shape [N, 1] and data type is float32 or
+            is 2-D Tensor with shape [N, 1] and data type is float32 or
             float64, N is the number of RoIs.
         min_level(int): The lowest level of FPN layer to collect
         max_level(int): The highest level of FPN layer to collect
@@ -3917,7 +3917,7 @@ def collect_fpn_proposals(multi_rois,
     Returns:
         Variable:
 
-        fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is 
+        fpn_rois(Variable): 2-D Tensor with shape [N, 4] and data type is 
         float32 or float64. Selected RoIs. 
 
         rois_num(Tensor): 1-D Tensor contains the RoIs's number of each 

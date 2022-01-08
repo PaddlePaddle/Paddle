@@ -34,13 +34,13 @@ class TestBase(unittest.TestCase):
         other_dim = int(1024 * 1024 / 4)
 
         place = fluid.CUDAPlace(0)
-        t = fluid.LoDTensor()
+        t = fluid.Tensor()
         t.set(np.ndarray(
             [int(self._limit / 2), other_dim], dtype='float32'),
               place)
         del t
 
-        t = fluid.LoDTensor()
+        t = fluid.Tensor()
         large_np = np.ndarray([2 * self._limit, other_dim], dtype='float32')
 
         try:

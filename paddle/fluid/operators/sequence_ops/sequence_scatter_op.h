@@ -22,15 +22,15 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class SequenceScatterOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-    auto* ids = ctx.Input<LoDTensor>("Ids");
-    auto* updates = ctx.Input<LoDTensor>("Updates");
+    auto* ids = ctx.Input<Tensor>("Ids");
+    auto* updates = ctx.Input<Tensor>("Updates");
     auto* out = ctx.Output<Tensor>("Out");
 
     auto& ids_lod = ids->lod();
@@ -92,8 +92,8 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
                                         "SequenceScatterGradientOpKernel can "
                                         "only run on CPU device."));
     auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dUpdates = ctx.Output<LoDTensor>(framework::GradVarName("Updates"));
-    auto* ids = ctx.Input<LoDTensor>("Ids");
+    auto* dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
+    auto* ids = ctx.Input<Tensor>("Ids");
     auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto& ids_lod = ids->lod();

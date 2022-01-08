@@ -790,7 +790,7 @@ def fill_constant_batch_size_like(input,
                                   force_cpu=False):
     """
     This OP creates a Tesnor according the shape and dtype, and initializes the
-    Tensor with the constants provided in ``value``. When the input is LoDTensor
+    Tensor with the constants provided in ``value``. When the input is Tensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
     of the batch_size input by the input, the Stop_gradient attribute of the created
     Tensor is False by default.
@@ -802,7 +802,7 @@ def fill_constant_batch_size_like(input,
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of created Tensor which
             can be float32, float64, int32, int64.
         value(float|int): The constant value used to initialize the Tensor to be created. 
-        input_dim_idx(int): When the value is 0 and the input is LoDTensor, the output_dim_idx
+        input_dim_idx(int): When the value is 0 and the input is Tensor, the output_dim_idx
             dimension of the created Tensor is set to the batch_size value of input.
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
@@ -1139,7 +1139,7 @@ def reverse(x, axis):
 
         Case 1:
 
-            Given a LoDTensor:
+            Given a Tensor:
                 x = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
                 axis = [0, 1]
 
@@ -1209,7 +1209,7 @@ def save(x, file_path, overwrite=True):
     Saves a variable as a file.
 
     Args:
-        x(variable): The Tensor/LoDTensor to be saved.
+        x(variable): The Tensor/Tensor to be saved.
         file_path(str): The file path where the variable will be saved.
         overwrite(bool): Whether or not cover the given file when it has already
             existed. If it's set 'False' and the file is existed, a runtime
@@ -1229,7 +1229,7 @@ def save_combine(x, file_path, overwrite=True):
     Saves a list of variables into a single file.
 
     Args:
-        x(list): A list of Tensor/LoDTensor variables to be saved together in
+        x(list): A list of Tensor/Tensor variables to be saved together in
                  a single file.
         file_path(str): The file path where variables will be saved.
         overwrite(bool): Whether or not cover the given file when it has already
@@ -1667,7 +1667,7 @@ def eye(num_rows,
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
+        Tensor: An identity Tensor or Tensor of shape batch_shape + [num_rows, num_columns].
 
     Examples:
         .. code-block:: python

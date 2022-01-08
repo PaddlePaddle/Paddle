@@ -119,7 +119,7 @@ class Quant2Int8MkldnnPass(object):
         self._pass_group = group
 
     def _convert_scale2tensor(self, scale):
-        tensor = core.LoDTensor()
+        tensor = core.Tensor()
         tensor.set(scale, core.CPUPlace())
         return tensor
 

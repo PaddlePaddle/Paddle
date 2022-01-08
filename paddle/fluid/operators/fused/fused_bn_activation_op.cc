@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
@@ -270,8 +270,8 @@ framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<Tensor>()) {
+    t = &var->Get<Tensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

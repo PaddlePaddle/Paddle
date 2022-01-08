@@ -1582,7 +1582,7 @@ class Embedding(layers.Layer):
         **weight** (Parameter): the learnable weights of this layer.
 
     Returns:
-        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+        Variable: Embedding Tensor or Tensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Examples:
 

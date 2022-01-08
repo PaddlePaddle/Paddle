@@ -75,7 +75,7 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
+             "(Tensor, Tensor<int>) Input variable with rank at least 2. "
              "The last dimension of X should be 1. Each value of X is an index "
              "to indicate the position.");
     AddInput("depth_tensor", "(Tensor, Tensor<int>), Length of one-hot vector")
@@ -101,14 +101,14 @@ One Hot Operator. This operator creates the one-hot representations for input
 index values. The following example will help to explain the function of this
 operator:
 
-X is a LoDTensor:
+X is a Tensor:
   X.lod = [[0, 1, 4]]
   X.shape = [4, 1]
   X.data = [[1], [1], [3], [0]]
 
 set depth = 4
 
-Out is a LoDTensor:
+Out is a Tensor:
   Out.lod = [[0, 1, 4]]
   Out.shape = [4, 4]
   Out.data = [[0., 1., 0., 0.],

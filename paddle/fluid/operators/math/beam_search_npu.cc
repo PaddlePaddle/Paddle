@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Tensor;
 }  // namespace framework
 namespace platform {
@@ -33,12 +33,11 @@ template <typename T>
 class BeamSearchFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& ctx,
-                  const framework::LoDTensor* pre_ids,
-                  const framework::LoDTensor* pre_scores,
-                  const framework::LoDTensor* ids,
-                  const framework::LoDTensor* scores,
-                  framework::LoDTensor* selected_ids,
-                  framework::LoDTensor* selected_scores,
+                  const framework::Tensor* pre_ids,
+                  const framework::Tensor* pre_scores,
+                  const framework::Tensor* ids, const framework::Tensor* scores,
+                  framework::Tensor* selected_ids,
+                  framework::Tensor* selected_scores,
                   framework::Tensor* parent_idx, size_t level, size_t beam_size,
                   int end_id, bool is_accumulated) {
     auto abs_lod = framework::ToAbsOffset(scores->lod());

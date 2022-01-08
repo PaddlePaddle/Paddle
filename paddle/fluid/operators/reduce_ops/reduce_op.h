@@ -526,7 +526,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
+    if (ctx.Input<paddle::framework::Tensor>("X")->dims().size() > 5)
       return framework::OpKernelType(input_data_type, ctx.GetPlace());
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -550,14 +550,14 @@ class ReduceOp : public framework::OperatorWithKernel {
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
     if (Type() == "reduce_sum") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+      if (ctx.InputVar("X")->IsType<framework::Tensor>()) {
         return framework::KernelSignature(
             "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
             {"Out"});
       }
     }
     if (Type() == "reduce_mean") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+      if (ctx.InputVar("X")->IsType<framework::Tensor>()) {
         return framework::KernelSignature(
             "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
       }
@@ -575,7 +575,7 @@ class ReduceOpUseInputPlace : public ReduceOp {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<framework::Tensor>("X")->place();
     return kt;
   }
 };

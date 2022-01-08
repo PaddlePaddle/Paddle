@@ -144,24 +144,24 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
       platform::HCCLCommContext::Instance().Get(ring_id, place_);
   aclrtStream stream = use_calc_stream ? dev_ctx->stream() : comm->stream();
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<framework::Tensor>()) {
+    if (!dst->IsType<framework::Tensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), stream, comm);
+    AllReduce(src.Get<framework::Tensor>(),
+              dst->GetMutable<framework::Tensor>(), stream, comm);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "XPU unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor are supported.",
+        "Tensor are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 
 void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  if (src->IsType<framework::LoDTensor>()) {
-    framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  if (src->IsType<framework::Tensor>()) {
+    framework::Tensor *src_tensor = src->GetMutable<framework::Tensor>();
     const auto &place = src_tensor->place();
     platform::HCCLComm *comm =
         platform::HCCLCommContext::Instance().Get(ring_id, place);
@@ -176,7 +176,7 @@ void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor is supported.",
+        "Tensor is supported.",
         platform::demangle(framework::ToTypeName(src->Type()))));
   }
 }

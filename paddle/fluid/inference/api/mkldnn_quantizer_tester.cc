@@ -36,35 +36,35 @@ class MkldnnQuantizerTest : public testing::Test {
   }
 
   std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      const framework::Tensor& var_tensor, float min_val, float max_val,
       int num_bins) const {
     return mkldnn_quantizer->Histogram(var_tensor, min_val, max_val, num_bins);
   }
 
-  std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const {
+  std::pair<bool, framework::Tensor> GetMaxScalingFactor(
+      const framework::Tensor& var_tensor, bool is_unsigned) const {
     return mkldnn_quantizer->GetMaxScalingFactor(var_tensor, is_unsigned);
   }
 
-  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const {
+  std::pair<bool, framework::Tensor> GetMaxChScalingFactor(
+      const framework::Tensor& var_tensor, bool is_unsigned) const {
     return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned, 0);
   }
 
-  std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const {
+  std::pair<bool, framework::Tensor> GetKLScalingFactor(
+      const framework::Tensor& var_tensor, bool is_unsigned) const {
     return mkldnn_quantizer->GetKLScalingFactor(var_tensor, is_unsigned);
   }
 
-  std::pair<bool, framework::LoDTensor> GetMaxChGRUScalingFactor(
-      const framework::LoDTensor& wx_tensor,
-      const framework::LoDTensor& wh_tensor) const {
+  std::pair<bool, framework::Tensor> GetMaxChGRUScalingFactor(
+      const framework::Tensor& wx_tensor,
+      const framework::Tensor& wh_tensor) const {
     return mkldnn_quantizer->GetMaxChGRUScalingFactor(wx_tensor, wh_tensor);
   }
 
-  std::pair<bool, framework::LoDTensor> GetMaxChLSTMScalingFactor(
-      const framework::LoDTensor& wx_tensor,
-      const framework::LoDTensor& wh_tensor) const {
+  std::pair<bool, framework::Tensor> GetMaxChLSTMScalingFactor(
+      const framework::Tensor& wx_tensor,
+      const framework::Tensor& wh_tensor) const {
     return mkldnn_quantizer->GetMaxChLSTMScalingFactor(wx_tensor, wh_tensor);
   }
 
@@ -88,7 +88,7 @@ TEST_F(MkldnnQuantizerTest, histogram_inverted_min_max) {
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
@@ -103,7 +103,7 @@ TEST_F(MkldnnQuantizerTest, histogram_non_negative_to_3) {
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
@@ -126,7 +126,7 @@ TEST_F(MkldnnQuantizerTest, histogram_positive_and_negative_to_3) {
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
@@ -149,7 +149,7 @@ TEST_F(MkldnnQuantizerTest, histogram_zero_bins) {
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
@@ -163,7 +163,7 @@ TEST_F(MkldnnQuantizerTest, histogram_empty) {
   ASSERT_THROW(Histogram({}, -1, 1, 1), platform::EnforceNotMet);
 
   // zero tensor
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize({0});
   var_tensor.mutable_data<double>(platform::CPUPlace());
 
@@ -173,13 +173,13 @@ TEST_F(MkldnnQuantizerTest, histogram_empty) {
 TEST_F(MkldnnQuantizerTest, kl_scaling_factor_signed) {
   const auto& values = positive_and_negative_values;
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
 
   std::tie(is_unsigned, lod_tensor) = GetKLScalingFactor(var_tensor, false);
 
@@ -192,13 +192,13 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_signed) {
   const auto& values = positive_and_negative_values;
   auto max_val = *std::max_element(values.begin(), values.end());
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
 
   std::tie(is_unsigned, lod_tensor) = GetMaxScalingFactor(var_tensor, false);
 
@@ -211,13 +211,13 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_unsigned) {
   const auto& values = non_negative_values;
   auto max_val = *std::max_element(values.begin(), values.end());
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
 
   std::tie(is_unsigned, lod_tensor) = GetMaxScalingFactor(var_tensor, true);
 
@@ -231,7 +231,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
   auto max_val = *std::max_element(values.begin(), values.end());
   int channels = 3;
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(channels, 1, 1, values.size()));
   for (int i = 0; i < channels; i++)
     std::copy(begin(values), end(values),
@@ -239,7 +239,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
                   i * values.size());
 
   bool is_unsigned;
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
 
   std::tie(is_unsigned, lod_tensor) = GetMaxChScalingFactor(var_tensor, true);
 
@@ -253,13 +253,13 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
 TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
   const auto& values = non_negative_values;
 
-  framework::LoDTensor var_tensor;
+  framework::Tensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
 
   std::tie(is_unsigned, lod_tensor) = GetKLScalingFactor(var_tensor, true);
 
@@ -277,7 +277,7 @@ const std::vector<std::vector<float>> wh = {
     {0.32630175, 0.41691914, 0.99848574, 0.3504407, 0.06707559, 0.62239844}};
 
 TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
-  framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
+  framework::Tensor wx_tensor, wh_tensor, lod_tensor;
 
   wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
   for (size_t i = 0; i < wx.size(); i++)
@@ -305,7 +305,7 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
 }
 
 TEST_F(MkldnnQuantizerTest, max_ch_lstm_scaling_factor) {
-  framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
+  framework::Tensor wx_tensor, wh_tensor, lod_tensor;
 
   wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
   for (size_t i = 0; i < wx.size(); i++)

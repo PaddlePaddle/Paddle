@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using framework::Tensor;
 
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -79,7 +79,7 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "the input(X) is a LodTensor or tensor, LodTensor(X) supports "
              "variable time-length input sequences. The underlying tensor "
-             "in this LoDTensor is a matrix with shape (T x N), where T "
+             "in this Tensor is a matrix with shape (T x N), where T "
              "is the total time steps in this mini-batch and N is the input "
              "data dimension. the shape of Tensor input(X) has shape "
              "(B x T x N), B is batch size;");
@@ -138,9 +138,9 @@ class RowConvKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
+    auto *x = context.Input<Tensor>("X");
     auto *filter = context.Input<Tensor>("Filter");
-    auto *out = context.Output<LoDTensor>("Out");
+    auto *out = context.Output<Tensor>("Out");
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -214,10 +214,10 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
+    auto *x = context.Input<Tensor>("X");
     auto *filter = context.Input<Tensor>("Filter");
-    auto *d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
     auto &x_lod = x->lod();

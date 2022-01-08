@@ -135,7 +135,7 @@ class DataFeedDesc(object):
         Set slots in :attr:`dense_slots_name` as dense slots. **Note: In default, all slots are sparse slots.**
  
         Features for a dense slot will be fed into a Tensor, while those for a
-        sparse slot will be fed into a LoDTensor.
+        sparse slot will be fed into a Tensor.
 
         Example:
             .. code-block:: python

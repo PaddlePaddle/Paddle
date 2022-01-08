@@ -37,8 +37,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     auto *var = scope.FindVar(embedding_name);
 
-    if (var->IsType<framework::LoDTensor>()) {
-      emb_dim = var->Get<framework::LoDTensor>().dims()[1];
+    if (var->IsType<framework::Tensor>()) {
+      emb_dim = var->Get<framework::Tensor>().dims()[1];
     } else if (var->IsType<framework::SelectedRows>()) {
       emb_dim = var->Get<framework::SelectedRows>().value().dims()[1];
     } else {
@@ -48,8 +48,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
           framework::ToTypeName(var->Type())));
     }
 
-    auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
-    auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
+    auto inputs = context.MultiInput<framework::Tensor>("Ids");
+    auto outputs = context.MultiOutput<framework::Tensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
 
@@ -67,17 +67,17 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       auto cpu_place = platform::CPUPlace();
       framework::Scope *tmp_scope = scope.NewTmpScope().release();
 
-      std::vector<const framework::LoDTensor *> tmp_input_vec;
+      std::vector<const framework::Tensor *> tmp_input_vec;
       auto input_var_size = inputs_variable.size();
-      std::vector<framework::LoDTensor *> tmp_output_vec;
+      std::vector<framework::Tensor *> tmp_output_vec;
       auto output_var_size = outputs_variable.size();
 
       // create temp input
       for (size_t idx = 0; idx < input_var_size; ++idx) {
         framework::Variable *tmp_input_var = tmp_scope->Var(inputs_name[idx]);
-        framework::LoDTensor *tmp_input_tensor =
-            tmp_input_var->GetMutable<framework::LoDTensor>();
-        framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
+        framework::Tensor *tmp_input_tensor =
+            tmp_input_var->GetMutable<framework::Tensor>();
+        framework::TensorCopy(inputs_variable[idx]->Get<framework::Tensor>(),
                               cpu_place, context.device_context(),
                               tmp_input_tensor);
         tmp_input_vec.push_back(tmp_input_tensor);
@@ -86,8 +86,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       // create temp output
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
-        framework::LoDTensor *tmp_output_tensor =
-            tmp_output_var->GetMutable<framework::LoDTensor>();
+        framework::Tensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<framework::Tensor>();
         tmp_output_tensor->Resize(outputs[idx]->dims());
         tmp_output_vec.push_back(tmp_output_tensor);
       }
@@ -101,11 +101,11 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
-        framework::LoDTensor *tmp_output_tensor =
-            tmp_output_var->GetMutable<framework::LoDTensor>();
+        framework::Tensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<framework::Tensor>();
         framework::TensorCopy(
             *tmp_output_tensor, context.GetPlace(), context.device_context(),
-            outputs_variable[idx]->GetMutable<framework::LoDTensor>());
+            outputs_variable[idx]->GetMutable<framework::Tensor>());
       }
       delete tmp_scope;
     }
@@ -119,8 +119,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < id_names.size(); ++i) {
         auto *id_var = scope.FindVar(id_names[i]);
         auto *out_var = scope.FindVar(out_names[i]);
-        auto *id_tensor = id_var->GetMutable<framework::LoDTensor>();
-        auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
+        auto *id_tensor = id_var->GetMutable<framework::Tensor>();
+        auto *out_tensor = out_var->GetMutable<framework::Tensor>();
 
         auto id_dims = id_tensor->dims();
         out_tensor->Resize(framework::make_ddim(

@@ -27,13 +27,13 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
 template <typename T, typename IndexT = int>
 void IndexSampleInner(const framework::ExecutionContext &context,
-                      const LoDTensor &input, const LoDTensor &index,
-                      LoDTensor *output) {
+                      const Tensor &input, const Tensor &index,
+                      Tensor *output) {
   auto input_dims = input.dims();
   auto index_dims = index.dims();
 
@@ -85,11 +85,11 @@ class IndexSampleKernel : public framework::OpKernel<T> {
     auto *input_var = ctx.InputVar("X");
     auto *index_var = ctx.InputVar("Index");
 
-    auto &input_tensor = input_var->Get<LoDTensor>();
-    auto &index_tensor = index_var->Get<LoDTensor>();
+    auto &input_tensor = input_var->Get<Tensor>();
+    auto &index_tensor = index_var->Get<Tensor>();
 
     auto *out_var = ctx.OutputVar("Out");
-    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto *out_tensor = out_var->GetMutable<framework::Tensor>();
 
     const auto &index_type = index_tensor.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
@@ -113,8 +113,8 @@ class IndexSampleKernel : public framework::OpKernel<T> {
 
 template <typename T, typename IndexT = int>
 void IndexSampleGradInner(const framework::ExecutionContext &context,
-                          const LoDTensor &out_grad, const LoDTensor &index,
-                          LoDTensor *x_grad) {
+                          const Tensor &out_grad, const Tensor &index,
+                          Tensor *x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
   TensorToVector(out_grad, context.device_context(), &out_grad_vec);
@@ -161,9 +161,9 @@ class IndexSampleGradKernel : public framework::OpKernel<T> {
     auto *x_grad_var = context.OutputVar(framework::GradVarName("X"));
     auto *out_grad_var = context.InputVar(framework::GradVarName("Out"));
 
-    auto &index_tensor = index_var->Get<LoDTensor>();
-    auto &out_grad_tensor = out_grad_var->Get<LoDTensor>();
-    auto *x_grad_tensor = x_grad_var->GetMutable<framework::LoDTensor>();
+    auto &index_tensor = index_var->Get<Tensor>();
+    auto &out_grad_tensor = out_grad_var->Get<Tensor>();
+    auto *x_grad_tensor = x_grad_var->GetMutable<framework::Tensor>();
 
     const auto &index_type = index_tensor.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||

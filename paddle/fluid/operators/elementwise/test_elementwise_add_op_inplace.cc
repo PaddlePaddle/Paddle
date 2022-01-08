@@ -47,9 +47,9 @@ template <typename T>
 bool TestMain(const platform::Place &place, const framework::DDim &dims,
               bool inplace) {
   framework::Scope scope;
-  auto *x = scope.Var("x")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
-  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("x")->GetMutable<framework::Tensor>();
+  auto *y = scope.Var("y")->GetMutable<framework::Tensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::Tensor>();
 
   x->Resize(dims);
   y->Resize(dims);
@@ -87,8 +87,8 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
-  framework::LoDTensor cpu_out;
-  auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();
+  framework::Tensor cpu_out;
+  auto &out_tensor = scope.FindVar(out_name)->Get<framework::Tensor>();
   PADDLE_ENFORCE_EQ(scope.kids().empty(), true,
                     platform::errors::InvalidArgument(
                         "The scope can not have the child scopes,"
