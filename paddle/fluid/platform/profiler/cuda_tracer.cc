@@ -35,60 +35,8 @@ void CudaTracer::PrepareTracing() { EnableCuptiActivity(); }
 void CudaTracer::StopTracing() { DisableCuptiActivity(); }
 
 int CudaTracer::ProcessCuptiActivity() {
-#ifdef PADDLE_WITH_CUPTI
   int record_cnt = 0;
-  CUPTI_CALL(dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
-  std::vector<ActivityBuffer> buffers = ConsumeBuffers();
-
-  for (auto& buffer : buffers) {
-    if (buffer.addr == nullptr || buffer.valid_size == 0) {
-      continue;
-    }
-
-    CUpti_Activity* record = nullptr;
-    while (true) {
-      CUptiResult status = dynload::cuptiActivityGetNextRecord(
-          buffer.addr, buffer.valid_size, &record);
-      if (status == CUPTI_SUCCESS) {
-        ProcessCuptiActivityRecord(record);
-        ++record_cnt;
-      } else if (status == CUPTI_ERROR_MAX_LIMIT_REACHED) {
-        break;
-      } else {
-        CUPTI_CALL(status);
-      }
-    }
-
-    ReleaseBuffer(buffer.addr);
-  }
   return record_cnt;
-#endif
-}
-
-void CudaTracer::ProcessCuptiActivityRecord(const CUpti_Activity* record) {
-#ifdef PADDLE_WITH_CUPTI
-  switch (record->kind) {
-    case CUPTI_ACTIVITY_KIND_KERNEL:
-    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
-      auto* kernel = reinterpret_cast<const CUpti_ActivityKernel4*>(record);
-      break;
-    case CUPTI_ACTIVITY_KIND_MEMCPY:
-      auto* memcpy = reinterpret_cast<const CUpti_ActivityMemcpy*>(record);
-      break;
-    case CUPTI_ACTIVITY_KIND_MEMCPY2:
-      auto* memcpy = reinterpret_cast<const CUpti_ActivityMemcpy2*>(record);
-      break;
-    case CUPTI_ACTIVITY_KIND_MEMSET:
-      auto* memset = reinterpret_cast<const CUpti_ActivityMemset*>(record);
-      break;
-    case CUPTI_ACTIVITY_KIND_DRIVER:
-    case CUPTI_ACTIVITY_KIND_RUNTIME:
-      auto* api = reinterpret_cast<const CUpti_ActivityAPI*>(record);
-      break;
-    default:
-      break;
-  }
-#endif
 }
 
 void CudaTracer::EnableCuptiActivity() {
