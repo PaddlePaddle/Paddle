@@ -15,7 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/creation.h"
+#include "paddle/pten/kernels/empty_kernel.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"

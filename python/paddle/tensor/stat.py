@@ -333,3 +333,127 @@ def median(x, axis=None, keepdim=False, name=None):
         newshape = out_tensor.shape
     out_tensor = out_tensor.reshape(newshape, name=name)
     return out_tensor
+
+
+def quantile(x, q, axis=None, keepdim=False):
+    """
+    Compute the quantile of the input along the specified axis.
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be float32, float64.
+        q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list, 
+            each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
+            ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
+            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of quantile along ``axis`` of ``x``. If data type of ``x`` is float64, data type of results will be float64, otherwise data type will be float32.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn((2,3))
+            #[[-1.28740597,  0.49533170, -1.00698614],
+            # [-1.11656201, -1.01010525, -2.23457789]])
+
+            y1 = paddle.quantile(x, q=0.5, axis=[0, 1])
+            # y1 = -1.06333363
+
+            y2 = paddle.quantile(x, q=0.5, axis=1)
+            # y2 = [-1.00698614, -1.11656201]
+
+            y3 = paddle.quantile(x, q=[0.3, 0.5], axis=1)
+            # y3 =[[-1.11915410, -1.56376839],
+            #      [-1.00698614, -1.11656201]]
+
+            y4 = paddle.quantile(x, q=0.8, axis=1, keepdim=True)
+            # y4 = [[-0.10559537],
+            #       [-1.05268800]])
+    """
+    if not isinstance(x, Variable):
+        raise TypeError("input x should be a Tensor.")
+    dims = len(x.shape)
+    out_shape = x.shape
+    if axis is None:
+        x = paddle.flatten(x)
+        axis = 0
+        out_shape = [1] * dims
+    else:
+        if isinstance(axis, list):
+            if (len(axis) <= 0):
+                raise ValueError("axis should not be empty")
+            axis_src, axis_dst = [], []
+            for axis_single in axis:
+                if not isinstance(axis_single, int) or not (
+                        axis_single < dims and axis_single >= -dims):
+                    raise ValueError(
+                        "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+                    )
+                if axis_single < 0:
+                    axis_single = axis_single + dims
+                axis_src.append(axis_single)
+                out_shape[axis_single] = 1
+            axis_dst = list(range(-len(axis), 0))
+            x = paddle.moveaxis(x, axis_src, axis_dst)
+            x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
+            axis = axis_dst[0]
+        else:
+            if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
+                raise ValueError(
+                    "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+                )
+            if axis < 0:
+                axis += dims
+            out_shape[axis] = 1
+    indices = []
+    if isinstance(q, (int, float)):
+        if q < 0 or q > 1:
+            raise ValueError("q should be in range [0, 1]")
+        indices.append(q * (x.shape[axis] - 1))
+    elif isinstance(q, (list, tuple)):
+        if len(q) <= 0:
+            raise ValueError("q should not be empty")
+        for q_num in q:
+            if q_num < 0 or q_num > 1:
+                raise ValueError("q should be in range [0, 1]")
+            indices.append(q_num * (x.shape[axis] - 1))
+    else:
+        raise TypeError("Type of q should be int, float, list or tuple.")
+    indices = paddle.to_tensor(indices).astype(paddle.float32)
+    sorted_tensor = paddle.sort(x, axis)
+    indices_below = paddle.floor(indices).astype(paddle.int32)
+    indices_upper = paddle.ceil(indices).astype(paddle.int32)
+    outputs = []
+
+    # TODO(chenjianye): replace the for-loop to directly take elements.
+    for i in range(len(indices)):
+        if (indices_upper[i] != indices_below[i]):
+            tensor_below = paddle.take_along_axis(sorted_tensor,
+                                                  indices_below[i], axis)
+            tensor_upper = paddle.take_along_axis(sorted_tensor,
+                                                  indices_upper[i], axis)
+            weights = (indices[i] - indices_below[i]).astype(x.dtype)
+            out = paddle.lerp(tensor_below, tensor_upper, weights)
+        else:
+            out = paddle.take_along_axis(sorted_tensor, indices_below[i], axis)
+        if not keepdim:
+            out = paddle.squeeze(out, axis=axis)
+        else:
+            out = out.reshape(out_shape)
+        outputs.append(out)
+    if isinstance(q, (list, tuple)):
+        return paddle.stack(outputs, 0)
+    else:
+        return outputs[0]

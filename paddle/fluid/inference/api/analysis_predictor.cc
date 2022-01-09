@@ -409,7 +409,10 @@ void AnalysisPredictor::MkldnnPreSet(
 void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
-  if (config_.mkldnn_cache_capacity_ > 0) {
+  if (config_.mkldnn_cache_capacity_ > 0 &&
+      static_cast<platform::MKLDNNDeviceContext *>(
+          (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
+              ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
       auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
                                  (&platform::DeviceContextPool::Instance())
