@@ -349,7 +349,9 @@ class NormalInitializer(Initializer):
 
         if not framework.in_dygraph_mode():
             var.op = op
-        return op
+            return op
+        else:
+            return None
 
 
 class TruncatedNormalInitializer(Initializer):
