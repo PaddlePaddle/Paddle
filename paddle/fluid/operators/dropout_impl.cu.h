@@ -264,7 +264,7 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
           auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
           auto stream = dev_ctx.stream();
           platform::GpuLaunchConfig config =
-              platform::GetGpuLaunchConfig1D(dev_ctx, size);
+              platform::GetGpuLaunchConfig1D(dev_ctx, size, vec_size);
           DropoutGradCUDAKernel<
               T, uint8_t,
               4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(

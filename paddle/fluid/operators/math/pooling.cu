@@ -90,22 +90,6 @@ __device__ void OffsetPreparationFor4Dimension(
   }
 }
 
-int GetThreadsPerBlock(const platform::CUDADeviceContext& ctx,
-                       int threads_per_block, int64_t numel) {
-  int sm_count = ctx.GetSMCount();
-  if (numel / (sm_count << 1) < threads_per_block) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about twice of SM, to acquire better performance.
-    threads_per_block = platform::RoundToPowerOfTwo(numel / (sm_count << 1));
-  } else if (numel / (sm_count << 2) < threads_per_block) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about 4 times of SM, to acquire better performance.
-    threads_per_block = platform::RoundToPowerOfTwo(numel / (sm_count << 2));
-  }
-  // Number of threads per block shall be larger than 64.
-  return std::max(64, threads_per_block);
-}
-
 template <typename PoolProcess, typename T>
 __global__ void KernelPool2D(
     const int nthreads, const T* input_data, const int channels,
@@ -484,14 +468,13 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, PREDEFINED_BLOCK_SIZE, nthreads);
-    int grids = (nthreads + blocks - 1) / blocks;
-
     auto pool_divmods = FastDivModForPoolingWithMoreStaff(
         input_channels, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height);
 
-    KernelPool2DGrad<T, PoolProcess><<<grids, blocks, 0, context.stream()>>>(
+    auto config = GetGpuLaunchConfig1D(context, nthreads);
+    KernelPool2DGrad<T, PoolProcess><<<
+        config.block_per_grid, config.thread_per_block, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, output_width,
         output_height, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height, padding_width, padding_height,
@@ -534,14 +517,13 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, PREDEFINED_BLOCK_SIZE, nthreads);
-    int grids = (nthreads + blocks - 1) / blocks;
-
     auto pool_divmods = FastDivModForPoolingWithMoreStaff(
         input_channels, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height);
 
-    KernelPool2DGrad<T, PoolProcess><<<grids, blocks, 0, context.stream()>>>(
+    auto config = GetGpuLaunchConfig1D(context, nthreads);
+    KernelPool2DGrad<T, PoolProcess><<<
+        config.block_per_grid, config.thread_per_block, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, output_width,
         output_height, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height, padding_width, padding_height,
