@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include <string>
+#include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -181,7 +183,17 @@ std::string RuntimeKind(CUpti_CallbackId cbid) {
   return iter->second;
 }
 
+std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
+  std::unordered_map<uint32_t, uint64_t> mapping;
+  std::unordered_map<uint64_t, ThreadId> ids = GetAllThreadIds();
+  for (const auto& id : ids) {
+    mapping[id.second.cupti_tid] = id.second.MainTid();
+  }
+  return std::move(mapping);
+}
+
 void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
+                  const std::unordered_map<uint32_t, uint64_t> tid_mapping,
                   TraceEventCollector* collector) {
   if (api->start < start_ns) {
     return;
@@ -190,12 +202,21 @@ void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
   record.name = RuntimeKind(api->cbid);
   record.start_ns = api->start;
   record.end_ns = api->end;
+  uint64_t tid = 0;
+  auto iter = tid_mapping.find(api->threadId);
+  if (iter == tid_mapping.end()) {
+  } else {
+    tid = iter->second;
+  }
+  record.thread_id = tid;
   record.correlation_id = api->correlationId;
   collector->AddRuntimeRecord(std::move(record));
 }
 
-void ProcessCuptiActivityRecord(const CUpti_Activity* record, uint64_t start_ns,
-                                TraceEventCollector* collector) {
+void ProcessCuptiActivityRecord(
+    const CUpti_Activity* record, uint64_t start_ns,
+    const std::unordered_map<uint32_t, uint64_t> tid_mapping,
+    TraceEventCollector* collector) {
   switch (record->kind) {
     case CUPTI_ACTIVITY_KIND_KERNEL:
     case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
@@ -217,7 +238,7 @@ void ProcessCuptiActivityRecord(const CUpti_Activity* record, uint64_t start_ns,
     case CUPTI_ACTIVITY_KIND_DRIVER:
     case CUPTI_ACTIVITY_KIND_RUNTIME:
       AddApiRecord(reinterpret_cast<const CUpti_ActivityAPI*>(record), start_ns,
-                   collector);
+                   tid_mapping, collector);
       break;
     default:
       break;
@@ -265,8 +286,8 @@ int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
   int record_cnt = 0;
 #ifdef PADDLE_WITH_CUPTI
   CUPTI_CALL(dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+  auto mapping = CreateThreadIdMapping();
   std::vector<ActivityBuffer> buffers = ConsumeBuffers();
-
   for (auto& buffer : buffers) {
     if (buffer.addr == nullptr || buffer.valid_size == 0) {
       continue;
@@ -277,7 +298,8 @@ int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
       CUptiResult status = dynload::cuptiActivityGetNextRecord(
           buffer.addr, buffer.valid_size, &record);
       if (status == CUPTI_SUCCESS) {
-        ProcessCuptiActivityRecord(record, tracing_start_ns_, collector);
+        ProcessCuptiActivityRecord(record, tracing_start_ns_, mapping,
+                                   collector);
         ++record_cnt;
       } else if (status == CUPTI_ERROR_MAX_LIMIT_REACHED) {
         break;
