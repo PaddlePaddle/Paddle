@@ -20,7 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/global_map.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -112,12 +112,10 @@ TEST(InterceptorTest, PingPong) {
   if (pid == 0) {
     Carrier* carrier =
         GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-    GlobalVal<std::string>::Set(carrier_id);
-    auto msg_bus = std::make_shared<MessageBus>();
-    carrier->SetMsgBus(msg_bus);
-    // NOTE: need Init msg_bus after carrier SetMsgBus
-    carrier->Init(0, interceptor_id_to_rank);
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
     msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
+    carrier->Init(0, interceptor_id_to_rank);
     Interceptor* a = carrier->SetInterceptor(
         0, InterceptorFactory::Create("PingPong", 0, nullptr));
     msg_bus->Barrier();
@@ -127,11 +125,10 @@ TEST(InterceptorTest, PingPong) {
   } else {
     Carrier* carrier =
         GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-    GlobalVal<std::string>::Set(carrier_id);
-    auto msg_bus = std::make_shared<MessageBus>();
-    carrier->SetMsgBus(msg_bus);
-    carrier->Init(1, interceptor_id_to_rank);
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
     msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
+    carrier->Init(1, interceptor_id_to_rank);
     carrier->SetInterceptor(1,
                             InterceptorFactory::Create("PingPong", 1, nullptr));
     msg_bus->Barrier();

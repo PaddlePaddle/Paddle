@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise_no_broadcast.cu.h"
+#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 
 namespace paddle {
 namespace operators {
@@ -216,12 +216,12 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 #else
     if (vec_size == 4 && size % 4 == 0) {
       VectorizedRandomGenerator<T, uint8_t, 4><<<
-          gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream>>>(
+          gpu_config.block_per_grid, gpu_config.thread_per_block, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     } else {
-      RandomGenerator<T, uint8_t><<<gpu_config.GetGridSize(),
-                                    gpu_config.GetBlockSize(), 0, stream>>>(
+      RandomGenerator<T, uint8_t><<<gpu_config.block_per_grid,
+                                    gpu_config.thread_per_block, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     }

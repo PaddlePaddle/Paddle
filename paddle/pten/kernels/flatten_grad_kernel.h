@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,18 +17,11 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
-namespace general {
 
-inline void SetXShape(const DenseTensor& x, DenseTensor* xshape) {
-  const auto& in_dims = x.meta().dims;
-  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    xshape_dims[i + 1] = in_dims[i];
-  }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->ResetLoD(x.meta().lod);
-}
+template <typename T, typename Context>
+void FlattenGradKernel(const Context& dev_ctx,
+                       const DenseTensor& out_grad,
+                       const DenseTensor& xshape,
+                       DenseTensor* x_grad);
 
-}  // namespace general
 }  // namespace pten
