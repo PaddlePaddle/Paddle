@@ -189,7 +189,7 @@ std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   for (const auto& id : ids) {
     mapping[id.second.cupti_tid] = id.second.MainTid();
   }
-  return std::move(mapping);
+  return mapping;
 }
 
 void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
@@ -381,7 +381,7 @@ std::vector<CudaTracer::ActivityBuffer> CudaTracer::ConsumeBuffers() {
     std::lock_guard<std::mutex> guard(activity_buffer_lock_);
     buffers.swap(activity_buffers_);
   }
-  return std::move(buffers);
+  return buffers;
 }
 
 void CudaTracer::ReleaseBuffer(uint8_t* buffer) {
