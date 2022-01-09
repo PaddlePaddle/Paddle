@@ -45,8 +45,7 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     int dim_size = x_dims.size();
     int m = x_dims[dim_size - 2];
     int n = x_dims[dim_size - 1];
-    int m_y = y_dims[dim_size - 2];
-    int n_y = y_dims[dim_size - 1];
+    int nrhs = y_dims[dim_size - 1];
     int min_mn = std::min(m, n);
     int max_mn = std::max(m, n);
     int k = min_mn;
@@ -60,7 +59,7 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     new_x.mutable_data<T>(context.GetPlace(),
                           size_t(batch_count * m * n * sizeof(T)));
     new_y.mutable_data<T>(context.GetPlace(),
-                          size_t(batch_count * m_y * n_y * sizeof(T)));
+                          size_t(batch_count * m * nrhs * sizeof(T)));
     framework::TensorCopy(x, context.GetPlace(), &new_x);
     framework::TensorCopy(y, context.GetPlace(), &new_y);
 
@@ -71,34 +70,52 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     Tensor tau = dito.Fill(tau_dims_vec, 0);
     auto tau_data = tau.mutable_data<T>(context.GetPlace());
 
-    auto tmp_x = dito.Transpose(new_x);
-    auto tmp_y = dito.Transpose(new_y);
-    framework::TensorCopy(tmp_x, new_x.place(), &new_x);
-    framework::TensorCopy(tmp_y, new_y.place(), &new_y);
+    if (m >= n) {
+      Tensor tmp_x = dito.Transpose(new_x);
+      Tensor tmp_y = dito.Transpose(new_y);
+      auto x_data = tmp_x.mutable_data<T>(context.GetPlace());
+      auto y_data = tmp_y.mutable_data<T>(context.GetPlace());
 
-    auto x_data = new_x.mutable_data<T>(context.GetPlace());
-    auto y_data = new_y.mutable_data<T>(context.GetPlace());
+      // step 1, compute QR factorization using geqrf
+      BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, m, n, x_data, m,
+                                     tau_data, x_stride, tau_stride);
 
-    // step 1, compute QR factorization using geqrf
-    BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, m, n, x_data, m,
-                                   tau_data, x_stride, tau_stride);
+      // Step 2, Y <- Q^H Y
+      BatchedOrmqr<DeviceContext, T>(dev_ctx, true, true, batch_count, m, n, k,
+                                     x_data, x_stride, tau_data, tau_stride,
+                                     y_data, y_stride);
 
-    // Step 2, B <- Q^H B
-    BatchedOrmqr<DeviceContext, T>(dev_ctx, true, true, batch_count, m, n, k,
-                                   x_data, x_stride, tau_data, tau_stride,
-                                   y_data, y_stride);
+      Tensor trans_r = dito.Transpose(tmp_x);
+      Tensor slice_r = dito.Slice(trans_r, {-2}, {0}, {min_mn});
+      Tensor res_r = dito.TrilTriu(slice_r, 0, false);
 
-    auto trans_r = dito.Transpose(new_x);
-    auto trans_b = dito.Transpose(new_y);
-    auto slice_r = dito.Slice(trans_r, {-2}, {0}, {min_mn});
-    auto slice_b = dito.Slice(trans_b, {-2}, {0}, {min_mn});
-    auto tmp_r = dito.TrilTriu(slice_r, 0, false);
-    framework::TensorCopy(tmp_r, new_x.place(), &new_x);
-    framework::TensorCopy(slice_b, new_y.place(), &new_y);
+      Tensor trans_y = dito.Transpose(tmp_y);
+      Tensor slice_y = dito.Slice(trans_y, {-2}, {0}, {min_mn});
 
-    // Step 3, solve R X = B
-    triangular_solve<DeviceContext, T>(dev_ctx, new_x, new_y, solution, true,
-                                       false, false);
+      // Step 3, solve R X = Y
+      triangular_solve<DeviceContext, T>(dev_ctx, res_r, slice_y, solution,
+                                         true, false, false);
+    } else {
+      auto x_data = new_x.mutable_data<T>(context.GetPlace());
+      auto y_data = new_y.mutable_data<T>(context.GetPlace());
+
+      // step 1, compute QR factorization using geqrf
+      BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, n, m, x_data, n,
+                                     tau_data, x_stride, tau_stride);
+
+      // Step 2, solve R^H Z = Y
+      Tensor trans_r = dito.Transpose(new_x);
+      triangular_solve<DeviceContext, T>(dev_ctx, trans_r, new_y, solution,
+                                         true, true, false);
+
+      // Step 3, X <- Q Z
+      BatchedOrgqr<DeviceContext, T>(dev_ctx, batch_count, n, n, min_mn, x_data,
+                                     n, tau_data, x_stride, tau_stride);
+      Tensor trans_q = dito.Transpose(new_x);
+      Tensor slice_q = dito.Slice(trans_q, {-1}, {0}, {m});
+      Tensor solu_tensor = dito.Matmul(slice_q, *solution, false, false);
+      framework::TensorCopy(solu_tensor, solution->place(), solution);
+    }
   }
 };
 

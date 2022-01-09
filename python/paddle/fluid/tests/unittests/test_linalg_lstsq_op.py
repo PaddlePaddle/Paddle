@@ -147,13 +147,22 @@ class LinalgLstsqTestCase(unittest.TestCase):
                         rtol=1e-5)
 
 
-class LinalgLstsqTestCase(LinalgLstsqTestCase):
+class LinalgLstsqTestCase1(LinalgLstsqTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+        self.rcond = 1e-15
+        self.driver = "gels"
+        self._input_shape_1 = (9, 9)
+        self._input_shape_2 = (9, 5)
+
+
+class LinalgLstsqTestCase2(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
-        self.driver = "gelsy"
+        self.driver = "gels"
         self._input_shape_1 = (5, 10)
-        self._input_shape_2 = (5, 5)
+        self._input_shape_2 = (5, 8)
 
 
 class LinalgLstsqTestCaseRcond(LinalgLstsqTestCase):
@@ -210,13 +219,22 @@ class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
         self._input_shape_2 = (10, 8, 2)
 
 
-class LinalgLstsqTestCaseLarge(LinalgLstsqTestCase):
+class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
         self.driver = "gelsd"
         self._input_shape_1 = (200, 100)
         self._input_shape_2 = (200, 50)
+
+
+class LinalgLstsqTestCaseLarge2(LinalgLstsqTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gelss"
+        self._input_shape_1 = (50, 600)
+        self._input_shape_2 = (50, 300)
 
 
 if __name__ == '__main__':
