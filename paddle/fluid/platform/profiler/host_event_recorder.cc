@@ -26,7 +26,7 @@ HostEventSection HostEventRecorder::GatherEvents() {
   for (auto &kv : thread_recorders_) {
     host_sec.thr_sections.emplace_back(std::move(kv.second->GatherEvents()));
   }
-  return std::move(host_sec);
+  return host_sec;
 }
 
 }  // namespace platform

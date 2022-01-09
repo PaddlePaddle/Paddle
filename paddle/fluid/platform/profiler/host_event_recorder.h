@@ -154,7 +154,7 @@ std::vector<EventType> EventContainer<EventType>::Reduce() {
     cur = next;
   }
   event_blocks_ = cur_event_block_ = new EventBlock;
-  return std::move(all_events);
+  return all_events;
 }
 
 template <typename EventType>
@@ -204,7 +204,7 @@ class ThreadEventRecorder {
     thr_sec.thread_name = thread_name_;
     thr_sec.thread_id = thread_id_;
     thr_sec.events = std::move(base_evt_cntr_.Reduce());
-    return std::move(thr_sec);
+    return thr_sec;
   }
 
  private:
