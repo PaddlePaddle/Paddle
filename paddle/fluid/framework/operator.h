@@ -338,7 +338,9 @@ class ExecutionContext {
   template <typename T>
   const T* Input(const std::string& name) const {
     auto* var = InputVar(name);
-    return var == nullptr ? nullptr : &var->Get<T>();
+    if (var == nullptr) return nullptr;
+    auto ret = &var->Get<T>();
+    return ret;
   }
 
   template <typename T>
@@ -439,14 +441,8 @@ class ExecutionContext {
 };
 
 template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(

@@ -556,11 +556,6 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
 }
 
 template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
-  return Input<Tensor>(name);
-}
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
   LogVarUsageIfUnusedVarCheckEnabled(name);
@@ -582,11 +577,6 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
                    return &(var->Get<Tensor>());
                  });
   return res;
-}
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
-  return Output<Tensor>(name);
 }
 
 template <>
