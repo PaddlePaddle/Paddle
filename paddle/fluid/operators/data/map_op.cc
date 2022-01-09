@@ -44,15 +44,19 @@ class MapOp : public framework::OperatorBase {
       const platform::Place& dev_place) const override {
     // LOG(ERROR) << "MapOpKernel RunImpl enter";
     // Step1: get output vars and attrs
-    // FIXME(dkp): multi input support
-    auto input_var = scope.FindVar(Input("In"));
-    auto output_var = scope.FindVar(Output("Out"));
+    auto inputs = Inputs("In");
     std::vector<Variable*> input_vars;
-    input_vars.reserve(1);
-    input_vars.emplace_back(input_var);
+    input_vars.reserve(inputs.size());
+    for (auto& input : inputs) {
+      input_vars.emplace_back(scope.FindVar(input));
+    }
+
+    auto outputs = Outputs("Out");
     std::vector<Variable*> output_vars;
-    output_vars.reserve(1);
-    output_vars.emplace_back(output_var);
+    output_vars.reserve(outputs.size());
+    for (auto& output : outputs) {
+      output_vars.emplace_back(scope.FindVar(output));
+    }
 
     CheckInputQueueStatus(input_vars);
     CheckAndInitOutputQueue(output_vars, /*capacity=*/2);

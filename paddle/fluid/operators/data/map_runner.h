@@ -45,10 +45,10 @@ class MapRunner {
             const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
             const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues);
 
-  // ~MapRunner() {
-  //   VLOG(1) << "~MapRunner";
-  //   Close();
-  // }
+  ~MapRunner() {
+    VLOG(1) << "~MapRunner";
+    ShutDown();
+  }
 
   void ShutDown();
 
