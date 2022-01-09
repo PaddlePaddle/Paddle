@@ -39,11 +39,15 @@ class Allocation {
   Allocation(void* data, size_t size, DeleterFnPtr deleter, const Place& place)
       : ptr_(data), size_(size), deleter_(deleter), place_(place) {}
 
-  Allocation(Allocation&& other) noexcept { swap(*this, other); }
+  Allocation(Allocation&& other) noexcept {
+    swap(*this, other);
+    CHECK(other.deleter_ == nullptr);
+  }
   Allocation& operator=(Allocation&& other) noexcept {
     // Exchange them explicitly to avoid moving is equivalent
     // to copying.
     swap(*this, other);
+    CHECK(other.deleter_ == nullptr);
     return *this;
   }
 
@@ -93,12 +97,32 @@ inline void swap(Allocation& a, Allocation& b) noexcept {
   ::std::swap(a.size_, b.size_);
 }
 
+class AllocationDeleter {
+ public:
+  using DeleteFnPtr = void (*)(Allocation*);
+  AllocationDeleter() = default;
+  AllocationDeleter(DeleteFnPtr deleter) : deleter_(deleter) {}  // NOLINT
+
+  void operator()(Allocation* allocation) const {
+    if (deleter_) {
+      deleter_(allocation);
+    } else {
+      delete allocation;
+    }
+  }
+
+ private:
+  DeleteFnPtr deleter_{nullptr};
+};
+
+using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
+
 class Allocator {
  public:
   using Place = paddle::platform::Place;
 
   virtual ~Allocator() = default;
-  virtual std::unique_ptr<Allocation> Allocate(size_t bytes_size) = 0;
+  virtual AllocationPtr Allocate(size_t bytes_size) = 0;
   virtual void Free(Allocation* allocation) = 0;
 
   virtual void* AllocateRaw(size_t bytes_size) { return nullptr; }

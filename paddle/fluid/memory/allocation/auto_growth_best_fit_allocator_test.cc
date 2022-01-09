@@ -30,7 +30,7 @@ class RecordedAllocator : public Allocator {
  protected:
   Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());
+    return new DecoratedAllocation(malloc(size), size, platform::CPUPlace());
   }
 
   void FreeImpl(Allocation *allocation) {
@@ -85,7 +85,7 @@ class LimitedResourceAllocator : public Allocator {
     }
 
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());
+    return new DecoratedAllocation(malloc(size), size, platform::CPUPlace());
   }
 
   void FreeImpl(Allocation *allocation) {

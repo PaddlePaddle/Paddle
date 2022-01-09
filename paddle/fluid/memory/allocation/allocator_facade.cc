@@ -93,9 +93,8 @@ class CUDAGraphAllocator
  private:
   class PrivateAllocation : public DecoratedAllocation {
    public:
-    PrivateAllocation(
-        CUDAGraphAllocator* allocator,
-        std::unique_ptr<DecoratedAllocation> underlying_allocation)
+    PrivateAllocation(CUDAGraphAllocator* allocator,
+                      DecoratedAllocationPtr underlying_allocation)
         : DecoratedAllocation(
               underlying_allocation->ptr(), underlying_allocation->base_ptr(),
               underlying_allocation->size(), underlying_allocation->place()),
@@ -104,7 +103,7 @@ class CUDAGraphAllocator
 
    private:
     std::shared_ptr<Allocator> allocator_;
-    std::unique_ptr<DecoratedAllocation> underlying_allocation_;
+    DecoratedAllocationPtr underlying_allocation_;
   };
 
   explicit CUDAGraphAllocator(const std::shared_ptr<Allocator>& allocator)
@@ -395,7 +394,7 @@ class AllocatorFacadePrivate {
 
    protected:
     Allocation* AllocateImpl(size_t size) override {
-      return new Allocation(nullptr, 0, place_);
+      return new DecoratedAllocation(nullptr, 0, place_);
     }
     void FreeImpl(Allocation* allocation) override { delete allocation; }
 

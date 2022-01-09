@@ -41,8 +41,7 @@ namespace allocation {
  */
 class CUDADeviceContextAllocation : public DecoratedAllocation {
  public:
-  explicit CUDADeviceContextAllocation(
-      std::unique_ptr<DecoratedAllocation> allocation)
+  explicit CUDADeviceContextAllocation(DecoratedAllocationPtr allocation)
       : DecoratedAllocation(allocation->ptr(), allocation->base_ptr(),
                             allocation->size(), allocation->place()),
         underlying_allocation_(std::move(allocation)) {}
@@ -57,7 +56,7 @@ class CUDADeviceContextAllocation : public DecoratedAllocation {
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
-      delete p_allocation;
+      AllocationDeleter()(p_allocation);
     });
   }
 
@@ -66,7 +65,7 @@ class CUDADeviceContextAllocation : public DecoratedAllocation {
   }
 
  private:
-  std::unique_ptr<DecoratedAllocation> underlying_allocation_;
+  DecoratedAllocationPtr underlying_allocation_;
   const platform::CUDADeviceContext *dev_ctx_{nullptr};
 };
 

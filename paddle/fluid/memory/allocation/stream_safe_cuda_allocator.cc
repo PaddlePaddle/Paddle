@@ -19,8 +19,7 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    std::unique_ptr<DecoratedAllocation> underlying_allocation,
-    gpuStream_t owning_stream)
+    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream)
     : DecoratedAllocation(
           underlying_allocation->ptr(), underlying_allocation->base_ptr(),
           underlying_allocation->size(), underlying_allocation->place()),

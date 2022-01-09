@@ -34,7 +34,8 @@ struct StubAllocator : public Allocator {
  protected:
   Allocation *AllocateImpl(size_t size) override {
     ++alloc_num_;
-    return new Allocation(new uint8_t[size], size, platform::CPUPlace());
+    return new DecoratedAllocation(new uint8_t[size], size,
+                                   platform::CPUPlace());
   }
 
   void FreeImpl(Allocation *allocation) override {

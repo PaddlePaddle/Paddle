@@ -217,8 +217,8 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   virtual_mem_alloced_offset_ += size;
 
-  return new Allocation(reinterpret_cast<void*>(ptr), size,
-                        platform::Place(place_));
+  return new DecoratedAllocation(reinterpret_cast<void*>(ptr), size,
+                                 platform::Place(place_));
 }
 
 }  // namespace allocation

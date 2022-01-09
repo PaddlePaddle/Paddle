@@ -33,7 +33,7 @@ Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif
-  return new Allocation(ptr, size, platform::CUDAPinnedPlace());
+  return new DecoratedAllocation(ptr, size, platform::CUDAPinnedPlace());
 }
 }  // namespace allocation
 }  // namespace memory

@@ -45,7 +45,7 @@ Allocation *CPUAllocator::AllocateImpl(size_t size) {
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
-  return new Allocation(p, size, platform::CPUPlace());
+  return new DecoratedAllocation(p, size, platform::CPUPlace());
 }
 }  // namespace allocation
 }  // namespace memory

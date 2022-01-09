@@ -336,8 +336,9 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     auto* data_alloc_released = data_alloc.release();
     auto* col_alloc_released = col_alloc.release();
     context.AddStreamCallback([data_alloc_released, col_alloc_released] {
-      delete data_alloc_released;
-      delete col_alloc_released;
+      memory::allocation::AllocationDeleter deleter;
+      deleter(data_alloc_released);
+      deleter(col_alloc_released);
     });
 #endif
   }

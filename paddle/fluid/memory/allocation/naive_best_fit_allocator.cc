@@ -842,7 +842,7 @@ namespace allocation {
 
 Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  auto *tmp_alloc = new Allocation(ptr, size, place_);
+  auto *tmp_alloc = new DecoratedAllocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;

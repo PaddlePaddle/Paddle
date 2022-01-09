@@ -34,16 +34,15 @@ namespace allocation {
 
 class StreamSafeCUDAAllocation : public DecoratedAllocation {
  public:
-  StreamSafeCUDAAllocation(
-      std::unique_ptr<DecoratedAllocation> underlying_allocation,
-      gpuStream_t owning_stream);
+  StreamSafeCUDAAllocation(DecoratedAllocationPtr underlying_allocation,
+                           gpuStream_t owning_stream);
   void RecordStream(const gpuStream_t &stream);
   bool CanBeFreed();
 
   const gpuStream_t &GetOwningStream() const;
 
  private:
-  std::unique_ptr<DecoratedAllocation> underlying_allocation_;
+  DecoratedAllocationPtr underlying_allocation_;
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;

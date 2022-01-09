@@ -64,10 +64,10 @@ class AutoGrowthBestFitAllocator : public Allocator {
   };
 
   struct Chunk {
-    explicit Chunk(std::unique_ptr<DecoratedAllocation> allocation)
+    explicit Chunk(DecoratedAllocationPtr allocation)
         : allocation_(std::move(allocation)) {}
 
-    std::unique_ptr<DecoratedAllocation> allocation_;
+    DecoratedAllocationPtr allocation_;
     List<Block> blocks_;
   };
 

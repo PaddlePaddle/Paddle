@@ -81,7 +81,8 @@ class Allocator;
  * e.g., something what is done in AlignedAllocator, etc.
  * In this case, we should declare a derived class of Allocation, which
  * contains an underlying Allocation allocated by the underlying allocator.
- * Therefore, `decorated_allocators_` of the new Allocation object would
+ * Therefore, `decorated_allocators_` of the new DecoratedAllocation object
+ * would
  * be a new chain, differing from the underlying Allocation object.
  */
 class DecoratedAllocation : public pten::candidate::Allocation {
@@ -100,16 +101,16 @@ class DecoratedAllocation : public pten::candidate::Allocation {
     return base_ptr_;
   }
 
+  inline void SetDeleter(pten::candidate::Allocation::DeleterFnPtr deleter) {
+    deleter_ = deleter;
+  }
+
  private:
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
     decorated_allocators_.emplace_back(allocator);
   }
 
   inline void PopDecoratedAllocator() { decorated_allocators_.pop_back(); }
-
-  inline void SetDeleter(pten::candidate::Allocation::DeleterFnPtr deleter) {
-    deleter_ = deleter;
-  }
 
   inline Allocator* TopDecoratedAllocator() {
     return decorated_allocators_.back();
@@ -134,13 +135,16 @@ class DecoratedAllocation : public pten::candidate::Allocation {
   DecoratedAllocatorStack decorated_allocators_;
 
   friend class Allocator;
-  friend void DeleteAllocation(pten::candidate::Allocation* allocation);
+  friend void AllocationDeleteFunction(Allocation*);
 };
 
 using Allocation = pten::candidate::Allocation;
-using AllocationPtr = std::unique_ptr<Allocation>;
+using AllocationDeleter = pten::candidate::AllocationDeleter;
+using AllocationPtr = pten::candidate::AllocationPtr;
+using DecoratedAllocationPtr =
+    std::unique_ptr<DecoratedAllocation, AllocationDeleter>;
 
-void DeleteAllocation(Allocation* allocation);
+void AllocationDeleteFunction(Allocation*);
 
 // Base interface class of memory Allocator.
 class Allocator : public pten::candidate::Allocator {
@@ -149,25 +153,18 @@ class Allocator : public pten::candidate::Allocator {
   // size may be 0, but it would be too complex if we handle size == 0
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
-  AllocationPtr Allocate(size_t size) override {
-    return AllocationPtr(DecoratedAllocate(size));
+  AllocationPtr Allocate(size_t size) {
+    auto ptr = AllocateImpl(size);
+    dynamic_cast<DecoratedAllocation*>(ptr)->RegisterDecoratedAllocator(this);
+    return AllocationPtr(ptr, AllocationDeleteFunction);
   }
 
-  // This function should not be called outside Allocator class
-  void Free(Allocation* allocation) override {
-    auto* a = static_cast<DecoratedAllocation*>(allocation);
-    a->PopDecoratedAllocator();
-    FreeImpl(a);
+  void Free(Allocation* allocation) {
+    dynamic_cast<DecoratedAllocation*>(allocation)->PopDecoratedAllocator();
+    FreeImpl(allocation);
   }
 
   uint64_t Release(const platform::Place& place) { return ReleaseImpl(place); }
-
-  Allocation* DecoratedAllocate(size_t size) {
-    auto* ptr = static_cast<DecoratedAllocation*>(AllocateImpl(size));
-    ptr->RegisterDecoratedAllocator(this);
-    ptr->SetDeleter(&DeleteAllocation);
-    return ptr;
-  }
 
  protected:
   virtual Allocation* AllocateImpl(size_t size) = 0;
@@ -186,11 +183,12 @@ inline size_t AlignedPtrOffset(const void* ptr, size_t alignment) {
   return diff == 0 ? 0 : alignment - diff;
 }
 
-template <typename Derived, typename Base>
-decltype(auto) static_unique_ptr_cast(std::unique_ptr<Base>&& p) {
+template <typename Derived, typename Base, typename BaseDel>
+decltype(auto) static_unique_ptr_cast(std::unique_ptr<Base, BaseDel>&& p) {
   static_assert(std::is_base_of<Base, Derived>::value,
                 "Derived type must derive from Base.");
-  return std::unique_ptr<Derived>(static_cast<Derived*>(p.release()));
+  auto d = static_cast<Derived*>(p.release());
+  return std::unique_ptr<Derived, BaseDel>(d, p.get_deleter());
 }
 
 }  // namespace allocation

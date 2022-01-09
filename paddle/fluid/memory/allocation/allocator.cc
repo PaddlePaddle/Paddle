@@ -18,15 +18,17 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+void AllocationDeleteFunction(Allocation* allocation) {
+  Allocator* allocator =
+      dynamic_cast<DecoratedAllocation*>(allocation)->TopDecoratedAllocator();
+  allocator->Free(allocation);
+}
+
 void Allocator::FreeImpl(Allocation* allocation) {
+  CHECK(dynamic_cast<DecoratedAllocation*>(allocation)) << "FreeImpl error!";
   static_cast<DecoratedAllocation*>(allocation)
       ->TopDecoratedAllocator()
       ->Free(allocation);
-}
-
-void DeleteAllocation(Allocation* allocation) {
-  auto* a = static_cast<DecoratedAllocation*>(allocation);
-  a->TopDecoratedAllocator()->Free(allocation);
 }
 
 }  // namespace allocation
