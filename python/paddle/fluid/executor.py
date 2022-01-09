@@ -689,7 +689,8 @@ class Executor(object):
             "__auto_checkpoint_executor__")
 
         # NOTE: Whether to use experimental executor `StandaloneExecutor`.
-        self._enable_interpreter_core = _is_enable_standalone_executor()
+        # self._enable_interpreter_core = _is_enable_standalone_executor()
+        self._enable_interpreter_core = True
         self._executor_cache = _ExecutorCache(self.place)
 
     def _get_scope_cache(self, program_cache_key):
@@ -1351,6 +1352,7 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
+            return True
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
