@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/funcs/gpu_launch_config.h"
 
 namespace pten {
 
