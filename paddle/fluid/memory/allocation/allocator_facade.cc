@@ -77,7 +77,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
-PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, false,
                             "Enable StreamSafeCUDAAllocator");
 
 DECLARE_string(allocator_strategy);
