@@ -164,7 +164,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
-    VLOG(6) << framework::KernelSignatureToString(pt_kernel_signature);
+    VLOG(6) << pt_kernel_signature;
 
     auto pt_kernel_name = pt_kernel_signature.name;
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);

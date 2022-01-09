@@ -1285,7 +1285,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
       new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
-  VLOG(6) << KernelSignatureToString(*pt_kernel_signature_.get());
+  VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
