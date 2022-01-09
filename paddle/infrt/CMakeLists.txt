@@ -1,6 +1,14 @@
 if (NOT WITH_INFRT)
     return()
 endif()
+
+# compile flags
+set(INFRT_FLAGS -Wno-comment)
+foreach(flag ${INFRT_FLAGS})
+  safe_set_cflag(CMAKE_C_FLAGS ${flag})
+  safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
+endforeach()
+
 set(INFRT_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/infrt" )
 set(INFRT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/infrt" )
 set(INFRT_TEST_TARGETS CACHE INTERNAL "")
