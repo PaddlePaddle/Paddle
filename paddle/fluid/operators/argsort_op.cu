@@ -262,7 +262,6 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
     if (size == in_dims[axis]) {
       thrust::sequence(thrust::device, ids_data, ids_data + size);
       thrust::copy(thrust::device, in_data, in_data + size, out_data);
-      // remove reverse step
       if (descending) {
         thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data,
                             thrust::greater<T>());
