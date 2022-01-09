@@ -31,12 +31,10 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");
     auto program_id = ctx.Attr<int64_t>("program_id");
-    auto prefetch_depth =
-        static_cast<size_t>(ctx.Attr<int64_t>("prefetch_depth"));
 
     auto pipeline = data::PipelineManager::Instance()->GetPipeline(
         program_id, global_block, ctx.GetPlace(), start_op_index, end_op_index,
-        output_var_names, prefetch_depth);
+        output_var_names);
 
     pipeline->ReadNext(output_vars);
     LOG(ERROR) << "DataLoaderOpKernel finish";

@@ -41,10 +41,6 @@ void ShutDownDataLoader() {
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
   LOG(ERROR) << "ShutDownDataLoader MapRunner shutdown finish";
-
-  // // step 4: shutdown pipeline
-  // PipelineManager::Instance()->ShutDown();
-  // LOG(ERROR) << "ShutDownDataLoader PipelineManager shutdown finish";
 }
 }  // namespace data
 

@@ -38,44 +38,24 @@ class Pipeline {
   Pipeline(const std::shared_ptr<BlockDesc> global_block,
            const platform::Place &place, int64_t start_op_index,
            int64_t end_op_index, int64_t program_id,
-           const std::vector<std::string> &output_var_names,
-           size_t prefetch_queue_size);
+           const std::vector<std::string> &output_var_names);
+           // size_t prefetch_queue_size);
 
-  // ~Pipeline() {
-  //   VLOG(1) << "~Pipeline";
-  //   Close();
-  // }
-
-  inline size_t PrefetchCap() { return prefetch_queue_.Cap(); }
-
-  inline size_t PrefetchSize() { return prefetch_queue_.Size(); }
-
-  inline bool IsClosed() { return closed_; }
-
-  inline void Close();
-
-  inline void Reset();
+  ~Pipeline() { VLOG(1) << "~Pipeline"; }
 
   void ReadNext(std::vector<Variable *> &out_vars);
 
-  void ShutDown();
-
  private:
-  void copy_tensor(const framework::LoDTensor &lod_tensor,
-                   framework::LoDTensor *out) const {
-    if (lod_tensor.numel() == 0) return;
-    auto &out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
-    out_tensor.set_lod(lod_tensor.lod());
-  }
-
-  void StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
-                           const std::vector<std::string> &skip_vars);
 
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
-  ThreadPool thread_pool_;
-  std::atomic<bool> closed_;
+  void copy_tensor(const framework::LoDTensor& lod_tensor,
+                   framework::LoDTensor* out) const {
+    if (lod_tensor.numel() == 0) return;
+    auto& out_tensor = *out;
+    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
+    out_tensor.set_lod(lod_tensor.lod());
+  }
 
   Scope scope_;
   std::shared_ptr<BlockDesc> global_block_;
@@ -86,8 +66,6 @@ class Pipeline {
 
   std::vector<std::string> output_var_names_;
 
-  const size_t prefetch_queue_size_;
-  LoDTensorBlockingQueue prefetch_queue_;
 };
 
 class PipelineManager {
@@ -115,13 +93,12 @@ class PipelineManager {
   Pipeline* GetPipeline(
       int64_t program_id, BlockDesc *global_block, const platform::Place &place,
       int64_t start_op_index, int64_t end_op_index,
-      const std::vector<std::string> &output_var_names,
-      size_t prefetch_queue_size) {
+      const std::vector<std::string> &output_var_names) {
     auto iter = prog_id_to_pipeline_.find(program_id);
     if (iter == prog_id_to_pipeline_.end()) {
       prog_id_to_pipeline_[program_id] = std::unique_ptr<Pipeline>(new Pipeline(
           std::shared_ptr<BlockDesc>(global_block), place, start_op_index,
-          end_op_index, program_id, output_var_names, prefetch_queue_size));
+          end_op_index, program_id, output_var_names));
       return prog_id_to_pipeline_[program_id].get();
     } else {
       return iter->second.get();
@@ -129,10 +106,6 @@ class PipelineManager {
   }
 
   void ShutDown() {
-    auto iter = prog_id_to_pipeline_.begin();
-    for (; iter != prog_id_to_pipeline_.end(); iter++) {
-      iter->second.get()->ShutDown();
-    }
     prog_id_to_pipeline_.clear();
   }
 

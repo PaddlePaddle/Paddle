@@ -62,10 +62,10 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
                      "(int64_t)"
                      "The unique hash id used as cache key for "
                      "ExecutorInfoCache");
-    AddAttr<int64_t>("prefetch_depth",
-                     "(int64_t)"
-                     "The prefetch batch number")
-        .SetDefault(2);
+    // AddAttr<int64_t>("prefetch_depth",
+    //                  "(int64_t)"
+    //                  "The prefetch batch number")
+    //     .SetDefault(2);
     AddComment(R"DOC(
         DataLoader Op
          )DOC");
