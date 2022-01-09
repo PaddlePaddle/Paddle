@@ -23,7 +23,7 @@ namespace data {
 
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
-static NvjpegDecoderThreadPool* decode_pool = nullptr;
+NvjpegDecoderThreadPool* decode_pool = nullptr;
 // std::seed_seq* rand_seq = nullptr;
 
 template <typename T>

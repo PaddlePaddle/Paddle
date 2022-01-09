@@ -34,13 +34,13 @@ void ShutDownDataLoader() {
   reader_wrapper.ShutDown();
   LOG(ERROR) << "ShutDownDataLoader reader_wrapper shutdown finish";
 
-  // // step 2: shutdown decoder
-  // decode_pool->ShutDown();
-  // LOG(ERROR) << "ShutDownDataLoader decode_pool shutdown finish";
+  // step 2: shutdown decoder
+  if (decode_pool) decode_pool->ShutDown();
+  LOG(ERROR) << "ShutDownDataLoader decode_pool shutdown finish";
 
-  // // step 3: shutdown MapRunner
-  // MapRunnerManager::Instance()->ShutDown();
-  // LOG(ERROR) << "ShutDownDataLoader MapRunner shutdown finish";
+  // step 3: shutdown MapRunner
+  MapRunnerManager::Instance()->ShutDown();
+  LOG(ERROR) << "ShutDownDataLoader MapRunner shutdown finish";
 
   // // step 4: shutdown pipeline
   // PipelineManager::Instance()->ShutDown();

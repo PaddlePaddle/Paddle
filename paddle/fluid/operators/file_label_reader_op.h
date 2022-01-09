@@ -151,6 +151,7 @@ class FileDataReader {
 
   void ShutDown() {
     if (queue_) queue_->Close();
+    if (label_queue_) label_queue_->Close();
 
     is_closed_.store(true);
     if (load_thrd_.joinable()) {
@@ -238,7 +239,7 @@ class FileDataReaderWrapper {
   std::shared_ptr<FileDataReader> reader = nullptr;
 
   void ShutDown() {
-    if (reader) reader->ShutDown();
+    if (reader.get()) reader->ShutDown();
   }
 };
 

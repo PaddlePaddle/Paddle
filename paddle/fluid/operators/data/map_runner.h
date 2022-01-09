@@ -72,7 +72,6 @@ class MapRunner {
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
   ThreadPool thread_pool_;
-  std::vector<std::future<bool>> results_;
   std::atomic<bool> running_;
 
   std::shared_ptr<BlockDesc> map_block_;
@@ -125,18 +124,21 @@ class MapRunnerManager {
   void ShutDownMapRunner(int program_id) {
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter != prog_id_to_runner_.end()) {
+      std::lock_guard<std::mutex> lk(m_);
       iter->second.get()->ShutDown();
       prog_id_to_runner_.erase(iter);
     }
   }
 
   void ShutDown() {
+    if (prog_id_to_runner_.empty()) return;
+    
+    std::lock_guard<std::mutex> lk(m_);
     auto iter = prog_id_to_runner_.begin();
     for (; iter != prog_id_to_runner_.end(); iter++) {
-      iter->second.get()->ShutDown();
+      if (iter->second.get()) iter->second.get()->ShutDown();
       LOG(ERROR) << "MapRunnerManager prog_id " << iter->first << " shutdown finish";
     }
-    prog_id_to_runner_.clear();
   }
 
   MapRunnerManager() { VLOG(1) << "MapRunnerManager init"; }

@@ -204,8 +204,6 @@ void NvjpegDecoderThreadPool::WaitTillTasksCompleted() {
 }
 
 void NvjpegDecoderThreadPool::ShutDown() {
-  // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown enter";
-
   std::unique_lock<std::mutex> lock(mutex_);
   running_ = false;
   shutdown_ = true;
@@ -213,13 +211,10 @@ void NvjpegDecoderThreadPool::ShutDown() {
   lock.unlock();
 
   for (auto& thread : threads_) {
-    // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown thread join, shutdown_ " << shutdown_;
-    thread.join();
-    // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown thread join finish 1";
+    if (thread.joinable())  thread.join();
   }
 
   task_queue_.clear();
-  // LOG(ERROR) << "NvjpegDecoderThreadPool ShutDown finish";
 }
 
 void NvjpegDecoderThreadPool::SortTaskByLengthDescend() {
