@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
