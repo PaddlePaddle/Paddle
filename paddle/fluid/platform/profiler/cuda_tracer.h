@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <mutex>
 #include <vector>
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -47,7 +48,7 @@ class CudaTracer : public TracerBase {
     size_t valid_size;
   };
 
-  CudaTracer() = default;
+  CudaTracer();
 
   DISABLE_COPY_AND_ASSIGN(CudaTracer);
 
@@ -55,11 +56,9 @@ class CudaTracer : public TracerBase {
 
   void DisableCuptiActivity();
 
-  int ProcessCuptiActivity();
+  int ProcessCuptiActivity(TraceEventCollector* collector);
 
 #ifdef PADDLE_WITH_CUPTI
-  void ProcessCuptiActivityRecord(const CUpti_Activity* record);
-
   // Used by CUPTI Activity API to request buffer
   static void CUPTIAPI BufferRequestedCallback(uint8_t** buffer, size_t* size,
                                                size_t* max_num_records);
@@ -79,6 +78,7 @@ class CudaTracer : public TracerBase {
 
   void ReleaseBuffer(uint8_t* buffer);
 
+  uint64_t tracing_start_ns_ = UINT64_MAX;
   std::mutex activity_buffer_lock_;
   std::vector<ActivityBuffer> activity_buffers_;
 };

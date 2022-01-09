@@ -14,13 +14,51 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
+#include <list>
 
 namespace paddle {
 namespace platform {
 
+struct HostRecord {
+  std::string name;
+  uint64_t start_ns;
+  uint64_t end_ns;
+  uint64_t process_id;
+  uint64_t thread_id;
+};
+
+struct RuntimeRecord {
+  std::string name;
+  uint64_t start_ns;
+  uint64_t end_ns;
+  uint64_t process_id;
+  uint64_t thread_id;
+  uint32_t correlation_id;
+};
+
+struct DeviceRecord {
+  std::string name;
+  uint64_t start_ns;
+  uint64_t end_ns;
+  uint32_t correlation_id;
+};
+
 class TraceEventCollector {
  public:
+  void AddHostRecord(HostRecord&& record) { host_records_.push_back(record); }
+
+  void AddRuntimeRecord(RuntimeRecord&& record) {
+    runtime_records_.push_back(record);
+  }
+
+  void AddDeviceRecord(DeviceRecord&& record) {
+    device_records_.push_back(record);
+  }
+
+ private:
+  std::list<HostRecord> host_records_;
+  std::list<RuntimeRecord> runtime_records_;
+  std::list<DeviceRecord> device_records_;
 };
 
 }  // namespace platform

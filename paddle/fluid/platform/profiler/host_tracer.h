@@ -33,6 +33,11 @@ class HostTracer : public TracerBase {
   void StopTracing() override;
 
   void CollectTraceData(TraceEventCollector *collector) override;
+
+  void SetTraceLevel(uint32_t trace_level) { trace_level_ = trace_level; }
+
+ private:
+  uint32_t trace_level_;
 };
 
 }  // namespace platform
