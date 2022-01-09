@@ -35,8 +35,4 @@ def INFRT_cvtValueToValueRange : NativeCodeCall<
 
 def INFRT_concatTwoValueRange : NativeCodeCall<
     "mlir::concatTwoValueRange($0, $1)">;
-
-class IsBoolAttrEq<string value> : Constraint<
-    CPred<"($0.getValue() ==" # value # ")">,
-    "Bool attrbute value constraint">;
 #endif  // INFRT_BASE

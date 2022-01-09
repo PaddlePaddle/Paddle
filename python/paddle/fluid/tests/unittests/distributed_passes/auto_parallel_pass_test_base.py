@@ -63,12 +63,12 @@ class AutoPallelPassTestBase(DistPassTestBase):
 
     def check_main(self, gpus=None, **kwargs):
         no_pass_rets = self._distributed_launch(
-            apply_pass=False, gpus=gpus, **kwargs)
+            model=None, apply_pass=False, gpus=gpus, **kwargs)
         pass_rets = self._distributed_launch(
-            apply_pass=True, gpus=gpus, **kwargs)
+            model=None, apply_pass=True, gpus=gpus, **kwargs)
         self.check_results(no_pass_rets, pass_rets)
 
-    def _run_gpu_main(self, apply_pass, dump_file, **kwargs):
+    def _run_gpu_main(self, model, apply_pass, dump_file, **kwargs):
         gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
         place = paddle.CUDAPlace(gpu_id)
         scope = paddle.static.Scope()
@@ -82,8 +82,8 @@ class AutoPallelPassTestBase(DistPassTestBase):
                 with paddle.fluid.unique_name.guard():
                     main_prog, startup_prog, inputs, outputs, reader = self.get_model(
                         place, **kwargs)
-                    inputs = self._to_var_names(main_prog, inputs)
-                    outputs = self._to_var_names(main_prog, outputs)
+                    inputs = self._to_var_names(inputs)
+                    outputs = self._to_var_names(outputs)
 
         all_fetch_values = []
         exe = paddle.static.Executor(place)
@@ -178,13 +178,13 @@ class AutoPallelPassTestBase(DistPassTestBase):
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
-
+        clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
         optimizer = paddle.fluid.optimizer.AdamOptimizer(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-08,
-            grad_clip=None)
+            grad_clip=clip)
         optimizer = fleet.distributed_optimizer(optimizer)
         startup_program = paddle.static.default_startup_program()
         _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(

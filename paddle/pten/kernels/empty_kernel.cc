@@ -20,14 +20,14 @@ limitations under the License. */
 namespace pten {
 
 template <typename T, typename ContextT>
-void Empty(const ContextT& dev_ctx,
-           const ScalarArray& shape,
-           DenseTensor* out) {
+void EmptyKernel(const ContextT& dev_ctx,
+                 const ScalarArray& shape,
+                 DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename ContextT>
-void EmptyLike(const ContextT& dev_ctx, DenseTensor* out) {
+void EmptyLikeKernel(const ContextT& dev_ctx, DenseTensor* out) {
   out->mutable_data<T>();
 }
 
@@ -36,7 +36,7 @@ void EmptyLike(const ContextT& dev_ctx, DenseTensor* out) {
 PT_REGISTER_CTX_KERNEL(empty,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Empty,
+                       pten::EmptyKernel,
                        bool,
                        int,
                        int64_t,
@@ -47,7 +47,7 @@ PT_REGISTER_CTX_KERNEL(empty,
 PT_REGISTER_CTX_KERNEL(empty_like,
                        CPU,
                        ALL_LAYOUT,
-                       pten::EmptyLike,
+                       pten::EmptyLikeKernel,
                        bool,
                        int,
                        int64_t,
@@ -59,7 +59,7 @@ PT_REGISTER_CTX_KERNEL(empty_like,
 PT_REGISTER_CTX_KERNEL(empty,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Empty,
+                       pten::EmptyKernel,
                        bool,
                        int,
                        int64_t,
@@ -70,7 +70,7 @@ PT_REGISTER_CTX_KERNEL(empty,
 PT_REGISTER_CTX_KERNEL(empty_like,
                        GPU,
                        ALL_LAYOUT,
-                       pten::EmptyLike,
+                       pten::EmptyLikeKernel,
                        bool,
                        int,
                        int64_t,

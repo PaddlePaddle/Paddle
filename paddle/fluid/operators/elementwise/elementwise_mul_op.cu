@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -57,7 +58,8 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
       auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
       auto pt_y = paddle::experimental::MakePtenDenseTensor(*y_lod);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
-      pten::Multiply<T>(cuda_ctx, *pt_x.get(), *pt_y.get(), axis, pt_z.get());
+      pten::MultiplyKernel<T>(cuda_ctx, *pt_x.get(), *pt_y.get(), axis,
+                              pt_z.get());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "
@@ -67,69 +69,41 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
   }
 };
 
-template <typename T>
-static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
-                                                       const T* out,
-                                                       const T* dout,
-                                                       int64_t size, T* dx,
-                                                       T* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
-    T o = dout[col];
-    dx[col] = y[col] * o;
-    dy[col] = x[col] * o;
-    col += blockDim.x * gridDim.x;
-  }
-}
-
-template <>
-__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<float>>(
-    const plat::complex<float>* x, const plat::complex<float>* y,
-    const plat::complex<float>* out, const plat::complex<float>* dout,
-    int64_t size, plat::complex<float>* dx, plat::complex<float>* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
-    plat::complex<float> o = dout[col];
-    dx[col] = plat::complex<float>(y[col].real, -y[col].imag) * o;
-    dy[col] = plat::complex<float>(x[col].real, -x[col].imag) * o;
-    col += blockDim.x * gridDim.x;
-  }
-}
-
-template <>
-__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<double>>(
-    const plat::complex<double>* x, const plat::complex<double>* y,
-    const plat::complex<double>* out, const plat::complex<double>* dout,
-    int64_t size, plat::complex<double>* dx, plat::complex<double>* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
-    plat::complex<double> o = dout[col];
-    dx[col] = plat::complex<double>(y[col].real, -y[col].imag) * o;
-    dy[col] = plat::complex<double>(x[col].real, -x[col].imag) * o;
-    col += blockDim.x * gridDim.x;
-  }
-}
-
 template <typename DeviceContext, typename T>
 typename std::enable_if<
-    std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy) {
-  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
-  auto size = x->numel();
-  dim3 grid_size =
-      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
-  SimpleElemwiseMulGradCUDAKernel<
-      T><<<grid_size, block_size, 0,
-           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-      x->data<T>(), y->data<T>(), out->data<T>(), dout->data<T>(), size,
-      dx->mutable_data<T>(ctx.GetPlace()), dy->mutable_data<T>(ctx.GetPlace()));
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+ElementwiseMulGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  const auto& dev_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  const auto place = ctx.GetPlace();
+
+  if (dx != nullptr && dy != nullptr) {
+    dx->mutable_data<T>(place);
+    if (dx->IsSharedBufferWith(*dout)) {
+      dx->clear();
+      dx->mutable_data<T>(x->dims(), place);
+    }
+    std::vector<const framework::Tensor*> ins = {dout, y, x};
+    GetGradXAndYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    dx->mutable_data<T>(place);
+    if (dx->IsSharedBufferWith(*dout)) {
+      dx->clear();
+      dx->mutable_data<T>(x->dims(), place);
+    }
+    std::vector<const framework::Tensor*> ins = {dout, y};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
+                                                dx, MulGradFunctor<T>());
+  } else if (dx == nullptr && dy != nullptr) {
+    std::vector<const framework::Tensor*> ins = {dout, x};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
+                                                dy, MulGradFunctor<T>());
+  }
 }
 
 }  // namespace operators
