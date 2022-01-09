@@ -68,6 +68,8 @@ def kl_divergence(p, q):
 def register_kl(cls_p, cls_q):
     """Decorator for register a KL divergence implemention function.
 
+    when call ``kl_divergence(p, q)`` , will search concrete implemention function by type p and q by multi-dispatch pattern. If find the implemention function, return the result or not will raise ``NotImplementError`` exception. User can register implemention funciton by the decorator. 
+
     Args:
         cls_p(Distribution): subclass derived from ``Distribution``.
         cls_q(Distribution): subclass derived from ``Distribution``.

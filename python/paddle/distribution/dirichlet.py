@@ -22,23 +22,28 @@ from .exponential_family import ExponentialFamily
 
 class Dirichlet(ExponentialFamily):
     r"""
-    Dirichlet distribution with parameter concentration
+    Dirichlet distribution with parameter concentration.
 
     The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
     positive, lenght-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
 
-    The probability density function (pdf) is
+    For independent and identically distributed continuous random variable :math:`\boldsymbol X \in R_k` , and support :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` , The probability density function (pdf) is
+
+    .. math::
+    
+        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
+
+    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is parameter, the normalizing constant is the multivariate beta function.
 
     .. math::
 
-        f(x_1,...,x_k; \alpha_1,...,\alpha_k) = \frac{1}{B(\alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
+        B(\boldsymbol \alpha) = \frac{\prod_{i=1}^{k} \Gamma(\alpha_i)}{\Gamma(\alpha_0)}
 
-    The normalizing constant is the multivariate beta function.
+    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters, :math:`\Gamma(\alpha)` is gamma function。
 
     Args:
-        concentration (Tensor): concentration parameter of dirichlet 
-            distribution
+        concentration (Tensor): concentration parameter of dirichlet distribution, also called :math:`\alpha`. when concentration over one dimension，the last axis is parameter of distribution,  ``event_shape=concentration.shape[-1:]`` , other axes is batch with ``batch_shape=concentration.shape[:-1]`` .
 
     Examples:
 

@@ -21,7 +21,14 @@ from .exponential_family import ExponentialFamily
 
 class Beta(ExponentialFamily):
     r"""
-    Beta distribution parameterized by alpha and beta
+    Beta distribution parameterized by alpha and beta.
+
+    In probability theory and statistics, the beta distribution is a family of 
+    continuous probability distributions defined on the interval [0, 1] 
+    parameterized by two positive shape parameters, denoted by alpha and beta, 
+    that appear as exponents of the random variable and control the shape of 
+    the distribution. The generalization to multiple variables is called a 
+    Dirichlet distribution.
 
     The probability density function (pdf) is
 
@@ -37,8 +44,8 @@ class Beta(ExponentialFamily):
 
 
     Args:
-        alpha (float|Tensor): alpha parameter of beta distribution, positive(>0).
-        beta (float|Tensor): beta parameter of beta distribution, positive(>0).
+        alpha (float|Tensor): alpha parameter of beta distribution, positive(>0), support broadcast semantic. when the parameter is tensor type, represent multiple independent distribution with batch_shape(refer to `Distribution`) equals to shape of alpha after broadcast.
+        beta (float|Tensor): beta parameter of beta distribution, positive(>0).when the parameter is tensor type, represent multiple independent distribution with batch_shape(refer to `Distribution`) equals to shape of beta after broadcast.
 
     Examples:
 
@@ -129,7 +136,7 @@ class Beta(ExponentialFamily):
             sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
-        return paddle.squeeze(self._dirichlet.sample(shape)[..., 0])
+        return paddle.squeeze(self._dirichlet.sample(shape)[..., 0], axis=-1)
 
     def entropy(self):
         """entropy of dirichlet distribution
