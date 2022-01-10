@@ -31,46 +31,34 @@
 #include "paddle/fluid/platform/device_context.h"
 
 #ifdef __HIPCC__
+// HIP results in error or nan if > 256
 #define PREDEFINED_BLOCK_SIZE 256
 #else
+/* CUDA performs better as thread_per_block
+   num is between [64, 512] */
 #define PREDEFINED_BLOCK_SIZE 512
 #endif
 
 namespace paddle {
 namespace platform {
 
-#ifdef PADDLE_WITH_CUDA
-inline static int RoundToPowerOfTwo(int dim) {
-  if (dim > 512) {
-    return 1024;
-  } else if (dim > 256) {
-    return 512;
-  } else if (dim > 128) {
-    return 256;
-  } else if (dim > 64) {
-    return 128;
-  } else if (dim > 32) {
-    return 64;
-  } else {
-    return 32;
-  }
-}
-#else
-inline static int RoundToPowerOfTwo(int dim) {
-  // HIP results in error or nan if > 256
-  if (dim > 128) {
-    return 256;
-  } else if (dim > 64) {
-    return 128;
-  } else if (dim > 32) {
-    return 64;
-  } else {
-    return 32;
-  }
-}
-#endif
-
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
+
+/* https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+   for round integer value into next highest power of 2. */
+static inline int RoundToPowerOfTwo(int n) {
+  n--;
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+#ifdef __HIPCC__
+  return std::min(256, std::max(32, (n + 1)));
+#else
+  return std::min(1024, std::max(32, (n + 1)));
+#endif
+}
 
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
@@ -103,12 +91,10 @@ struct GpuLaunchConfig {
   dim3 block_per_grid = dim3(1, 1, 1);
 };
 
-/*
-* According to NVIDIA, if number of threads per block is 64/128/256/512,
-* cuda performs better. And number of blocks should be greater (at least
-* 2x~4x) than number of SMs. Hence, SM count is took into account within
-* this function to determine the right number of threads per block.
-*/
+/* According to NVIDIA, if number of threads per block is 64/128/256/512,
+  * cuda performs better. And number of blocks should be greater (at least
+  * 2x~4x) than number of SMs. Hence, SM count is took into account within
+  * this function to determine the right number of threads per block. */
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int64_t numel,
     int vec_size = 1) {
@@ -116,24 +102,31 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
                                   "element quantity should be greater than 0,"
                                   " but received value is: %d.",
                                   numel));
-  int threads = PREDEFINED_BLOCK_SIZE;
+  // Get compute_capability
+  const int capability = context.GetComputeCapability();
+  /* If thread number per block is 64/128/256/512, cuda performs better.*/
+  int limit_threads =
+      std::min(PREDEFINED_BLOCK_SIZE, context.GetMaxThreadsPerBlock());
+#ifdef WITH_NV_JETSON
+  if (capability == 53 || capability == 62) {
+    limit_threads = 512;
+  }
+#endif
+  int threads = limit_threads;
   int sm_count = context.GetSMCount();
   int active_threads_num = numel / vec_size;
-  if (active_threads_num / (sm_count << 1) < PREDEFINED_BLOCK_SIZE) {
+  if (active_threads_num / (sm_count << 1) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
     // of acitve blocks is about twice of SM, to acquire better performance.
     threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
-  } else if (active_threads_num / (sm_count << 2) < PREDEFINED_BLOCK_SIZE) {
+  } else if (active_threads_num / (sm_count << 2) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
     // of acitve blocks is about 4 times of SM, to acquire better performance.
     threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
   }
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
-  int blocks = ((numel + vec_size - 1) / vec_size + threads - 1) / threads;
-
-  // Get compute_capability
-  const int capability = context.GetComputeCapability();
+  int blocks = DivUp(DivUp(numel, vec_size), threads);
 
   GpuLaunchConfig config;
   config.thread_per_block.x = threads;
