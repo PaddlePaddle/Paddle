@@ -17,5 +17,4 @@ limitations under the License. */
 // developer apis
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/include/linalg.h"
 #include "paddle/pten/include/math.h"
