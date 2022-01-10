@@ -221,7 +221,8 @@ def interpolate(x,
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', 'area' or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic' only support 4-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
@@ -276,9 +277,11 @@ def interpolate(x,
     if resample in ['LINEAR'] and len(x.shape) != 3:
         raise ValueError("'linear' only support 3-D tensor.")
 
-    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(x.shape) != 4:
-        raise ValueError(
-            "'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.")
+    if resample in ['NEAREST'] and len(x.shape) != 4 and len(x.shape) != 5:
+        raise ValueError("'NEAREST' only support 4-D  or 5-D tensor.")
+
+    if resample in ['BILINEAR', 'BICUBIC'] and len(x.shape) != 4:
+        raise ValueError("'bilinear' and 'bicubic' only support 4-D tensor.")
     if resample == 'TRILINEAR' and len(x.shape) != 5:
         raise ValueError("'trilinear'only support 5-D tensor.")
 
@@ -332,6 +335,8 @@ def interpolate(x,
 
     if resample == 'NEAREST':
         align_corners = False
+    if resample in ['NEAREST'] and len(x.shape) == 4:
+        x = unsqueeze(x, axis=[2])
 
     inputs = {"X": x}
     attrs = {
@@ -466,6 +471,8 @@ def interpolate(x,
             out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
             out = _C_ops.nearest_interp_v2(x, *dy_attr)
+            if len(x.shape) == 4:
+                return squeeze(out, [2])
         elif resample_type == "bicubic":
             out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
@@ -475,6 +482,8 @@ def interpolate(x,
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs)
+    if resample_type == "nearest" and len(x.shape) == 4:
+        return squeeze(out, [2])
     return out
 
 

@@ -249,12 +249,12 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE_EQ(
-      "trilinear", interp_method,
-      platform::errors::InvalidArgument(
-          "Interpolation method can only be \"trilinear\" when Input(X) "
-          "dimension is 5, but got method = %s .",
-          interp_method));
+  PADDLE_ENFORCE("nearest" == interp_method || "trilinear" == interp_method,
+                 platform::errors::InvalidArgument(
+                     "Interpolation method can only be \"trilinear\" or "
+                     "\"nearest\" when Input(X) "
+                     "dimension is 5, but got method = %s .",
+                     interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
