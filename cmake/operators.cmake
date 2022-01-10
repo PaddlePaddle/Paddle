@@ -1,6 +1,29 @@
 # CMake file `unity_build` is used to handle Unity Build compilation.
 include(unity_build)
 set(PART_CUDA_KERNEL_FILES)
+
+function(find_register FILENAME PATTERN OUTPUT)
+# find the op_name of REGISTER_OPERATOR(op_name, ...), REGISTER_OP_CPU_KERNEL(op_name, ...) , etc.
+# set op_name to OUTPUT
+set(options "")
+set(oneValueArgs "")
+set(multiValueArgs "")
+file(READ ${FILENAME} CONTENT)
+# message ("number of arguments sent to function: ${ARGC}")
+# message ("all function arguments:               ${ARGV}")
+# message("PATTERN ${PATTERN}")
+    string(REGEX MATCH "${PATTERN}\\([ \t\r\n]*[a-z0-9_]*," register "${CONTENT}")
+    if (NOT register STREQUAL "")
+        string(REPLACE "${PATTERN}(" "" register "${register}")
+        string(REPLACE "," "" register "${register}")
+        # [ \t\r\n]+ is used for blank characters.
+        # Here we use '+' instead of '*' since it is a REPLACE operation.
+        string(REGEX REPLACE "[ \t\r\n]+" "" register "${register}")
+    endif()
+    
+    set(${OUTPUT} ${register} PARENT_SCOPE)
+endfunction()
+
 function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
     # cc_library. But it handle split GPU/CPU code and link some common library
@@ -228,48 +251,6 @@ function(op_library TARGET)
         endif()
     endif()
 
-    # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
-"tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
-"fusion_transpose_flatten_concat_op" "fusion_conv_inception_op"
-"sync_batch_norm_op" "sparse_attention_op"  "dgc_op" "fused_fc_elementwise_layernorm_op"
-"skip_layernorm_op" "multihead_matmul_op" "fusion_group_op" "fused_bn_activation_op" "fused_embedding_eltwise_layernorm_op" "fusion_gru_op" "fusion_lstm_op"
-"fused_bn_add_activation_op" "fused_attention_op" "resnet_unit_op" "fused_feedforward_op")
-
-        if ("${TARGET}" STREQUAL "${manual_pybind_op}")
-            set(pybind_flag 1)
-        endif()
-    endforeach()
-
-    # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
-    # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
-    # And for detail pybind information, please see generated paddle/pybind/pybind.h.
-    set(ORIGINAL_TARGET ${TARGET})
-    file(READ ${TARGET}.cc TARGET_CONTENT)
-    string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
-    # [ \t\r\n]* is used for blank characters
-    string(REGEX MATCH "REGISTER_OPERATOR\\([ \t\r\n]*[a-z0-9_]*," one_register "${multi_register}")
-
-    if (one_register STREQUAL "")
-        string(REPLACE "_op" "" TARGET "${TARGET}")
-    else ()
-        string(REPLACE "REGISTER_OPERATOR(" "" TARGET "${one_register}")
-        string(REPLACE "," "" TARGET "${TARGET}")
-        # [ \t\r\n]+ is used for blank characters.
-        # Here we use '+' instead of '*' since it is a REPLACE operation.
-        string(REGEX REPLACE "[ \t\r\n]+" "" TARGET "${TARGET}")
-    endif()
-
-    # pybind USE_NO_KERNEL_OP
-    # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
-    string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
-    string(REPLACE "_op" "" TARGET "${TARGET}")
-    if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
-        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
-        set(pybind_flag 1)
-    endif()
-
-    # pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
     list(LENGTH hip_srcs hip_srcs_len)
     list(LENGTH cu_cc_srcs cu_cc_srcs_len)
@@ -279,44 +260,71 @@ function(op_library TARGET)
     list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
     list(LENGTH npu_cc_srcs npu_cc_srcs_len)
     list(LENGTH mlu_cc_srcs mlu_cc_srcs_len)
-    if (${pybind_flag} EQUAL 0 AND ${mkldnn_cc_srcs_len} EQUAL 0 AND ${cu_srcs_len} EQUAL 0 AND ${cu_cc_srcs_len} EQUAL 0 AND
-        ${hip_srcs_len} EQUAL 0 AND ${hip_cc_srcs_len} EQUAL 0 AND ${miopen_cu_cc_srcs_len} EQUAL 0 AND ${xpu_cc_srcs_len} EQUAL 0 AND
-        ${npu_cc_srcs_len} EQUAL 0 AND ${mlu_cc_srcs_len} EQUAL 0)
-        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
-        set(pybind_flag 1)
-    endif()
 
-    # pybind USE_OP_DEVICE_KERNEL for CUDNN
-    list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
-    if (WITH_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
-      if(${TARGET} STREQUAL "activation")
+    # Define operators that don't need pybind here.
+    foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
+    "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op")
+    
+            if ("${TARGET}" STREQUAL "${manual_pybind_op}")
+                set(pybind_flag 1)
+            endif()
+        endforeach()
+
+    # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
+    # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
+    # And for detail pybind information, please see generated paddle/pybind/pybind.h.
+    set(ORIGINAL_TARGET ${TARGET})
+    string(REGEX REPLACE "_op" "" TARGET "${TARGET}")
+
+    foreach(cc_src ${cc_srcs})
+        # pybind USE_OP_ITSELF
+        set(op_name "")
+        find_register(${cc_src} "REGISTER_OPERATOR" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+            # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+            set(TARGET ${op_name})  
+            set(pybind_flag 1)
+        endif()
+
+        # pybind USE_OP_DEVICE_KERNEL for CPU
+        set(op_name "")
+        find_register(${cc_src} "REGISTER_OP_CPU_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CPU);\n")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
+
+    # pybind USE_OP_DEVICE_KERNEL for CUDA
+    list (APPEND cu_srcs ${cu_cc_srcs})
+    # message("cu_srcs ${cu_srcs}")
+    foreach(cu_src ${cu_srcs})
+        set(op_name "")
+        find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
+
+
+    # pybind USE_OP_DEVICE_KERNEL for CUDNN/MIOPEN
+    list (APPEND cudnn_cu_cc_srcs ${miopen_cu_cc_srcs})    
+    # message("cudnn_cu_cc_srcs ${cudnn_cu_cc_srcs}")
+    if(${ORIGINAL_TARGET} STREQUAL "activation_op")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, CUDNN);\n")
-      else()
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
-      endif()
+    else()
+    foreach(cudnn_src ${cudnn_cu_cc_srcs})
+        set(op_name "")
+        find_register(${cudnn_src} "REGISTER_OP_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDNN);\n")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
     endif()
 
-    # pybind USE_OP_DEVICE_KERNEL for MIOPEN
-    list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
-    if (WITH_ROCM AND ${miopen_cu_cc_srcs_len} GREATER 0)
-      if(${TARGET} STREQUAL "activation")
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, CUDNN);\n")
-      else()
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
-      endif()
-    endif()
-
-    # pybind USE_OP_DEVICE_KERNEL for CUDNN
-    list(LENGTH cudnn_cu_srcs cudnn_cu_srcs_len)
-    if (WITH_GPU AND ${cudnn_cu_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
-    endif()
-
-    # pybind USE_OP_DEVICE_KERNEL for MIOPEN
-    list(LENGTH miopen_cu_srcs miopen_cu_srcs_len)
-    if (WITH_ROCM AND ${miopen_cu_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
-    endif()
 
     if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
@@ -379,6 +387,15 @@ function(op_library TARGET)
       else()
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, MKLDNN);\n")
       endif()
+    endif()
+
+    # pybind USE_NO_KERNEL_OP
+    # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
+    string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
+    string(REPLACE "_op" "" TARGET "${TARGET}")
+    if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
+        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+        set(pybind_flag 1)
     endif()
 
     # pybind USE_OP
