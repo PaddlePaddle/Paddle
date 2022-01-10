@@ -178,6 +178,7 @@ void BasicAucCalculator::calculate_bucket_error() {
   double click_sum = 0.0;
   double error_sum = 0.0;
   double error_count = 0;
+#if defined(PADDLE_WITH_GLOO)
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (gloo_wrapper->Size() > 1) {
     auto neg_table = gloo_wrapper->AllReduce(_table[0], "sum");
@@ -234,6 +235,7 @@ void BasicAucCalculator::calculate_bucket_error() {
     }
   }
   _bucket_error = error_count > 0 ? error_sum / error_count : 0.0;
+#endif
 }
 
 void BasicAucCalculator::reset_records() {

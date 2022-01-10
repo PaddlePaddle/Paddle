@@ -1169,9 +1169,10 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               str, i, num));
       if (parse_uid_ && all_slots_[i] == uid_slot_) {
         PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
-                       "The uid has to be uint64 and single.\n"
-                       "please check this error line: %s",
-                       str);
+                       platform::errors::PreconditionNotMet(
+                           "The uid has to be uint64 and single.\n"
+                           "please check this error line: %s",
+                           str));
 
         char* uidptr = endptr;
         uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
