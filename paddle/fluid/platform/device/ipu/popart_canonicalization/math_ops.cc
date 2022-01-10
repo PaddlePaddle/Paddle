@@ -41,7 +41,8 @@ Node *pow_handler(Graph *graph, Node *node) {
     // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
     auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
     auto attrs =
-        MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
+        MakeConstAttrMapFromValue<float>(value_, {1}, GetOutputVarDtype(node));
+
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     return CreateBaseOp(graph, node, "popart_pow", {GetInputVarNode("X", node),
                                                     new_node_const->outputs[0]},
@@ -122,15 +123,15 @@ Node *matmul_handler(Graph *graph, Node *node) {
     y_node = y_node->outputs[0];
   }
   if (is_float_equal(alpha, 1.0)) {
+    return CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node},
+                        node->outputs);
+  } else {
     auto o_node =
         CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node}, {});
-    auto attr = MakeConstAttrMapFromValue(alpha, {1}, ONNXDataType::FLOAT);
+    auto attr = MakeConstAttrMapFromValue(alpha, {1}, GetOutputVarDtype(node));
     auto const_node = CreateConst(graph, node, {}, {}, attr);
     return CreateBaseOp(graph, node, "popart_mul",
                         {o_node->outputs[0], const_node->outputs[0]},
-                        node->outputs);
-  } else {
-    return CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node},
                         node->outputs);
   }
 }
@@ -141,7 +142,10 @@ Node *sum_handler(Graph *graph, Node *node) {
 
 Node *softmax_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  int axis = -1;
+  if (op->HasAttr("axis")) {
+    axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  }
   return CreateSoftmaxOpset11(graph, node, node->inputs, node->outputs, axis);
 }
 
@@ -153,42 +157,72 @@ Node *scale_handler(Graph *graph, Node *node) {
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
   auto data_type_ = GetInputVarNode("X", node)->Var()->GetDataType();
 
-  auto new_node_bias_var =
-      CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{bias_}},
-                                        {"dims", std::vector<int64_t>{1}},
-                                        {"dtype", ONNXDataType::FLOAT}});
-  new_node_bias_var = new_node_bias_var->outputs[0];
+  auto cast = CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
+                         static_cast<int>(framework::proto::VarType::FP32));
 
-  Node *new_node_scale_var = nullptr;
-  if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
-    new_node_scale_var = GetInputVarNode("ScaleTensor", node);
-  } else {
-    new_node_scale_var =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{scale_}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::FLOAT}});
-    new_node_scale_var = new_node_scale_var->outputs[0];
-  }
-
-  // convert to float32
-  auto new_node_cast =
-      CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
-                 static_cast<int>(framework::proto::VarType::FP32));
   Node *result = nullptr;
-  if (bias_after_scale_) {
-    auto new_node_mul =
-        CreateBaseOp(graph, node, "popart_mul",
-                     {new_node_cast->outputs[0], new_node_scale_var}, {}, {});
-    result =
-        CreateBaseOp(graph, node, "popart_add",
-                     {new_node_mul->outputs[0], new_node_bias_var}, {}, {});
+  if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
+    auto scale = GetInputVarNode("ScaleTensor", node);
+    if (is_float_equal(bias_, 0.0)) {
+      result = CreateBaseOp(graph, node, "popart_mul",
+                            {cast->outputs[0], scale}, {}, {});
+    } else {
+      auto bias = CreateConst(graph, node, {}, {},
+                              {{"value", std::vector<float>{bias_}},
+                               {"dims", std::vector<int64_t>{1}},
+                               {"dtype", ONNXDataType::FLOAT}});
+      bias = bias->outputs[0];
+      if (bias_after_scale_) {
+        auto mul = CreateBaseOp(graph, node, "popart_mul",
+                                {cast->outputs[0], scale}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_add",
+                              {mul->outputs[0], bias}, {}, {});
+      } else {
+        auto add = CreateBaseOp(graph, node, "popart_add",
+                                {cast->outputs[0], bias}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_mul",
+                              {add->outputs[0], scale}, {}, {});
+      }
+    }
   } else {
-    auto new_node_add =
-        CreateBaseOp(graph, node, "popart_add",
-                     {new_node_cast->outputs[0], new_node_bias_var}, {}, {});
-    result =
-        CreateBaseOp(graph, node, "popart_mul",
-                     {new_node_add->outputs[0], new_node_scale_var}, {}, {});
+    if (is_float_equal(bias_, 0.0) && is_float_equal(scale_, 1.0)) {
+      return CreateBaseOp(graph, node, "popart_identity",
+                          {GetInputVarNode("X", node)}, node->outputs, {});
+    } else if (is_float_equal(scale_, 1.0)) {
+      auto bias = CreateConst(graph, node, {}, {},
+                              {{"value", std::vector<float>{bias_}},
+                               {"dims", std::vector<int64_t>{1}},
+                               {"dtype", ONNXDataType::FLOAT}});
+      result = CreateBaseOp(graph, node, "popart_add",
+                            {cast->outputs[0], bias->outputs[0]}, {}, {});
+    } else if (is_float_equal(bias_, 0.0)) {
+      auto scale = CreateConst(graph, node, {}, {},
+                               {{"value", std::vector<float>{scale_}},
+                                {"dims", std::vector<int64_t>{1}},
+                                {"dtype", ONNXDataType::FLOAT}});
+      result = CreateBaseOp(graph, node, "popart_mul",
+                            {cast->outputs[0], scale->outputs[0]}, {}, {});
+    } else {
+      auto bias = CreateConst(graph, node, {}, {},
+                              {{"value", std::vector<float>{bias_}},
+                               {"dims", std::vector<int64_t>{1}},
+                               {"dtype", ONNXDataType::FLOAT}});
+      auto scale = CreateConst(graph, node, {}, {},
+                               {{"value", std::vector<float>{scale_}},
+                                {"dims", std::vector<int64_t>{1}},
+                                {"dtype", ONNXDataType::FLOAT}});
+      if (bias_after_scale_) {
+        auto mul = CreateBaseOp(graph, node, "popart_mul",
+                                {cast->outputs[0], scale->outputs[0]}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_add",
+                              {mul->outputs[0], bias->outputs[0]}, {}, {});
+      } else {
+        auto add = CreateBaseOp(graph, node, "popart_add",
+                                {cast->outputs[0], bias->outputs[0]}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_mul",
+                              {add->outputs[0], scale->outputs[0]}, {}, {});
+      }
+    }
   }
   auto result_after_cast =
       CreateCast(graph, node, result->outputs, node->outputs,
@@ -199,16 +233,27 @@ Node *scale_handler(Graph *graph, Node *node) {
 Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
-  auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)}, {},
-                             framework::proto::VarType::INT32);
+  Node *new_cast = nullptr;
+  if (GetInputVarNode("Label", node)->Var()->GetDataType() ==
+      framework::proto::VarType::INT32) {
+    new_cast = GetInputVarNode("Label", node);
+  } else {
+    auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)},
+                               {}, framework::proto::VarType::INT32);
+    new_cast = new_cast->outputs[0];
+  }
   auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
-  if (label_shape_.size() == 1) {
-    return CreateBaseOp(graph, node, "popart_nllloss",
-                        {GetInputVarNode("X", node), new_cast->outputs[0]},
-                        {GetOutputVarNode("Y", node)},
-                        {
-                            {"ignoreIndex", ignoreIndex},
-                        });
+  if (label_shape_[label_shape_.size() - 1] != 1) {
+    auto log = CreateBaseOp(graph, node, "popart_log",
+                            {GetInputVarNode("X", node)}, {}, {});
+    return CreateBaseOp(
+        graph, node, "popart_nllloss_v2", {log->outputs[0], new_cast},
+        {GetOutputVarNode("Y", node)},
+        {
+            {"reduction", 2},  // popart::ReductionType::NoReduction
+            {"ignoreIndex", ignoreIndex},
+            {"inputIsLogProbability", true},
+        });
   } else {
     std::vector<int64_t> new_shape_{label_shape_[0]};
     auto const_before_loss = CreateBaseOp(
@@ -218,15 +263,19 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
           std::vector<int64_t>{static_cast<int64_t>(new_shape_.size())}},
          {"dtype", ONNXDataType::INT64}});
 
-    auto reshape_before_loss = CreateBaseOp(
-        graph, node, "popart_reshape",
-        {new_cast->outputs[0], const_before_loss->outputs[0]}, {}, {});
+    auto reshape_before_loss =
+        CreateBaseOp(graph, node, "popart_reshape",
+                     {new_cast, const_before_loss->outputs[0]}, {}, {});
 
+    auto log = CreateBaseOp(graph, node, "popart_log",
+                            {GetInputVarNode("X", node)}, {}, {});
     auto nllloss = CreateBaseOp(
-        graph, node, "popart_nllloss",
-        {GetInputVarNode("X", node), reshape_before_loss->outputs[0]}, {},
+        graph, node, "popart_nllloss_v2",
+        {log->outputs[0], reshape_before_loss->outputs[0]}, {},
         {
+            {"reduction", 2},  // popart::ReductionType::NoReduction
             {"ignoreIndex", ignoreIndex},
+            {"inputIsLogProbability", true},
         });
 
     auto const_after_loss = CreateBaseOp(
@@ -244,6 +293,73 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   }
 }
 
+Node *cumsum_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto exclusive = BOOST_GET_CONST(bool, op->GetAttr("exclusive"));
+  int64_t popart_exclusive = 1 ? exclusive : 0;
+  auto reverse = BOOST_GET_CONST(bool, op->GetAttr("reverse"));
+  int64_t popart_reverse = 1 ? reverse : 0;
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis_node =
+      CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{axis}},
+                                        {"dims", std::vector<int64_t>{1}},
+                                        {"dtype", ONNXDataType::INT64}});
+  return CreateBaseOp(
+      graph, node, "popart_cumsum",
+      {GetInputVarNode("X", node), axis_node->outputs[0]},
+      {GetOutputVarNode("Out", node)},
+      {{"exclusive", popart_exclusive}, {"reverse", popart_reverse}});
+}
+
+Node *matmul_v2_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("trans_x"));
+  auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("trans_y"));
+  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
+  auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
+
+  std::vector<int64_t> perm;
+  int x_rank = x_shape.size();
+  if (x_rank == 1) {
+    perm = std::vector<int64_t>{0};
+  } else if (x_rank == 2) {
+    perm = std::vector<int64_t>{1, 0};
+  } else if (x_rank == 3) {
+    perm = std::vector<int64_t>{0, 2, 1};
+  } else if (x_rank == 4) {
+    perm = std::vector<int64_t>{0, 1, 3, 2};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "op matmul with input rank == %d", x_rank));
+  }
+
+  Node *x_node = GetInputVarNode("X", node);
+  Node *y_node = GetInputVarNode("Y", node);
+
+  if (transpose_x) {
+    x_node = CreateBaseOp(graph, node, "popart_transpose",
+                          {GetInputVarNode("X", node)}, {}, {{"perm", perm}});
+    x_node = x_node->outputs[0];
+  }
+  if (transpose_y) {
+    y_node = CreateBaseOp(graph, node, "popart_transpose",
+                          {GetInputVarNode("Y", node)}, {}, {{"perm", perm}});
+    y_node = y_node->outputs[0];
+  }
+
+  return CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node},
+                      node->outputs);
+}
+
+Node *arg_max_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+  return CreateBaseOp(graph, node, "popart_argmax",
+                      {GetInputVarNode("X", node)},
+                      {GetOutputVarNode("Out", node)},
+                      {{"axis", axis}, {"keepdims", int64_t{0}}});
+}
+
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);
@@ -252,6 +368,9 @@ REGISTER_HANDLER(sum, sum_handler);
 REGISTER_HANDLER(softmax, softmax_handler);
 REGISTER_HANDLER(scale, scale_handler);
 REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
+REGISTER_HANDLER(cumsum, cumsum_handler);
+REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
+REGISTER_HANDLER(arg_max, arg_max_handler);
 
 }  // namespace
 }  // namespace ipu
