@@ -326,13 +326,13 @@ def conv1d(x,
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
-
     use_dgrad_engine = False
 
     #When num_filters == 512, use dgrad_engine<float, int=512, ..., bool=1> has better performance
     if num_filters == 512:
         use_dgrad_engine = True
 
+    #When use_dgrad_engine is true, the original dimension is expanded
     if channel_last or use_dgrad_engine:
         if len(padding) == 2:
             padding = padding + [0] * 2
@@ -360,7 +360,7 @@ def conv1d(x,
 
     l_type = "conv2d"
 
-    # When "groups == num_channels and num_filters % num_channels == 0" using depthwise_conv2d has better performance
+    # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
     if (core.is_compiled_with_cuda() and num_channels == groups and
             num_channels != 1 and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
