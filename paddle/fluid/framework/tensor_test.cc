@@ -45,7 +45,6 @@ TEST(Tensor, DataAssert) {
   } catch (platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
-    EXPECT_TRUE(ex_msg.find("holder_ should not be null") != std::string::npos);
     EXPECT_TRUE(ex_msg.find("Tensor holds no memory. Call "
                             "Tensor::mutable_data firstly.") !=
                 std::string::npos);
@@ -189,8 +188,6 @@ TEST(Tensor, ShareDataWith) {
     } catch (paddle::platform::EnforceNotMet& err) {
       caught = true;
       std::string ex_msg = err.what();
-      EXPECT_TRUE(ex_msg.find("holder_ should not be null") !=
-                  std::string::npos);
       EXPECT_TRUE(ex_msg.find("Tensor holds no memory. Call "
                               "Tensor::mutable_data firstly.") !=
                   std::string::npos);
