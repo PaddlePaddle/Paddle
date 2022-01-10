@@ -19,17 +19,17 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-class DeviceRecordNode;       // forward declaration
-class HostRecordNode;         // forward declaration
-class CudaRuntimeRecordNode;  // forward declaration
+class DeviceEventNode;       // forward declaration
+class HostEventNode;         // forward declaration
+class CudaRuntimeEventNode;  // forward declaration
 
 class BaseLogger {
  public:
   BaseLogger() {}
   virtual ~BaseLogger() {}
-  virtual void LogDeviceRecordNode(const DeviceRecordNode&) {}
-  virtual void LogHostRecordNode(const HostRecordNode&) {}
-  virtual void LogRuntimeRecordNode(const CudaRuntimeRecordNode&) {}
+  virtual void LogDeviceEventNode(const DeviceEventNode&) {}
+  virtual void LogHostEventNode(const HostEventNode&) {}
+  virtual void LogRuntimeEventNode(const CudaRuntimeEventNode&) {}
   virtual void LogMetaInfo() {}
 };
 
@@ -39,16 +39,16 @@ class ChromeTracingLogger : public BaseLogger {
   explicit ChromeTracingLogger(const char* filename);
   ~ChromeTracingLogger();
   std::string filename() { return filename_; }
-  void LogDeviceRecordNode(const DeviceRecordNode&) override;
-  void LogHostRecordNode(const HostRecordNode&) override;
-  void LogRuntimeRecordNode(const CudaRuntimeRecordNode&) override;
+  void LogDeviceEventNode(const DeviceEventNode&) override;
+  void LogHostEventNode(const HostEventNode&) override;
+  void LogRuntimeEventNode(const CudaRuntimeEventNode&) override;
   void LogMetaInfo();
 
  private:
   void OpenFile();
-  void HandleTypeKernel(const DeviceRecordNode&);
-  void HandleTypeMemset(const DeviceRecordNode&);
-  void HandleTypeMemcpy(const DeviceRecordNode&);
+  void HandleTypeKernel(const DeviceEventNode&);
+  void HandleTypeMemset(const DeviceEventNode&);
+  void HandleTypeMemcpy(const DeviceEventNode&);
   void StartLog();
   void EndLog();
   std::string filename_;

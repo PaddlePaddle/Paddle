@@ -21,20 +21,18 @@ namespace platform {
 
 class TraceEventCollector {
  public:
-  void AddHostRecord(HostRecord&& record) { host_records_.push_back(record); }
+  void AddHostRecord(HostEvent&& event) { host_events_.push_back(event); }
 
-  void AddRuntimeRecord(RuntimeRecord&& record) {
-    runtime_records_.push_back(record);
+  void AddRuntimeRecord(RuntimeEvent&& event) {
+    runtime_events_.push_back(event);
   }
 
-  void AddDeviceRecord(DeviceRecord&& record) {
-    device_records_.push_back(record);
-  }
+  void AddDeviceRecord(DeviceEvent&& event) { device_events_.push_back(event); }
 
  private:
-  std::list<HostRecord> host_records_;
-  std::list<RuntimeRecord> runtime_records_;
-  std::list<DeviceRecord> device_records_;
+  std::list<HostEvent> host_events_;
+  std::list<RuntimeEvent> runtime_events_;
+  std::list<DeviceEvent> device_events_;
 };
 
 }  // namespace platform

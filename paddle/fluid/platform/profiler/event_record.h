@@ -40,7 +40,7 @@ enum class TracerEventType {
   NumTypes
 };
 
-struct KernelRecordInfo {
+struct KernelEventInfo {
   // The X-dimension block size for the kernel.
   uint32_t block_x;
   // The Y-dimension block size for the kernel.
@@ -76,7 +76,7 @@ struct KernelRecordInfo {
   uint64_t completed;
 };
 
-struct MemcpyRecordInfo {
+struct MemcpyEventInfo {
   // The number of bytes transferred by the memory copy.
   uint64_t num_bytes;
   // The kind of the memory copy.
@@ -91,7 +91,7 @@ struct MemcpyRecordInfo {
   uint8_t dst_kind;
 };
 
-struct MemsetRecordInfo {
+struct MemsetEventInfo {
   // The number of bytes being set by the memory set.
   uint64_t num_bytes;
   // The memory kind of the memory set. Refer to CUpti_ActivityMemoryKind
@@ -100,9 +100,9 @@ struct MemsetRecordInfo {
   uint32_t value;
 };
 
-struct HostRecord {
-  HostRecord(const std::string& name, TracerEventType type, uint64_t start_ns,
-             uint64_t end_ns, uint64_t process_id, uint64_t thread_id)
+struct HostEvent {
+  HostEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
+            uint64_t end_ns, uint64_t process_id, uint64_t thread_id)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -123,10 +123,10 @@ struct HostRecord {
   uint64_t thread_id;
 };
 
-struct RuntimeRecord {
-  RuntimeRecord(const std::string& name, uint64_t start_ns, uint64_t end_ns,
-                uint64_t process_id, uint64_t thread_id,
-                uint32_t correlation_id, uint32_t callback_id)
+struct RuntimeEvent {
+  RuntimeEvent(const std::string& name, uint64_t start_ns, uint64_t end_ns,
+               uint64_t process_id, uint64_t thread_id, uint32_t correlation_id,
+               uint32_t callback_id)
       : name(name),
         start_ns(start_ns),
         end_ns(end_ns),
@@ -153,11 +153,11 @@ struct RuntimeRecord {
   uint32_t callback_id;
 };
 
-struct DeviceRecord {
-  DeviceRecord(const std::string& name, TracerEventType type, uint64_t start_ns,
-               uint64_t end_ns, uint64_t device_id, uint64_t context_id,
-               uint64_t stream_id, uint32_t correlation_id,
-               const KernelRecordInfo& kernel_info)
+struct DeviceEvent {
+  DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
+              uint64_t end_ns, uint64_t device_id, uint64_t context_id,
+              uint64_t stream_id, uint32_t correlation_id,
+              const KernelEventInfo& kernel_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -167,10 +167,10 @@ struct DeviceRecord {
         stream_id(stream_id),
         correlation_id(correlation_id),
         kernel_info(kernel_info) {}
-  DeviceRecord(const std::string& name, TracerEventType type, uint64_t start_ns,
-               uint64_t end_ns, uint64_t device_id, uint64_t context_id,
-               uint64_t stream_id, uint32_t correlation_id,
-               const MemcpyRecordInfo& memcpy_info)
+  DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
+              uint64_t end_ns, uint64_t device_id, uint64_t context_id,
+              uint64_t stream_id, uint32_t correlation_id,
+              const MemcpyEventInfo& memcpy_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -180,10 +180,10 @@ struct DeviceRecord {
         stream_id(stream_id),
         correlation_id(correlation_id),
         memcpy_info(memcpy_info) {}
-  DeviceRecord(const std::string& name, TracerEventType type, uint64_t start_ns,
-               uint64_t end_ns, uint64_t device_id, uint64_t context_id,
-               uint64_t stream_id, uint32_t correlation_id,
-               const MemsetRecordInfo& memset_info)
+  DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
+              uint64_t end_ns, uint64_t device_id, uint64_t context_id,
+              uint64_t stream_id, uint32_t correlation_id,
+              const MemsetEventInfo& memset_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -212,11 +212,11 @@ struct DeviceRecord {
   // union, specific device record type has different detail information
   union {
     // used for TracerEventType::Kernel
-    KernelRecordInfo kernel_info;
+    KernelEventInfo kernel_info;
     // used for TracerEventType::Memcpy
-    MemcpyRecordInfo memcpy_info;
+    MemcpyEventInfo memcpy_info;
     // used for TracerEventType::Memset
-    MemsetRecordInfo memset_info;
+    MemsetEventInfo memset_info;
   };
 };
 
