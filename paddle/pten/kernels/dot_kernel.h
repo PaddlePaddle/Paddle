@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 namespace pten {
 
