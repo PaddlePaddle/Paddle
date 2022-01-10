@@ -196,15 +196,5 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
                          GetOutputArgsNames());
 }
 
-std::string KernelSignatureToString(const KernelSignature& signature) {
-  std::stringstream os;
-  os << "Kernel Signature - name: " << signature.name
-     << "; inputs: " << string::join_strings(std::get<0>(signature.args), ", ")
-     << "; attributes: "
-     << string::join_strings(std::get<1>(signature.args), ", ") << "; outputs: "
-     << string::join_strings(std::get<2>(signature.args), ", ");
-  return os.str();
-}
-
 }  // namespace framework
 }  // namespace paddle
