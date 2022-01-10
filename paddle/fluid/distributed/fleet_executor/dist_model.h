@@ -47,7 +47,14 @@ class DistModel {
 
  private:
   DISABLE_COPY_AND_ASSIGN(DistModel);
+
+  bool PrepareScope();
+  bool PrepareProgram();
+  bool LoadProgram();
+
   DistModelConfig config_;
+  std::shared_ptr<framework::Scope> scope_;
+  std::shared_ptr<framework::ProgramDesc> program_;
 };
 
 }  // namespace distributed
