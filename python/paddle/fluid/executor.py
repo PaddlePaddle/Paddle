@@ -2068,7 +2068,6 @@ class Executor(object):
                         'op_role',
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             self._add_program_cache(cache_key, cached_program)
-            assert "fleet_opt" in program._pipeline_opt, "fleet_opt should be config to init carrier."
             fleet_opt = program._pipeline_opt["fleet_opt"]
             if 'tasks' in fleet_opt:
                 # Insert feed/fetch op for cloned program in each task node,
@@ -2104,6 +2103,7 @@ class Executor(object):
                             'op_role',
                             core.op_proto_and_checker_maker.OpRole.Optimize)
                 fetch_task.set_program(fetch_program)
+
             self._prepare_fleet_executor_carrier(
                 cache_key,
                 program=cached_program,
