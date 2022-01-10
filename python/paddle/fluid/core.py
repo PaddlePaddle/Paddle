@@ -260,6 +260,7 @@ if avx_supported():
         from .core_avx import _cleanup, _Scope
         from .core_avx import _get_use_default_grad_op_desc_maker_ops
         from .core_avx import _get_all_register_op_kernels
+        from .core_avx import _get_all_pten_op_kernels
         from .core_avx import _is_program_version_supported
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _get_eager_deletion_vars
@@ -316,6 +317,7 @@ if load_noavx:
         from .core_noavx import _cleanup, _Scope
         from .core_noavx import _get_use_default_grad_op_desc_maker_ops
         from .core_noavx import _get_all_register_op_kernels
+        from .core_noavx import _get_all_pten_op_kernels
         from .core_noavx import _is_program_version_supported
         from .core_noavx import _set_eager_deletion_mode
         from .core_noavx import _get_eager_deletion_vars

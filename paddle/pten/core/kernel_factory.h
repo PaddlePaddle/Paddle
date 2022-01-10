@@ -49,7 +49,8 @@ using DataLayout = paddle::experimental::DataLayout;
 
 class KernelContext;
 
-using KernelFn = void (*)(KernelContext* ctx);
+// using KernelFn = void (*)(KernelContext* ctx);
+using KernelFn = std::function<void(KernelContext* ctx)>;
 
 class KernelKey {
  public:
@@ -242,6 +243,12 @@ inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
   os << "(" << kernel_key.backend() << ", " << kernel_key.layout() << ", "
      << kernel_key.dtype() << ")";
   return os;
+}
+
+inline std::string KernelKeyToString(const KernelKey& kernel_key) {
+  std::ostringstream stream;
+  stream << kernel_key;
+  return stream.str();
 }
 
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel);

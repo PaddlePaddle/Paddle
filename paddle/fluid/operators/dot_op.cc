@@ -152,7 +152,7 @@ REGISTER_OP_CPU_KERNEL(
     dot, ops::DotKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DotKernel<paddle::platform::CPUDeviceContext, double>,
     ops::DotKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::DotKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    // ops::DotKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::DotKernel<paddle::platform::CPUDeviceContext,
                    paddle::platform::complex<float>>,
     ops::DotKernel<paddle::platform::CPUDeviceContext,

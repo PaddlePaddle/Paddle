@@ -110,6 +110,11 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  std::shared_ptr<TensorBase> MutableSharedOutputAt(size_t idx) {
+    return outputs_.at(idx);
+  }
+
+  template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;
     for (size_t i = start; i < end; ++i) {

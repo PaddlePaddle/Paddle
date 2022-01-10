@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <functional>
+
 namespace pten {
 
 class Kernel;
@@ -21,7 +23,8 @@ class KernelKey;
 class KernelArgsDef;
 class KernelContext;
 
-using KernelFn = void (*)(KernelContext* ctx);
+// using KernelFn = void (*)(KernelContext* ctx);
+using KernelFn = std::function<void(KernelContext* ctx)>;
 using KernelArgsDefFn = void (*)(Kernel* kernel);
 using KernelArgsParseFn = void (*)(const KernelKey& default_key,
                                    KernelArgsDef* args_def);

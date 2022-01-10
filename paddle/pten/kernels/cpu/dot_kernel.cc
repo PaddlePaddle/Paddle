@@ -56,6 +56,5 @@ PT_REGISTER_CTX_KERNEL(dot,
                        float,
                        double,
                        int,
-                       int64_t,
                        complex64,
                        complex128) {}
