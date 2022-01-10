@@ -33,13 +33,13 @@ using UTF8UpperConverter =
 
 template <typename AsciiConverter, typename UTF8Converter>
 void StringCaseConvert(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
+                       const StringTensor& x,
                        const std::string& encoding,
-                       DenseTensor* out) {
+                       StringTensor* out) {
   AsciiConverter ascii_converter;
   UTF8Converter utf8_converter;
-  const pstring* in_ptr = x.data<pstring>();
-  pstring* out_ptr = out->mutable_data<pstring>();
+  const pstring* in_ptr = x.data();
+  pstring* out_ptr = out->mutable_data();
   auto num = x.numel();
   for (int64_t i = 0; i < num; ++i) {
     if (encoding.empty()) {
@@ -51,17 +51,17 @@ void StringCaseConvert(const CPUContext& dev_ctx,
 }
 
 void StringLower(const CPUContext& dev_ctx,
-                 const DenseTensor& x,
+                 const StringTensor& x,
                  const std::string& encoding,
-                 DenseTensor* out) {
+                 StringTensor* out) {
   StringCaseConvert<AsciiLowerConverter, UTF8LowerConverter>(
       dev_ctx, x, encoding, out);
 }
 
 void StringUpper(const CPUContext& dev_ctx,
-                 const DenseTensor& x,
+                 const StringTensor& x,
                  const std::string& encoding,
-                 DenseTensor* out) {
+                 StringTensor* out) {
   StringCaseConvert<AsciiUpperConverter, UTF8UpperConverter>(
       dev_ctx, x, encoding, out);
 }

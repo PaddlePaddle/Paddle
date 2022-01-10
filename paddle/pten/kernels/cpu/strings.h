@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/core/string_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -25,18 +25,18 @@ namespace pten {
 using CPUContext = paddle::platform::CPUDeviceContext;
 template <typename AsciiCoverter>
 void StringCaseConvert(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
+                       const StringTensor& x,
                        const std::string& encoding,
-                       DenseTensor* out);
+                       StringTensor* out);
 
 void StringLower(const CPUContext& dev_ctx,
-                 const DenseTensor& x,
+                 const StringTensor& x,
                  const std::string& encoding,
-                 DenseTensor* out);
+                 StringTensor* out);
 
 void StringUpper(const CPUContext& dev_ctx,
-                 const DenseTensor& x,
+                 const StringTensor& x,
                  const std::string& encoding,
-                 DenseTensor* out);
+                 StringTensor* out);
 
 }  // namespace pten

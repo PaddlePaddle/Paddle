@@ -44,4 +44,19 @@ bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
          (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
+
+StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
+
+bool StringTensorMeta::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (is_scalar || product(dims) >= 0);
+  return valid;
+}
+
+bool operator==(const StringTensorMeta& lhs, const StringTensorMeta& rhs) {
+  bool ret = true;
+  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.offset == rhs.offset);
+}
+
 }  // namespace pten

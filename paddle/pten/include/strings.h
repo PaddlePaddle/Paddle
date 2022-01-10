@@ -21,25 +21,25 @@ limitations under the License. */
 namespace pten {
 
 template <typename ContextT>
-DenseTensor StringLower(const ContextT& dev_ctx,
-                        const std::string& encoding,
-                        const DenseTensor& x) {
+StringTensor StringLower(const ContextT& dev_ctx,
+                         const std::string& encoding,
+                         const StringTensor& x) {
   auto out_meta = UnchangedInferMeta(x.meta());
   const auto alloc = std::make_shared<paddle::experimental::StringAllocator>(
       dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(alloc, std::move(out_meta));
+  pten::StringTensor dense_out(alloc, std::move(out_meta));
   StringLower(dev_ctx, x, encoding, &dense_out);
   return dense_out;
 }
 
 template <typename ContextT>
-DenseTensor StringUpper(const ContextT& dev_ctx,
-                        const std::string& encoding,
-                        const DenseTensor& x) {
+StringTensor StringUpper(const ContextT& dev_ctx,
+                         const std::string& encoding,
+                         const StringTensor& x) {
   auto out_meta = UnchangedInferMeta(x.meta());
   const auto alloc = std::make_shared<paddle::experimental::StringAllocator>(
       dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(alloc, std::move(out_meta));
+  pten::StringTensor dense_out(alloc, std::move(out_meta));
   StringUpper(dev_ctx, x, encoding, &dense_out);
   return dense_out;
 }

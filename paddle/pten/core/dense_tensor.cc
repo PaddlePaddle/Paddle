@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/core/platform/pstring.h"
 
 namespace pten {
 
@@ -151,7 +150,6 @@ DATA_MEMBER_FUNC_INSTANTIATION(float);
 DATA_MEMBER_FUNC_INSTANTIATION(double);
 DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64);
 DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::pstring)
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 

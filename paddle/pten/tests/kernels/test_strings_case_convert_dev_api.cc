@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,9 +21,9 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/platform/pstring.h"
+#include "paddle/pten/core/string_tensor.h"
 
 namespace pten {
 namespace tests {
@@ -36,19 +35,16 @@ using pstring = ::pten::platform::pstring;
 TEST(DEV_API, strings_cast_convert) {
   // 1. create tensor
   const DDim dims({1, 2});
-  const DataType dtype{DataType::STRING};
-  const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
+  StringTensorMeta meta(dims);
 
   const auto alloc = std::make_shared<paddle::experimental::StringAllocator>(
       paddle::platform::CPUPlace());
-  DenseTensor dense_x(alloc, meta);
+  StringTensor dense_x(alloc, meta);
 
   std::string short_str = "A Short Pstring.";
   std::string long_str = "A Large Pstring Whose Length Is Longer Than 22.";
 
-  pstring* dense_x_data = dense_x.mutable_data<pstring>();
+  pstring* dense_x_data = dense_x.mutable_data();
   dense_x_data[0] = short_str;
   dense_x_data[1] = long_str;
 
@@ -86,29 +82,26 @@ TEST(DEV_API, strings_cast_convert) {
   ASSERT_EQ(dense_upper_out.numel(), 2);
 
   // lower case
-  ASSERT_EQ(dense_lower_out.data<pstring>()[0].data(), expected_results[0]);
-  ASSERT_EQ(dense_lower_out.data<pstring>()[1].data(), expected_results[2]);
+  ASSERT_EQ(dense_lower_out.data()[0].data(), expected_results[0]);
+  ASSERT_EQ(dense_lower_out.data()[1].data(), expected_results[2]);
 
   // upper case
-  ASSERT_EQ(dense_upper_out.data<pstring>()[0].data(), expected_results[1]);
-  ASSERT_EQ(dense_upper_out.data<pstring>()[1].data(), expected_results[3]);
+  ASSERT_EQ(dense_upper_out.data()[0].data(), expected_results[1]);
+  ASSERT_EQ(dense_upper_out.data()[1].data(), expected_results[3]);
 }
 
 TEST(DEV_API, strings_cast_convert_utf8) {
   // 1. create tensor
   const DDim dims({1, 1});
-  const DataType dtype{DataType::STRING};
-  const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
+  StringTensorMeta meta(dims);
 
   const auto alloc = std::make_shared<paddle::experimental::StringAllocator>(
       paddle::platform::CPUPlace());
-  DenseTensor dense_x(alloc, meta);
+  StringTensor dense_x(alloc, meta);
 
   std::string utf8_str = "óósschloë";
 
-  pstring* dense_x_data = dense_x.mutable_data<pstring>();
+  pstring* dense_x_data = dense_x.mutable_data();
   dense_x_data[0] = utf8_str;
 
   paddle::platform::DeviceContextPool& pool =
@@ -133,10 +126,10 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   ASSERT_EQ(dense_upper_out.numel(), 1);
 
   // lower case
-  ASSERT_EQ(dense_lower_out.data<pstring>()[0].data(), expected_results[0]);
+  ASSERT_EQ(dense_lower_out.data()[0].data(), expected_results[0]);
 
   // upper case
-  ASSERT_EQ(dense_upper_out.data<pstring>()[0].data(), expected_results[1]);
+  ASSERT_EQ(dense_upper_out.data()[0].data(), expected_results[1]);
 }
 
 }  // namespace tests

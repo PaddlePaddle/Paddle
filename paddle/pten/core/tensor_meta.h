@@ -60,4 +60,18 @@ struct DenseTensorMeta {
   size_t offset{0};
 };
 
+struct StringTensorMeta {
+  StringTensorMeta() = default;
+  explicit StringTensorMeta(const DDim& dims);
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
+
+  /// During the entire life cycle of a DenseTensor, the following attributes
+  /// marked with `const` are expected to remain unchanged.
+  bool is_scalar{false};
+  DDim dims;
+  size_t offset{0};
+};
+
 }  // namespace pten
