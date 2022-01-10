@@ -125,6 +125,10 @@ bool DistModel::LoadParameters() {
   op->CheckAttrs();
 
   framework::NaiveExecutor e(place_);
+  // Create all persistable variables in root scope to load them from ckpt.
+  // Other non-persistable variables will be created in the micro scope
+  // managed by fleet executor.
+  e.CreateVariables(*program_, 0, true, scope_.get());
   e.Prepare(scope_.get(), *load_program, 0, false);
   e.Run();
   VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
