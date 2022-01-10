@@ -249,7 +249,8 @@ class DotKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Dot<T>(dev_ctx, *pt_x.get(), *pt_y.get(), pt_out.get());
+    pten::DotKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), *pt_y.get(),
+                                      pt_out.get());
   }
 };
 
