@@ -15,6 +15,7 @@
 #include <glog/logging.h>
 
 #include "paddle/fluid/distributed/fleet_executor/dist_model.h"
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -22,12 +23,28 @@
 namespace paddle {
 namespace distributed {
 
+namespace {
+bool IsPersistable(const framework::VarDesc *var) {
+  if (var->Persistable() &&
+      var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
+      var->GetType() != framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != framework::proto::VarType::RAW) {
+    return true;
+  }
+  return false;
+}
+}  // namespace
+
 bool DistModel::Init() {
   /* TODO(fleet exe dev): implement this funct */
+  place_ = paddle::platform::CUDAPlace(config_.device_id);
   if (!PrepareScope()) {
     return false;
   }
   if (!PrepareProgram()) {
+    return false;
+  }
+  if (!LoadParameters()) {
     return false;
   }
   return true;
@@ -65,7 +82,54 @@ bool DistModel::LoadProgram() {
   fin.read(&(pb_content.at(0)), pb_content.size());
   fin.close();
   program_proto.ParseFromString(pb_content);
+  VLOG(5) << pb_content;
   program_.reset(new framework::ProgramDesc(program_proto));
+  return true;
+}
+
+bool DistModel::LoadParameters() {
+  VLOG(3) << "Loading parameters for the inference model.";
+  PADDLE_ENFORCE_NOT_NULL(program_.get(),
+                          platform::errors::PreconditionNotMet(
+                              "The program should be loaded first."));
+  const auto &global_block = program_->MutableBlock(0);
+
+  // create a temporary program to load parameters.
+
+  std::unique_ptr<framework::ProgramDesc> load_program(
+      new framework::ProgramDesc());
+  framework::BlockDesc *load_block = load_program->MutableBlock(0);
+  std::vector<std::string> params;
+
+  for (auto *var : global_block->AllVars()) {
+    if (IsPersistable(var)) {
+      VLOG(3) << "persistable variable's name: " << var->Name();
+      framework::VarDesc *new_var = load_block->Var(var->Name());
+      new_var->SetShape(var->GetShape());
+      new_var->SetDataType(var->GetDataType());
+      new_var->SetType(var->GetType());
+      new_var->SetLoDLevel(var->GetLoDLevel());
+      new_var->SetPersistable(true);
+      params.push_back(new_var->Name());
+    }
+  }
+
+  std::string param_path = config_.model_dir + ".pdiparams";
+  // sort paramlist to have consistent ordering
+  std::sort(params.begin(), params.end());
+  // append just the load_combine op
+  framework::OpDesc *op = load_block->AppendOp();
+  op->SetType("load_combine");
+  op->SetOutput("Out", params);
+  op->SetAttr("file_path", {param_path});
+  op->CheckAttrs();
+
+  framework::NaiveExecutor e(place_);
+  e.Prepare(scope_.get(), *load_program, 0, false);
+  e.Run();
+  VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
+          << " vars.";
+
   return true;
 }
 

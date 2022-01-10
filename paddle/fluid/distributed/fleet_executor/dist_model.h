@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -54,9 +55,11 @@ class DistModel {
   bool PrepareScope();
   bool PrepareProgram();
   bool LoadProgram();
+  bool LoadParameters();
 
   DistModelConfig config_;
   FleetExecutorDesc executor_desc_;
+  platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
   std::shared_ptr<framework::ProgramDesc> program_;
 };
