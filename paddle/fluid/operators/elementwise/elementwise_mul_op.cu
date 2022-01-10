@@ -87,7 +87,7 @@ ElementwiseMulGrad(const framework::ExecutionContext& ctx,
       dx->mutable_data<T>(x->dims(), place);
     }
     std::vector<const framework::Tensor*> ins = {dout, y, x};
-    GetGradXAndYOut<ElementwiseType::kBinary, T>(
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     dx->mutable_data<T>(place);
