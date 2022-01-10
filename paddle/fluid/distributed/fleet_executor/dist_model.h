@@ -56,6 +56,7 @@ class DistModel {
   bool PrepareProgram();
   bool LoadProgram();
   bool LoadParameters();
+  bool CommInit();
 
   DistModelConfig config_;
   FleetExecutorDesc executor_desc_;

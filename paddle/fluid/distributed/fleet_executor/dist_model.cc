@@ -47,6 +47,14 @@ bool DistModel::Init() {
   if (!LoadParameters()) {
     return false;
   }
+  if (!CommInit()) {
+    return false;
+  }
+  return true;
+}
+
+bool DistModel::CommInit() {
+  // TODO(fleet executor): init the comm
   return true;
 }
 
