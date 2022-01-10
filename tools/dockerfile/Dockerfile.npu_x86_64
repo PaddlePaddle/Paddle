@@ -76,13 +76,13 @@ RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && \
     mv cmake-3.16.0-Linux-x86_64 cmake-3.16
 ENV PATH=/opt/cmake-3.16/bin:${PATH}
 
-# conda 4.9.2
+# conda 4.10.3
 WORKDIR /opt
 ARG CONDA_FILE=Miniconda3-py37_4.10.3-Linux-x86_64.sh
 RUN cd /opt && wget -q https://repo.anaconda.com/miniconda/${CONDA_FILE} && chmod +x ${CONDA_FILE}
 RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_FILE}
 ENV PATH=/opt/conda/bin:${PATH}
-RUN conda init bash && conda install -n base jupyter
+RUN conda init bash && conda install -n base notebook
 
 # install pylint and pre-commit
 RUN /opt/conda/bin/pip install pre-commit pylint pylint pytest astroid isort coverage qtconsole
