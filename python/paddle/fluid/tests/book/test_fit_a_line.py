@@ -17,7 +17,6 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp as amp
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 
 import contextlib
 import numpy
@@ -36,6 +35,15 @@ def convert_uint16_to_float(in_list):
         lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
         otypes=[numpy.float32])(in_list.flat)
     return numpy.reshape(out, in_list.shape)
+
+
+def convert_float_to_uint16(in_list):
+    out = []
+    for x in numpy.nditer(in_list):
+        out.append(
+            numpy.uint16(struct.unpack('<I', struct.pack('<f', x))[0] >> 16))
+    out = numpy.reshape(out, in_list.shape).view(numpy.uint16)
+    return out
 
 
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
