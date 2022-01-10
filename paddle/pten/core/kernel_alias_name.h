@@ -32,12 +32,15 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"reduce_mean", "mean"},
     {"reduce_sum", "sum"},
     {"reshape2", "reshape"},
+    {"reshape2_grad", "reshape_grad"},
+    {"reshape2_grad_grad", "reshape_double_grad"},
     // fluid kernel "mean/reshape/matmul/flatten/sum" should be deprecated
     {"flatten", "deprecated"},
     {"flatten_grad", "deprecated"},
     {"matmul", "deprecated"},
     {"mean", "deprecated"},
     {"reshape", "deprecated"},
+    {"reshape_grad", "deprecated"},
     {"sum", "deprecated"}};
 
 }  // namespace pten
