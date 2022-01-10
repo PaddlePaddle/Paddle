@@ -12,13 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include <cmath>
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-void* PaddleIArray::data() { return tensor_->data(); }
+// TODO(alleng) remove const_cast
+void* PaddleIArray::data() { return const_cast<void*>(tensor_->data()); }
 
 popart::DataType PaddleIArray::dataType() const {
   return VarType2PopartType(tensor_->type());
@@ -148,6 +150,32 @@ bool GetBoolEnv(std::string str) {
       val = true;
     return val;
   }
+}
+
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    const std::string& opt_type) {
+  // format: {popart_tensor_id, paddle_tensor_id}, ...
+  std::vector<std::pair<std::string, std::string>> pre_post_fix;
+
+  if (opt_type == "adam" || opt_type == "lamb") {
+    pre_post_fix.push_back(std::make_pair("", ""));
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "sgd" || opt_type == "momentum") {
+    // sgd
+    pre_post_fix.push_back(std::make_pair("", ""));
+  } else {
+    pre_post_fix.push_back(std::make_pair("", ""));
+    //
+  }
+
+  return pre_post_fix;
+}
+
+int RequestIpus(const int num_ipus) {
+  // num_ipus must be pow(2, n);
+  return std::pow(2, ceil(log2(num_ipus)));
 }
 
 }  // namespace ipu
