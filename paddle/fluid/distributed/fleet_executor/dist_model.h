@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -53,6 +56,7 @@ class DistModel {
   bool LoadProgram();
 
   DistModelConfig config_;
+  FleetExecutorDesc executor_desc_;
   std::shared_ptr<framework::Scope> scope_;
   std::shared_ptr<framework::ProgramDesc> program_;
 };

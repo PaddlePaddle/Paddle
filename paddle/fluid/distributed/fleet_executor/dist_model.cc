@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/fleet_executor/dist_model.h"
 #include <glog/logging.h>
+
+#include "paddle/fluid/distributed/fleet_executor/dist_model.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -41,9 +42,11 @@ bool DistModel::PrepareProgram() {
   if (!LoadProgram()) {
     return false;
   }
+  return true;
 }
 
 bool DistModel::LoadProgram() {
+  VLOG(3) << "Loading program from " << config_.model_dir;
   PADDLE_ENFORCE_NE(config_.model_dir, "", platform::errors::InvalidArgument(
                                                "Model dir must be provided."));
   std::string model_path = config_.model_dir + ".pdmodel";
