@@ -14,16 +14,19 @@
 
 #pragma once
 
+#include <set>
+
+#include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/kernels/cast_kernel.h"
+
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 #include "paddle/pten/kernels/hybird/transpose.h"
-
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-
 namespace pten {
-namespace eigen {
 
 template <typename DeviceContext,
           typename T,
@@ -194,21 +197,53 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
   }
 }
 
-//////// Sum Functor ///////
-struct SumFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->sum(dim);
+template <typename DeviceContext, typename T, typename Functor>
+void Reduce(const DeviceContext& dev_ctx,
+            const DenseTensor& x,
+            bool reduce_all,
+            const std::vector<int64_t>& dims,
+            bool keep_dim,
+            DataType out_dtype,
+            DenseTensor* out) {
+  // If the dims has full dim, set the reduce_all is True
+  const int& input_dim_size = x.dims().size();
+  std::set<int> dims_set(dims.begin(), dims.end());
+  bool full_dim = true;
+  for (int i = 0; i < input_dim_size; ++i) {
+    if (dims_set.find(i) == dims_set.end() &&
+        dims_set.find(i - input_dim_size) == dims_set.end()) {
+      full_dim = false;
+      break;
+    }
   }
-};
+  reduce_all = (reduce_all || full_dim);
 
-//////// Mean Functor ///////
-struct MeanFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->mean(dim);
+  // no need to cast dtype
+  if (out_dtype == pten::DataType::UNDEFINED || out_dtype == x.dtype()) {
+    if (out_dtype == pten::DataType::UNDEFINED) {
+      out_dtype = x.dtype();
+    }
+    // do reduce sum
+    PD_VISIT_ALL_TYPES(
+        out_dtype, "ReduceKernelImpl", ([&] {
+          pten::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+              dev_ctx, x, out, dims, keep_dim, reduce_all);
+        }));
+  } else {
+    pten::DenseTensor tmp_tensor = pten::DenseTensor(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
+        pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
+
+    // cast x tensor to out_dtype
+    pten::CastKernel<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
+
+    // do reduce sum
+    PD_VISIT_ALL_TYPES(
+        out_dtype, "ReduceKernelImpl", ([&] {
+          pten::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+              dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
+        }));
   }
-};
+}
 
-}  // namespace eigen
 }  // namespace pten

@@ -250,11 +250,14 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
   }
 
   // out = layernorm(residual + dropout(src + bias))
-  void LayernormResidualDropoutBias(
-      const platform::CUDADeviceContext& ctx, const T* src, const T* residual,
-      const T* bias, const LayerNormParamType<T>* gamma,
-      const LayerNormParamType<T>* beta, T* dropout_out, MaskType* mask, T* out,
-      LayerNormParamType<T>* mean, LayerNormParamType<T>* variance) {
+  template <typename P = LayerNormParamType<T>, bool is_same_type = false>
+  void LayernormResidualDropoutBias(const platform::CUDADeviceContext& ctx,
+                                    const T* src, const T* residual,
+                                    const T* bias, const P* gamma,
+                                    const P* beta, T* dropout_out,
+                                    MaskType* mask, T* out,
+                                    LayerNormParamType<T>* mean,
+                                    LayerNormParamType<T>* variance) {
     using U = LayerNormParamType<T>;
     int vec_size = MAX_CACHE_BYTES / sizeof(T);
     if (this->cols_ % vec_size != 0) {
@@ -263,7 +266,7 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     int threads = GetDesiredBlockDim(this->cols_ / vec_size);
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
     increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
-    LaunchLayernormResidualDropoutBias<T, MaskType>(
+    LaunchLayernormResidualDropoutBias<T, MaskType, U, is_same_type>(
         this->rows_, this->cols_, increment, this->dropout_param_.seed,
         this->dropout_param_.dropout_prob, epsilon_,
         this->dropout_param_.is_upscale_in_train, this->dropout_param_.is_test,
@@ -271,17 +274,19 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
         variance, ctx);
   }
 
-  void LayernormResidualDropoutBiasGrad(
-      const platform::CUDADeviceContext& ctx, const T* d_out,
-      const T* layernorm_src, const MaskType* mask,
-      const LayerNormParamType<T>* gamma, const LayerNormParamType<T>* mean,
-      const LayerNormParamType<T>* variance, T* d_layernorm_src,
-      LayerNormParamType<T>* d_scale, LayerNormParamType<T>* d_layernorm_bias,
-      T* d_dropout_src, T* d_bias, T* d_residual) {
+  template <typename P = LayerNormParamType<T>, bool is_same_type = false>
+  void LayernormResidualDropoutBiasGrad(const platform::CUDADeviceContext& ctx,
+                                        const T* d_out, const T* layernorm_src,
+                                        const MaskType* mask, const P* gamma,
+                                        const LayerNormParamType<T>* mean,
+                                        const LayerNormParamType<T>* variance,
+                                        T* d_layernorm_src, P* d_scale,
+                                        P* d_layernorm_bias, T* d_dropout_src,
+                                        T* d_bias, T* d_residual) {
     using U = LayerNormParamType<T>;
-    LayerNormBackward<T, U>(layernorm_src, d_out, gamma, mean, variance,
-                            d_layernorm_src, d_scale, d_layernorm_bias,
-                            epsilon_, this->rows_, this->cols_, ctx);
+    LayerNormBackward<T, U, is_same_type>(
+        layernorm_src, d_out, gamma, mean, variance, d_layernorm_src, d_scale,
+        d_layernorm_bias, epsilon_, this->rows_, this->cols_, ctx);
     this->ResidualDropoutBiasGrad(ctx, d_layernorm_src, mask, d_dropout_src,
                                   d_residual, d_bias);
   }
