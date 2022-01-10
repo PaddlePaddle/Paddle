@@ -144,8 +144,8 @@ class LoDTensor : public Tensor {
    */
   size_t NumLevels() const { return lod_.size(); }
   /*
-   * Number of elements in a level.
-   */
+ * Number of elements in a level.
+ */
   size_t NumElements(size_t level = 0) const {
     PADDLE_ENFORCE_LT(
         level, NumLevels(),
