@@ -18,10 +18,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void IPUPassBase::Init(const std::string& repr, Graph* graph) const {
-  repr_ = repr;
-  graph_ = graph;
-}
+// pass
 
 }  // namespace ir
 }  // namespace framework

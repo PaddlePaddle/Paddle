@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
 
 namespace paddle {
