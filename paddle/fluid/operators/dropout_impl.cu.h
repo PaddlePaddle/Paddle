@@ -128,8 +128,8 @@ template <typename T, typename MaskType>
 struct CudaDropoutGradFunctor {
   explicit CudaDropoutGradFunctor(const T factor) : factor_(factor) {}
 
-  __device__ __forceinline__ T operator()(const T& dout,
-                                          const MaskType& mask) const {
+  __device__ __forceinline__ T operator()(const T dout,
+                                          const MaskType mask) const {
     return dout * static_cast<T>(mask) * factor_;
   }
 
@@ -273,28 +273,13 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
       if (dropout_prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
-        if (vec_size == 4 && size % 4 == 0) {
-          auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-          auto stream = dev_ctx.stream();
-          /*
-          platform::GpuLaunchConfig config =
-              platform::GetGpuLaunchConfig1D(dev_ctx, size, vec_size);
-          DropoutGradCUDAKernel<
-              T, uint8_t,
-              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-              grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
-              grad_x->data<T>());
-          */
-          std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
-          std::vector<framework::Tensor*> outs = {grad_x};
-          auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
-          LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-              dev_ctx, ins, &outs, functor);
-        } else {
-          dX.device(place) =
-              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
-        }
+        auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+        auto stream = dev_ctx.stream();
+        std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
+        std::vector<framework::Tensor*> outs = {grad_x};
+        auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
+        LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+            dev_ctx, ins, &outs, functor);
       }
     } else {
       dX.device(place) = dY * M.cast<T>();

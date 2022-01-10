@@ -23,6 +23,8 @@ import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+paddle.enable_static()
+
 
 class TestDropoutOp(OpTest):
     def setUp(self):
