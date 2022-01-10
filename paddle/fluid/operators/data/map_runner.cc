@@ -9,6 +9,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <signal.h>
+
 #include "paddle/fluid/operators/data/map_runner.h"
 #include "paddle/fluid/framework/executor_cache.h"
 
@@ -107,8 +109,19 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
   return true;
 }
 
+void signal_handler(int sig_num) {
+  VLOG(1) << "MapThread crash with signal " << sig_num;
+  LOG(ERROR) << "MapThread crash with signal " << sig_num;
+  _exit(-1);
+}
+
 void MapRunner::StartMapThread(const Scope* scope) {
   thread_pool_.enqueue([this, scope]() -> void {
+    // MapThread may crash with SIGSEGV singal in Executor::Prepare
+    // when Python program break and exit, catch SIGSEGV singal and
+    // exit thread silently
+    signal(SIGSEGV, signal_handler);
+
     auto& scope_ = scope->NewScope();
     framework::Executor executor(place_);
     while (running_.load()) {
@@ -121,7 +134,11 @@ void MapRunner::StartMapThread(const Scope* scope) {
       // LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
 
       // Step 2: run ops by executor without fetch
-      executor.Run(*map_block_->Program(), &scope_, static_cast<int>(map_block_->ID()), false, true, std::vector<std::string>(), false, true);
+      try {
+        executor.Run(*map_block_->Program(), &scope_, static_cast<int>(map_block_->ID()), false, true, std::vector<std::string>(), false, true);
+      } catch(...) {
+        break;
+      }
       // LOG(ERROR) << "MapThread Loop " << program_id_ << " program run finish";
 
       // Step 3: fetch output variable to LoDTensor vector

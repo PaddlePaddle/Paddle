@@ -137,7 +137,6 @@ class MapRunnerManager {
     auto iter = prog_id_to_runner_.begin();
     for (; iter != prog_id_to_runner_.end(); iter++) {
       if (iter->second.get()) iter->second.get()->ShutDown();
-      LOG(ERROR) << "MapRunnerManager prog_id " << iter->first << " shutdown finish";
     }
   }
 
