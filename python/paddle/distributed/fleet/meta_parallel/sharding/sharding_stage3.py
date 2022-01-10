@@ -72,8 +72,7 @@ class ShardingStage3(nn.Layer):
                  pertrain_sync_models=True,
                  accumulate_grads=False,
                  offload=False,
-                 sync_comm=False,
-                 not_update_list=[]):
+                 sync_comm=False):
         super().__init__()
 
         # Default configs
@@ -107,7 +106,6 @@ class ShardingStage3(nn.Layer):
                                         self._update_params_slice)
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
-        self._not_update_list = not_update_list
 
         # Replace optimizer's _grad_clip
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
@@ -142,14 +140,6 @@ class ShardingStage3(nn.Layer):
         self._redefine_opt_step()
         self._redefine_opt_clear()
 
-    @property
-    def not_update_list(self):
-        return self._not_update_list
-
-    @not_update_list.setter
-    def not_update_list(self, not_update_list):
-        self._not_update_list = not_update_list
-
     @paddle.no_grad()
     def _sync_params_and_buffers(self):
         """
@@ -183,8 +173,8 @@ class ShardingStage3(nn.Layer):
 
     # Update param memery slice
     def _update_params_slice(self):
-        update_list, not_update_list = self._update_params()
-        # Not_update_list post processing
+        update_list = self._update_params()
+
         if not isinstance(self._optim._param_groups[0], dict):
             slice_params = [param.fw_storage for param in update_list]
             self._optim._parameter_list = slice_params
@@ -194,10 +184,11 @@ class ShardingStage3(nn.Layer):
             for param_group in self._optim._param_groups:
                 slice_p = []
                 for p in param_group['params']:
-                    assert hasattr(
-                        p, "fw_storage"
-                    ), "Find {} don't have fw_storage attribute.".format(p.name)
                     if p.name in params_name_list:
+                        assert hasattr(
+                            p, "fw_storage"
+                        ), "Find {} don't have fw_storage attribute.".format(
+                            p.name)
                         slice_p.append(p.fw_storage)
                     param_group['params'] = slice_p
 
@@ -326,7 +317,10 @@ class ShardingStage3(nn.Layer):
 
     def _register_forward_all_hooks(self, sub_layer, task_flow):
         def _forward_pre_hook(layer, inputs):
-            return ForwardPreHooks(layer, self._order_tracer, self._trainable_params, self._param2buffer, self._rank, self._group, self._sync_comm, task_flow)
+            return ForwardPreHooks(layer, self._order_tracer,
+                                   self._trainable_params, self._param2buffer,
+                                   self._rank, self._group, self._sync_comm,
+                                   task_flow)
 
         def _forward_post_hook(layer, inputs, outputs):
             return ForwardPostHooks.apply(
@@ -366,7 +360,7 @@ class ShardingStage3(nn.Layer):
         """
         Update parameters to optimizer memory slice.
         """
-        update_list, not_update_list = [], []
+        update_list = []
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
@@ -381,13 +375,10 @@ class ShardingStage3(nn.Layer):
                 param.bw_storage.scale_(scale=self._world_size_scaling)
             param.fw_storage = _VarBaseWrapper(param)
             param.fw_storage._copy_gradient_from(param.bw_storage)
-            if param.name in self._not_update_list:
-                not_update_list.append(param)
-            else:
-                update_list.append(param)
-        return update_list, not_update_list
+            update_list.append(param)
+        return update_list
 
-    def restore_parameters(self):
+    def get_all_parameters(self):
         """
         Get the full parameters and return the corresponding task flows.
         """
@@ -495,7 +486,8 @@ class ShardingStage3(nn.Layer):
         self._optim.clear_grad = MethodType(_opt_clear, self._optim)
 
 
-def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank, group, sync_comm, task_flow):
+def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank,
+                    group, sync_comm, task_flow):
 
     # Record layer's id
     layer_id = id(layer)
@@ -511,8 +503,8 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank, g
         task_flow.use_calc[layer_id] = use_calc
         # wait current layer params
         _wait_layer(trainable_params, layer_id, task_flow, group, use_calc)
-        
-        if layer_id == order_tracer["layer"][-1]:return
+
+        if layer_id == order_tracer["layer"][-1]: return
         order_ = order_tracer[layer_id]
         layer_id = order_tracer["layer"][order_ + 1]
 
@@ -526,10 +518,12 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank, g
 
     return
 
+
 class ForwardPostHooks(PyLayer):
     @staticmethod
     def forward(ctx, inputs, layer, order_tracer, trainable_params,
-                param2buffer, param2buffer_size, rank, group, sync_comm, task_flow):
+                param2buffer, param2buffer_size, rank, group, sync_comm,
+                task_flow):
 
         # release current layer full params
         _release_param(layer, trainable_params, param2buffer, rank, task_flow)
@@ -631,8 +625,7 @@ def _release_param(layer, trainable_params, param2buffer, rank, task_flow):
     return
 
 
-def _wait_layer(trainable_params, layer_id, task_flow, group,
-                use_calc_stream):
+def _wait_layer(trainable_params, layer_id, task_flow, group, use_calc_stream):
     for param in trainable_params[layer_id]:
         if param.status == "all":
             param.use_count += 1
@@ -641,10 +634,6 @@ def _wait_layer(trainable_params, layer_id, task_flow, group,
             full_param = task_flow.full_param[param.name]
             with paddle.amp.auto_cast(enable=False):
                 paddle.device.cuda.synchronize()
-                # dist.wait(
-                #     tensor=full_param,
-                #     group=group,
-                #     use_calc_stream=use_calc_stream)
             core.VarBase(full_param._slice(0, param._numel()))._share_buffer_to(
                 param)
             param.value().get_tensor()._set_dims(param.shape)
@@ -653,7 +642,13 @@ def _wait_layer(trainable_params, layer_id, task_flow, group,
             param.status = "all"
             param.use_count += 1
         else:
-            _allgather_buffer(layer_id, trainable_params, group, use_calc_stream, task_flow, sync_wait=True)
+            _allgather_buffer(
+                layer_id,
+                trainable_params,
+                group,
+                use_calc_stream,
+                task_flow,
+                sync_wait=True)
             break
     return task_flow
 
