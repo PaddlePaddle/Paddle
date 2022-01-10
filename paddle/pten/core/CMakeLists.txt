@@ -6,6 +6,7 @@ else()
   cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
 
+cc_library(pten_place SRCS place.cc)
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce convert_utils)
 cc_library(kernel_context SRCS kernel_context.cc DEPS enforce pten_context)
 cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)

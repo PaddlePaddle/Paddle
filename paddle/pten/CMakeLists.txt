@@ -3,9 +3,6 @@
 # float16.h/complex.h/bfloat16.h into pten
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
-# paddle experimental common components
-add_subdirectory(common)
-
 # pten (low level) api headers: include
 # pten (high level) api
 add_subdirectory(api)
