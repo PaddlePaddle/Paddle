@@ -52,16 +52,18 @@ bool AlignedAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();
 }
 
-Allocation* AlignedAllocator::AllocateImpl(size_t size) {
-  auto raw_allocation = underlying_allocator_->Allocate(size + alignment_);
+DecoratedAllocation* AlignedAllocator::AllocateImpl(size_t size) {
+  auto* raw_allocation =
+      underlying_allocator_->DecoratedAllocate(size + alignment_);
   size_t offset = AlignedPtrOffset(raw_allocation->ptr(), alignment_);
   auto* p = new AlignedAllocation(
-      static_unique_ptr_cast<DecoratedAllocation>(std::move(raw_allocation)),
-      offset);
+      DecoratedAllocationPtr(raw_allocation, DecoratedDelete), offset);
   return p;
 }
 
-void AlignedAllocator::FreeImpl(Allocation* allocation) { delete allocation; }
+void AlignedAllocator::FreeImpl(DecoratedAllocation* allocation) {
+  delete allocation;
+}
 
 }  // namespace allocation
 }  // namespace memory

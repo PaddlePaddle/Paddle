@@ -29,7 +29,7 @@ class DefaultAllocator : public pten::Allocator {
       : place_(place) {}
 
   static void Delete(Allocation* allocation) {
-    paddle::memory::allocation::Allocator::AllocationDeleter(
+    paddle::memory::allocation::Allocator::DecoratedDelete(
         allocation->CastContextWithoutCheck<paddle::memory::Allocation>());
   }
 

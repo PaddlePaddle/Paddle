@@ -116,14 +116,15 @@ class CUDAGraphAllocator
   }
 
  protected:
-  Allocation* AllocateImpl(size_t size) {
+  DecoratedAllocation* AllocateImpl(size_t size) {
     VLOG(10) << "Allocate " << size << " for CUDA Graph";
-    return new PrivateAllocation(this,
-                                 static_unique_ptr_cast<DecoratedAllocation>(
-                                     underlying_allocator_->Allocate(size)));
+    return new PrivateAllocation(
+        this,
+        DecoratedAllocationPtr(underlying_allocator_->DecoratedAllocate(size),
+                               DecoratedDelete));
   }
 
-  void FreeImpl(Allocation* allocation) {
+  void FreeImpl(DecoratedAllocation* allocation) {
     VLOG(10) << "delete for CUDA Graph";
     delete allocation;
   }
@@ -393,10 +394,12 @@ class AllocatorFacadePrivate {
     bool IsAllocThreadSafe() const override { return true; }
 
    protected:
-    Allocation* AllocateImpl(size_t size) override {
+    DecoratedAllocation* AllocateImpl(size_t size) override {
       return new DecoratedAllocation(nullptr, 0, place_);
     }
-    void FreeImpl(Allocation* allocation) override { delete allocation; }
+    void FreeImpl(DecoratedAllocation* allocation) override {
+      delete allocation;
+    }
 
    private:
     platform::Place place_;

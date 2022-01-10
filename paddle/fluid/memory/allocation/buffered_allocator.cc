@@ -38,7 +38,7 @@ void BufferedAllocator::FreeCache(size_t size) {
   while (!allocations_.empty()) {  // free the largest
     auto it = --allocations_.end();
     cur += it->second->size();
-    underlying_allocator_->Free(it->second.release());
+    underlying_allocator_->DecoratedFree(it->second.release());
     allocations_.erase(it);
     if (cur >= size) return;
   }
@@ -46,28 +46,29 @@ void BufferedAllocator::FreeCache(size_t size) {
 
 bool BufferedAllocator::IsAllocThreadSafe() const { return mtx_ != nullptr; }
 
-void BufferedAllocator::FreeImpl(Allocation *allocation) {
+void BufferedAllocator::FreeImpl(DecoratedAllocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-  allocations_.emplace(allocation->size(),
-                       AllocationPtr(allocation, Allocator::AllocationDeleter));
+  allocations_.emplace(
+      allocation->size(),
+      DecoratedAllocationPtr(allocation, Allocator::DecoratedDelete));
 }
 
-Allocation *BufferedAllocator::AllocateImpl(size_t size) {
+DecoratedAllocation *BufferedAllocator::AllocateImpl(size_t size) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
     if (it != allocations_.end() && it->first < size * 2) {
-      AllocationPtr result(std::move(it->second));
+      DecoratedAllocationPtr result(std::move(it->second));
       allocations_.erase(it);
       return result.release();
     }
   }
 
   try {
-    return underlying_allocator_->Allocate(size).release();
+    return underlying_allocator_->DecoratedAllocate(size);
   } catch (BadAlloc &) {
     FreeCache(size);
-    return underlying_allocator_->Allocate(size).release();
+    return underlying_allocator_->DecoratedAllocate(size);
   }
 }
 

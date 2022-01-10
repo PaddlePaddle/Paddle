@@ -138,15 +138,15 @@ using Allocation = pten::candidate::Allocation;
 using AllocationPtr = pten::candidate::Allocator::AllocationPtr;
 using DecoratedAllocationPtr =
     std::unique_ptr<DecoratedAllocation,
-                    pten::candidate::Allocator::AllocationDeleterType>;
+                    pten::candidate::Allocator::DeleterType>;
 
 // Base interface class of memory Allocator.
 class Allocator : public pten::candidate::Allocator {
  public:
-  static void AllocationDeleter(pten::candidate::Allocation* allocation) {
-    Allocator* allocator =
-        static_cast<DecoratedAllocation*>(allocation)->TopDecoratedAllocator();
-    allocator->Free(allocation);
+  static void DecoratedDelete(pten::candidate::Allocation* allocation) {
+    auto decorated_allocation = static_cast<DecoratedAllocation*>(allocation);
+    Allocator* allocator = decorated_allocation->TopDecoratedAllocator();
+    allocator->DecoratedFree(decorated_allocation);
   }
 
   // Allocate an allocation.
@@ -154,21 +154,25 @@ class Allocator : public pten::candidate::Allocator {
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
   AllocationPtr Allocate(size_t size) override {
-    auto ptr = AllocateImpl(size);
-    static_cast<DecoratedAllocation*>(ptr)->RegisterDecoratedAllocator(this);
-    return AllocationPtr(ptr, AllocationDeleter);
+    return AllocationPtr(DecoratedAllocate(size), DecoratedDelete);
   }
 
-  void Free(Allocation* allocation) {
-    static_cast<DecoratedAllocation*>(allocation)->PopDecoratedAllocator();
+  DecoratedAllocation* DecoratedAllocate(size_t size) {
+    auto ptr = AllocateImpl(size);
+    ptr->RegisterDecoratedAllocator(this);
+    return ptr;
+  }
+
+  void DecoratedFree(DecoratedAllocation* allocation) {
+    allocation->PopDecoratedAllocator();
     FreeImpl(allocation);
   }
 
   uint64_t Release(const platform::Place& place) { return ReleaseImpl(place); }
 
  protected:
-  virtual Allocation* AllocateImpl(size_t size) = 0;
-  virtual void FreeImpl(Allocation* allocation);
+  virtual DecoratedAllocation* AllocateImpl(size_t size) = 0;
+  virtual void FreeImpl(DecoratedAllocation* allocation);
   virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
 };
 

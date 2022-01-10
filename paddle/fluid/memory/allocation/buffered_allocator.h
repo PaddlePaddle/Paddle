@@ -45,12 +45,12 @@ class BufferedAllocator : public Allocator {
   void FreeCache(size_t size);
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(DecoratedAllocation *allocation) override;
+  DecoratedAllocation *AllocateImpl(size_t size) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;
-  std::multimap<size_t, AllocationPtr> allocations_;
+  std::multimap<size_t, DecoratedAllocationPtr> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };
 

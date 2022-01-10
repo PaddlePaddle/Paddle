@@ -22,7 +22,7 @@ namespace memory {
 namespace allocation {
 
 bool NPUAllocator::IsAllocThreadSafe() const { return true; }
-void NPUAllocator::FreeImpl(Allocation* allocation) {
+void NPUAllocator::FreeImpl(DecoratedAllocation* allocation) {
   PADDLE_ENFORCE_EQ(
       BOOST_GET_CONST(platform::NPUPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(

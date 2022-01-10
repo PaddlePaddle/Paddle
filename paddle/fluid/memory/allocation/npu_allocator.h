@@ -28,8 +28,8 @@ class NPUAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(DecoratedAllocation* allocation) override;
+  DecoratedAllocation* AllocateImpl(size_t size) override;
 
  private:
   platform::NPUPlace place_;

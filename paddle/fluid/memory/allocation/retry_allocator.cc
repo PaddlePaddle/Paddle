@@ -39,10 +39,10 @@ class WaitedAllocateSizeGuard {
   size_t requested_size_;
 };
 
-void RetryAllocator::FreeImpl(Allocation* allocation) {
+void RetryAllocator::FreeImpl(DecoratedAllocation* allocation) {
   // Delete underlying allocation first.
   size_t size = allocation->size();
-  underlying_allocator_->Free(allocation);
+  underlying_allocator_->DecoratedFree(allocation);
   if (UNLIKELY(waited_allocate_size_)) {
     VLOG(10) << "Free " << size << " bytes and notify all waited threads, "
                                    "where waited_allocate_size_ = "
@@ -51,9 +51,9 @@ void RetryAllocator::FreeImpl(Allocation* allocation) {
   }
 }
 
-Allocation* RetryAllocator::AllocateImpl(size_t size) {
+DecoratedAllocation* RetryAllocator::AllocateImpl(size_t size) {
   auto alloc_func = [&, this]() {
-    return underlying_allocator_->Allocate(size).release();
+    return underlying_allocator_->DecoratedAllocate(size);
   };
   // In fact, we can unify the code of allocation success and failure
   // But it would add lock even when allocation success at the first time

@@ -98,12 +98,12 @@ class DummyAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  DecoratedAllocation *AllocateImpl(size_t size) override {
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 
-  void FreeImpl(Allocation *) override {}
+  void FreeImpl(DecoratedAllocation *) override {}
 };
 
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {

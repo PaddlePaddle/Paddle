@@ -56,7 +56,7 @@ class CUDADeviceContextAllocation : public DecoratedAllocation {
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
-      Allocator::AllocationDeleter(p_allocation);
+      Allocator::DecoratedDelete(p_allocation);
     });
   }
 
@@ -102,7 +102,7 @@ class CUDADeviceContextAllocator : public Allocator {
   }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  DecoratedAllocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
         platform::errors::PreconditionNotMet(
@@ -122,7 +122,7 @@ class CUDADeviceContextAllocator : public Allocator {
     return allocation;
   }
 
-  void FreeImpl(Allocation *allocation) override { delete allocation; }
+  void FreeImpl(DecoratedAllocation *allocation) override { delete allocation; }
 
  private:
   platform::CUDAPlace place_;

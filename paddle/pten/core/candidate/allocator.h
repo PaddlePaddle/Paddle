@@ -97,8 +97,8 @@ inline void swap(Allocation& a, Allocation& b) noexcept {
 class Allocator {
  public:
   using Place = paddle::platform::Place;
-  using AllocationDeleterType = std::function<void(Allocation*)>;
-  using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleterType>;
+  using DeleterType = std::function<void(Allocation*)>;
+  using AllocationPtr = std::unique_ptr<Allocation, DeleterType>;
 
   virtual ~Allocator() = default;
   virtual AllocationPtr Allocate(size_t bytes_size) = 0;

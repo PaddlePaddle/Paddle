@@ -36,9 +36,9 @@ class AutoGrowthBestFitAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
+  DecoratedAllocation *AllocateImpl(size_t size) override;
 
-  void FreeImpl(Allocation *allocation) override;
+  void FreeImpl(DecoratedAllocation *allocation) override;
 
   // Release the memory block which is not used in pool.
   uint64_t ReleaseImpl(const platform::Place &place) override {

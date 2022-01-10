@@ -37,7 +37,7 @@ class Storage : public intrusive_ref_counter<Storage> {
   Storage(const Storage&) = delete;
 
   /* @jim19930609: Following interfaces will be modified/replaced/removed
-                   as soon as the new DecoratedAllocation - Allocator design get
+                   as soon as the new Allocation - Allocator design get
      finalized.
     */
 

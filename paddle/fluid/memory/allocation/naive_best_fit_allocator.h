@@ -34,8 +34,8 @@ class NaiveBestFitAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation *allocation) override;
+  DecoratedAllocation *AllocateImpl(size_t size) override;
+  void FreeImpl(DecoratedAllocation *allocation) override;
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:

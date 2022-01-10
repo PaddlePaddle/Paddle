@@ -116,17 +116,17 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
+DecoratedAllocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
-  AllocationPtr underlying_allocation;
+  DecoratedAllocation* underlying_allocation;
   try {
-    underlying_allocation = underlying_allocator_->Allocate(size);
+    underlying_allocation = underlying_allocator_->DecoratedAllocate(size);
   } catch (BadAlloc&) {
     VLOG(4) << "Allocation failed when allocating " << size << " bytes";
     ReleaseImpl(place_);
     try {
-      underlying_allocation = underlying_allocator_->Allocate(size);
+      underlying_allocation = underlying_allocator_->DecoratedAllocate(size);
     } catch (...) {
       VLOG(3)
           << "Still allocation failed after release memory from all streams";
@@ -135,16 +135,15 @@ Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   } catch (...) {
     throw;
   }
-  StreamSafeCUDAAllocation* allocation =
-      new StreamSafeCUDAAllocation(static_unique_ptr_cast<DecoratedAllocation>(
-                                       std::move(underlying_allocation)),
-                                   default_stream_);
+  StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
+      DecoratedAllocationPtr(underlying_allocation, DecoratedDelete),
+      default_stream_);
   VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
           << allocation->ptr();
   return allocation;
 }
 
-void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
+void StreamSafeCUDAAllocator::FreeImpl(DecoratedAllocation* allocation) {
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,

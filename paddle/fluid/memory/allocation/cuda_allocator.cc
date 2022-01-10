@@ -32,7 +32,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
-void CUDAAllocator::FreeImpl(Allocation* allocation) {
+void CUDAAllocator::FreeImpl(DecoratedAllocation* allocation) {
   PADDLE_ENFORCE_EQ(
       BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(
@@ -42,7 +42,7 @@ void CUDAAllocator::FreeImpl(Allocation* allocation) {
   delete allocation;
 }
 
-Allocation* CUDAAllocator::AllocateImpl(size_t size) {
+DecoratedAllocation* CUDAAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
 
   void* ptr;

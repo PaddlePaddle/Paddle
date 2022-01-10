@@ -37,14 +37,14 @@ LockedAllocator::LockedAllocator(
   }
 }
 
-void LockedAllocator::FreeImpl(Allocation *allocation) {
+void LockedAllocator::FreeImpl(DecoratedAllocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-  underlying_allocator_->Free(allocation);
+  underlying_allocator_->DecoratedFree(allocation);
 }
 
-Allocation *LockedAllocator::AllocateImpl(size_t size) {
+DecoratedAllocation *LockedAllocator::AllocateImpl(size_t size) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-  return underlying_allocator_->Allocate(size).release();
+  return underlying_allocator_->DecoratedAllocate(size);
 }
 
 }  // namespace allocation

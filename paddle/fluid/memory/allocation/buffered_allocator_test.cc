@@ -68,7 +68,7 @@ class StubAllocator : public Allocator {
   size_t GetFreeCount() const { return destruct_count_; }
 
  protected:
-  void FreeImpl(Allocation *allocation) override {
+  void FreeImpl(DecoratedAllocation *allocation) override {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(
         alloc, platform::errors::InvalidArgument(
@@ -77,7 +77,7 @@ class StubAllocator : public Allocator {
     ++destruct_count_;
     delete allocation;
   }
-  Allocation *AllocateImpl(size_t size) override {
+  DecoratedAllocation *AllocateImpl(size_t size) override {
     ++construct_count_;
     if (size == 0) {
       return new StubAllocation(nullptr, 0, platform::CPUPlace());

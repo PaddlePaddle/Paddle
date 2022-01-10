@@ -127,8 +127,8 @@ class BestFitAllocator : public Allocator {
   void InsertFreeNode(const ListIt& it);
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(DecoratedAllocation* allocation) override;
+  DecoratedAllocation* AllocateImpl(size_t size) override;
 
  private:
   Allocation* allocation_;  // not owned

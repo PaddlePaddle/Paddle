@@ -18,10 +18,8 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-void Allocator::FreeImpl(Allocation* allocation) {
-  static_cast<DecoratedAllocation*>(allocation)
-      ->TopDecoratedAllocator()
-      ->Free(allocation);
+void Allocator::FreeImpl(DecoratedAllocation* allocation) {
+  allocation->TopDecoratedAllocator()->DecoratedFree(allocation);
 }
 
 }  // namespace allocation

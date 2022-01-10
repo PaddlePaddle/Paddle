@@ -32,13 +32,13 @@ struct StubAllocator : public Allocator {
   size_t AllocNum() const { return alloc_num_; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  DecoratedAllocation *AllocateImpl(size_t size) override {
     ++alloc_num_;
     return new DecoratedAllocation(new uint8_t[size], size,
                                    platform::CPUPlace());
   }
 
-  void FreeImpl(Allocation *allocation) override {
+  void FreeImpl(DecoratedAllocation *allocation) override {
     delete[] static_cast<uint8_t *>(allocation->ptr());
     delete allocation;
     --alloc_num_;
