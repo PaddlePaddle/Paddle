@@ -91,7 +91,7 @@ endif()
 cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
-cc_library(mixed_vector SRCS mixed_vector.cc DEPS device_context)
+cc_library(mixed_vector SRCS mixed_vector.cc DEPS device_context place memory)
 
 if(WITH_GPU)
   nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
