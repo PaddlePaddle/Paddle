@@ -137,7 +137,6 @@ endif()
 
 if (WITH_ASCEND_CL)
   op_library(sync_batch_norm_op)
-  file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(sync_batch_norm);\n")
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
