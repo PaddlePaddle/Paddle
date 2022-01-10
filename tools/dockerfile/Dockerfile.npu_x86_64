@@ -3,7 +3,7 @@
 #
 # Build: CANN 5.0.4.alpha005
 #
-# Download two pkgs from https://www.hiascend.com/software/cann/community
+# Download two packages from https://www.hiascend.com/software/cann/community
 # - Ascend-cann-nnae_5.0.4.alpha005_linux-x86_64.run
 # - Ascend-cann-toolkit_5.0.4.alpha005_linux-x86_64.run
 # copy them to current directory first, then run build commands
@@ -47,9 +47,6 @@ RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar xz-ut
             coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev \
             bison graphviz libjpeg-dev zlib1g zlib1g-dev automake locales swig net-tools libtool module-init-tools numactl libnuma-dev \
             openssl libffi-dev pciutils libblas-dev gfortran libblas3 liblapack-dev liblapack3 default-jre screen tmux gdb lldb gcc g++
-
-# add bash envs
-COPY root/ /root/
 
 # GCC 8.2
 WORKDIR /opt
