@@ -39,7 +39,6 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
       dx->mutable_data<T>(x->dims(), place);
