@@ -25,7 +25,7 @@ namespace paddle {
 namespace distributed {
 
 // TODO(zhaocaibei123): configure
-bool FLAGS_pslib_create_value_when_push = false;
+bool FLAGS_pslib_create_value_when_push = true;
 int FLAGS_pslib_table_save_max_retry = 3;
 bool FLAGS_pslib_enable_create_feasign_randomly = false;
 
@@ -467,7 +467,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
                 values + push_data_idx * update_value_col;
             auto itr = local_shard->Find(key);
             if (itr == local_shard->end()) {
-              VLOG(0) << "sparse table push_sparse: " << key << "not found!";
               if (FLAGS_pslib_enable_create_feasign_randomly &&
                   !_value_accesor->create_value(1, update_data)) {
                 continue;
