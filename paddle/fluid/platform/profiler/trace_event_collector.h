@@ -16,32 +16,10 @@ limitations under the License. */
 
 #include <list>
 
+#include "paddle/fluid/platform/profiler/event_record.h"
+
 namespace paddle {
 namespace platform {
-
-struct HostRecord {
-  std::string name;
-  uint64_t start_ns;
-  uint64_t end_ns;
-  uint64_t process_id;
-  uint64_t thread_id;
-};
-
-struct RuntimeRecord {
-  std::string name;
-  uint64_t start_ns;
-  uint64_t end_ns;
-  uint64_t process_id;
-  uint64_t thread_id;
-  uint32_t correlation_id;
-};
-
-struct DeviceRecord {
-  std::string name;
-  uint64_t start_ns;
-  uint64_t end_ns;
-  uint32_t correlation_id;
-};
 
 class TraceEventCollector {
  public:

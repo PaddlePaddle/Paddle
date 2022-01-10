@@ -46,10 +46,7 @@ NodeTrees::~NodeTrees() {
   }
 }
 
-void NodeTrees::BuildTrees(
-    const std::vector<HostRecordNode*>& host_record_nodes,
-    const std::vector<CudaRuntimeRecordNode*>& runtime_record_nodes,
-    const std::vector<DeviceRecordNode*>& device_record_nodes) {
+void NodeTrees::BuildTrees() {
   // seperate Host Record Nodes into different threads
   std::map<uint64_t, std::vector<HostRecordNode*>>
       thread2host_record_nodes;  // used to store HostRecordNodes per thread
@@ -60,20 +57,20 @@ void NodeTrees::BuildTrees(
       correlation_id2runtime_record_node;  // used to store the relation between
                                            // correlation id and runtime node
   // construct thread2host_record_nodes
-  for (auto it = host_record_nodes.begin(); it != host_record_nodes.end();
+  for (auto it = host_record_nodes_.begin(); it != host_record_nodes_.end();
        ++it) {
     thread2host_record_nodes[(*it)->thread_id()].push_back(*it);
   }
   // construct thread2runtime_record_nodes and
   // correlation_id2runtime_record_node
-  for (auto it = runtime_record_nodes.begin(); it != runtime_record_nodes.end();
-       ++it) {
+  for (auto it = runtime_record_nodes_.begin();
+       it != runtime_record_nodes_.end(); ++it) {
     thread2runtime_record_nodes[(*it)->thread_id()].push_back(*it);
     correlation_id2runtime_record_node[(*it)->correlation_id()] = *it;
   }
   // associate CudaRuntimeRecordNode and DeviceRecordNode
   // construct correlation_id2device_record_nodes
-  for (auto it = device_record_nodes.begin(); it != device_record_nodes.end();
+  for (auto it = device_record_nodes_.begin(); it != device_record_nodes_.end();
        ++it) {
     auto dst_iter =
         correlation_id2runtime_record_node.find((*it)->correlation_id());
@@ -131,9 +128,9 @@ HostRecordNode* NodeTrees::BuildTreeRelationship(
   // a stack used for analyse relationship
   auto node_stack = std::vector<HostRecordNode*>();
   // root node, top level
-  auto root_node =
-      new HostRecordNode(std::string("root node"), TracerEventType::Operator,
-                         LLONG_MIN, LLONG_MAX);
+  auto root_node = new HostRecordNode(HostRecord(std::string("root node"),
+                                                 TracerEventType::Operator,
+                                                 LLONG_MIN, LLONG_MAX, 0, 0));
   // push root node into node_stack
   node_stack.push_back(root_node);
   // handle host_record_nodes
