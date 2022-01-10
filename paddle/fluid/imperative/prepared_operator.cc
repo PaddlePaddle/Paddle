@@ -491,8 +491,7 @@ static void PreparedOpRunImpl(
 
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
                                                     &default_attrs, op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  op.Info().infer_shape_(&infer_shape_ctx);
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                         attrs, default_attrs));
@@ -537,8 +536,7 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& default_attrs) {
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
                                                     &default_attrs, op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  op.Info().infer_shape_(&infer_shape_ctx);
 
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                          outs, attrs, default_attrs, dev_ctx,
