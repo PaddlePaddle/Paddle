@@ -55,7 +55,7 @@ class MLUDeviceContextAllocation : public Allocation {
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete MLUDeviceContextAllocation at " << p_allocation;
-      AllocationDeleter()(p_allocation);
+      Allocator::AllocationDeleter(p_allocation);
     });
   }
 

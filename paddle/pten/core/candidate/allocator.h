@@ -40,15 +40,11 @@ class Allocation {
   Allocation(void* data, size_t size, DeleterFnPtr deleter, const Place& place)
       : ptr_(data), size_(size), deleter_(deleter), place_(place) {}
 
-  Allocation(Allocation&& other) noexcept {
-    swap(*this, other);
-    CHECK(other.deleter_ == nullptr);
-  }
+  Allocation(Allocation&& other) noexcept { swap(*this, other); }
   Allocation& operator=(Allocation&& other) noexcept {
     // Exchange them explicitly to avoid moving is equivalent
     // to copying.
     swap(*this, other);
-    CHECK(other.deleter_ == nullptr);
     return *this;
   }
 
