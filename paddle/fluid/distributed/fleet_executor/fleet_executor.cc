@@ -137,7 +137,6 @@ void FleetExecutor::Run(const std::string& carrier_id) {
   // Set current running carrier
   if (*GlobalVal<std::string>::Get() != carrier_id) {
     GlobalVal<std::string>::Set(new std::string(carrier_id));
-    // TODO(liyurui): Move barrier to service
     GlobalVal<MessageBus>::Get()->Barrier();
   }
   carrier->Start();
