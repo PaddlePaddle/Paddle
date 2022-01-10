@@ -124,7 +124,7 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput(kNoNeedBufferX,
              "(vector<LoDTensor>)"
-             "which are the input of graph inside the CinnLaunchOp and"
+             "which are the input of graph inside the CinnLaunchOp but"
              "their buffer are not needed.")
         .AsDuplicable()
         .AsDispensable();

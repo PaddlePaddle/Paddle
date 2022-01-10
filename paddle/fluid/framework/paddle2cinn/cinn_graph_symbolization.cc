@@ -51,9 +51,10 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
     info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
-  // use FP32 as default type if skip_trans_type=true in the case
-  // of no_need_buffer feeds to pass cinn enforce check, and we will
-  // ensure these feeds doesn't be used in execution on cinn_launch op
+  // use FP32 as default type if skip_trans_type=true to pass CINN
+  // enforce check that is shape and type of each input should be filled,
+  // and we will ensure these feeds doesn't be used in execution on cinn_launch
+  // op
   auto tensor_type = ::paddle::framework::proto::VarType::FP32;
   if (!skip_trans_type) {
     tensor_type = tensor.type();
@@ -65,8 +66,12 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
 }  // namespace utils
 
 FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
-  const auto& no_need_buffer_feeds =
-      graph_.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  const std::unordered_set<std::string>* no_need_buffer_feeds = nullptr;
+  if (graph_.Has(kNoNeedBufferFeeds)) {
+    no_need_buffer_feeds =
+        &graph_.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  }
+
   FeedInfoMap feed_map;
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
@@ -79,9 +84,13 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
 
     VLOG(4) << "Get feed info from input: " << feed_name;
     // if this feed declared as no need buffer then we can not access
-    // its type so passing skip_trans_type=true here
-    feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(
-        *tensor, no_need_buffer_feeds.count(feed_name) > 0);
+    // its type so passing skip_trans_type=true
+    if (no_need_buffer_feeds) {
+      feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(
+          *tensor, no_need_buffer_feeds->count(feed_name) > 0);
+    } else {
+      feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+    }
 
     PADDLE_ENFORCE_NE(
         feed_map[feed_name].shape.size(), 0UL,

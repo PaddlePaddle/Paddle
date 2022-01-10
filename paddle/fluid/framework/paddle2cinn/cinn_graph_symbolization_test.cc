@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 namespace paddle {
@@ -188,7 +187,6 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
 
     v6->inputs = {relu};
 
-    g->GetOrInit<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
     return g;
   }
 
