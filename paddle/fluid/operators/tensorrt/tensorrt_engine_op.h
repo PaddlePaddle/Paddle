@@ -405,7 +405,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
-      calib_data.emplace(x, t.data<void>());
+      calib_data.emplace(x, t.data());
     }
     temp_calibrator->setBatch(calib_data);
     RunNativeImpl(scope, dev_place);

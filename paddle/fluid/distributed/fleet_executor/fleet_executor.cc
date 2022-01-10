@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#include "paddle/fluid/distributed/fleet_executor/global_map.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -32,6 +32,9 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
   PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
                                  "Error occurs while parsing string to proto"));
+  // Message bus will be created and inited only once
+  GlobalVal<MessageBus>::Create();
+  InitMessageBus();
 }
 
 FleetExecutor::~FleetExecutor() {
@@ -81,21 +84,16 @@ void FleetExecutor::Init(
     CopyParameters(i, program_desc);
   }
   VLOG(5) << runtime_graph_->DebugString();
-  msg_bus_ = std::make_shared<MessageBus>();
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
   carrier_ids_.insert(carrier_id);
-  GlobalVal<std::string>::Set(carrier_id);
-  // TODO(liyurui): Maybe message bus should be created only once
+  // Set current running carrier
+  GlobalVal<std::string>::Set(new std::string(carrier_id));
   InitCarrier(carrier);
-  InitMessageBus();
-
-  // Wait for all message bus connected.
-  msg_bus_->Barrier();
+  GlobalVal<MessageBus>::Get()->Barrier();
 }
 
 void FleetExecutor::InitCarrier(Carrier* carrier) {
-  carrier->SetMsgBus(msg_bus_);
   carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
                 runtime_graph_->interceptor_id_to_node(), root_scope_,
                 minibatch_scope_, microbatch_scopes_, place_);
@@ -131,14 +129,17 @@ void FleetExecutor::InitMessageBus() {
   VLOG(3) << "The number of ranks are "
           << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
-  if (!msg_bus_->IsInit()) {
-    msg_bus_->Init(cur_rank, rank_to_addr, addr);
-  }
+  GlobalVal<MessageBus>::Get()->Init(cur_rank, rank_to_addr, addr);
 }
 
 void FleetExecutor::Run(const std::string& carrier_id) {
-  GlobalMap<std::string, Carrier>::Get(carrier_id)->Start();
-  GlobalVal<std::string>::Set(carrier_id);
+  Carrier* carrier = GlobalMap<std::string, Carrier>::Get(carrier_id);
+  // Set current running carrier
+  if (*GlobalVal<std::string>::Get() != carrier_id) {
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    GlobalVal<MessageBus>::Get()->Barrier();
+  }
+  carrier->Start();
   for (auto* micro_scop : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
     // some operators may create local scope when running, such as while_op.
