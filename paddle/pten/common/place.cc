@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/place.h"
+#include "paddle/pten/common/place.h"
 
+#include <sstream>
 #include <string>
 
 #include "paddle/pten/api/ext/exception.h"
@@ -22,24 +23,24 @@ namespace pten {
 
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
-    case AllocationType::kUndef:
-      return "kUndef";
-    case AllocationType::kCpu:
-      return "kCpu";
-    case AllocationType::kGpu:
-      return "kGpu";
-    case AllocationType::kGpuPinned:
-      return "kGpuPinned";
-    case AllocationType::kXpu:
-      return "kXpu";
-    case AllocationType::kNpu:
-      return "kNpu";
-    case AllocationType::kNpuPinned:
-      return "kNpuPinned";
-    case AllocationType::kIpu:
-      return "kIpu";
-    case AllocationType::kMlu:
-      return "kMlu";
+    case AllocationType::UNDEF:
+      return "undef";
+    case AllocationType::CPU:
+      return "cpu";
+    case AllocationType::GPU:
+      return "gpu";
+    case AllocationType::GPUPINNED:
+      return "gpu pinned";
+    case AllocationType::XPU:
+      return "xpu";
+    case AllocationType::NPU:
+      return "npu";
+    case AllocationType::NPUPINNED:
+      return "npu pinned";
+    case AllocationType::IPU:
+      return "ipu";
+    case AllocationType::MLU:
+      return "mlu";
     default:
       PD_THROW("Invalid pten device type.");
       return {};
@@ -47,9 +48,17 @@ const char *AllocationTypeStr(AllocationType type) {
 }
 
 std::string Place::DebugString() const {
-  std::string str{"Place:{type = "};
-  return str + AllocationTypeStr(alloc_type_) + ", id = " +
-         std::to_string(device) + "}";
+  std::ostringstream os;
+  os << "Place(";
+  os << AllocationTypeStr(alloc_type_);
+  if (alloc_type_ == AllocationType::GPUPINNED ||
+      alloc_type_ == AllocationType::NPUPINNED ||
+      alloc_type_ == AllocationType::CPU) {
+    os << ")";
+  } else {
+    os << ":" << std::to_string(device) << ")";
+  }
+  return os.str();
 }
 
 std::ostream &operator<<(std::ostream &os, const Place &p) {

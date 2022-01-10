@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,15 +19,15 @@ limitations under the License. */
 namespace pten {
 
 enum class AllocationType : int8_t {
-  kUndef = 0,
-  kCpu = 1,
-  kGpu = 2,
-  kGpuPinned = 3,
-  kXpu = 4,
-  kNpu = 5,
-  kNpuPinned = 6,
-  kIpu = 7,
-  kMlu = 8,
+  UNDEF = 0,
+  CPU = 1,
+  GPU = 2,
+  GPUPINNED = 3,
+  XPU = 4,
+  NPU = 5,
+  NPUPINNED = 6,
+  IPU = 7,
+  MLU = 8,
 };
 
 const char *AllocationTypeStr(AllocationType type);
@@ -35,7 +35,7 @@ const char *AllocationTypeStr(AllocationType type);
 /// \brief The place is used to specify where the data is stored.
 class Place {
  public:
-  Place() : device(0), alloc_type_(AllocationType::kUndef) {}
+  Place() : device(0), alloc_type_(AllocationType::UNDEF) {}
 
   explicit Place(AllocationType type, int8_t id)
       : device(id), alloc_type_(type) {}
@@ -64,47 +64,47 @@ class Place {
 
 class CPUPlace : public Place {
  public:
-  CPUPlace() : Place(AllocationType::kCpu, 0) {}
+  CPUPlace() : Place(AllocationType::CPU, 0) {}
 };
 
 class GPUPlace : public Place {
  public:
-  GPUPlace() : Place(AllocationType::kGpu, 0) {}
-  explicit GPUPlace(int device_id) : Place(AllocationType::kGpu, device_id) {}
+  GPUPlace() : Place(AllocationType::GPU, 0) {}
+  explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
 };
 
 class GPUPinnedPlace : public Place {
  public:
-  GPUPinnedPlace() : Place(AllocationType::kGpuPinned) {}
+  GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
 };
 
 class XPUPlace : public Place {
  public:
-  XPUPlace() : Place(AllocationType::kXpu, 0) {}
-  explicit XPUPlace(int device_id) : Place(AllocationType::kXpu, device_id) {}
+  XPUPlace() : Place(AllocationType::XPU, 0) {}
+  explicit XPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
 };
 
 class NPUPlace : public Place {
  public:
-  NPUPlace() : Place(AllocationType::kNpu, 0) {}
-  explicit NPUPlace(int device_id) : Place(AllocationType::kXpu, device_id) {}
+  NPUPlace() : Place(AllocationType::NPU, 0) {}
+  explicit NPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
 };
 
 class NPUPinnedPlace : public Place {
  public:
-  NPUPinnedPlace() : Place(AllocationType::kNpuPinned) {}
+  NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
 };
 
 class IPUPlace : public Place {
  public:
-  IPUPlace() : Place(AllocationType::kXpu, 0) {}
-  explicit IPUPlace(int device_id) : Place(AllocationType::kXpu, device_id) {}
+  IPUPlace() : Place(AllocationType::XPU, 0) {}
+  explicit IPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
 };
 
 class MLUPlace : public Place {
  public:
-  MLUPlace() : Place(AllocationType::kMlu, 0) {}
-  explicit MLUPlace(int device_id) : Place(AllocationType::kMlu, device_id) {}
+  MLUPlace() : Place(AllocationType::MLU, 0) {}
+  explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
 };
 
 std::ostream &operator<<(std::ostream &, const Place &);
