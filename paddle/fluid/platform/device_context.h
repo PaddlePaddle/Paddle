@@ -70,6 +70,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+
+#include "paddle/fluid/platform/device/device_ext.h"
 #include "paddle/fluid/platform/device/stream.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -825,7 +827,9 @@ class CustomDeviceContext : public DeviceContext {
   Place GetPlace() const override;
   void Wait() const override;
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  C_Stream stream() const { return (C_Stream)stream_->raw_stream(); }
+  C_Stream stream() const {
+    return reinterpret_cast<C_Stream>(stream_->raw_stream());
+  }
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {

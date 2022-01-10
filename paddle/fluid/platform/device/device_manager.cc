@@ -170,7 +170,8 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
     return dev_impl_map.at(device_type).get();
   } else {
     LOG(ERROR) << "GetDeviceInterfaceWithType - " << device_type << " Failed\n";
-    PADDLE_THROW(platform::errors::Fatal("Unregistered device type."));
+    PADDLE_THROW(
+        platform::errors::Fatal("Unregistered device type %s.", device_type));
     return nullptr;
   }
 }

@@ -1109,9 +1109,9 @@ void Copy<platform::CustomPlace, platform::CPUPlace>(
   platform::RecordEvent record_event(msg);
   VLOG(4) << msg << " " << std::to_string(num) << " Bytes, stream=" << stream;
 
-  platform::DeviceManager::SetDevice(src_place);
-  platform::stream::Stream stream_wrapper(src_place, stream);
-  platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyH2D(
+  platform::DeviceManager::SetDevice(dst_place);
+  platform::stream::Stream stream_wrapper(dst_place, stream);
+  platform::DeviceManager::GetDeviceWithPlace(dst_place)->MemoryCopyH2D(
       dst, src, num, &stream_wrapper);
 }
 
