@@ -49,10 +49,8 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
                         cur_loc));
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   std::hash<int> hasher;
-  size_t seed = 0;
-  seed ^= hasher(place + data_type + data_layout + library_type +
-                 customized_value) +
-          0x9e3779b9 + (seed << 6) + (seed >> 2) + 4;
+  size_t seed =
+      hasher(place + data_type + data_layout + library_type + customized_value);
   if (platform::is_custom_place(key.place_)) {
     seed ^= std::hash<std::string>{}(
                 BOOST_GET_CONST(platform::CustomPlace, key.place_)
@@ -68,18 +66,10 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
 }
 
 bool OpKernelType::operator==(const OpKernelType& o) const {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  bool same_device_type = platform::PlaceHelper::GetDeviceType(place_) ==
-                          platform::PlaceHelper::GetDeviceType(o.place_);
-  return same_device_type && data_type_ == o.data_type_ &&
-         data_layout_ == o.data_layout_ && library_type_ == o.library_type_ &&
-         customized_type_value_ == o.customized_type_value_;
-#else
   return platform::places_are_same_class(place_, o.place_) &&
          data_type_ == o.data_type_ && data_layout_ == o.data_layout_ &&
          library_type_ == o.library_type_ &&
          customized_type_value_ == o.customized_type_value_;
-#endif
 }
 
 }  // namespace framework

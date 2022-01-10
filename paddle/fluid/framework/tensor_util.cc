@@ -1285,7 +1285,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
             "MLUPlace is not supported when not compiled with MLU"));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "NPUPlace is not supported when not compiled with NPU"));
+            "NPUPlace is not supported when not compiled with %s",
+            platform::PlaceHelper::GetDeviceType(dev_ctx.GetPlace())));
       }
 #endif
     } else {

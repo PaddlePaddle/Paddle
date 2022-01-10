@@ -9,14 +9,12 @@ cc_library(event SRCS event.cc DEPS enforce place)
 
 cc_library(device_base SRCS device_base.cc DEPS stream event callback_manager device_guard device_context)
 
-cc_library(cpu_device SRCS cpu_device.cc DEPS device_base)
 ENDIF()
 
 set(DEV_LIBS cpu_device custom_device)
 
 # GPU
 IF(WITH_GPU OR WITH_ROCM)
-  set(DEV_LIBS ${DEV_LIBS} gpu_device)
   add_subdirectory(gpu)
 ENDIF()
 
@@ -27,7 +25,6 @@ ENDIF()
 
 # NPU
 IF(WITH_ASCEND OR WITH_ASCEND_CL)
-  set(DEV_LIBS ${DEV_LIBS} npu_device)
   add_subdirectory(npu)
 ENDIF()
 
@@ -45,6 +42,6 @@ ENDIF()
 IF(WITH_CUSTOM_DEVICE)
   add_subdirectory(custom)
 
-  cc_library(device_manager SRCS device_manager.cc DEPS ${DEV_LIBS})
-  set(GLOB_DEV_LIB device_manager ${DEV_LIBS} CACHE INTERNAL "Global DEV library")
+  cc_library(device_manager SRCS device_manager.cc DEPS custom_device)
+  set(GLOB_DEV_LIB device_manager custom_device CACHE INTERNAL "Global DEV library")
 ENDIF()

@@ -164,7 +164,6 @@ class DeviceManager {
 
 bool LoadRuntimePlugin(const std::string& plugin_path);
 
-// just for test
 bool LoadRuntimePlugin(const RuntimePluginParams& plugin_params,
                        std::unique_ptr<C_DeviceInterface> device_interface,
                        void* dso_handle);
@@ -180,19 +179,6 @@ class Registrar {
 
   void Touch() {}
 };
-
-#define REGISTER_BUILTIN_DEVICE(device_type, DeviceT)                    \
-  static ::paddle::platform::Registrar __builtin_device_##device_type__( \
-      new DeviceT(#device_type, 255, false));                            \
-  int TouchBuiltInDeviceRegistrar_##device_type() {                      \
-    __builtin_device_##device_type__.Touch();                            \
-    return 0;                                                            \
-  }
-
-#define USE_DEVICE(device_type)                            \
-  extern int TouchBuiltInDeviceRegistrar_##device_type();  \
-  UNUSED static int use_buiiltin_device_##device_type##_ = \
-      TouchBuiltInDeviceRegistrar_##device_type()
 
 }  // namespace platform
 }  // namespace paddle

@@ -142,7 +142,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      gc.reset(new framework::CustomDeviceUnsafeFastGarbageCollector(
+      gc.reset(new framework::CustomDefaultStreamGarbageCollector(
           BOOST_GET_CONST(platform::CustomPlace, place), 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else

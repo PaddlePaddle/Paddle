@@ -433,7 +433,7 @@ bool MLUAllocator::UseGpu() const { return true; }
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-void* CustomDeviceAllocator::Alloc(size_t* index, size_t size) {
+void* CustomAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   void* p;
@@ -441,7 +441,7 @@ void* CustomDeviceAllocator::Alloc(size_t* index, size_t size) {
   auto device = platform::DeviceManager::GetDeviceWithPlace(place);
   p = device->MemoryAllocate(size);
   if (LIKELY(p)) {
-    VLOG(4) << "CustomDeviceAllocator::Alloc " << p << " size " << size;
+    VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
     *index = 0;
     plug_alloc_size += size;
   } else {
@@ -459,8 +459,8 @@ void* CustomDeviceAllocator::Alloc(size_t* index, size_t size) {
   return p;
 }
 
-void CustomDeviceAllocator::Free(void* p, size_t size, size_t index) {
-  VLOG(4) << "CustomDeviceAllocator::Free " << p << " size " << size;
+void CustomAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "CustomAllocator::Free " << p << " size " << size;
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(plug_alloc_size, size,
@@ -474,7 +474,7 @@ void CustomDeviceAllocator::Free(void* p, size_t size, size_t index) {
   device->MemoryDeallocate(p, size);
 }
 
-bool CustomDeviceAllocator::UseGpu() const { return true; }
+bool CustomAllocator::UseGpu() const { return true; }
 #endif
 
 }  // namespace detail

@@ -20,8 +20,8 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-bool CustomDeviceAllocator::IsAllocThreadSafe() const { return true; }
-void CustomDeviceAllocator::FreeImpl(Allocation* allocation) {
+bool CustomAllocator::IsAllocThreadSafe() const { return true; }
+void CustomAllocator::FreeImpl(Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
       platform::errors::PermissionDenied("CustomDevice memory is "
@@ -31,7 +31,7 @@ void CustomDeviceAllocator::FreeImpl(Allocation* allocation) {
   delete allocation;
 }
 
-Allocation* CustomDeviceAllocator::AllocateImpl(size_t size) {
+Allocation* CustomAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_,
                  [this] { platform::DeviceManager::SetDevice(place_); });
 

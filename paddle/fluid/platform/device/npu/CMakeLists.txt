@@ -13,7 +13,3 @@ if(WITH_ASCEND_CL)
   cc_library(npu_collective_helper SRCS npu_collective_helper.cc DEPS npu_stream npu_info data_type)
   cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
 endif()
-
-if(WITH_CUSTOM_DEVICE)
-cc_library(npu_device SRCS npu_device.cc DEPS device_base)
-endif()

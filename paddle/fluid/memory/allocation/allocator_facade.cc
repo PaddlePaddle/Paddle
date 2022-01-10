@@ -735,7 +735,7 @@ class AllocatorFacadePrivate {
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
                                            bool allow_free_idle_chunk) {
     auto custom_allocator =
-        std::make_shared<paddle::memory::allocation::CustomDeviceAllocator>(p);
+        std::make_shared<paddle::memory::allocation::CustomAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         custom_allocator, platform::DeviceManager::GetMinChunkSize(p),
         allow_free_idle_chunk);

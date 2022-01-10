@@ -110,7 +110,12 @@ bool is_custom_place(const Place &p) {
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return platform::PlaceHelper::GetDeviceType(p1) ==
+         platform::PlaceHelper::GetDeviceType(p2);
+#else
   return p1.GetType() == p2.GetType();
+#endif
 }
 
 bool is_same_place(const Place &p1, const Place &p2) {

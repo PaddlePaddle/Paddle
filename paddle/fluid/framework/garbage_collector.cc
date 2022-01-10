@@ -204,15 +204,6 @@ void MLUStreamGarbageCollector::ClearCallback(
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-UnsafeFastCustomGarbageCollector::UnsafeFastCustomGarbageCollector(
-    const platform::CustomPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void UnsafeFastCustomGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback();
-}
-
 CustomDefaultStreamGarbageCollector::CustomDefaultStreamGarbageCollector(
     const platform::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}

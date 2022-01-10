@@ -13,7 +13,3 @@ ELSEIF(WITH_ROCM)
 ENDIF()
 
 cc_library(gpu_resource_pool SRCS gpu_resource_pool.cc DEPS gpu_info)
-
-IF(WITH_CUSTOM_DEVICE)
-cc_library(gpu_device SRCS gpu_device.cc DEPS device_base)
-ENDIF()

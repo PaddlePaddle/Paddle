@@ -635,15 +635,6 @@ bool LoadRuntimePlugin(const RuntimePluginParams& plugin_params,
       LOG(WARNING) << "Skip this library. Register failed!!! there may be a "
                       "Plugin with the same name.";
       return false;
-      // auto plat =
-      // DeviceManager::GetDeviceWithType(plugin_params.device_type);
-      // if (plat) {
-      //   VLOG(4) << "Visible devices count is " <<
-      //   plat->GetDeviceCount();
-      // } else {
-      //   LOG(ERROR) << "Cant find DeviceInterface for " <<
-      //   plugin_params.device_type;
-      // }
     }
   } else {
     LOG(WARNING)

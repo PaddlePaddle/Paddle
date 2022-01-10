@@ -15,5 +15,8 @@
 #include "paddle/fluid/platform/device/device_guard.h"
 
 namespace paddle {
-namespace platform {}  // namespace platform
+namespace platform {
+// Even this source file does not contains any code, it is better to keep this
+// source file for cmake dependency.
+}  // namespace platform
 }  // namespace paddle

@@ -166,16 +166,6 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
-USE_DEVICE(gpu);
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-USE_DEVICE(npu);
-#endif
-USE_DEVICE(cpu);
-#endif
-
 namespace paddle {
 namespace pybind {
 

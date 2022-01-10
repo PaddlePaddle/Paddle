@@ -771,7 +771,7 @@ class BuddyAllocatorList {
 
       allocators_[dev_id].reset(new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(
-              new detail::CustomDeviceAllocator(device_type_, dev_id)),
+              new detail::CustomAllocator(device_type_, dev_id)),
           platform::DeviceManager::GetMinChunkSize(place),
           platform::DeviceManager::GetMaxChunkSize(place),
           platform::DeviceManager::GetExtraPaddingSize(place),

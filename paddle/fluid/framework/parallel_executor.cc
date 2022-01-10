@@ -535,7 +535,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastCustomGarbageCollector(
+        gc.reset(new CustomDeviceUnsafeFastGarbageCollector(
             BOOST_GET_CONST(platform::CustomPlace, place), max_memory_size));
       } else {
         gc.reset(new CustomStreamGarbageCollector(

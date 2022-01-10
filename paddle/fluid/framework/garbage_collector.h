@@ -201,15 +201,6 @@ class MLUStreamGarbageCollector : public GarbageCollector {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-class UnsafeFastCustomGarbageCollector : public GarbageCollector {
- public:
-  UnsafeFastCustomGarbageCollector(const platform::CustomPlace &place,
-                                   size_t max_memory_size);
-
- protected:
-  void ClearCallback(const std::function<void()> &callback) override;
-};
-
 class CustomDefaultStreamGarbageCollector : public GarbageCollector {
  public:
   CustomDefaultStreamGarbageCollector(const platform::CustomPlace &place,

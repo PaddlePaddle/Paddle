@@ -100,9 +100,6 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_ext.h"
-#endif
 #include "paddle/fluid/platform/flags.h"
 
 namespace pten {

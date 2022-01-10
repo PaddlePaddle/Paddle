@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/platform/device/device_ext.h"
 
 namespace paddle {
 namespace platform {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 namespace details {
 template <typename T>
 struct CustomDeviceStatusType {};
@@ -50,6 +51,6 @@ inline std::string build_custom_device_error_msg(C_Status stat) {
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
   } while (0)
-#endif  // PADDLE_WITH_CUSTOM_DEVICE
 }  // namespace platform
 }  // namespace paddle
+#endif  // PADDLE_WITH_CUSTOM_DEVICE
