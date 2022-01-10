@@ -185,12 +185,16 @@ std::vector<T> GetScalars(const framework::InferShapeContext* ctx,
 template <typename T>
 T GetScalar(const framework::InferShapeContext* ctx,
             const std::string& attr_name) {
-  auto res = GetScalars<T>(ctx, attr_name);
-  PADDLE_ENFORCE_EQ(
-      res.size(), 1,
-      platform::errors::PreconditionNotMet(
-          "Required content.size() == 1, but received %d.", res.size()));
-  return res[0];
+  if (ctx.HasAttrVar(attr_name)) {
+    auto res = GetDataFromVariable<T>(ctx, attr_name);
+    PADDLE_ENFORCE_EQ(
+        res.size(), 1,
+        platform::errors::PreconditionNotMet(
+            "Required content.size() == 1, but received %d.", res.size()));
+    return res[0];
+  } else {
+    return ctx.Attr<T>(attr_name);
+  }
 }
 
 template <typename T>
@@ -206,12 +210,16 @@ std::vector<T> GetScalars(const framework::ExecutionContext& ctx,
 template <typename T>
 T GetScalar(const framework::ExecutionContext& ctx,
             const std::string& attr_name) {
-  auto res = GetScalars<T>(ctx, attr_name);
+  if (ctx.HasAttrVar(attr_name)) {
+  auto res = GetDataFromVariable<T>(ctx, attr_name));
   PADDLE_ENFORCE_EQ(
       res.size(), 1,
       platform::errors::PreconditionNotMet(
           "Required content.size() == 1, but received %d.", res.size()));
   return res[0];
+  } else {
+    return ctx.Attr<T>(attr_name);
+  }
 }
 
 template <typename T = int32_t>
