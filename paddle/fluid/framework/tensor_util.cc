@@ -488,6 +488,14 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     }
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+    platform::XPUPlace xpu_dst_place =
+        BOOST_GET_CONST(platform::XPUPlace, dst_place);
+    platform::XPUPlace xpu_src_place =
+        BOOST_GET_CONST(platform::XPUPlace, src_place);
+    if (xpu_dst_place.device == xpu_src_place.device) {
+      auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
+      xpu_ctx->Wait();
+    }
   }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
