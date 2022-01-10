@@ -229,8 +229,12 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
   }
 }
 
-template <typename T, typename ArgsTuple, int Index, int NX>
-__device__ __forceinline__ void Init(ArgsTuple* dst, T init_data) {
+/**
+ * The difference from the above function is that
+ * it supports different data types of inputs.
+ */
+template <typename T, typename ArgsT, int Index, int NX>
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
 #pragma unroll
   for (int i = 0; i < NX; i++) {
     std::get<Index>(dst[i]) = init_data;
@@ -294,10 +298,10 @@ __device__ __forceinline__ void ReadData(T* dst,
  * @brief Read 1D data from global memory to register. The difference
  * from the above function is that it supports different data types of inputs.
  */
-template <typename T, int NX, int NY, int BlockSize, typename ArgsTuple,
-          int Index, bool IsBoundary = false>
-__device__ __forceinline__ void ReadData(ArgsTuple* dst,
-                                         const T* __restrict__ src, int num) {
+template <typename T, int NX, int NY, int BlockSize, typename ArgsT, int Index,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadData(ArgsT* dst, const T* __restrict__ src,
+                                         int num) {
   if (IsBoundary) {  // blockDim.x * NX > num
     int thread_offset = threadIdx.x * NX;
 #pragma unroll

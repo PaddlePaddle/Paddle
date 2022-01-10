@@ -61,16 +61,13 @@ constexpr decltype(auto) apply(F &&f, Tuple &&t) {
           std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
 }
 
-template <typename InT,
-          typename OutT,
+template <typename OutT,
           int VecSize,
           typename Functor,
-          typename ArgsTuple,
+          typename ArgsT,
           int Arity>
 struct SameDimsElementwisePrimitiveCaller {
-  __device__ inline void operator()(Functor func,
-                                    ArgsTuple *args,
-                                    OutT *result) {
+  __device__ inline void operator()(Functor func, ArgsT *args, OutT *result) {
 #pragma unroll
     for (int idx = 0; idx < VecSize; ++idx) {
       result[idx] = static_cast<OutT>(apply(func, args[idx]));
