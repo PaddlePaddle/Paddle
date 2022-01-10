@@ -153,7 +153,7 @@ class Allocator : public pten::candidate::Allocator {
   // size may be 0, but it would be too complex if we handle size == 0
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
-  AllocationPtr Allocate(size_t size) {
+  AllocationPtr Allocate(size_t size) override {
     auto ptr = AllocateImpl(size);
     static_cast<DecoratedAllocation*>(ptr)->RegisterDecoratedAllocator(this);
     return AllocationPtr(ptr, AllocationDeleter);

@@ -106,7 +106,6 @@ class Allocator {
 
   virtual ~Allocator() = default;
   virtual AllocationPtr Allocate(size_t bytes_size) = 0;
-  // virtual void Free(Allocation* allocation) = 0;
 
   virtual bool IsAllocThreadSafe() const { return false; }
 };
