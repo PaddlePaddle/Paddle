@@ -16,7 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/common/data_type.h"

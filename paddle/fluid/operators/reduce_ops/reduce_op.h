@@ -28,10 +28,10 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/math.h"
-#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
+#include "paddle/pten/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 #endif
 
 namespace paddle {
@@ -259,7 +259,7 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    pten::general::Reduce<DeviceContext, T, Functor>(
+    pten::Reduce<DeviceContext, T, Functor>(
         dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }

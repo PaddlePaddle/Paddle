@@ -82,6 +82,20 @@ class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return dout * self.op_forward(x) * (1 - self.op_forward(x))
 
 
+class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "sqrt"
+
+    def init_data(self):
+        self.x = np.random.uniform(1, 2, [2, 4, 3, 5]).astype(np.float32)
+
+    def op_forward(self, x):
+        return np.sqrt(x)
+
+    def op_grad(self, dout, x):
+        return dout / (2 * np.sqrt(x))
+
+
 class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "gelu"

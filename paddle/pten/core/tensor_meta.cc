@@ -21,14 +21,16 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
-                                 DataLayout layout)
-    : dims(dims), dtype(dtype), layout(layout) {}
+                                 DataLayout layout,
+                                 size_t offset)
+    : dims(dims), dtype(dtype), layout(layout), offset(offset) {}
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
-                                 const LoD& lod)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod) {}
+                                 const LoD& lod,
+                                 size_t offset)
+    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {}
 
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
