@@ -88,19 +88,6 @@ SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
   return *this;
 }
 
-void SparseCsrTensor::SetMemberTensor(const DenseTensor& non_zero_crows,
-                                      const DenseTensor& non_zero_cols,
-                                      const DenseTensor& non_zero_elements,
-                                      const DenseTensor& non_zero_nums,
-                                      const DDim& dims) {
-  Check(non_zero_crows, non_zero_cols, non_zero_elements, non_zero_nums, dims);
-  this->dims_ = dims;
-  // this->non_zero_crows_ = non_zero_crows;
-  this->non_zero_cols_ = non_zero_cols;
-  this->non_zero_elements_ = non_zero_elements;
-  this->non_zero_nums_ = non_zero_nums;
-}
-
 void SparseCsrTensor::Resize(const DDim& dense_dims,
                              const std::vector<int64_t>& non_zero_nums) {
   PADDLE_ENFORCE(this->initialized(),

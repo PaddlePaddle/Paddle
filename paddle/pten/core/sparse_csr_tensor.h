@@ -119,20 +119,6 @@ class SparseCsrTensor : public TensorBase,
   /// return Whether the non_zero_elements_ storage is allocated.
   bool initialized() const override { return non_zero_elements_.initialized(); }
 
-  /// \brief Set the member tensor of the sparse csr tensor.
-  /// \param non_zero_crows The compresessed row index of non zero elements in
-  /// original dense tensor.
-  /// \param non_zero_cols The column index of non zero elements in original
-  /// dense tensor.
-  /// \param non_zero_elements The non zero elements of original dense tensor.
-  /// \param non_zero_nums The non zero numbers of original dense tensor.
-  /// \param dims The dims of original dense tensor.
-  void SetMemberTensor(const DenseTensor& non_zero_crows,
-                       const DenseTensor& non_zero_cols,
-                       const DenseTensor& non_zero_elements,
-                       const DenseTensor& non_zero_nums,
-                       const DDim& dims);
-
   /// \brief resize sparse csr tensor.
   /// \param dense_dims The dims of original dense tensor.
   /// \param non_zero_nums The number of non zero element in each batch
