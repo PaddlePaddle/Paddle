@@ -49,7 +49,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     using ValueType = math::Real<T>;
 
     const Tensor& x = *context.Input<Tensor>("X");
-    const Tensor& y = *context.Input<Tensor>("Y");
+    auto y = context.Input<Tensor>("Y");
     auto rcond = context.Attr<float>("rcond");
     auto driver_string = context.Attr<std::string>("driver");
 
@@ -68,13 +68,15 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
         math::DeviceIndependenceTensorOperations<DeviceContext, T>(context);
 
     auto x_dims = x.dims();
-    auto y_dims = y.dims();
+    auto y_dims = y->dims();
     int dim_size = x_dims.size();
     int x_stride = MatrixStride(x);
-    int y_stride = MatrixStride(y);
+    int y_stride = MatrixStride(*y);
     int batch_count = BatchCount(x);
-    auto ori_solution_dim = solution->dims();
+    auto solution_dim = solution->dims();
     int ori_solu_stride = MatrixStride(*solution);
+    int max_solu_stride = std::max(y_stride, ori_solu_stride);
+    int min_solu_stride = std::min(y_stride, ori_solu_stride);
 
     // lapack is a column-major storge, transpose make the input to
     // have a continuous memory layout
@@ -88,13 +90,24 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor new_x;
     new_x.mutable_data<T>(context.GetPlace(),
                           size_t(batch_count * m * n * sizeof(T)));
+    framework::TensorCopy(x, context.GetPlace(), &new_x);
+
     solution->mutable_data<T>(
         context.GetPlace(),
         size_t(batch_count * std::max(m, n) * nrhs * sizeof(T)));
-    framework::TensorCopy(x, context.GetPlace(), &new_x);
-    framework::TensorCopy(y, context.GetPlace(), solution);
 
-    if (m < n) solution->Resize(UDDim(ori_solution_dim));
+    if (m >= n) {
+      const Tensor& new_y = *context.Input<Tensor>("Y");
+      framework::TensorCopy(new_y, context.GetPlace(), solution);
+    } else {
+      auto* solu_data = solution->data<T>();
+      auto* y_data = y->data<T>();
+      for (auto i = 0; i < batch_count; i++) {
+        for (auto j = 0; j < min_solu_stride; j++) {
+          solu_data[i * max_solu_stride + j] = y_data[i * y_stride + j];
+        }
+      }
+    }
 
     Tensor input_x_trans = dito.Transpose(new_x);
     Tensor input_y_trans = dito.Transpose(*solution);
@@ -186,10 +199,9 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       iwork_data = iwork.mutable_data<int>(context.GetPlace());
     }
 
-    int solu_stride = std::max(y_stride, ori_solu_stride);
     for (auto i = 0; i < batch_count; ++i) {
       auto* x_input = &x_vector[i * x_stride];
-      auto* y_input = &y_vector[i * solu_stride];
+      auto* y_input = &y_vector[i * max_solu_stride];
       rank_working_ptr = rank_working_ptr ? &rank_data[i] : nullptr;
       s_working_ptr = s_working_ptr ? &s_data[i * s_stride] : nullptr;
 
@@ -221,9 +233,24 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor tmp_s = dito.Transpose(*solution);
     framework::TensorCopy(tmp_s, solution->place(), solution);
 
-    if (m >= n) solution->Resize(UDDim(ori_solution_dim));
+    if (m > n) {
+      auto* solu_data = solution->data<T>();
+      for (auto i = 1; i < batch_count; i++) {
+        for (auto j = 0; j < min_solu_stride; j++) {
+          solu_data[i * min_solu_stride + j] =
+              solu_data[i * max_solu_stride + j];
+        }
+      }
+    }
+
+    solution->Resize(UDDim(solution_dim));
   }
 };
+
+template <typename DeviceContext, typename T>
+void BatchedOrmqr(const DeviceContext& dev_ctx, bool left, bool transpose,
+                  int batch_size, int m, int n, int k, T* a, int a_stride,
+                  T* tau, int tau_stride, T* other, int other_stride);
 
 }  // namespace operators
 }  // namespace paddle
