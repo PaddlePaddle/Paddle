@@ -1850,6 +1850,9 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("uva",
            [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
+             PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
+                               platform::errors::InvalidArgument(
+                                   "UVA only support CPU Tensor currently"));
              platform::DeviceContextPool &pool =
                  platform::DeviceContextPool::Instance();
              auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
