@@ -96,7 +96,7 @@ bool DistModel::LoadProgram() {
 }
 
 bool DistModel::LoadParameters() {
-  VLOG(3) << "Loading parameters for the inference model.";
+  VLOG(3) << "Loading parameters from " << config_.model_dir;
   PADDLE_ENFORCE_NOT_NULL(program_.get(),
                           platform::errors::PreconditionNotMet(
                               "The program should be loaded first."));
