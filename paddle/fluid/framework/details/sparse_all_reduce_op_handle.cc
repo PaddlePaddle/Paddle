@@ -146,7 +146,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
     auto &in = *ins[i];
-    void *in_tensor_buf = const_cast<void *>(in.data<void>());
+    void *in_tensor_buf = const_cast<void *>(in.data());
 
     auto &out = *outs[i];
     float *out_tensor_buf = out.data<float>();
@@ -175,7 +175,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    void *gather_buff = gathers[i]->data<void>();
+    void *gather_buff = gathers[i]->data();
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
