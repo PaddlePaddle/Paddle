@@ -172,13 +172,13 @@ void BasicAucCalculator::compute() {
 }
 
 void BasicAucCalculator::calculate_bucket_error() {
+#if defined(PADDLE_WITH_GLOO)
   double last_ctr = -1;
   double impression_sum = 0;
   double ctr_sum = 0.0;
   double click_sum = 0.0;
   double error_sum = 0.0;
   double error_count = 0;
-#if defined(PADDLE_WITH_GLOO)
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (gloo_wrapper->Size() > 1) {
     auto neg_table = gloo_wrapper->AllReduce(_table[0], "sum");
