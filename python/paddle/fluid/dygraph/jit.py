@@ -44,7 +44,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load', 'not_to_static', 'register_save_pre_hook'
+    'set_verbosity', 'save', 'load', 'not_to_static'
 ]
 
 
@@ -541,7 +541,7 @@ class HookRemoveHelper(object):
         _remove_save_pre_hook(self._hook)
 
 
-def register_save_pre_hook(hook):
+def _register_save_pre_hook(hook):
     """
     Register a save pre-hook for `paddle.jit.save`.
     This hook will be executed before `save` function has been invoked.
