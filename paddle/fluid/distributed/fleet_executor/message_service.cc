@@ -13,7 +13,7 @@
 // limitations under the License.
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "paddle/fluid/distributed/fleet_executor/message_service.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -21,16 +21,27 @@
 namespace paddle {
 namespace distributed {
 
-void InterceptorMessageServiceImpl::InterceptorMessageService(
+void MessageServiceImpl::ReceiveInterceptorMessage(
     google::protobuf::RpcController* control_base,
     const InterceptorMessage* request, InterceptorResponse* response,
     google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
-  VLOG(3) << "Interceptor Message Service receives a message from interceptor "
+  VLOG(3) << "Message Service receives a message from interceptor "
           << request->src_id() << " to interceptor " << request->dst_id()
           << ", with the message: " << request->message_type();
   bool flag = GlobalVal<MessageBus>::Get()->DispatchMsgToCarrier(*request);
   response->set_rst(flag);
+}
+
+void MessageServiceImpl::IncreaseBarrierCount(
+    google::protobuf::RpcController* control_base,
+    const InterceptorMessage* request, InterceptorResponse* response,
+    google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  VLOG(3) << "Barrier Service receives a message from rank "
+          << request->src_id() << " to rank " << request->dst_id();
+  GlobalVal<MessageBus>::Get()->IncreaseBarrierCount();
+  response->set_rst(true);
 }
 
 }  // namespace distributed
