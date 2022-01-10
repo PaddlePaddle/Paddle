@@ -488,11 +488,6 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool IsMKLDNNType() const {
-    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
-                                     framework::DataLayout::kMKLDNN));
-  }
-
   bool SupportGPU() const override {
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
@@ -568,6 +563,8 @@ class OperatorWithKernel : public OperatorBase {
   pten::KernelContext* PtenKernelContext() const {
     return pt_kernel_context_.get();
   }
+
+  const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
