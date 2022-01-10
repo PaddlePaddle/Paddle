@@ -53,7 +53,6 @@ class LoDTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-DECLARE_bool(use_kp);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
 DECLARE_bool(run_pten_kernel);
@@ -1322,11 +1321,6 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto expected_kernel_key = InnerGetExpectedKernelType(ctx);
 
   auto kernel_iter = kernels.find(expected_kernel_key);
-
-  // added by liuxiandong for test
-  if (FLAGS_run_kp_kernel) {
-    std::cout << "****** FLAGS_use_kp  operator.cc *******";
-  }
 
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set

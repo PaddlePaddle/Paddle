@@ -28,15 +28,6 @@ bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
       get_xpu_version(BOOST_GET_CONST(platform::XPUPlace, type.place_).device);
   if (v == XPU2) {
     ops = get_kl2_ops();
-    VLOG(3) << "lxd_debug: op " << op_name << " get_kl2_ops";
-  }
-
-  if (ops.find(op_name) == ops.end()) {
-    VLOG(3) << "lxd_debug: can't find " << op_name << " in related list";
-  }
-  if (ops[op_name].find(type) == ops[op_name].end()) {
-    VLOG(3) << "lxd_debug: can't find type " << op_name
-            << " cause have no library_type";
   }
 
   if (ops.find(op_name) != ops.end() &&

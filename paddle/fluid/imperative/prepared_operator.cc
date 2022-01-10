@@ -160,8 +160,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
       op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs, default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
-  VLOG(3) << "expected_kernel_key.place_:" << expected_kernel_key.place_;
 
   if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
@@ -209,19 +207,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
-
-    if (!is_xpu_place(expected_kernel_key.place_)) {
-      VLOG(3) << "lxd_debug: is not xpu_place";
-    }
-    if (kernel_iter == kernels.end()) {
-      VLOG(3) << "lxd_debug: can't find KP kernel";
-    }
-    if (!paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key)) {
-      VLOG(3) << "lxd_debug: is not support current op";
-    }
-    if (paddle::platform::is_in_xpu_black_list(op.Type())) {
-      VLOG(3) << "lxd_debug: is in black list";
-    }
   }
 
 #endif
@@ -233,10 +218,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   bool use_xpu_kp_kernel_debug =
       paddle::platform::is_in_xpu_kpwhite_list(op.Type());
   if (use_xpu_kp_kernel_rt) {
-    VLOG(3) << "lxd_debug: using rt mode ";
+    VLOG(3) << "xpu_kp using rt mode ";
   }
   if (use_xpu_kp_kernel_debug) {
-    VLOG(3) << "lxd_debug: using debug mode ";
+    VLOG(3) << "xpu_kp using debug mode ";
   }
   if (is_xpu_place(expected_kernel_key.place_) &&
       (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
