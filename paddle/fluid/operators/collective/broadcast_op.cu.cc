@@ -46,7 +46,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
             "because this op can only be an In-Place operation."));
     void* send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
-        send_recv_buffer, in->data<void>(),
+        send_recv_buffer, in->data(),
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 
