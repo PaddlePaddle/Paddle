@@ -49,7 +49,7 @@ bool BufferedAllocator::IsAllocThreadSafe() const { return mtx_ != nullptr; }
 void BufferedAllocator::FreeImpl(Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   allocations_.emplace(allocation->size(),
-                       AllocationPtr(allocation, AllocationDeleteFunction));
+                       AllocationPtr(allocation, Allocator::AllocationDeleter));
 }
 
 Allocation *BufferedAllocator::AllocateImpl(size_t size) {

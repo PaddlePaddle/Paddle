@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include "paddle/fluid/platform/place.h"
 
 namespace pten {
@@ -97,36 +98,15 @@ inline void swap(Allocation& a, Allocation& b) noexcept {
   ::std::swap(a.size_, b.size_);
 }
 
-class AllocationDeleter {
- public:
-  using DeleteFnPtr = void (*)(Allocation*);
-  AllocationDeleter() = default;
-  AllocationDeleter(DeleteFnPtr deleter) : deleter_(deleter) {}  // NOLINT
-
-  void operator()(Allocation* allocation) const {
-    if (deleter_) {
-      deleter_(allocation);
-    } else {
-      delete allocation;
-    }
-  }
-
- private:
-  DeleteFnPtr deleter_{nullptr};
-};
-
-using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
-
 class Allocator {
  public:
   using Place = paddle::platform::Place;
+  using AllocationDeleterType = std::function<void(Allocation*)>;
+  using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleterType>;
 
   virtual ~Allocator() = default;
   virtual AllocationPtr Allocate(size_t bytes_size) = 0;
-  virtual void Free(Allocation* allocation) = 0;
-
-  virtual void* AllocateRaw(size_t bytes_size) { return nullptr; }
-  virtual void DeallocateRaw(void* ptr, size_t bytes_size) {}
+  // virtual void Free(Allocation* allocation) = 0;
 
   virtual bool IsAllocThreadSafe() const { return false; }
 };

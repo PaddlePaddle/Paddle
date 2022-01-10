@@ -87,7 +87,8 @@ class Allocator;
  */
 class DecoratedAllocation : public pten::candidate::Allocation {
  public:
-  using pten::candidate::Allocation::Allocation;
+  DecoratedAllocation(void* ptr, size_t size, platform::Place place)
+      : pten::candidate::Allocation(ptr, size, place), base_ptr_(ptr) {}
   DecoratedAllocation(void* ptr, void* base_ptr, size_t size,
                       const platform::Place& place)
       : pten::candidate::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
@@ -99,10 +100,6 @@ class DecoratedAllocation : public pten::candidate::Allocation {
                           "strategy, not support %s strategy",
                           FLAGS_allocator_strategy));
     return base_ptr_;
-  }
-
-  inline void SetDeleter(pten::candidate::Allocation::DeleterFnPtr deleter) {
-    deleter_ = deleter;
   }
 
  private:
@@ -135,32 +132,35 @@ class DecoratedAllocation : public pten::candidate::Allocation {
   DecoratedAllocatorStack decorated_allocators_;
 
   friend class Allocator;
-  friend void AllocationDeleteFunction(Allocation*);
 };
 
 using Allocation = pten::candidate::Allocation;
-using AllocationDeleter = pten::candidate::AllocationDeleter;
-using AllocationPtr = pten::candidate::AllocationPtr;
+using AllocationPtr = pten::candidate::Allocator::AllocationPtr;
 using DecoratedAllocationPtr =
-    std::unique_ptr<DecoratedAllocation, AllocationDeleter>;
-
-void AllocationDeleteFunction(Allocation*);
+    std::unique_ptr<DecoratedAllocation,
+                    pten::candidate::Allocator::AllocationDeleterType>;
 
 // Base interface class of memory Allocator.
 class Allocator : public pten::candidate::Allocator {
  public:
+  static void AllocationDeleter(pten::candidate::Allocation* allocation) {
+    Allocator* allocator =
+        static_cast<DecoratedAllocation*>(allocation)->TopDecoratedAllocator();
+    allocator->Free(allocation);
+  }
+
   // Allocate an allocation.
   // size may be 0, but it would be too complex if we handle size == 0
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
   AllocationPtr Allocate(size_t size) {
     auto ptr = AllocateImpl(size);
-    dynamic_cast<DecoratedAllocation*>(ptr)->RegisterDecoratedAllocator(this);
-    return AllocationPtr(ptr, AllocationDeleteFunction);
+    static_cast<DecoratedAllocation*>(ptr)->RegisterDecoratedAllocator(this);
+    return AllocationPtr(ptr, AllocationDeleter);
   }
 
   void Free(Allocation* allocation) {
-    dynamic_cast<DecoratedAllocation*>(allocation)->PopDecoratedAllocator();
+    static_cast<DecoratedAllocation*>(allocation)->PopDecoratedAllocator();
     FreeImpl(allocation);
   }
 

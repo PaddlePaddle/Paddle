@@ -56,7 +56,7 @@ class CUDADeviceContextAllocation : public DecoratedAllocation {
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
-      AllocationDeleter()(p_allocation);
+      Allocator::AllocationDeleter(p_allocation);
     });
   }
 
