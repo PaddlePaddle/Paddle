@@ -13,10 +13,11 @@
 # limitations under the License
 
 import copy
-import paddle
 import inspect
 
+import paddle
 from paddle.fluid import core
+from paddle.fluid.framework import Parameter, Block, Variable
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import get_tensor_dist_attr_field_keys
 from .utils import _linear_idx2coordinate
@@ -145,7 +146,7 @@ class DistributedTensor:
         local_shard = list(zip(local_offsets, local_end_offsets))
         return local_shard
 
-    def __init__(self, serial_tensor, dist_attr=None):
+    def __init__(self, serial_tensor, dist_attr=None, dist_context=None):
         self._serial_tensor = serial_tensor
         self._dist_attr = None
         self._batch_dim = 0
@@ -156,6 +157,12 @@ class DistributedTensor:
         self._local_shard_map = {}
         self._local_tensor_map = {}
 
+        from .dist_context import get_default_distributed_context
+        self._dist_context = dist_context if dist_context is not None else get_default_distributed_context(
+        )
+        # TODO: Add Automatically to dist_context after initialized and it will be adapted in the future.
+        # self._dist_context.add_dist_tensor_for_program(self)
+
     @property
     def serial_tensor(self):
         return self._serial_tensor
@@ -163,6 +170,10 @@ class DistributedTensor:
     @property
     def dist_attr(self):
         return self._dist_attr
+
+    @property
+    def dist_context(self):
+        return self._dist_context
 
     @dist_attr.setter
     def dist_attr(self, dist_attr):
@@ -253,40 +264,75 @@ class DistributedTensor:
 
         return local_shard
 
-    def new_local_tensor(self, block, rank, *args, **kwargs):
-        if not isinstance(block, paddle.fluid.framework.Block):
+    def new_local_tensor(self, block=None, rank=None, name=None):
+        """
+        Create a new local tensor of serial tensor corresponding to rank.
+
+        Args:
+            block (Block): The block contains the new tensor. Default value is recommend and it will be created in the block of dist main program corresponding to the serial tensor block id. Default: None.
+            rank (int): The rank id. Default value is recommend and it will be the current rank. Default: None.
+        """
+
+        def _copy_kwargs(serial_tensor):
+            kwargs = {}
+            no_need_copy_args = ["self", "block", "shape", "name"]
+            arg_spec = inspect.getargspec(Variable.__init__)
+
+            for key in arg_spec.args:
+                # TODO: Check the copied attribute from serial tensor whether valid
+                if key in no_need_copy_args:
+                    continue
+                elif key not in kwargs:
+                    if key == "type":
+                        kwargs[key] = serial_tensor.desc.type()
+                    elif key == "dtype":
+                        kwargs[key] = serial_tensor.desc.dtype()
+                    elif key == "lod_level":
+                        kwargs[key] = serial_tensor.desc.lod_level()
+                    elif key == "persistable":
+                        kwargs[key] = serial_tensor.desc.persistable()
+                    elif key == "stop_gradient":
+                        kwargs[key] = serial_tensor.desc.stop_gradient()
+                    elif key == "need_check_feed":
+                        kwargs[key] = serial_tensor.desc.need_check_feed()
+                    # TODO: Get capacity by framework
+                    elif key == "capacity":
+                        continue
+                    else:
+                        kwargs[key] = self.serial_tensor.__dict__[key]
+
+            if isinstance(serial_tensor, Parameter):
+                kwargs["trainable"] = serial_tensor.trainable
+                kwargs["optimize_attr"] = serial_tensor.trainable
+                kwargs["regularizer"] = serial_tensor.regularizer
+                kwargs["do_model_average"] = serial_tensor.do_model_average
+                kwargs["need_clip"] = serial_tensor.need_clip
+                kwargs["is_distributed"] = serial_tensor.is_distributed
+                kwargs["is_parameter"] = serial_tensor.is_parameter
+
+            return kwargs
+
+        if rank is not None and not (isinstance(rank, int) and rank >= 0):
+            raise ValueError("The rank must >= 0, but got {}".format(rank))
+        if block is not None and not isinstance(block, Block):
             raise TypeError("The block must be Block, but got {}.".format(
                 type(block)))
+        rank = paddle.distributed.get_rank() if rank is None else rank
+
+        if block is None:
+            block_id = self.serial_tensor.block.idx
+            block = self.dist_context.dist_main_programs[rank].block(block_id)
 
         # copy serial tensor attribute
-        arg_spec = inspect.getargspec(paddle.fluid.framework.Variable.__init__)
-        no_need_copy_args = ["self", "block", "shape", "name"]
-        for key in arg_spec.args:
-            # TODO: Check the copied attribute from serial tensor whether valid
-            if key in no_need_copy_args:
-                continue
-            elif key not in kwargs:
-                if key == "type":
-                    kwargs[key] = self.serial_tensor.desc.type()
-                elif key == "dtype":
-                    kwargs[key] = self.serial_tensor.desc.dtype()
-                elif key == "lod_level":
-                    kwargs[key] = self.serial_tensor.desc.lod_level()
-                elif key == "persistable":
-                    kwargs[key] = self.serial_tensor.desc.persistable()
-                elif key == "stop_gradient":
-                    kwargs[key] = self.serial_tensor.desc.stop_gradient()
-                elif key == "need_check_feed":
-                    kwargs[key] = self.serial_tensor.desc.need_check_feed()
-                # TODO: Get capacity
-                elif key == "capacity":
-                    continue
-                else:
-                    kwargs[key] = self.serial_tensor.__dict__[key]
+        kwargs = _copy_kwargs(self.serial_tensor)
+        kwargs["name"] = name
+        kwargs["shape"] = self.local_sizes(rank)
 
-        kwargs["shape"] = self.local_sizes(
-            rank) if "shape" not in kwargs else kwargs["shape"]
-        local_tensor = block.create_var(*args, **kwargs)
+        if isinstance(self.serial_tensor, Parameter):
+            kwargs.pop("persistable")
+            local_tensor = Parameter(block=block, **kwargs)
+        else:
+            local_tensor = block.create_var(**kwargs)
 
         # TODO: Set original id when set original_id is approved
         local_tensor.desc.set_original_id(self.serial_tensor.desc.id())
@@ -304,7 +350,7 @@ class DistributedTensor:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_tensor":
+            if k == "_serial_tensor" or k == "_local_tensor_map":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))

@@ -46,8 +46,8 @@ def get_dist_prog(train_program,
         train_program, dist_context
     ) if complete_train_program is None else complete_train_program
 
-    parallelizer._apply_serial_forward_pass(complete_train_program,
-                                            startup_program)
+    # parallelizer._apply_serial_forward_pass(complete_train_program,
+    #                                         startup_program)
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -79,11 +79,14 @@ class TestDistributedTensor(unittest.TestCase):
         rank_id = 0
         dist_main_prog, dist_startup_prog, complete_train_program = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
+        dist_context.dist_main_programs[rank_id] = dist_main_prog
+        dist_context.dist_startup_programs[rank_id] = dist_startup_prog
         name = "layer_norm_1.tmp_2"
         dist_tensor = dist_context.get_dist_tensor_for_program(
             complete_train_program.global_block().vars[name])
+        dist_tensor._dist_context = dist_context
         intermediate_var_0 = dist_tensor.new_local_tensor(
-            dist_main_prog.global_block(), rank_id, name="intermediate_var_0")
+            name="intermediate_var_0")
         self.assertEqual(intermediate_var_0.shape, (2, 1024))
         self.assertEqual(intermediate_var_0.name, "intermediate_var_0")
 
@@ -93,13 +96,33 @@ class TestDistributedTensor(unittest.TestCase):
         dist_main_prog, dist_startup_prog, _ = get_dist_prog(
             train_program, startup_program, dist_context, rank_id,
             complete_train_program)
+        dist_context.dist_main_programs[rank_id] = dist_main_prog
+        dist_context.dist_startup_programs[rank_id] = dist_startup_prog
         name = "layer_norm_1.tmp_2"
         dist_tensor = dist_context.get_dist_tensor_for_program(
             complete_train_program.global_block().vars[name])
+        dist_tensor._dist_context = dist_context
         intermediate_var_1 = dist_tensor.new_local_tensor(
-            dist_main_prog.global_block(), rank_id, name="intermediate_var_1")
+            rank=rank_id, name="intermediate_var_1")
         self.assertEqual(intermediate_var_0.shape, (2, 1024))
         self.assertEqual(intermediate_var_1.name, "intermediate_var_1")
+
+        name = "linear_0.w_0"
+        dist_tensor = dist_context.get_dist_tensor_for_program(
+            complete_train_program.global_block().vars[name])
+        dist_tensor._dist_context = dist_context
+        intermediate_var_1 = dist_tensor.new_local_tensor(
+            rank=rank_id, name="linear_0.w_0_intermediate")
+        self.assertEqual(intermediate_var_1.shape, (1024, 4096))
+        self.assertEqual(intermediate_var_1.name, "linear_0.w_0_intermediate")
+
+        copied_dist_context = copy.deepcopy(dist_context)
+        self.assertIsNotNone(copied_dist_context)
+        self.assertEqual(
+            id(copied_dist_context),
+            id(
+                copied_dist_context.get_dist_tensor_for_program(
+                    dist_tensor.serial_tensor).dist_context))
 
     def test_static_method(self):
         dims_mapping = [1, 0]
@@ -168,6 +191,12 @@ class TestDistributedTensor(unittest.TestCase):
         self.assertEqual(local_offsets, [0, 0])
         local_shard = dist_tensor.local_shard(rank)
         self.assertEqual(local_shard, [(0, 2), (0, 3)])
+        self.assertEqual(local_sizes, dist_tensor.local_sizes(rank))
+        self.assertEqual(local_offsets, dist_tensor.local_offsets(rank))
+        self.assertEqual(local_shard, dist_tensor.local_shard(rank))
+        self.assertEqual(local_sizes, dist_tensor.local_sizes())
+        self.assertEqual(local_offsets, dist_tensor.local_offsets())
+        self.assertEqual(local_shard, dist_tensor.local_shard())
 
         rank = 1
         local_sizes = dist_tensor.local_sizes(rank)

@@ -62,6 +62,10 @@ class DistributedContext:
         self._dist_op_context = DistributedOperatorContext()
         self._process_meshes = []
 
+        # Distributed programs
+        self._dist_main_programs = {}
+        self._dist_startup_programs = {}
+
     @property
     def serial_program(self):
         return self._serial_program
@@ -83,6 +87,14 @@ class DistributedContext:
     @property
     def dist_op_context(self):
         return self._dist_op_context
+
+    @property
+    def dist_main_programs(self):
+        return self._dist_main_programs
+
+    @property
+    def dist_startup_programs(self):
+        return self._dist_startup_programs
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(process_mesh, ProcessMesh), \
@@ -371,10 +383,14 @@ class DistributedContext:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_program" or k == "_serial_graph":
+            if k == "_serial_program" or k == "_serial_graph" or k == "_dist_main_programs" or k == "_dist_startup_programs":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
+
+        # update dist tensor's dist_context
+        for key in result._dist_tensors_for_program.keys():
+            result._dist_tensors_for_program[key]._dist_context = result
         return result
 
 
