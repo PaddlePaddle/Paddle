@@ -150,8 +150,8 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
     *npu_pinned_ptr = val;
 
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, tensor->place()),
-                 tensor->data<void>(), npu_pinned_place, npu_pinned_ptr,
-                 sizeof(T), GetCurrentNPUStream());
+                 tensor->data(), npu_pinned_place, npu_pinned_ptr, sizeof(T),
+                 GetCurrentNPUStream());
 
     auto npu_pinned_allocator =
         static_cast<paddle::memory::allocation::NPUPinnedAllocator *>(
