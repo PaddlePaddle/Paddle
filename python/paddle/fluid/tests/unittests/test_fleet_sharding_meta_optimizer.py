@@ -190,6 +190,53 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'momentum', 'momentum'
         ])
 
+    def test_sharding_amp_asp_optimizer(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'sharding')
+        self.set_strategy(strategy, 'amp')
+        self.set_strategy(strategy, 'asp')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        vars = [x.name for x in train_prog.list_vars()]
+        parameters = [
+            x.name for x in train_prog.list_vars() if x.persistable == True
+        ]
+
+        self.assertIn('@BroadCast', ''.join(vars))
+        self.assertIn('cast', ops)
+        self.assertIn('check_finite_and_unscale', ops)
+
+        self.assertEqual(
+            set(parameters),
+            set([
+                'fc_2.b_0', 'num_good_steps_0', 'fc_2.w_0', 'loss_scaling_0',
+                'num_bad_steps_0', 'fc_2.w_0_velocity_0', 'fc_2.w_0_asp_mask',
+                'learning_rate_0', 'fc_1.b_0', 'fc_1.w_0_asp_mask',
+                'fc_0.w_0_asp_mask', 'fc_1.b_0_velocity_0',
+                'fc_2.b_0_velocity_0'
+            ]))
+        self.assertEqual(ops, [
+            'cast', 'cast', 'cast', 'fill_constant', 'fill_constant',
+            'fill_constant', 'c_sync_calc_stream', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_sync_comm_stream', 'cast', 'mul', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
+            'mul', 'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
+            'mean', 'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'cast',
+            'cast', 'cast', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'momentum', 'momentum', 'elementwise_mul'
+        ])
+
     def test_sharding_weight_decay(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )

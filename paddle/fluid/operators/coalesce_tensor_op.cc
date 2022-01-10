@@ -260,8 +260,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                       size_of_dtype
                 : len;
       ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
-         << " address: " << out_tensors[i]->data<void>() << " len: " << len
-         << ", ";
+         << " address: " << out_tensors[i]->data() << " len: " << len << ", ";
       offset += len;
     }
     PADDLE_ENFORCE_EQ(
@@ -300,9 +299,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                                     place, align_size) /
                     size_of_dtype
               : static_cast<size_t>(size);
-      const void *ptr = lod_tensors[i]->IsInitialized()
-                            ? lod_tensors[i]->data<void>()
-                            : nullptr;
+      const void *ptr =
+          lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
          << ") "

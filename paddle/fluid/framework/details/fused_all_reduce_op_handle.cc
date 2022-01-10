@@ -220,17 +220,17 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
         g_tensor.begin(), g_tensor.end(),
         [](const std::pair<std::string, const LoDTensor *> &grad1,
            const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
-          return grad1.second->data<void>() < grad2.second->data<void>();
+          return grad1.second->data() < grad2.second->data();
         });
 
     size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
-      const void *cur_address = g_tensor.at(k - 1).second->data<void>();
+      const void *cur_address = g_tensor.at(k - 1).second->data();
       int64_t len = g_tensor.at(k - 1).second->numel();
       auto offset = platform::Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
-      const void *next_address = g_tensor.at(k).second->data<void>();
+      const void *next_address = g_tensor.at(k).second->data();
 
       VLOG(10) << string::Sprintf(
           "Input[%d](%s) address: 0X%02x, Input[%d](%s) address: 0X%02x, Infer "
@@ -267,7 +267,7 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
   std::vector<const void *> lod_tensor_data;
   lod_tensor_data.reserve(place_num);
   for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
-    auto data = grads_tensor.at(scope_idx).at(0).second->data<void>();
+    auto data = grads_tensor.at(scope_idx).at(0).second->data();
     lod_tensor_data.emplace_back(data);
   }
   std::vector<std::string> grad_var_names;
