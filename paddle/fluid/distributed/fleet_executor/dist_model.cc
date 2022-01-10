@@ -44,9 +44,6 @@ bool DistModel::Init() {
   if (!PrepareProgram()) {
     return false;
   }
-  if (!LoadParameters()) {
-    return false;
-  }
   if (!CommInit()) {
     return false;
   }
@@ -65,6 +62,9 @@ bool DistModel::PrepareScope() {
 
 bool DistModel::PrepareProgram() {
   if (!LoadProgram()) {
+    return false;
+  }
+  if (!LoadParameters()) {
     return false;
   }
   return true;
