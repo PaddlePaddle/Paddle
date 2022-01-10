@@ -14,11 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstring>
-#include <mutex>
-#include <string>
-#include <type_traits>
-#include <unordered_map>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
 #include <vector>
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
@@ -26,23 +25,45 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-class HostTracer : public TracerBase {
+struct ProfilerOptions {};
+
+class Profiler {
  public:
-  void PrepareTracing() {}
+  static std::unique_ptr<Profiler> Create(const ProfilerOptions& options);
 
-  void StartTracing() override;
+  void Prepare();
 
-  void StopTracing() override;
+  void Start();
 
-  void CollectTraceData(TraceEventCollector *collector) override;
+  void Stop();
 
-  void SetTraceLevel(uint32_t trace_level) {
-    trace_level_ = trace_level;
-    state_ = TracerState::READY;
-  }
+  ~Profiler();
 
  private:
-  uint32_t trace_level_;
+  class TracerHolder {
+   public:
+    TracerHolder(TracerBase* tracer, bool owned)
+        : tracer(tracer), owned(owned) {}
+    ~TracerHolder() {
+      if (owned) {
+        delete tracer;
+      }
+    }
+
+    TracerBase& Get() { return *tracer; }
+
+   private:
+    TracerBase* tracer;
+    bool owned;
+  };
+
+  explicit Profiler(const ProfilerOptions& options);
+
+  DISABLE_COPY_AND_ASSIGN(Profiler);
+
+  static std::atomic<bool> alive_;
+  uint64_t profile_start_ns_ = UINT64_MAX;
+  std::vector<TracerHolder> tracers_;
 };
 
 }  // namespace platform

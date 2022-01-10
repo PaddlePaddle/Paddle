@@ -12,38 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <cstring>
-#include <mutex>
-#include <string>
-#include <type_traits>
-#include <unordered_map>
-#include <vector>
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/profiler/tracer_base.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
+#include "glog/logging.h"
+#include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include "paddle/fluid/platform/profiler/host_tracer.h"
 
 namespace paddle {
 namespace platform {
 
-class HostTracer : public TracerBase {
- public:
-  void PrepareTracing() {}
+std::atomic<bool> Profiler::alive_{false};
 
-  void StartTracing() override;
-
-  void StopTracing() override;
-
-  void CollectTraceData(TraceEventCollector *collector) override;
-
-  void SetTraceLevel(uint32_t trace_level) {
-    trace_level_ = trace_level;
-    state_ = TracerState::READY;
+std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
+  if (alive_.exchange(true)) {
+    return nullptr;
   }
+  return std::unique_ptr<Profiler>(new Profiler(options));
+}
 
- private:
-  uint32_t trace_level_;
-};
+Profiler::~Profiler() { alive_.store(false); }
+
+Profiler::Profiler(const ProfilerOptions& options) {
+  tracers_.emplace_back(new HostTracer(), true);
+  tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+}
 
 }  // namespace platform
 }  // namespace paddle
