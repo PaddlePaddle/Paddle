@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import os
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -68,7 +67,6 @@ class TestFleetExecutor(unittest.TestCase):
         return res
 
     def test_executor_on_single_device(self):
-        os.environ["FLAGS_USE_FLEET_EXECUTOR"] = "1"
         if fluid.is_compiled_with_cuda():
             shape = (10000, 3462)
             x_data = np.random.rand(*shape)

@@ -400,17 +400,6 @@ def _is_enable_standalone_executor():
     return flag
 
 
-def _is_enable_fleet_executor():
-    """
-    Whether to use experimental executor `FleetExecutor`.
-    """
-    flag = False
-    env_val = os.environ.get('FLAGS_USE_FLEET_EXECUTOR', None)
-    if env_val in [1, '1', True, 'True', 'true']:
-        flag = True
-    return flag
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
     trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
@@ -720,8 +709,6 @@ class Executor(object):
         self._enable_interpreter_core = _is_enable_standalone_executor()
         self._executor_cache = _ExecutorCache(self.place)
 
-        # NOTE: Whether to use experimental executor `FleetExecutor`.
-        self._enable_fleet_executor = _is_enable_fleet_executor()
         self._fleet_executor = None
 
     def _get_scope_cache(self, program_cache_key):
@@ -1311,14 +1298,13 @@ class Executor(object):
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if self._enable_fleet_executor:
-            # Move prepare here for port conflict with nccl in startup program
-            if self._fleet_executor is None:
-                self._fleet_executor = _prepare_fleet_executor()
-            return self._run_using_fleet_executor(
-                program=program, feed=feed, fetch_list=fetch_list)
-
         if isinstance(program, Program) and program._pipeline_opt:
+            if "fleet_opt" in program._pipeline_opt:
+                # Move prepare here for port conflict with nccl in startup program
+                if self._fleet_executor is None:
+                    self._fleet_executor = _prepare_fleet_executor()
+                return self._run_using_fleet_executor(
+                    program=program, feed=feed, fetch_list=fetch_list)
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
