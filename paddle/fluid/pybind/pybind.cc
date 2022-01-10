@@ -170,6 +170,8 @@ PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
+PyTypeObject *g_framework_lodtensor_pytype = nullptr;
+PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -956,7 +958,7 @@ PYBIND11_MODULE(core_noavx, m) {
       });
 
   // TODO(cql): add reference: en_user_guide_lod_tensor
-  py::class_<LoDTensor, framework::Tensor>(m, "LoDTensor", R"DOC(
+  py::class_<LoDTensor, framework::Tensor> pylodtensor(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD (Level of Details) information, 
     it can be used for variable-length sequences, 
     see :ref:`user_guide_lod_tensor` for details.
@@ -1039,7 +1041,10 @@ PYBIND11_MODULE(core_noavx, m) {
 
           t = fluid.LoDTensor()
 
-        )DOC")
+        )DOC");
+  g_framework_lodtensor_pytype =
+      reinterpret_cast<PyTypeObject *>(pylodtensor.ptr());
+  pylodtensor
       .def("__array__",
            [](framework::Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
@@ -2528,7 +2533,7 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
+  py::class_<LoDTensorArray> pylodtensorarray(m, "LoDTensorArray", R"DOC(
     LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
@@ -2537,7 +2542,10 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle.fluid as fluid
 
           arr = fluid.LoDTensorArray()
-)DOC")
+)DOC");
+  g_framework_lodtensorarray_pytype =
+      reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
+  pylodtensorarray
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",

@@ -269,7 +269,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         try:
             if in_dygraph_mode():
                 if _in_eager_mode():
-                    data = self._reader.read_next_eagertensor_list()
+                    data = core.eager.read_next_eagertensor_list(
+                        self._reader.read_next_list()[0])
                 else:
                     data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
@@ -463,7 +464,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
-                self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_eagertensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    self._reader.read_next_var_list()
             elif self._return_list:
                 self._reader.read_next_list()
             else:
@@ -718,7 +723,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._blocking_queue.close()
 
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_eagertensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:

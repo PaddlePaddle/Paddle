@@ -440,11 +440,10 @@ class Optimizer(object):
             current_lr = self._global_learning_rate()
             if current_lr is not None:
                 if framework.in_dygraph_mode():
-                    tmp = _C_ops.fill_constant(current_lr, 'value',
+                    _C_ops.fill_constant(current_lr, 'value',
                              float(value), 'dtype',
                              current_lr.dtype,
                              'shape', list(current_lr.shape))
-                    current_lr.copy_(tmp, False)
                 else:
                     global_block = framework.default_main_program().global_block()
                     global_block.append_op(
@@ -2161,12 +2160,9 @@ class LarsMomentumOptimizer(Optimizer):
                 param_and_grad[0].copy_(tmp[0], False)
                 velocity_acc.copy_(tmp2[0], False)
             else:
-                tmp, tmp2, tmp3 = _C_ops.momentum(param_and_grad[0], param_and_grad[1], velocity_acc, lr, master_weight,
+                _C_ops.momentum(param_and_grad[0], param_and_grad[1], velocity_acc, lr, master_weight,
                 param_and_grad[0], velocity_acc, master_weight, "mu", self._momentum, "lars_coeff", self._lars_coeff, "lars_weight_decay", [_lars_weight_decay],
                 "multi_precision", find_master, "epsilon", self._epsilon, "rescale_grad", self._rescale_grad)
-                param_and_grad[0].copy_(tmp, False)
-                velocity_acc.copy_(tmp2, False)
-                master_weight.copy_(tmp3, False)
         else:
             # create the momentum optimize op
             momentum_op = block.append_op(
@@ -2279,9 +2275,8 @@ class AdagradOptimizer(Optimizer):
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
         if framework.in_dygraph_mode():
-            tmp, tmp2 = _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad), "epsilon", self._epsilon)
-            param_and_grad[0].copy_(tmp, False)
-            moment_acc.copy_(tmp2, False)
+            _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad),
+            param_and_grad[0], moment_acc, "epsilon", self._epsilon)
         else:
             # Create the adagrad optimizer op
             adagrad_op = block.append_op(
@@ -2802,11 +2797,9 @@ class AdamaxOptimizer(Optimizer):
         beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                               param_and_grad[0])
         if framework.in_dygraph_mode():
-            tmp, tmp2, tmp3 =_C_ops.adamax(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad), moment, inf_norm, beta1_pow_acc,
+            _C_ops.adamax(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad), moment, inf_norm, beta1_pow_acc,
+            param_and_grad[0], moment, inf_norm,
             "beta1", self._beta1, "beta2", self._beta2, "epsilon", self._epsilon)
-            param_and_grad[0].copy_(tmp, False)
-            moment.copy_(tmp2, False)
-            inf_norm.copy_(tmp3, False)
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -2845,7 +2838,7 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 if framework.in_dygraph_mode():
-                    tm = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
+                    tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
                     beta1_pow_acc.copy_(tmp, False)
                 else:
                     block.append_op(
@@ -2933,9 +2926,8 @@ class DpsgdOptimizer(Optimizer):
             self._seed = 0
 
         if framework.in_dygraph_mode():
-            tmp = _C_ops.dpsgd(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad),
+            _C_ops.dpsgd(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad),param_and_grad[0],
             "clip", self._clip, "batch_size", self._batch_size, "sigma", self._sigma, "seed", self._seed)
-            param_and_grad[0].copy_(tmp, False)
         else:
             dpsgd_op = block.append_op(
                 type=self.type,
@@ -3049,10 +3041,8 @@ class DecayedAdagradOptimizer(Optimizer):
                                            param_and_grad[0])
 
         if framework.in_dygraph_mode():
-            tmp, tmp2 = _C_ops.decayed_adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad),
+            _C_ops.decayed_adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad),param_and_grad[0], moment_acc,
             "epsilon", self._epsilon, "decay", self._decay)
-            param_and_grad[0].copy_(tmp, False)
-            moment_acc.copy_(tmp2, False)
         else:
             # Create the decayed adagrad optimizer op
             decayed_adagrad_op = block.append_op(
@@ -3171,10 +3161,7 @@ class AdadeltaOptimizer(Optimizer):
             self._avg_squared_update_acc_str, param_and_grad[0])
 
         if framework.in_dygraph_mode():
-            tmp, tmp2, tmp3 = _C_ops.adadelta(param_and_grad[0], param_and_grad[1], avg_squared_grad_acc, avg_squared_update_acc, "epsilon", self._epsilon, "rho", self._rho)
-            param_and_grad[0].copy_(tmp, False)
-            avg_squared_grad_acc.copy_(tmp2, False)
-            avg_squared_update_acc.copy_(tmp3, False)
+            _C_ops.adadelta(param_and_grad[0], param_and_grad[1], avg_squared_grad_acc, avg_squared_update_acc, param_and_grad[0], avg_squared_grad_acc, avg_squared_update_acc, "epsilon", self._epsilon, "rho", self._rho)
         else:
             # Create the adadelta optimizer op
             adadelta_op = block.append_op(
@@ -3359,13 +3346,9 @@ class RMSPropOptimizer(Optimizer):
         mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
                                               param_and_grad[0])
         if framework.in_dygraph_mode():
-            tmp, tmp2, tmp3, tmp4 = _C_ops.rmsprop(param_and_grad[0], mean_square_acc, self._create_param_lr(param_and_grad), param_and_grad[1], momentum_acc,
+            _C_ops.rmsprop(param_and_grad[0], mean_square_acc, self._create_param_lr(param_and_grad), param_and_grad[1], momentum_acc,
             param_and_grad[0], momentum_acc, mean_square_acc, mean_grad_acc,
             "epsilon", self._epsilon, "decay", self._rho, "momentum", self._momentum, "centered", self._centered)
-            param_and_grad[0].copy_(tmp1, False)
-            momentum_acc.copy_(tmp2, False)
-            mean_square_acc.copy_(tmp3, False)
-            mean_grad_acc.copy_(tmp4, False)
         else:
             rmsprop_op = block.append_op(
                 type=self.type,
@@ -3532,11 +3515,10 @@ class FtrlOptimizer(Optimizer):
         linear_acc = self._get_accumulator(self._linear_acc_str,
                                            param_and_grad[0])
         if framework.in_dygraph_mode():
-            tmp, tmp2, tmp3 = _C_ops.ftrl(param_and_grad[0], squared_acc, linear_acc, param_and_grad[1], self._create_param_lr(param_and_grad),
+            _C_ops.ftrl(param_and_grad[0], squared_acc, linear_acc, param_and_grad[1], self._create_param_lr(param_and_grad),
+            param_and_grad[0], squared_acc, linear_acc,
             "l1", self._l1, "l2", self._l2, "lr_power", self._lr_power)
-            param_and_grad[0].copy_(tmp, False)
-            squared_acc.copy_(tmp2, False)
-            linear_acc.copy_(tmp3, False)
+            
         else:
             ftrl_op = block.append_op(
                 type=self.type,

@@ -369,29 +369,6 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
              return var_list;
            },
            py::call_guard<py::gil_scoped_release>())
-      .def("read_next_eagertensor_list",
-           [](ReaderType &self) {
-             auto result_list = self.ReadNextList();
-             auto &tensor_list = result_list[0];
-             std::vector<egr::EagerTensor> eager_tensor_list;
-             eager_tensor_list.reserve(tensor_list.size());
-             auto func = [](framework::LoDTensor &lod_tensor) {
-               egr::EagerTensor eager_tensor(
-                   egr::Controller::Instance().GenerateUniqueName());
-               auto autograd_meta =
-                   egr::EagerUtils::autograd_meta(&eager_tensor);
-               autograd_meta->SetPersistable(false);
-               autograd_meta->SetStopGradient(true);
-               eager_tensor.set_impl(std::move(
-                   paddle::experimental::MakePtenDenseTensor(lod_tensor)));
-               return eager_tensor;
-             };
-             for (auto &tensor : tensor_list) {
-               eager_tensor_list.emplace_back(func(tensor));
-             }
-             return eager_tensor_list;
-           },
-           py::call_guard<py::gil_scoped_release>())
       .def("reset", &ReaderType::Reset,
            py::call_guard<py::gil_scoped_release>())
       .def("shutdown", &ReaderType::Shutdown,
