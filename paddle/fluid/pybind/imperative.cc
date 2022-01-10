@@ -763,7 +763,6 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
-
   // Dygraph DataLoader reader process & thread related functions
   m.def(
       "_convert_to_tensor_list",
@@ -793,7 +792,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -828,7 +827,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -866,7 +865,10 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
-
+  m.def("_set_eager_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          egr::Controller::Instance().SetCurrentTracer(tracer);
+        });
   m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
   m.def("_is_dygraph_debug_enabled",
@@ -1855,7 +1857,7 @@ void BindImperative(py::module *m_ptr) {
              // 1. get LoDTensor
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
-             void *data_ptr = t->data<void>();
+             void *data_ptr = t->data();
              size_t data_size = t->numel() * framework::SizeOfType(t->type());
              auto shared_writer_holder =
                  memory::allocation::AllocateMemoryMapWriterAllocation(

@@ -328,7 +328,8 @@ def conv1d(x,
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
 
     use_dgrad_engine = False
-    #dgrad_engine<float, int=512, int=6, int=5, int=3, int=3, int=3, bool=1> has better performance
+
+    #When num_filters == 512, use dgrad_engine<float, int=512, ..., bool=1> has better performance
     if num_filters == 512:
         use_dgrad_engine = True
 

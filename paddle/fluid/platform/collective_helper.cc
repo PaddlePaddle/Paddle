@@ -15,6 +15,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
 
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 
 namespace paddle {
@@ -292,17 +293,8 @@ BKCLComm* BKCLCommContext::CreateComm(BKCLUniqueId* bkcl_id, int nranks,
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   BKCLContext_t comm = nullptr;
-  auto ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::PreconditionNotMet(
-          "XPU API return wrong value[%d %s], please check whether "
-          "Baidu Kunlun Card is properly installed.",
-          ret, XPUAPIErrorMsg[ret]));
-  ret = bkcl_init_rank(&comm, rank, nranks, bkcl_id);
-  PADDLE_ENFORCE_EQ(ret, BKCL_SUCCESS,
-                    platform::errors::PreconditionNotMet(
-                        "bkcl_init_rank failed, got wrong value [%d].", ret));
+  platform::SetXPUDeviceId(dev_id);
+  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_init_rank(&comm, rank, nranks, bkcl_id));
 
   auto* comm_wrapper = AssignBKCLComm(comm, nranks, rank, dev_id, ring_id);
 

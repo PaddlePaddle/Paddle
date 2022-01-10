@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/reshape_kernel.h"
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -385,8 +385,7 @@ class ReshapeKernel {
     // We can't MakePtenDenseTensor for case 2, so we solve this case by
     // creating a temporary tensor here:
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
-                               in->dims(),
-                               pten::TransToPtenDataLayout(in->layout())};
+                               in->dims(), in->layout()};
     auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
         pten::make_intrusive<paddle::experimental::SharedStorage>(
             ctx.GetPlace()),
@@ -439,25 +438,24 @@ class ReshapeKernel {
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
     }
 #endif
     // non-inplace need move all result from pt_out to out, inplace need set
     // result dims.
     if (in != out) {
-      paddle::experimental::MovesSharedStorage(pt_out,
-                                               static_cast<Tensor *>(out));
+      paddle::experimental::SharesStorage(pt_out, static_cast<Tensor *>(out));
     } else {
       out->Resize(pt_out->dims());
     }

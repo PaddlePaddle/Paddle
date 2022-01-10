@@ -77,8 +77,8 @@ static bool CopySameTensorTestMain(const DDim &dims,
     TensorCopySync(src_tensor, platform::CPUPlace(), &dst_cpu_tensor);
   }
 
-  const void *ground_truth_ptr = src_cpu_tensor.data<void>();
-  const void *result_ptr = dst_cpu_tensor.data<void>();
+  const void *ground_truth_ptr = src_cpu_tensor.data();
+  const void *result_ptr = dst_cpu_tensor.data();
   size_t byte_num = product(dims) * sizeof(T);
   return std::memcmp(ground_truth_ptr, result_ptr, byte_num) == 0;
 }

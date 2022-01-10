@@ -76,10 +76,10 @@ def parameters_to_vector(parameters, name=None):
 @dygraph_only
 def vector_to_parameters(vec, parameters, name=None):
     """
-    Transform a Tensor with 1-D shape to the parameters.
+    Transform a 1-D Tensor to the input ``parameters`` .
 
     Args:
-        vec (Tensor): A Tensor with 1-D shape, which represents the parameters of a Layer.
+        vec (Tensor): A 1-D Tensor, which will be sliced and copied to the input ``parameters`` .
         parameters (Iterable[Tensor]): Iterable Tensors that are trainable parameters of a Layer.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
