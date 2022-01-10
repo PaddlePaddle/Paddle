@@ -2406,7 +2406,6 @@ PDNode *patterns::Bfloat16Placement::operator()(
                                        "layer_norm",
                                        "matmul",
                                        "matmul_v2",
-                                       "mul",
                                        "pool2d",
                                        "prelu",
                                        "relu",

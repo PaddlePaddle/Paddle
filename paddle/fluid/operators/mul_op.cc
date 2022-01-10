@@ -137,12 +137,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two
