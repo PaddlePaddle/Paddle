@@ -15,50 +15,25 @@ limitations under the License. */
 #pragma once
 
 #include <list>
+#include "paddle/fluid/platform/profiler/event_record.h"
 
 namespace paddle {
 namespace platform {
 
-struct HostRecord {
-  std::string name;
-  uint64_t start_ns;
-  uint64_t end_ns;
-  uint64_t process_id;
-  uint64_t thread_id;
-};
-
-struct RuntimeRecord {
-  std::string name;
-  uint64_t start_ns;
-  uint64_t end_ns;
-  uint64_t process_id;
-  uint64_t thread_id;
-  uint32_t correlation_id;
-};
-
-struct DeviceRecord {
-  std::string name;
-  uint64_t start_ns;
-  uint64_t end_ns;
-  uint32_t correlation_id;
-};
-
 class TraceEventCollector {
  public:
-  void AddHostRecord(HostRecord&& record) { host_records_.push_back(record); }
+  void AddHostEvent(HostEvent&& event) { host_events_.push_back(event); }
 
-  void AddRuntimeRecord(RuntimeRecord&& record) {
-    runtime_records_.push_back(record);
+  void AddRuntimeEvent(RuntimeEvent&& event) {
+    runtime_events_.push_back(event);
   }
 
-  void AddDeviceRecord(DeviceRecord&& record) {
-    device_records_.push_back(record);
-  }
+  void AddDeviceEvent(DeviceEvent&& event) { device_events_.push_back(event); }
 
  private:
-  std::list<HostRecord> host_records_;
-  std::list<RuntimeRecord> runtime_records_;
-  std::list<DeviceRecord> device_records_;
+  std::list<HostEvent> host_events_;
+  std::list<RuntimeEvent> runtime_events_;
+  std::list<DeviceEvent> device_events_;
 };
 
 }  // namespace platform

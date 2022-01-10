@@ -26,12 +26,12 @@ void ProcessHostEvents(const HostEventSection& host_events,
   for (const auto& thr_sec : host_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     for (const auto& evt : thr_sec.events) {
-      HostRecord record;
-      record.name = evt.name;
-      record.start_ns = evt.start_ns;
-      record.end_ns = evt.end_ns;
-      record.thread_id = tid;
-      collector->AddHostRecord(std::move(record));
+      HostEvent event;
+      event.name = evt.name;
+      event.start_ns = evt.start_ns;
+      event.end_ns = evt.end_ns;
+      event.thread_id = tid;
+      collector->AddHostEvent(std::move(event));
     }
   }
 }

@@ -41,12 +41,12 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel, uint64_t start_ns,
   if (kernel->start < start_ns) {
     return;
   }
-  DeviceRecord record;
-  record.name = kernel->name;
-  record.start_ns = kernel->start;
-  record.end_ns = kernel->end;
-  record.correlation_id = kernel->correlationId;
-  collector->AddDeviceRecord(std::move(record));
+  DeviceEvent event;
+  event.name = kernel->name;
+  event.start_ns = kernel->start;
+  event.end_ns = kernel->end;
+  event.correlation_id = kernel->correlationId;
+  collector->AddDeviceEvent(std::move(event));
 }
 
 std::string MemcpyKind(uint8_t kind) {
@@ -82,12 +82,12 @@ void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy, uint64_t start_ns,
   if (memcpy->start < start_ns) {
     return;
   }
-  DeviceRecord record;
-  record.name = MemcpyKind(memcpy->copyKind);
-  record.start_ns = memcpy->start;
-  record.end_ns = memcpy->end;
-  record.correlation_id = memcpy->correlationId;
-  collector->AddDeviceRecord(std::move(record));
+  DeviceEvent event;
+  event.name = MemcpyKind(memcpy->copyKind);
+  event.start_ns = memcpy->start;
+  event.end_ns = memcpy->end;
+  event.correlation_id = memcpy->correlationId;
+  collector->AddDeviceEvent(std::move(event));
 }
 
 void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2, uint64_t start_ns,
@@ -95,12 +95,12 @@ void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2, uint64_t start_ns,
   if (memcpy2->start < start_ns) {
     return;
   }
-  DeviceRecord record;
-  record.name = MemcpyKind(memcpy2->copyKind);
-  record.start_ns = memcpy2->start;
-  record.end_ns = memcpy2->end;
-  record.correlation_id = memcpy2->correlationId;
-  collector->AddDeviceRecord(std::move(record));
+  DeviceEvent event;
+  event.name = MemcpyKind(memcpy2->copyKind);
+  event.start_ns = memcpy2->start;
+  event.end_ns = memcpy2->end;
+  event.correlation_id = memcpy2->correlationId;
+  collector->AddDeviceEvent(std::move(event));
 }
 
 void AddMemsetRecord(const CUpti_ActivityMemset* memset, uint64_t start_ns,
@@ -108,12 +108,12 @@ void AddMemsetRecord(const CUpti_ActivityMemset* memset, uint64_t start_ns,
   if (memset->start < start_ns) {
     return;
   }
-  DeviceRecord record;
-  record.name = "MEMSET";
-  record.start_ns = memset->start;
-  record.end_ns = memset->end;
-  record.correlation_id = memset->correlationId;
-  collector->AddDeviceRecord(std::move(record));
+  DeviceEvent event;
+  event.name = "MEMSET";
+  event.start_ns = memset->start;
+  event.end_ns = memset->end;
+  event.correlation_id = memset->correlationId;
+  collector->AddDeviceEvent(std::move(event));
 }
 
 std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str;
@@ -198,19 +198,19 @@ void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
   if (api->start < start_ns) {
     return;
   }
-  RuntimeRecord record;
-  record.name = RuntimeKind(api->cbid);
-  record.start_ns = api->start;
-  record.end_ns = api->end;
+  RuntimeEvent event;
+  event.name = RuntimeKind(api->cbid);
+  event.start_ns = api->start;
+  event.end_ns = api->end;
   uint64_t tid = 0;
   auto iter = tid_mapping.find(api->threadId);
   if (iter == tid_mapping.end()) {
   } else {
     tid = iter->second;
   }
-  record.thread_id = tid;
-  record.correlation_id = api->correlationId;
-  collector->AddRuntimeRecord(std::move(record));
+  event.thread_id = tid;
+  event.correlation_id = api->correlationId;
+  collector->AddRuntimeEvent(std::move(event));
 }
 
 void ProcessCuptiActivityRecord(
