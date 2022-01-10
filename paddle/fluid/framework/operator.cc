@@ -1079,7 +1079,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
-  this->InferShape(&infer_shape_ctx);
+  this->Info().infer_shape_(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
@@ -1167,6 +1167,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
+    // TODO(chenweihang): replace this after removing `this->IsMKLDNNType()`
+    // in some mkldnn infershape functions, such conv2d infershape
     this->InferShape(&infer_shape_ctx);
   }
 

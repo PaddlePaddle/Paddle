@@ -77,7 +77,9 @@ from .layer.pooling import AvgPool3D  # noqa: F401
 from .layer.pooling import MaxPool1D  # noqa: F401
 from .layer.pooling import MaxPool2D  # noqa: F401
 from .layer.pooling import MaxPool3D  # noqa: F401
+from .layer.pooling import MaxUnPool1D  # noqa: F401
 from .layer.pooling import MaxUnPool2D  # noqa: F401
+from .layer.pooling import MaxUnPool3D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
@@ -301,6 +303,8 @@ __all__ = [     #noqa
            'ReLU6',
            'LayerDict',
            'ZeroPad2D',
+           'MaxUnPool1D',
            'MaxUnPool2D',
+           'MaxUnPool3D',
            'HingeEmbeddingLoss',
 ]
