@@ -650,6 +650,10 @@ class Metric {
     metric_return_values_[1] = auc_cal_->size();
     metric_return_values_[2] = auc_cal_->uauc();
     metric_return_values_[3] = auc_cal_->wuauc();
+    metric_return_values_[4] =
+        metric_return_values_[2] / (metric_return_values_[0] + 1e-10);
+    metric_return_values_[5] =
+        metric_return_values_[3] / (metric_return_values_[1] + 1e-10);
 
 #if defined(PADDLE_WITH_GLOO)
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
@@ -665,13 +669,12 @@ class Metric {
       auc_cal_->reset_records();
       return global_metric_return_values_;
     } else {
-      metric_return_values_[4] =
-          metric_return_values_[2] / (metric_return_values_[0] + 1e-10);
-      metric_return_values_[5] =
-          metric_return_values_[3] / (metric_return_values_[1] + 1e-10);
       auc_cal_->reset_records();
       return metric_return_values_;
     }
+#else
+    auc_cal_->reset_records();
+    return metric_return_values_;
 #endif
   }
 
