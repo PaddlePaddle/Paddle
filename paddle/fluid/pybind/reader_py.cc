@@ -22,6 +22,9 @@
 #include "Python.h"
 #include "boost/optional.hpp"
 #include "gflags/gflags.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -30,6 +33,7 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "pybind11/stl.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -363,6 +367,29 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
                var_list.emplace_back(func(tensor));
              }
              return var_list;
+           },
+           py::call_guard<py::gil_scoped_release>())
+      .def("read_next_eagertensor_list",
+           [](ReaderType &self) {
+             auto result_list = self.ReadNextList();
+             auto &tensor_list = result_list[0];
+             std::vector<egr::EagerTensor> eager_tensor_list;
+             eager_tensor_list.reserve(tensor_list.size());
+             auto func = [](framework::LoDTensor &lod_tensor) {
+               egr::EagerTensor eager_tensor(
+                   egr::Controller::Instance().GenerateUniqueName());
+               auto autograd_meta =
+                   egr::EagerUtils::autograd_meta(&eager_tensor);
+               autograd_meta->SetPersistable(false);
+               autograd_meta->SetStopGradient(true);
+               eager_tensor.set_impl(std::move(
+                   paddle::experimental::MakePtenDenseTensor(lod_tensor)));
+               return eager_tensor;
+             };
+             for (auto &tensor : tensor_list) {
+               eager_tensor_list.emplace_back(func(tensor));
+             }
+             return eager_tensor_list;
            },
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &ReaderType::Reset,

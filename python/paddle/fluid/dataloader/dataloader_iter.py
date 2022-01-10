@@ -31,7 +31,7 @@ import queue
 
 import paddle
 from .. import core, layers
-from ..framework import in_dygraph_mode
+from ..framework import in_dygraph_mode, _in_eager_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
@@ -268,7 +268,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def __next__(self):
         try:
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = self._reader.read_next_eagertensor_list()
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:

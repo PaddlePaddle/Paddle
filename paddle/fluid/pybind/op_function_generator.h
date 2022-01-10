@@ -145,6 +145,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
 // For those OPs, we need to manually specify the outs need to pass in this map.
 std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sgd", {"ParamOut", "MasterParamOut"}},
+    {"rmsprop", {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"}},
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},

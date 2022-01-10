@@ -972,11 +972,12 @@ class RNNBase(LayerList):
             self._dropout_state = self.create_variable(
                 dtype=fluid.core.VarDesc.VarType.UINT8)
             if fluid.framework.in_dygraph_mode():
-                self._all_weights, self._flat_weight = _C_ops.coalesce_tensor(
-                    self._all_weights,
-                    len(self._all_weights), "copy_data", True, "use_align",
-                    False, "dtype", params[0].dtype)
-                return
+                with paddle.no_grad():
+                    self._all_weights, self._flat_weight = _C_ops.coalesce_tensor(
+                        self._all_weights,
+                        len(self._all_weights), "copy_data", True, "use_align",
+                        False, "dtype", params[0].dtype)
+                    return
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
                                      fluid.default_startup_program()):

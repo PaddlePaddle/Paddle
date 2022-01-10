@@ -439,16 +439,23 @@ class Optimizer(object):
             self._learning_rate = value
             current_lr = self._global_learning_rate()
             if current_lr is not None:
-                global_block = framework.default_main_program().global_block()
-                global_block.append_op(
-                    type='fill_constant',
-                    outputs={'Out': [current_lr]},
-                    attrs={
-                        'dtype': current_lr.dtype,
-                        'shape': list(current_lr.shape),
-                        'value': float(value)
-                    },
-                    stop_gradient=True)
+                if framework.in_dygraph_mode():
+                    tmp = _C_ops.fill_constant(current_lr, 'value',
+                             float(value), 'dtype',
+                             current_lr.dtype,
+                             'shape', list(current_lr.shape))
+                    current_lr.copy_(tmp, False)
+                else:
+                    global_block = framework.default_main_program().global_block()
+                    global_block.append_op(
+                        type='fill_constant',
+                        outputs={'Out': [current_lr]},
+                        attrs={
+                            'dtype': current_lr.dtype,
+                            'shape': list(current_lr.shape),
+                            'value': float(value)
+                        },
+                        stop_gradient=True)
         else:
             assert len(value.shape) == 1 and value.shape[
                 0] == 1, "optimizer's learning rate must be 1-D Tensor with shape[1]"
@@ -606,7 +613,7 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type if type is None else type,
+            type=core.VarDesc.VarType.LOD_TENSOR if framework._in_eager_mode() else (param.type if type is None else type),
             shape=shape,
             belong_to_optimizer=True)
         if device is None:
@@ -2146,15 +2153,30 @@ class LarsMomentumOptimizer(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        # create the momentum optimize op
-        momentum_op = block.append_op(
-            type=self.type if _lars_weight_decay != 0.0 else 'momentum',
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            if _lars_weight_decay != 0.0:
+                tmp, tmp2 = _C_ops.lars_momentum([param_and_grad[0]], [param_and_grad[1]], [velocity_acc], [lr],
+                1, 1, "mu", self._momentum, "lars_coeff", self._lars_coeff, "lars_weight_decay", [_lars_weight_decay],
+                "multi_precision", find_master, "epsilon", self._epsilon, "rescale_grad", self._rescale_grad)
+                param_and_grad[0].copy_(tmp[0], False)
+                velocity_acc.copy_(tmp2[0], False)
+            else:
+                tmp, tmp2, tmp3 = _C_ops.momentum(param_and_grad[0], param_and_grad[1], velocity_acc, lr, master_weight,
+                param_and_grad[0], velocity_acc, master_weight, "mu", self._momentum, "lars_coeff", self._lars_coeff, "lars_weight_decay", [_lars_weight_decay],
+                "multi_precision", find_master, "epsilon", self._epsilon, "rescale_grad", self._rescale_grad)
+                param_and_grad[0].copy_(tmp, False)
+                velocity_acc.copy_(tmp2, False)
+                master_weight.copy_(tmp3, False)
+        else:
+            # create the momentum optimize op
+            momentum_op = block.append_op(
+                type=self.type if _lars_weight_decay != 0.0 else 'momentum',
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True)
 
-        return momentum_op
+            return momentum_op
 
 
 class AdagradOptimizer(Optimizer):
@@ -2256,21 +2278,26 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
-        # Create the adagrad optimizer op
-        adagrad_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": moment_acc,
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={"ParamOut": param_and_grad[0],
-                     "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon},
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp, tmp2 = _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad), "epsilon", self._epsilon)
+            param_and_grad[0].copy_(tmp, False)
+            moment_acc.copy_(tmp2, False)
+        else:
+            # Create the adagrad optimizer op
+            adagrad_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "Moment": moment_acc,
+                    "LearningRate": self._create_param_lr(param_and_grad)
+                },
+                outputs={"ParamOut": param_and_grad[0],
+                        "MomentOut": moment_acc},
+                attrs={"epsilon": self._epsilon},
+                stop_gradient=True)
 
-        return adagrad_op
+            return adagrad_op
 
 
 class AdamOptimizer(Optimizer):
@@ -2774,30 +2801,37 @@ class AdamaxOptimizer(Optimizer):
                                          param_and_grad[0])
         beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                               param_and_grad[0])
-        # create the adamax optimize op
-        adamax_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "Moment": moment,
-                "InfNorm": inf_norm,
-                "Beta1Pow": beta1_pow_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "MomentOut": moment,
-                "InfNormOut": inf_norm
-            },
-            attrs={
-                "beta1": self._beta1,
-                "beta2": self._beta2,
-                "epsilon": self._epsilon
-            },
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp, tmp2, tmp3 =_C_ops.adamax(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad), moment, inf_norm, beta1_pow_acc,
+            "beta1", self._beta1, "beta2", self._beta2, "epsilon", self._epsilon)
+            param_and_grad[0].copy_(tmp, False)
+            moment.copy_(tmp2, False)
+            inf_norm.copy_(tmp3, False)
+        else:
+            # create the adamax optimize op
+            adamax_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "LearningRate": self._create_param_lr(param_and_grad),
+                    "Moment": moment,
+                    "InfNorm": inf_norm,
+                    "Beta1Pow": beta1_pow_acc
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "MomentOut": moment,
+                    "InfNormOut": inf_norm
+                },
+                attrs={
+                    "beta1": self._beta1,
+                    "beta2": self._beta2,
+                    "epsilon": self._epsilon
+                },
+                stop_gradient=True)
 
-        return adamax_op
+            return adamax_op
 
     def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator
@@ -2810,12 +2844,16 @@ class AdamaxOptimizer(Optimizer):
                 [param, grad]), name_scope('adamx'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
-                block.append_op(
-                    type="scale",
-                    inputs={"X": beta1_pow_acc},
-                    outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1},
-                    stop_gradient=True)
+                if framework.in_dygraph_mode():
+                    tm = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
+                    beta1_pow_acc.copy_(tmp, False)
+                else:
+                    block.append_op(
+                        type="scale",
+                        inputs={"X": beta1_pow_acc},
+                        outputs={"Out": beta1_pow_acc},
+                        attrs={"scale": self._beta1},
+                        stop_gradient=True)
 
 
 class DpsgdOptimizer(Optimizer):
@@ -2894,23 +2932,28 @@ class DpsgdOptimizer(Optimizer):
         if self._seed == None:
             self._seed = 0
 
-        dpsgd_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={"ParamOut": param_and_grad[0]},
-            attrs={
-                "clip": self._clip,
-                "batch_size": self._batch_size,
-                "sigma": self._sigma,
-                "seed": self._seed
-            },
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp = _C_ops.dpsgd(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad),
+            "clip", self._clip, "batch_size", self._batch_size, "sigma", self._sigma, "seed", self._seed)
+            param_and_grad[0].copy_(tmp, False)
+        else:
+            dpsgd_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "LearningRate": self._create_param_lr(param_and_grad)
+                },
+                outputs={"ParamOut": param_and_grad[0]},
+                attrs={
+                    "clip": self._clip,
+                    "batch_size": self._batch_size,
+                    "sigma": self._sigma,
+                    "seed": self._seed
+                },
+                stop_gradient=True)
 
-        return dpsgd_op
+            return dpsgd_op
 
 
 class DecayedAdagradOptimizer(Optimizer):
@@ -3005,22 +3048,28 @@ class DecayedAdagradOptimizer(Optimizer):
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
 
-        # Create the decayed adagrad optimizer op
-        decayed_adagrad_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": moment_acc,
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={"ParamOut": param_and_grad[0],
-                     "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon,
-                   "decay": self._decay},
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp, tmp2 = _C_ops.decayed_adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad),
+            "epsilon", self._epsilon, "decay", self._decay)
+            param_and_grad[0].copy_(tmp, False)
+            moment_acc.copy_(tmp2, False)
+        else:
+            # Create the decayed adagrad optimizer op
+            decayed_adagrad_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "Moment": moment_acc,
+                    "LearningRate": self._create_param_lr(param_and_grad)
+                },
+                outputs={"ParamOut": param_and_grad[0],
+                        "MomentOut": moment_acc},
+                attrs={"epsilon": self._epsilon,
+                    "decay": self._decay},
+                stop_gradient=True)
 
-        return decayed_adagrad_op
+            return decayed_adagrad_op
 
 
 class AdadeltaOptimizer(Optimizer):
@@ -3121,25 +3170,31 @@ class AdadeltaOptimizer(Optimizer):
         avg_squared_update_acc = self._get_accumulator(
             self._avg_squared_update_acc_str, param_and_grad[0])
 
-        # Create the adadelta optimizer op
-        adadelta_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc
-            },
-            attrs={"epsilon": self._epsilon,
-                   "rho": self._rho},
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp, tmp2, tmp3 = _C_ops.adadelta(param_and_grad[0], param_and_grad[1], avg_squared_grad_acc, avg_squared_update_acc, "epsilon", self._epsilon, "rho", self._rho)
+            param_and_grad[0].copy_(tmp, False)
+            avg_squared_grad_acc.copy_(tmp2, False)
+            avg_squared_update_acc.copy_(tmp3, False)
+        else:
+            # Create the adadelta optimizer op
+            adadelta_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "AvgSquaredGrad": avg_squared_grad_acc,
+                    "AvgSquaredUpdate": avg_squared_update_acc
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "AvgSquaredGradOut": avg_squared_grad_acc,
+                    "AvgSquaredUpdateOut": avg_squared_update_acc
+                },
+                attrs={"epsilon": self._epsilon,
+                    "rho": self._rho},
+                stop_gradient=True)
 
-        return adadelta_op
+            return adadelta_op
 
 
 class RMSPropOptimizer(Optimizer):
@@ -3303,31 +3358,40 @@ class RMSPropOptimizer(Optimizer):
                                                 param_and_grad[0])
         mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
                                               param_and_grad[0])
-        rmsprop_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": momentum_acc,
-                "MeanSquare": mean_square_acc,
-                "MeanGrad": mean_grad_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "MomentOut": momentum_acc,
-                "MeanSquareOut": mean_square_acc,
-                "MeanGradOut": mean_grad_acc
-            },
-            attrs={
-                "epsilon": self._epsilon,
-                "decay": self._rho,
-                "momentum": self._momentum,
-                "centered": self._centered
-            },
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp, tmp2, tmp3, tmp4 = _C_ops.rmsprop(param_and_grad[0], mean_square_acc, self._create_param_lr(param_and_grad), param_and_grad[1], momentum_acc,
+            param_and_grad[0], momentum_acc, mean_square_acc, mean_grad_acc,
+            "epsilon", self._epsilon, "decay", self._rho, "momentum", self._momentum, "centered", self._centered)
+            param_and_grad[0].copy_(tmp1, False)
+            momentum_acc.copy_(tmp2, False)
+            mean_square_acc.copy_(tmp3, False)
+            mean_grad_acc.copy_(tmp4, False)
+        else:
+            rmsprop_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "Moment": momentum_acc,
+                    "MeanSquare": mean_square_acc,
+                    "MeanGrad": mean_grad_acc,
+                    "LearningRate": self._create_param_lr(param_and_grad),
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "MomentOut": momentum_acc,
+                    "MeanSquareOut": mean_square_acc,
+                    "MeanGradOut": mean_grad_acc
+                },
+                attrs={
+                    "epsilon": self._epsilon,
+                    "decay": self._rho,
+                    "momentum": self._momentum,
+                    "centered": self._centered
+                },
+                stop_gradient=True)
 
-        return rmsprop_op
+            return rmsprop_op
 
 
 class FtrlOptimizer(Optimizer):
@@ -3467,26 +3531,33 @@ class FtrlOptimizer(Optimizer):
                                             param_and_grad[0])
         linear_acc = self._get_accumulator(self._linear_acc_str,
                                            param_and_grad[0])
-        ftrl_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "SquaredAccumulator": squared_acc,
-                "LinearAccumulator": linear_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "SquaredAccumOut": squared_acc,
-                "LinearAccumOut": linear_acc
-            },
-            attrs={"l1": self._l1,
-                   "l2": self._l2,
-                   "lr_power": self._lr_power},
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            tmp, tmp2, tmp3 = _C_ops.ftrl(param_and_grad[0], squared_acc, linear_acc, param_and_grad[1], self._create_param_lr(param_and_grad),
+            "l1", self._l1, "l2", self._l2, "lr_power", self._lr_power)
+            param_and_grad[0].copy_(tmp, False)
+            squared_acc.copy_(tmp2, False)
+            linear_acc.copy_(tmp3, False)
+        else:
+            ftrl_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "SquaredAccumulator": squared_acc,
+                    "LinearAccumulator": linear_acc,
+                    "LearningRate": self._create_param_lr(param_and_grad),
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "SquaredAccumOut": squared_acc,
+                    "LinearAccumOut": linear_acc
+                },
+                attrs={"l1": self._l1,
+                    "l2": self._l2,
+                    "lr_power": self._lr_power},
+                stop_gradient=True)
 
-        return ftrl_op
+            return ftrl_op
 
 
 class LambOptimizer(AdamOptimizer):
