@@ -82,7 +82,6 @@ ElementwiseMulGrad(const framework::ExecutionContext& ctx,
   const auto place = ctx.GetPlace();
 
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
       dx->mutable_data<T>(x->dims(), place);

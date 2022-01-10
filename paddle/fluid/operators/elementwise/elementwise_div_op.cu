@@ -31,7 +31,6 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
   const auto& dev_ctx = ctx.template device_context<DeviceContext>();
   const auto place = ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
     if (dx->IsSharedBufferWith(*dout)) {
       dx->clear();
       dx->mutable_data<T>(x->dims(), place);
