@@ -89,6 +89,22 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int, INT32); \
   _ForEachDataTypeHelper_(callback, int64_t, INT64);
 
+// It's only for DataParallel in HIP, bf16 not support in HIP.
+#define _ForEachDataTypeForHIP_(callback)                                \
+  _ForEachDataTypeHelper_(callback, float, FP32);                        \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);  \
+  _ForEachDataTypeHelper_(callback, double, FP64);                       \
+  _ForEachDataTypeHelper_(callback, int, INT32);                         \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                     \
+  _ForEachDataTypeHelper_(callback, bool, BOOL);                         \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                     \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16);                     \
+  _ForEachDataTypeHelper_(callback, int8_t, INT8);                       \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex<float>,  \
+                          COMPLEX64);                                    \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex<double>, \
+                          COMPLEX128);
+
 #define DefineDataTypeTrait(cpp_type, proto_type)                           \
   template <>                                                               \
   struct DataTypeTrait<cpp_type> {                                          \
@@ -145,6 +161,20 @@ inline void VisitDataTypeTiny(proto::VarType::Type type, Visitor visitor) {
 
   _ForEachDataTypeTiny_(VisitDataTypeCallbackTiny);
 #undef VisitDataTypeCallbackTiny
+}
+
+template <typename Visitor>
+inline void VisitDataTypeForHIP(proto::VarType::Type type, Visitor visitor) {
+#define VisitDataTypeCallbackHIP(cpp_type, proto_type) \
+  do {                                                 \
+    if (type == proto_type) {                          \
+      visitor.template apply<cpp_type>();              \
+      return;                                          \
+    }                                                  \
+  } while (0)
+
+  _ForEachDataTypeForHIP_(VisitDataTypeCallbackHIP);
+#undef VisitDataTypeCallbackHIP
 }
 
 extern std::string DataTypeToString(const proto::VarType::Type type);

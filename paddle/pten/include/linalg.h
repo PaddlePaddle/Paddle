@@ -17,8 +17,7 @@
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/linalg.h"
-#include "paddle/pten/kernels/gpu/linalg.h"
+#include "paddle/pten/kernels/dot_kernel.h"
 
 namespace pten {
 
@@ -31,7 +30,7 @@ DenseTensor Dot(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Dot<T>(dev_ctx, x, y, &dense_out);
+  Dot<T, ContextT>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 

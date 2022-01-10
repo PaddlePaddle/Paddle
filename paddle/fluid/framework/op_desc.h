@@ -154,17 +154,10 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
-  // This thread-safe implementation seems to be redudent since the neural
-  // networks
-  // are usually constructed in a single thread
-  static uint64_t GenerateId() {
-    static std::atomic<std::uint64_t> id{0};
-    return ++id;
-  }
-
-  // Note: the identity only used as a key for referring to its
-  // distributed attribute now.
+  // The Id() and OrignalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
+  uint64_t OriginalId() const { return original_id_; }
+  void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
  private:
   template <typename MapType>
@@ -175,6 +168,14 @@ class OpDesc {
         map.begin(), map.end(), std::back_inserter(ret_val),
         [](const typename MapType::value_type &pair) { return pair.first; });
     return ret_val;
+  }
+
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks are usually constructed in a single thread
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    // Must start from one
+    return ++uid;
   }
 
   proto::OpDesc desc_;
@@ -189,7 +190,13 @@ class OpDesc {
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
 
+  // Note: the id_ is unique (only for auto parallel).
   uint64_t id_ = GenerateId();
+  // Note: the orignal_id_ is used for referring to the original OpDesc
+  // that the current OpDesc is built from (only for auto parallel).
+  // The default original_id_ is same as the id_, which means the
+  // current OpDesc is not built from the other one.
+  uint64_t original_id_ = id_;
 };
 }  // namespace framework
 }  // namespace paddle
