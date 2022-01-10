@@ -36,7 +36,7 @@ from .completion import complete_annotation, complete_backward_annotation, compl
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .process_group import get_process_group
-from .process_group import get_world_process_groups
+from .process_group import get_world_process_group
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
@@ -97,8 +97,8 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _apply_serial_pass(self, main_program, startup_program, loss,
-                           params_grads):
+    def _apply_pre_optimization_passed(self, main_program, startup_program,
+                                       loss, params_grads):
         # apply amp pass
         if self._dist_strategy.amp:
             config = copy.deepcopy(self._dist_strategy.amp_configs)
@@ -188,8 +188,9 @@ class AutoParallelizer:
             self._parameter_list, self._no_grad_set, self._callbacks)
 
         # serial forward pass
-        self._apply_serial_pass(completed_main_program, serial_startup_program,
-                                serial_loss, params_grads)
+        self._apply_pre_optimization_passed(completed_main_program,
+                                            serial_startup_program, serial_loss,
+                                            params_grads)
         # Logical partition 
         partitioner = Partitioner(self._dist_context, rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
@@ -237,7 +238,7 @@ class AutoParallelizer:
             assert self._cluster is not None, \
                 "The cluster must not be none when using auto mapping."
             dist_programs = {}
-            world_process_group = get_world_process_groups()
+            world_process_group = get_world_process_group()
             dist_context = None
             # auto search
             if self._dist_strategy.auto_search:

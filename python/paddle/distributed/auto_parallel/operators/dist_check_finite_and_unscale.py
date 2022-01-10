@@ -24,9 +24,9 @@ from ..utils import set_var_dist_attr
 from ..utils import set_dist_op_desc_original_id
 from ..process_group import new_process_group
 from ..dist_attribute import OperatorDistributedAttribute
-from paddle.distributed.auto_parallel.process_group import get_world_process_groups
+from paddle.distributed.auto_parallel.process_group import get_world_process_group
 
-global_process_mesh = get_world_process_groups().ranks
+global_process_mesh = get_world_process_group().ranks
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
