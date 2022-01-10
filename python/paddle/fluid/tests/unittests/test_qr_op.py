@@ -28,7 +28,6 @@ class TestQrOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         np.random.seed(4)
-        # self._cpu_only = True
         self.op_type = "qr"
         a, q, r = self.get_input_and_output()
         self.inputs = {"X": a}
@@ -50,9 +49,6 @@ class TestQrOp(OpTest):
         mode = self.get_mode()
         assert mode != "r", "Cannot be backward in r mode."
         a = np.random.rand(*shape).astype(dtype)
-        # a = np.array([[1, 2, 3, 2], [4, 5, 6, 3], [7, 8, 7, 4]]).astype(dtype)
-        # a = np.array([[1, 2], [3, 4], [5, 6]]).astype(dtype)
-        # a = np.array([[[1, 2], [3, 4], [5, 6]], [[1, 2], [3, 4], [5, 6]]]).astype(dtype)
         m = a.shape[-2]
         n = a.shape[-1]
         min_mn = min(m, n)
@@ -78,13 +74,6 @@ class TestQrOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        # dQ = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]]).astype(self.dtype)
-        # dR = np.array([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]]).astype(self.dtype)
-        # dQ = np.array([[1, 1], [1, 1], [1, 1]]).astype(self.dtype)
-        # dR = np.array([[1, 1], [1, 1]]).astype(self.dtype)
-        # dQ = np.array([[[1, 1], [1, 1], [1, 1]], [[1, 1], [1, 1], [1, 1]]]).astype(self.dtype)
-        # dR = np.array([[[1, 1], [1, 1]], [[1, 1], [1, 1]]]).astype(self.dtype)
-        # self.check_grad(['X'], ['Q', 'R'], user_defined_grad_outputs=[dQ, dR])
         self.check_grad(['X'], ['Q', 'R'])
 
 
@@ -270,5 +259,4 @@ class TestQrAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
