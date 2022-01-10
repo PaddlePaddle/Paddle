@@ -157,7 +157,7 @@ ConvActivationFusePass::ConvActivationFusePass() {
       // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
       .AddAttr("data_format")
       .IsOptional()
-      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("relu"))
@@ -201,6 +201,9 @@ Conv2DSwishFusePass::Conv2DSwishFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      .AddAttr("beta")
+      .IsType<float>()
       .End();
 }
 Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {

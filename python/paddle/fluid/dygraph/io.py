@@ -1077,8 +1077,13 @@ def append_var_from_block_desc_static(block,
             else:
                 lod_level = None
 
+            if var_desc.persistable():
+                current_block = block.program.global_block()
+            else:
+                current_block = block
+
             vars_append.append(
-                block.create_var(
+                current_block.create_var(
                     name=var_desc.name(),
                     dtype=data_type,
                     type=var_type,
@@ -1286,9 +1291,11 @@ class TranslatedLayer(layers.Layer):
 
     def train(self):
         self._is_test = False
+        self.training = True
 
     def eval(self):
         self._is_test = True
+        self.training = False
 
     def program(self, method_name='forward'):
         """

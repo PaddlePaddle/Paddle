@@ -1017,6 +1017,21 @@ struct Slice : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+// Nearest Interp op
+// Forward pass for nearest_interp.
+// nearest_interp_out is a result of the operator.
+struct NearestInterp : public PatternBase {
+  NearestInterp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "nearest_interp") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(nearest_interp_in);
+  PATTERN_DECL_NODE(nearest_interp_op);
+  PATTERN_DECL_NODE(nearest_interp_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // Matmul op
 // Forward pass for matmul.
 struct Matmul : public PatternBase {
@@ -1052,6 +1067,36 @@ struct MatmulV2 : public PatternBase {
   PATTERN_DECL_NODE(matmul_v2_in_y);
   PATTERN_DECL_NODE(matmul_v2_op);
   PATTERN_DECL_NODE(matmul_v2_out);
+};
+
+// Matmul + scale
+// Forward pass.
+struct MatmulScale : public PatternBase {
+  MatmulScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(scale_in_x);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
+// Matmul_v2 + scale
+// Forward pass.
+struct MatmulV2Scale : public PatternBase {
+  MatmulV2Scale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(scale_in_x);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
 };
 
 // Squeeze2 + Matmul
@@ -1423,6 +1468,7 @@ struct Bfloat16Placement : public PatternBase {
   PDNode* operator()(
       const std::unordered_set<std::string>& bfloat16_enabled_op_types);
 
+  PATTERN_DECL_NODE(op_in);
   PATTERN_DECL_NODE(op);
 };
 

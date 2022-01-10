@@ -512,6 +512,21 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
+    } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new MLUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::MLUPlace, place), max_memory_size));
+      } else {
+        gc.reset(new MLUStreamGarbageCollector(
+            BOOST_GET_CONST(platform::MLUPlace, place), max_memory_size));
+      }
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use MLU device since it's not compiled with MLU,"
+          "Please recompile or reinstall Paddle with MLU support."));
+#endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
       gc.reset(new XPUGarbageCollector(
@@ -773,7 +788,7 @@ void ParallelExecutor::BCastParamsToDevices(
         void *buffer;
 
         if (i == 0 && trainer_id == 0) {
-          buffer = const_cast<void *>(main_tensor.data<void>());
+          buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
@@ -816,7 +831,7 @@ void ParallelExecutor::BCastParamsToDevices(
         void *buffer;
 
         if (i == 0 && trainer_id == 0) {
-          buffer = const_cast<void *>(main_tensor.data<void>());
+          buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();

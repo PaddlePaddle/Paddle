@@ -163,6 +163,7 @@ class OperatorBase {
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
+  virtual bool SupportMLU() const { return false; }
 
   const std::string& Type() const { return type_; }
 
@@ -506,6 +507,13 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_npu_place(kern_pair.first.place_);
                        });
   }
+  bool SupportMLU() const override {
+    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+    return std::any_of(op_kernels.begin(), op_kernels.end(),
+                       [](OpKernelMap::const_reference kern_pair) {
+                         return platform::is_mlu_place(kern_pair.first.place_);
+                       });
+  }
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -547,6 +555,20 @@ class OperatorWithKernel : public OperatorBase {
   virtual KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
+  /* member functions for adapting to pten lib */
+  void ChoosePtenKernel(const ExecutionContext& ctx) const;
+
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx) const;
+
+  void WriteBackToOutputs(RuntimeContext* ctx) const;
+
+  pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+
+  pten::KernelContext* PtenKernelContext() const {
+    return pt_kernel_context_.get();
+  }
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
@@ -586,14 +608,6 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
-
-  /* member functions for adapting to pten lib */
-  void ChoosePtenKernel(const ExecutionContext& ctx) const;
-
-  void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
-
-  void WriteBackToOutputs(RuntimeContext* ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

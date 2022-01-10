@@ -122,7 +122,8 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+  auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+  platform::XPUDeviceGuard guard(dev_id);
 #endif
 
   auto& block = program.Block(0);
@@ -338,22 +339,23 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         auto dev_id =
             BOOST_GET_CONST(platform::CUDAPlace, thread_tensor->place()).device;
         platform::CUDADeviceGuard guard(dev_id);
-        cudaMemset(thread_tensor->data<void>(), 0,
+        cudaMemset(thread_tensor->data(), 0,
                    thread_tensor->numel() * SizeOfType(thread_tensor->type()));
 #endif
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
-        xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+        auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+        platform::XPUDeviceGuard guard(dev_id);
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-        xpu::memset(xpu_ctx->x_context(), thread_tensor->data<void>(), 0,
+        xpu::memset(xpu_ctx->x_context(), thread_tensor->data(), 0,
                     thread_tensor->numel() * SizeOfType(thread_tensor->type()));
 #endif
       } else {
-        memset(thread_tensor->data<void>(), 0,
+        memset(thread_tensor->data(), 0,
                thread_tensor->numel() * SizeOfType(thread_tensor->type()));
       }
     }
@@ -365,22 +367,23 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       auto dev_id =
           BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()).device;
       platform::CUDADeviceGuard guard(dev_id);
-      cudaMemset(root_tensor->data<void>(), 0,
+      cudaMemset(root_tensor->data(), 0,
                  root_tensor->numel() * SizeOfType(root_tensor->type()));
 #endif
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
-      xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+      platform::XPUDeviceGuard guard(dev_id);
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-      xpu::memset(xpu_ctx->x_context(), root_tensor->data<void>(), 0,
+      xpu::memset(xpu_ctx->x_context(), root_tensor->data(), 0,
                   root_tensor->numel() * SizeOfType(root_tensor->type()));
 #endif
     } else {
-      memset(root_tensor->data<void>(), 0,
+      memset(root_tensor->data(), 0,
              root_tensor->numel() * SizeOfType(root_tensor->type()));
     }
   }
@@ -416,7 +419,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
 
   if (!context->scope_) {
-    int num = rand() % places_.size();
+    int num = rand_r() % places_.size();
     context->place_num_ = num;
     auto place = places_[num];
     context->scope_ = &(place_scopes_[num]->NewScope());

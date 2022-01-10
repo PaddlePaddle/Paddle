@@ -28,10 +28,10 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/math.h"
-#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
+#include "paddle/pten/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 #endif
 
 namespace paddle {
@@ -259,7 +259,7 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    pten::general::Reduce<DeviceContext, T, Functor>(
+    pten::Reduce<DeviceContext, T, Functor>(
         dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }
@@ -546,6 +546,25 @@ class ReduceOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    if (Type() == "reduce_sum") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            {"Out"});
+      }
+    }
+    if (Type() == "reduce_mean") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+      }
+    }
+    // TODO(chentianyu03): support other cases after selected rows added
+    return framework::KernelSignature("reduce.unregistered", {}, {}, {});
+  }
 };
 
 class ReduceOpUseInputPlace : public ReduceOp {
@@ -670,7 +689,8 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp>
+template <typename T, template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -680,18 +700,28 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     auto out_dtype = context.Attr<int>("out_dtype");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
-    std::vector<int> reduce_dims =
-        GetReduceDim(dims, input->dims().size(), reduce_all);
+    auto& dev_ctx = context.cuda_device_context();
 
-    gpuStream_t stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+      output->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(out_dtype));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      output->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(input->type()));
     }
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
+    std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
+
+    auto pt_out_dtype = pten::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+
+    pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), reduce_all,
+                                           dims_int64, false, pt_out_dtype,
+                                           pt_out.get());
   }
 };
 #endif

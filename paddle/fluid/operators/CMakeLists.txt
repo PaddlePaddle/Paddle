@@ -52,6 +52,10 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
+if (WITH_MLU)
+    add_subdirectory(mlu)
+endif()
+
 if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
@@ -83,7 +87,13 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils)
+if (WITH_ROCM)
+    hip_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu DEPS tensor)
+else()
+    cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu DEPS tensor)
+endif()
+
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils gather_scatter_kernel)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})

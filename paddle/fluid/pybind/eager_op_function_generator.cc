@@ -32,8 +32,6 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-std::set<std::string> gen_list = {};
-
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -72,10 +70,16 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
+    auto& %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
     auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
+
+const char* CAST_VAR_PTR_TEMPLATE = R"(
+    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+
+const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
+    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
@@ -223,8 +227,8 @@ std::string GenerateOpFunctionsBody(
         outs_initializer += ",";
       }
 
-      const auto in_cast_type =
-          output.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
+      const auto in_cast_type = output.duplicable() ? CAST_VAR_PTR_LIST_TEMPLATE
+                                                    : CAST_VAR_PTR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
@@ -292,6 +296,41 @@ std::string GenerateOpFunctionsBody(
   return op_function_str;
 }
 
+static std::string GenerateCoreOpsInfoMap() {
+  std::string result =
+      "static PyObject * eager_get_core_ops_args_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_args_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_returns_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n";
+
+  return result;
+}
+
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
 GenerateOpFunctions() {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
@@ -313,9 +352,6 @@ GenerateOpFunctions() {
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
-    if (!gen_list.count(op_type)) {
-      continue;
-    }
     std::string func_name = "eager_api_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 
@@ -329,27 +365,11 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
-  std::string line;
-  std::ifstream op_list_file(op_list_path);
-  if (op_list_file.is_open()) {
-    while (getline(op_list_file, line)) {
-      gen_list.insert(line);
-    }
-    op_list_file.close();
-  } else {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
-  }
-}
-
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "argc must be 3" << std::endl;
+  if (argc != 2) {
+    std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
-
-  CollectOperatorsToCodeGen(argv[2]);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
@@ -359,6 +379,8 @@ int main(int argc, char* argv[]) {
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
+      "\"paddle/fluid/eager/api/generated/fluid_generated/"
+      "dygraph_forward_api.h\"",
       "\"paddle/fluid/pybind/exception.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
@@ -372,15 +394,25 @@ int main(int argc, char* argv[]) {
   out << "\n\n";
 
   auto op_funcs = GenerateOpFunctions();
+  auto core_ops_infos = GenerateCoreOpsInfoMap();
+  std::string core_ops_infos_registry =
+      "{\"get_core_ops_args_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
+      "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
+      "  {\"get_core_ops_returns_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
+      "METH_NOARGS, \"C++ interface function for "
+      "eager_get_core_ops_returns_info.\"},\n";
 
   out << "namespace paddle {\n"
       << "namespace pybind {\n\n";
+  out << core_ops_infos;
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
   out << "static PyMethodDef ExtestMethods[] = {\n"
-      << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "\n  {nullptr,nullptr,0,nullptr}"
+      << paddle::string::join_strings(std::get<1>(op_funcs), '\n') << "\n"
+      << core_ops_infos_registry << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
   out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
