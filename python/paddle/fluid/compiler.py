@@ -24,7 +24,7 @@ from . import core
 
 __all__ = [
     'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
-    'IpuCompiledProgram'
+    'IpuCompiledProgram', 'IpuStrategy'
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
