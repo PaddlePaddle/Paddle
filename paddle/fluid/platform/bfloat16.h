@@ -21,7 +21,7 @@
 #endif
 #endif
 
-#include "paddle/pten/api/include/eigen_include.h"
+#include "paddle/utils/Core"
 
 namespace paddle {
 namespace platform {
