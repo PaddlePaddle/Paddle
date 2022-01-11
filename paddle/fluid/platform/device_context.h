@@ -63,7 +63,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/device.h"
+#include "paddle/fluid/platform/device/ipu/ipu_device.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -158,11 +158,9 @@ class IPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
-  int DeviceId() const { return device_.getId(); }
 
  private:
   IPUPlace place_;
-  platform::ipu::Device device_;
 };
 template <>
 struct DefaultDeviceContextType<platform::IPUPlace> {
