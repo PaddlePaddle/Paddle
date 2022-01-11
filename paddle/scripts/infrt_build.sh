@@ -18,13 +18,14 @@
 #                   Utils
 #=================================================
 
-set -ex
+set -e
 
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
 EXIT_CODE=0;
+UPDATE_PD_OPS="false"
 tmp_dir=`mktemp -d`
 
 function update_pd_ops() {
@@ -78,7 +79,10 @@ function infrt_gen_and_build() {
     startTime_s=`date +%s`
     set +e
     # step1. reinstall paddle and generate pd_ops.td
-    update_pd_ops
+    if [ "${UPDATE_PD_OPS}" != "false" ]; then
+        update_pd_ops
+    fi
+
     # step2. compile infrt
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -122,32 +126,47 @@ EOF
 }
 
 function main() {
-    local CMD=$1 
-    local parallel_number=$2
+    if [ -z "$1" ]; then
+        echo "Usage:"
+        echo "      (1)bash infrt_build.sh build_and_test"
+        echo "      (2)bash infrt_build.sh build_only"
+        echo "      (3)bash infrt_build.sh test_only"
+        echo "      optional command: --update_pd_ops : pd_ops.td will be updated according to paddle's code."
+        exit 0
+    fi
+
     init
-    case $CMD in
-      build_and_test)
-        infrt_gen_and_build ${parallel_number}
-        test_infrt
-        ;;
-      build_only)
-        infrt_gen_and_build ${parallel_number}
-        ;;
-      test_only)
-        test_infrt
-        ;;
-      *)
-        print_usage
-        exit 1
-        ;;
+    # Parse command line.
+    for i in "$@"; do
+      case $i in
+        # compiling lib with benchmark feature, default OFF.
+        --update_pd_ops*)
+            UPDATE_PD_OPS="true"
+            shift
+            ;;
+        build_and_test)
+          infrt_gen_and_build ${parallel_number}
+          test_infrt
+          ;;
+        build_only)
+          infrt_gen_and_build ${parallel_number}
+          ;;
+        test_only)
+          test_infrt
+          ;;
+        *)
+          parallel_number=$i
+          ;;
       esac
-      set +x
-      if [[ -f ${PADDLE_ROOT}/build/infrt_summary.txt ]];then
-        echo "=====================build summary======================"
-        cat ${PADDLE_ROOT}/build/infrt_summary.txt
-        echo "========================================================"
-      fi
-      echo "paddle_build script finished as expected!"
+    done
+
+    set +x
+    if [[ -f ${PADDLE_ROOT}/build/infrt_summary.txt ]];then
+      echo "=====================build summary======================"
+      cat ${PADDLE_ROOT}/build/infrt_summary.txt
+      echo "========================================================"
+    fi
+    echo "paddle_build script finished as expected!"
 }
 
 main $@
