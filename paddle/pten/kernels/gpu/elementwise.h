@@ -37,8 +37,122 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 namespace pten {
 // FORWARD CODE
-<<<<<<< HEAD
-=======
+namespace kps = paddle::operators::kernel_primitives;
+enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
+
+/* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
+   for supporting multiple-output feature in elementwise system.*/
+template <class T, int Num>
+using ConditionalT =
+    typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
+
+template <typename T, int N>
+struct ArrayTraits {
+  using type = typename T::ELEMENT_TYPE;
+};
+
+template <typename T>
+struct ArrayTraits<T, 1> {
+  using type = T;
+};
+
+// static unroller
+template <template <int Index, int VecSize> typename Func,
+          int VecSize,
+          int End,
+          int Begin = 0>
+struct Unroller {
+  template <typename... Args>
+  static HOSTDEVICE inline void step(Args &&... args) {
+    Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
+    Unroller<Func, VecSize, End, Begin + 1>::step(args...);
+  }
+};
+
+template <template <int Index, int VecSize> typename Func, int VecSize, int End>
+struct Unroller<Func, VecSize, End, End> {
+  template <typename... Args>
+  static HOSTDEVICE inline void step(Args &&... args) {}
+};
+
+template <int Index, int VecSize>
+struct Loader {
+  template <typename Array, typename ArgsT>
+  static __device__ void Apply(const Array &in,
+                               ArgsT *args,
+                               int num,
+                               int data_offset,
+                               bool is_boundary) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
+    kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
+    if (is_boundary) {
+      kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
+          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+    } else {
+      kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
+          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+    }
+  }
+};
+
+template <int Index, int VecSize>
+struct InputSetter {
+  template <typename Array>
+  static HOSTDEVICE void Apply(
+      const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
+    (*ins_data)[Index] =
+        reinterpret_cast<const _ptr_ char *>(ins_tensor[Index]->data());
+  }
+};
+
+template <int Index, int VecSize>
+struct VecSizeGetter {
+  template <typename ArgsT>
+  static HOSTDEVICE void Apply(const std::vector<const DenseTensor *> &ins,
+                               const ArgsT &args,
+                               int *vec_size) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
+    *vec_size = std::min<int>(
+        *vec_size,
+        paddle::platform::GetVectorizedSize(ins[Index]->data<Type>()));
+  }
+};
+
+namespace detail {
+template <class F, class Tuple, std::size_t... INDEX>
+// GCC/Clang need the decltype() return type
+HOSTDEVICE constexpr decltype(auto) apply_impl(F &&f,
+                                               Tuple &&t,
+                                               std::index_sequence<INDEX...>) {
+  return std::forward<F>(f)(std::get<INDEX>(std::forward<Tuple>(t))...);
+}
+}  // namespace detail
+
+template <class F, class Tuple>
+HOSTDEVICE constexpr decltype(auto) apply(F &&f, Tuple &&t) {
+  return detail::apply_impl(
+      std::forward<F>(f),
+      std::forward<Tuple>(t),
+      std::make_index_sequence<
+          std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
+}
+
+// FORWARD CODE
+template <typename OutT,
+          int VecSize,
+          typename Functor,
+          typename ArgsT,
+          int Arity>
+struct SameDimsElementwisePrimitiveCaller {
+  __device__ inline void operator()(Functor func, ArgsT *args, OutT *result) {
+#pragma unroll
+    for (int idx = 0; idx < VecSize; ++idx) {
+      result[idx] = static_cast<OutT>(apply(func, args[idx]));
+    }
+  }
+};
+
+>>>>>>> fix complilation error of multiple outputs
 template <typename InT,
           typename OutT,
           int VecSize,
@@ -203,11 +317,7 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
   return vec_size;
 }
 
-template <typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
+template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
@@ -251,7 +361,8 @@ void LaunchSameDimsElementwiseCudaKernel(
     std::vector<DenseTensor *> *outs,
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
-  using OutT = typename Traits::OutT;
+  using RetType = typename Traits::RetType;
+  using OutT = typename ArrayTraits<RetType, NumOuts>::type;
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
