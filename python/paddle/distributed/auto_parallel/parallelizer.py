@@ -23,6 +23,7 @@ import logging
 import pickle
 import time
 import paddle
+from paddle.fluid.backward import append_backward
 from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
@@ -96,49 +97,35 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _apply_serial_forward_pass(self, main_program, startup_program):
+    def _apply_serial_pass(self, main_program, startup_program):
 
-        # apply amp forward pass
+        # apply amp pass
         if self._dist_strategy.amp:
             auto_parallel_amp_pass = new_pass("auto_parallel_amp_pass",
                                               self._dist_strategy.amp_configs)
-            auto_parallel_amp_pass.apply_forward(main_program, startup_program,
-                                                 self._pass_context)
+            auto_parallel_amp_pass.apply(main_program, startup_program,
+                                         self._pass_context)
 
-        # apply recompute forward pass
+        # apply recompute pass
         if self._dist_strategy.recompute:
             auto_parallel_recompute_pass = new_pass(
                 "auto_parallel_recompute_pass",
                 self._dist_strategy.recompute_configs)
-            auto_parallel_recompute_pass.apply_forward(
-                main_program, startup_program, self._pass_context)
+            auto_parallel_recompute_pass.apply(main_program, startup_program,
+                                               self._pass_context)
 
     def _generate_backward(self, main_program, startup_program, loss,
                            parameter_list, no_grad_set, callbacks):
 
-        # apply recompute backward pass
-        if self._dist_strategy.recompute:
-            assert auto_parallel_recompute_pass
-            auto_parallel_recompute_pass.apply_forward(
-                main_program, startup_program, parameter_list, no_grad_set,
-                self._pass_context)
-        else:
-            from paddle.fluid.backward import append_backward
-            with program_guard(main_program, startup_program):
-                params_grads = append_backward(
-                    loss,
-                    parameter_list,
-                    no_grad_set,
-                    callbacks,
-                    distop_context=self._dist_context.dist_op_context)
-            complete_backward_annotation(
-                main_program, dist_context=self._dist_context)
-
-        # apply amp forward pass
-        if self._dist_strategy.amp:
-            assert auto_parallel_amp_pass
-            auto_parallel_amp_pass.apply_backward(main_program, startup_program,
-                                                  self._pass_context)
+        with program_guard(main_program, startup_program):
+            params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                callbacks,
+                distop_context=self._dist_context.dist_op_context)
+        complete_backward_annotation(
+            main_program, dist_context=self._dist_context)
 
         return params_grads
 
@@ -192,13 +179,13 @@ class AutoParallelizer:
             completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)
 
-        # serial forward pass
-        self._apply_serial_forward_pass(completed_main_program,
-                                        serial_startup_program)
         # serial backward pass
         params_grads = self._generate_backward(
             completed_main_program, serial_startup_program, serial_loss,
             self._parameter_list, self._no_grad_set, self._callbacks)
+
+        # serial forward pass
+        self._apply_serial_pass(completed_main_program, serial_startup_program)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()

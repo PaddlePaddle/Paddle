@@ -792,7 +792,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -827,7 +827,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -1857,7 +1857,7 @@ void BindImperative(py::module *m_ptr) {
              // 1. get LoDTensor
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
-             void *data_ptr = t->data<void>();
+             void *data_ptr = t->data();
              size_t data_size = t->numel() * framework::SizeOfType(t->type());
              auto shared_writer_holder =
                  memory::allocation::AllocateMemoryMapWriterAllocation(

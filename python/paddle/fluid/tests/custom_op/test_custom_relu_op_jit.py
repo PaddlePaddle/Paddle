@@ -49,7 +49,8 @@ custom_module = load(
 class TestJITLoad(unittest.TestCase):
     def setUp(self):
         self.custom_ops = [
-            custom_module.custom_relu, custom_module.custom_relu_dup
+            custom_module.custom_relu, custom_module.custom_relu_dup,
+            custom_module.custom_relu_no_x_in_backward
         ]
         self.dtypes = ['float32', 'float64']
         if paddle.is_compiled_with_cuda():

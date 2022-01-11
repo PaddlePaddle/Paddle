@@ -15,13 +15,16 @@ include "paddle/infrt/dialect/pd_ops.td"
 // which corresponds to the following computation:
 //   (FusedFC)  out = x * y + bias
 // 
+// while meeting the following attribute constrait:
+// Matmul: transpose_x: false
+//         transpose_y: false
+//
 // Todo:
 //  1. Make the constrait more completely.
 //  2. Consider the case of : out = bias + z
 //===----------------------------------------------------------------------===//
-def FuseMulAdd : Pat<(PD_ElementwiseAdd (PD_MatmulOp $x, $y, $transpose_x, $transpose_y, $alpha), $bias, $axis),
-                     (PD_FusedFC $x, $y, $bias, (INFRT_createI32Attr<"1">)),
-                     [(IsBoolAttrEq<"false"> $transpose_x),(IsBoolAttrEq<"false"> $transpose_y)]>;
+def FuseMulAdd : Pat<(PD_ElementwiseAdd (PD_MatmulOp $x, $y, ConstBoolAttrFalse:$_, ConstBoolAttrFalse:$_, $alpha), $bias, $axis),
+                     (PD_FusedFC $x, $y, $bias, (INFRT_createI32Attr<"1">))>;
 
 
 //===----------------------------------------------------------------------===//

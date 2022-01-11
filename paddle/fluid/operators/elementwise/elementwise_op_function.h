@@ -31,7 +31,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/cpu/elementwise_impl.h"
+#include "paddle/pten/kernels/cpu/elementwise.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -42,6 +42,7 @@ limitations under the License. */
 #include <thrust/iterator/iterator_adaptor.h>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -2556,5 +2557,77 @@ static inline std::vector<int> GetReduceDim(const framework::DDim &in,
   }
   return dims;
 }
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename T>
+void ReduceWrapper(const platform::CUDADeviceContext &dev_ctx, int axis,
+                   framework::Tensor *src, framework::Tensor *dst) {
+  std::vector<int> reduce_dims = GetReduceDim(dst->dims(), src->dims(), axis);
+  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
+}
+
+template <ElementwiseType ET, typename T, typename Functor>
+void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
+                     const platform::Place &place, int axis,
+                     std::vector<const framework::Tensor *> ins,
+                     const framework::Tensor *dout, framework::Tensor *dx,
+                     framework::Tensor *dy, Functor func) {
+  framework::Tensor tmp_dx;
+  framework::Tensor tmp_dy;
+  dy->mutable_data<T>(place);
+  std::vector<framework::Tensor *> outs;
+  if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
+    outs = {dx, dy};
+  } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+    tmp_dx.mutable_data<T>(dout->dims(), place);
+    outs = {&tmp_dx, dy};
+  } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
+    tmp_dy.mutable_data<T>(dout->dims(), place);
+    outs = {dx, &tmp_dy};
+  } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
+    tmp_dy.mutable_data<T>(dout->dims(), place);
+    tmp_dx.mutable_data<T>(dout->dims(), place);
+    outs = {&tmp_dx, &tmp_dy};
+  }
+
+  LaunchElementwiseCudaKernel<ET, T, T, decltype(func), 2>(dev_ctx, ins, &outs,
+                                                           axis, func);
+
+  if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
+  } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
+  } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
+  }
+}
+
+template <ElementwiseType ET, typename T, typename Functor>
+void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx,
+                    const platform::Place &place, int axis,
+                    std::vector<const framework::Tensor *> ins,
+                    const framework::Tensor *dout, framework::Tensor *dxy,
+                    Functor func) {
+  framework::Tensor tmp_dxy;
+  dxy->mutable_data<T>(place);
+
+  std::vector<framework::Tensor *> outs;
+  if (dxy->dims() != dout->dims()) {
+    tmp_dxy.mutable_data<T>(dout->dims(), place);
+    outs = {&tmp_dxy};
+  } else {
+    outs = {dxy};
+  }
+
+  LaunchElementwiseCudaKernel<ET, T, T>(dev_ctx, ins, &outs, axis, func);
+  if (dxy->dims() != dout->dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
+  }
+}
+
+#endif
+
 }  // namespace operators
 }  // namespace paddle
