@@ -53,6 +53,18 @@ class Place {
 
   std::string DebugString() const;
 
+  inline bool operator==(const Place &rhs) const {
+    if (GetType() != rhs.GetType()) {
+      return false;
+    } else if (GetType() == AllocationType::CPU ||
+               GetType() == AllocationType::GPUPINNED ||
+               GetType() == AllocationType::NPUPINNED) {
+      return true;
+    } else {
+      return GetDeviceId() == rhs.GetDeviceId();
+    }
+  }
+
  public:
   // TODO(wilber): Just because of backward compatibility, it needs to be
   // changed to private in the future.
