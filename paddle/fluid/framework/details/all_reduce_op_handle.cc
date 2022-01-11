@@ -153,7 +153,7 @@ void AllReduceOpHandle::AllReduceImpl(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
 
-    lod_tensor_data.emplace_back(lod_tensor.data<void>());
+    lod_tensor_data.emplace_back(lod_tensor.data());
     places.emplace_back(lod_tensor.place());
 
     VLOG(10) << "place:" << i << ", input_name:" << in_var_handles[i]->name()
@@ -225,7 +225,7 @@ void AllReduceOpHandle::AllReduceFunc(
                      ->GetMutable<LoDTensor>();
 
     // Reduce All Tensor to trg in CPU
-    ReduceBufferData func(lod_tensor_data, trg.data<void>(), numel);
+    ReduceBufferData func(lod_tensor_data, trg.data(), numel);
     VisitDataType(trg.type(), func);
 
     for (size_t i = 1; i < local_exec_scopes_.size(); ++i) {
@@ -235,9 +235,9 @@ void AllReduceOpHandle::AllReduceFunc(
 
       size_t size = numel * SizeOfType(trg.type());
       RunAndRecordEvent(p, [&trg, var, p, size] {
-        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
+        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data();
         platform::CPUPlace cpu_place;
-        memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data<void>(), size);
+        memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
       });
     }
   }

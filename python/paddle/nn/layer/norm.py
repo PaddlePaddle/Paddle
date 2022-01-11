@@ -75,6 +75,7 @@ class _InstanceNormBase(Layer):
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._num_features = num_features
 
         if weight_attr != False and bias_attr != False:
             self.scale = self.create_parameter(
@@ -101,7 +102,7 @@ class _InstanceNormBase(Layer):
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(self.scale.shape[0],
+        return 'num_features={}, epsilon={}'.format(self._num_features,
                                                     self._epsilon)
 
 

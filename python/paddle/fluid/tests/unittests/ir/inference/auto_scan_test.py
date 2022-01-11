@@ -440,9 +440,7 @@ class PassAutoScanTest(AutoScanTest):
 
                 # baseline: no ir_optim run
                 base_config = self.create_inference_config(
-                    ir_optim=False,
-                    use_gpu=pred_config.use_gpu(),
-                    use_mkldnn=pred_config.mkldnn_enabled(), )
+                    ir_optim=False, use_gpu=pred_config.use_gpu())
                 try:
                     # baseline
                     base_result = self.run_test_config(
@@ -699,8 +697,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                              pred_config_deserialize, feed_data)
                 except Exception as e:
                     self.fail_log(
-                        str(prog_config) + ' vs ' + self.inference_config_str(
-                            pred_config) +
+                        self.inference_config_str(pred_config) +
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
                     if not ignore_flag:
                         status = False

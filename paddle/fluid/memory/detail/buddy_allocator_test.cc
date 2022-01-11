@@ -95,10 +95,10 @@ TEST(BuddyAllocator, GpuFraction) {
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
   TestBuddyAllocator(&buddy_allocator, 10 << 10);
-  TestBuddyAllocator(&buddy_allocator, 10 << 20);
+  TestBuddyAllocator(&buddy_allocator, 1 << 20);
 
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 300 << 20,
+  TestBuddyAllocator(&buddy_allocator, 500 << 20,
                      /* use_system_allocator = */ true);
   TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
@@ -182,6 +182,35 @@ TEST(BuddyAllocator, FractionRefillPool) {
   // be able to alloc 60% of the remaining GPU
   TestBuddyAllocator(&buddy_allocator, alloc,
                      /* use_system_allocator = */ false);
+  // Max chunk size should be same during allocation
+  EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
+
+  buddy_allocator.Free(p0);
+  buddy_allocator.Free(p1);
+}
+
+TEST(BuddyAllocator, DeviceRefillPool) {
+  const size_t malloc_size = 10;
+  const size_t malloc_bytes = malloc_size << 20;
+  FLAGS_initial_gpu_memory_in_mb = malloc_size;
+  FLAGS_reallocate_gpu_memory_in_mb = malloc_size;
+
+  EXPECT_EQ(platform::GpuMaxChunkSize(), malloc_bytes);
+
+  size_t max_chunk_size = platform::GpuMaxChunkSize();
+  BuddyAllocator buddy_allocator(
+      std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
+      platform::GpuMinChunkSize(), max_chunk_size);
+
+  int* p0 = TestBuddyAllocator(&buddy_allocator, malloc_bytes - 1000,
+                               /* use_system_allocator = */ false,
+                               /* free_ptr = */ false);
+  // Max chunk size should be same during allocation
+  EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
+
+  int* p1 = TestBuddyAllocator(&buddy_allocator, malloc_bytes - 1000,
+                               /* use_system_allocator = */ false,
+                               /* free_ptr = */ false);
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
@@ -350,7 +379,6 @@ TEST(BuddyAllocator, Release) {
 #ifdef PADDLE_WITH_ASCEND_CL
 TEST(BuddyAllocator, NpuFraction) {
   // In a 16 GB machine, the pool size will be about 160 MB
-  FLAGS_fraction_of_gpu_memory_to_use = 0.005;
   FLAGS_fraction_of_gpu_memory_to_use = 0.92;
   FLAGS_initial_gpu_memory_in_mb = 0;
   FLAGS_reallocate_gpu_memory_in_mb = 0;

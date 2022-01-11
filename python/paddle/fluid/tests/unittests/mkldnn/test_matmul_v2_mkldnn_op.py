@@ -262,6 +262,41 @@ class TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
         self.trans_y = False
 
 
+class TestMatMulV2MatrixXMatrix4Dx3DTransposeXOneDNNOp(
+        TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (5, 4, 15, 10)
+        self.y_shape = (1, 15, 20)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMulV2MatrixXMatrix3Dx4DTransposeYOneDNNOp(
+        TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (2, 10, 15)
+        self.y_shape = (4, 2, 20, 15)
+        self.trans_x = False
+        self.trans_y = True
+
+
+class TestMatMulV2MatrixXMatrix5Dx3DTransposeXTransposeYOneDNNOp(
+        TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (4, 3, 2, 15, 10)
+        self.y_shape = (1, 20, 15)
+        self.trans_x = True
+        self.trans_y = True
+
+
+class TestMatMulV2MatrixXMatrix3Dx4DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (1, 1, 32, 16)
+        self.y_shape = (16, 16, 16)
+        self.trans_x = False
+        self.trans_y = False
+
+
 #   BF16 TESTS
 def create_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()

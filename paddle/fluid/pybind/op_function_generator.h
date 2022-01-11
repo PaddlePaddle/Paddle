@@ -71,6 +71,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
+    {"merged_adam",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
     {"adamw",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
@@ -79,6 +82,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Beta2Pow", "MasterParam"}},
     {"sparse_attention",
      {"Q", "K", "V", "Offset", "Columns", "KeyPaddingMask", "AttnMask"}},
+    {"sgd", {"Param", "LearningRate", "Grad", "MasterParam"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -122,9 +126,13 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
+    {"merged_adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
     {"adamw",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
+    {"sgd", {"ParamOut", "MasterParamOut"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
@@ -142,8 +150,11 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
 //     especially in declarative mode.
 // For those OPs, we need to manually specify the outs need to pass in this map.
 std::map<std::string, std::set<std::string>> op_passing_outs_map = {
-    {"sgd", {"ParamOut"}},
+    {"sgd", {"ParamOut", "MasterParamOut"}},
     {"adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+    {"merged_adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
     {"adamw",
