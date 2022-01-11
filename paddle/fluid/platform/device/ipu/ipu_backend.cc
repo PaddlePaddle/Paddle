@@ -44,7 +44,7 @@ void IpuBackend::Compile(Graph* graph,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
   compiler_->Prepare();
-  executor_->SetBuilder(compiler_->GetBuilder());
+  executor_->SetCompilerResources(compiler_->GetResources());
 
   compiler_->InitInputs(graph, feed_list);
   compiler_->LowerConstants(graph, scope_);

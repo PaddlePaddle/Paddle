@@ -62,7 +62,8 @@ enum ONNXDataType : int {
 
 class PaddleIArray final : public popart::IArray {
  public:
-  explicit PaddleIArray(Tensor* tensor) : tensor_(tensor) {
+  explicit PaddleIArray(const Tensor* tensor) {
+    tensor_.ShareDataWith(*tensor);
     for (int i = 0; i < tensor->dims().size(); ++i) {
       shape_.push_back(tensor->dims().at(i));
     }
@@ -77,7 +78,7 @@ class PaddleIArray final : public popart::IArray {
   const popart::Shape shape() const;
 
  private:
-  const Tensor* tensor_;
+  Tensor tensor_;
   std::vector<int64_t> shape_;
 };
 

@@ -19,17 +19,16 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-// TODO(alleng) remove const_cast
-void* PaddleIArray::data() { return const_cast<void*>(tensor_->data()); }
+void* PaddleIArray::data() { return tensor_.data(); }
 
 popart::DataType PaddleIArray::dataType() const {
-  return VarType2PopartType(tensor_->type());
+  return VarType2PopartType(tensor_.type());
 }
 
-std::size_t PaddleIArray::rank() const { return tensor_->dims().size(); }
+std::size_t PaddleIArray::rank() const { return tensor_.dims().size(); }
 
 int64_t PaddleIArray::dim(size_t index) const {
-  return tensor_->dims().at(index);
+  return tensor_.dims().at(index);
 }
 
 std::size_t PaddleIArray::nelms() const {

@@ -27,7 +27,7 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-struct OneBuilder {
+struct CompilerResources {
   // popart input tensor_ids
   std::vector<popart::TensorId> inputs;
   // popart output tensor_ids
@@ -103,7 +103,7 @@ class Compiler {
 
   void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
-  OneBuilder *GetBuilder() { return one_builder_.get(); }
+  CompilerResources *GetResources() { return resources_.get(); }
 
   std::string GetModelProto();
   std::string GetFP16ModelProto();
@@ -118,7 +118,7 @@ class Compiler {
 
  private:
   std::unique_ptr<popart::Builder> builder_;
-  std::unique_ptr<OneBuilder> one_builder_;
+  std::unique_ptr<CompilerResources> resources_;
 
   using OpFunc = std::function<void(OpDesc *op_desc)>;
   std::unordered_map<std::string, OpFunc> name_function_;

@@ -23,27 +23,27 @@ namespace ipu {
 Executor::~Executor() {
   Detach();
   session_.reset();
-  one_session_.reset();
+  executor_resources_.reset();
 }
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
 
   AcquireDevice();
-  one_session_ = std::make_unique<OneSession>();
+  executor_resources_ = std::make_unique<ExecutorResources>();
 
   auto art = popart::AnchorReturnType("All");
   std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
-  for (const auto &id : one_builder_->outputs) {
+  for (const auto &id : compiler_resources_->outputs) {
     anchor_ids.emplace(id, art);
   }
   auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
 
   if (ipu_strategy_->is_training) {
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
-    auto optimizer = one_builder_->NewOptimizer();
+    auto optimizer = compiler_resources_->NewOptimizer();
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, one_builder_->loss_var, *optimizer, device_,
+        proto, dataFlow, compiler_resources_->loss_var, *optimizer, device_,
         popart::InputShapeInfo(), ipu_strategy_->popart_options,
         ipu_strategy_->popart_patterns);
   } else {
@@ -83,19 +83,15 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
-    auto tensor_id = one_builder_->inputs[i];
-    framework::Tensor *tensor = nullptr;
-    tensor->ShareDataWith(*inputs[i]);
-    input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    auto tensor_id = compiler_resources_->inputs[i];
+    input_wrappers.emplace(tensor_id, PaddleIArray(inputs[i]));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
   // anchors
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
-    auto tensor_id = one_builder_->outputs[i];
-    framework::Tensor *tensor = nullptr;
-    tensor->ShareDataWith(*outputs[i]);
+    auto tensor_id = compiler_resources_->outputs[i];
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
     auto output_shape = fetch_info.shape();
@@ -112,6 +108,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
                           ipu_strategy_->popart_options.replicatedGraphCount);
     }
 
+    auto *tensor = outputs[i];
     tensor->Resize(framework::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartType2VarType(fetch_dtype);
@@ -121,11 +118,12 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   }
   VLOG(10) << "Prepared inputs/anchors";
 
-  if (ipu_strategy_->is_training && one_builder_->with_lr_sched) {
+  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched) {
     VLOG(10) << "Update learning_rate";
-    auto new_lr = GetSingleVarFromScope<float>(scope_, one_builder_->lr_var);
+    auto new_lr =
+        GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
     VLOG(10) << "New Lr: " << new_lr;
-    auto *optimizer = one_builder_->UpdateOptimizer(new_lr);
+    auto *optimizer = compiler_resources_->UpdateOptimizer(new_lr);
     auto *session = dynamic_cast<popart::TrainingSession *>(session_.get());
     session->updateOptimizerFromHost(optimizer);
   }
@@ -178,10 +176,10 @@ void Executor::Detach() {
 }
 
 void Executor::SetWeightsIO() {
-  auto opt_type = one_builder_->optimizer_type;
+  auto opt_type = compiler_resources_->optimizer_type;
   VLOG(10) << "SetWeightsIO for " << opt_type;
   auto pre_post_fix = GetOptPrePostfix(opt_type);
-  for (const auto &weight_id : one_builder_->weights) {
+  for (const auto &weight_id : compiler_resources_->weights) {
     for (const auto &pair : pre_post_fix) {
       // pair.first : popart prefix, pair.second : paddle postfix
       auto popart_var_name = pair.first + weight_id;
@@ -199,8 +197,9 @@ void Executor::SetWeightsIO() {
       auto data_ptr = var->GetMutable<framework::LoDTensor>()->data();
 
       auto tensor_info = session_->getInfo(popart_var_name);
-      one_session_->weights_io.insert(popart_var_name, {data_ptr, tensor_info});
-      one_session_->weights_and_opt_state.emplace_back(
+      executor_resources_->weights_io.insert(popart_var_name,
+                                             {data_ptr, tensor_info});
+      executor_resources_->weights_and_opt_state.emplace_back(
           std::make_pair(popart_var_name, paddle_var_name));
     }
   }
@@ -208,7 +207,7 @@ void Executor::SetWeightsIO() {
 
 // align_to_popart: align dtype to popart if true, else to paddle
 void Executor::ConvertWeights(bool align_to_popart) {
-  for (auto weight_pair : one_session_->weights_and_opt_state) {
+  for (auto weight_pair : executor_resources_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
     auto paddle_var_dtype = VarType2PopartType(
         paddle_var->GetMutable<framework::LoDTensor>()->type());
@@ -278,7 +277,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
 // Paddle -> Popart: copy from paddle to popart
 void Executor::WeightsFromPaddle() {
   ConvertWeights(true);
-  session_->writeWeights(one_session_->weights_io);
+  session_->writeWeights(executor_resources_->weights_io);
 }
 
 // |-----------------------------------------------------|
@@ -292,7 +291,7 @@ void Executor::WeightsFromPaddle() {
 // Paddle -> halfToFloat: cast then save to paddle
 // Popart -> Paddle: copy from paddle to popart
 void Executor::WeightsToPaddle() {
-  session_->readWeights(one_session_->weights_io);
+  session_->readWeights(executor_resources_->weights_io);
   ConvertWeights(false);
 }
 

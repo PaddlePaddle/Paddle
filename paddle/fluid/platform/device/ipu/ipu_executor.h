@@ -32,7 +32,7 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-struct OneSession {
+struct ExecutorResources {
   // map<tensor_id, paddle_var_ptr>
   popart::WeightsIO weights_io;
   // <popart_var, paddle_var> pairs, include weights and optimizer states
@@ -69,8 +69,10 @@ class Executor {
     ipu_strategy_ = &strategy;
   }
 
-  // OneBuilder
-  void SetBuilder(OneBuilder *one_builder) { one_builder_ = one_builder; }
+  // CompilerResources
+  void SetCompilerResources(CompilerResources *resources) {
+    compiler_resources_ = resources;
+  }
 
   // Save model to onnx
   void SaveModelToHost(const std::string &path);
@@ -82,14 +84,14 @@ class Executor {
   // not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
-  OneBuilder *one_builder_ = nullptr;
+  CompilerResources *compiler_resources_ = nullptr;
 
   // deviceinfo for popart session
   std::shared_ptr<popart::DeviceInfo> device_;
   // popart session, where graph running
   std::unique_ptr<popart::Session> session_;
   // one OneSession means a graph
-  std::unique_ptr<OneSession> one_session_;
+  std::unique_ptr<ExecutorResources> executor_resources_;
 
   int step_ = 0;
 };

@@ -95,12 +95,12 @@ Compiler::Compiler() { RegisterOpFunc(); }
 
 Compiler::~Compiler() {
   builder_.reset();
-  one_builder_.reset();
+  resources_.reset();
 }
 
 void Compiler::Prepare() {
   builder_ = popart::Builder::create();
-  one_builder_ = std::make_unique<OneBuilder>();
+  resources_ = std::make_unique<CompilerResources>();
 }
 
 void Compiler::RegisterOpFunc() {
@@ -238,8 +238,8 @@ void Compiler::InitInputs(Graph* graph,
           popart::TensorId tensor_id =
               builder_->addInputTensor(input_info, feed_name);
           VLOG(10) << "popart input tensor id = " << tensor_id;
-          one_builder_->inputs.push_back(tensor_id);
-          one_builder_->tensors.emplace(var_desc->Name(), tensor_id);
+          resources_->inputs.push_back(tensor_id);
+          resources_->tensors.emplace(var_desc->Name(), tensor_id);
         }
       }
     }
@@ -249,14 +249,14 @@ void Compiler::InitInputs(Graph* graph,
 void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
     fetch_list_.push_back(fetch_name);
-    auto tensor = one_builder_->tensors.find(fetch_name);
-    PADDLE_ENFORCE_NE(tensor, one_builder_->tensors.end(),
+    auto tensor = resources_->tensors.find(fetch_name);
+    PADDLE_ENFORCE_NE(tensor, resources_->tensors.end(),
                       platform::errors::NotFound(
                           "output tensor %s does not exist.", fetch_name));
     VLOG(10) << "fetch_name= " << fetch_name;
     VLOG(10) << "popart output tensor id = " << tensor->second;
     builder_->addOutputTensor(tensor->second);
-    one_builder_->outputs.push_back(tensor->second);
+    resources_->outputs.push_back(tensor->second);
   }
 }
 
@@ -290,7 +290,7 @@ void Compiler::LowerConstants(const Graph* graph, const Scope* scope) {
       const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
-      one_builder_->tensors.emplace(tensor_name, result);
+      resources_->tensors.emplace(tensor_name, result);
     }
   }
   VLOG(10) << "leave Compiler::LowerConstants";
@@ -306,7 +306,7 @@ void Compiler::LowerWeights(const Graph* graph, const Scope* scope) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable() && node->inputs.empty()) {
         auto var_name = node->Var()->Name();
-        if (one_builder_->tensors.count(var_name) != 0) {
+        if (resources_->tensors.count(var_name) != 0) {
           continue;
         }
         VLOG(10) << "lowering weight: " << var_name;
@@ -323,8 +323,8 @@ void Compiler::LowerWeights(const Graph* graph, const Scope* scope) {
           popart::ConstVoidData const_data{tensor.data(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
-          one_builder_->tensors.emplace(var_name, result);
-          one_builder_->weights.push_back(result);
+          resources_->tensors.emplace(var_name, result);
+          resources_->weights.push_back(result);
         }
       }
     }
@@ -343,29 +343,29 @@ void Compiler::LowerOptimier(const Graph* graph, const Scope* scope) {
     if (op_type == "popart_optimizer") {
       auto raw_type =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("raw_type"));
-      one_builder_->optimizer_type = raw_type;
+      resources_->optimizer_type = raw_type;
       auto loss_var =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
-      one_builder_->loss_var = one_builder_->tensors[loss_var];
-      one_builder_->with_lr_sched =
+      resources_->loss_var = resources_->tensors[loss_var];
+      resources_->with_lr_sched =
           BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
       if (op_desc->HasAttr("lr_var")) {
         auto lr_var = BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
-        one_builder_->lr_var = lr_var;
-        one_builder_->lr = GetSingleVarFromScope<float>(scope, lr_var);
+        resources_->lr_var = lr_var;
+        resources_->lr = GetSingleVarFromScope<float>(scope, lr_var);
       } else {
         // adadelta has no lr
-        one_builder_->lr = 0.01f;
-        one_builder_->with_lr_sched = false;
+        resources_->lr = 0.01f;
+        resources_->with_lr_sched = false;
       }
-      VLOG(10) << "Set initial lr: " << one_builder_->lr;
+      VLOG(10) << "Set initial lr: " << resources_->lr;
       auto loss_scaling = ipu_strategy_->loss_scaling;
       auto type = BOOST_GET_CONST(std::string, op_desc->GetAttr("type"));
       if (type == "sgd") {
         auto weight_decay =
             BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
         auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
-        one_builder_->optimizer_fn = [=](float lr) {
+        resources_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::SGD>(
               popart::OptimizerValue(lr, false),
               popart::OptimizerValue(weight_decay, true),
@@ -388,7 +388,7 @@ void Compiler::LowerOptimier(const Graph* graph, const Scope* scope) {
         auto weight_decay_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
-        one_builder_->optimizer_fn = [=](float lr) {
+        resources_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::Adam>(
               popart::OptimizerValue(lr, false),
               popart::OptimizerValue(weight_decay, true),
@@ -412,7 +412,7 @@ void Compiler::LowerOptimier(const Graph* graph, const Scope* scope) {
         auto weight_decay_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
-        one_builder_->optimizer_fn = [=](float lr) {
+        resources_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::Adaptive>(
               popart::OptimizerValue(lr, false),
               popart::OptimizerValue(weight_decay, true),
@@ -438,7 +438,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                     platform::errors::Fatal("InsertTensors size mismatch"));
   for (int i = 0; i < tensor_ids.size(); i++) {
     std::string tensor_id = tensor_ids[i];
-    one_builder_->tensors.emplace(output_names[i], tensor_ids[i]);
+    resources_->tensors.emplace(output_names[i], tensor_ids[i]);
   }
 }
 
@@ -446,7 +446,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                              const std::string& tensor_id) {
   PADDLE_ENFORCE_EQ(output_names.size(), 1,
                     platform::errors::Fatal("InsertTensors size mismatch"));
-  one_builder_->tensors.emplace(output_names[0], tensor_id);
+  resources_->tensors.emplace(output_names[0], tensor_id);
 }
 
 void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
@@ -573,8 +573,8 @@ std::vector<std::string> Compiler::GetOpInputs(const OpDesc* op) {
   auto ins = op->Input("__inputs__");
   std::vector<std::string> inputs;
   for (const auto& in : ins) {
-    if (one_builder_->tensors.find(in) != one_builder_->tensors.end()) {
-      inputs.push_back(one_builder_->tensors[in]);
+    if (resources_->tensors.find(in) != resources_->tensors.end()) {
+      inputs.push_back(resources_->tensors[in]);
     } else {
       inputs.push_back(in);
     }
