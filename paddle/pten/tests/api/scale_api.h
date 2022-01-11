@@ -23,7 +23,6 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 

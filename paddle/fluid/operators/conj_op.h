@@ -19,7 +19,6 @@
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/complex_kernel.h"
 
 namespace paddle {
