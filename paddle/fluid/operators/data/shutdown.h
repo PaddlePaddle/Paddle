@@ -16,7 +16,6 @@
 #include "paddle/fluid/operators/file_label_reader_op.h"
 #include "paddle/fluid/operators/data/nvjpeg_decoder.h"
 #include "paddle/fluid/operators/data/map_runner.h"
-#include "paddle/fluid/operators/data/pipeline.h"
 
 
 namespace paddle {

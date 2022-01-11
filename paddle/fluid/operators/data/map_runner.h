@@ -52,7 +52,7 @@ class MapRunner {
 
   void ShutDown();
 
-  inline bool IsRunning() { return running_; }
+  inline bool IsRunning() { return running_.load(); }
 
 
  private:

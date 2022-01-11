@@ -20,7 +20,7 @@ Pipeline::Pipeline(const std::shared_ptr<BlockDesc> global_block,
                    const platform::Place &place, int64_t start_op_index,
                    int64_t end_op_index, int64_t program_id,
                    const std::vector<std::string> &output_var_names)
-    :
+    : running_(true),
       global_block_(global_block),
       place_(place),
       start_op_index_(start_op_index),
@@ -91,11 +91,17 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
                      "program's internal scope",
                      output_var_names_[i]));
     auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+    if (out_queue->IsClosed()) {
+      running_.store(false);
+      return;
+    }
+
     bool success = true;
     auto outputs = out_queue->Pop(&success);
     PADDLE_ENFORCE_EQ(success, true, 
-        platform::errors::PreconditionNotMet("Read from input queue failed"));
-    CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
+        platform::errors::PreconditionNotMet("Read from output queue %s failed", output_var_names_[i]));
+    
+    // CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
     copy_tensor(outputs.at(0), out_vars[i]->GetMutable<LoDTensor>());
   }
 }

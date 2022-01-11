@@ -106,7 +106,8 @@ class FileDataReader {
     batch_size_ = ctx.Attr<int>("batch_size");
     current_epoch_ = 0;
     current_iter_ = 0;
-    iters_per_epoch_ = labels.size() / (batch_size_ * world_size_);
+    auto total_batch_size = batch_size_ * world_size_;
+    iters_per_epoch_ = (labels.size() + total_batch_size) / total_batch_size;
     is_closed_ = false;
     for (int i = 0, n = files.size(); i < n; i++)
       image_label_pairs_.emplace_back(std::move(files[i]), labels[i]);
@@ -150,8 +151,8 @@ class FileDataReader {
   }
 
   void ShutDown() {
-    if (queue_) queue_->Close();
-    if (label_queue_) label_queue_->Close();
+    if (queue_ && !queue_->IsClosed()) queue_->Close();
+    if (label_queue_ && !label_queue_->IsClosed()) label_queue_->Close();
 
     is_closed_.store(true);
     if (load_thrd_.joinable()) {
@@ -177,7 +178,16 @@ class FileDataReader {
     ret.reserve(batch_size_);
     int start_index = GetStartIndex();
     for (int32_t i = start_index; i < start_index + batch_size_; ++i) {
-      // FIXME
+      if (static_cast<size_t>(i) >= image_label_pairs_.size()) {
+        // FIXME(dkp): refine close pipeline
+        while (queue_->Size()) sleep(0.5);
+        queue_->Close();
+        while (label_queue_->Size()) sleep(0.5);
+        label_queue_->Close();
+
+        is_closed_.store(true);
+        break;
+      }
       i %= image_label_pairs_.size();
       framework::LoDTensor tmp = ReadSample(image_label_pairs_[i].first);
       ret.push_back(std::move(tmp));
