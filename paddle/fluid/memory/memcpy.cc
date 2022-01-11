@@ -1079,17 +1079,12 @@ void Copy<platform::CPUPlace, platform::CustomPlace>(
     const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
-  std::string msg;
-  if (stream) {
-    msg += "MemcpyAsync:";
-  } else {
-    msg += "Memcpy:";
-  }
   auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
   auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
-  msg += src_type + "->" + dst_type;
+  std::string msg = "Memcpy:" + src_type + "->" + dst_type;
   platform::RecordEvent record_event(msg);
-  VLOG(4) << msg << " " << std::to_string(num) << " Bytes";
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << ", stream=" << stream;
 
   platform::DeviceManager::SetDevice(src_place);
   platform::stream::Stream stream_wrapper(src_place, stream);
@@ -1102,12 +1097,12 @@ void Copy<platform::CustomPlace, platform::CPUPlace>(
     platform::CustomPlace dst_place, void* dst, platform::CPUPlace src_place,
     const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
-  std::string msg = "Memcpy:";
   auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
   auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
-  msg += src_type + "->" + dst_type;
+  std::string msg = "Memcpy:" + src_type + "->" + dst_type;
   platform::RecordEvent record_event(msg);
-  VLOG(4) << msg << " " << std::to_string(num) << " Bytes, stream=" << stream;
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << ", stream=" << stream;
 
   platform::DeviceManager::SetDevice(dst_place);
   platform::stream::Stream stream_wrapper(dst_place, stream);
@@ -1121,17 +1116,12 @@ void Copy<platform::CustomPlace, platform::CustomPlace>(
     const void* src, size_t num, void* stream) {
   if (UNLIKELY(num == 0)) return;
 
-  std::string msg;
-  if (stream) {
-    msg += "MemcpyAsync:";
-  } else {
-    msg += "Memcpy:";
-  }
   auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
   auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
-  msg += src_type + "->" + dst_type;
+  std::string msg = "Memcpy:" + src_type + "->" + dst_type;
   platform::RecordEvent record_event(msg);
-  VLOG(4) << msg << " " << std::to_string(num) << " Bytes";
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << ", stream=" << stream;
 
   if (src_type == dst_type) {
     platform::DeviceManager::SetDevice(src_place);

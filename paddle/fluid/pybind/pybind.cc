@@ -1656,57 +1656,57 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  m.def("list_all_device_type", []() {
+  m.def("get_all_device_type", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = platform::DeviceManager::GetAllDeviceTypes();
     return device_types;
 #else
   LOG(ERROR) << string::Sprintf(
-      "Cannot use list_all_device_type because you have installed"
+      "Cannot use get_all_device_type because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use list_all_device_type, please try to install"
+      "If you want to use get_all_device_type, please try to install"
       "CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
   std::exit(-1);
 #endif
   });
-  m.def("list_all_custom_device_type", []() {
+  m.def("get_all_custom_device_type", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
     return device_types;
 #else
   LOG(ERROR) << string::Sprintf(
-      "Cannot use list_all_custom_device_type because you have installed"
+      "Cannot use get_all_custom_device_type because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use list_all_custom_device_type, please try to "
+      "If you want to use get_all_custom_device_type, please try to "
       "install CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
     std::exit(-1);
 #endif
   });
-  m.def("list_visible_devices", [] {
+  m.def("get_available_device", [] {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto devices = platform::DeviceManager::GetAllDeviceList();
     return devices;
 #else
   LOG(ERROR) << string::Sprintf(
-      "Cannot use list_visible_devices because you have installed"
+      "Cannot use get_available_device because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use list_visible_devices, please try to install"
+      "If you want to use get_available_device, please try to install"
       "CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
   std::exit(-1);
 #endif
   });
-  m.def("list_visible_custom_devices", [] {
+  m.def("get_available_custom_device", [] {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto devices = platform::DeviceManager::GetAllCustomDeviceList();
     return devices;
 #else
   LOG(ERROR) << string::Sprintf(
-      "Cannot use list_visible_custom_devices because you have installed"
+      "Cannot use get_available_custom_device because you have installed"
       "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use list_visible_custom_devices, please try to install"
+      "If you want to use get_available_custom_device, please try to install"
       "CustomDevice version "
       "PaddlePaddle by: pip install paddlepaddle-core\n");
   std::exit(-1);

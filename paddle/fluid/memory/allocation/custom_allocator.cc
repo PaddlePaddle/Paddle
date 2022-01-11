@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace memory {
 namespace allocation {
 
 bool CustomAllocator::IsAllocThreadSafe() const { return true; }
-void CustomAllocator::FreeImpl(Allocation* allocation) {
+void CustomAllocator::FreeImpl(pten::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
       platform::errors::PermissionDenied("CustomDevice memory is "
@@ -31,7 +31,7 @@ void CustomAllocator::FreeImpl(Allocation* allocation) {
   delete allocation;
 }
 
-Allocation* CustomAllocator::AllocateImpl(size_t size) {
+pten::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_,
                  [this] { platform::DeviceManager::SetDevice(place_); });
 

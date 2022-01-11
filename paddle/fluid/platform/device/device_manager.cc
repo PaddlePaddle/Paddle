@@ -136,7 +136,9 @@ bool DeviceManager::Register(std::unique_ptr<DeviceInterface> device_impl) {
   auto& dev_map = Instance().device_map_;
 
   if (dev_impl_map.find(device_type) == dev_impl_map.end()) {
-    dev_impl_map.insert({device_type, std::move(device_impl)});
+    dev_impl_map.insert(
+        std::pair<std::string, std::unique_ptr<DeviceInterface>>(
+            device_type, std::move(device_impl)));
     auto& dev_impl = dev_impl_map[device_type];
     auto& dev_vec = dev_map[device_type];
     VLOG(4) << "GetDeviceCount is " << dev_impl->GetDeviceCount();
@@ -380,7 +382,6 @@ DeviceManager& DeviceManager::Instance() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
-#if !defined(_WIN32)
   std::regex express(".*\\.so");
   std::match_results<std::string::iterator> results;
   DIR* dir = nullptr;
@@ -394,16 +395,13 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
       std::string filename(ptr->d_name);
       if (std::regex_match(filename.begin(), filename.end(), results,
                            express)) {
-        libraries.push_back(library_dir + filename);
+        libraries.push_back(library_dir + '/' + filename);
         VLOG(4) << "found CustomDevice library: " << libraries.back()
                 << std::endl;
       }
     }
     closedir(dir);
   }
-#else
-// todo:(wangran16)
-#endif
 
   return libraries;
 }

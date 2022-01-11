@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device/device_base.h"
+#include "gflags/gflags.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);

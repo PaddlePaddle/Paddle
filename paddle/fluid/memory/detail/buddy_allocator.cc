@@ -25,9 +25,7 @@ limitations under the License. */
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace memory {
@@ -35,15 +33,37 @@ namespace detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size, size_t extra_padding_size, size_t init_alloc_size,
-    size_t realloc_size)
+    size_t max_chunk_size, size_t extra_padding_size,
+    const std::string dev_type)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
-      init_alloc_size_(init_alloc_size),
-      realloc_size_(realloc_size),
       extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+      system_allocator_(std::move(system_allocator)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (!dev_type.empty()) {
+    init_allocate_size_func_ = [dev_type]() {
+      return platform::DeviceManager::GetInitAllocSize(
+          platform::PlaceHelper::CreatePlace(dev_type));
+    };
+    re_allocate_size_func_ = [dev_type]() {
+      return platform::DeviceManager::GetReallocSize(
+          platform::PlaceHelper::CreatePlace(dev_type));
+    };
+  } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    init_allocate_size_func_ = &platform::GpuInitAllocSize;
+    re_allocate_size_func_ = &platform::GpuReallocSize;
+#elif defined(PADDLE_WITH_ASCEND_CL)
+    init_allocate_size_func_ = &platform::NPUInitAllocSize;
+    re_allocate_size_func_ = &platform::NPUReallocSize;
+#elif defined(PADDLE_WITH_MLU)
+    init_allocate_size_func_ = &platform::MLUInitAllocSize;
+    re_allocate_size_func_ = &platform::MLUReallocSize;
+#endif
+  }
+#endif
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
@@ -228,13 +248,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   size_t index = 0;
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (system_allocator_->UseGpu()) {
-    if ((total_used_ + total_free_) == 0) {
-      allocate_bytes = std::max(init_alloc_size_, request_bytes);
-    } else {
-      allocate_bytes = std::max(realloc_size_, request_bytes);
-    }
-  }
+  allocate_bytes = DeviceAllocateSize(init_allocate_size_func_,
+                                      re_allocate_size_func_, request_bytes);
 #else
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   allocate_bytes = DeviceAllocateSize(&platform::GpuInitAllocSize,

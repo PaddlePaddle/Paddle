@@ -7,7 +7,7 @@ cc_library(stream SRCS stream.cc DEPS callback_manager)
 
 cc_library(event SRCS event.cc DEPS enforce place)
 
-cc_library(device_base SRCS device_base.cc DEPS stream event callback_manager device_guard device_context)
+cc_library(device_base SRCS device_base.cc DEPS stream event callback_manager device_guard device_context flags)
 
 ENDIF()
 

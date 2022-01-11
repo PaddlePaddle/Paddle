@@ -774,9 +774,7 @@ class BuddyAllocatorList {
               new detail::CustomAllocator(device_type_, dev_id)),
           platform::DeviceManager::GetMinChunkSize(place),
           platform::DeviceManager::GetMaxChunkSize(place),
-          platform::DeviceManager::GetExtraPaddingSize(place),
-          platform::DeviceManager::GetInitAllocSize(place),
-          platform::DeviceManager::GetReallocSize(place)));
+          platform::DeviceManager::GetExtraPaddingSize(place), device_type_));
     });
 
     return allocators_[dev_id].get();

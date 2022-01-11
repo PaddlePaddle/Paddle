@@ -537,8 +537,9 @@ class CustomDevice : public DeviceInterface {
   inline int PlaceToId(const Place& place) {
     int dev_id = PlaceToIdNoCheck(place);
     PADDLE_ENFORCE_NE(devices_pool.find(dev_id), devices_pool.end(),
-                      "Cannot found %s %d, please check visible devices",
-                      Type(), dev_id);
+                      platform::errors::NotFound(
+                          "Cannot found %s %d, please check visible devices",
+                          Type(), dev_id));
     return dev_id;
   }
 

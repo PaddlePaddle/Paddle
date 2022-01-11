@@ -21,6 +21,11 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
+from paddle.fluid.core import get_all_device_type
+from paddle.fluid.core import get_all_custom_device_type
+from paddle.fluid.core import get_available_device
+from paddle.fluid.core import get_available_custom_device
+
 from . import cuda
 
 __all__ = [  # noqa
@@ -36,7 +41,11 @@ __all__ = [  # noqa
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_npu',
-    'is_compiled_with_mlu'
+    'is_compiled_with_mlu',
+    'get_all_device_type',
+    'get_all_custom_device_type',
+    'get_available_device',
+    'get_available_custom_device',
 ]
 
 _cudnn_version = None
@@ -225,7 +234,7 @@ def _convert_to_place(device):
         selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
-    elif device in core.list_all_custom_device_type():
+    elif device in core.get_all_custom_device_type():
         place = core.CustomPlace(device, 0)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
@@ -235,7 +244,7 @@ def _convert_to_place(device):
         if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device and not avaliable_mlu_device:
             device_info_list = device.split(':', 1)
             platform_name = device_info_list[0]
-            if platform_name in core.list_all_custom_device_type():
+            if platform_name in core.get_all_custom_device_type():
                 device_id = device_info_list[1]
                 device_id = int(device_id)
                 place = core.CustomPlace(platform_name, device_id)
@@ -245,7 +254,7 @@ def _convert_to_place(device):
                     ', '.join([
                         "'{}', '{}:x'".format(x, x) for x in [
                             'gpu', 'xpu', 'npu', 'mlu'
-                        ] + core.list_all_custom_device_type()
+                        ] + core.get_all_custom_device_type()
                     ]))
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
