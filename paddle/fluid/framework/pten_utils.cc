@@ -98,7 +98,8 @@ KernelSignatureMap& KernelSignatureMap::Instance() {
     for (const auto& pair : OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
       const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+          op_proto != nullptr) {
         KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
         auto success = kernel_signature_map_->map_
@@ -193,16 +194,6 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
   return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
                          GetInputArgsNames(), GetAttrsArgsNames(),
                          GetOutputArgsNames());
-}
-
-std::string KernelSignatureToString(const KernelSignature& signature) {
-  std::stringstream os;
-  os << "Kernel Signature - name: " << signature.name
-     << "; inputs: " << string::join_strings(std::get<0>(signature.args), ", ")
-     << "; attributes: "
-     << string::join_strings(std::get<1>(signature.args), ", ") << "; outputs: "
-     << string::join_strings(std::get<2>(signature.args), ", ");
-  return os.str();
 }
 
 }  // namespace framework

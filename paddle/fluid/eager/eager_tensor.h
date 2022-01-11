@@ -239,8 +239,8 @@ class EagerTensor final {
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
           if (tensor_dense) {
-            paddle::experimental::MovesStorage(tensor_dense.get(),
-                                               framework_tensor);
+            paddle::experimental::SharesStorage(tensor_dense.get(),
+                                                framework_tensor);
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
                 "Unrecognized egr::EagerTensor type, only "
@@ -258,27 +258,23 @@ class EagerTensor final {
   /** Part 11: Sync paddle::framework::Variable with pten::Tensor **/
   void SyncToTensor() {
     // Synchronize allocation only once.
-    if (!this->defined() || !this->initialized()) {
-      // TODO(jiabin): Support selected rows later.
-      if (var_.IsInitialized()) {
-        if (var_.IsType<paddle::framework::LoDTensor>()) {
-          SetImplWithLegacyTensor<paddle::framework::LoDTensor,
-                                  pten::DenseTensor>();
-        } else if (var_.IsType<paddle::framework::Tensor>()) {
-          SetImplWithLegacyTensor<paddle::framework::Tensor,
-                                  pten::DenseTensor>();
-        } else {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "Unable to fetch underlying tensor "
-              "from VarBase, only LoDTensor and "
-              "Tensor are supported for now"));
-        }
+    if (var_.IsInitialized()) {
+      if (var_.IsType<paddle::framework::LoDTensor>()) {
+        SetImplWithLegacyTensor<paddle::framework::LoDTensor,
+                                pten::DenseTensor>();
+      } else if (var_.IsType<paddle::framework::Tensor>()) {
+        SetImplWithLegacyTensor<paddle::framework::Tensor, pten::DenseTensor>();
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
-            "not initialized!",
-            name()));
+        PADDLE_THROW(
+            paddle::platform::errors::Fatal("Unable to fetch underlying tensor "
+                                            "from VarBase, only LoDTensor and "
+                                            "Tensor are supported for now"));
       }
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
+          "not initialized!",
+          name()));
     }
   }
 
@@ -296,8 +292,16 @@ class EagerTensor final {
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
-    this->set_impl(
-        std::move(paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    if (this->initialized()) {
+      VLOG(8) << "Sync Var to initialized tensor for: " << name();
+      paddle::experimental::ReMakePtenDenseTensor(
+          framework_tensor,
+          static_cast<pten::DenseTensor*>(this->impl().get()));
+    } else {
+      VLOG(8) << "Sync Var to uninitialized tensor for: " << name();
+      this->set_impl(std::move(
+          paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    }
     var_.Clear();
   }
 

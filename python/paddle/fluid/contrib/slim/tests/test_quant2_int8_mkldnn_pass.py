@@ -216,6 +216,141 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             graph = quant2_int8_mkldnn_pass._update_activations(graph)
             self.check_graph_after_pass(graph)
 
+    class TestQuant2Int8MkldnnPassNearestInterp(unittest.TestCase):
+        def op_name(self):
+            return "nearest_interp"
+
+        def setUp(self):
+            self.scope = fluid.Scope()
+            self.place = fluid.CPUPlace()
+            self.dtype = np.float32
+            self.use_cudnn = False
+            self.use_mkldnn = True
+
+            # conv2d
+            self.data_format = "ANYLAYOUT"
+            self.pad = [0, 0]
+            self.stride = [1, 1]
+            self.dilations = [1, 1]
+            self.groups = 1
+            self.input_size = [1, 3, 5, 5]
+            self.filter_size = [16, 3, 3, 3]
+            self.conv_output_size = [1, 16, 3, 3]
+            self.input = np.random.random(self.input_size).astype(self.dtype)
+            self.filter = np.random.random(self.filter_size).astype(self.dtype)
+            self.conv_output = np.ndarray(self.conv_output_size).astype(
+                self.dtype)
+
+            # nearest_interp
+            self.out_h = 1
+            self.out_w = 1
+            self.scale = 2.0
+            self.interp_method = 'nearest'
+            self.data_layout = 'NCHW'
+            self.nearest_interp_output_size = [1, 1, 2, 2]
+            self.nearest_interp_output = np.ndarray(
+                self.nearest_interp_output_size).astype(self.dtype)
+
+            # dropout
+            self.dropout_prob = 0.5
+            self.dropout_out = np.ndarray(
+                self.nearest_interp_output_size).astype(self.dtype)
+            self.dropout_mask = np.ndarray(self.nearest_interp_output_size)
+
+            self.quantized_ops = {
+                "conv2d", "nearest_interp", "nearest_interp_v2"
+            }
+            self.variables = {
+                "input": self.input,
+                "filter": self.filter,
+                "conv_output": self.conv_output,
+                "nearest_interp_output": self.nearest_interp_output,
+                "dropout_out": self.dropout_out,
+                'dropout_mask': self.dropout_mask
+            }
+
+        def prepare_program(self, program):
+            block = program.global_block()
+            for name in self.variables:
+                block.create_var(
+                    name=name,
+                    dtype="float32",
+                    shape=self.variables[name].shape)
+            block.append_op(
+                type="conv2d",
+                inputs={
+                    "Input": block.var('input'),
+                    'Filter': block.var('filter')
+                },
+                outputs={"Output": block.var('conv_output')},
+                attrs={
+                    'strides': self.stride,
+                    'paddings': self.pad,
+                    'groups': self.groups,
+                    'dilations': self.dilations,
+                    'use_cudnn': self.use_cudnn,
+                    'use_mkldnn': self.use_mkldnn,
+                    'data_format': self.data_format,
+                    'fuse_relu': True
+                })
+            block.append_op(
+                type=self.op_name(),
+                inputs={"X": block.var('conv_output'), },
+                outputs={"Out": block.var('nearest_interp_output')},
+                attrs={
+                    'interp_method': self.interp_method,
+                    'out_h': self.out_h,
+                    'out_w': self.out_w,
+                    'scale': self.scale,
+                    'data_layout': self.data_layout,
+                    'use_mkldnn': self.use_mkldnn
+                })
+            block.append_op(
+                type='dropout',
+                inputs={"X": block.var('nearest_interp_output'), },
+                outputs={
+                    'Out': block.var('dropout_out'),
+                    'Mask': block.var('dropout_mask')
+                },
+                attrs={'dropout_prob': self.dropout_prob, })
+
+        def check_graph_after_pass(self, graph):
+            for op in graph.all_op_nodes():
+                if op.op().type() in self.quantized_ops:
+                    self.assertTrue(op.op().has_attr("mkldnn_data_type"))
+                    self.assertTrue(op.op().attr("mkldnn_data_type") == "int8")
+
+        def test_quant_update_activation(self):
+            program = fluid.Program()
+            with fluid.program_guard(program):
+                self.prepare_program(program)
+                graph = IrGraph(core.Graph(program.desc), for_test=True)
+                quant2_int8_mkldnn_pass = Quant2Int8MkldnnPass(
+                    self.quantized_ops,
+                    _scope=self.scope,
+                    _place=self.place,
+                    _core=core,
+                    _debug=False)
+
+                input_scale_tensor = quant2_int8_mkldnn_pass._convert_scale2tensor(
+                    np.array(self.scale).astype(np.float64))
+                output_scale_tensor = quant2_int8_mkldnn_pass._convert_scale2tensor(
+                    np.array(1. / self.scale * self.scale).astype(np.float64))
+                var_scale = {
+                    "input": (False, input_scale_tensor),
+                    "filter": (False, input_scale_tensor),
+                    "conv_output": (False, output_scale_tensor),
+                }
+                if core.avx_supported():
+                    quant2_int8_mkldnn_pass._var_quant_scales = var_scale
+                    graph = quant2_int8_mkldnn_pass._propagate_scales(graph)
+                    graph = quant2_int8_mkldnn_pass._quantize_fp32_graph(graph)
+                    self.check_graph_after_pass(graph)
+
+    class TestQuant2Int8MkldnnPassNearestInterpV2(unittest.TestCase):
+        def op_name(self):
+            return "nearest_interp_v2"
+
 
 if __name__ == '__main__':
     unittest.main()

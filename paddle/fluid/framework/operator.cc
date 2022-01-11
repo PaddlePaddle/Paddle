@@ -1090,7 +1090,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
-  this->InferShape(&infer_shape_ctx);
+  this->Info().infer_shape_(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
@@ -1178,6 +1178,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
+    // TODO(chenweihang): replace this after removing `this->IsMKLDNNType()`
+    // in some mkldnn infershape functions, such conv2d infershape
     this->InferShape(&infer_shape_ctx);
   }
 
@@ -1285,7 +1287,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
       new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
-  VLOG(6) << KernelSignatureToString(*pt_kernel_signature_.get());
+  VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
@@ -1791,6 +1793,9 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
 
 void OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
+  if (pt_kernel_context_ == nullptr) {
+    pt_kernel_context_.reset(new pten::KernelContext());
+  }
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor

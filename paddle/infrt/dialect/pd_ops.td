@@ -6,14 +6,14 @@ include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/pd_op_base.td"
 
-def PD_FeedOp : PD_Op<"feed", [NoSideEffect]> {
+def PD_FeedOp : PD_Op<"feed"> {
   let summary = "Feed Op";
 
   let description = [{
     Feed a tensor into the model.
   }];
 
-  let arguments = (ins);
+  let arguments = (ins StrAttr:$name);
   let results = (outs PD_Tensor:$out);
 
   let assemblyFormat = [{

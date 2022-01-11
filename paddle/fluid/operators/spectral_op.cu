@@ -115,22 +115,19 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
                                   input_conj.data<Ti>());
     for_range(functor);
-    exec_cufft_plan_raw(config, input_conj.data<void>(), output->data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     forward = true;
     framework::Tensor out_conj(output->type());
     out_conj.mutable_data<To>(output->dims(), ctx.GetPlace());
-    exec_cufft_plan_raw(config, input->data<void>(), out_conj.data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
     math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
                                   output->data<To>());
     for_range(functor);
   } else {
-    exec_cufft_plan_raw(config, input->data<void>(), output->data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input->data(), output->data(), forward);
   }
 }
 
@@ -227,22 +224,19 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
                                   input_conj.data<Ti>());
     for_range(functor);
-    exec_hipfft_plan_raw(config, input_conj.data<void>(), output->data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     forward = true;
     framework::Tensor out_conj(output->type());
     out_conj.mutable_data<To>(output->dims(), ctx.GetPlace());
-    exec_hipfft_plan_raw(config, input->data<void>(), out_conj.data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
     math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
                                   output->data<To>());
     for_range(functor);
   } else {
-    exec_hipfft_plan_raw(config, input->data<void>(), output->data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input->data(), output->data(), forward);
   }
 }
 
