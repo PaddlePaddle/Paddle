@@ -523,9 +523,10 @@ def mode(x, axis=-1, keepdim=False, name=None):
     return values, indices
 
 
-def where(condition, x, y, name=None):
+def where(condition, x=None, y=None, name=None):
     r"""
-    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$. paddle.where(condition)
+    is identical to paddle.nonzero(condition, as_tuple=True), when x and y is None.
 
     .. math::
 
@@ -559,7 +560,16 @@ def where(condition, x, y, name=None):
 
           print(out)
           #out: [1.0, 1.0, 3.2, 1.2]
+
+          out = paddle.where(x>1)
+          print(out)
+          #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
+          #            [[2],
+          #             [3]]),)
     """
+    if x is None and y is None:
+        return nonzero(condition, as_tuple=True)
+
     if not in_dygraph_mode():
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
