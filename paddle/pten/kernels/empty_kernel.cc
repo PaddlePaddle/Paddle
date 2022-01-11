@@ -33,48 +33,48 @@ void EmptyLikeKernel(const ContextT& dev_ctx, DenseTensor* out) {
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(empty,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::EmptyKernel,
-                       bool,
-                       int,
-                       int64_t,
-                       float,
-                       double,
-                       paddle::platform::float16) {}
+PT_REGISTER_KERNEL(empty,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::EmptyKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   paddle::platform::float16) {}
 
-PT_REGISTER_CTX_KERNEL(empty_like,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::EmptyLikeKernel,
-                       bool,
-                       int,
-                       int64_t,
-                       float,
-                       double,
-                       paddle::platform::float16) {}
+PT_REGISTER_KERNEL(empty_like,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::EmptyLikeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   paddle::platform::float16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_CTX_KERNEL(empty,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::EmptyKernel,
-                       bool,
-                       int,
-                       int64_t,
-                       float,
-                       double,
-                       paddle::platform::float16) {}
+PT_REGISTER_KERNEL(empty,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::EmptyKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   paddle::platform::float16) {}
 
-PT_REGISTER_CTX_KERNEL(empty_like,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::EmptyLikeKernel,
-                       bool,
-                       int,
-                       int64_t,
-                       float,
-                       double,
-                       paddle::platform::float16) {}
+PT_REGISTER_KERNEL(empty_like,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::EmptyLikeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   paddle::platform::float16) {}
 #endif
