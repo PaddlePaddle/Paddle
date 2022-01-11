@@ -60,7 +60,7 @@ class Storage : public intrusive_ref_counter<Storage> {
     return data_;
   }
 
-  void set_data_shared(
+  virtual void set_data_shared(
       const std::shared_ptr<paddle::memory::Allocation>& holder) {
     data_ = holder;
   }

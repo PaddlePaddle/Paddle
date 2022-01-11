@@ -729,7 +729,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     numel *= py_dims[i];
   }
 
-  const void *tensor_buf_ptr = tensor.data<void>();
+  const void *tensor_buf_ptr = tensor.data();
 
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
