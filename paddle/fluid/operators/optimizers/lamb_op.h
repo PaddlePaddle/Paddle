@@ -492,9 +492,9 @@ class LambOpKernel : public framework::OpKernel<T> {
     auto trust_ratio_div =
         ctx.AllocateTmpTensor<MT, DeviceContext>(param.dims(), dev_ctx);
 
-    const void* param_ptr = param.template data<void>();
+    const void* param_ptr = param.data();
     const void* master_param_ptr =
-        master_param ? master_param->template data<void>() : nullptr;
+        master_param ? master_param->data() : nullptr;
     void* param_out_ptr = param_out.template mutable_data<T>(ctx.GetPlace());
     void* master_param_out_ptr =
         master_param_out

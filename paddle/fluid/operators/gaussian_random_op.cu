@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 
 namespace paddle {
@@ -38,10 +39,12 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    thrust::normal_distribution<T> dist(mean_, std_);
+    using MT = typename details::MPTypeTrait<T>::Type;
+    thrust::normal_distribution<MT> dist(mean_, std_);
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
-    return dist(rng);
+    MT out = dist(rng);
+    return static_cast<T>(out);
   }
 };
 
@@ -124,10 +127,14 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(gaussian_random,
-                        paddle::operators::GPUGaussianRandomKernel<float>,
-                        paddle::operators::GPUGaussianRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    gaussian_random,
+    paddle::operators::GPUGaussianRandomKernel<paddle::platform::float16>,
+    paddle::operators::GPUGaussianRandomKernel<float>,
+    paddle::operators::GPUGaussianRandomKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
     gaussian_random_batch_size_like,
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
+        paddle::platform::float16>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);
