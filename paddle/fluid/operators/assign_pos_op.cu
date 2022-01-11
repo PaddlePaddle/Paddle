@@ -78,6 +78,11 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(numel);
     int threads = kNumCUDAThreads;
+    const char* thread1 = std::getenv("FLAGS_assign_pos_1thread");
+    if (thread1 && !strcmp(thread1, "1")) {
+      blocks = 1;
+      threads = 1;
+    }
     AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(cum_data, gate_data,
                                                            out_data, numel);
   }
