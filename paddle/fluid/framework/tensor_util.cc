@@ -45,7 +45,6 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   src.check_memory_size();
-
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
   auto src_place = src.place();
@@ -442,6 +441,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto src_place = src.place();
   auto src_ptr = src.data();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data from " << src_place << " to "
@@ -488,6 +488,14 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     }
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+    platform::XPUPlace xpu_dst_place =
+        BOOST_GET_CONST(platform::XPUPlace, dst_place);
+    platform::XPUPlace xpu_src_place =
+        BOOST_GET_CONST(platform::XPUPlace, src_place);
+    if (xpu_dst_place.device == xpu_src_place.device) {
+      auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
+      xpu_ctx->Wait();
+    }
   }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(

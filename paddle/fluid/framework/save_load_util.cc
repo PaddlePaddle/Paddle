@@ -295,12 +295,12 @@ bool SaveTensorToDisk(const std::string& file_name,
     // save tensor
     uint64_t data_size =
         tensor->numel() * framework::SizeOfType(tensor->type());
-    auto* data_ptr = tensor->data<void>();
+    auto* data_ptr = tensor->data();
     if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-      data_ptr = temp.data<void>();
+      data_ptr = temp.data();
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Tensor is in CUDA device, but paddle not compiled with CUDA."));
