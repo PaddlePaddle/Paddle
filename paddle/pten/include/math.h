@@ -22,17 +22,6 @@ limitations under the License. */
 namespace pten {
 
 template <typename T, typename ContextT>
-DenseTensor Sign(const ContextT& dev_ctx, const DenseTensor& x) {
-  auto out_meta = UnchangedInferMeta(x.meta());
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  Sign<T>(dev_ctx, x, &dense_out);
-  return dense_out;
-}
-
-template <typename T, typename ContextT>
 DenseTensor Scale(const ContextT& dev_ctx,
                   const DenseTensor& x,
                   const Scalar& scale,
