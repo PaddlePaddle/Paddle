@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -69,10 +70,12 @@ void LinkNodes(const std::vector<TaskNode*>& nodes,
 }
 
 TEST(AmplifierInterceptor, Amplifier) {
-  Carrier carrier(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}});
-  auto msg_bus = std::make_shared<MessageBus>();
+  std::string carrier_id = "0";
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}});
+  MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, ""}}, "");
-  carrier.SetMsgBus(msg_bus);
 
   int64_t micro_steps = 6;
 
@@ -91,19 +94,21 @@ TEST(AmplifierInterceptor, Amplifier) {
   node_d->SetRunPerSteps(micro_steps);
   node_d->SetRunAtOffset(micro_steps - 1);
 
-  carrier.SetInterceptor(0, InterceptorFactory::Create("Amplifier", 0, node_a));
-  carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
-  carrier.SetInterceptor(3, InterceptorFactory::Create("Amplifier", 3, node_d));
+  carrier->SetInterceptor(0,
+                          InterceptorFactory::Create("Amplifier", 0, node_a));
+  carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+  carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
+  carrier->SetInterceptor(3,
+                          InterceptorFactory::Create("Amplifier", 3, node_d));
 
   // start
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
   msg.set_src_id(-1);
   msg.set_dst_id(0);
-  carrier.EnqueueInterceptorMessage(msg);
-  carrier.Wait();
-  carrier.Release();
+  carrier->EnqueueInterceptorMessage(msg);
+  carrier->Wait();
+  carrier->Release();
 }
 
 }  // namespace distributed

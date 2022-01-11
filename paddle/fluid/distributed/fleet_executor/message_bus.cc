@@ -17,6 +17,8 @@
 #include <set>
 #include <thread>
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
@@ -81,6 +83,10 @@ const std::string& MessageBus::GetAddr(int64_t rank) const {
 
 bool MessageBus::Send(int64_t dst_rank,
                       const InterceptorMessage& interceptor_message) {
+  PADDLE_ENFORCE_EQ(
+      IsInit(), true,
+      platform::errors::PreconditionNotMet(
+          "Using message bus since it has not been initialized."));
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   int retry_time = 0;  // message bus will retry sending for 10 times
@@ -155,6 +161,13 @@ void MessageBus::Barrier() {
   }
 }
 
+bool MessageBus::DispatchMsgToCarrier(
+    const InterceptorMessage& interceptor_message) {
+  const std::string& carrier_id = *GlobalVal<std::string>::Get();
+  return GlobalMap<std::string, Carrier>::Get(carrier_id)
+      ->EnqueueInterceptorMessage(interceptor_message);
+}
+
 void MessageBus::ListenPort() {
   if (addr_ == "") {
     LOG(INFO) << "No need listen to port since training on single card.";
@@ -163,10 +176,9 @@ void MessageBus::ListenPort() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
-  PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service_,
-                                       brpc::SERVER_DOESNT_OWN_SERVICE),
-                    0, platform::errors::Unavailable(
-                           "Message bus: init brpc service error."));
+  PADDLE_ENFORCE_EQ(
+      server_.AddService(&message_service_, brpc::SERVER_DOESNT_OWN_SERVICE), 0,
+      platform::errors::Unavailable("Message bus: init brpc service error."));
 
   // start the server
   const char* ip_for_brpc = addr_.c_str();
@@ -207,11 +219,16 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   PADDLE_ENFORCE_EQ(
       channel.Init(dst_addr_for_brpc, &options), 0,
       platform::errors::Unavailable("Message bus: init brpc channel error."));
-  TheInterceptorMessageService_Stub stub(&channel);
+  MessageService_Stub stub(&channel);
   InterceptorResponse response;
   brpc::Controller ctrl;
   ctrl.set_log_id(0);
-  stub.InterceptorMessageService(&ctrl, &interceptor_message, &response, NULL);
+  if (interceptor_message.ctrl_message()) {
+    stub.IncreaseBarrierCount(&ctrl, &interceptor_message, &response, NULL);
+  } else {
+    stub.ReceiveInterceptorMessage(&ctrl, &interceptor_message, &response,
+                                   NULL);
+  }
   if (!ctrl.Failed()) {
     if (response.rst()) {
       VLOG(3) << "Message bus: brpc sends success.";
@@ -226,6 +243,7 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
     return false;
   }
 }
+
 #endif
 
 }  // namespace distributed

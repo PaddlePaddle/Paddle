@@ -21,12 +21,12 @@
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Flatten(const ContextT& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out) {
+template <typename T, typename Context>
+void FlattenKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int start_axis,
+                   int stop_axis,
+                   DenseTensor* out) {
   auto out_dims = out->dims();
   pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
@@ -35,14 +35,14 @@ void Flatten(const ContextT& dev_ctx,
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
 // Output Tensor，
 // is there a more flexible way to deal with this case?
-template <typename T, typename ContextT>
-void FlattenWithXShape(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FlattenWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        int start_axis,
                        int stop_axis,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, out);
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
   funcs::SetXShape(x, xshape);
 }
 
@@ -51,7 +51,7 @@ void FlattenWithXShape(const ContextT& dev_ctx,
 PT_REGISTER_CTX_KERNEL(flatten,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Flatten,
+                       pten::FlattenKernel,
                        float,
                        double,
                        uint8_t,
@@ -74,7 +74,7 @@ PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
 PT_REGISTER_CTX_KERNEL(flatten,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Flatten,
+                       pten::FlattenKernel,
                        float,
                        paddle::platform::float16,
                        double,
@@ -100,11 +100,9 @@ PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
 PT_REGISTER_CTX_KERNEL(flatten,
                        XPU,
                        ALL_LAYOUT,
-                       pten::Flatten,
+                       pten::FlattenKernel,
                        float,
                        paddle::platform::float16,
-                       double,
-                       uint8_t,
                        int8_t,
                        int,
                        int64_t) {}
@@ -115,8 +113,6 @@ PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
                        pten::FlattenWithXShape,
                        float,
                        paddle::platform::float16,
-                       double,
-                       uint8_t,
                        int8_t,
                        int,
                        int64_t) {}

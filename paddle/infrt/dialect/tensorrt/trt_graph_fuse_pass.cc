@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 #include "llvm/ADT/SetVector.h"
+#include "mlir/Analysis/SliceAnalysis.h"
 #include "mlir/IR/Builders.h"
 #include "paddle/infrt/dialect/pd_ops.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
@@ -25,42 +26,31 @@
 namespace infrt {
 namespace trt {
 namespace {
-
-// FlexibleDFS
-// do reverse dfs. calls leave(node) after visiting all parents of node.
-// Reference the function with the same name but defined in:
+// ReverseDfs
+// do reverse dfs. calls "func" to search when visit a node.
+// The elements in 'source' can't be nullptr.
+// Reference the function nameed "FlexibleDFS" but defined in:
 // paddle/fluid/framework/ir/subgraph_detector.cc.
-void FlexibleDFS(const std::vector<::mlir::Operation *> &source,
-                 const std::function<bool(const ::mlir::Operation *)> &leave) {
-  typedef struct {
-    ::mlir::Operation *node;
-    bool leave;
-  } FNode;
 
-  std::vector<FNode> stack;
-  for (auto &node : source) {
-    stack.push_back(FNode{node, false});
-  }
+bool reverseDfs(std::vector<::mlir::Operation *> source,
+                const std::function<bool(const ::mlir::Operation *)> &func) {
   std::unordered_set<const ::mlir::Operation *> visited;
-  while (!stack.empty()) {
-    auto fnode = stack.back();
-    stack.pop_back();
-
-    if (fnode.leave) {
-      if (leave && !leave(fnode.node)) return;
-    }
-    if (visited.count(fnode.node)) continue;
-    visited.insert(fnode.node);
-
-    if (leave) stack.push_back(FNode{fnode.node, true});
-    auto values = fnode.node->getOperands();
+  while (!source.empty()) {
+    auto node = source.back();
+    source.pop_back();
+    if (visited.count(node)) continue;
+    visited.insert(node);
+    if (func(node)) return true;
+    auto values = node->getOperands();
     for (auto value : values) {
+      // if the value is a block argument, the node is nullptr.
       ::mlir::Operation *node = value.getDefiningOp();
-      if (!visited.count(node)) {
-        stack.push_back(FNode{node, false});
+      if (node != nullptr && !visited.count(node)) {
+        source.emplace_back(node);
       }
     }
   }
+  return false;
 }
 
 // merge the first&second graph op to a new graph op.
@@ -136,6 +126,20 @@ void mergeTwoAdjacentGraphOp(::mlir::OpBuilder &builder,  // NOLINT
   second.erase();
 }
 
+// Topological sort the function op.
+void topoSortBlock(mlir::Block &body) {  // NOLINT
+  llvm::SetVector<Operation *> toSort;
+  if (body.empty()) return;
+  for (auto it = body.rbegin(); it != body.rend(); ++it) {
+    toSort.insert(&*it);
+  }
+  llvm::SetVector<Operation *> result =
+      ::mlir::topologicalSort(std::move(toSort));
+  for (auto *op : result) {
+    op->moveBefore(body.getTerminator());
+  }
+}
+
 }  // namespace
 
 // Implementation of the trtGraphFusePass.
@@ -158,21 +162,14 @@ void trtGraphFusePass::runOnFunction() {
         std::vector<::mlir::Operation *> source_nodes;
         for (auto operand : user_op->getOperands()) {
           auto input = operand.getDefiningOp();
-          if (input != &op) {
+          if (input != &op && input != nullptr) {
             source_nodes.push_back(input);
           }
         }
         // Reverse DFS from the source_nodes.
-        bool have_excess_path = false;
-        FlexibleDFS(source_nodes,
-                    [&have_excess_path, &op](const ::mlir::Operation *n) {
-                      if (n == &op) {
-                        have_excess_path = true;
-                        return false;
-                      }
-                      return true;
-                    });
-        if (!have_excess_path) {
+        if (!reverseDfs(source_nodes, [&op](const ::mlir::Operation *n) {
+              return n == &op;
+            })) {
           mergeTwoAdjacentGraphOp(builder, graph_op, user_graph_op);
           changed = true;
           break;
@@ -181,7 +178,7 @@ void trtGraphFusePass::runOnFunction() {
       if (changed) break;
     }
   } while (changed);
+  topoSortBlock(body);
 }
-
 }  // namespace trt
 }  // namespace infrt

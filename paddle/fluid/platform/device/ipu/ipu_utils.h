@@ -84,7 +84,7 @@ std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(
   popart::TensorInfo tensor_info(dtype, shape);
 
   return std::make_unique<popart::NDArrayWrapper<T>>(
-      reinterpret_cast<T *>(tensor.data<void>()), tensor_info);
+      reinterpret_cast<T *>(tensor.data()), tensor_info);
 }
 
 template <typename T>
