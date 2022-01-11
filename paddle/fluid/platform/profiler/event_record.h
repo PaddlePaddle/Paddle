@@ -101,6 +101,7 @@ struct MemsetEventInfo {
 };
 
 struct HostEvent {
+  HostEvent() = default;
   HostEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
             uint64_t end_ns, uint64_t process_id, uint64_t thread_id)
       : name(name),
@@ -124,6 +125,7 @@ struct HostEvent {
 };
 
 struct RuntimeEvent {
+  RuntimeEvent() = default;
   RuntimeEvent(const std::string& name, uint64_t start_ns, uint64_t end_ns,
                uint64_t process_id, uint64_t thread_id, uint32_t correlation_id,
                uint32_t callback_id)
@@ -154,6 +156,7 @@ struct RuntimeEvent {
 };
 
 struct DeviceEvent {
+  DeviceEvent() = default;
   DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
               uint64_t end_ns, uint64_t device_id, uint64_t context_id,
               uint64_t stream_id, uint32_t correlation_id,
