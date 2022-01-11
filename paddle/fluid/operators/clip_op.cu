@@ -19,10 +19,14 @@ REGISTER_OP_CUDA_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ClipKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ClipKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ClipKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ClipKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ClipKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ClipGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ClipGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ClipGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ClipGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ClipGradKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::float16>);

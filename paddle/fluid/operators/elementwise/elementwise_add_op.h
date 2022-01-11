@@ -17,8 +17,9 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+
+// only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -55,12 +56,13 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    if (x->dims() == y->dims()) {
-      SameDimsElemwiseAdd<DeviceContext, T> LaunchElementwiseCpuKernel;
-      LaunchElementwiseCpuKernel(ctx, x, y, z);
-    } else {
-      LaunchBroadcastElementwiseCpuKernel<DeviceContext, T>(ctx, x, y, z);
-    }
+
+    auto &dev_ctx = ctx.device_context<DeviceContext>();
+    int axis = ctx.Attr<int>("axis");
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    pten::AddKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis, pt_z.get());
   }
 };
 
@@ -201,6 +203,45 @@ class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
       ddout->mutable_data<T>(ctx.GetPlace());
       LaunchBroadcastElementwiseCpuKernel<DeviceContext, T>(ctx, &ddx_safe,
                                                             &ddy_safe, ddout);
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseAddTripleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    using Tensor = framework::Tensor;
+    auto *ddx = ctx.Input<Tensor>("DDX");
+    auto *ddy = ctx.Input<Tensor>("DDY");
+    auto *d_ddout = ctx.Input<Tensor>("D_DDOut");
+    auto *d_ddx = ctx.Output<Tensor>("D_DDX");
+    auto *d_ddy = ctx.Output<Tensor>("D_DDY");
+    // skip out
+    auto *out = d_ddout;
+
+    // Special case when d_ddy is not needed and d_ddx doesn't reduce
+    if (d_ddx != nullptr && d_ddy == nullptr &&
+        d_ddx->dims() == d_ddout->dims()) {
+      VLOG(4) << "Special case when d_ddy is not needed and d_ddx doesn't "
+                 "reduce";
+      framework::TensorCopy(
+          *d_ddout, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), d_ddx);
+    } else if (d_ddx == nullptr && d_ddy != nullptr &&
+               d_ddy->dims() == d_ddout->dims()) {
+      VLOG(4) << "Special case when d_ddx is not needed and d_ddy doesn't "
+                 "reduce";
+      framework::TensorCopy(
+          *d_ddout, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), d_ddy);
+    } else if (d_ddx != nullptr && d_ddy != nullptr &&
+               (d_ddx->dims() == d_ddy->dims())) {
+      elementwise_add_grad<DeviceContext, T>(ctx, ddx, ddy, out, d_ddout, d_ddx,
+                                             d_ddy);
+    } else {
+      default_elementwise_add_grad<DeviceContext, T>(ctx, ddx, ddy, out,
+                                                     d_ddout, d_ddx, d_ddy);
     }
   }
 };

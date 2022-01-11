@@ -209,7 +209,11 @@ class TestDistRunnerBase(object):
 
         def get_data():
             origin_batch = next(reader_generator)
-            if args.update_method != "local" and args.use_reader_alloc:
+            if paddle.distributed.get_world_size(
+            ) == 1 and args.update_method == 'gloo':  # Gloo single mode
+                return origin_batch
+
+            elif args.update_method != "local" and args.use_reader_alloc:
                 new_batch = []
                 for offset, item in enumerate(origin_batch):
                     if offset % 2 == args.trainer_id:
@@ -506,26 +510,52 @@ class TestParallelDyGraphRunnerBase(object):
             "train_one_loop should be implemented by the child classes.")
 
     def _get_data(self, batch, args):
-        if args.update_method != "local":
+        if paddle.distributed.get_world_size(
+        ) == 1 and args.update_method == 'gloo':  # Gloo single mode
+            return batch
+        elif args.update_method != "local":
             new_batch = []
-            for offset, item in enumerate(batch):
-                if offset % 2 == args.trainer_id:
-                    new_batch.append(item)
-            return new_batch
+
+            # NOTE(@xiongkun03) args.diff_batch means batch length is different: 
+            # such as : batch = [2,3,4,5], then the first rank will get [2]  and 
+            # the second rank will get [3,4,5]. 
+            # this function is for test sparse_embedding_differ_length
+            if hasattr(args, "diff_batch") and args.diff_batch:
+                assert len(
+                    batch) > 2, "in differ_batch mode, len(batch) must > 2."
+                if paddle.distributed.get_rank() == 0:
+                    new_batch.append(batch[0])
+                elif paddle.distributed.get_rank() == 1:
+                    new_batch.extend([_ for _ in batch[1:]])
+                else:
+                    raise NotImplementedError(
+                        "Current TestParallelDyGraphRunnerBase don't support world_size > 2"
+                    )
+                return new_batch
+            else:
+                for offset, item in enumerate(batch):
+                    if offset % 2 == args.trainer_id:
+                        new_batch.append(item)
+                return new_batch
         else:
             return batch
 
     def run_trainer(self, args):
 
         seed = 90
-        if fluid.core.is_compiled_with_cuda():
+        if args.update_method == 'gloo':
+            place = fluid.CPUPlace()
+        elif fluid.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(device_id)
         elif fluid.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
+        elif fluid.core.is_compiled_with_npu():
+            device_id = int(os.getenv("FLAGS_selected_npus", "0"))
+            place = fluid.NPUPlace(device_id)
         else:
-            assert ("Only support CUDAPlace or XPUPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace or CPU(Gloo) for now.")
 
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
@@ -537,7 +567,7 @@ class TestParallelDyGraphRunnerBase(object):
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
             #if args.update_method == "nccl2":
-            if args.update_method == "nccl2" or args.update_method == "bkcl":
+            if args.update_method == "nccl2" or args.update_method == "bkcl" or args.update_method == "hccl":
                 strategy = dygraph.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
@@ -554,6 +584,16 @@ class TestParallelDyGraphRunnerBase(object):
                     model = dygraph.parallel.DataParallel(
                         model, strategy, find_unused_parameters=True)
                 print_to_err(type(self).__name__, "model built in dygraph")
+
+            elif args.update_method == "gloo":
+                paddle.distributed.init_parallel_env()
+                if not args.find_unused_parameters:
+                    model = dygraph.parallel.DataParallel(
+                        model, find_unused_parameters=False)
+                else:
+                    model = dygraph.parallel.DataParallel(
+                        model, find_unused_parameters=True)
+
             out_losses = []
             print_to_err(type(self).__name__, "begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
@@ -588,12 +628,12 @@ class TestParallelDyGraphRunnerBase(object):
         args.trainer_id = paddle.distributed.get_rank()
 
         # 3. init parallel env
-        if args.update_method == "nccl2":
+        if args.update_method in ["nccl2", "gloo"]:
             paddle.distributed.init_parallel_env()
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":
+        if args.update_method in ["nccl2", "gloo"]:
             if args.find_unused_parameters:
                 model = paddle.DataParallel(model, find_unused_parameters=True)
             else:
@@ -634,12 +674,12 @@ class TestParallelDyGraphRunnerBase(object):
             strategy.find_unused_parameters = True
 
         # 3. init parallel env
-        if args.update_method == "nccl2" or "bkcl":
+        if args.update_method == "nccl2" or "bkcl" or "hccl":
             fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2" or "bkcl":
+        if args.update_method == "nccl2" or "bkcl" or "hccl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 
@@ -668,7 +708,10 @@ def runtime_main(test_class):
         '--update_method',
         type=str,
         default="local",
-        choices=["pserver", "nccl2", "bkcl", "local", "nccl2_reduce_layer"])
+        choices=[
+            "pserver", "nccl2", "bkcl", "local", "nccl2_reduce_layer", "gloo",
+            "hccl"
+        ])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
@@ -678,6 +721,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_fleet_api', action='store_true')
     parser.add_argument('--use_fleet_api_20', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
+    parser.add_argument('--diff_batch', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
@@ -685,8 +729,10 @@ def runtime_main(test_class):
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
+    parser.add_argument('--use_cpu', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
+    parser.add_argument('--use_npu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -712,6 +758,9 @@ def runtime_main(test_class):
         default=None)
 
     args = parser.parse_args()
+
+    if args.update_method == 'gloo':
+        paddle.set_device("cpu")
 
     model = test_class()
     if args.role == "pserver" and args.update_method == "pserver":
@@ -740,13 +789,21 @@ class TestDistBase(unittest.TestCase):
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
+            self.__use_npu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
+            self.__use_npu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
+            self.__use_npu = False
+        elif self._enforce_place == "NPU":
+            self.__use_cuda = False
+            self.__use_xpu = False
+            self._use_dgc = False
+            self.__use_npu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -770,8 +827,11 @@ class TestDistBase(unittest.TestCase):
         self._use_reader_alloc = True
         self._nccl2_mode = False
         self._bkcl_mode = False
+        self._gloo_mode = False  # now, support gloo backend
+        self._hccl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
+        self._diff_batch = False
         # FIXME(typhoonzero): I added this stupid argument to enable
         # testing allreduce layers, which users can call layers.allreduce
         # to accumulate tensors at anywhere. Find a better way to do this
@@ -875,7 +935,7 @@ class TestDistBase(unittest.TestCase):
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1,
                    log_name="",
-                   devices="0"):
+                   devices="1"):
 
         cmd = self._python_interp
 
@@ -904,6 +964,13 @@ class TestDistBase(unittest.TestCase):
             cmd += " --use_xpu"
             env_local = {
                 "FLAGS_selected_xpus": devices,
+                "PADDLE_TRAINERS_NUM": "1",
+                "PADDLE_TRAINER_ID": "0"
+            }
+        elif self.__use_npu:
+            cmd += " --use_npu"
+            env_local = {
+                "FLAGS_selected_npus": devices,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
@@ -946,6 +1013,21 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
 
         return pickle.loads(local_out)
+
+    def _run_local_gloo(self,
+                        model,
+                        envs,
+                        check_error_log=False,
+                        batch_size=DEFAULT_BATCH_SIZE,
+                        batch_merge_repeat=1,
+                        log_name="",
+                        devices="0"):
+        saved_endpoints = self._ps_endpoints
+        self._ps_endpoints = self._ps_endpoints.split(',')[0]
+        result = self._run_cluster_gloo(model, envs, 'gloo', check_error_log,
+                                        log_name)
+        self._ps_endpoints = saved_endpoints
+        return result
 
     def _run_cluster(self, model, envs, check_error_log, log_name):
         # Run dist train to compare with local results
@@ -1037,6 +1119,64 @@ class TestDistBase(unittest.TestCase):
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
+    def _get_gloo_trainer_cmd(self, model, ep, update_method, trainer_id,
+                              trainer_num):
+        env = {}
+        tr_cmd = "%s -u"
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            tr_cmd += " -m coverage run --branch -p"
+
+        tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+
+        tr_cmd = tr_cmd % \
+                 (self._python_interp, model, self._ps_endpoints,
+                  trainer_id, ep, update_method, self._lr)
+
+        if self._use_reduce:
+            tr_cmd += " --use_reduce"
+        if self._use_reader_alloc:
+            tr_cmd += " --use_reader_alloc"
+        #assert self._use_reduce == False, "gloo not support _use_reduce"
+        #assert self._use_reader_alloc == False, "gloo not support _use_reduce"
+        if self._save_model:
+            tr_cmd += " --save_model"
+        if self._diff_batch:
+            tr_cmd += " --diff_batch"
+        self.__use_cuda = False
+        self.__use_xpu = False
+        assert self.__use_cuda == False, "gloo not support use cuda"
+        assert self.__use_xpu == False, "gloo not support use xpu"
+        tr_cmd += " --use_cpu"
+        env.update({
+            "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
+            "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+            "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+            "PADDLE_CURRENT_ENDPOINT": ep,
+            "PADDLE_CURRENT_ENDPOINT": ep,
+            "PADDLE_DISTRI_BACKEND": "gloo",
+            "GLOG_v": "2",
+        })
+
+        assert self._use_dgc == False, "gloo not support use dgc"
+        if self._accumulate_gradient:
+            tr_cmd += " --accumulate_gradient"
+
+        if self._find_unused_parameters:
+            tr_cmd += " --find_unused_parameters"
+
+        assert self._pipeline_mode == False, "gloo not support use pipeline"
+
+        if self._enable_backward_deps:  # build strategy, save it
+            tr_cmd += " --enable_backward_deps"
+
+        if self._fuse_all_reduce is not None:
+            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
+
+        assert self._use_fleet_api == False, "gloo not support use fleet api"
+        assert self._use_fleet_api_20 == False, "gloo not support use fleet api"
+        return tr_cmd, env
+
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
                                trainer_num):
         env = {}
@@ -1074,6 +1214,16 @@ class TestDistBase(unittest.TestCase):
             env.update({
                 "FLAGS_selected_xpus": "{}".format(trainer_id),
                 #"XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
+                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": ep,
+                "GLOG_v": "2",
+            })
+        elif self.__use_npu:
+            tr_cmd += " --use_npu"
+            env.update({
+                "FLAGS_selected_npus": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -1122,6 +1272,57 @@ class TestDistBase(unittest.TestCase):
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
 
         return tr_cmd, env
+
+    def _run_cluster_gloo(self, model, envs, update_method, check_error_log,
+                          log_name):
+        assert update_method == "gloo", "_run_cluster_gloo must have update_method: gloo, but get %s" % update_method
+        assert not self._use_hallreduce, "_run_cluster_gloo must have _use_hallreduce = false"
+
+        worker_endpoints = self._ps_endpoints.split(",")
+
+        trainer_num = len(worker_endpoints)
+
+        procs = []
+        pipes = []
+        for i in range(0, trainer_num):
+            tr_cmd, tr_env = self._get_gloo_trainer_cmd(
+                model, worker_endpoints[i], update_method, i, trainer_num)
+            tr_env.update(envs)
+            tr_env["GLOG_vmodule"] = 'gloo_context=4'
+            tr_env["GLOG_v"] = '3'
+            print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
+                self._use_hallreduce, tr_cmd, tr_env))
+
+            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
+
+            print_to_err(
+                type(self).__name__,
+                "going to start process {} with nccl2".format(i))
+            tr_proc = subprocess.Popen(
+                tr_cmd.strip().split(" "),
+                stdout=subprocess.PIPE,
+                stderr=tr_pipe,
+                env=tr_env)
+
+            procs.append(tr_proc)
+            pipes.append(tr_pipe)
+
+        outs = []
+        for i in range(0, trainer_num):
+            tr_out, tr_err = procs[i].communicate()
+            outs.append(tr_out)
+            pipes[i].close()
+            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+
+        if trainer_num == 1:
+            if check_error_log: print("outs[0]:", outs[0])
+            return pickle.loads(outs[0])
+
+        else:
+            if check_error_log:
+                print("outs[0]:", outs[0])
+                print("outs[1]:", outs[1])
+            return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def _run_cluster_nccl2(self, model, envs, update_method, check_error_log,
                            log_name):
@@ -1262,7 +1463,12 @@ class TestDistBase(unittest.TestCase):
 
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
-        local_losses \
+        if self._gloo_mode:
+            local_losses \
+                = self._run_local_gloo(model_file, required_envs,
+                                  check_error_log, log_name=log_name)
+        else:
+            local_losses \
             = self._run_local(model_file, required_envs,
                               check_error_log, log_name=log_name)
 
@@ -1286,6 +1492,21 @@ class TestDistBase(unittest.TestCase):
                 model_file,
                 required_envs,
                 update_method='bkcl',
+                check_error_log=check_error_log,
+                log_name=log_name)
+        elif self._gloo_mode:
+            # gloo mode, cpu only parallel train @xiongkun03
+            tr0_losses, tr1_losses = self._run_cluster_gloo(
+                model_file,
+                required_envs,
+                update_method='gloo',
+                check_error_log=check_error_log,
+                log_name=log_name)
+        elif self._hccl_mode:
+            tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                model_file,
+                required_envs,
+                update_method='hccl',
                 check_error_log=check_error_log,
                 log_name=log_name)
 

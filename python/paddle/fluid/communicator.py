@@ -99,6 +99,19 @@ class Communicator(object):
         self.send_ctx_ = send_ctx
         self.recv_ctx_ = recv_ctx
 
+    def create_client_to_client_connection(self,
+                                           pserver_timeout_ms=500000,
+                                           pserver_connect_timeout_ms=10000,
+                                           max_retry=3):
+        self.communicator_.create_client_to_client_connection(
+            pserver_timeout_ms, pserver_connect_timeout_ms, max_retry)
+
+    def get_client_info(self):
+        return self.communicator_.get_client_info()
+
+    def set_clients(self, host_list):
+        self.communicator_.set_clients(host_list)
+
     def start(self):
         """
         Start communicator. Should call before training process.
@@ -161,6 +174,9 @@ class Communicator(object):
     def init_params(self, context):
         self.communicator_.init_params(context)
 
+    def pull_dense(self, context):
+        self.communicator_.pull_dense(context)
+
     def push_sparse_param(self, var_name, table_id=-1, scope=global_scope()):
         if not self.is_running():
             raise ValueError(
@@ -188,8 +204,9 @@ class LargeScaleKV(object):
 
 
 class HeterClient(object):
-    def __init__(self, endpoint, trainer_id):
-        self.heter_client_ = core.HeterClient(endpoint, trainer_id)
+    def __init__(self, endpoint, previous_endpoint, trainer_id):
+        self.heter_client_ = core.HeterClient(endpoint, previous_endpoint,
+                                              trainer_id)
 
     def stop(self):
         self.heter_client_.stop()

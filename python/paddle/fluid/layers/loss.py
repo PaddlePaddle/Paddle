@@ -479,9 +479,7 @@ def warpctc(input,
             blank=0,
             norm_by_times=False,
             input_length=None,
-            label_length=None,
-            norm_by_batchsize=False,
-            norm_by_total_logits_len=False):
+            label_length=None):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -518,12 +516,6 @@ def warpctc(input,
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
-       norm_by_batchsize (bool): normalize the loss by the batch size. 
-            If `True`, supersedes  `norm_by_times`
-            (default: `False`)
-       norm_by_total_logits_len (bool): normalize the loss by the total number of frames
-            in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times`
-            (default: `False`)
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -611,12 +603,15 @@ def warpctc(input,
                 "input_length and label_length must not be None in dygraph mode!"
             )
         grad, loss_out = _C_ops.warpctc(
-            input, label, input_length, label_length, 'blank', blank,
-            'norm_by_times', norm_by_times, 'norm_by_batchsize',
-            norm_by_batchsize, 'norm_by_total_logits_len',
-            norm_by_total_logits_len)
+            input,
+            label,
+            input_length,
+            label_length,
+            'blank',
+            blank,
+            'norm_by_times',
+            norm_by_times, )
         return loss_out
-
     helper = LayerHelper('warpctc', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
@@ -640,8 +635,6 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
-            'norm_by_batchsize': norm_by_batchsize,
-            'norm_by_total_logits_len': norm_by_total_logits_len,
         })
     return loss_out
 

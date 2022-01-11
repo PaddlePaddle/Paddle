@@ -30,6 +30,16 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
 
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(ParameterServerOptimizer, self)._set_basic_info(
+            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+
+        #self.micro_batch_size = user_defined_strategy.pipeline_configs[
+        #    'micro_batch_size']
+        self.num_microbatches = user_defined_strategy.pipeline_configs[
+            'accumulate_steps']
+
     def _is_graph_out(self):
         return False
 
@@ -97,8 +107,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
-                _startup = worker.delet_extra_optimizes_pass(_startup,
-                                                             compiled_config)
+                _startup = worker.delete_extra_optimizes_pass(_startup,
+                                                              compiled_config)
 
                 # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
@@ -122,15 +132,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
                 if self.role_maker._is_heter_worker():
                     # for heter worker
+                    stage_id = self.role_maker._get_stage_id()
+                    device = self.role_maker._heter_device_type().lower()
                     _main = heter_worker.split_heter_worker_ops_pass(
-                        _main, compiled_config)
+                        _main, compiled_config, stage_id, device)
                 else:
                     # for default worker
                     _main = heter_worker.split_trainer_ops_pass(_main,
                                                                 compiled_config)
-                # for startup change
-                _startup = heter_worker.delete_startup_useless_ops_var_pass(
-                    _startup, _main, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -319,22 +328,56 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
+            if self.role_maker._is_heter_parameter_server_mode:
+                _origin_startup_program._heter_pipeline_opt = {
+                    "startup_program": startup_program,
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                    "heter_place": self.role_maker._heter_device(),
+                }
+
+                loss.block.program._heter_pipeline_opt = {
+                    "trainer": "HeterPipelineTrainer",
+                    "device_worker": "HeterSection",
+                    "trainers": self.role_maker._get_stage_trainers(
+                    ),  ## trainer num in each stage
+                    "trainer_id": int(self.role_maker._role_id()),
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                    "num_pipeline_stages":
+                    int(self.role_maker._get_num_stage()),
+                    "section_program": main_program,
+                    "num_microbatches": self.num_microbatches,
+                    "heter_place": self.role_maker._heter_device(),
+                }
+            else:
+                loss.block.program = main_program
+                fluid.framework.switch_startup_program(startup_program)
+
         elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
                 compiled_config)
-
-        loss.block.program = main_program
-        fluid.framework.switch_startup_program(startup_program)
-
+            loss.block.program = main_program
+            fluid.framework.switch_startup_program(startup_program)
         return None, None
 
     def _disable_strategy(self, dist_strategy):
+        #if self.role_maker._is_heter_parameter_server_mode:
+        #    dist_strategy.pipeline = False
+        #    dist_strategy.pipeline_configs = {
+        #        "micro_batch_size": 1,
+        #        "accumulate_steps": 1,
+        #    }
         dist_strategy.a_sync = False
         a_sync_configs = dist_strategy.a_sync_configs
         a_sync_configs["k_steps"] = -1
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
+        #if self.role_maker._is_heter_parameter_server_mode:
+        #    dist_strategy.pipeline = True
+        #    dist_strategy.pipeline_configs = {
+        #        "micro_batch_size": 1,
+        #        "accumulate_steps": 1,
+        #    }
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:
             return

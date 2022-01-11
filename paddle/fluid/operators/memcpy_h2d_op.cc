@@ -125,24 +125,33 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy_h2d, float, ops::MemcpyH2DKernel, double,
-                               ops::MemcpyH2DKernel, int, ops::MemcpyH2DKernel,
-                               int64_t, ops::MemcpyH2DKernel, bool,
-                               ops::MemcpyH2DKernel, plat::float16,
-                               ops::MemcpyH2DKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(
+    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
+    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
+    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
+    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
+    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
+    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
+    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy_h2d, float, ops::MemcpyH2DKernel, double,
-                                ops::MemcpyH2DKernel, int, ops::MemcpyH2DKernel,
-                                int64_t, ops::MemcpyH2DKernel, bool,
-                                ops::MemcpyH2DKernel, plat::float16,
-                                ops::MemcpyH2DKernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(
+    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
+    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
+    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
+    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
+    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
+    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
+    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy_h2d, float, ops::MemcpyH2DKernel, double,
-                               ops::MemcpyH2DKernel, int, ops::MemcpyH2DKernel,
-                               int64_t, ops::MemcpyH2DKernel, bool,
-                               ops::MemcpyH2DKernel, plat::float16,
-                               ops::MemcpyH2DKernel);
+REGISTER_OP_NPU_KERNEL_FUNCTOR(
+    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
+    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
+    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
+    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
+    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
+    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
+    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
 #endif

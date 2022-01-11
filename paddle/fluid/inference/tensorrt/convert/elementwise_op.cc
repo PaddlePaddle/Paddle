@@ -83,8 +83,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
       }
       if (op_type_ == "add") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Scale, *X, scale_mode, shift_weights.get(),
-            scale_weights.get(), power_weights.get());
+            engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
+            scale_weights.get(), power_weights.get(), dynamic_shape_offset);
         layer = scale_layer;
       } else if (op_type_ == "mul") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
@@ -228,7 +228,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       }
     };
 
-    if (CheckDims(dims_x, dims_y)) {
+    if (dims_x.nbDims == dims_y.nbDims) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
       nvinfer1::IElementWiseLayer* elet_layer =

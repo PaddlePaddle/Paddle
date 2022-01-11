@@ -23,13 +23,15 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-SEED = 2021
-
 
 class TestSetValueBase(unittest.TestCase):
-    def set_input(self):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
+
+    def setUp(self):
+        paddle.enable_static()
         self.set_npu()
-        paddle.device.set_device('npu')
         self.set_dtype()
         self.set_value()
         self.set_shape()
@@ -51,9 +53,6 @@ class TestSetValueBase(unittest.TestCase):
     def _get_answer(self):
         self.data[0, 0] = self.value
 
-    def set_npu(self):
-        self.__class__.use_npu = True
-
 
 class TestSetValueApi(TestSetValueBase):
     def _run_static(self):
@@ -62,13 +61,13 @@ class TestSetValueApi(TestSetValueBase):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             self._call_setitem(x)
 
-        exe = paddle.static.Executor(paddle.NPUPlace(0))
+        exe = paddle.static.Executor(self.place)
         out = exe.run(self.program, fetch_list=[x])
         paddle.disable_static()
         return out
 
     def _run_dynamic(self):
-        paddle.disable_static(paddle.NPUPlace(0))
+        paddle.disable_static(self.place)
         x = paddle.ones(shape=self.shape, dtype=self.dtype)
         self._call_setitem(x)
         out = x.numpy()
@@ -76,7 +75,6 @@ class TestSetValueApi(TestSetValueBase):
         return out
 
     def test_api(self):
-        self.set_input()
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
         self._get_answer()
@@ -134,23 +132,22 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
-""" FIXEME : it seams that NPU don't support while operator  ???
-class TestSetValueItemSliceInWhile(TestSetValueApi):
-    def _call_setitem(self, x):
-        def cond(i, x):
-            return i < 1
+# TODO(qili93): Fix this after NPU support while_loop
+# class TestSetValueItemSliceInWhile(TestSetValueApi):
+#     def _call_setitem(self, x):
+#         def cond(i, x):
+#             return i < 1
 
-        def body(i, x):
-            x[i] = self.value
-            i = i + 1
-            return i, x
-        with paddle.static.device_guard("npu"):
-            i = paddle.zeros(shape=(1, ), dtype='int32')
-        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+#         def body(i, x):
+#             x[i] = self.value
+#             i = i + 1
+#             return i, x
 
-    def _get_answer(self):
-        self.data[0] = self.value
-"""
+#         i = paddle.zeros(shape=(1, ), dtype='int32')
+#         i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+
+#     def _get_answer(self):
+#         self.data[0] = self.value
 
 
 # 1.2.2 step > 1
@@ -190,6 +187,60 @@ class TestSetValueItemSliceStep4(TestSetValueApi):
 
     def _get_answer(self):
         self.data[0:, 1:2:2, :] = self.value
+
+
+# 1.2.3 step < 0
+class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5, 2]
+
+    def set_value(self):
+        self.value = np.array([3, 4])
+
+    def _call_setitem(self, x):
+        x[5:2:-1] = self.value
+
+    def _get_answer(self):
+        self.data[5:2:-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5]
+
+    def set_value(self):
+        self.value = np.array([3, 4])
+
+    def _call_setitem(self, x):
+        x[1::-1] = self.value
+
+    def _get_answer(self):
+        self.data[1::-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3]
+
+    def set_value(self):
+        self.value = np.array([3, 4, 5])
+
+    def _call_setitem(self, x):
+        x[::-1] = self.value
+
+    def _get_answer(self):
+        self.data[::-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3, 4, 5]
+
+    def _call_setitem(self, x):
+        x[2:0:-1, 0:2, ::-1] = self.value
+
+    def _get_answer(self):
+        self.data[2:0:-1, 0:2, ::-1] = self.value
 
 
 # 1.3 item is Ellipsis
@@ -277,6 +328,19 @@ class TestSetValueItemTensor5(TestSetValueApi):
         self.data[0:, 1:2:2, :] = self.value
 
 
+class TestSetValueItemTensor6(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3, 4, 5]
+
+    def _call_setitem(self, x):
+        minus1 = paddle.full([1], -1, dtype="int32")
+        zero = paddle.full([1], 0, dtype="int32")
+        x[2:zero:minus1, 0:2, 10:-6:minus1] = self.value
+
+    def _get_answer(self):
+        self.data[2:0:-1, 0:2, ::-1] = self.value
+
+
 # 1.5 item is None
 class TestSetValueItemNone1(TestSetValueApi):
     def _call_setitem(self, x):
@@ -350,24 +414,59 @@ class TestSetValueItemNone9(TestSetValueApi):
         self.data[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
 
-""" FIXME : current NPU set_value don't support negative step !!!
-    @xiongkun03
-
-class TestSetValueItemTensor6(TestSetValueApi):
-    def set_shape(self):
-        self.shape = [3, 4, 5]
-
+# 1.5 item is list or Tensor of bol
+class TestSetValueItemBool1(TestSetValueApi):
     def _call_setitem(self, x):
-        minus1 = paddle.full([1], -1, dtype="int32")
-        zero = paddle.full([1], 0, dtype="int32")
-        x[2:zero:minus1, 0:2, 10:-6:minus1] = self.value
+        x[[True, False]] = self.value
 
     def _get_answer(self):
-        self.data[2:0:-1, 0:2, ::-1] = self.value
-"""
+        self.data[[True, False]] = self.value
 
-# 2. Test different type of value: int, float, numpy.ndarray, Tensor
-# 2.1 value is int32, int64, float32, float64, bool
+
+class TestSetValueItemBool2(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[[False, False]] = self.value
+
+    def _get_answer(self):
+        self.data[[False, False]] = self.value
+
+
+class TestSetValueItemBool3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[[False, True]] = np.zeros(self.shape[2])
+
+    def _get_answer(self):
+        self.data[[False, True]] = np.zeros(self.shape[2])
+
+
+class TestSetValueItemBool4(TestSetValueApi):
+    def _call_setitem(self, x):
+        idx = paddle.assign(np.array([False, True]))
+        x[idx] = np.zeros(self.shape[2])
+
+    def _get_answer(self):
+        self.data[np.array([False, True])] = np.zeros(self.shape[2])
+
+
+class TestSetValueItemBool5(TestSetValueApi):
+    def _call_setitem(self, x):
+        idx = paddle.assign(
+            np.array([[False, True, False], [True, True, False]]))
+        x[idx] = self.value
+
+    def _get_answer(self):
+        self.data[np.array([[False, True, False], [True, True, False]
+                            ])] = self.value
+
+
+class TestSetValueItemBool6(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0, ...] = 0
+        x[x > 0] = self.value
+
+    def _get_answer(self):
+        self.data[0, ...] = 0
+        self.data[self.data > 0] = self.value
 
 
 def create_test_value_int32(parent):
@@ -390,93 +489,24 @@ create_test_value_int32(TestSetValueItemSlice3)
 create_test_value_int32(TestSetValueItemSlice4)
 
 
-def create_test_value_numpy_fp32(parent):
+def create_test_value_int64(parent):
     class TestValueInt(parent):
         def set_value(self):
-            self.value = np.array([1])
+            self.value = 7
 
-        def set_dtype(self):
-            self.dtype = "float32"
-
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp32")
-    TestValueInt.__name__ = cls_name
-    globals()[cls_name] = TestValueInt
-
-
-create_test_value_numpy_fp32(TestSetValueItemInt)
-create_test_value_numpy_fp32(TestSetValueItemSlice)
-create_test_value_numpy_fp32(TestSetValueItemSlice2)
-create_test_value_numpy_fp32(TestSetValueItemSlice3)
-create_test_value_numpy_fp32(TestSetValueItemSlice4)
-
-
-def create_test_value_numpy_fp64(parent):
-    class TestValueInt(parent):
-        def set_value(self):
-            self.value = np.array([2**127]).astype("float64")
-
-        def set_dtype(self):
-            self.dtype = "float64"
-
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp64")
-    TestValueInt.__name__ = cls_name
-    globals()[cls_name] = TestValueInt
-
-
-create_test_value_numpy_fp64(TestSetValueItemInt)
-create_test_value_numpy_fp64(TestSetValueItemSlice)
-create_test_value_numpy_fp64(TestSetValueItemSlice2)
-create_test_value_numpy_fp64(TestSetValueItemSlice3)
-create_test_value_numpy_fp64(TestSetValueItemSlice4)
-
-
-# 2.3 value is a Paddle Tensor (int32, int64, float32, float64, bool)
-def create_test_value_tensor_int32(parent):
-    class TestValueInt(parent):
-        def set_dtype(self):
-            self.dtype = "int32"
-
-        def _call_setitem(self, x):
-            value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
-            x[0, 1] = value
-
-        def _get_answer(self):
-            self.data[0, 1] = 3
-
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt32")
-    TestValueInt.__name__ = cls_name
-    globals()[cls_name] = TestValueInt
-
-
-create_test_value_tensor_int32(TestSetValueItemInt)
-create_test_value_tensor_int32(TestSetValueItemSlice)
-create_test_value_tensor_int32(TestSetValueItemSlice2)
-create_test_value_tensor_int32(TestSetValueItemSlice3)
-create_test_value_tensor_int32(TestSetValueItemSlice4)
-
-
-def create_test_value_tensor_int64(parent):
-    class TestValueInt(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-        def _call_setitem(self, x):
-            value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
-            x[0, 1] = value
-
-        def _get_answer(self):
-            self.data[0, 1] = 3
-
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt64")
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
 
-create_test_value_tensor_int64(TestSetValueItemInt)
-create_test_value_tensor_int64(TestSetValueItemSlice)
-create_test_value_tensor_int64(TestSetValueItemSlice2)
-create_test_value_tensor_int64(TestSetValueItemSlice3)
-create_test_value_tensor_int64(TestSetValueItemSlice4)
+create_test_value_int64(TestSetValueItemInt)
+create_test_value_int64(TestSetValueItemSlice)
+create_test_value_int64(TestSetValueItemSlice2)
+create_test_value_int64(TestSetValueItemSlice3)
+create_test_value_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_fp32(parent):
@@ -501,30 +531,6 @@ create_test_value_tensor_fp32(TestSetValueItemSlice)
 create_test_value_tensor_fp32(TestSetValueItemSlice2)
 create_test_value_tensor_fp32(TestSetValueItemSlice3)
 create_test_value_tensor_fp32(TestSetValueItemSlice4)
-
-
-def create_test_value_tensor_fp64(parent):
-    class TestValueInt(parent):
-        def set_dtype(self):
-            self.dtype = "float64"
-
-        def _call_setitem(self, x):
-            value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
-            x[0, 1] = value
-
-        def _get_answer(self):
-            self.data[0, 1] = 3
-
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp64")
-    TestValueInt.__name__ = cls_name
-    globals()[cls_name] = TestValueInt
-
-
-create_test_value_tensor_fp64(TestSetValueItemInt)
-create_test_value_tensor_fp64(TestSetValueItemSlice)
-create_test_value_tensor_fp64(TestSetValueItemSlice2)
-create_test_value_tensor_fp64(TestSetValueItemSlice3)
-create_test_value_tensor_fp64(TestSetValueItemSlice4)
 
 
 # 3. Test different shape of value
@@ -587,60 +593,6 @@ class TestSetValueValueShape5(TestSetValueApi):
 
     def _get_answer(self):
         self.data[:, 0] = self.value
-
-
-# 4. Test error
-class TestError(TestSetValueBase):
-    def _value_type_error(self):
-        with self.assertRaisesRegexp(
-                TypeError,
-                "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor"
-        ):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            value = [1]
-            x[0] = value
-
-    def _dtype_error(self):
-        with self.assertRaisesRegexp(
-                TypeError,
-                "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
-        ):
-            y = paddle.ones(shape=self.shape, dtype="float16")
-            y[0] = 1
-
-    def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            x[0:1:0] = self.value
-
-    def _ellipsis_error(self):
-        with self.assertRaisesRegexp(
-                IndexError, "An index can only have a single ellipsis"):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            x[..., ...] = self.value
-        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            one = paddle.ones([1])
-            x[::one] = self.value
-
-    def _broadcast_mismatch(self):
-        program = paddle.static.Program()
-        with paddle.static.program_guard(program):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            value = np.array([3, 4, 5, 6, 7])
-            x[0] = value
-        exe = paddle.static.Executor(paddle.CPUPlace())
-        with self.assertRaises(ValueError):
-            exe.run(program)
-
-    def test_error(self):
-        self.set_input()
-        paddle.enable_static()
-        with paddle.static.program_guard(self.program):
-            self._value_type_error()
-            self._dtype_error()
-            self._step_error()
-        self._broadcast_mismatch()
 
 
 if __name__ == '__main__':

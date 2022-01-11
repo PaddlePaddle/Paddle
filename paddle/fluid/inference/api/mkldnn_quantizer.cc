@@ -124,8 +124,19 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
       } else if (op->Type() == "relu") {
         is_unsigned = true;
       } else if (op->Type() == "transpose2" || op->Type() == "reshape2" ||
-                 op->Type() == "pool2d") {
+                 op->Type() == "pool2d" || op->Type() == "nearest_interp" ||
+                 op->Type() == "nearest_interp_v2") {
         auto input_var_name = op->Input("X")[0];
+        PADDLE_ENFORCE_NE(scales_.find(input_var_name), scales_.end(),
+                          platform::errors::PreconditionNotMet(
+                              "Input scales must be calculated before the "
+                              "output scales to infer if output is unsigned."));
+        if (scales_.find(input_var_name) != scales_.end()) {
+          scales_[var_name] = scales_[input_var_name];
+        }
+        compute_scale = false;
+      } else if (op->Type() == "slice") {
+        auto input_var_name = op->Input("Input")[0];
         PADDLE_ENFORCE_NE(scales_.find(input_var_name), scales_.end(),
                           platform::errors::PreconditionNotMet(
                               "Input scales must be calculated before the "
@@ -306,7 +317,7 @@ AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     std::vector<int> reference_distr_P(&hist[0], &hist[i]);
     auto outliers_count =
         std::accumulate(&hist[i], &hist[precision_hist_num_bins], 0);
-    if (reference_distr_P[i - 1] == 0) {
+    if (i <= 0 || reference_distr_P[i - 1] == 0) {
       continue;
     }
     reference_distr_P[i - 1] += outliers_count;

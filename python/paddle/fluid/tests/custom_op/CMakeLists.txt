@@ -16,8 +16,8 @@ py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
 py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
 py_test(test_custom_concat SRCS test_custom_concat.py)
 py_test(test_custom_conj SRCS test_custom_conj.py)
+py_test(test_custom_linear SRCS test_custom_linear.py)
 
 # other tests
 py_test(test_sysconfig SRCS test_sysconfig.py)
 py_test(test_check_abi SRCS test_check_abi.py)
-cc_test(test_check_error SRCS test_check_error.cc DEPS gtest)

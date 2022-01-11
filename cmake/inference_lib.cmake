@@ -124,6 +124,11 @@ function(copy_part_of_thrid_party TARGET DST)
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
+    set(dst_dir "${DST}/third_party/install/utf8proc")
+    copy(${TARGET}
+            SRCS ${UTF8PROC_INSTALL_DIR}/include ${UTF8PROC_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib)
+
     if (WITH_CRYPTO)
         set(dst_dir "${DST}/third_party/install/cryptopp")
         copy(${TARGET}
@@ -211,18 +216,37 @@ copy(inference_lib_dist
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
+# copy api headers for pten & custom op
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/ext/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/include/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/include/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/all.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*.h
+              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/bfloat16.h
+              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
+              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
+              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
+              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
+              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+
+# the header file of pten is copied to the experimental directory,
+# the include path of pten needs to be changed to adapt to inference api path
+add_custom_command(TARGET inference_lib_dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/pten_header.cmake"
+        COMMENT "Change pten header include path to adapt to inference api path")
 
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING
@@ -353,7 +377,9 @@ function(version version_file)
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
             "WITH_GPU: ${WITH_GPU}\n"
-            "WITH_ROCM: ${WITH_ROCM}\n")
+            "WITH_ROCM: ${WITH_ROCM}\n"
+            "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -363,6 +389,11 @@ function(version version_file)
         file(APPEND ${version_file}
                 "HIP version: ${HIP_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
+    endif()
+    if(WITH_ASCEND_CL)
+        file(APPEND ${version_file}
+                "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
+                "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)

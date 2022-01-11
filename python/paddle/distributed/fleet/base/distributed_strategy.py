@@ -392,12 +392,120 @@ class DistributedStrategy(object):
         """
         return get_msg_dict(self.strategy.trainer_desc_configs)
 
+    @property
+    def adam_d2sum(self):
+        """
+        set adam_d2sum
+        Default value: True
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            strategy.adam_d2sum = True  # by default this is True
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.adam_d2sum
+
+    @adam_d2sum.setter
+    @is_strict_auto
+    def adam_d2sum(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.adam_d2sum = flag
+        else:
+            raise ValueError(
+                "The type of `flag` is invalid, expected type is bool, but received {}".
+                format(type(flag)))
+
     @trainer_desc_configs.setter
     @is_strict_auto
     def trainer_desc_configs(self, configs):
         check_configs_key(self.strategy.trainer_desc_configs, configs,
                           "trainer_desc_configs")
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
+
+    @property
+    def fs_client_param(self):
+        """
+        Set fs client configurations. 
+        **Notes**:
+            uri(str): the uri of fs client
+            user(str): the user_name of fs client
+            passwd(str): the passwd of fs client
+            hadoop_bin(str): 
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+            strategy = fleet.DistributedStrategy()
+            configs = {"uri": "xxx", "user": "xxx", passwd: "xxx"}
+            strategy.fs_client_param = configs
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.fs_client_param
+
+    @fs_client_param.setter
+    @is_strict_auto
+    def fs_client_param(self, configs):
+        check_configs_key(self.strategy.fs_client_param, configs,
+                          "fs_client_param")
+        assign_configs_value(self.strategy.fs_client_param, configs)
+
+    @property
+    def sparse_table_configs(self):
+        return self.strategy.downpour_table_param
+
+    @sparse_table_configs.setter
+    @is_strict_auto
+    def sparse_table_configs(self, configs):
+        from google.protobuf.descriptor import FieldDescriptor
+        table_param = self.strategy.downpour_table_param
+
+        def set_table_config(msg, config_name, configs, index=0):
+            for field in msg.DESCRIPTOR.fields:
+                name = config_name + "." + field.name
+                if field.type == FieldDescriptor.TYPE_MESSAGE:
+                    # print("message:", name)
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        if name + ".num" not in configs:
+                            continue
+                        num = configs[name + ".num"]
+                        # print("message num:", name, num)
+                        for i in range(num):
+                            data = getattr(msg, field.name).add()
+                            set_table_config(data, name, configs, i)
+                    else:
+                        set_table_config(
+                            getattr(msg, field.name), name, configs)
+                else:
+                    # print("not message:", name)
+                    if name not in configs:
+                        continue
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        getattr(msg, field.name).extend(configs[name])
+                    else:
+                        if type(configs[name]) == list:
+                            setattr(msg, field.name, configs[name][index])
+                        else:
+                            setattr(msg, field.name, configs[name])
+
+        if not configs:
+            print("table configs is empty")
+        else:
+            for table_name in configs:
+                table_data = table_param.add()
+                table_data.table_name = table_name
+                set_table_config(table_data, "table_parameters." + table_name,
+                                 configs[table_name])
 
     @property
     def amp(self):
@@ -1630,6 +1738,60 @@ class DistributedStrategy(object):
             self.strategy.semi_auto = flag
         else:
             print("WARNING: semi-auto should have value of bool type")
+
+    @property
+    def auto_search(self):
+        """
+        Indicating whether we are using auto-search parallel function
+        For details, please reference the following code example
+        Default Value: False
+        Examples:
+          .. code-block:: python
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.auto_search = True
+        """
+        return self.strategy.auto_search
+
+    @auto_search.setter
+    def auto_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.auto_search = flag
+        else:
+            print("WARNING: auto-search should have value of bool type")
+
+    @property
+    def heter_ccl_mode(self):
+        """
+        Indicating whether we are using heter_ccl_mode for model training.
+        This feature is currently an experimental feature. Currently,
+        heter_ccl_mode can be used only for dataparallel with dygraph mode.
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            strategy = fleet.DistributedStrategy()
+            strategy.heter_ccl_mode = True
+
+            # for initialize parallel env, only need to call
+            paddle.distributed.init_parallel_env()
+            # then the heterogenous context will be created.
+        """
+        return self.strategy.heter_ccl_mode
+
+    @heter_ccl_mode.setter
+    def heter_ccl_mode(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.heter_ccl_mode = flag
+        else:
+            print("WARNING: heter_ccl_mode should have value of bool type")
 
     @property
     def cudnn_exhaustive_search(self):

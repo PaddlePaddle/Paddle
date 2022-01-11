@@ -27,7 +27,7 @@ template <typename T>
 class ShapeMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_var = ctx.InputVar("Input");
+    cons auto* in_var = ctx.InputVar("Input");
     auto* out = ctx.Output<Tensor>("Out");
 
     framework::DDim in_dims;
