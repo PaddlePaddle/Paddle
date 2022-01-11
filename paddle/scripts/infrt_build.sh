@@ -30,7 +30,7 @@ tmp_dir=`mktemp -d`
 function update_pd_ops() {
    PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
    # compile and install paddle
-   cd ${PADDLE_ROOT} && mkdir paddle_build && cd paddle_build
+   cd ${PADDLE_ROOT} && rm -rf paddle_build && mkdir paddle_build && cd paddle_build
    cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3`
    make -j ${parallel_number}
    cd ${PADDLE_ROOT}/paddle_build
