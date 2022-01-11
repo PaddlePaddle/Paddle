@@ -334,7 +334,7 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::INT64, XPUPlace()),
                               pOpKernelType(vartype::INT32, XPUPlace())})},
       {"stack_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                              pOpKernelType(vartype::INT32, XPUPlace())})},
+                                   pOpKernelType(vartype::INT32, XPUPlace())})},
       {"sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                             pOpKernelType(vartype::FP16, XPUPlace())})},
       {"tanh_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),

@@ -18,13 +18,14 @@ sys.path.append("..")
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+@skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
 class TestStackOpBase(XPUOpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -93,7 +94,7 @@ class TestStackOp3(TestStackOpBase):
         pass
 
 
-class TestStackOp3(TestStackOpBase):
+class TestStackOp4(TestStackOpBase):
     def initParameters(self):
         self.axis = -4
 

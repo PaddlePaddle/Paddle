@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/stack_op.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/operators/concat_op.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -74,18 +74,19 @@ class StackGradXPUKernel : public framework::OpKernel<T> {
 
     if (axis < 0) axis += dy_dims.size() + 1;
     auto dy_shape = framework::vectorize<int>(dy_dims);
-    
+
     std::vector<int> dx_dims_list(dx.size(), 1);
     std::vector<T*> dx_lists;
     for (auto out : dx) {
       dx_lists.push_back(out->mutable_data<T>(ctx.GetPlace()));
     }
 
-    int r = xpu::split<T>(dev_ctx.x_context(), dy->data<T>(), dx_lists, dy_shape, dx_dims_list, axis);
+    int r = xpu::split<T>(dev_ctx.x_context(), dy->data<T>(), dx_lists,
+                          dy_shape, dx_dims_list, axis);
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU stack_grad kernel return wrong value[%d %s]", r,
-                          XPUAPIErrorMsg[r]));
+                          "The stack_grad XPU kernel return wrong value[%d %s]",
+                          r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -102,4 +103,3 @@ REGISTER_OP_XPU_KERNEL(stack_grad,
                        ops::StackGradXPUKernel<plat::XPUDeviceContext, float>,
                        ops::StackGradXPUKernel<plat::XPUDeviceContext, int>);
 #endif
-
