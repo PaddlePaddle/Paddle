@@ -42,6 +42,14 @@ DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
 }
 
 template <typename T, typename Context>
+DenseTensor Empty(const Context& dev_ctx) {
+  return Empty<T, Context>(dev_ctx,
+                           {paddle::experimental::CppTypeToDataType<T>::Type(),
+                            {-1},
+                            DataLayout::NCHW});
+}
+
+template <typename T, typename Context>
 DenseTensor Empty(const Context& dev_ctx,
                   const ScalarArray& shape,
                   DataType dtype = DataType::FLOAT32,
