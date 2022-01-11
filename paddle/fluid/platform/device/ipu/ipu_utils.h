@@ -29,14 +29,14 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-using platform::float16;
-using framework::Tensor;
-using framework::LoDTensor;
-using framework::Scope;
-using framework::OpDesc;
-using framework::ir::Graph;
-using framework::ir::Node;
-using framework::BlockDesc;
+using float16 = platform::float16;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using Scope = framework::Scope;
+using OpDesc = framework::OpDesc;
+using Graph = framework::ir::Graph;
+using Node = framework::ir::Node;
+using BlockDesc = framework::BlockDesc;
 
 // onnx dtype
 // https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3

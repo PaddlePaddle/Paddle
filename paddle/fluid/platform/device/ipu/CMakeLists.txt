@@ -1,20 +1,8 @@
 IF(WITH_IPU)
   FILE(GLOB POPART_CANONICALIZATION_SRC ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/device/ipu/popart_canonicalization/*.cc)
-
-  set(POPART_PATTERNS_SRC
-    ""
-  )
-
-  set(POPART_OPERATORS_SRC
-    ""
-  )
-
   list(APPEND PADDLE_IPU_SRC ${POPART_CANONICALIZATION_SRC})
-  list(APPEND PADDLE_IPU_SRC ${POPART_PATTERNS_SRC})
-  list(APPEND PADDLE_IPU_SRC ${POPART_OPERATORS_SRC})
   set(PADDLE_IPU_LIB "${CMAKE_CURRENT_BINARY_DIR}/libpaddle_ipu.so" CACHE STRING "")
   set(PADDLE_IPU_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "")
-
   set(IPU_BACKEND_SRC
     "ipu_device.cc"
     "ipu_strategy.cc"
