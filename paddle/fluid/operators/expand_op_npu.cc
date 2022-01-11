@@ -89,13 +89,17 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
     out0->Resize(out_dims);
     out0->mutable_data<T>(place);
 
-    bool is_expand_times_all_one = (out_dims == in_dims) ? true : false;
+    bool is_expand_times_all_one =
+        (out0->numel() == in0->numel()) ? true : false;
 
     if (is_expand_times_all_one) {
       memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place),
                    out0->mutable_data<T>(place),
                    BOOST_GET_CONST(platform::NPUPlace, place), in0->data<T>(),
                    in0->numel() * sizeof(T), stream);
+      if (out_dims != in_dims) {
+        out0->Resize(out_dims);
+      }
     } else {
       const auto& runner =
           NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
