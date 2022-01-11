@@ -441,11 +441,12 @@ class Optimizer(object):
             if current_lr is not None:
                 if framework.in_dygraph_mode():
                     _C_ops.fill_constant(current_lr, 'value',
-                             float(value), 'dtype',
-                             current_lr.dtype,
-                             'shape', list(current_lr.shape))
+                                         float(value), 'dtype',
+                                         current_lr.dtype, 'shape',
+                                         list(current_lr.shape))
                 else:
-                    global_block = framework.default_main_program().global_block()
+                    global_block = framework.default_main_program(
+                    ).global_block()
                     global_block.append_op(
                         type='fill_constant',
                         outputs={'Out': [current_lr]},
@@ -612,7 +613,9 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR if framework._in_eager_mode() else (param.type if type is None else type),
+            type=core.VarDesc.VarType.LOD_TENSOR
+            if framework._in_eager_mode() else (param.type
+                                                if type is None else type),
             shape=shape,
             belong_to_optimizer=True)
         if device is None:
@@ -2154,15 +2157,22 @@ class LarsMomentumOptimizer(Optimizer):
 
         if framework.in_dygraph_mode():
             if _lars_weight_decay != 0.0:
-                tmp, tmp2 = _C_ops.lars_momentum([param_and_grad[0]], [param_and_grad[1]], [velocity_acc], [lr],
-                1, 1, "mu", self._momentum, "lars_coeff", self._lars_coeff, "lars_weight_decay", [_lars_weight_decay],
-                "multi_precision", find_master, "epsilon", self._epsilon, "rescale_grad", self._rescale_grad)
-                param_and_grad[0].copy_(tmp[0], False)
-                velocity_acc.copy_(tmp2[0], False)
+                tmp, tmp2 = _C_ops.lars_momentum(
+                    [param_and_grad[0]], [param_and_grad[1]], [velocity_acc],
+                    [lr], [param_and_grad[0]], [velocity_acc], "mu",
+                    self._momentum, "lars_coeff", self._lars_coeff,
+                    "lars_weight_decay", [_lars_weight_decay],
+                    "multi_precision", find_master, "epsilon", self._epsilon,
+                    "rescale_grad", self._rescale_grad)
             else:
-                _C_ops.momentum(param_and_grad[0], param_and_grad[1], velocity_acc, lr, master_weight,
-                param_and_grad[0], velocity_acc, master_weight, "mu", self._momentum, "lars_coeff", self._lars_coeff, "lars_weight_decay", [_lars_weight_decay],
-                "multi_precision", find_master, "epsilon", self._epsilon, "rescale_grad", self._rescale_grad)
+                _C_ops.momentum(param_and_grad[0], param_and_grad[1],
+                                velocity_acc, lr, master_weight,
+                                param_and_grad[0], velocity_acc, master_weight,
+                                "mu", self._momentum, "lars_coeff",
+                                self._lars_coeff, "lars_weight_decay",
+                                [_lars_weight_decay], "multi_precision",
+                                find_master, "epsilon", self._epsilon,
+                                "rescale_grad", self._rescale_grad)
         else:
             # create the momentum optimize op
             momentum_op = block.append_op(
@@ -2275,8 +2285,10 @@ class AdagradOptimizer(Optimizer):
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
         if framework.in_dygraph_mode():
-            _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad),
-            param_and_grad[0], moment_acc, "epsilon", self._epsilon)
+            _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc,
+                           self._create_param_lr(param_and_grad),
+                           param_and_grad[0], moment_acc, "epsilon",
+                           self._epsilon)
         else:
             # Create the adagrad optimizer op
             adagrad_op = block.append_op(
@@ -2287,8 +2299,10 @@ class AdagradOptimizer(Optimizer):
                     "Moment": moment_acc,
                     "LearningRate": self._create_param_lr(param_and_grad)
                 },
-                outputs={"ParamOut": param_and_grad[0],
-                        "MomentOut": moment_acc},
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "MomentOut": moment_acc
+                },
                 attrs={"epsilon": self._epsilon},
                 stop_gradient=True)
 
@@ -2797,9 +2811,11 @@ class AdamaxOptimizer(Optimizer):
         beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                               param_and_grad[0])
         if framework.in_dygraph_mode():
-            _C_ops.adamax(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad), moment, inf_norm, beta1_pow_acc,
-            param_and_grad[0], moment, inf_norm,
-            "beta1", self._beta1, "beta2", self._beta2, "epsilon", self._epsilon)
+            _C_ops.adamax(param_and_grad[0], param_and_grad[1],
+                          self._create_param_lr(param_and_grad), moment,
+                          inf_norm, beta1_pow_acc, param_and_grad[0], moment,
+                          inf_norm, "beta1", self._beta1, "beta2", self._beta2,
+                          "epsilon", self._epsilon)
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -2926,8 +2942,11 @@ class DpsgdOptimizer(Optimizer):
             self._seed = 0
 
         if framework.in_dygraph_mode():
-            _C_ops.dpsgd(param_and_grad[0], param_and_grad[1], self._create_param_lr(param_and_grad),param_and_grad[0],
-            "clip", self._clip, "batch_size", self._batch_size, "sigma", self._sigma, "seed", self._seed)
+            _C_ops.dpsgd(param_and_grad[0], param_and_grad[1],
+                         self._create_param_lr(param_and_grad),
+                         param_and_grad[0], "clip", self._clip, "batch_size",
+                         self._batch_size, "sigma", self._sigma, "seed",
+                         self._seed)
         else:
             dpsgd_op = block.append_op(
                 type=self.type,
@@ -3041,8 +3060,10 @@ class DecayedAdagradOptimizer(Optimizer):
                                            param_and_grad[0])
 
         if framework.in_dygraph_mode():
-            _C_ops.decayed_adagrad(param_and_grad[0], param_and_grad[1], moment_acc, self._create_param_lr(param_and_grad),param_and_grad[0], moment_acc,
-            "epsilon", self._epsilon, "decay", self._decay)
+            _C_ops.decayed_adagrad(
+                param_and_grad[0], param_and_grad[1], moment_acc,
+                self._create_param_lr(param_and_grad), param_and_grad[0],
+                moment_acc, "epsilon", self._epsilon, "decay", self._decay)
         else:
             # Create the decayed adagrad optimizer op
             decayed_adagrad_op = block.append_op(
@@ -3053,10 +3074,12 @@ class DecayedAdagradOptimizer(Optimizer):
                     "Moment": moment_acc,
                     "LearningRate": self._create_param_lr(param_and_grad)
                 },
-                outputs={"ParamOut": param_and_grad[0],
-                        "MomentOut": moment_acc},
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "MomentOut": moment_acc
+                },
                 attrs={"epsilon": self._epsilon,
-                    "decay": self._decay},
+                       "decay": self._decay},
                 stop_gradient=True)
 
             return decayed_adagrad_op
@@ -3161,7 +3184,11 @@ class AdadeltaOptimizer(Optimizer):
             self._avg_squared_update_acc_str, param_and_grad[0])
 
         if framework.in_dygraph_mode():
-            _C_ops.adadelta(param_and_grad[0], param_and_grad[1], avg_squared_grad_acc, avg_squared_update_acc, param_and_grad[0], avg_squared_grad_acc, avg_squared_update_acc, "epsilon", self._epsilon, "rho", self._rho)
+            _C_ops.adadelta(param_and_grad[0], param_and_grad[1],
+                            avg_squared_grad_acc, avg_squared_update_acc,
+                            param_and_grad[0], avg_squared_grad_acc,
+                            avg_squared_update_acc, "epsilon", self._epsilon,
+                            "rho", self._rho)
         else:
             # Create the adadelta optimizer op
             adadelta_op = block.append_op(
@@ -3178,7 +3205,7 @@ class AdadeltaOptimizer(Optimizer):
                     "AvgSquaredUpdateOut": avg_squared_update_acc
                 },
                 attrs={"epsilon": self._epsilon,
-                    "rho": self._rho},
+                       "rho": self._rho},
                 stop_gradient=True)
 
             return adadelta_op
@@ -3346,9 +3373,12 @@ class RMSPropOptimizer(Optimizer):
         mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
                                               param_and_grad[0])
         if framework.in_dygraph_mode():
-            _C_ops.rmsprop(param_and_grad[0], mean_square_acc, self._create_param_lr(param_and_grad), param_and_grad[1], momentum_acc,
-            param_and_grad[0], momentum_acc, mean_square_acc, mean_grad_acc,
-            "epsilon", self._epsilon, "decay", self._rho, "momentum", self._momentum, "centered", self._centered)
+            _C_ops.rmsprop(
+                param_and_grad[0], mean_square_acc,
+                self._create_param_lr(param_and_grad), param_and_grad[1],
+                momentum_acc, param_and_grad[0], momentum_acc, mean_square_acc,
+                mean_grad_acc, "epsilon", self._epsilon, "decay", self._rho,
+                "momentum", self._momentum, "centered", self._centered)
         else:
             rmsprop_op = block.append_op(
                 type=self.type,
@@ -3515,10 +3545,12 @@ class FtrlOptimizer(Optimizer):
         linear_acc = self._get_accumulator(self._linear_acc_str,
                                            param_and_grad[0])
         if framework.in_dygraph_mode():
-            _C_ops.ftrl(param_and_grad[0], squared_acc, linear_acc, param_and_grad[1], self._create_param_lr(param_and_grad),
-            param_and_grad[0], squared_acc, linear_acc,
-            "l1", self._l1, "l2", self._l2, "lr_power", self._lr_power)
-            
+            _C_ops.ftrl(param_and_grad[0], squared_acc, linear_acc,
+                        param_and_grad[1],
+                        self._create_param_lr(param_and_grad),
+                        param_and_grad[0], squared_acc, linear_acc, "l1",
+                        self._l1, "l2", self._l2, "lr_power", self._lr_power)
+
         else:
             ftrl_op = block.append_op(
                 type=self.type,
@@ -3534,9 +3566,11 @@ class FtrlOptimizer(Optimizer):
                     "SquaredAccumOut": squared_acc,
                     "LinearAccumOut": linear_acc
                 },
-                attrs={"l1": self._l1,
+                attrs={
+                    "l1": self._l1,
                     "l2": self._l2,
-                    "lr_power": self._lr_power},
+                    "lr_power": self._lr_power
+                },
                 stop_gradient=True)
 
             return ftrl_op
@@ -4564,7 +4598,7 @@ class PipelineOptimizer(object):
         for op in block.ops:
             device = op.attr(self._op_device_key)
             # Copy ops whose op_device set to "gpu:all" to all sections.
-            if device == f"{self._device}:all":
+            if True:  #device == f"{self._device}:all":
                 for device in devices:
                     program = device_program_map[device]
                     op_desc = op.desc
@@ -4721,7 +4755,7 @@ class PipelineOptimizer(object):
         if op.attr(self._op_role_key) == lrsched_role:
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
-            op._set_attr(self._op_device_key, f"{self._device}:all")
+            op._set_attr(self._op_device_key, "")  #f"{self._device}:all")
         # bugfix in hybrid parallelism
         elif op.type == "sum" and self._is_backward_op(op):
             # For sum ops that compute the sum of @RENAMED@ vars
@@ -4788,10 +4822,10 @@ class PipelineOptimizer(object):
                     op.type == 'fill_constant' or
                     op.type == 'elementwise_max' or
                     op.type == 'elementwise_div'):
-                device = f"{self._device}:all"
+                device = ""  #f"{self._device}:all"
             op._set_attr(self._op_device_key, device)
         elif op.type == "alloc_float_status" or op.type == "clear_float_status":
-            op._set_attr(self._op_device_key, f"{self._device}:all")
+            op._set_attr(self._op_device_key, "")  #f"{self._device}:all")
             # NOTE(wangxi): NPU should only clear the float status
             # once at each batch step
             op._set_attr(self._op_role_key, self._op_role.LRSched)
@@ -4811,7 +4845,7 @@ class PipelineOptimizer(object):
                 "op_device set, they must be one of {}, but it " \
                 "is {}".format(other_known_ops, op.type)
             assert self._is_optimize_op(op)
-            op._set_attr(self._op_device_key, f"{self._device}:all")
+            op._set_attr(self._op_device_key, "")  #f"{self._device}:all")
 
     def _add_op_device_attr(self, block):
         """
@@ -4826,7 +4860,7 @@ class PipelineOptimizer(object):
                 # We use "gpu:all" to represent the op should be put on all
                 # sub-programs, such as lr-related ops. Note that: "gpu:all"
                 # is only used by pipeline as an indicator.
-                op._set_attr(self._op_device_key, f"{self._device}:all")
+                op._set_attr(self._op_device_key, "")  #f"{self._device}:all")
                 continue
             # op_device attribute has been set
             if self._get_op_device_attr(op): continue
@@ -4871,7 +4905,7 @@ class PipelineOptimizer(object):
             device = op.attr(self._op_device_key)
             assert device, ("op_device attribute for op "
                             "{} has not been set.".format(op.type))
-            if device == f"{self._device}:all": continue
+            if device == "": continue  #f"{self._device}:all": continue
 
             dev_type = device.split(':')[0]
             assert dev_type == "gpu" or dev_type == 'npu', (
@@ -4904,7 +4938,7 @@ class PipelineOptimizer(object):
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
-            if cur_device == f"{self._device}:all": continue
+            if cur_device == "": continue  #f"{self._device}:all": continue
             for var_name in op.input_arg_names:
                 var = block.var(var_name)
                 # skip data var
@@ -4921,7 +4955,7 @@ class PipelineOptimizer(object):
                     prev_device = prev_op.attr(self._op_device_key) \
                         if prev_op else None
 
-                if prev_device is None or prev_device == f"{self._device}:all":
+                if prev_device is None or prev_device == "":  #f"{self._device}:all":
                     continue
 
                 if prev_device == cur_device: continue
