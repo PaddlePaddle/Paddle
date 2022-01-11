@@ -27,6 +27,21 @@ fi
 EXIT_CODE=0;
 tmp_dir=`mktemp -d`
 
+function update_pd_ops() {
+   PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+   # compile and install paddle
+   cd ${PADDLE_ROOT} && mkdir paddle_build && cd paddle_build
+   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3`
+   make -j ${parallel_number}
+   cd ${PADDLE_ROOT}/paddle_build
+   cd python/dist/
+   python3 -m pip uninstall -y paddlepaddle
+   python3 -m pip install  *whl
+   # update pd_ops.td
+   cd ${PADDLE_ROOT}/tools/infrt/
+   python3 generate_pd_op_dialect_from_paddle_op_maker.py
+}
+
 function init() {
     RED='\033[0;31m'
     BLUE='\033[0;34m'
@@ -62,6 +77,9 @@ function infrt_gen_and_build() {
     fi
     startTime_s=`date +%s`
     set +e
+    # step1. reinstall paddle and generate pd_ops.td
+    update_pd_ops
+    # step2. compile infrt
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt

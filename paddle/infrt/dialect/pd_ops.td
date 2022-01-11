@@ -301,6 +301,22 @@ def PD_Bilinear_tensor_productOp : PD_Op<"bilinear_tensor_product", [NoSideEffec
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_Reduce_aminOp : PD_Op<"reduce_amin", [NoSideEffect]> {
+  let summary = "reduce_amin op";
+  let description = [{
+    
+    Reduce reduce_amin Operator.
+    
+    This operator computes the reduce_amin of input tensor along the given dimension.
+    The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+    If reduce_all is true, just reduce along all dimensions and output a scalar.
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<I32ArrayAttr, "{0}">:$dim, DefaultValuedAttr<BoolAttr, "false">:$keep_dim, DefaultValuedAttr<BoolAttr, "false">:$reduce_all, DefaultValuedAttr<SI32Attr, "-1">:$in_dtype, DefaultValuedAttr<SI32Attr, "-1">:$out_dtype);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_Matmul_v2Op : PD_Op<"matmul_v2", [NoSideEffect]> {
   let summary = "matmul_v2 op";
   let description = [{
@@ -311,24 +327,6 @@ def PD_Matmul_v2Op : PD_Op<"matmul_v2", [NoSideEffect]> {
     
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<BoolAttr, "false">:$trans_x, DefaultValuedAttr<BoolAttr, "false">:$trans_y);
-
-  let results = (outs PD_Tensor:$Out);
-}
-def PD_C_embeddingOp : PD_Op<"c_embedding", [NoSideEffect]> {
-  let summary = "c_embedding op";
-  let description = [{
-    
-    c_embedding Operator.
-    
-    This operator is used to perform lookups on the parameter W,
-    then concatenated into a dense tensor.
-    
-    The input Ids can carry the LoD (Level of Details) information,
-    or not. And the output only shares the LoD information with input Ids.
-    
-    
-  }];
-  let arguments = (ins  PD_Tensor:$W, PD_Tensor:$Ids, DefaultValuedAttr<SI64Attr, "0">:$start_index);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -374,6 +372,20 @@ def PD_Elementwise_maxOp : PD_Op<"elementwise_max", [NoSideEffect]> {
     
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<SI32Attr, "-1">:$axis);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_ComplexOp : PD_Op<"complex", [NoSideEffect]> {
+  let summary = "complex op";
+  let description = [{
+    
+    Complex Operator.
+    
+    Return a complex tensor given the real and image tensors.
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -595,6 +607,22 @@ def PD_Expand_v2Op : PD_Op<"expand_v2", [NoSideEffect]> {
     
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Shape, PD_Tensor:$expand_shapes_tensor, DefaultValuedAttr<I32ArrayAttr, "{}">:$shape);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_Repeat_interleaveOp : PD_Op<"repeat_interleave", [NoSideEffect]> {
+  let summary = "repeat_interleave op";
+  let description = [{
+    
+    Returns a new tensor which repeats the input tensor
+    along dimension dim using the entries in repeats which
+    is a Tensor or int.
+    
+    The returned tensor has the same number of dimensions
+    as the original tensor (input), except along the given axis.
+        
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$RepeatsTensor, DefaultValuedAttr<SI32Attr, "0">:$Repeats, DefaultValuedAttr<SI32Attr, "0">:$dim);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -1331,7 +1359,7 @@ def PD_PreluOp : PD_Op<"prelu", [NoSideEffect]> {
       element: each element has a weight
     
   }];
-  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Alpha, DefaultValuedAttr<StrAttr, "all">:$mode);
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Alpha, DefaultValuedAttr<StrAttr, "all">:$mode, DefaultValuedAttr<StrAttr, "NCHW">:$data_format);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -1468,6 +1496,17 @@ def PD_Conv3dOp : PD_Op<"conv3d", [NoSideEffect]> {
   let arguments = (ins  PD_Tensor:$Input, PD_Tensor:$Filter, DefaultValuedAttr<I32ArrayAttr, "{1, 1, 1}">:$strides, DefaultValuedAttr<I32ArrayAttr, "{0, 0, 0}">:$paddings, DefaultValuedAttr<StrAttr, "EXPLICIT">:$padding_algorithm, DefaultValuedAttr<SI32Attr, "1">:$groups, DefaultValuedAttr<I32ArrayAttr, "{1, 1, 1}">:$dilations, DefaultValuedAttr<StrAttr, "NCDHW">:$data_format);
 
   let results = (outs PD_Tensor:$Output);
+}
+def PD_Lu_unpackOp : PD_Op<"lu_unpack", [NoSideEffect]> {
+  let summary = "lu_unpack op";
+  let description = [{
+    Unpack L U and P to single matrix tensor, 
+                    unpack L and U matrix from LU, unpack permutation matrix Pmat from Pivtos .
+                    
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Pivots, DefaultValuedAttr<BoolAttr, "true">:$unpack_ludata, DefaultValuedAttr<BoolAttr, "true">:$unpack_pivots);
+
+  let results = (outs PD_Tensor:$Pmat,PD_Tensor:$L,PD_Tensor:$U);
 }
 def PD_Lstm_unitOp : PD_Op<"lstm_unit", [NoSideEffect]> {
   let summary = "lstm_unit op";
@@ -1682,7 +1721,7 @@ def PD_Flatten2Op : PD_Op<"flatten2", [NoSideEffect]> {
         Out.shape = (1, 3 * 100 * 100 * 4)
     
   }];
-  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "1">:$axis);
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "1">:$axis, DefaultValuedAttr<StrAttr, "float32">:$mkldnn_data_type);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -1691,17 +1730,13 @@ def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect]> {
   let description = [{
     
     MatMul Operator.
-    
-    
     This operator is used to perform (batched) matrix multiplication
     over the last two dimensions of the input tensors `X` and `Y`.
-    
     If a transpose flag is specified, the last two dimensions of the
     tensor are transposed. If the tensor is rank-1 of shape [D], then
     for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
     in transposed form, whereas for `Y` it is the opposite: It is treated
     as [D, 1] in nontransposed form and as [1, D] in transposed form.
-    
     Examples without transpose:
     - X: [K], Y: [K] => Out: [1]
     - X: [K], Y: [K, N] => Out: [N]
@@ -1709,10 +1744,8 @@ def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect]> {
     - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
     - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
     - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
-    
     Example of matrix multiplication with head_number of H
     - X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
-    
     The behavior is designed to be similar to the `numpy.matmul` function.
     The differences are:
     - When the rank of the input data is less than or equal to 3, it
@@ -1723,10 +1756,8 @@ def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect]> {
     - We add `head_number` attribute, which is used to multiple two matrixes head
       by head, and eventually concatenates the output of several (head_number)
       small matrixes multiplication.
-    
     Both the input `X` and `Y` can carry the LoD (Level of Details) information,
     or not. But the output only shares the LoD information with input `X`.
-    
     
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<BoolAttr, "false">:$transpose_X, DefaultValuedAttr<BoolAttr, "false">:$transpose_Y, DefaultValuedAttr<F32Attr, "1.0">:$alpha, DefaultValuedAttr<SI32Attr, "1">:$head_number);
@@ -2120,6 +2151,21 @@ def PD_Bicubic_interp_v2Op : PD_Op<"bicubic_interp_v2", [NoSideEffect]> {
              
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$OutSize, PD_Tensor:$SizeTensor, PD_Tensor:$Scale, DefaultValuedAttr<StrAttr, "NCHW">:$data_layout, DefaultValuedAttr<SI32Attr, "0">:$out_d, DefaultValuedAttr<SI32Attr, "0">:$out_h, DefaultValuedAttr<SI32Attr, "0">:$out_w, DefaultValuedAttr<F32ArrayAttr, "{}">:$scale, DefaultValuedAttr<StrAttr, "bilinear">:$interp_method, DefaultValuedAttr<BoolAttr, "true">:$align_corners, DefaultValuedAttr<SI32Attr, "1">:$align_mode);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_AngleOp : PD_Op<"angle", [NoSideEffect]> {
+  let summary = "angle op";
+  let description = [{
+    
+    Angle Operator.
+    
+    This operator is used to perform elementwise angle for input $X$.
+    $$out = angle(x)$$
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -2782,6 +2828,51 @@ def PD_Lookup_table_v2Op : PD_Op<"lookup_table_v2", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_Elementwise_fmaxOp : PD_Op<"elementwise_fmax", [NoSideEffect]> {
+  let summary = "elementwise_fmax op";
+  let description = [{
+    
+    Elementwise FMax Operator.
+    
+    Compare two tensors and returns a new tensor containing the element-wise maxima. If the element of one tensor is nan, return the element value of the other tensor, if both are nan, return the first nan
+    
+    The equation is:
+    
+    $$Out = fmax(X, Y)$$
+    
+    - $X$: a tensor of any dimension.
+    - $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
+    
+    There are two cases for this operator:
+    
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+    
+    For case 2:
+    
+    1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+       for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
+       subsequence, such as shape(Y) = (2, 1) => (2).
+    
+    For example:
+    
+      .. code-block:: text
+    
+        shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+        shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+        shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+        shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+        shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+        shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<SI32Attr, "-1">:$axis);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_L1_normOp : PD_Op<"l1_norm", [NoSideEffect]> {
   let summary = "l1_norm op";
   let description = [{
@@ -2871,6 +2962,17 @@ def PD_SlogdeterminantOp : PD_Op<"slogdeterminant", [NoSideEffect]> {
     SlogDeterminant Operator.
   }];
   let arguments = (ins  PD_Tensor:$Input);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_PoissonOp : PD_Op<"poisson", [NoSideEffect]> {
+  let summary = "poisson op";
+  let description = [{
+    
+    This operator generate random value that obey poisson distribution.
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -3159,6 +3261,17 @@ def PD_Linear_interpOp : PD_Op<"linear_interp", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_Put_along_axisOp : PD_Op<"put_along_axis", [NoSideEffect]> {
+  let summary = "put_along_axis op";
+  let description = [{
+    
+            PutAlongAxis Operator.)
+        
+  }];
+  let arguments = (ins  PD_Tensor:$Input, PD_Tensor:$Index, PD_Tensor:$Value, DefaultValuedAttr<StrAttr, "assign">:$Reduce);
+
+  let results = (outs PD_Tensor:$Result);
+}
 def PD_Batch_normOp : PD_Op<"batch_norm", [NoSideEffect]> {
   let summary = "batch_norm op";
   let description = [{
@@ -3400,6 +3513,20 @@ def PD_Deformable_convOp : PD_Op<"deformable_conv", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Output);
 }
+def PD_Matrix_powerOp : PD_Op<"matrix_power", [NoSideEffect]> {
+  let summary = "matrix_power op";
+  let description = [{
+    
+    Matrix Power Operator.
+    
+    Computes the n-th power of a square matrix or a batch of square matrices.
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_Expand_asOp : PD_Op<"expand_as", [NoSideEffect]> {
   let summary = "expand_as op";
   let description = [{
@@ -3422,20 +3549,6 @@ def PD_Expand_asOp : PD_Op<"expand_as", [NoSideEffect]> {
     
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$target_tensor);
-
-  let results = (outs PD_Tensor:$Out);
-}
-def PD_Matrix_powerOp : PD_Op<"matrix_power", [NoSideEffect]> {
-  let summary = "matrix_power op";
-  let description = [{
-    
-    Matrix Power Operator.
-    
-    Computes the n-th power of a square matrix or a batch of square matrices.
-    
-    
-  }];
-  let arguments = (ins  PD_Tensor:$X);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -3669,6 +3782,20 @@ def PD_Data_normOp : PD_Op<"data_norm", [NoSideEffect]> {
   let arguments = (ins  PD_Tensor:$scale_w, PD_Tensor:$bias, PD_Tensor:$X, PD_Tensor:$BatchSize, PD_Tensor:$BatchSum, PD_Tensor:$BatchSquareSum, DefaultValuedAttr<F32Attr, "9.999999747378752e-05">:$epsilon, DefaultValuedAttr<SI32Attr, "-1">:$slot_dim, DefaultValuedAttr<F32Attr, "0.9999998807907104">:$summary_decay_rate, DefaultValuedAttr<BoolAttr, "false">:$enable_scale_and_shift, DefaultValuedAttr<StrAttr, "NCHW">:$data_layout, DefaultValuedAttr<BoolAttr, "false">:$sync_stats);
 
   let results = (outs PD_Tensor:$Y);
+}
+def PD_AsinhOp : PD_Op<"asinh", [NoSideEffect]> {
+  let summary = "asinh op";
+  let description = [{
+    
+    Asinh Activation Operator.
+    
+    $$out = asinh(x)$$
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
+
+  let results = (outs PD_Tensor:$Out);
 }
 def PD_Reorder_lod_tensor_by_rankOp : PD_Op<"reorder_lod_tensor_by_rank", [NoSideEffect]> {
   let summary = "reorder_lod_tensor_by_rank op";
@@ -4327,7 +4454,7 @@ def PD_FlattenOp : PD_Op<"flatten", [NoSideEffect]> {
         Out.shape = (1, 3 * 100 * 100 * 4)
     
   }];
-  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "1">:$axis);
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "1">:$axis, DefaultValuedAttr<StrAttr, "float32">:$mkldnn_data_type);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -4412,6 +4539,23 @@ def PD_Label_smoothOp : PD_Op<"label_smooth", [NoSideEffect]> {
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$PriorDist, DefaultValuedAttr<F32Attr, "0.0">:$epsilon);
 
   let results = (outs PD_Tensor:$Out);
+}
+def PD_FoldOp : PD_Op<"fold", [NoSideEffect]> {
+  let summary = "fold op";
+  let description = [{
+    
+    **Fold Operator**
+    
+    This Operator is used to combines an array of sliding local blocks into a large containing
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
+    combined value in the resulting large tensor by summing all values from all containing blocks. 
+    Unfold extracts the values in the local blocks by copying from the large tensor. So, if the 
+    blocks overlap, they are not inverses of each other.
+        
+  }];
+  let arguments = (ins  PD_Tensor:$X,I32ArrayAttr:$output_sizes,I32ArrayAttr:$kernel_sizes,I32ArrayAttr:$strides,I32ArrayAttr:$paddings,I32ArrayAttr:$dilations);
+
+  let results = (outs PD_Tensor:$Y);
 }
 def PD_Roi_perspective_transformOp : PD_Op<"roi_perspective_transform", [NoSideEffect]> {
   let summary = "roi_perspective_transform op";
@@ -4606,6 +4750,17 @@ def PD_FrameOp : PD_Op<"frame", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_ModeOp : PD_Op<"mode", [NoSideEffect]> {
+  let summary = "mode op";
+  let description = [{
+    
+    This operator finds the mode of input Tensor. And outputs their values and indices as vectors. 
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "-1">:$axis, DefaultValuedAttr<BoolAttr, "false">:$keepdim);
+
+  let results = (outs PD_Tensor:$Out,PD_Tensor:$Indices);
+}
 def PD_Group_normOp : PD_Op<"group_norm", [NoSideEffect]> {
   let summary = "group_norm op";
   let description = [{
@@ -4618,18 +4773,6 @@ def PD_Group_normOp : PD_Op<"group_norm", [NoSideEffect]> {
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Scale, PD_Tensor:$Bias, DefaultValuedAttr<F32Attr, "9.999999747378752e-06">:$epsilon, DefaultValuedAttr<StrAttr, "NCHW">:$data_layout);
 
   let results = (outs PD_Tensor:$Y);
-}
-def PD_C_softmax_with_cross_entropyOp : PD_Op<"c_softmax_with_cross_entropy", [NoSideEffect]> {
-  let summary = "c_softmax_with_cross_entropy op";
-  let description = [{
-    
-    CSoftmaxWithCrossEntropy Operator
-    
-    
-  }];
-  let arguments = (ins  PD_Tensor:$Logits, PD_Tensor:$Label, DefaultValuedAttr<SI32Attr, "0">:$ring_id, DefaultValuedAttr<SI32Attr, "0">:$rank, DefaultValuedAttr<SI32Attr, "0">:$nranks);
-
-  let results = (outs PD_Tensor:$Softmax,PD_Tensor:$Loss);
 }
 def PD_Sequence_expand_asOp : PD_Op<"sequence_expand_as", [NoSideEffect]> {
   let summary = "sequence_expand_as op";
@@ -4676,6 +4819,51 @@ def PD_Sequence_expand_asOp : PD_Op<"sequence_expand_as", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_Elementwise_fminOp : PD_Op<"elementwise_fmin", [NoSideEffect]> {
+  let summary = "elementwise_fmin op";
+  let description = [{
+    
+    Elementwise FMin Operator.
+    
+    Compare two tensors and returns a new tensor containing the element-wise minima. If the element of one tensor is nan, return the element value of the other tensor, if both are nan, return the first nan
+    
+    The equation is:
+    
+    $$Out = fmin(X, Y)$$
+    
+    - $X$: a tensor of any dimension.
+    - $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
+    
+    There are two cases for this operator:
+    
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+    
+    For case 2:
+    
+    1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+       for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
+       subsequence, such as shape(Y) = (2, 1) => (2).
+    
+    For example:
+    
+      .. code-block:: text
+    
+        shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+        shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+        shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+        shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+        shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+        shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<SI32Attr, "-1">:$axis);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_QrOp : PD_Op<"qr", [NoSideEffect]> {
   let summary = "qr op";
   let description = [{
@@ -4708,6 +4896,20 @@ def PD_Layer_normOp : PD_Op<"layer_norm", [NoSideEffect]> {
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Scale, PD_Tensor:$Bias, DefaultValuedAttr<F32Attr, "9.999999747378752e-06">:$epsilon, DefaultValuedAttr<SI32Attr, "1">:$begin_norm_axis);
 
   let results = (outs PD_Tensor:$Y);
+}
+def PD_AcoshOp : PD_Op<"acosh", [NoSideEffect]> {
+  let summary = "acosh op";
+  let description = [{
+    
+    Acosh Activation Operator.
+    
+    $$out = acosh(x)$$
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
+
+  let results = (outs PD_Tensor:$Out);
 }
 def PD_RnnOp : PD_Op<"rnn", [NoSideEffect]> {
   let summary = "rnn op";
@@ -5737,6 +5939,22 @@ def PD_AtanOp : PD_Op<"atan", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_Reduce_amaxOp : PD_Op<"reduce_amax", [NoSideEffect]> {
+  let summary = "reduce_amax op";
+  let description = [{
+    
+    Reduce reduce_amax Operator.
+    
+    This operator computes the reduce_amax of input tensor along the given dimension.
+    The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+    If reduce_all is true, just reduce along all dimensions and output a scalar.
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<I32ArrayAttr, "{0}">:$dim, DefaultValuedAttr<BoolAttr, "false">:$keep_dim, DefaultValuedAttr<BoolAttr, "false">:$reduce_all, DefaultValuedAttr<SI32Attr, "-1">:$in_dtype, DefaultValuedAttr<SI32Attr, "-1">:$out_dtype);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_UnsqueezeOp : PD_Op<"unsqueeze", [NoSideEffect]> {
   let summary = "unsqueeze op";
   let description = [{
@@ -5753,6 +5971,27 @@ def PD_UnsqueezeOp : PD_Op<"unsqueeze", [NoSideEffect]> {
         
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$AxesTensor, PD_Tensor:$AxesTensorList, DefaultValuedAttr<I32ArrayAttr, "{}">:$axes);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_LerpOp : PD_Op<"lerp", [NoSideEffect]> {
+  let summary = "lerp op";
+  let description = [{
+    
+    Lerp Operator.
+    
+    This operator is used to do a linear interpolation of input $X$ and $Y$ with $Weight$.
+    
+    The equation is:
+    
+    $$Out = X + Weight * (Y - X)$$
+    
+    Both the input $X$ and $Y$ can carry the LoD (Level of Details) information,
+    or not. But the output only shares the LoD information with input $X$.
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, PD_Tensor:$Weight);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -5814,6 +6053,21 @@ def PD_Hard_shrinkOp : PD_Op<"hard_shrink", [NoSideEffect]> {
     
   }];
   let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<F32Attr, "0.5">:$threshold);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_LogitOp : PD_Op<"logit", [NoSideEffect]> {
+  let summary = "logit op";
+  let description = [{
+    
+    Logit Operator. 
+    
+    this function is defined as follow:
+    $ logit=ln\left ( {\frac {x} {1-x}} \right ) $
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<F32Attr, "9.999999974752427e-07">:$eps);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -6022,6 +6276,18 @@ def PD_Tensor_array_to_tensorOp : PD_Op<"tensor_array_to_tensor", [NoSideEffect]
   let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "0">:$axis, DefaultValuedAttr<BoolAttr, "false">:$use_stack);
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$OutIndex);
+}
+def PD_KthvalueOp : PD_Op<"kthvalue", [NoSideEffect]> {
+  let summary = "kthvalue op";
+  let description = [{
+    
+        This operator find the k-th smallest elements in the specific axis of a Tensor.
+        It will return the values and corresponding indices.
+        
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<SI32Attr, "1">:$k, DefaultValuedAttr<SI32Attr, "-1">:$axis, DefaultValuedAttr<BoolAttr, "false">:$keepdim);
+
+  let results = (outs PD_Tensor:$Out,PD_Tensor:$Indices);
 }
 def PD_ErfOp : PD_Op<"erf", [NoSideEffect]> {
   let summary = "erf op";
@@ -6307,6 +6573,18 @@ def PD_Sequence_expandOp : PD_Op<"sequence_expand", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_ExponentialOp : PD_Op<"exponential", [NoSideEffect]> {
+  let summary = "exponential op";
+  let description = [{
+    
+    This operator fills the input tensor with random values sampled from a
+    exponential distribution.
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<F32Attr, "1.0">:$lambda);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_Bilinear_interp_v2Op : PD_Op<"bilinear_interp_v2", [NoSideEffect]> {
   let summary = "bilinear_interp_v2 op";
   let description = [{
@@ -6445,6 +6723,20 @@ def PD_Bilinear_interp_v2Op : PD_Op<"bilinear_interp_v2", [NoSideEffect]> {
              
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$OutSize, PD_Tensor:$SizeTensor, PD_Tensor:$Scale, DefaultValuedAttr<StrAttr, "NCHW">:$data_layout, DefaultValuedAttr<SI32Attr, "0">:$out_d, DefaultValuedAttr<SI32Attr, "0">:$out_h, DefaultValuedAttr<SI32Attr, "0">:$out_w, DefaultValuedAttr<F32ArrayAttr, "{}">:$scale, DefaultValuedAttr<StrAttr, "bilinear">:$interp_method, DefaultValuedAttr<BoolAttr, "true">:$align_corners, DefaultValuedAttr<SI32Attr, "1">:$align_mode);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_AtanhOp : PD_Op<"atanh", [NoSideEffect]> {
+  let summary = "atanh op";
+  let description = [{
+    
+    Atanh Activation Operator.
+    
+    $$out = atanh(x)$$
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -6603,6 +6895,17 @@ def PD_Broadcast_tensorsOp : PD_Op<"broadcast_tensors", [NoSideEffect]> {
                          with Tensor or LoDTensor type, following broadcast semantics.
   }];
   let arguments = (ins  PD_Tensor:$X);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_Cholesky_solveOp : PD_Op<"cholesky_solve", [NoSideEffect]> {
+  let summary = "cholesky_solve op";
+  let description = [{
+    Solves a linear system of equations with a positive "
+                    "semidefinite matrix to be inverted given its Cholesky factor matrix uu."
+                    "
+  }];
+  let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<BoolAttr, "false">:$upper);
 
   let results = (outs PD_Tensor:$Out);
 }
@@ -6795,6 +7098,31 @@ def PD_Top_kOp : PD_Op<"top_k", [NoSideEffect]> {
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$K, DefaultValuedAttr<SI32Attr, "1">:$k);
 
   let results = (outs PD_Tensor:$Out,PD_Tensor:$Indices);
+}
+def PD_RenormOp : PD_Op<"renorm", [NoSideEffect]> {
+  let summary = "renorm op";
+  let description = [{
+    
+    Renorm Operator.
+    
+    This operator is used to scale tensor sliced by axis if its p-norm execeeds maxnorm
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_Take_along_axisOp : PD_Op<"take_along_axis", [NoSideEffect]> {
+  let summary = "take_along_axis op";
+  let description = [{
+    
+            Take_along_axis Operator.)
+        
+  }];
+  let arguments = (ins  PD_Tensor:$Input, PD_Tensor:$Index);
+
+  let results = (outs PD_Tensor:$Result);
 }
 def PD_DistOp : PD_Op<"dist", [NoSideEffect]> {
   let summary = "dist op";
@@ -7444,6 +7772,23 @@ def PD_BreluOp : PD_Op<"brelu", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_CeluOp : PD_Op<"celu", [NoSideEffect]> {
+  let summary = "celu op";
+  let description = [{
+    
+    CELU Activation Operator.
+    
+    Applies the following element-wise computation on the input according to
+    https://arxiv.org/abs/1704.07483.
+    
+    $$out = \max(0, x) + \min(0, \alpha * (e^(x/\alpha) - 1))$$
+    
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<F32Attr, "1.0">:$alpha);
+
+  let results = (outs PD_Tensor:$Out);
+}
 def PD_Reduce_meanOp : PD_Op<"reduce_mean", [NoSideEffect]> {
   let summary = "reduce_mean op";
   let description = [{
@@ -8071,6 +8416,17 @@ def PD_Trilinear_interp_v2Op : PD_Op<"trilinear_interp_v2", [NoSideEffect]> {
 
   let results = (outs PD_Tensor:$Out);
 }
+def PD_LuOp : PD_Op<"lu", [NoSideEffect]> {
+  let summary = "lu op";
+  let description = [{
+    LU decomposition, 
+                    Computes the LU factorization of a matrix or batches of matrices A.
+                    
+  }];
+  let arguments = (ins  PD_Tensor:$X, DefaultValuedAttr<BoolAttr, "true">:$pivots);
+
+  let results = (outs PD_Tensor:$Out,PD_Tensor:$Pivots,PD_Tensor:$Infos);
+}
 def PD_SoftmaxOp : PD_Op<"softmax", [NoSideEffect]> {
   let summary = "softmax op";
   let description = [{
@@ -8162,6 +8518,26 @@ def PD_Elementwise_minOp : PD_Op<"elementwise_min", [NoSideEffect]> {
     
   }];
   let arguments = (ins  PD_Tensor:$X, PD_Tensor:$Y, DefaultValuedAttr<SI32Attr, "-1">:$axis);
+
+  let results = (outs PD_Tensor:$Out);
+}
+def PD_ErfinvOp : PD_Op<"erfinv", [NoSideEffect]> {
+  let summary = "erfinv op";
+  let description = [{
+    
+    Erfinv Operator.
+    
+    This operator is used to compute inverse error function of input $X$.
+    
+    The equation is:
+    
+    $$erfinv(x) = {ndtri({x \over 2} + 0.5)} \over {\sqrt{2}}$$
+    
+    The input `X` can carry the LoD (Level of Details) information,
+    or not. And the output shares the LoD information with input `X`.
+    
+  }];
+  let arguments = (ins  PD_Tensor:$X);
 
   let results = (outs PD_Tensor:$Out);
 }
