@@ -144,8 +144,8 @@ class CUDADeviceContextAllocatorPool {
   }
 
   AllocationPtr Alloc(const platform::CUDADeviceContext &dev_ctx, size_t size) {
-    auto iter = allocators_.find(
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()));
+    auto iter =
+        allocators_.find(platform::CUDAPlace(dev_ctx.GetPlace().GetDeviceId()));
     PADDLE_ENFORCE_NE(
         iter, allocators_.end(),
         platform::errors::NotFound("No allocator found for CUDAPlace."));

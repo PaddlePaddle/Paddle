@@ -224,8 +224,7 @@ void SectionWorker::TrainFiles() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
       }
     }
 #elif defined(PADDLE_WITH_ASCEND_CL)

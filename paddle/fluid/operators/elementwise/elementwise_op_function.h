@@ -676,7 +676,7 @@ void CommonGradBroadcastCUDA(
     framework::Tensor *dx, framework::Tensor *dy, int *x_dims_array,
     int *y_dims_array, int *out_dims_array, int max_dim,
     const platform::CUDADeviceContext &ctx, DX_OP dx_op, DY_OP dy_op) {
-  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  const auto gplace = ctx.GetPlace();
   auto cplace = platform::CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();

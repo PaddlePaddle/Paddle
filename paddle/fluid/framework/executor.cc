@@ -443,19 +443,16 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
       } else {
-        gc.reset(new DefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new DefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
     } else if (platform::is_cpu_place(place_)) {
-      gc.reset(new CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+      gc.reset(new CPUGarbageCollector(place_, max_memory_size));
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
       gc.reset(new XPUGarbageCollector(

@@ -135,8 +135,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, places_[i]), w,
-                     platform::CUDAPinnedPlace(), pin_w,
+        memory::Copy(places_[i], w, platform::CUDAPinnedPlace(), pin_w,
                      sizeof(float) * tensor->numel(), copy_streams_[i]);
 #endif
 #ifdef PADDLE_WITH_XPU

@@ -32,10 +32,8 @@ namespace framework {
 
 inline paddle::optional<platform::CUDAPlace> OptionalCUDAPlace(
     const paddle::memory::allocation::AllocationPtr &gpu_) {
-  return gpu_ == nullptr
-             ? paddle::none
-             : paddle::optional<platform::CUDAPlace>(
-                   BOOST_GET_CONST(platform::CUDAPlace, gpu_->place()));
+  return gpu_ == nullptr ? paddle::none
+                         : paddle::optional<platform::CUDAPlace>(gpu_->place());
 }
 
 // Vector<T> implements the std::vector interface, and can get Data or

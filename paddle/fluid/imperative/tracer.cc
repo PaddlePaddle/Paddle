@@ -87,8 +87,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::DefaultStreamGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place), 0));
+      gc.reset(new framework::DefaultStreamGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -98,8 +97,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::CUDAPinnedGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
+      gc.reset(new framework::CUDAPinnedGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -119,8 +117,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new framework::CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place), 0));
+      gc.reset(new framework::CPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
     } else if (platform::is_npu_place(place)) {
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -197,7 +194,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   try {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+      platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));

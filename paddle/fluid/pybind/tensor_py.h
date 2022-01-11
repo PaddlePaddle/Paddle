@@ -229,7 +229,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   } else if (platform::is_gpu_place(self.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::CUDAPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -263,7 +263,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 #endif
   } else if (platform::is_gpu_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -363,9 +363,7 @@ void SetTensorFromPyArrayT(
     if (paddle::platform::is_gpu_place(place)) {
       // NOTE(wangxi): When copying data to the accelerator card,
       // we need set_device(dev_id) first.
-      platform::Place tmp_place = place;
-      platform::CUDADeviceGuard guard(
-          BOOST_GET_CONST(platform::CUDAPlace, tmp_place).device);
+      platform::CUDADeviceGuard guard(place.device);
       auto dst = self->mutable_data<T>(place);
 #ifdef PADDLE_WITH_HIP
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
@@ -537,8 +535,7 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
-    output->mutable_data(BOOST_GET_CONST(platform::CPUPlace, place),
-                         self.type());
+    output->mutable_data(place, self.type());
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     output->mutable_data(BOOST_GET_CONST(platform::XPUPlace, place),
@@ -547,11 +544,9 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_cuda_pinned_place(place)) {
-      output->mutable_data(BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-                           self.type());
+      output->mutable_data(place, self.type());
     } else if ((platform::is_gpu_place(place))) {
-      output->mutable_data(BOOST_GET_CONST(platform::CUDAPlace, place),
-                           self.type());
+      output->mutable_data(place, self.type());
     }
 #endif
   }
@@ -793,7 +788,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::CUDAPlace, tensor.place());
+    auto p = tensor.place();
     paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
                          tensor_buf_ptr, copy_bytes, nullptr);
     return py_arr;

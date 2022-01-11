@@ -73,9 +73,8 @@ struct ScaleLossGradFunctor {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       OutT cast_coeff = static_cast<OutT>(coeff_);
       auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), out_data,
-                   platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_),
-                   stream);
+      memory::Copy(place_, out_data, platform::CPUPlace(), &cast_coeff,
+                   SizeOfType(out_dtype_), stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(

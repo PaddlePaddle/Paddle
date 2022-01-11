@@ -500,11 +500,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
+        gc.reset(new UnsafeFastGPUGarbageCollector(place, max_memory_size));
       } else {
-        gc.reset(new StreamGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
+        gc.reset(new StreamGarbageCollector(place, max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -538,8 +536,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
+      gc.reset(new CPUGarbageCollector(place, max_memory_size));
       VLOG(10) << "Created GarbageCollector at " << place;
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -611,8 +608,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
     for (int i = 0; i < count; i++) {
       if (!is_gpu_place(places[i])) return;
 
-      platform::CUDAPlace device =
-          BOOST_GET_CONST(platform::CUDAPlace, places[i]);
+      platform::CUDAPlace device = places[i];
       devices.push_back(device.GetDeviceId());
     }
 

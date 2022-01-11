@@ -127,7 +127,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+    auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
@@ -960,7 +960,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -999,7 +999,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;

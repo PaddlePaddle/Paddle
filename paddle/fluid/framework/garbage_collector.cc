@@ -101,7 +101,7 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, this->dev_ctx_->GetPlace());
+  auto place = this->dev_ctx_->GetPlace();
   platform::CUDADeviceGuard guard(place.device);
   platform::GpuStreamSync(stream_);
   platform::GpuDestroyStream(stream_);

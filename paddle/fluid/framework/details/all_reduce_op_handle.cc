@@ -286,7 +286,7 @@ void AllReduceOpHandle::NCCLAllReduceFunc(
 void AllReduceOpHandle::SyncNCCLAllReduce() {
   if (FLAGS_sync_nccl_allreduce) {
     for (auto &p : places_) {
-      int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
+      int dev_id = p.device;
       auto *nccl_ctxs =
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
       auto &nccl_ctx = nccl_ctxs->at(dev_id);

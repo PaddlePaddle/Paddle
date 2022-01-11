@@ -65,6 +65,10 @@ class Place {
     }
   }
 
+  inline bool operator<(const Place &rhs) const {
+    return GetDeviceId() < rhs.GetDeviceId();
+  }
+
  public:
   // TODO(wilber): Just because of backward compatibility, it needs to be
   // changed to private in the future.

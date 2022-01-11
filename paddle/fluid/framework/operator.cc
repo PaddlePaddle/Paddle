@@ -210,7 +210,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with CUDA support.",
           place));
 #else
-      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+      auto dev_id = place.device;
       platform::SetDeviceId(dev_id);
 #endif
     } else if (platform::is_xpu_place(place)) {
