@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/shape_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -27,7 +26,7 @@ template <typename T>
 class ShapeMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    cons auto* in_var = ctx.InputVar("Input");
+    const auto* in_var = ctx.InputVar("Input");
     auto* out = ctx.Output<Tensor>("Out");
 
     framework::DDim in_dims;
