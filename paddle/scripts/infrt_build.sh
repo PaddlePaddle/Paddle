@@ -25,17 +25,16 @@ if [ -z ${BRANCH} ]; then
 fi
 
 EXIT_CODE=0;
-UPDATE_PD_OPS="false"
 tmp_dir=`mktemp -d`
 
 function update_pd_ops() {
    PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
    # compile and install paddle
-   mkdir -p ${PADDLE_ROOT}/build
+   rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
    cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3`
    make -j ${parallel_number}
-   cd ${PADDLE_ROOT}/paddle_build
+   cd ${PADDLE_ROOT}/build
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
    python3 -m pip install  *whl
@@ -80,12 +79,10 @@ function infrt_gen_and_build() {
     startTime_s=`date +%s`
     set +e
 
-    # step2. compile infrt
     mkdir -p ${PADDLE_ROOT}/build
     # step1. reinstall paddle and generate pd_ops.td
-    if [ "${UPDATE_PD_OPS}" != "false" ]; then
-        update_pd_ops
-    fi
+    update_pd_ops
+    # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
     cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
@@ -140,11 +137,6 @@ function main() {
     # Parse command line.
     for i in "$@"; do
       case $i in
-        # compiling lib with benchmark feature, default OFF.
-        --update_pd_ops*)
-            UPDATE_PD_OPS="true"
-            shift
-            ;;
         build_and_test)
           infrt_gen_and_build ${parallel_number}
           test_infrt
