@@ -479,14 +479,8 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
 };
 
 template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(

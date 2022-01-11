@@ -39,6 +39,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
+
 class PrintOptions {
  public:
   static PrintOptions& Instance() {
@@ -497,6 +500,5 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
   delete[] array;
 }
 
-std::ostream& operator<<(std::ostream& os, const Tensor& t);
 }  // namespace framework
 }  // namespace paddle
