@@ -173,8 +173,9 @@ std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
 static constexpr const char* kDefaultThreadName = "unset";
 
 std::string GetCurrentThreadName() {
-  auto& thread_name = internal::ThreadDataRegistry<std::string>::GetInstance()
-                          .GetCurrentThreadData();
+  const auto& thread_name =
+      internal::ThreadDataRegistry<std::string>::GetInstance()
+          .GetCurrentThreadData();
   return thread_name.empty() ? kDefaultThreadName : thread_name;
 }
 
