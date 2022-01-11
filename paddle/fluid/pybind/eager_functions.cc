@@ -53,7 +53,7 @@ size_t PyArray_Size_(PyObject* numpy_data) {
   return res;
 }
 
-class EagerNumpyAllocation : public paddle::pten::Allocation {
+class EagerNumpyAllocation : public pten::Allocation {
  public:
   explicit EagerNumpyAllocation(PyObject* numpy_data, pten::DataType dtype)
       : Allocation(

@@ -151,7 +151,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());

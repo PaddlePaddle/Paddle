@@ -466,7 +466,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     auto* cols_alloc_released = cols_alloc.release();
     context.AddStreamCallback([data_alloc_released, cols_alloc_released] {
       memory::allocation::Allocator::AllocationDeleter(data_alloc_released);
-      memory::allocation::Allocator::AllocationDeleter(col_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(cols_alloc_released);
     });
 #endif
   }
