@@ -99,6 +99,6 @@ REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
             .LE("fc", 0)
             .LE("gelu", 0)
             .LE("sigmoid", 0)
-            .LE("mish", 0)
+            .LE("mish", 1)
             .LE("hard_swish", 0)
             .LE("tanh", 0));

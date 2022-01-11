@@ -325,7 +325,7 @@ REGISTER_PASS_CAPABILITY(conv_mish_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("mish", 0));
+            .EQ("mish", 1));
 
 REGISTER_PASS(conv_hard_sigmoid_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DHardSigmoidFusePass);
