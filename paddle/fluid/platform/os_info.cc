@@ -45,7 +45,10 @@ class ThreadDataRegistry {
     return instance;
   }
 
-  static T& GetCurrentThreadData() { return thread_data_.GetData(); }
+  T& GetCurrentThreadData() {
+    static thread_local ThreadDataHolder thread_data;
+    return thread_data.GetData();
+  }
 
   // Returns current snapshot of all threads. Make sure there is no thread
   // create/destory when using it.
@@ -66,7 +69,7 @@ class ThreadDataRegistry {
   }
 
   void UnregisterData(uint64_t tid) {
-    if (std::hash<std::thread::id>()(std::this_thread::get_id()) == main_tid) {
+    if (tid == main_tid) {
       return;
     }
     std::lock_guard<std::mutex> lock(lock_);
@@ -77,18 +80,18 @@ class ThreadDataRegistry {
   class ThreadDataHolder {
    public:
     ThreadDataHolder() {
-      ThreadDataRegistry::GetInstance().RegisterData(GetCurrentThreadMainId(),
-                                                     this);
+      tid_ = std::hash<std::thread::id>()(std::this_thread::get_id());
+      ThreadDataRegistry::GetInstance().RegisterData(tid_, this);
     }
 
     ~ThreadDataHolder() {
-      ThreadDataRegistry::GetInstance().UnregisterData(
-          GetCurrentThreadMainId());
+      ThreadDataRegistry::GetInstance().UnregisterData(tid_);
     }
 
     T& GetData() { return data_; }
 
    private:
+    uint64_t tid_;
     T data_;
   };
 
@@ -96,14 +99,9 @@ class ThreadDataRegistry {
 
   DISABLE_COPY_AND_ASSIGN(ThreadDataRegistry);
 
-  static thread_local ThreadDataHolder thread_data_;
   std::mutex lock_;
   std::unordered_map<uint64_t, ThreadDataHolder*> tid_map_;  // not owned
 };
-
-template <typename T>
-thread_local typename ThreadDataRegistry<T>::ThreadDataHolder
-    ThreadDataRegistry<T>::thread_data_;
 
 class InternalThreadId {
  public:
@@ -134,16 +132,23 @@ InternalThreadId::InternalThreadId() {
 
 }  // namespace internal
 
-uint64_t GetCurrentThreadMainId() {
-  return internal::ThreadDataRegistry<
-             internal::InternalThreadId>::GetCurrentThreadData()
+uint64_t GetCurrentThreadSysId() {
+  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+      .GetCurrentThreadData()
       .GetTid()
-      .MainTid();
+      .sys_tid;
+}
+
+uint64_t GetCurrentThreadStdId() {
+  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+      .GetCurrentThreadData()
+      .GetTid()
+      .std_tid;
 }
 
 ThreadId GetCurrentThreadId() {
-  return internal::ThreadDataRegistry<
-             internal::InternalThreadId>::GetCurrentThreadData()
+  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+      .GetCurrentThreadData()
       .GetTid();
 }
 
@@ -161,8 +166,8 @@ std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
 static constexpr const char* kDefaultThreadName = "unset";
 
 std::string GetCurrentThreadName() {
-  auto& thread_name =
-      internal::ThreadDataRegistry<std::string>::GetCurrentThreadData();
+  auto& thread_name = internal::ThreadDataRegistry<std::string>::GetInstance()
+                          .GetCurrentThreadData();
   return thread_name.empty() ? kDefaultThreadName : thread_name;
 }
 
@@ -172,8 +177,8 @@ std::unordered_map<uint64_t, std::string> GetAllThreadNames() {
 }
 
 bool SetCurrentThreadName(const std::string& name) {
-  auto& thread_name =
-      internal::ThreadDataRegistry<std::string>::GetCurrentThreadData();
+  auto& thread_name = internal::ThreadDataRegistry<std::string>::GetInstance()
+                          .GetCurrentThreadData();
   if (!thread_name.empty() || name == kDefaultThreadName) {
     return false;
   }

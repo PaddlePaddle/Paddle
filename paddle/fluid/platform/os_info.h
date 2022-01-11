@@ -39,20 +39,20 @@ inline uint64_t PosixInNsec() {
 
 // All kinds of Ids for OS thread
 struct ThreadId {
- public:
-  uint64_t MainTid() const { return sys_tid; }
-
   uint64_t std_tid = 0;    // std::hash<std::thread::id>
   uint64_t sys_tid = 0;    // OS-specific, Linux: gettid
   uint32_t cupti_tid = 0;  // thread_id used by Nvidia CUPTI
 };
 
 // Better performance than GetCurrentThreadId
-uint64_t GetCurrentThreadMainId();
+uint64_t GetCurrentThreadStdId();
+
+// Better performance than GetCurrentThreadId
+uint64_t GetCurrentThreadSysId();
 
 ThreadId GetCurrentThreadId();
 
-// Return the map from MainTid to ThreadId
+// Return the map from StdTid to ThreadId
 // Returns current snapshot of all threads. Make sure there is no thread
 // create/destory when using it.
 std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
@@ -60,7 +60,7 @@ std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
 // Returns 'unset' if SetCurrentThreadName is never called.
 std::string GetCurrentThreadName();
 
-// Return the map from MainTid to ThreadName
+// Return the map from StdTid to ThreadName
 // Returns current snapshot of all threads. Make sure there is no thread
 // create/destory when using it.
 std::unordered_map<uint64_t, std::string> GetAllThreadNames();
