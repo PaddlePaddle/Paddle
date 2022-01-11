@@ -712,9 +712,19 @@ class TestNearestInterpException(unittest.TestCase):
         def attr_scale_value():
             out = fluid.layers.resize_nearest(input, scale=-0.3)
 
+        def input_shape_error():
+            x = fluid.data(name="input", shape=[1, 3], dtype="float32")
+            out = fluid.layers.resize_nearest(x, scale='scale')
+
+        def mode_error():
+            x = fluid.data(name="input", shape=[1, 3], dtype="float32")
+            out = fluid.layers.resize_bilinear(x, scale='scale')
+
         self.assertRaises(ValueError, attr_data_format)
         self.assertRaises(TypeError, attr_scale_type)
         self.assertRaises(ValueError, attr_scale_value)
+        self.assertRaises(ValueError, input_shape_error)
+        self.assertRaises(ValueError, mode_error)
 
 
 if __name__ == "__main__":
