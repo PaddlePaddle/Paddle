@@ -62,9 +62,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/ipu_device.h"
-#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {

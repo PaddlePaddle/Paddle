@@ -23,7 +23,7 @@ endif()
 
 if(WITH_IPU)
     set(JIT_IPU_DEPS ipu_backend)
-elseif(WITH_IPU)
+else()
     set(JIT_IPU_DEPS "")
 endif()
 
