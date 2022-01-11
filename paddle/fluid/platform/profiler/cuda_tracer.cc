@@ -248,7 +248,11 @@ void ProcessCuptiActivityRecord(
 }  // namespace
 #endif
 
-CudaTracer::CudaTracer() { InitCuptiRuntimeCbidStr(); }
+CudaTracer::CudaTracer() {
+#ifdef PADDLE_WITH_CUPTI
+  InitCuptiRuntimeCbidStr();
+#endif
+}
 
 void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
