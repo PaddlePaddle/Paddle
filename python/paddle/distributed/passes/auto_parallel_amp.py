@@ -20,13 +20,13 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
-from paddle.distributed.auto_parallel.process_group import get_world_process_groups
+from paddle.distributed.auto_parallel.process_group import get_world_process_group
 from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _keep_fp32_output, find_op_index
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-global_process_mesh = get_world_process_groups().ranks
+global_process_mesh = get_world_process_group().ranks
 
 
 class AMPState(object):
