@@ -45,9 +45,11 @@ class ThreadDataRegistry {
     return instance;
   }
 
-  T& GetCurrentThreadData() {
-    static thread_local ThreadDataHolder thread_data;
-    return thread_data.GetData();
+  const T& GetCurrentThreadData() { return CurrentThreadData(); }
+
+  void SetCurrentThreadData(const T& val) {
+    std::lock_guard<std::mutex> lock(lock_);
+    CurrentThreadData() = val;
   }
 
   // Returns current snapshot of all threads. Make sure there is no thread
@@ -98,6 +100,11 @@ class ThreadDataRegistry {
   ThreadDataRegistry() = default;
 
   DISABLE_COPY_AND_ASSIGN(ThreadDataRegistry);
+
+  T& CurrentThreadData() {
+    static thread_local ThreadDataHolder thread_data;
+    return thread_data.GetData();
+  }
 
   std::mutex lock_;
   std::unordered_map<uint64_t, ThreadDataHolder*> tid_map_;  // not owned
@@ -177,12 +184,12 @@ std::unordered_map<uint64_t, std::string> GetAllThreadNames() {
 }
 
 bool SetCurrentThreadName(const std::string& name) {
-  auto& thread_name = internal::ThreadDataRegistry<std::string>::GetInstance()
-                          .GetCurrentThreadData();
-  if (!thread_name.empty() || name == kDefaultThreadName) {
+  auto& instance = internal::ThreadDataRegistry<std::string>::GetInstance();
+  const auto& cur_name = instance.GetCurrentThreadData();
+  if (!cur_name.empty() || cur_name == kDefaultThreadName) {
     return false;
   }
-  thread_name = name;
+  instance.SetCurrentThreadData(name);
   return true;
 }
 
