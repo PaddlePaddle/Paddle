@@ -153,6 +153,12 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                         mom2_out.template mutable_data<float>(ctx.GetPlace()),
                         param_out.template mutable_data<float>(ctx.GetPlace()),
                         beta1, beta2, epsilon, param.numel());
+
+      xpu_wait(dev_ctx.x_context()->xpu_stream);
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                          platform::errors::External(
+                              "XPU API return wrong value[%d],",
+                              r));
       if (!use_global_beta_pow) {
         // update in cpu and then copy to xpu
         if (beta1_pow.place() == platform::CPUPlace() &&
@@ -183,14 +189,11 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
               platform::errors::External(
                   "XPU kernel scale occur error in adam error code ", r,
                   XPUAPIErrorMsg[r]));
-        }
 
-        PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                          platform::errors::External(
-                              "XPU API return wrong value[%d],",
-                              r));
+        xpu_wait(dev_ctx.x_context()->xpu_stream);
         }
-      }else if (grad_var->IsType<framework::SelectedRows>()) {
+       }
+      } else if (grad_var->IsType<framework::SelectedRows>()) {
         auto* grad = ctx.Input<framework::SelectedRows>("Grad");
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
@@ -214,9 +217,11 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         grad_merge_ptr = grad;
       } else {
         scatter::MergeAdd<platform::XPUDeviceContext, T> merge_func;
-        merge_func(ctx.template device_context<platform::XPUDeviceContext>(), *grad,
-                   &tmp_grad_merge, true);
+        merge_func(
+                ctx.template device_context<platform::XPUDeviceContext>(),
+                *grad, &tmp_grad_merge, true);
 
+        xpu_wait(dev_ctx.x_context()->xpu_stream);
         grad_merge_ptr = &tmp_grad_merge;
       }
       const T* beta1_pow_ptr = beta1_pow.template data<T>();
@@ -225,8 +230,10 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       Tensor xpu_beta2_pow;
       if (beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
-        framework::TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx, &xpu_beta1_pow);
-        framework::TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx, &xpu_beta2_pow);
+        framework::TensorCopy(beta1_pow, ctx.GetPlace(),
+                            dev_ctx, &xpu_beta1_pow);
+        framework::TensorCopy(beta2_pow, ctx.GetPlace(),
+                            dev_ctx, &xpu_beta2_pow);
         beta1_pow_ptr = xpu_beta1_pow.template data<T>();
         beta2_pow_ptr = xpu_beta2_pow.template data<T>();
       }
@@ -234,15 +241,17 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
       int row_count = grad_merge.rows().size();
-      int rows[row_count];
+      std::vector<int>rows(row_count);
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       int *xpu_rows = RAII_GUARD.alloc_l3_or_gm<int>(row_count);
-      std::vector<int64_t> merge_rows(grad_merge.rows().begin(), grad_merge.rows().end());
+      std::vector<int64_t> merge_rows(grad_merge.rows().begin(),
+                            grad_merge.rows().end());
       for (size_t i = 0; i < grad_merge.rows().size(); ++i) {
            rows[i] =  static_cast<int>(merge_rows[i]);
       }
+      xpu_wait(dev_ctx.x_context()->xpu_stream);
       memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                 xpu_rows, platform::CPUPlace(), rows,
+                 xpu_rows, platform::CPUPlace(), rows.data(),
                  row_count * sizeof(int));
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
       auto ori_rows = param.numel() / row_numel;
@@ -258,6 +267,10 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           beta1, beta2, epsilon, ori_rows,
           xpu_rows, row_numel, grad_merge.rows().size(), lazy_mode);
 
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+              platform::errors::External(
+                  "XPU API return wrong value[%d],",
+                  r));
 
       if (!use_global_beta_pow) {
         // update in cpu and then copy to xpu
@@ -290,10 +303,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                   "XPU kernel scale occur error in adam error code ", r,
                   XPUAPIErrorMsg[r]));
         }
-        PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-              platform::errors::External(
-                  "XPU API return wrong value[%d],",
-                  r));
       }
       xpu_wait(dev_ctx.x_context()->xpu_stream);
     } else {
