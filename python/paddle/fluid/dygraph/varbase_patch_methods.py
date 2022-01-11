@@ -635,9 +635,13 @@ def monkey_patch_varbase():
     def __nonzero__(self):
         numel = np.prod(self.shape)
         assert numel == 1, "When Variable is used as the condition of if/while , Variable can only contain one element."
-        tensor = self.value().get_tensor()
-        assert tensor._is_initialized(), "tensor not initialized"
-        return bool(np.all(tensor.__array__() > 0))
+        if core._in_eager_mode():
+            assert self._is_initialized(), "tensor not initialized"
+            return bool(np.all(self.numpy() > 0))
+        else:
+            tensor = self.value().get_tensor()
+            assert tensor._is_initialized(), "tensor not initialized"
+            return bool(np.all(tensor.__array__() > 0))
 
     def __bool__(self):
         return self.__nonzero__()
