@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 
-// just for test
 namespace pten {
 
 namespace kps = paddle::operators::kernel_primitives;
