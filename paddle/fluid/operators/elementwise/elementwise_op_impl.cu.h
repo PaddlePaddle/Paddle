@@ -35,8 +35,7 @@ using ElementwiseType = pten::ElementwiseType;
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
-    const platform::CUDADeviceContext &ctx,
-    const std::vector<const framework::Tensor *> &ins,
+    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
   std::vector<const pten::DenseTensor *> pt_inputs;
   std::vector<pten::DenseTensor *> pt_outputs;
