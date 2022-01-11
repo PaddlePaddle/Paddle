@@ -1167,6 +1167,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
+#ifdef PADDLE_WITH_PSLIB
       if (parse_uid_ && all_slots_[i] == uid_slot_) {
         PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
                        platform::errors::PreconditionNotMet(
@@ -1178,6 +1179,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
         instance->uid_ = feasign;
       }
+#endif
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {

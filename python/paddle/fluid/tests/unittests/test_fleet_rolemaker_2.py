@@ -155,6 +155,9 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role23 = GeneralRoleMaker(path="./test_gloo_23")
         role23._get_size()
         role23._get_size()
+        role24 = GeneralRoleMaker(use_metric=True, path="./test_gloo_24")
+        role24._get_rank()
+        role24._get_rank()
         with open("test_fleet_gloo_role_maker_1.txt", "w") as f:
             data = "1 1 1 1\n"
             f.write(data)

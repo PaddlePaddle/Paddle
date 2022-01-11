@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
+#if defined(PADDLE_WITH_PSLIB)
 namespace paddle {
 
 namespace framework {
@@ -689,3 +690,4 @@ class Metric {
 };
 }  // namespace framework
 }  // namespace paddle
+#endif

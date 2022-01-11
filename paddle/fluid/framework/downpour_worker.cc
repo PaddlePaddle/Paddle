@@ -739,6 +739,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   }
 }
 
+#ifdef PADDLE_WITH_PSLIB
 /**
  * @brief add auc monitor
  */
@@ -753,6 +754,7 @@ inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
     metric_msg->add_data(scope, place);
   }
 }
+#endif
 
 void DownpourWorker::TrainFiles() {
   VLOG(3) << "Begin to train files";
@@ -851,10 +853,12 @@ void DownpourWorker::TrainFiles() {
       }
     }
 
+#ifdef PADDLE_WITH_PSLIB
     // add data for MetricMsg
     if (Metric::GetInstance() != nullptr) {
       AddAucMonitor(thread_scope_, place_);
     }
+#endif
 
     // check inf and nan
     for (std::string& var_name : check_nan_var_names_) {

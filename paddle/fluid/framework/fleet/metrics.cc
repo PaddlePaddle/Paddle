@@ -19,6 +19,7 @@
 #include <numeric>
 #include "paddle/fluid/framework/lod_tensor.h"
 
+#if defined(PADDLE_WITH_PSLIB)
 namespace paddle {
 namespace framework {
 
@@ -376,3 +377,4 @@ BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingelUserAuc(
 
 }  // namespace framework
 }  // namespace paddle
+#endif
