@@ -493,7 +493,6 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
                   const framework::SelectedRows& input,
                   framework::SelectedRows* output,
                   const bool sorted_result = false) {
-
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
@@ -510,7 +509,8 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
         framework::make_ddim(
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
-    int r = xpu::constant<T>(context.x_context(), out.mutable_value()->data<T>(),
+    int r = xpu::constant<T>(context.x_context(),
+                        out.mutable_value()->data<T>(),
                         merge_rows.size() * input_width, static_cast<T>(0.f));
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
@@ -528,14 +528,15 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     int n = input_width;
     for (size_t i = 0; i < input_rows.size(); i++) {
           size_t out_i = rows_to_id[input_rows[i]];
-          auto r = xpu::add(context.x_context(), &input_data[i * input_width],
-					  &out_data[out_i * input_width], &out_data[out_i * input_width], n);
-	  PADDLE_ENFORCE_EQ(
-		r, XPU_SUCCESS,
-		platform::errors::External(
-		    "XPU API return wrong value[%d %s], ", r, XPUAPIErrorMsg[r]));
+          auto r = xpu::add(context.x_context(),
+                        &input_data[i * input_width],
+                        &out_data[out_i * input_width],
+                        &out_data[out_i * input_width], n);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d %s], ", r, XPUAPIErrorMsg[r]));
      }
-
   }
 
   void operator()(const platform::XPUDeviceContext& context,
@@ -587,11 +588,12 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
       out.set_rows(merge_rows);
       out.set_height(input_height);
       out.mutable_value()->mutable_data<T>(
-		framework::make_ddim(
-		    {static_cast<int64_t>(merged_row_set.size()), input_width}),
-		context.GetPlace());
+        framework::make_ddim(
+            {static_cast<int64_t>(merged_row_set.size()), input_width}),
+        context.GetPlace());
 
-      int r = xpu::constant<T>(context.x_context(), out.mutable_value()->data<T>(),
+      int r = xpu::constant<T>(context.x_context(),
+                        out.mutable_value()->data<T>(),
                         merge_rows.size() * input_width, static_cast<T>(0.f));
       PADDLE_ENFORCE_EQ(
           r, xpu::Error_t::SUCCESS,
@@ -599,7 +601,8 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
                                    " wrong value[%d %s].",
                                    r, XPUAPIErrorMsg[r]));
 
-      float* out_data = reinterpret_cast<float*>(out.mutable_value()->data<T>());
+      float* out_data = reinterpret_cast<float*>(
+                            out.mutable_value()->data<T>());
 
       std::unordered_map<int64_t, size_t> rows_to_id;
       for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -610,21 +613,21 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
         if (input->rows().size() == 0) {
           continue;
         }
-        const auto* input_data = reinterpret_cast<float*>(const_cast<T*>(input->value().data<T>()));
         auto& input_rows = input->rows();
 
-	    int n = input_width;
+        int n = input_width;
         for (size_t i = 0; i < input_rows.size(); i++) {
           size_t out_i = rows_to_id[input_rows[i]];
-          auto r = xpu::add(context.x_context(), &input_data[i * input_width],
-					  &out_data[out_i * input_width], &out_data[out_i * input_width], n);
-	    PADDLE_ENFORCE_EQ(
-		r, XPU_SUCCESS,
-		platform::errors::External(
-		    "XPU API return wrong value[%d %s], ", r, XPUAPIErrorMsg[r]));
+          auto r = xpu::add(context.x_context(),
+                        input->value().data<T>() + i * input_width,
+                        &out_data[out_i * input_width],
+                        &out_data[out_i * input_width], n);
+          PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External(
+                "XPU API return wrong value[%d %s], ", r, XPUAPIErrorMsg[r]));
         }
       }
-
   }
 };
 
