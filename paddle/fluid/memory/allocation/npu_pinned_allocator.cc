@@ -50,7 +50,7 @@ Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   return new Allocation(ptr, size, platform::NPUPinnedPlace());
 }
 
-void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
+void NPUPinnedAllocator::FreeImpl(pten::Allocation *allocation) {
   std::lock_guard<std::mutex> lock(mtx_);
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);

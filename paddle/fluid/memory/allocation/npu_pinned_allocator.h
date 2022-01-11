@@ -36,8 +36,8 @@ class NPUPinnedAllocator : public Allocator {
   constexpr static size_t kAlignment = 4096UL;
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation *allocation) override;
+  pten::Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(pten::Allocation *allocation) override;
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
