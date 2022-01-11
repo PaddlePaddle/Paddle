@@ -25,10 +25,10 @@
 namespace pten {
 
 template <typename T, typename Context>
-void Dot(const Context& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out) {
+void DotKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
   out->mutable_data<T>();
   if (1 == out->dims().size()) {
     auto eigen_out = pten::EigenScalar<T>::From(*out);
@@ -55,7 +55,7 @@ using complex128 = ::paddle::platform::complex<double>;
 PT_REGISTER_CTX_KERNEL(dot,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Dot,
+                       pten::DotKernel,
                        float,
                        double,
                        int,
