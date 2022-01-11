@@ -16,17 +16,17 @@
 #include "gtest/gtest.h"
 
 TEST(ThreadInfo, TestThreadIdUtils) {
-  using paddle::platform::GetCurrentThreadMainId;
+  using paddle::platform::GetCurrentThreadStdId;
   using paddle::platform::GetCurrentThreadId;
   using paddle::platform::GetAllThreadIds;
   EXPECT_EQ(std::hash<std::thread::id>()(std::this_thread::get_id()),
             GetCurrentThreadId().std_tid);
   auto ids = GetAllThreadIds();
-  EXPECT_TRUE(ids.find(GetCurrentThreadMainId()) != ids.end());
+  EXPECT_TRUE(ids.find(GetCurrentThreadStdId()) != ids.end());
 }
 
 TEST(ThreadInfo, TestThreadNameUtils) {
-  using paddle::platform::GetCurrentThreadMainId;
+  using paddle::platform::GetCurrentThreadStdId;
   using paddle::platform::GetCurrentThreadName;
   using paddle::platform::SetCurrentThreadName;
   using paddle::platform::GetAllThreadNames;
@@ -34,7 +34,7 @@ TEST(ThreadInfo, TestThreadNameUtils) {
   EXPECT_TRUE(SetCurrentThreadName("MainThread"));
   EXPECT_FALSE(SetCurrentThreadName("MainThread"));
   auto names = GetAllThreadNames();
-  EXPECT_TRUE(names.find(GetCurrentThreadMainId()) != names.end());
-  EXPECT_EQ("MainThread", names[GetCurrentThreadMainId()]);
+  EXPECT_TRUE(names.find(GetCurrentThreadStdId()) != names.end());
+  EXPECT_EQ("MainThread", names[GetCurrentThreadStdId()]);
   EXPECT_EQ("MainThread", GetCurrentThreadName());
 }
