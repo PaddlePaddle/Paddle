@@ -195,7 +195,6 @@ class EagerTensor final {
     }
     tensor_->copy_(*(src.tensor_.get()), blocking);
   }
-
   /* Part 6: Operator overloading */
   EagerTensor& operator=(const EagerTensor& x) & {
     tensor_ = x.tensor_;
@@ -238,9 +237,9 @@ class EagerTensor final {
           // Contruct framework::Tensor from egr::EagerTensor
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
-          if (tensor_dense) {
-            paddle::experimental::MovesStorage(tensor_dense.get(),
-                                               framework_tensor);
+          if (tensor_dense && tensor_dense.get()) {
+            paddle::experimental::SharesStorage(tensor_dense.get(),
+                                                framework_tensor);
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
                 "Unrecognized egr::EagerTensor type, only "
@@ -296,8 +295,13 @@ class EagerTensor final {
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
-    this->set_impl(
-        std::move(paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    if (defined()) {
+      paddle::experimental::ReMakePtenDenseTensor(
+          framework_tensor, static_cast<pten::DenseTensor*>(impl().get()));
+    } else {
+      this->set_impl(std::move(
+          paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    }
     var_.Clear();
   }
 
