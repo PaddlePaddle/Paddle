@@ -14,7 +14,7 @@
 
 __all__ = ["init"]
 
-from .collective_controller import CollectiveController
+from .collective import CollectiveController
 
 # the order is extremely important
 _controllers = [CollectiveController, ]

@@ -15,6 +15,8 @@
 from .device import Device
 
 import socket
+import struct
+from contextlib import closing
 
 
 class Node(object):
@@ -40,5 +42,5 @@ class Node(object):
             return s.getsockname()[1]
 
     def get_free_ports(self, n=1):
-        self.free_ports = [self.get_free_port() for i in range(n)]
+        self.free_ports += [self.get_free_port() for i in range(n)]
         return self.free_ports

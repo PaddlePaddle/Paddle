@@ -1,0 +1,69 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import requests
+
+
+class KVClient(object):
+    def __init__(self, endpoint='localhost:2379'):
+        self.endpoint = endpoint if endpoint.startswith(
+            "http://") else "http://{}".format(endpoint)
+
+    def put(self, key, value):
+        key = key if key.startswith('/') else "/{}".format(key)
+        u = "{}{}".format(self.endpoint, key)
+        try:
+            print("putt", u, value)
+            r = requests.post(u, data=value, timeout=3)
+            print(r.status_code, r.text)
+            if r.status_code == 200:
+                return True
+        except:
+            return False
+
+    def get(self, key):
+        key = key if key.startswith('/') else "/{}".format(key)
+        u = "{}{}".format(self.endpoint, key)
+        try:
+            r = requests.get(u, timeout=3)
+            if r.status_code == 200:
+                ret = r.json()
+                return ret.get(key, '')
+        except:
+            return ""
+
+    def get_prefix(self, key):
+        key = key if key.startswith('/') else "/{}".format(key)
+        u = "{}{}".format(self.endpoint, key)
+        try:
+            r = requests.get(u, timeout=3)
+            if r.status_code == 200:
+                return r.json()
+        except:
+            return ""
+
+
+if __name__ == '__main__':
+    cli = KVClient("http://localhost:8090")
+    data = {"/workers/1": "rank1", "/workers/2": "rank2"}
+    for k, v in data.items():
+        cli.put(k, v)
+    x = cli.get_prefix("/workers")
+    print(x)
+    for k, v in data.items():
+        assert x[k] == v
+
+    cli.put("key", "value")
+    print(cli.get("key"))
+    assert cli.get("key") == "value"

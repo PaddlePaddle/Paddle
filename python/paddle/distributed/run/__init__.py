@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base.container import Container
-from .base.pod import Pod
-from .base.job import Job
+from .job.container import Container
+from .job.pod import Pod
+from .job.job import Job
 from . import plugins
 
 #__all__ = [Container, Pod, Job]

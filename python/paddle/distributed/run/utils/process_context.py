@@ -40,8 +40,7 @@ class ProcessContext(object):
             env=self._env,
             stdout=self._stdout,
             stderr=self._stderr,
-            preexec_fn=None)
-        #preexec_fn=self._preexec_fn or pre_fn)
+            preexec_fn=self._preexec_fn or pre_fn)
 
     def _close_std(self):
         if self._stdout:

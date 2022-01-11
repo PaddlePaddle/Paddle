@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from .process_context import ProcessContext
+from paddle.distributed.run.utils.process_context import ProcessContext
 
 import os, copy, sys
 '''

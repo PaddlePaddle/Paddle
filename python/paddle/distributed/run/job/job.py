@@ -29,6 +29,8 @@ class Job(object):
         self.endpoints = []
 
         self.pods = []
+        self.master = ''
+        self.replicas = 0  # number of pods
 
     def ip_ports(self):
         return [

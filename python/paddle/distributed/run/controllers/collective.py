@@ -13,9 +13,6 @@
 # limitations under the License.
 
 from .controller import Controller
-from paddle.distributed.run.base import Job
-from paddle.distributed.run.base import Pod
-from paddle.distributed.run.base import Container
 
 
 class CollectiveController(Controller):
@@ -27,40 +24,25 @@ class CollectiveController(Controller):
         else:
             return False
 
-    def __init__(self, ctx):
-        ctx.logger.info("CollectiveController init")
-        self.ctx = ctx
-        self.pod = Pod()
-        self.job = Job()
-
-        self._build_job()
-        self._build_pod()
-
-    def _build_job(self):
+    def build_job(self):
         # local node only
         self.job.endpoints = []
+        self.job.replicas = 1
         #self.ips = [self.ctx.node.ip for _ in range(self.ctx.node.device.count)]
 
-    def _build_pod(self):
+    def build_pod(self):
+        self.sync_pods()
+
         self.pod.replicas = self.ctx.node.device.count
-        entrypoint = [self.ctx.args.training_script]
-        entrypoint.extend(self.ctx.args.training_script_args)
 
         for i in range(self.pod.replicas):
-            c = Container()
-            c.entrypoint = entrypoint
-            c.env = self.ctx.envs
-            c.update_env({
+            e = {
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(self.job.endpoints),
                 "PADDLE_CURRENT_ENDPOINT": "%s" % self.ctx.node.ip,
                 "PADDLE_TRAINER_ID":
                 "%d" % (self.pod.rank * self.pod.replicas + i),
                 "PADDLE_TRAINERS_NUM": "%d" % self.pod.replicas,
                 "PADDLE_RANK_IN_NODE": str(i),
-            })
-
+            }
+            c = self._build_container(envs=e)
             self.pod.add_container(c)
-
-    def run(self):
-        self.ctx.logger.info("env {}".format(self.pod.containers[0].env))
-        self.pod.create()

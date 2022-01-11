@@ -15,6 +15,8 @@
 from collections import OrderedDict
 from .container import Container
 
+import random
+
 
 class Status(object):
     def __init__(self):
@@ -23,15 +25,18 @@ class Status(object):
 
 class _PodProto(object):
     def __init__(self):
-        self.name = ""
+        self.name = ''.join(
+            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
         self.spec = ""
         self.enable_elastic = False
+
+        # by controller
         self.init_containers: List[Container] = []
         self.containers: List[Container] = []
         self.resource: Resource = None
         self.status: Status = None
         self.rank = 0
-        self.replicas = 0
+        self.replicas = 0  # number of containers
 
     def json(self):
         pass
@@ -46,6 +51,9 @@ class _PodProto(object):
     def add(self, item):
         if isinstance(c, Container):
             self.containers.append(c)
+
+    def __str__(self):
+        return "Pod: {}, replicas {}".format(self.name, self.replicas)
 
 
 class Pod(_PodProto):
