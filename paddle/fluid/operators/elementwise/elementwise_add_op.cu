@@ -22,7 +22,6 @@ limitations under the License. */
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;

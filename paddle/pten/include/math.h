@@ -16,24 +16,7 @@ limitations under the License. */
 
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
-namespace pten {
-
-template <typename T, typename ContextT>
-DenseTensor Scale(const ContextT& dev_ctx,
-                  const DenseTensor& x,
-                  const Scalar& scale,
-                  float bias,
-                  bool bias_after_scale) {
-  auto out_meta = UnchangedInferMeta(x.meta());
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  Scale<T, ContextT>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
-  return dense_out;
-}
-
-}  // namespace pten
+namespace pten {}  // namespace pten
