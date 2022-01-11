@@ -1,0 +1,19 @@
+  const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->data<T>();
+
+  // check src shape and dst shape should match
+  for (int i = 1; i < src_dims.size(); i++)
+    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
+                      platform::errors::InvalidArgument(
+                          "src shape and dst shape should match"));
+
+  // slice size
+  size_t slice_size = 1;
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+
+  const size_t slice_bytes = slice_size * sizeof(T);
+
+  for (int i = 0; i < index_size; ++i) {
+    IndexT index_ = p_index[i];
+    memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
+  }

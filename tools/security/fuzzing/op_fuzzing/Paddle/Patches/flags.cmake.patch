@@ -1,0 +1,11 @@
+--- cmake/flags.cmake   2021-11-01 16:42:07.213144901 +0800
++++ flags.cmake 2021-11-01 16:48:48.194048734 +0800
+@@ -133,7 +133,7 @@
+ set(COMMON_FLAGS
+     -fPIC
+     -fno-omit-frame-pointer
+-    -Werror
++    -Wno-error
+     -Wall
+     -Wextra
+     -Wnon-virtual-dtor

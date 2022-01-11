@@ -1,0 +1,28 @@
+<!DOCTYPE qhelp SYSTEM "qhelp.dtd">
+<qhelp>
+    <overview>
+
+    <p>It is an undefined behavior problem that visit index is longer than length of list, which could make process immediately abort. 
+    In Paddle, input shape could be empty. Visiting them with positive number will cause this probelm.</p>
+
+    </overview>
+    <recommendation>
+
+    <p>Commonly, when design the API, developer should consider this case and precheck the values before
+    using them.</p>
+
+    </recommendation>
+    <example>
+
+    <p>In the example below, variable <code>x.shape</code> is empty. After that, <code>x.shape[channel_dim]</code> is executed and <code>channel_dim</code> is not 0.</p>
+
+    <sample src="TensorshapeIndexError.py.example">
+
+    </example>
+    <references>
+    <li>
+        Commit #35337: add conv op check for illegal input or attributes
+        <a href="https://github.com/PaddlePaddle/Paddle/pull/35337/commits/c7c6a16464ccf368c1dd385107162fa2c2933ea0">#35337</a>
+    </li>
+    </references>
+</qhelp>

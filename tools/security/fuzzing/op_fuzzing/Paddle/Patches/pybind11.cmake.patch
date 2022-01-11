@@ -1,0 +1,10 @@
+--- cmake/external/pybind11.cmake       2021-11-01 19:14:59.805659494 +0800
++++ pybind11.cmake      2021-11-01 19:15:19.366086293 +0800
+@@ -26,6 +26,7 @@
+
+ set(PYBIND_INCLUDE_DIR ${PYBIND_SOURCE_DIR}/include)
+ include_directories(${PYBIND_INCLUDE_DIR})
++include_directories(/usr/include/python3.8)
+
+ ExternalProject_Add(
+         extern_pybind

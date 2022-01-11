@@ -1,0 +1,29 @@
+<!DOCTYPE qhelp SYSTEM "qhelp.dtd">
+<qhelp>
+    <overview>
+
+    <p>Loop condition is controlled by inputs. Local variable assigned in this loop if used outside
+    may cause an UnboundLocalError.</p>
+    
+    </overview>
+    <recommendation>
+
+    <p>Give variable a default value before loops.</p>
+
+    </recommendation>
+    <example>
+
+    <p>In the example below, <code>final_states = new_states</code> uses <code>new_states</code> 
+    variable which is assigned in a for loop. If <code>time_steps</code> is 0, <code>new_states</code> 
+    is an uninitiliazed variable.</p>
+
+    <sample src="UninitializedLocalVariable.py.example">
+
+    </example>
+    <references>
+    <li>
+        Uninitialized variable (Wikipedia)
+        <a href="https://en.wikipedia.org/wiki/Uninitialized_variable">Uninitialized variable</a>
+    </li>
+    </references>
+</qhelp>

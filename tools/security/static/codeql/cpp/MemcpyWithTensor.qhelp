@@ -1,0 +1,29 @@
+<!DOCTYPE qhelp SYSTEM "qhelp.dtd">
+<qhelp>
+    <overview>
+
+    <p>Function memcpy dst parameter is assigned by a memory buffer. In Paddle, there are some cases
+    dst is assigned with output data buffer, but the index is calculated by using some input tensors
+    data. If no check for ensure the range, unexpected index will cause this a out-of-bounds buffer.</p>
+
+    </overview>
+    <recommendation>
+
+    <p>Add some checks for guarding the index insides buffer memory range.</p>
+
+    </recommendation>
+    <example>
+
+    <p>In the example below, variable <code>index_</code> is controlled by input tensor. And it is used in
+    memcpy dst to be a index offset. This causes an out-of-bounds issue.</p>
+
+    <sample src="MemoryWithTensor.cpp.example">
+
+    </example>
+    <references>
+    <li>
+        Commit #33858: fix safe bug of scatter/scatter_nd
+        <a href="https://github.com/PaddlePaddle/Paddle/commit/c522530a4755f1671568467e265101a735d22a56">#33858</a>
+    </li>
+    </references>
+</qhelp>

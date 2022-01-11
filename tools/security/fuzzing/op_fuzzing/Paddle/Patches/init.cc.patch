@@ -1,0 +1,13 @@
+--- paddle/fluid/platform/init.cc       2021-11-01 16:42:07.393274703 +0800
++++ init.cc     2021-11-01 16:55:55.950940073 +0800
+@@ -387,8 +387,8 @@
+ #endif
+     google::InitGoogleLogging(strdup(prog_name.c_str()));
+ #ifndef _WIN32
+-    google::InstallFailureSignalHandler();
+-    google::InstallFailureWriter(&SignalHandle);
++    // google::InstallFailureSignalHandler();
++    // google::InstallFailureWriter(&SignalHandle);
+ #endif
+   });
+ }

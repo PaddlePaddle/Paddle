@@ -1,0 +1,29 @@
+<!DOCTYPE qhelp SYSTEM "qhelp.dtd">
+<qhelp>
+    <overview>
+
+    <p>Division by zero is an undefined behavior problem that could make process immediately abort. 
+    In Paddle, tensor shape dims are likely to be 0. Using them in division will cause this probelm.</p>
+
+    </overview>
+    <recommendation>
+
+    <p>Commonly, when design the API, developer should consider this case and precheck the values before
+    using them in arithmetic.</p>
+
+    </recommendation>
+    <example>
+
+    <p>In the example below, variable <code>N</code> is assigned by <code>X->numel()</code> or
+    <code>Y->numel()</code>. After that, <code>N</code> is used as a dividend.</p>
+
+    <sample src="DivideTensorDims.cpp.example">
+
+    </example>
+    <references>
+    <li>
+        Commit #35791: add the shape check for the matmul
+        <a href="https://github.com/PaddlePaddle/Paddle/pull/35791/commits/b5d0940e30832ee58b74f9005f3ea694a29c65c2">#35791</a>
+    </li>
+    </references>
+</qhelp>
