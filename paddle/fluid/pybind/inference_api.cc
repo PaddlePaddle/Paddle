@@ -601,6 +601,8 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("tensorrt_interleaved_enabled",
+           &AnalysisConfig::tensorrt_interleaved_enabled)
       .def("collect_shape_range_info", &AnalysisConfig::CollectShapeRangeInfo)
       .def("shape_range_info_path", &AnalysisConfig::shape_range_info_path)
       .def("shape_range_info_collected",

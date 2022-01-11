@@ -499,6 +499,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// V7.2.1 is needed.
   ///
   void EnableTensorRtOSS();
+  void EnableTensorRtInterleaved();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
@@ -506,6 +507,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use the TensorRT OSS.
   ///
   bool tensorrt_oss_enabled() { return trt_use_oss_; }
+  bool tensorrt_interleaved_enabled() { return trt_with_interleaved_; }
 
   ///
   /// \brief Enable TensorRT DLA
@@ -796,6 +798,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
   bool trt_use_oss_{false};
+  bool trt_with_interleaved_{false};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};

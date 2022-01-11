@@ -605,6 +605,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+    argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
