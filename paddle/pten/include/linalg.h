@@ -30,7 +30,7 @@ DenseTensor Dot(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Dot<T, ContextT>(dev_ctx, x, y, &dense_out);
+  DotKernel<T, ContextT>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 
