@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 #include "paddle/pten/kernels/complex_kernel.h"
 
