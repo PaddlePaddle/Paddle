@@ -118,7 +118,7 @@ TEST(EagerTensor, MemberFunction) {
   CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[1],
            10.0f);
   VLOG(6) << "SyncToTensor";
-  CHECK(et3.initialized() == false);
+  CHECK(et3.initialized() == true);
   et3.SyncToTensor();
   CHECK(et3.initialized() == true);
   VLOG(6) << "Check Tensor";

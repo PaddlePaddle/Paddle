@@ -13,14 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
 
-// only can include the headers in paddle/top/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
