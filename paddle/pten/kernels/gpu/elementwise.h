@@ -1103,7 +1103,7 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
       if (dy) {
         T my_val = sdata[threadIdx.x][threadIdx.y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
-          my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
         if ((threadIdx.x == 0)) {
@@ -1132,7 +1132,7 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
       if (dy) {
         T my_val = sdata[threadIdx.x][threadIdx.y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
-          my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
         if ((threadIdx.x == 0)) {

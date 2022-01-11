@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace pten {
 
-// BACKWARD CODE
-
 // FORWARD CODE
 
 // Add
@@ -209,113 +207,6 @@ inline int GetElementwiseIndex(const int* x_dims_array,
     }
   }
   return index_;
-}
-
-template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
-static void ElemwiseGradBroadcast1CPU(const T* x,
-                                      const T* y,
-                                      const Tout* out,
-                                      const Tout* dout,
-                                      int h,
-                                      int w,
-                                      bool is_xsize_larger,
-                                      DX_OP dx_op,
-                                      DY_OP dy_op,
-                                      T* dx,
-                                      T* dy) {
-  if (is_xsize_larger) {
-    for (int i = 0; i < h; ++i) {
-      for (int j = 0; j < w; ++j) {
-        int x_offset = i * w + j;
-        if (dx != nullptr) {
-          dx[x_offset] =
-              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-        }
-        if (dy != nullptr) {
-          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-          if (i == 0) {
-            dy[j] = tmp;
-          } else {
-            dy[j] += tmp;
-          }
-        }
-      }
-    }
-  } else {  // x.dims < y.dims, broadcast for x.
-    for (int i = 0; i < h; ++i) {
-      for (int j = 0; j < w; ++j) {
-        int y_offset = i * w + j;
-        if (dy != nullptr) {
-          dy[y_offset] =
-              dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-        }
-        if (dx != nullptr) {
-          T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-          if (i == 0) {
-            dx[j] = tmp;
-          } else {
-            dx[j] += tmp;
-          }
-        }
-      }
-    }
-  }
-}
-
-template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
-static void ElemwiseGradBroadcast2CPU(const T* x,
-                                      const T* y,
-                                      const Tout* out,
-                                      const Tout* dout,
-                                      int pre,
-                                      int n,
-                                      int post,
-                                      bool is_xsize_larger,
-                                      DX_OP dx_op,
-                                      DY_OP dy_op,
-                                      T* dx,
-                                      T* dy) {
-  if (is_xsize_larger) {
-    for (int i = 0; i < pre; ++i) {
-      for (int j = 0; j < n; ++j) {
-        for (int k = 0; k < post; ++k) {
-          int x_offset = i * n * post + j * post + k;
-          if (dx != nullptr) {
-            dx[x_offset] =
-                dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-          }
-          if (dy != nullptr) {
-            T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-            if (i == 0 && k == 0) {
-              dy[j] = tmp;
-            } else {
-              dy[j] += tmp;
-            }
-          }
-        }
-      }
-    }
-  } else {  // x.dims < y.dims, broadcast for x.
-    for (int i = 0; i < pre; ++i) {
-      for (int j = 0; j < n; ++j) {
-        for (int k = 0; k < post; ++k) {
-          int y_offset = i * n * post + j * post + k;
-          if (dy != nullptr) {
-            dy[y_offset] =
-                dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-          }
-          if (dx != nullptr) {
-            T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-            if (i == 0 && k == 0) {
-              dx[j] = tmp;
-            } else {
-              dx[j] += tmp;
-            }
-          }
-        }
-      }
-    }
-  }
 }
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
@@ -548,5 +439,114 @@ struct SameDimsElementwiseCompute {
     Functor()(dev_ctx, x, y, z);
   }
 };
+
+// BACKWARD CODE
+
+template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
+static void ElemwiseGradBroadcast1CPU(const T* x,
+                                      const T* y,
+                                      const Tout* out,
+                                      const Tout* dout,
+                                      int h,
+                                      int w,
+                                      bool is_xsize_larger,
+                                      DX_OP dx_op,
+                                      DY_OP dy_op,
+                                      T* dx,
+                                      T* dy) {
+  if (is_xsize_larger) {
+    for (int i = 0; i < h; ++i) {
+      for (int j = 0; j < w; ++j) {
+        int x_offset = i * w + j;
+        if (dx != nullptr) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
+        if (dy != nullptr) {
+          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          if (i == 0) {
+            dy[j] = tmp;
+          } else {
+            dy[j] += tmp;
+          }
+        }
+      }
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int i = 0; i < h; ++i) {
+      for (int j = 0; j < w; ++j) {
+        int y_offset = i * w + j;
+        if (dy != nullptr) {
+          dy[y_offset] =
+              dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+        if (dx != nullptr) {
+          T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          if (i == 0) {
+            dx[j] = tmp;
+          } else {
+            dx[j] += tmp;
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
+static void ElemwiseGradBroadcast2CPU(const T* x,
+                                      const T* y,
+                                      const Tout* out,
+                                      const Tout* dout,
+                                      int pre,
+                                      int n,
+                                      int post,
+                                      bool is_xsize_larger,
+                                      DX_OP dx_op,
+                                      DY_OP dy_op,
+                                      T* dx,
+                                      T* dy) {
+  if (is_xsize_larger) {
+    for (int i = 0; i < pre; ++i) {
+      for (int j = 0; j < n; ++j) {
+        for (int k = 0; k < post; ++k) {
+          int x_offset = i * n * post + j * post + k;
+          if (dx != nullptr) {
+            dx[x_offset] =
+                dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          }
+          if (dy != nullptr) {
+            T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+            if (i == 0 && k == 0) {
+              dy[j] = tmp;
+            } else {
+              dy[j] += tmp;
+            }
+          }
+        }
+      }
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int i = 0; i < pre; ++i) {
+      for (int j = 0; j < n; ++j) {
+        for (int k = 0; k < post; ++k) {
+          int y_offset = i * n * post + j * post + k;
+          if (dy != nullptr) {
+            dy[y_offset] =
+                dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          }
+          if (dx != nullptr) {
+            T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+            if (i == 0 && k == 0) {
+              dx[j] = tmp;
+            } else {
+              dx[j] += tmp;
+            }
+          }
+        }
+      }
+    }
+  }
+}
 
 }  // namespace pten
