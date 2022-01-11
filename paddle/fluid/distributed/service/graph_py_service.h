@@ -148,8 +148,10 @@ class GraphPyClient : public GraphPyService {
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
-  std::vector<std::vector<std::pair<uint64_t, float>>> batch_sample_neighbors(
-      std::string name, std::vector<uint64_t> node_ids, int sample_size);
+  std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>>
+  batch_sample_neighbors(std::string name, std::vector<uint64_t> node_ids,
+                         int sample_size, bool return_weight,
+                         bool return_edges);
   std::vector<uint64_t> random_sample_nodes(std::string name, int server_index,
                                             int sample_size);
   std::vector<std::vector<std::string>> get_node_feat(

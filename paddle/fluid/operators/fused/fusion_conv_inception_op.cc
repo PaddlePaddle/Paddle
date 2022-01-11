@@ -16,7 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 

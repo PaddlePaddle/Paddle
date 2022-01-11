@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -56,3 +55,21 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
                                   int64_t>);
+
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_fmax,
+    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext,
+                               paddle::platform::float16>,
+    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_fmax_grad,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                   paddle::platform::float16>,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                   int64_t>);

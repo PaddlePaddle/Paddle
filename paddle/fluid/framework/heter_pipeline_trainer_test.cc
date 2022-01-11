@@ -115,8 +115,6 @@ TEST(HeterPipelineTrainerTest, GPU) {
   t3.add_trainers(1);
   t3.add_trainers(1);
   t3.add_trainers(1);
-  t3.add_dump_fields("hello");
-  t3.add_dump_param("fc_0");
   auto* heter_section_param3 = t3.mutable_heter_section_param();
   heter_section_param3->set_num_pipeline_stages(3);
   heter_section_param3->set_pipeline_stage(2);

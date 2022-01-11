@@ -22,8 +22,14 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device_tracer.h"
 
+DECLARE_bool(enable_host_event_recorder_hook);
+
 namespace paddle {
 namespace platform {
+
+// Used only by DeviceTracer
+uint64_t GetThreadIdFromSystemThreadId(uint32_t id);
+
 namespace {
 // Tracking the nested block stacks of each thread.
 #ifdef PADDLE_WITH_SW
@@ -40,7 +46,8 @@ thread_local std::deque<Event *> annotation_stack;
 static std::deque<Event *> main_thread_annotation_stack{};
 static std::deque<std::string> main_thread_annotation_stack_name{};
 
-std::map<uint32_t, int32_t> system_thread_id_map;
+std::map<uint32_t, uint64_t> system_thread_id_map;
+std::mutex system_thread_id_map_mutex;
 
 std::once_flag tracer_once_flag;
 DeviceTracer *tracer = nullptr;
@@ -299,8 +306,49 @@ class DeviceTracerImpl : public DeviceTracer {
     local_correlations_pairs->push_front(std::make_pair(id, event));
   }
 
+  void AddAnnotations(const std::map<uint64_t, ThreadEvents> &thr_events) {
+    for (auto &tmp : active_kind_records_) {
+      for (const ActiveKindRecord &r : tmp) {
+        auto iter = thr_events.find(r.thread_id);
+        if (iter == thr_events.end()) {
+          VLOG(10) << __func__ << " " << r.name
+                   << " Missing tid: " << r.thread_id;
+          continue;
+        }
+        const ThreadEvents &evts = iter->second;
+        auto evt_iter = evts.upper_bound(r.end_ns);
+        if (evt_iter == evts.end()) {
+          VLOG(10) << __func__ << " Missing Record " << r.name
+                   << " tid: " << r.thread_id << " end_ns: " << r.end_ns;
+          continue;
+        }
+        if (evt_iter != evts.begin()) {
+          auto prev_iter = std::prev(evt_iter);
+          if (prev_iter->first >= r.end_ns) {
+            evt_iter = prev_iter;
+          } else {
+            VLOG(10) << __func__ << " prev end_ns " << prev_iter->first
+                     << " end_ns: " << r.end_ns;
+          }
+        }
+        Event *evt = evt_iter->second.first;
+        uint64_t start_ns = evt_iter->second.second;
+        if (start_ns > r.start_ns) {
+          VLOG(10) << __func__ << " Mismatch Record " << r.name
+                   << " tid: " << r.thread_id << " start_ns: " << r.start_ns
+                   << " end_ns: " << r.end_ns << ", event " << evt->name()
+                   << " start_ns: " << start_ns;
+          continue;
+        }
+        VLOG(10) << __func__ << " tid: " << r.thread_id << " Add correlation "
+                 << r.correlation_id << "<->" << evt->name();
+        AddAnnotation(r.correlation_id, evt);
+      }
+    }
+  }
+
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
-                     uint64_t end_ns, int64_t device_id, int64_t thread_id) {
+                     uint64_t end_ns, int64_t device_id, uint64_t thread_id) {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -335,7 +383,7 @@ class DeviceTracerImpl : public DeviceTracer {
 
   void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                         const Place &place, const std::string &alloc_in,
-                        const std::string &free_in, int64_t thread_id) {
+                        const std::string &free_in, uint64_t thread_id) {
     if (0 == start_ns || 0 == end_ns) {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
@@ -357,7 +405,7 @@ class DeviceTracerImpl : public DeviceTracer {
 
   void AddActiveKindRecords(const std::string &anno, uint64_t start_ns,
                             uint64_t end_ns, int64_t device_id,
-                            int64_t thread_id, uint32_t correlation_id) {
+                            uint64_t thread_id, uint32_t correlation_id) {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -524,7 +572,7 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_detail_info(c->second->attr());
         find++;
       } else {
-        VLOG(10) << "Missing Kernel Event: " + r.name;
+        VLOG(10) << __func__ << " Missing Kernel Event: " + r.name;
         miss++;
         event->set_name(r.name);
       }
@@ -533,7 +581,8 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_sub_device_id(r.stream_id);
       event->set_device_id(r.device_id);
     }
-    VLOG(1) << "KernelRecord event miss: " << miss << " find: " << find;
+    VLOG(1) << __func__ << " KernelRecord event miss: " << miss
+            << " find: " << find;
 
     for (auto &tmp : cpu_records_) {
       for (const CPURecord &r : tmp) {
@@ -583,7 +632,8 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
-    VLOG(1) << "MemRecord event miss: " << miss << " find: " << find;
+    VLOG(1) << __func__ << " MemRecord event miss: " << miss
+            << " find: " << find;
 
     for (auto &tmp : mem_info_record_) {
       for (const auto &r : tmp) {
@@ -633,6 +683,9 @@ class DeviceTracerImpl : public DeviceTracer {
 #ifdef PADDLE_WITH_CUPTI
   static void CUPTIAPI ApiCallback(void *userdata, CUpti_CallbackDomain domain,
                                    CUpti_CallbackId cbid, const void *cbdata) {
+    if (LIKELY(FLAGS_enable_host_event_recorder_hook)) {
+      return;
+    }
     auto *cbInfo = reinterpret_cast<const CUpti_CallbackData *>(cbdata);
     DeviceTracerImpl *tracer = reinterpret_cast<DeviceTracerImpl *>(userdata);
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -712,6 +765,7 @@ Event *CurAnnotation() {
   if (annotation_stack.empty()) return nullptr;
   return annotation_stack.back();
 }
+
 std::string CurAnnotationName() {
   if (annotation_stack.empty()) return "Unknown";
   return annotation_stack.back()->name();
@@ -730,13 +784,13 @@ uint32_t GetCurSystemThreadId() {
   return id;
 }
 
-void RecoreCurThreadId(int32_t id) {
+void RecoreCurThreadId(uint64_t id) {
+  std::lock_guard<std::mutex> lock(system_thread_id_map_mutex);
   auto gid = GetCurSystemThreadId();
-  VLOG(1) << "RecoreCurThreadId: " << gid << " -> " << id;
   system_thread_id_map[gid] = id;
 }
 
-int32_t GetThreadIdFromSystemThreadId(uint32_t id) {
+uint64_t GetThreadIdFromSystemThreadId(uint32_t id) {
   auto it = system_thread_id_map.find(id);
   if (it != system_thread_id_map.end()) return it->second;
   // return origin id if no event is recorded in this thread.

@@ -15,11 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/reshape_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+namespace pten {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -54,7 +57,7 @@ TEST(DEV_API, reshape) {
   ASSERT_EQ(out.dims()[0], expect_shape[0]);
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.numel(), 36);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   bool value_equal = true;
@@ -65,3 +68,6 @@ TEST(DEV_API, reshape) {
   }
   ASSERT_EQ(value_equal, true);
 }
+
+}  // namespace tests
+}  // namespace pten

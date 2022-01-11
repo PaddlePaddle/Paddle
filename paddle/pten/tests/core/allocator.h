@@ -38,12 +38,18 @@ class HostAllocatorSample : public pten::RawAllocator {
 
 class FancyAllocator : public pten::Allocator {
  public:
-  static void Delete(void* data) { ::operator delete(data); }
+  static void Delete(Allocation* allocation) {
+    ::operator delete(allocation->ptr());
+  }
 
   Allocation Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    return Allocation(data, data, &Delete, paddle::platform::CPUPlace());
+    return Allocation(data, data, &Delete, place());
   }
+
+  const paddle::platform::Place& place() override { return place_; }
+
+  paddle::platform::Place place_ = paddle::platform::CPUPlace();
 };
 
 template <typename T>

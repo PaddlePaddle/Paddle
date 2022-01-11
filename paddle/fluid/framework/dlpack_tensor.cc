@@ -81,6 +81,11 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
     return device;
   }
 
+  inline ::DLDevice operator()(const platform::IPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::IPUPlace is not supported"));
+  }
+
   inline ::DLDevice operator()(const platform::XPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
@@ -94,6 +99,11 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
   inline ::DLDevice operator()(const platform::NPUPinnedPlace &place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "platform::NPUPinnedPlace is not supported"));
+  }
+
+  inline ::DLDevice operator()(const platform::MLUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::MLUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
@@ -124,7 +134,7 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
 
 DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // init data, data buffer
-  t_.data = const_cast<void *>(tensor.data<void>());
+  t_.data = const_cast<void *>(tensor.data());
 
   // init device, DLDevice type with device_type and device_id
   auto place = tensor.place();

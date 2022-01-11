@@ -394,3 +394,34 @@ def _set_spec_stop_gradient(spec, stop_gradient):
     """
     assert isinstance(spec, paddle.static.InputSpec)
     spec.stop_gradient = stop_gradient
+
+
+def _hash_spec_names(args_specs, kwargs_specs):
+    """
+    Generater hash spec with args/kwargs InputSpec names.
+    Consider the following InputSpecs with same shape/dtype except for name:
+      1. [InputSpec([3,3], 'float32', 'x'), InputSpec([3,3], 'float32', 'x')]
+      2. [InputSpec([3,3], 'float32', 'x'), InputSpec([3,3], 'float32', 'y')]
+    Under @to_static, we should generate two different program not just one, because
+    the former has one input ('x'), but the latter has two input ('x', 'y').
+    """
+    spec_names = [
+        spec.name for spec in flatten(args_specs)
+        if isinstance(spec, paddle.static.InputSpec)
+    ]
+    spec_names += [
+        spec.name for spec in flatten(kwargs_specs)
+        if isinstance(spec, paddle.static.InputSpec)
+    ]
+    i, name_ids = 0, {}
+
+    def to_idx(name):
+        nonlocal i
+        if name not in name_ids:
+            name_ids[name] = i
+            i += 1
+        return name_ids[name]
+
+    value = [to_idx(name) for name in spec_names]
+
+    return tuple(value)

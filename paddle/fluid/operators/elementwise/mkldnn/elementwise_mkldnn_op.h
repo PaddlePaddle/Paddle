@@ -62,9 +62,22 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     // and they share a buffer (of
     // shape x) then this buffer is not big enough to hold result of elementwise
     // operation.
-    auto dst_memory = (x->numel() == z->numel() && x->IsSharedBufferWith(*z))
-                          ? src_x_memory
-                          : handler.AcquireDstMemory(z);
+    const bool reuse_x_memopry =
+        x->numel() == z->numel() && x->IsSharedBufferWith(*z);
+    std::shared_ptr<dnnl::memory> dst_memory = nullptr;
+    if (reuse_x_memopry) {
+      dst_memory = src_x_memory;
+      // NOTE(chenfeiyu): when the output reuses memory from other tensor rather
+      // than allocate its own, it's still need to take care of its data type.
+      // Unfortunately, paddle's operator only infers the output' shape, but not
+      // the data type. mutable_data<T> takes care of allocation and data type
+      // normally, but if the memory is already allocated and there is no need
+      // to re-allocate, it just set the data type. So this it added there to
+      // get the right data type.
+      z->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dst_memory = handler.AcquireDstMemory(z);
+    }
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 

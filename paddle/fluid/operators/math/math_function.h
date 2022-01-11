@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -65,6 +66,8 @@ struct ElementwiseAddTo {
   // dst = dst + src
   void operator()(DeviceContext* ctx, const framework::Tensor& src,
                   framework::Tensor* dst);
+  void operator()(DeviceContext* ctx, const pten::DenseTensor& src,
+                  pten::DenseTensor* dst);
 };
 
 template <typename DeviceContext, typename T>

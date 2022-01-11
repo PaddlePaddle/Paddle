@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/api/lib/ext_compat_utils.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(const PlaceType& p) {
+platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
   if (p == PlaceType::kCPU) {
     return platform::Place(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -48,6 +48,22 @@ PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
                                         p));
   }
   return PlaceType::kUNK;
+}
+
+Backend ConvertExtPlaceToBackend(PlaceType p) {
+  switch (p) {
+    case PlaceType::kCPU:
+      return Backend::CPU;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case PlaceType::kGPU:
+      return Backend::GPU;
+#endif
+    default:
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unsupported place type `%s` when "
+                                          "casting enum place to backend.",
+                                          static_cast<int>(p)));
+  }
 }
 
 }  // namespace experimental

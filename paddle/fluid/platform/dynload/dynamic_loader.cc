@@ -30,10 +30,11 @@ DEFINE_string(cudnn_dir, "",
               "/usr/local/cudnn/lib. If empty [default], dlopen "
               "will search cudnn from LD_LIBRARY_PATH");
 
-DEFINE_string(cuda_dir, "",
-              "Specify path for loading cuda library, such as libcublas, "
-              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
-              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+DEFINE_string(
+    cuda_dir, "",
+    "Specify path for loading cuda library, such as libcublas, libcublasLt "
+    "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+    "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libnccl.so. "
@@ -305,6 +306,19 @@ void* GetCublasDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
+#endif
+}
+
+void* GetCublasLtDsoHandle() {
+// APIs available after CUDA 10.1
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
+#else
+  std::string warning_msg(
+      "Your CUDA_VERSION less 10.1, not support CublasLt. "
+      "If you want to use CublasLt, please upgrade CUDA and rebuild "
+      "PaddlePaddle.");
+  return nullptr;
 #endif
 }
 

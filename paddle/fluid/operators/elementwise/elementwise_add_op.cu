@@ -12,18 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
-
-// only can include the headers in paddle/top/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -91,7 +80,8 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
       }
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dx, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
   // dy
@@ -106,7 +96,8 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dy, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
 }

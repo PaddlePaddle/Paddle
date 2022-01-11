@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 
 namespace paddle {
@@ -38,10 +39,12 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    thrust::normal_distribution<T> dist(mean_, std_);
+    using MT = typename details::MPTypeTrait<T>::Type;
+    thrust::normal_distribution<MT> dist(mean_, std_);
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
-    return dist(rng);
+    MT out = dist(rng);
+    return static_cast<T>(out);
   }
 };
 
@@ -59,7 +62,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
     auto shape = GetShape(context);
     tensor->Resize(shape);
     T* data = tensor->mutable_data<T>(context.GetPlace());
@@ -72,7 +75,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
+      int64_t gen_offset = size * seed_offset.second;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(data),
@@ -100,7 +103,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
     int64_t size = tensor->numel();
 
     int device_id =
@@ -109,7 +112,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
+      int64_t gen_offset = size * seed_offset.second;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),
                         GaussianGenerator<T>(mean, std, seed_offset.first,
@@ -124,10 +127,14 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(gaussian_random,
-                        paddle::operators::GPUGaussianRandomKernel<float>,
-                        paddle::operators::GPUGaussianRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    gaussian_random,
+    paddle::operators::GPUGaussianRandomKernel<paddle::platform::float16>,
+    paddle::operators::GPUGaussianRandomKernel<float>,
+    paddle::operators::GPUGaussianRandomKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
     gaussian_random_batch_size_like,
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
+        paddle::platform::float16>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);
