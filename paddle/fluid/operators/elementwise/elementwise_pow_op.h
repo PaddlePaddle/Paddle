@@ -15,7 +15,6 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {

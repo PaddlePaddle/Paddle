@@ -16,9 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
