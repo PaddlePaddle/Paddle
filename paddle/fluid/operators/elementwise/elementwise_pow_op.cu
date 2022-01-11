@@ -8,7 +8,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+
 #include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
 
 namespace ops = paddle::operators;
@@ -31,7 +31,8 @@ struct CudaPowFunctor<
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
   inline HOSTDEVICE T operator()(const T args[]) const {
-    return std::llrint(std::pow(args[0], args[1]));
+    return std::llrint(
+        std::pow(static_cast<double>(args[0]), static_cast<double>(args[1])));
   }
 };
 
