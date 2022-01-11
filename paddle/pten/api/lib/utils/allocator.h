@@ -22,9 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-class DefaultAllocator : public pten::Allocator {
+class DefaultAllocator : public pten::deprecated::Allocator {
  public:
-  using Allocation = pten::Allocation;
+  using Allocation = pten::deprecated::Allocation;
   explicit DefaultAllocator(const paddle::platform::Place& place)
       : place_(place) {}
 
