@@ -187,7 +187,7 @@ std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   std::unordered_map<uint32_t, uint64_t> mapping;
   std::unordered_map<uint64_t, ThreadId> ids = GetAllThreadIds();
   for (const auto& id : ids) {
-    mapping[id.second.cupti_tid] = id.second.MainTid();
+    mapping[id.second.cupti_tid] = id.second.sys_tid;
   }
   return mapping;
 }
