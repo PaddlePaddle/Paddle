@@ -20,7 +20,8 @@ limitations under the License. */
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/event.h"  // TODO(TIEXING): remove later
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace platform {
@@ -224,6 +225,9 @@ struct ThreadEventSection {
 class ThreadEventRecorder {
  public:
   ThreadEventRecorder();
+
+  ~ThreadEventRecorder();
+
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 
  public:
@@ -261,6 +265,18 @@ class HostEventRecorder {
     return instance;
   }
 
+  // thread-unsafe
+  void StartTrace(uint32_t trace_level) {
+    trace_level_ = static_cast<int64_t>(trace_level);
+  }
+
+  // thread-safe
+  // Split it up with RecordEvent() to determine as soon as possible
+  bool NeedTrace(uint32_t level) {
+    return trace_level_ >= static_cast<int64_t>(level);
+  }
+
+  // thread-safe
   // If your string argument has a longer lifetime than the Event,
   // use 'const char*'. e.g.: string literal, op name, etc.
   // Do your best to avoid using 'std::string' as the argument type.
@@ -270,12 +286,23 @@ class HostEventRecorder {
     GetThreadLocalRecorder().RecordEvent(std::forward<Args>(args)...);
   }
 
+  // thread-unsafe, make sure make sure there is no running tracing.
+  void StopTrace() { trace_level_ = kDisabled; }
+
+  // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
   HostEventSection GatherEvents();
 
+  // thread-safe
   void RegisterThreadRecorder(uint64_t tid, ThreadEventRecorder *recorder) {
-    const std::lock_guard<std::mutex> guard(thread_recorders_lock_);
-    thread_recorders_[tid] = recorder;
+    std::lock_guard<std::mutex> guard(thread_recorders_lock_);
+    thread_recorders_[tid] = recorder;  // not owned
+  }
+
+  // thread-safe
+  void UnregisterThreadRecorder(uint64_t tid) {
+    std::lock_guard<std::mutex> guard(thread_recorders_lock_);
+    thread_recorders_.erase(tid);
   }
 
  private:
@@ -287,6 +314,9 @@ class HostEventRecorder {
     return tls_recorder;
   }
 
+  static constexpr int64_t kDisabled = -1;
+  // Verbose trace levels, works like VLOG(level)
+  int trace_level_ = kDisabled;
   std::mutex thread_recorders_lock_;
   std::unordered_map<uint64_t, ThreadEventRecorder *> thread_recorders_;
 };

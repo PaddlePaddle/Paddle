@@ -16,12 +16,17 @@ namespace paddle {
 namespace platform {
 
 ThreadEventRecorder::ThreadEventRecorder() {
-  thread_id_ = ThreadIdRegistry::GetInstance().CurrentThreadId().MainTid();
+  thread_id_ = GetCurrentThreadMainId();
   HostEventRecorder::GetInstance().RegisterThreadRecorder(thread_id_, this);
+}
+
+ThreadEventRecorder::~ThreadEventRecorder() {
+  // HostEventRecorder::GetInstance().UnregisterThreadRecorder(thread_id_);
 }
 
 HostEventSection HostEventRecorder::GatherEvents() {
   HostEventSection host_sec;
+  std::lock_guard<std::mutex> guard(thread_recorders_lock_);
   host_sec.thr_sections.reserve(thread_recorders_.size());
   for (auto &kv : thread_recorders_) {
     host_sec.thr_sections.emplace_back(std::move(kv.second->GatherEvents()));

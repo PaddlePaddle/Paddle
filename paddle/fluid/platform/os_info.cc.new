@@ -57,7 +57,7 @@ class ThreadDataRegistry {
     for (auto& kv : tid_map_) {
       data_copy.emplace(kv.first, kv.second->GetData());
     }
-    return data_copy;
+    return std::move(data_copy);
   }
 
   void RegisterData(uint64_t tid, ThreadDataHolder* tls_obj) {
