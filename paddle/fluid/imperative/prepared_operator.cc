@@ -164,7 +164,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
-    VLOG(6) << framework::KernelSignatureToString(pt_kernel_signature);
+    VLOG(6) << pt_kernel_signature;
 
     auto pt_kernel_name = pt_kernel_signature.name;
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
@@ -491,8 +491,7 @@ static void PreparedOpRunImpl(
 
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
                                                     &default_attrs, op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  op.Info().infer_shape_(&infer_shape_ctx);
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                         attrs, default_attrs));
@@ -537,8 +536,7 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& default_attrs) {
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
                                                     &default_attrs, op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  op.Info().infer_shape_(&infer_shape_ctx);
 
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                          outs, attrs, default_attrs, dev_ctx,

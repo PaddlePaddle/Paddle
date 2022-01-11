@@ -174,26 +174,23 @@ struct MulGradDY<paddle::platform::complex<T>> {
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy) {
+ElementwiseMulGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
   ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
       ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy);
+ElementwiseMulGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy);
 #endif
 
 template <typename DeviceContext, typename T>
@@ -209,14 +206,8 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
     auto* out = dout;  // out is not necessary
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
-    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-      elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-    } else {
-      ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
-          ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(),
-          MulGradDY<T>());
-    }
+
+    ElementwiseMulGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
   }
 };
 

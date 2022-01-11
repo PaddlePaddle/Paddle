@@ -41,12 +41,32 @@ DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
     : meta_(std::move(meta)), storage_(std::move(storage)) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other)
-    : meta_(other.meta()), storage_(copy_intrusive(other.storage_)) {}
+DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+        paddle::platform::CPUPlace());
+  }
+  if (other.storage_ != nullptr && other.storage_->data_shared()) {
+    storage_->set_data_shared(other.storage_->data_shared());
+  }
+
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+#endif
+}
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
-  storage_ = std::move(copy_intrusive(other.storage_));
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+        paddle::platform::CPUPlace());
+  }
+  if (other.storage_ != nullptr && other.storage_->data_shared()) {
+    storage_->set_data_shared(other.storage_->data_shared());
+  }
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+#endif
   return *this;
 }
 
@@ -138,15 +158,6 @@ T* DenseTensor::data() {
   return reinterpret_cast<T*>(data());
 }
 
-const void* DenseTensor::data() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(storage_->data()) + meta_.offset);
-}
-
 void* DenseTensor::data() {
   PADDLE_ENFORCE_NOT_NULL(
       storage_,
@@ -154,6 +165,15 @@ void* DenseTensor::data() {
           "The storage must be valid when call the mutable data function."));
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
                                  meta_.offset);
+}
+
+const void* DenseTensor::data() const {
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the mutable data function."));
+  return reinterpret_cast<const void*>(
+      reinterpret_cast<uintptr_t>(storage_->data()) + meta_.offset);
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
@@ -174,12 +194,11 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
                                storage_ won't be initialized until the first
    call to mutable_data(place)
    */
-DenseTensor& DenseTensor::Resize(const DDim& dims) {
+void DenseTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
   if (storage_ != nullptr) {
     mutable_data();
   }
-  return *this;
 }
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
@@ -211,34 +230,19 @@ DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
 /*   From framework::Tensor    */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
+  storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+      paddle::platform::CPUPlace());
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
-  meta_ = DenseTensorMeta();
   meta_.dtype = paddle::experimental::DataType::FLOAT32;
   meta_.offset = 0;
 }
 
 DenseTensor::DenseTensor(const paddle::framework::proto::VarType::Type& dtype) {
+  storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+      paddle::platform::CPUPlace());
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
-  meta_ = DenseTensorMeta();
   meta_.dtype = TransToPtenDataType(dtype);
   meta_.offset = 0;
-}
-
-DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
-  src.check_memory_size();
-  *this = src;
-  return *this;
-}
-
-DenseTensor& DenseTensor::ShareInplaceVersionCounterWith(
-    const DenseTensor& src) {
-  PADDLE_ENFORCE_NOT_NULL(
-      inplace_version_counter_,
-      paddle::platform::errors::PreconditionNotMet(
-          "Tensor does not hold inplace_version_counter_."));
-
-  inplace_version_counter_ = src.inplace_version_counter_;
-  return *this;
 }
 
 size_t DenseTensor::memory_size() const {
@@ -304,16 +308,15 @@ void DenseTensor::ResetHolder(
       paddle::platform::errors::Fatal(
           "Only the offset is supported to zero when the holder is reset."));
 
-  if (storage_ == nullptr) {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("storage_ has to be initialized before "
-                                        "calling ResetHolder() interface."));
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the mutable data function."));
 
   if (storage_->data_shared()) {
     PADDLE_ENFORCE_LE(
         numel() * SizeOf(dtype()) + meta_.offset,
-        storage_->data_shared()->size(),
+        holder->size(),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
   }
@@ -331,95 +334,6 @@ void DenseTensor::ResetHolderWithType(
 void DenseTensor::set_type(
     const paddle::framework::proto::VarType::Type& type) {
   meta_.dtype = TransToPtenDataType(type);
-}
-
-DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
-  check_memory_size();
-  PADDLE_ENFORCE_GE(begin_idx,
-                    0,
-                    paddle::platform::errors::OutOfRange(
-                        "The start row index must be greater than 0."
-                        "But received the start index is d%.",
-                        begin_idx));
-  PADDLE_ENFORCE_LE(end_idx,
-                    meta_.dims[0],
-                    paddle::platform::errors::OutOfRange(
-                        "The end row index is out of bound."));
-  PADDLE_ENFORCE_LT(
-      begin_idx,
-      end_idx,
-      paddle::platform::errors::InvalidArgument(
-          "The start row index must be less than the end row index."
-          "But received the start index = %d, the end index = %d.",
-          begin_idx,
-          end_idx));
-
-  if (meta_.dims[0] == 1) {
-    return *this;
-  } else {
-    size_t base = numel() / meta_.dims[0];
-    DenseTensor dst;
-    dst.storage_ = std::move(copy_intrusive(storage_));
-    dst.meta_.layout = meta_.layout;
-    dst.meta_.dtype = meta_.dtype;
-    DDim dst_dims = meta_.dims;
-    dst_dims[0] = end_idx - begin_idx;
-    dst.Resize(dst_dims);
-    dst.meta_.offset = meta_.offset + begin_idx * base * SizeOf(dtype());
-    return dst;
-  }
-}
-
-std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
-                                            int64_t axis) const {
-  check_memory_size();
-
-  PADDLE_ENFORCE_GE(meta_.dims.size(),
-                    0,
-                    paddle::platform::errors::OutOfRange(
-                        "split expects at least a 1-dimensional tensor"));
-
-  PADDLE_ENFORCE_GE(
-      split_size,
-      0,
-      paddle::platform::errors::OutOfRange(
-          "split expects split_size be non-negative, but got split_size is %d",
-          split_size));
-
-  int64_t numel_size = meta_.dims[axis];
-
-  int64_t num_splits = 1;
-  if (split_size != 0) {
-    num_splits =
-        std::max<int64_t>((numel_size + split_size - 1) / split_size, 1);
-  }
-
-  std::vector<DenseTensor> splits(num_splits);
-  int64_t last_split_size = split_size - (split_size * num_splits - numel_size);
-
-  for (int64_t i = 0; i < num_splits; ++i) {
-    int64_t length = i < num_splits - 1 ? split_size : last_split_size;
-    splits[i] = Slice(i * split_size, i * split_size + length);
-  }
-  return splits;
-}
-
-std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
-                                            int64_t axis) const {
-  check_memory_size();
-  PADDLE_ENFORCE_GE(meta_.dims.size(),
-                    0,
-                    paddle::platform::errors::OutOfRange(
-                        "split expects at least a 1-dimensional tensor"));
-  PADDLE_ENFORCE_GE(
-      chunks,
-      0,
-      paddle::platform::errors::OutOfRange(
-          "chunks expects to be greater than 0, but got chunks is %d", chunks));
-
-  int64_t numel_size = meta_.dims[axis];
-  int64_t split_size = (numel_size + chunks - 1) / chunks;
-  return Split(split_size, axis);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
@@ -447,23 +361,16 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
   if (storage_->data_shared() == nullptr ||
       !(storage_->data_shared()->place() == place) ||
       storage_->data_shared()->size() < size + meta_.offset) {
-    // Reset holder first before re-allocate to save memory
     storage_->Clear();
     storage_->set_data_shared(paddle::memory::AllocShared(place, size));
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(storage_->data_shared()->ptr()) +
-      meta_.offset);
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+                                 meta_.offset);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 size_t requested_size) {
-  if (storage_ == nullptr) {
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-        "The tensor is not initialized."));
-  }
-
   return mutable_data(place, type(), requested_size);
 }
 
@@ -481,8 +388,12 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
           "] now"));
   size_t size = numel() * SizeOf(dtype());
 
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
+  }
+
   /* some versions of boost::variant don't have operator!= */
-  if (storage_ == nullptr || storage_->data_shared() == nullptr ||
+  if (storage_->data_shared() == nullptr ||
       !(storage_->data_shared()->place() == place) ||
       storage_->data_shared()->size() < size + meta_.offset ||
       !(paddle::platform::is_gpu_place(place) &&
@@ -491,9 +402,8 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
     storage_->set_data_shared(paddle::memory::AllocShared(place, size, stream));
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(storage_->data_shared()->ptr()) +
-      meta_.offset);
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+                                 meta_.offset);
 }
 
 /* @jim19930609: The following "mutable_data" only supports specific dtypes
@@ -506,7 +416,7 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  Resize(dims);
+  meta_.dims = dims;
   return mutable_data<T>(place, requested_size);
 }
 
@@ -516,6 +426,13 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(mutable_data(
       place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
+}
+
+void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+  if (storage_ != nullptr && tensor.storage_ != nullptr) {
+    storage_->set_data_shared(tensor.storage_->data_shared());
+  }
+  meta_.offset = tensor.meta().offset;
 }
 
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype) \
