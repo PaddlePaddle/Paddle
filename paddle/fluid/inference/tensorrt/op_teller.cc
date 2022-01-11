@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+
 #include <bitset>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -1168,7 +1170,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio"};
+                                     "spatial_scale", "sampling_ratio",
+                                     "aligned"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
