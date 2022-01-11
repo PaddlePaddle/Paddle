@@ -32,7 +32,7 @@ class NPUPinnedAllocator : public Allocator {
  public:
   bool IsAllocThreadSafe() const override { return true; }
   void ProcessEventsAndFree();
-  void RecordEvent(Allocation *allocation, aclrtStream stream);
+  void RecordEvent(pten::Allocation *allocation, aclrtStream stream);
   constexpr static size_t kAlignment = 4096UL;
 
  protected:
@@ -41,7 +41,7 @@ class NPUPinnedAllocator : public Allocator {
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
-  std::unordered_map<Allocation *, aclrtEvent> npu_events_;
+  std::unordered_map<pten::Allocation *, aclrtEvent> npu_events_;
   mutable std::mutex mtx_;
 };
 
