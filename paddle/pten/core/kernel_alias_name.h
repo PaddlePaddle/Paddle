@@ -29,6 +29,9 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"flatten_contiguous_range", "flatten"},
     {"flatten_contiguous_range_grad", "flatten_grad"},
     {"matmul_v2", "matmul"},
+    {"matmul_v2_grad", "matmul_grad"},
+    {"matmul_v2_grad_grad", "matmul_double_grad"},
+    {"matmul_v2_triple_grad", "matmul_triple_grad"},
     {"reduce_mean", "mean"},
     {"reduce_sum", "sum"},
     {"reshape2", "reshape"},
@@ -36,6 +39,8 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"flatten", "deprecated"},
     {"flatten_grad", "deprecated"},
     {"matmul", "deprecated"},
+    {"matmul_grad", "deprecated"},
+    {"matmul_grad_grad", "deprecated"},
     {"mean", "deprecated"},
     {"reshape", "deprecated"},
     {"sum", "deprecated"}};

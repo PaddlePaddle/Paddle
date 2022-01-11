@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
+#include "paddle/pten/core/arg_map_context.h"
 #include "paddle/pten/include/core.h"
 
 namespace paddle {
@@ -436,6 +437,45 @@ class ExecutionContext {
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
+};
+
+// TODO(chenweihang): split impl based OpProto or Dygraph if needed
+class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
+ public:
+  explicit ExecutionArgumentMappingContext(const ExecutionContext& ctx)
+      : ctx_(ctx) {}
+
+  bool HasInput(const std::string& name) const override {
+    return ctx_.HasInput(name);
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    return ctx_.HasOutput(name);
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return ctx_.HasAttr(name);
+  }
+
+  size_t InputSize(const std::string& name) const override {
+    return ctx_.InputSize(name);
+  }
+
+  size_t OutputSize(const std::string& name) const override {
+    return ctx_.OutputSize(name);
+  }
+
+  bool IsDenseTensorInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::Tensor>() ||
+           ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::SelectedRows>();
+  }
+
+ private:
+  const ExecutionContext& ctx_;
 };
 
 template <>
