@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/scale_op.h"
 #include <string>
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/ops/compat/scale_args_fn.h"
 
 namespace paddle {
 namespace framework {
@@ -73,13 +74,8 @@ class ScaleOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasInput("ScaleTensor")) {
-      return framework::KernelSignature("scale.host", {"X", "ScaleTensor"},
-                                        {"bias", "bias_after_scale"}, {"Out"});
-    } else {
-      return framework::KernelSignature(
-          "scale", {"X"}, {"scale", "bias", "bias_after_scale"}, {"Out"});
-    }
+    framework::ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
+    return pten::ScaleOpArgumentMapping(arg_mapping_ctx);
   }
 };
 

@@ -39,7 +39,7 @@ class TestDistHeterDatasetAsync2x2(TestFleetHeterBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "3"
+            "CPU_NUM": "2"
         }
 
         required_envs.update(need_envs)

@@ -15,17 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/math_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(MathCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(MathCUDA);
-#endif
+namespace pten {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -48,17 +45,25 @@ TEST(DEV_API, mean) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  std::vector<int64_t> dims = {0, 1};
   // 2. test API
   auto out = pten::Mean<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      dims,
+      false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
   ASSERT_EQ(out.numel(), 1);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   auto expect_result = sum / 12;
   auto actual_result = out.data<float>()[0];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
+
+}  // namespace tests
+}  // namespace pten

@@ -16,12 +16,17 @@
 Functions for Auto SParsity (ASP) training and inference.
 """
 
+import os
 import copy
 import numpy as np
 import paddle
 from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
+from paddle.fluid import core
+
+OpRole = core.op_proto_and_checker_maker.OpRole
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 __all__ = [
     'decorate', 'prune_model', 'set_excluded_layers', 'reset_excluded_layers'
@@ -150,7 +155,8 @@ def prune_model(main_program=None,
                 n=2,
                 m=4,
                 mask_algo='mask_1d',
-                with_mask=True):
+                with_mask=True,
+                sharding=False):
     r"""
     Pruning parameters of supported layers in :attr:`main_program` via 
     specified mask generation function given by :attr:`mask_algo`. This 
@@ -173,6 +179,7 @@ def prune_model(main_program=None,
         mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
                                       The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
         with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Defalut is True.
+        sharding (bool, optional): Whether to turn on sharding (model parallel) during training. Please consider turning it ON when encountering OOM using sharding. Default is False.
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
@@ -214,8 +221,12 @@ def prune_model(main_program=None,
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
             sparsity.prune_model(main_program, mask_algo='mask_2d_best')
     """
-    device = paddle.device.get_device()
-    place = paddle.set_device(device)
+    if sharding:
+        gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+        place = paddle.CUDAPlace(gpu_id)
+    else:
+        device = paddle.device.get_device()
+        place = paddle.set_device(device)
 
     MaskAlgo_mapping = {
         'mask_1d': sparsity.MaskAlgo.MASK_1D,
@@ -528,8 +539,11 @@ class ASPHelper(object):
                         'Y': asp_info.mask_vars[param_grad[0].name]
                     },
                     outputs={'Out': param_grad[0]},
-                    attrs={'axis': -1,
-                           'use_mkldnn': False})
+                    attrs={
+                        'axis': -1,
+                        'use_mkldnn': False,
+                        OP_ROLE_KEY: OpRole.Optimize
+                    })
 
 
 class OptimizerWithSparsityGuarantee(object):

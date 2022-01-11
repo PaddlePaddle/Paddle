@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/collective/c_embedding_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -136,11 +136,10 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
 
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemcpyAsync(pad_data, mem_size, table_t->data<T>(), mem_size,
-                       ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
-      pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
+  platform::NPUMemcpyAsync(pad_data, table_t->data<T>(), mem_size,
+                           ACL_MEMCPY_DEVICE_TO_DEVICE, stream, mem_size);
+  platform::NPUMemsetAsync(pad_data + mem_size, 0, line_mem_size, stream,
+                           line_mem_size);
 
   output_t->mutable_data<T>(context.GetPlace());
   NpuOpRunner runner;
@@ -202,8 +201,8 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
   size_t table_t_pad_mem_size =
       table_t_pad.numel() * framework::SizeOfType(table_t_pad.type());
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(pad_data, table_t_pad_mem_size, 0,
-                                              table_t_pad_mem_size, stream));
+  platform::NPUMemsetAsync(pad_data, 0, table_t_pad_mem_size, stream,
+                           table_t_pad_mem_size);
 
   // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
   // can be different tensor, but in cann 20.2+, it does inplace operation.
@@ -225,8 +224,8 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));
 
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
-      dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
+  platform::NPUMemcpyAsync(dst, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE,
+                           stream, mem_size);
 }
 
 template <typename T>

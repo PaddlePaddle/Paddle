@@ -91,6 +91,8 @@ class TestEinsum(unittest.TestCase):
         np.random.seed(12345)
 
         cls.TEST_SAMPLES = {
+            "a": np.random.rand(1, 1),
+            "b": np.random.rand(1),
             "x": np.random.rand(5),
             "y": np.random.rand(7),
             "A": np.random.rand(4, 5),
@@ -177,6 +179,11 @@ class TestEinsumMatrixColSum(TestEinsum):
 class TestEinsumMatrixEleMul(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ij,ij->ij", "data": ["A", "A"]}
+
+
+class TestEinsumDegenerateMatrixVecMul(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,j", "data": ["a", "b"]}
 
 
 class TestEinsumMatrixVecMul(TestEinsum):

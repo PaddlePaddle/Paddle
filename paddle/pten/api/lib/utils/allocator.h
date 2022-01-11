@@ -28,8 +28,8 @@ class DefaultAllocator : public pten::Allocator {
   explicit DefaultAllocator(const paddle::platform::Place& place)
       : place_(place) {}
 
-  static void Delete(void* data) {
-    deleter_(static_cast<paddle::memory::Allocation*>(data));
+  static void Delete(Allocation* allocation) {
+    deleter_(allocation->CastContextWithoutCheck<paddle::memory::Allocation>());
   }
 
   Allocation Allocate(size_t bytes_size) override {
@@ -37,6 +37,8 @@ class DefaultAllocator : public pten::Allocator {
     void* ptr = a->ptr();
     return Allocation(ptr, a.release(), &Delete, place_);
   }
+
+  const paddle::platform::Place& place() override { return place_; }
 
  private:
   paddle::platform::Place place_;

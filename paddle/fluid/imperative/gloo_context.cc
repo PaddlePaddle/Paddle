@@ -37,7 +37,7 @@ void GLOOParallelContext::Init() {
   gloo_wrapper->SetSize(strategy_.nranks_);
   gloo_wrapper->SetRank(strategy_.local_rank_);
   gloo_wrapper->SetPrefix("");
-  gloo_wrapper->SetIface("lo");
+  gloo_wrapper->SetIface("");
   auto addr = paddle::string::Split(strategy_.trainer_endpoints_[0], ':');
   VLOG(4) << "Server is" << strategy_.trainer_endpoints_[0];
   std::string host = addr[0];
@@ -174,6 +174,11 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
           platform::errors::InvalidArgument("Invalid datatype for allreduce"));
     }
   }
+}
+
+void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Unimplemented inter-broadcast for CPU now."));
 }
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(

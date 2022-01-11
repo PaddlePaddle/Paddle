@@ -34,8 +34,8 @@ namespace tensorrt {
 class FcOpConverter : public OpConverter {
  public:
   nvinfer1::ILayer* reshape_before_fc(nvinfer1::ITensor* before_fc,
-                                      nvinfer1::Dims x_dim,
-                                      int x_num_col_dims) {
+                                      nvinfer1::Dims x_dim, int x_num_col_dims,
+                                      std::string output_name) {
     // add shuffle before fc
     nvinfer1::Dims reshape_before_fc_dim;
     reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
@@ -57,6 +57,9 @@ class FcOpConverter : public OpConverter {
     auto* reshape_before_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *before_fc);
     reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+    reshape_before_fc_layer->setName(
+        ("fc_op_reshape_before_fc: Shuffle (Output: " + output_name + ")")
+            .c_str());
     return reshape_before_fc_layer;
   }
 
@@ -164,17 +167,25 @@ class FcOpConverter : public OpConverter {
         auto* fc_layer_int8 =
             TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
                                  nv_ksize, weight.get(), bias.get());
+        fc_layer_int8->setName(
+            ("fc_op_int8_conv1x1: Convolution (Output: " + output_name + ")")
+                .c_str());
         engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
+          fc_after_reshape_int8->setName(
+              ("fc_op_int8_reshape_after_fc: Shuffle (Output: " + output_name +
+               ")")
+                  .c_str());
           nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
               engine_, Activation, *(fc_after_reshape_int8->getOutput(0)),
               nvinfer1::ActivationType::kRELU);
           RreplenishLayerAndOutput(relu_layer_int8, "relu_after_fc_shuffle",
                                    {output_name}, test_mode);
         } else {
-          RreplenishLayerAndOutput(fc_after_reshape_int8, "shuffle_after_fc",
+          RreplenishLayerAndOutput(fc_after_reshape_int8,
+                                   "fc_op_int8_reshape_after_fc: Shuffle",
                                    {output_name}, test_mode);
         }
       } else {
@@ -182,9 +193,16 @@ class FcOpConverter : public OpConverter {
         auto* fc_layer_float =
             TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs, n_output,
                                  weight.get(), bias.get());
+        fc_layer_float->setName(
+            ("fc_op_float: FullyConnected (Output: " + output_name + ")")
+                .c_str());
         auto* fc_after_reshape_float = reshape_after_fc(
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
+          fc_after_reshape_float->setName(
+              ("fc_op_float_reshape_after_fc: Shuffle (Output: " + output_name +
+               ")")
+                  .c_str());
           nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
               engine_, Activation, *(fc_after_reshape_float->getOutput(0)),
               nvinfer1::ActivationType::kRELU);
@@ -234,7 +252,8 @@ class FcOpConverter : public OpConverter {
             "converter expects x_dim.nbDims > x_num_col_dims, but "
             "x_dim.nbDims : %d, x_num_col_dims : %d.",
             x_dim.nbDims, x_num_col_dims));
-    auto* reshape_before_fc_layer = reshape_before_fc(X, x_dim, x_num_col_dims);
+    auto* reshape_before_fc_layer =
+        reshape_before_fc(X, x_dim, x_num_col_dims, output_name);
     auto* reshape_itensor = reshape_before_fc_layer->getOutput(0);
     if (enable_int8) {
       engine_->SetTensorDynamicRange(reshape_itensor, in_scale);

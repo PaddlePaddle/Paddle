@@ -632,6 +632,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   if (ret != 0) {
     LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
     sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
   }
 #else
   for (size_t index = 0; index < inputs->size(); ++index) {
@@ -685,9 +686,36 @@ void FleetWrapper::PullDenseVarsSync(
     paddle::ps::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
-  auto status =
-      pslib_ptr_->_worker_ptr->pull_dense(regions.data(), regions.size(), tid);
-  status.wait();
+  int32_t status = -1;
+  int32_t cnt = 0;
+  while (true) {
+    auto tt = pslib_ptr_->_worker_ptr->pull_dense(regions.data(),
+                                                  regions.size(), tid);
+    bool flag = true;
+
+    tt.wait();
+
+    try {
+      status = tt.get();
+    } catch (const std::future_error& e) {
+      VLOG(0) << "Caught a future_error with code" << e.code()
+              << ", Message:" << e.what();
+    }
+    if (status != 0) {
+      VLOG(0) << "fleet pull dense sync failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
+      flag = false;
+      cnt++;
+    }
+    if (cnt > 3) {
+      VLOG(0) << "fleet pull dense sync failed, retry 3 times";
+      exit(-1);
+    }
+
+    if (flag) {
+      break;
+    }
+  }
 #endif
 }
 
@@ -740,10 +768,10 @@ void FleetWrapper::PushDenseVarsAsync(
                  BOOST_GET_CONST(platform::CUDAPlace, place), g_data,
                  sizeof(float) * count, stream);
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, stream));
     hipEventSynchronize(event);
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
 #endif
 
@@ -1248,6 +1276,7 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id
                << ", from path: " << path << " failed";
+    exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
@@ -1263,6 +1292,7 @@ void FleetWrapper::LoadWithWhitelist(const uint64_t table_id,
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id
                << ", from path: " << path << " failed";
+    exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::LoadWhitelist does nothing when no pslib";
@@ -1311,6 +1341,7 @@ void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
   if (ret.get() != 0) {
     LOG(ERROR) << "save model of table id: " << table_id
                << ", to path: " << path << " failed";
+    exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::SaveModelOneTable does nothing when no pslib";
@@ -1328,6 +1359,7 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
   if (ret.get() != 0) {
     LOG(ERROR) << "save model (with prefix) of table id: " << table_id
                << ", to path: " << path << " failed";
+    exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::SaveModelOneTablePrefix does nothing when no pslib";
@@ -1335,7 +1367,7 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
 }
 
 void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   assert(date.size() == 8);
   int year = std::stoi(date.substr(0, 4));
   int month = std::stoi(date.substr(4, 2));
@@ -1351,9 +1383,10 @@ void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "setdate : " << date << " failed";
+    exit(-1);
   }
 #else
-  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib";
+  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib-gpu";
 #endif
 }
 
@@ -1371,7 +1404,7 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 }
 
 void FleetWrapper::SetFileNumOneShard(const uint64_t table_id, int file_num) {
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   auto ret =
       pslib_ptr_->_worker_ptr->set_file_num_one_shard(table_id, file_num);
   ret.wait();
@@ -1380,7 +1413,7 @@ void FleetWrapper::SetFileNumOneShard(const uint64_t table_id, int file_num) {
     LOG(ERROR) << "set_file_num_one_shard failed";
   }
 #else
-  VLOG(0) << "FleetWrapper::SetFileNumOneShard does nothing when no pslib";
+  VLOG(0) << "FleetWrapper::SetFileNumOneShard does nothing when no pslib-gpu";
 #endif
 }
 
@@ -1463,6 +1496,11 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->shrink(table_id);
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Shrink Sparse Table failed";
+    exit(-1);
+  }
 #else
   VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
 #endif
@@ -1472,6 +1510,10 @@ void FleetWrapper::ClearModel() {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->clear();
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Clear Model failed";
+  }
 #else
   VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
 #endif
@@ -1481,6 +1523,10 @@ void FleetWrapper::ClearOneTable(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->clear(table_id);
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Clear One Table failed table_id: " << table_id;
+  }
 #else
   VLOG(0) << "FleetWrapper::ClearOneTable does nothing when no pslib";
 #endif
@@ -1541,6 +1587,10 @@ void FleetWrapper::ClientFlush() {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->flush();
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Client Flush failed";
+  }
 #else
   VLOG(0) << "FleetWrapper::ServerFlush does nothing when no pslib";
 #endif

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/communicator.h"
+
 #include <google/protobuf/text_format.h>
 
 #include "gflags/gflags.h"
@@ -87,12 +88,25 @@ void Communicator::InitBrpcClient(
     servers_ = host_sign_list.size();
     _ps_env = paddle::distributed::PaddlePSEnvironment();
     _ps_env.set_ps_servers(&host_sign_list, servers_);
-    _worker_ptr = std::shared_ptr<paddle::distributed::PSClient>(
+    _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
         paddle::distributed::PSClientFactory::create(_ps_param));
     _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
                            trainer_id_);
   }
   return;
+}
+
+std::vector<uint64_t> Communicator::GetClientInfo() {
+  std::vector<uint64_t> res = _ps_env.get_client_info();
+  for (auto rr : res) {
+    VLOG(2) << "Communicator::GetClientInfo " << rr;
+  }
+  return res;
+}
+
+int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
+  int node = host_sign_list.size();
+  return _ps_env.set_ps_clients(host_sign_list.data(), node);
 }
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
@@ -130,6 +144,11 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     LoDTensor *tensor = var->GetMutable<LoDTensor>();
     VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
+
+    float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
+    VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
+            << table_id << " Temp_data[0] " << temp_recv_data[0]
+            << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       LoDTensor *temp_tensor =
@@ -349,20 +368,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       VLOG(1) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
-    BarrierWithTable(1);
-  } else {
-    BarrierWithTable(1);
-    for (auto &iter : recv_varname_to_ctx) {
-      auto &table_id = iter.first;
-      auto &varnames = iter.second;
-      RpcRecvDense(varnames, table_id, recv_scope_);
-      VLOG(1) << "pull dense param to table " << table_id
-              << " from 0' trainer done";
-    }
   }
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(100 + trainer_id_ * 10));
-  BarrierWithTable(1);
   return;
 }
 
@@ -519,6 +525,7 @@ void AsyncCommunicator::SendByCommunicator() {
           MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
         }
       }
+
       if (ctx.is_tensor_table) {
         SendGlobalStep(ctx, merged_var_num, send_scope_.get());
       } else if (ctx.is_sparse) {
@@ -543,6 +550,13 @@ void AsyncCommunicator::SendByCommunicator() {
   }
   for (auto &task : tasks) {
     task.wait();
+  }
+  return;
+}
+
+void AsyncCommunicator::PushDensePostProcessing() {
+  if (independent_recv_) {
+    grad_num_.fetch_add(1, std::memory_order_relaxed);
   }
   return;
 }
@@ -627,11 +641,13 @@ void AsyncCommunicator::Start() {
 }
 
 void AsyncCommunicator::Stop() {
-  VLOG(1) << "Communicator stop";
+  VLOG(1) << "Communicator stop begin";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
+    _worker_ptr->finalize_worker();
+    VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
       recv_thread_->join();
@@ -933,6 +949,10 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
     auto *old_var = old_scope_->Var(t);
     old_var->GetMutable<framework::LoDTensor>();
     framework::CopyVariable(*global_var, old_var);
+    // init pserver_scope_
+    auto *pserver_var = pserver_scope_->Var(t);
+    pserver_var->GetMutable<framework::LoDTensor>();
+    framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
 }

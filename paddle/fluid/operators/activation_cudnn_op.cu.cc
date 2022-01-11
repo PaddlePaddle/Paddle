@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_desc.h"
-#else
-#include "paddle/fluid/platform/cudnn_desc.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {
@@ -64,13 +60,13 @@ struct CudnnActivationFunctor {
     x_desc.set(x);
     out_desc.set(GET_DATA_SAFELY(out, "Output", "Out", "CudnnActivation"));
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenActivationForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationForward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
         platform::CudnnDataType<T>::kZero(), out_desc.desc(),
         out->mutable_data<T>(ctx_.GetPlace())));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnActivationForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationForward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
         platform::CudnnDataType<T>::kZero(), out_desc.desc(),
@@ -108,14 +104,14 @@ struct CudnnActivationGradFunctor {
     dout_desc.set(dout);
     dx_desc.set(GET_DATA_SAFELY(dx, "Output", "X@GRAD", "CudnnActivationGrad"));
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenActivationBackward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationBackward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
         dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),
         platform::CudnnDataType<T>::kZero(), dx_desc.desc(),
         dx->mutable_data<T>(ctx_.GetPlace())));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnActivationBackward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationBackward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
         dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),

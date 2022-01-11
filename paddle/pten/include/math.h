@@ -15,62 +15,48 @@ limitations under the License. */
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/include/infershape.h"
-#include "paddle/pten/kernels/cpu/math.h"
-#include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/kernels/complex_kernel.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
 
 template <typename T, typename ContextT>
 DenseTensor Sign(const ContextT& dev_ctx, const DenseTensor& x) {
-  auto out_meta = UnchangedInferShape(x.meta());
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(allocator, out_meta);
+  auto out_meta = UnchangedInferMeta(x.meta());
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
   Sign<T>(dev_ctx, x, &dense_out);
   return dense_out;
 }
 
 template <typename T, typename ContextT>
-DenseTensor Mean(const ContextT& dev_ctx, const DenseTensor& x) {
-  auto out_meta = ReductionInferShape(x.meta());
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(allocator, out_meta);
-  Mean<T>(dev_ctx, x, &dense_out);
+DenseTensor Scale(const ContextT& dev_ctx,
+                  const DenseTensor& x,
+                  const Scalar& scale,
+                  float bias,
+                  bool bias_after_scale) {
+  auto out_meta = UnchangedInferMeta(x.meta());
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  Scale<T, ContextT>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
 
 template <typename T, typename ContextT>
-DenseTensor Scale(const ContextT& dev_ctx,
-                  const DenseTensor& x,
-                  float scale,
-                  float bias,
-                  bool bias_after_scale) {
-  auto out_meta = UnchangedInferShape(x.meta());
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(allocator, out_meta);
-  Scale<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
+DenseTensor Conj(const ContextT& dev_ctx, const DenseTensor& x) {
+  auto out_meta = UnchangedInferMeta(x.meta());
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  Conj<T>(dev_ctx, x, &dense_out);
   return dense_out;
 }
 
-template <typename T, typename ContextT>
-DenseTensor Scale(const ContextT& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& scale,
-                  float bias,
-                  bool bias_after_scale) {
-  auto out_meta = UnchangedInferShape(x.meta());
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(allocator, out_meta);
-  ScaleHost<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
-  return dense_out;
-}
 }  // namespace pten
