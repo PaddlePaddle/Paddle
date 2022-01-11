@@ -30,8 +30,6 @@ class Variable;
 
 namespace paddle {
 namespace framework {
-std::shared_ptr<Metric> Metric::s_instance_ = nullptr;
-
 void DownpourWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
