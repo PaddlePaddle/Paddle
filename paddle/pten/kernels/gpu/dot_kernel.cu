@@ -16,7 +16,7 @@
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
