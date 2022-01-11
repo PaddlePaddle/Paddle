@@ -808,6 +808,7 @@ def monkey_patch_varbase():
         setattr(core.eager.EagerTensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.EagerTensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.EagerTensor, "clear_gradient", clear_gradient)
+        setattr(core.eager.EagerTensor, "clone", clone)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)
