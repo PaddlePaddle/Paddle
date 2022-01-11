@@ -176,7 +176,7 @@ class LazyZerosNPU {
           NpuOpRunner("ZerosLike", {*zero_tensor}, {*zero_tensor});
       runner_zeros.Run(stream);
       zero_tensor->check_memory_size();
-      zero_ptr = zero_tensor->data<void>();
+      zero_ptr = zero_tensor->data();
     }
 
     for (size_t i = 0; i < xs.size(); ++i) {

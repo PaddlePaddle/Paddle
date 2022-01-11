@@ -103,19 +103,17 @@ void SerializeLodTensor(framework::Variable* var,
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
-    iobuf->append(reinterpret_cast<const char*>(tensor->data<void>()),
-                  data_len);
+    iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr,
+        BOOST_GET_CONST(platform::CUDAPlace, tensor->place()), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
@@ -147,19 +145,17 @@ void SerializeSelectedRows(framework::Variable* var,
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
-    iobuf->append(reinterpret_cast<const char*>(tensor->data<void>()),
-                  data_len);
+    iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr,
+        BOOST_GET_CONST(platform::CUDAPlace, tensor->place()), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);

@@ -788,7 +788,7 @@ void ParallelExecutor::BCastParamsToDevices(
         void *buffer;
 
         if (i == 0 && trainer_id == 0) {
-          buffer = const_cast<void *>(main_tensor.data<void>());
+          buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
@@ -831,7 +831,7 @@ void ParallelExecutor::BCastParamsToDevices(
         void *buffer;
 
         if (i == 0 && trainer_id == 0) {
-          buffer = const_cast<void *>(main_tensor.data<void>());
+          buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
