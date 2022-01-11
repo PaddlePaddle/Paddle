@@ -358,15 +358,6 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
 
-      auto kernels_iter = all_op_kernels.find(op->Type());
-      PADDLE_ENFORCE_NE(
-          kernels_iter, all_op_kernels.end(),
-          platform::errors::Unavailable(
-              "There are no kernels which are registered in the %s operator.",
-              op->Type()));
-
-      OpKernelMap& kernels = kernels_iter->second;
-
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
@@ -408,15 +399,7 @@ void build_op_func_list(const platform::Place& place,
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
-      auto kernel_iter = kernels.find(expected_kernel_key);
-      PADDLE_ENFORCE_NE(
-          kernel_iter, kernels.end(),
-          platform::errors::NotFound(
-              "Operator (%s) does not have kernel for %s.", op->Type(),
-              KernelTypeToString(expected_kernel_key)));
-
       auto run_pten_kernel = false;
-
       if (FLAGS_run_pten_kernel &&
           pten::KernelFactory::Instance().HasCompatiblePtenKernel(
               op_with_kernel->Type())) {
@@ -434,6 +417,21 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->WriteBackToOutputs(&runtime_context,
                                            &pt_kernel_context);
       } else {
+        auto kernels_iter = all_op_kernels.find(op->Type());
+        PADDLE_ENFORCE_NE(
+            kernels_iter, all_op_kernels.end(),
+            platform::errors::Unavailable(
+                "There are no kernels which are registered in the %s operator.",
+                op->Type()));
+        OpKernelMap& kernels = kernels_iter->second;
+
+        auto kernel_iter = kernels.find(expected_kernel_key);
+        PADDLE_ENFORCE_NE(
+            kernel_iter, kernels.end(),
+            platform::errors::NotFound(
+                "Operator (%s) does not have kernel for %s.", op->Type(),
+                KernelTypeToString(expected_kernel_key)));
+
         op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
         op_func_node.kernel_func_(exec_ctx);
       }
