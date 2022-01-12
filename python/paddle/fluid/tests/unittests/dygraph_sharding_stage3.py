@@ -36,7 +36,6 @@ np.random.seed(2021)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-
 fleet.init(is_collective=True)
 
 
@@ -97,11 +96,9 @@ def train_mlp(model,
             models=model, level='O2', save_dtype='float32')
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = ShardingScaler(scaler)
-
     if sharding_stage == 2:
         optimizer = ShardingOptimizerStage2(
             params=model.parameters(), optim=optimizer, group=group)
-
         model = ShardingStage2(
             model,
             optimizer,
@@ -125,17 +122,14 @@ def train_mlp(model,
 
     for eop in range(epoch):
         model.train()
-
         for batch_id, data in enumerate(train_loader()):
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
-
             with paddle.amp.auto_cast(True, level='O2'):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label)
-
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             if not accumulate_grad:
                 if not use_pure_fp16:
@@ -145,7 +139,6 @@ def train_mlp(model,
                     scaler.scale(avg_loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
-
                 optimizer.clear_grad()
         if accumulate_grad:
             if not use_pure_fp16:
@@ -155,26 +148,16 @@ def train_mlp(model,
                 scaler.scale(avg_loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
-
             optimizer.clear_grad()
-
     if sharding_stage == 3:
         model.get_all_parameters()
-
     return model.parameters()
 
 
 def test_stage2_stage3():
-    mlp = MLP()
+    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8 = MLP(), MLP(), MLP(
+    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
     state_dict = mlp.state_dict()
-    mlp1 = MLP()
-    mlp2 = MLP()
-    mlp3 = MLP()
-    mlp4 = MLP()
-    mlp5 = MLP()
-    mlp6 = MLP()
-    mlp7 = MLP()
-    mlp8 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
@@ -243,7 +226,6 @@ def test_stage2_stage3():
                     stage3_params[i].numpy(),
                     stage3_params_re[j].numpy(),
                     rtol=1e-6)
-
     return
 
 

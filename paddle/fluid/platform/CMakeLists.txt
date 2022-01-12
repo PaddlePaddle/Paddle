@@ -169,7 +169,8 @@ cc_test(timer_test SRCS timer_test.cc DEPS timer)
 cc_library(lodtensor_printer SRCS lodtensor_printer.cc DEPS ddim place tensor scope lod_tensor variable_helper framework_proto)
 cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_printer)
 
-cc_library(host_event_recorder SRCS host_event_recorder.cc DEPS os_info)
+add_subdirectory(profiler)
+
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS host_event_recorder os_info device_tracer gpu_info enforce dynload_cuda)

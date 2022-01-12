@@ -152,7 +152,6 @@ def ShardingScaler(scaler):
         param_grads = []
         param_grads_fp16 = []
         param_grads_fp32 = []
-
         if hasattr(optimizer, "update_slice"):
             optimizer.update_slice()
             optimizer.update_scaler = True

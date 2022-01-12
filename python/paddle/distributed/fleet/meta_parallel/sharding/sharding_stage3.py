@@ -56,13 +56,6 @@ class ShardingStage3(nn.Layer):
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
 
-    # TODO (Baibaifan) 
-    # Feature Notes::
-    # 1. The model supports the segmentation of parameters by global ranks in layers.
-    # 2. Support communication flow and computing flow.
-    # 3. Support offload function.
-    # 4. Support the establishment of independent communication groups.
-
     def __init__(self,
                  layer,
                  optimizer,
@@ -92,9 +85,6 @@ class ShardingStage3(nn.Layer):
         self._rank = self._group.rank
         self._global_root_rank = 0  # picking rank 0 as the reference
         self._global_ranks = self._group.ranks
-
-        # Parameter segmentation for global ranks
-        # After flatten -> self._param2buffer_size, self._param2buffer, self._trainable_params
         self._param2buffer_size = dict()  # {param.name: size}
         self._param2buffer = dict(
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
@@ -126,16 +116,12 @@ class ShardingStage3(nn.Layer):
         self._order_tracer = OrderedDict()
         self._order_tracer["order"] = 0
         self._order_tracer["layer"] = []
-
         # Register task flow
         self._task_flow = TaskFlow()
-
         # Register forward hooks
         self._register_forward_hooks(self._layer)
-
         # Register backward parameter hooks
         self._register_backward_hooks()
-
         # Redefine optimizer step and clear function
         self._redefine_opt_step()
         self._redefine_opt_clear()
@@ -206,9 +192,6 @@ class ShardingStage3(nn.Layer):
         return fw
 
     def _segment_rank_params(self, layer, name="last_layer"):
-        """
-        Flatten parameters according to layer.
-        """
         current_layer_params = _current_layer_params(layer)
         if current_layer_params:
             CHECK_LAYER[id(layer)] = name
@@ -218,10 +201,6 @@ class ShardingStage3(nn.Layer):
             self._segment_rank_params(sub_layer, name)
 
     def _flatten_layer_params(self, layer, current_layer_params):
-        """
-        Parameter segmentation and memory integration.
-        """
-
         def _add_manage_info(trainable_param):
             return _PartitionParam(trainable_param)
 
@@ -261,9 +240,6 @@ class ShardingStage3(nn.Layer):
             self._param_storage(param, buffer_size)
 
     def _param_storage(self, param, buffer_size):
-        """
-        This is a function to simplify the handling of parameter InternalStorages.
-        """
         assert isinstance(buffer_size, int)
         value = np.zeros(
             buffer_size,
@@ -298,16 +274,6 @@ class ShardingStage3(nn.Layer):
                 param.fw_storage, Type.fp32.value)
 
     def _register_forward_hooks(self, layer):
-        """
-        Register pylayer to manage memory slices.
-        There are four stages:
-        FW
-        1. Before the forward layers, synchronize the full parameters.
-        2. After the forward layers, release the full parameter and keep the parameter slice.
-        BW
-        3. Before the backward layers, synchronize the full parameters and create param's grad.
-        4. After the gradient accumulation, release the full parameter and keep the parameter slice.
-        """
         current_layer_params = _current_layer_params(layer)
         if current_layer_params:
             self._register_forward_all_hooks(layer, self._task_flow)
@@ -336,10 +302,6 @@ class ShardingStage3(nn.Layer):
 
     @paddle.no_grad()
     def _sync_buffers(self):
-        """
-        Sync all the param buffers from all ranks (exp: batch norm statistics).
-        """
-
         for buffer in self._layer.buffers(include_sublayers=True):
             dist.broadcast(
                 buffer,
@@ -357,9 +319,6 @@ class ShardingStage3(nn.Layer):
             return getattr(self._layer, name)
 
     def _update_params(self):
-        """
-        Update parameters to optimizer memory slice.
-        """
         update_list = []
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
@@ -379,9 +338,6 @@ class ShardingStage3(nn.Layer):
         return update_list
 
     def get_all_parameters(self):
-        """
-        Get the full parameters and return the corresponding task flows.
-        """
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
@@ -495,19 +451,14 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank,
 
     if layer_id not in order_tracer.keys() or sync_comm:
         use_calc, sync_wait = True, True
-
-        # Whether to use calc stream
         task_flow.use_calc[layer_id] = use_calc
     else:
-        # Whether to use calc stream
         task_flow.use_calc[layer_id] = use_calc
-        # wait current layer params
         _wait_layer(trainable_params, layer_id, task_flow, group, use_calc)
 
         if layer_id == order_tracer["layer"][-1]: return
         order_ = order_tracer[layer_id]
         layer_id = order_tracer["layer"][order_ + 1]
-
     _allgather_buffer(
         layer_id,
         trainable_params,
@@ -515,7 +466,6 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank,
         use_calc_stream=use_calc,
         task_flow=task_flow,
         sync_wait=sync_wait)
-
     return
 
 
@@ -524,8 +474,6 @@ class ForwardPostHooks(PyLayer):
     def forward(ctx, inputs, layer, order_tracer, trainable_params,
                 param2buffer, param2buffer_size, rank, group, sync_comm,
                 task_flow):
-
-        # release current layer full params
         _release_param(layer, trainable_params, param2buffer, rank, task_flow)
 
         layer_id = id(layer)
@@ -534,8 +482,6 @@ class ForwardPostHooks(PyLayer):
             order_tracer[layer_id] = order_
             order_tracer["order"] += 1
             order_tracer["layer"].append(layer_id)
-
-        #Record bw info 
         ctx.order_tracer = order_tracer
         ctx.task_flow = task_flow
         ctx.group = group
@@ -558,8 +504,6 @@ class ForwardPostHooks(PyLayer):
         sync_comm = ctx.sync_comm
         layer_id = id(layer)
         use_calc, sync_wait = False, False
-
-        # Allgather params synchronization
         if sync_comm:
             use_calc, sync_wait = True, True
             _allgather_buffer(
@@ -571,12 +515,8 @@ class ForwardPostHooks(PyLayer):
                 sync_wait=sync_wait)
         else:
             _wait_layer(trainable_params, layer_id, task_flow, group, use_calc)
-
-        # Create params's grad
         _create_params_grad(layer, trainable_params, param2buffer_size,
                             task_flow)
-
-        # Whether to use calc stream
         task_flow.use_calc[layer_id] = use_calc
         if layer_id != order_tracer["layer"][0] and not sync_comm:
             layer_next_id = order_tracer["layer"][order_tracer[layer_id] - 1]
@@ -666,8 +606,6 @@ def _allgather_buffer(layer_id,
         with paddle.amp.auto_cast(enable=False):
             full_param = _all_gather(
                 param.fw_storage, group, use_calc_stream=use_calc_stream)
-
-        # Allgather current layer in the 1st step 
         if sync_wait:
             with paddle.amp.auto_cast(enable=False):
                 dist.wait(
