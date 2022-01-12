@@ -675,8 +675,11 @@ void LaunchKernel(const KPDevice &ctx,
                                                                 tail_tid,
                                                                 func);
 #else
-  const int threads = 256;
-  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  const unsigned int threads = 256;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int num_rows =
+      ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  unsigned int blocks = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   int tail_tid = numel % (VecSize * threads);
   auto stream = ctx.stream();

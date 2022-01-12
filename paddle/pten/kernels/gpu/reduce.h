@@ -307,7 +307,7 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   // get the parameters of reduceKernel
-  void Run() {
+  void Run(const paddle::platform::Place& place) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
@@ -319,6 +319,9 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
+
+    // step5: limit the grid to prevent thead overflow
+    LimitGridDim(place);
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -599,6 +602,15 @@ struct ReduceConfig {
 
     block = block_dim;
     grid = grid_dim;
+  }
+
+  void LimitGridDim(const paddle::platform::Place& place) {
+    auto* ctx = static_cast<paddle::platform::CUDADeviceContext*>(
+        paddle::platform::DeviceContextPool::Instance().Get(place));
+    dim3 max_grid_dim = ctx->GetCUDAMaxGridDimSize();
+    grid.x = grid.x < max_grid_dim.x ? grid.x : max_grid_dim.x;
+    grid.y = grid.y < max_grid_dim.y ? grid.y : max_grid_dim.y;
+    grid.z = grid.z < max_grid_dim.z ? grid.z : max_grid_dim.z;
   }
 
  public:
@@ -1075,7 +1087,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
 
   auto x_dim = paddle::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
-  config.Run();
+  config.Run(x.place());
   int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
