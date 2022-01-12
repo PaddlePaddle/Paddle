@@ -19,9 +19,9 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 // #include "paddle/fluid/platform/variant.h"
-// #ifdef PADDLE_WITH_ASCEND_CL
-// #include "paddle/fluid/platform/device/npu/enforce_npu.h"
-// #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
+#endif
 
 #include "paddle/pten/common/place.h"
 namespace paddle {

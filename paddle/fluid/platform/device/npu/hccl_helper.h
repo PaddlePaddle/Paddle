@@ -100,7 +100,7 @@ struct HCCLContextMap {
                           "The HCCL place should not be empty."));
     order_.reserve(places.size());
     for (auto &p : places) {
-      int dev_id = BOOST_GET_CONST(NPUPlace, p).device;
+      int dev_id = p.device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, HCCLContext(dev_id));
     }
@@ -251,7 +251,7 @@ class HCCLCommunicator {
     for (int ring_id = 0; ring_id < nrings; ++ring_id) {
       for (size_t p = 0; p < places.size(); ++p) {
         int rank = trainer_id * places.size() + p;
-        int dev_id = BOOST_GET_CONST(NPUPlace, places[p]).device;
+        int dev_id = places[p].device;
         auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
         HCCLCommContext::Instance().AssignHCCLComm(ctx.comm_, nranks, rank,
                                                    dev_id, ring_id);

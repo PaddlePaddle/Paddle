@@ -1334,7 +1334,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (is_xpu_place(expected_kernel_key.place_) &&
+  if (platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
        paddle::platform::is_in_xpu_black_list(type_))) {
@@ -1347,7 +1347,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
-      is_npu_place(expected_kernel_key.place_)) {
+      platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -1357,7 +1357,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #endif
 #ifdef PADDLE_WITH_MLU
   if (kernel_iter == kernels.end() &&
-      is_mlu_place(expected_kernel_key.place_)) {
+      platform::is_mlu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing MLU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

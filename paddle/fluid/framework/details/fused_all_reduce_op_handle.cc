@@ -103,7 +103,7 @@ void FusedAllReduceOpHandle::RunImpl() {
   gpuStream_t compute_stream{nullptr};
 
   if (FLAGS_allreduce_record_one_event) {
-    auto gpu_place = places_[0];
+    auto gpu_place = platform::CUDAPlace(places_[0].GetDeviceId());
     compute_stream =
         platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);

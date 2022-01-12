@@ -31,60 +31,6 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
   std::memcpy(dst, src, num);
 }
 
-// NOTE: Only for CPUPlace and PinnedPlace.
-template <>
-void Copy<pten::Place, pten::Place>(pten::Place dst_place, void* dst,
-                                    pten::Place src_place, const void* src,
-                                    size_t num) {
-  if (UNLIKELY(num == 0)) return;
-  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place;
-  if (src_place.GetType() == pten::AllocationType::CPU &&
-      dst_place.GetType() == pten::AllocationType::CPU) {
-    std::memcpy(dst, src, num);
-  }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (src_place.GetType() == pten::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == pten::AllocationType::GPUPINNED) {
-    std::memcpy(dst, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED &&
-             dst_place.GetType() == pten::AllocationType::CPU) {
-    std::memcpy(dst, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED &&
-             dst_place.GetType() == pten::AllocationType::GPUPINNED) {
-    std::memcpy(dst, src, num);
-  }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  else if (src_place.GetType() == pten::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == pten::AllocationType::NPUPINNED) {
-    std::memcpy(dst, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::NPUPINNED &&
-             dst_place.GetType() == pten::AllocationType::CPU) {
-    std::memcpy(dst, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::NPUPINNED &&
-             dst_place.GetType() == pten::AllocationType::NPUPINNED) {
-    std::memcpy(dst, src, num);
-  }
-#endif
-}
-
-// NOTE: Only for (CPUPlace) -> (CPUPlace and PinnedPlace).
-template <>
-void Copy<pten::Place, pten::CPUPlace>(pten::Place dst_place, void* dst,
-                                       pten::CPUPlace src_place,
-                                       const void* src, size_t num) {
-  Copy(dst_place, dst, pten::Place(src_place.GetType()), src, num);
-}
-
-// NOTE: Only for (CPUPlace and PinnedPlace) -> (CPUPlace).
-template <>
-void Copy<pten::CPUPlace, pten::Place>(pten::CPUPlace dst_place, void* dst,
-                                       pten::Place src_place, const void* src,
-                                       size_t num) {
-  Copy(pten::Place(dst_place.GetType()), dst, src_place, src, num);
-}
-
 #ifdef PADDLE_WITH_IPU
 template <>
 void Copy<platform::IPUPlace, platform::CPUPlace>(platform::IPUPlace dst_place,
@@ -202,33 +148,6 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
     return;
   }
   platform::MemcpySyncD2D(dst, dst_place, src, src_place, num);
-}
-
-// NOTE: only for CPUPlace and XPUPlace.
-template <>
-void Copy<pten::Place, pten::Place>(pten::Place dst_place, void* dst,
-                                    pten::Place src_place, const void* src,
-                                    size_t num) {
-  if (src_place.GetType() == pten::AllocationType::CPU &&
-      dst_place.GetType() == pten::AllocationType::CPU) {
-    platform::CPUPlace place_dst, place_src;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::CPU &&
-             dst_place.GetType() == pten::AllocationType::XPU) {
-    platform::XPUPlace place_dst(dst_place.GetDeviceId());
-    platform::CPUPlace place_src;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::XPU &&
-             dst_place.GetType() == pten::AllocationType::CPU) {
-    platform::XPUPlace place_src(src_place.GetDeviceId());
-    platform::CPUPlace place_dst;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == pten::AllocationType::XPU &&
-             dst_place.GetType() == pten::AllocationType::XPU) {
-    platform::XPUPlace place_src(src_place.GetDeviceId());
-    platform::XPUPlace place_dst(dst_place.GetDeviceId());
-    return Copy(place_dst, dst, place_src, src, num);
-  }
 }
 
 // NOTE: only for (CPUPlace and XPUPlace) -> (XPUPlace).
@@ -1034,6 +953,82 @@ void Copy<pten::Place, pten::MLUPlace>(pten::Place dst_place, void* dst,
 }
 
 #endif  // PADDLE_WITH_MLU
+
+// NOTE: Only for CPUPlace, XPUPlace and PinnedPlace.
+template <>
+void Copy<pten::Place, pten::Place>(pten::Place dst_place, void* dst,
+                                    pten::Place src_place, const void* src,
+                                    size_t num) {
+  if (UNLIKELY(num == 0)) return;
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (src_place.GetType() == pten::AllocationType::CPU &&
+      dst_place.GetType() == pten::AllocationType::CPU) {
+    std::memcpy(dst, src, num);
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  else if (src_place.GetType() == pten::AllocationType::CPU &&  // NOLINT
+           dst_place.GetType() == pten::AllocationType::GPUPINNED) {
+    std::memcpy(dst, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED &&
+             dst_place.GetType() == pten::AllocationType::CPU) {
+    std::memcpy(dst, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED &&
+             dst_place.GetType() == pten::AllocationType::GPUPINNED) {
+    std::memcpy(dst, src, num);
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  else if (src_place.GetType() == pten::AllocationType::CPU &&  // NOLINT
+           dst_place.GetType() == pten::AllocationType::NPUPINNED) {
+    std::memcpy(dst, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::NPUPINNED &&
+             dst_place.GetType() == pten::AllocationType::CPU) {
+    std::memcpy(dst, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::NPUPINNED &&
+             dst_place.GetType() == pten::AllocationType::NPUPINNED) {
+    std::memcpy(dst, src, num);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  else if (src_place.GetType() == pten::AllocationType::CPU &&  // NOLINT
+           dst_place.GetType() == pten::AllocationType::CPU) {
+    platform::CPUPlace place_dst, place_src;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::CPU &&
+             dst_place.GetType() == pten::AllocationType::XPU) {
+    platform::XPUPlace place_dst(dst_place.GetDeviceId());
+    platform::CPUPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::XPU &&
+             dst_place.GetType() == pten::AllocationType::CPU) {
+    platform::XPUPlace place_src(src_place.GetDeviceId());
+    platform::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == pten::AllocationType::XPU &&
+             dst_place.GetType() == pten::AllocationType::XPU) {
+    platform::XPUPlace place_src(src_place.GetDeviceId());
+    platform::XPUPlace place_dst(dst_place.GetDeviceId());
+    return Copy(place_dst, dst, place_src, src, num);
+  }
+#endif
+}
+
+// NOTE: Only for (CPUPlace) -> (CPUPlace and PinnedPlace).
+template <>
+void Copy<pten::Place, pten::CPUPlace>(pten::Place dst_place, void* dst,
+                                       pten::CPUPlace src_place,
+                                       const void* src, size_t num) {
+  Copy(dst_place, dst, pten::Place(src_place.GetType()), src, num);
+}
+
+// NOTE: Only for (CPUPlace and PinnedPlace) -> (CPUPlace).
+template <>
+void Copy<pten::CPUPlace, pten::Place>(pten::CPUPlace dst_place, void* dst,
+                                       pten::Place src_place, const void* src,
+                                       size_t num) {
+  Copy(pten::Place(dst_place.GetType()), dst, src_place, src, num);
+}
 
 }  // namespace memory
 }  // namespace paddle
