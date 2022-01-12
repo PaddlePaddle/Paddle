@@ -19,9 +19,12 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class Tensor;
 class Scope;
 }  // namespace framework
 }  // namespace paddle

@@ -42,7 +42,7 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
-  dst->Resize(src.dims());
+  dst->ResizeAndAllocate(src.dims());
   auto* dst_ptr = dst->mutable_data();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {

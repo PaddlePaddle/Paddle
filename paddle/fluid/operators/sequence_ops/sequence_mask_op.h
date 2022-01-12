@@ -86,7 +86,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
                                   "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*max_len_tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*max_len_tensor, platform::CPUPlace(),
+                                          &temp);
         maxlen = *temp.data<int32_t>();
       } else {
         maxlen = *max_len_tensor->data<int32_t>();

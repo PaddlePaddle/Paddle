@@ -58,7 +58,7 @@ inline std::vector<int> get_new_shape(
     if (platform::is_gpu_place(tensor->place()) ||
         platform::is_xpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
 
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
@@ -412,7 +412,8 @@ class ReshapeKernel {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
           framework::Tensor temp;
-          TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+          paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                            &temp);
           pt_vec_shape.push_back(
               std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
         } else {
@@ -426,7 +427,8 @@ class ReshapeKernel {
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*shape_tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                          &temp);
         pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
       } else {
         pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);

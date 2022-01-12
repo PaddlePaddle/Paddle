@@ -21,11 +21,14 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 class ProgramDesc;
 class Scope;
-class Tensor;
 }
 
 namespace distributed {

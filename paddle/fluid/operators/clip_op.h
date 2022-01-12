@@ -64,7 +64,8 @@ class ClipKernel : public framework::OpKernel<T> {
       auto* max_t = context.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
       if (platform::is_gpu_place(max_t->place())) {
-        TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
+        paddle::framework::TensorCopySync(*max_t, platform::CPUPlace(),
+                                          &max_cpu);
         max_data = max_cpu.data<T>();
       }
       max = max_data[0];
@@ -77,7 +78,8 @@ class ClipKernel : public framework::OpKernel<T> {
       auto* min_t = context.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
       if (platform::is_gpu_place(min_t->place())) {
-        TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
+        paddle::framework::TensorCopySync(*min_t, platform::CPUPlace(),
+                                          &min_cpu);
         min_data = min_cpu.data<T>();
       }
       min = min_data[0];
@@ -141,7 +143,8 @@ class ClipGradKernel : public framework::OpKernel<T> {
       auto* max_t = context.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
       if (platform::is_gpu_place(max_t->place())) {
-        TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
+        paddle::framework::TensorCopySync(*max_t, platform::CPUPlace(),
+                                          &max_cpu);
         max_data = max_cpu.data<T>();
       }
       max = max_data[0];
@@ -154,7 +157,8 @@ class ClipGradKernel : public framework::OpKernel<T> {
       auto* min_t = context.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
       if (platform::is_gpu_place(min_t->place())) {
-        TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
+        paddle::framework::TensorCopySync(*min_t, platform::CPUPlace(),
+                                          &min_cpu);
         min_data = min_cpu.data<T>();
       }
       min = min_data[0];

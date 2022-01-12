@@ -81,7 +81,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
 
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
-    TensorCopy(*x, context.GetPlace(), &x_tmp);
+    paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 

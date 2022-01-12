@@ -22,11 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/float16.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 

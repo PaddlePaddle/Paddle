@@ -43,7 +43,7 @@ void Copy(const Context& dev_ctx,
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
-  dst->Resize(src.dims());
+  dst->ResizeAndAllocate(src.dims());
   CHECK(dst->layout() == src.layout());
   auto size = src.numel() *
               paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));

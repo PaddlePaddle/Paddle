@@ -101,8 +101,8 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
   auto *output = scope.Var("Output")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(cpu_input, place, input);
-  TensorCopySync(cpu_filter, place, filter);
+  paddle::framework::TensorCopySync(cpu_input, place, input);
+  paddle::framework::TensorCopySync(cpu_filter, place, filter);
 
   framework::AttributeMap attrs;
   bool use_cudnn = true;
@@ -119,7 +119,7 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
       {{"Output", {"Output"}}}, attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*output, platform::CPUPlace(), cpu_output);
+  paddle::framework::TensorCopySync(*output, platform::CPUPlace(), cpu_output);
 }
 
 // Use Paddle conv2d_grad op results as baseline
@@ -140,9 +140,9 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
       scope.Var("Filter@GRAD")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(cpu_input, place, input);
-  TensorCopySync(cpu_filter, place, filter);
-  TensorCopySync(cpu_output_grad, place, output_grad);
+  paddle::framework::TensorCopySync(cpu_input, place, input);
+  paddle::framework::TensorCopySync(cpu_filter, place, filter);
+  paddle::framework::TensorCopySync(cpu_output_grad, place, output_grad);
 
   framework::AttributeMap attrs;
   bool use_cudnn = true;
@@ -172,8 +172,10 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*input_grad, platform::CPUPlace(), cpu_input_grad);
-  TensorCopySync(*filter_grad, platform::CPUPlace(), cpu_filter_grad);
+  paddle::framework::TensorCopySync(*input_grad, platform::CPUPlace(),
+                                    cpu_input_grad);
+  paddle::framework::TensorCopySync(*filter_grad, platform::CPUPlace(),
+                                    cpu_filter_grad);
 }
 
 template <typename T>
@@ -313,8 +315,8 @@ class CudnnNormConvolutionTester {
     framework::Tensor sum_of_square;
 
     auto place = ctx.GetPlace();
-    TensorCopySync(cpu_input_, place, &input);
-    TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
+    paddle::framework::TensorCopySync(cpu_input_, place, &input);
+    paddle::framework::TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
 
     output.Resize(framework::make_ddim(
         {batch_size_, out_height_, out_width_, output_channels_}));
@@ -329,9 +331,10 @@ class CudnnNormConvolutionTester {
                                         dilation_, group_);
     conv_op.Forward(ctx, input, filter_nhwc, &output, &sum, &sum_of_square);
 
-    TensorCopySync(output, platform::CPUPlace(), cpu_output);
-    TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
-    TensorCopySync(sum_of_square, platform::CPUPlace(), cpu_sum_of_square);
+    paddle::framework::TensorCopySync(output, platform::CPUPlace(), cpu_output);
+    paddle::framework::TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
+    paddle::framework::TensorCopySync(sum_of_square, platform::CPUPlace(),
+                                      cpu_sum_of_square);
   }
 
   void FusedBackward(const platform::CUDADeviceContext &ctx,
@@ -344,9 +347,9 @@ class CudnnNormConvolutionTester {
     framework::Tensor filter_grad;
 
     auto place = ctx.GetPlace();
-    TensorCopySync(cpu_input_, place, &input);
-    TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
-    TensorCopySync(cpu_output_grad_, place, &output_grad);
+    paddle::framework::TensorCopySync(cpu_input_, place, &input);
+    paddle::framework::TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
+    paddle::framework::TensorCopySync(cpu_output_grad_, place, &output_grad);
 
     input_grad.Resize(input.dims());
     filter_grad.Resize(filter_nhwc.dims());
@@ -360,8 +363,10 @@ class CudnnNormConvolutionTester {
     conv_grad_op.Backward(ctx, input, filter_nhwc, output_grad, &input_grad,
                           &filter_grad);
 
-    TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
-    TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
+    paddle::framework::TensorCopySync(input_grad, platform::CPUPlace(),
+                                      cpu_input_grad);
+    paddle::framework::TensorCopySync(filter_grad, platform::CPUPlace(),
+                                      cpu_filter_grad);
   }
 
  private:

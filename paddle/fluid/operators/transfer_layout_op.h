@@ -27,9 +27,12 @@ class DeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle

@@ -162,7 +162,7 @@ void MatMulFunction(const Context& context,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->Resize(paddle::framework::make_ddim(out_dims));
+    Out->ResizeAndAllocate(paddle::framework::make_ddim(out_dims));
     Out->mutable_data<T>();
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -240,7 +240,7 @@ void MatMulFunction(const Context& context,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->Resize(paddle::framework::make_ddim(out_dims));
+    Out->ResizeAndAllocate(paddle::framework::make_ddim(out_dims));
     Out->mutable_data<T>();
 
     if (trans_x) {
@@ -328,7 +328,7 @@ void MatMulFunction(const Context& context,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->Resize(paddle::framework::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(paddle::framework::make_ddim(out_broadcast_dims));
   Out->mutable_data<T>();
 
   const int batch_dim = ndim - 2;

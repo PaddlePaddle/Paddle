@@ -1152,7 +1152,7 @@ PYBIND11_MODULE(core_noavx, m) {
              // follow fetch_op's inplementation
              framework::Tensor dst;
              if (self.IsInitialized() && self.numel() > 0) {
-               TensorCopySync(self, place, &dst);
+               paddle::framework::TensorCopySync(self, place, &dst);
              } else {
                // Not copy, if the src tensor is empty.
                dst.clear();

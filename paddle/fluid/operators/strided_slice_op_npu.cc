@@ -199,9 +199,9 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
     if (need_reverse) {
       Tensor out_tmp;
       out_tmp.mutable_data<T>(out_dims, place);
-      TensorCopy(*out, place,
-                 ctx.template device_context<platform::DeviceContext>(),
-                 &out_tmp);
+      paddle::framework::TensorCopy(
+          *out, place, ctx.template device_context<platform::DeviceContext>(),
+          &out_tmp);
 
       Tensor reverse_axis;
       std::vector<int> reverse_axis_vector;

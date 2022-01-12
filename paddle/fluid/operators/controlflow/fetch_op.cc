@@ -39,12 +39,13 @@ static void DataCopy(const framework::LoDTensor &src_item,
                                  : paddle::platform::MKLDNNDeviceContext::tls()
                                        .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
-      TensorCopySync(out, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
-      TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, platform::CPUPlace(),
+                                        dst_item);
     }
 #else
-    TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
   } else {
     // Not copy, if the src tensor is empty.

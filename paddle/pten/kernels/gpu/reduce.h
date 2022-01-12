@@ -326,7 +326,7 @@ struct ReduceConfig {
                      const paddle::platform::Place& place,
                      pten::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(paddle::framework::make_ddim(
+      tmp->ResizeAndAllocate(paddle::framework::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
       output_data = tmp->mutable_data<Ty>();
     } else {

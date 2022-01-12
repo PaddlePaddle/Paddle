@@ -36,6 +36,10 @@ using gpuStream_t = hipStream_t;
 #include "paddle/pten/common/layout.h"
 
 namespace pten {
+class DenseTensor;
+}  // namespace pten
+
+namespace pten {
 class TensorBase;
 }  // namespace pten
 
@@ -48,7 +52,6 @@ class Place;
 }
 namespace experimental {
 
-class Tensor;
 class CompatiblePTenTensorUtils;
 
 class AbstractAutogradMeta {
