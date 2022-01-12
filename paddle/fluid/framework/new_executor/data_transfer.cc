@@ -94,8 +94,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // 2. Execute infer shape and choose kernel
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-  static_cast<const framework::OperatorWithKernel*>(op.get())->InferShape(
-      &infer_shape_ctx);
+  op.get()->Info().infer_shape_(&infer_shape_ctx);
   auto kernels_iter = all_op_kernels.find(op_type);
   PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
                     platform::errors::Unavailable(

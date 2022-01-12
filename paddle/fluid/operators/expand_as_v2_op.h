@@ -91,17 +91,34 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(target_shape[i], 0,
                         platform::errors::InvalidArgument(
                             "The value of target shape cannot be zero."));
-      if (vec_in_dims[i] != 1) {
-        PADDLE_ENFORCE_EQ(
-            vec_in_dims[i], target_shape[i],
+      if (i < diff) {
+        PADDLE_ENFORCE_GT(
+            target_shape[i], 0,
             platform::errors::InvalidArgument(
-                "The value (%d) of the non-singleton dimension does not match"
-                " the corresponding value (%d) in "
-                "target tensor for expand_as_v2 op.",
-                vec_in_dims[i], target_shape[i]));
-        repeat_times[i] = 1;
-      } else {
+                "The expanded size (%d) for non-existing dimensions must be "
+                "positive for expand_as_v2 op.",
+                target_shape[i]));
         repeat_times[i] = target_shape[i];
+      } else if (target_shape[i] > 0) {
+        if (vec_in_dims[i] != 1) {
+          PADDLE_ENFORCE_EQ(
+              vec_in_dims[i], target_shape[i],
+              platform::errors::InvalidArgument(
+                  "The value (%d) of the non-singleton dimension does not match"
+                  " the corresponding value (%d) in shape for expand_as_v2 op.",
+                  vec_in_dims[i], target_shape[i]));
+          repeat_times[i] = 1;
+        } else {
+          repeat_times[i] = target_shape[i];
+        }
+      } else {
+        PADDLE_ENFORCE_EQ(
+            target_shape[i], -1,
+            platform::errors::InvalidArgument(
+                "When the value in shape is negative for expand_as_v2 op, "
+                "only -1 is supported, but the value received is %d.",
+                target_shape[i]));
+        repeat_times[i] = 1;
       }
     }
     auto* out0 = context.Output<Tensor>("Out");

@@ -42,7 +42,7 @@ struct UnsignedPowFunctor {
   HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
     this->porder = porder;
   }
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(inline_pow(inline_abs(x), static_cast<Tx>(porder)));
   }
   float porder;
