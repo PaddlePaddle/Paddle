@@ -194,7 +194,6 @@ class EagerTensor final {
     }
     tensor_->copy_(*(src.tensor_.get()), blocking);
   }
-
   /* Part 6: Operator overloading */
   EagerTensor& operator=(const EagerTensor& x) & {
     tensor_ = x.tensor_;
@@ -237,7 +236,7 @@ class EagerTensor final {
           // Contruct framework::Tensor from egr::EagerTensor
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
-          if (tensor_dense) {
+          if (tensor_dense && tensor_dense.get()) {
             paddle::experimental::SharesStorage(tensor_dense.get(),
                                                 framework_tensor);
           } else {
@@ -291,11 +290,10 @@ class EagerTensor final {
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
-    if (this->initialized()) {
+    if (defined()) {
       VLOG(8) << "Sync Var to initialized tensor for: " << name();
       paddle::experimental::ReMakePtenDenseTensor(
-          framework_tensor,
-          static_cast<pten::DenseTensor*>(this->impl().get()));
+          framework_tensor, static_cast<pten::DenseTensor*>(impl().get()));
     } else {
       VLOG(8) << "Sync Var to uninitialized tensor for: " << name();
       this->set_impl(std::move(

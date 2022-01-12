@@ -233,6 +233,44 @@ static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_tensor__share_buffer_to(EagerTensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor* src_ptr =
+      &(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
+            ->eager_tensor);
+  PADDLE_ENFORCE_EQ(self->eager_tensor.initialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized! please initialize "
+                        "src tensor before share_buffer_with to other.",
+                        self->eager_tensor.name()));
+  src_ptr->set_impl(self->eager_tensor.impl());
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor__is_shared_buffer_with(EagerTensorObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor src_tensor =
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  PADDLE_ENFORCE_EQ(src_tensor.initialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized! please initialize "
+                        "src tensor before share_buffer_with to other.",
+                        src_tensor.name()));
+  bool res = false;
+  if (!self->eager_tensor.defined() || !src_tensor.defined()) {
+    return ToPyObject(res);
+  }
+  res = (self->eager_tensor.impl().get() == src_tensor.impl().get());
+  return ToPyObject(res);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_tensor_method_detach(EagerTensorObject* self,
                                             PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
@@ -276,6 +314,12 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))eager_tensor__clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_shared_buffer_to",
+     (PyCFunction)(void (*)(void))eager_tensor__share_buffer_to,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_share_buffer_with",
+     (PyCFunction)(void (*)(void))eager_tensor__is_shared_buffer_with,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"detach", (PyCFunction)(void (*)(void))eager_tensor_method_detach,
      METH_VARARGS | METH_KEYWORDS, NULL},

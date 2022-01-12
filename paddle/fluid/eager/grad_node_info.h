@@ -105,7 +105,6 @@ class GradNodeBase {
    * This one is called slot by slot
    * **/
   void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
-  void AddEdges(const std::vector<AutogradMeta*>& metas, size_t slot_id);
   void AddEdges(AutogradMeta* meta, size_t slot_id);
 
   /**
