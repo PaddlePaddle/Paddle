@@ -133,7 +133,10 @@ TEST(dense_tensor, shallow_copy) {
 
   DenseTensor tensor_1(tensor_0);
   CHECK(tensor_0.meta() == tensor_1.meta());
-  CHECK(tensor_0.release() == tensor_1.release());
+
+  // Copy constructor: Now shares the underlying shared_ptr<Allocation> instead
+  // of Storage
+  CHECK(tensor_0.release() != tensor_1.release());
 }
 
 }  // namespace tests

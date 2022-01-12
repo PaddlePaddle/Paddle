@@ -48,7 +48,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_gpu_mat_data->ptr(),
                    boost::get<platform::CUDAPlace>(context.GetPlace()),
-                   a.data<void>(), a.numel() * sizeof(T), context.stream());
+                   a.data(), a.numel() * sizeof(T), context.stream());
       gpu_mat = reinterpret_cast<const T*>(tmp_gpu_mat_data->ptr());
     }
 

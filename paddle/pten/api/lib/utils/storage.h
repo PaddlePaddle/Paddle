@@ -83,8 +83,21 @@ class SharedStorage : public pten::Storage {
     size_ = 0;
   }
 
-  size_t size() const noexcept override { return size_; }
-  const paddle::platform::Place& place() const override { return place_; }
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    data_ = holder;
+    if (holder) {
+      size_ = holder->size();
+      place_ = holder->place();
+    }
+  }
+
+  size_t size() const noexcept override {
+    return data_ ? data_->size() : size_;
+  }
+  const paddle::platform::Place& place() const override {
+    return data_ ? data_->place() : place_;
+  }
   bool OwnsMemory() const noexcept override { return false; }
 
   const std::shared_ptr<paddle::memory::Allocation>& GetAllocation() {

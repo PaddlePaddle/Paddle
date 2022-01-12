@@ -43,7 +43,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
 
     int dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
-    auto* sendbuff = in->data<void>();
+    auto* sendbuff = in->data();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
