@@ -45,20 +45,10 @@ ElementwiseMinGrad(const framework::ExecutionContext& ctx,
       ctx.template device_context<platform::CUDADeviceContext>();
   const auto place = ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, MinGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     GetGradXOrYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, MinGradXFunctor<T>());
