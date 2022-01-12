@@ -699,6 +699,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
 
 class TestNearestInterpException(unittest.TestCase):
     def test_exception(self):
+        import paddle
         input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
 
         def attr_data_format():
@@ -713,12 +714,13 @@ class TestNearestInterpException(unittest.TestCase):
             out = fluid.layers.resize_nearest(input, scale=-0.3)
 
         def input_shape_error():
-            x = fluid.data(name="input", shape=[1, 3], dtype="float32")
-            out = fluid.layers.resize_nearest(x, scale='scale')
+            x = paddle.randn([1, 3])
+            out = paddle.nn.functional.interpolate(x, scale_factor='scale')
 
         def mode_error():
-            x = fluid.data(name="input", shape=[1, 3], dtype="float32")
-            out = fluid.layers.resize_bilinear(x, scale='scale')
+            x = paddle.randn([1, 3])
+            out = paddle.nn.functional.interpolate(
+                x, scale_factor='scale', mode="BILINEAR")
 
         self.assertRaises(ValueError, attr_data_format)
         self.assertRaises(TypeError, attr_scale_type)
