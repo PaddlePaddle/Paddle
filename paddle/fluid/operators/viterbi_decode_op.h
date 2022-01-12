@@ -150,9 +150,12 @@ struct GetInputIndex<false> {
                   const std::vector<int>& output_strides, int output_idx,
                   int* index_array, int* lhs_idx, int* rhs_idx) {
     int out_dims_size = output_strides.size();
-    *lhs_idx = GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
-    *rhs_idx = GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
-    UpdateElementwiseIndexArray(output_dims.data(), out_dims_size, index_array);
+    *lhs_idx =
+        pten::GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
+    *rhs_idx =
+        pten::GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
+    pten::UpdateElementwiseIndexArray(output_dims.data(), out_dims_size,
+                                      index_array);
   }
 };
 

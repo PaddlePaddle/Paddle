@@ -261,7 +261,6 @@ set ON_INFER=ON
 set WITH_TESTING=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
-set WITH_TPCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
