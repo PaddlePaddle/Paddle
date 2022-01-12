@@ -355,7 +355,7 @@ void build_op_func_list(const platform::Place& place,
         // TODO(Aurelius84): In case of control flow ops, they are NOT
         // inheritted
         // from OperatorWithKernel.
-        op_with_kernel->InferShape(&infer_shape_ctx);
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
 
       auto kernels_iter = all_op_kernels.find(op->Type());

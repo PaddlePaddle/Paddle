@@ -9,14 +9,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/host_event_recorder.h"
+#include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/os_info.h"
 
 namespace paddle {
 namespace platform {
 
 ThreadEventRecorder::ThreadEventRecorder() {
-  thread_id_ = ThreadIdRegistry::GetInstance().CurrentThreadId().MainTid();
+  thread_id_ = GetCurrentThreadSysId();
   HostEventRecorder::GetInstance().RegisterThreadRecorder(thread_id_, this);
 }
 
@@ -26,7 +26,7 @@ HostEventSection HostEventRecorder::GatherEvents() {
   for (auto &kv : thread_recorders_) {
     host_sec.thr_sections.emplace_back(std::move(kv.second->GatherEvents()));
   }
-  return std::move(host_sec);
+  return host_sec;
 }
 
 }  // namespace platform
