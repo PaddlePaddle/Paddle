@@ -121,9 +121,8 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(&temp_tensor, array, place,
                                                     zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::NPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "

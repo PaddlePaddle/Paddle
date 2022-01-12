@@ -230,7 +230,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with NPU support.",
           place));
 #else
-      auto dev_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+      auto dev_id = place.device;
       platform::SetNPUDeviceId(dev_id);
 #endif
     } else if (platform::is_mlu_place(place)) {
@@ -240,7 +240,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with MLU support.",
           place));
 #else
-      auto dev_id = BOOST_GET_CONST(platform::MLUPlace, place).device;
+      auto dev_id = place.device;
       platform::SetMLUDeviceId(dev_id);
 #endif
     }

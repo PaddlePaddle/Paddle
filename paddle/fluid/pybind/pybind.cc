@@ -2145,18 +2145,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self) { return platform::is_mlu_place(self); })
       .def("gpu_device_id", [](platform::Place &self) { return self.device; })
       .def("xpu_device_id", [](platform::Place &self) { return self.device; })
-      .def("npu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::NPUPlace, self).device;
-           })
-      .def("ipu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::IPUPlace, self).device;
-           })
-      .def("mlu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::MLUPlace, self).device;
-           })
+      .def("npu_device_id", [](platform::Place &self) { return self.device; })
+      .def("ipu_device_id", [](platform::Place &self) { return self.device; })
+      .def("mlu_device_id", [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",

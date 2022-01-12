@@ -56,7 +56,7 @@ BufferedReader::BufferedReader(
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place_)) {
-    int dev_idx = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+    int dev_idx = place_.device;
     compute_stream_ =
         ((platform::NPUDeviceContext *)(platform::DeviceContextPool::Instance()
                                             .Get(place_)))
@@ -224,8 +224,7 @@ void BufferedReader::ReadAsync(size_t i) {
         npu_ptrs.emplace_back(npu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::SetNPUDeviceId(
-          BOOST_GET_CONST(platform::NPUPlace, place_).device);
+      platform::SetNPUDeviceId(place_.device);
       platform::NPUEventRecord(events_[i].get(), compute_stream_);
       platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
 
@@ -237,12 +236,11 @@ void BufferedReader::ReadAsync(size_t i) {
         auto size =
             cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
         if ((platform::is_npu_place(cpu_place))) {
-          memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place_), npu_ptr,
-                       BOOST_GET_CONST(platform::NPUPlace, cpu_place), cpu_ptr,
-                       size, stream_.get());
+          memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
+                       stream_.get());
         } else {
-          memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place_), npu_ptr,
-                       cpu_place, cpu_ptr, size, stream_.get());
+          memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
+                       stream_.get());
           platform::NPUStreamSync(stream_.get());
         }
         npu[i].set_lod(cpu[i].lod());

@@ -957,7 +957,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -996,7 +996,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
     auto gpu_place = place_;

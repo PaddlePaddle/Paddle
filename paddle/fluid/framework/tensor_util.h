@@ -171,8 +171,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-        npu_pinned_place, npu_pinned_ptr, size,
+        dst_place, dst_ptr, npu_pinned_place, npu_pinned_ptr, size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
 
     //  3. record event
@@ -227,8 +226,7 @@ void TensorFromVector(const std::vector<T>& src,
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-        npu_pinned_place, npu_pinned_ptr, size,
+        dst_place, dst_ptr, npu_pinned_place, npu_pinned_ptr, size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
 
     //  3. record event
@@ -247,8 +245,7 @@ void TensorFromVector(const std::vector<T>& src,
 #ifdef PADDLE_WITH_MLU
   if (platform::is_mlu_place(dst_place)) {
     memory::Copy(
-        BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
+        dst_place, dst_ptr, src_place, src_ptr, size,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
@@ -296,8 +293,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-        npu_pinned_place, npu_pinned_ptr, size,
+        dst_place, dst_ptr, npu_pinned_place, npu_pinned_ptr, size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
 
     //  3. record event
@@ -372,16 +368,13 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
-                 size, nullptr);
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(src.place())) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
-        src_ptr, size,
+        dst_place, dst_ptr, src.place(), src_ptr, size,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
@@ -417,16 +410,13 @@ inline void TensorToVector(const Tensor& src,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
-                 size, nullptr);
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(src.place())) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
-        src_ptr, size,
+        dst_place, dst_ptr, src.place(), src_ptr, size,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif

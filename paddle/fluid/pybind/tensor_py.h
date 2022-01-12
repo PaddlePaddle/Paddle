@@ -236,7 +236,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   } else if (platform::is_npu_place(self.place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::NPUPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -270,7 +270,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 #endif
   } else if (platform::is_npu_place(self->place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto p = BOOST_GET_CONST(platform::NPUPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -331,8 +331,7 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
     platform::Place tmp_place = place;
-    platform::NPUDeviceGuard guard(
-        BOOST_GET_CONST(platform::NPUPlace, tmp_place).device);
+    platform::NPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
     platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
                             ACL_MEMCPY_HOST_TO_DEVICE);
@@ -347,8 +346,7 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
     platform::Place tmp_place = place;
-    platform::MLUDeviceGuard guard(
-        BOOST_GET_CONST(platform::MLUPlace, tmp_place).device);
+    platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
     paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
 #else
@@ -808,7 +806,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::NPUPlace, tensor.place());
+    auto p = tensor.place();
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
@@ -836,7 +834,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::MLUPlace, tensor.place());
+    auto p = tensor.place();
     paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
                          tensor_buf_ptr, copy_bytes, nullptr);
     return py_arr;

@@ -513,11 +513,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place), max_memory_size));
+        gc.reset(new MLUUnsafeFastGarbageCollector(place, max_memory_size));
       } else {
-        gc.reset(new MLUStreamGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place), max_memory_size));
+        gc.reset(new MLUStreamGarbageCollector(place, max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -605,7 +603,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
 
     std::vector<int> devices;
     for (int i = 0; i < count; i++) {
-      if (!is_gpu_place(places[i])) return;
+      if (!platform::is_gpu_place(places[i])) return;
 
       platform::CUDAPlace device = places[i];
       devices.push_back(device.GetDeviceId());
@@ -650,7 +648,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE(places.size() > 0 && !is_npu_place(places[0]),
+  PADDLE_ENFORCE(places.size() > 0 && !platform::is_npu_place(places[0]),
                  platform::errors::Unavailable(
                      "NPU is not supported in ParallelExecutor"));
   InitP2P(places);

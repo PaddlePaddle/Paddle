@@ -179,11 +179,9 @@ static void InitVarBaseAndTensor(
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(tensor, array, place,
                                                     zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::NPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::MLUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "

@@ -85,9 +85,7 @@ struct HCCLContext {
   aclrtStream stream() const { return ctx_->stream(); }
   HcclComm comm() const { return comm_; }
 
-  int device_id() const {
-    return BOOST_GET_CONST(platform::NPUPlace, ctx_->GetPlace()).device;
-  }
+  int device_id() const { return ctx_->GetPlace().device; }
 };
 
 struct HCCLContextMap {

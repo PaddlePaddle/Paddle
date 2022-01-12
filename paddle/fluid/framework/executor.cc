@@ -462,8 +462,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #endif
     } else if (platform::is_ipu_place(place_)) {
 #ifdef PADDLE_WITH_IPU
-      gc.reset(new IPUGarbageCollector(
-          BOOST_GET_CONST(platform::IPUPlace, place_), max_memory_size));
+      gc.reset(new IPUGarbageCollector(place_, max_memory_size));
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
@@ -472,16 +471,14 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #ifdef PADDLE_WITH_ASCEND_CL
       if (IsFastEagerDeletionModeEnabled()) {
         VLOG(4) << "Use unsafe fast gc for NPU.";
-        gc.reset(new NPUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+        gc.reset(new NPUUnsafeFastGarbageCollector(place_, max_memory_size));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Please set FLAGS_fast_eager_deletion_mode=true to use "
             "GarbageCollector on NPU."));
         // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
         VLOG(4) << "Use default stream gc for NPU.";
-        gc.reset(new NPUDefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+        gc.reset(new NPUDefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(
@@ -490,11 +487,9 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     } else if (platform::is_mlu_place(place_)) {
 #ifdef PADDLE_WITH_MLU
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+        gc.reset(new MLUUnsafeFastGarbageCollector(place_, max_memory_size));
       } else {
-        gc.reset(new MLUDefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+        gc.reset(new MLUDefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(

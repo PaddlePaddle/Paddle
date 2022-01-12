@@ -121,8 +121,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     } else if (platform::is_npu_place(place)) {
 #if defined(PADDLE_WITH_ASCEND_CL)
       // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-      gc.reset(new framework::NPUUnsafeFastGarbageCollector(
-          BOOST_GET_CONST(platform::NPUPlace, place), 0));
+      gc.reset(new framework::NPUUnsafeFastGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -131,8 +130,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_mlu_place(place)) {
 #if defined(PADDLE_WITH_MLU)
-      gc.reset(new framework::MLUDefaultStreamGarbageCollector(
-          BOOST_GET_CONST(platform::MLUPlace, place), 0));
+      gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -207,16 +205,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 #endif
     } else if (platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::SetNPUDeviceId(
-          BOOST_GET_CONST(platform::NPUPlace, place).device);
+      platform::SetNPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
     } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-      platform::SetMLUDeviceId(
-          BOOST_GET_CONST(platform::MLUPlace, place).device);
+      platform::SetMLUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with MLU if use MLUPlace."));

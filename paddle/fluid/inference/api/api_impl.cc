@@ -267,7 +267,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
-      auto dst_npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+      auto dst_npu_place = place_;
       memory::Copy(dst_npu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());

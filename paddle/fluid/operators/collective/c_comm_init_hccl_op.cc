@@ -54,7 +54,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
     int rank_ids = Attr<int>("rank_ids");
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
-    int device_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+    int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
