@@ -86,7 +86,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<OutT *, NumOuts> outs,
+      paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -109,7 +109,7 @@ struct ElementwiseWriteDataCaller {
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<OutT *, 1> outs,
+      paddle::framework::Array<_ptr_ OutT *, 1> outs,
       OutT src[VecSize],
       int block_offset,
       int num) {
@@ -126,8 +126,8 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const paddle::framework::Array<const InT *__restrict__, Arity> &in,
-    paddle::framework::Array<OutT *, NumOuts> outs,
+    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
@@ -161,8 +161,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    paddle::framework::Array<const InT *__restrict__, Arity> ins,
-    paddle::framework::Array<OutT *, NumOuts> outs,
+    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -212,17 +212,13 @@ template <typename InT,
           int Arity,
           int NumOuts,
           int VecSize>
-void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
+void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = ins[0]->numel();
-  int block_size = funcs::GetThreadsConfig(ctx, numel, VecSize);
-  int grid_size =
-      ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
-  auto stream = ctx.stream();
-  paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<OutT *, NumOuts> outs_data;
+  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
     ins_data[i] = ins[i]->data<InT>();
@@ -231,8 +227,9 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
     outs_data[i] = (*outs)[i]->mutable_data<OutT>();
   }
 #ifdef PADDLE_WITH_XPU2
-  block_size = 128;
-  grid_size = 8;
+  int block_size = 64;
+  int grid_size = 8;
+  auto stream = ctx.x_context()->xpu_stream;
   int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
   VectorizedElementwiseKernel<InT,
                               OutT,
@@ -242,7 +239,11 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
+  int block_size = funcs::GetThreadsConfig(ctx, numel, VecSize);
+  int grid_size =
+      ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
   int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
+  auto stream = ctx.stream();
   VectorizedElementwiseKernel<InT,
                               OutT,
                               Functor,
@@ -259,7 +260,7 @@ template <ElementwiseType ET,
           typename Functor,
           int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     Functor func) {
@@ -471,12 +472,12 @@ struct DimensionsTransform {
 template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
     T *dst,
-    const T *__restrict__ src,
+    const _ptr_ T *src,
     uint32_t block_offset,
     const kps::details::BroadcastConfig<Rank> &config,
     int numel,
     int num,
-    bool need_broadcast) {
+    int need_broadcast) {
   // numel : whole num of output
   // num: how many data will be deal with in this time
   if (need_broadcast) {
@@ -496,9 +497,9 @@ template <typename InT,
           int Rank,
           bool IsBoundary = false>
 __device__ void ElementwiseBroadcastKernelImpl(
-    const paddle::framework::Array<const InT *__restrict__, Arity> &ins,
-    paddle::framework::Array<OutT *, NumOuts> outs,
-    const paddle::framework::Array<bool, Arity> &use_broadcast,
+    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &ins,
+    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const paddle::framework::Array<int, Arity> &use_broadcast,
     uint32_t numel,
     const paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
         &configs,
@@ -540,9 +541,9 @@ template <typename InT,
           int VecSize,
           int Rank>
 __global__ void ElementwiseBroadcastKernel(
-    paddle::framework::Array<const InT *__restrict__, Arity> ins,
-    paddle::framework::Array<OutT *, NumOuts> outs,
-    paddle::framework::Array<bool, Arity> use_broadcast,
+    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    paddle::framework::Array<int, Arity> use_broadcast,
     uint32_t numel,
     paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
         configs,
@@ -570,7 +571,8 @@ __global__ void ElementwiseBroadcastKernel(
                                           block_offset,
                                           func);
   }
-  if (block_offset < numel) {
+  int num = numel - block_offset;
+  if (num > 0) {
     ElementwiseBroadcastKernelImpl<InT,
                                    OutT,
                                    Functor,
@@ -579,7 +581,7 @@ __global__ void ElementwiseBroadcastKernel(
                                    VecSize,
                                    Rank,
                                    true>(
-        ins, outs, use_broadcast, numel, configs, tail_tid, block_offset, func);
+        ins, outs, use_broadcast, numel, configs, num, block_offset, func);
   }
 #else
   if (block_offset < main_offset) {
@@ -619,23 +621,16 @@ template <typename InT,
           int NumOuts,
           int VecSize,
           int Rank>
-void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
+void LaunchKernel(const KPDevice &ctx,
                   const std::vector<const DenseTensor *> &ins,
                   std::vector<DenseTensor *> *outs,
                   Functor func,
                   DimensionsTransform merge_dims) {
   int numel = (*outs)[0]->numel();
-  const int threads = 256;
-  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
-
-  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  int tail_tid = numel % (VecSize * threads);
-  auto stream = ctx.stream();
-
   paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
-  paddle::framework::Array<bool, Arity> use_broadcast;
-  paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<OutT *, NumOuts> outs_data;
+  paddle::framework::Array<int, Arity> use_broadcast;
+  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = (*outs)[i]->mutable_data<OutT>();
@@ -643,7 +638,7 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
 
   for (int i = 0; i < Arity; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
-    ins_data[i] = ins[i]->data<InT>();
+    ins_data[i] = (_ptr_ InT *)(ins[i]->data<InT>());
     if (use_broadcast[i]) {
       // get the broadcast config,
       // if data shape is[m, n], then you should set data_dim = {n, m}
@@ -654,10 +649,11 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
   }
 
 #ifdef PADDLE_WITH_XPU2
-  threads = 128;
-  blocks = 8;
-  main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  tail_tid = numel % (VecSize * threads);
+  const int threads = 64;
+  const int blocks = 8;
+  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  int tail_tid = numel % (VecSize * threads);
+  auto stream = ctx.x_context()->xpu_stream;
   ElementwiseBroadcastKernel<InT,
                              OutT,
                              Functor,
@@ -673,6 +669,11 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
                                                                 tail_tid,
                                                                 func);
 #else
+  const int threads = 256;
+  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  int tail_tid = numel % (VecSize * threads);
+  auto stream = ctx.stream();
   ElementwiseBroadcastKernel<InT,
                              OutT,
                              Functor,
@@ -698,7 +699,7 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 void LaunchBroadcastKernelForDifferentVecSize(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     int axis,
@@ -737,7 +738,7 @@ template <ElementwiseType ET,
           typename Functor,
           int NumOuts = 1>
 void LaunchBroadcastElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     int axis,
@@ -835,12 +836,11 @@ template <ElementwiseType ET,
           typename OutT,
           typename Functor,
           int NumOuts = 1>
-void LaunchElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &cuda_ctx,
-    const std::vector<const DenseTensor *> &ins,
-    std::vector<DenseTensor *> *outs,
-    int axis,
-    Functor func) {
+void LaunchElementwiseCudaKernel(const KPDevice &ctx,
+                                 const std::vector<const DenseTensor *> &ins,
+                                 std::vector<DenseTensor *> *outs,
+                                 int axis,
+                                 Functor func) {
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
@@ -849,14 +849,14 @@ void LaunchElementwiseCudaKernel(
   }
   if (no_broadcast_flag) {
     LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-        cuda_ctx, ins, outs, func);
+        ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
     LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-        cuda_ctx, ins, outs, axis, func);
+        ctx, ins, outs, axis, func);
   }
 }
 

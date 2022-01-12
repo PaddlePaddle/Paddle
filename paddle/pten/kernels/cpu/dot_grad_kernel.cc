@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/complex_kernel.h"
-#include "paddle/pten/kernels/impl/complex_kernel_impl.h"
+#include "paddle/pten/kernels/dot_grad_kernel.h"
+#include "paddle/pten/kernels/impl/dot_grad_kernel_impl.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
 
-PT_REGISTER_CTX_KERNEL(conj,
-                       GPU,
+PT_REGISTER_CTX_KERNEL(dot_grad,
+                       CPU,
                        ALL_LAYOUT,
-                       pten::ConjKernel,
-                       paddle::platform::float16,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>,
+                       pten::DotGradKernel,
                        float,
                        double,
                        int,
-                       int64_t) {}
+                       int64_t,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}

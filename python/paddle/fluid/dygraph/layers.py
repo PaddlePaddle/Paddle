@@ -1569,6 +1569,8 @@ class Layer(object):
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
 
+        self._dtype = dtype
+
     def _to_impl(self,
                  device=None,
                  dtype=None,
