@@ -218,8 +218,10 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                            Functor func) {
   auto numel = ins[0]->numel();
   int block_size = funcs::GetThreadsConfig(ctx, numel, VecSize);
-  int grid_size =
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int num_rows = 
       ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
+  unsigned int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   auto stream = ctx.stream();
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
   paddle::framework::Array<OutT *, NumOuts> outs_data;
@@ -625,8 +627,11 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
                   Functor func,
                   DimensionsTransform merge_dims) {
   int numel = (*outs)[0]->numel();
-  const int threads = 256;
-  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  const unsigned int threads = 256;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int num_rows =
+    ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  unsigned int blocks = num_rows < maxGridDimX ? num_rows : maxGridDimX;
 
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   int tail_tid = numel % (VecSize * threads);

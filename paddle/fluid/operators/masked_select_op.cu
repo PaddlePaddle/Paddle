@@ -100,19 +100,22 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
     int32_t* mask_array_data = mask_array.mutable_data<int32_t>(ctx.GetPlace());
     int32_t* mask_prefix_sum_data =
         mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
-    int threads = 512;
-    int grid = (mask_size + threads - 1) / threads;
+    unsigned int threads = 512;
+    unsigned int maxGridDimX =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+            .GetCUDAMaxGridDimSize().x;
+    unsigned int num_rows = (mask_size + threads - 1) / threads;
+    // actually, int num_rows < max_grid_size
+    unsigned int grid = num_rows < maxGridDimX ? num_rows : maxGridDimX;
     auto stream = ctx.cuda_device_context().stream();
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
                                                mask_size);
-
     thrust::device_ptr<int32_t> mask_array_dev_ptr =
         thrust::device_pointer_cast(mask_array_data);
     thrust::device_vector<int32_t> mask_array_vec(
         mask_array_dev_ptr, mask_array_dev_ptr + mask_size);
     thrust::exclusive_scan(thrust::device, mask_array_vec.begin(),
                            mask_array_vec.end(), mask_prefix_sum_data);
-
     SelectWithPrefixMask<T><<<grid, threads, 0, stream>>>(
         mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
   }
