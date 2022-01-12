@@ -253,7 +253,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #endif
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto dst_xpu_place = place_;
       memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length());

@@ -220,7 +220,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with XPU support.",
           place));
 #else
-      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+      auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
 #endif
     } else if (platform::is_npu_place(place)) {

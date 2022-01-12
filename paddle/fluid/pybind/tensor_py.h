@@ -223,7 +223,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   } else if (platform::is_xpu_place(self.place())) {
 #ifdef PADDLE_WITH_XPU
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::XPUPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
   } else if (platform::is_gpu_place(self.place())) {
@@ -257,7 +257,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
     self->mutable_data<T>(self->place())[offset] = elem;
   } else if (platform::is_xpu_place(self->place())) {
 #ifdef PADDLE_WITH_XPU
-    auto p = BOOST_GET_CONST(platform::XPUPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T));
 #endif
@@ -304,11 +304,9 @@ void SetTensorFromPyArrayT(
     // NOTE(wangxi): When copying data to the accelerator card,
     // we need set_device(dev_id) first.
     platform::Place tmp_place = place;
-    platform::XPUDeviceGuard guard(
-        BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
+    platform::XPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, tmp_place),
-                 static_cast<void *>(dst), platform::CPUPlace(),
+    memory::Copy(tmp_place, static_cast<void *>(dst), platform::CPUPlace(),
                  static_cast<const void *>(array.data()), array.nbytes());
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -538,8 +536,7 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
     output->mutable_data(place, self.type());
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    output->mutable_data(BOOST_GET_CONST(platform::XPUPlace, place),
-                         self.type());
+    output->mutable_data(place, self.type());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -765,7 +762,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::XPUPlace, tensor.place());
+    auto p = tensor.place();
     paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
                          tensor_buf_ptr, copy_bytes);
     return py_arr;

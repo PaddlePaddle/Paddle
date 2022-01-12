@@ -122,7 +122,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+  auto dev_id = place.device;
   platform::XPUDeviceGuard guard(dev_id);
 #endif
 
@@ -191,13 +191,11 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
-                 platform::CPUPlace(), root_ptr,
+    memory::Copy(thread_place, thread_ptr, platform::CPUPlace(), root_ptr,
                  sizeof(T) * root_tensor->numel());
   } else {
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, root_tensor->place()),
-                 root_ptr, sizeof(T) * root_tensor->numel());
+    memory::Copy(thread_place, thread_ptr, root_tensor->place(), root_ptr,
+                 sizeof(T) * root_tensor->numel());
   }
 }
 #endif
@@ -341,7 +339,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #endif
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
-        auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+        auto dev_id = place.device;
         platform::XPUDeviceGuard guard(dev_id);
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
@@ -368,7 +366,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #endif
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
-      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+      auto dev_id = place.device;
       platform::XPUDeviceGuard guard(dev_id);
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();

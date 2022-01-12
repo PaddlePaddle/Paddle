@@ -820,8 +820,7 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
     float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
-    memory::Copy(platform::CPUPlace(), pin_g,
-                 BOOST_GET_CONST(platform::XPUPlace, place), g_data,
+    memory::Copy(platform::CPUPlace(), pin_g, place, g_data,
                  sizeof(float) * count);
 
     float* g = pin_g;

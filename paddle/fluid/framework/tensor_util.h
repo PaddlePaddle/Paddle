@@ -367,9 +367,7 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 #endif
 #if defined(PADDLE_WITH_XPU)
   else if (platform::is_xpu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, src.place()), src_ptr,
-                 size);
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -414,9 +412,7 @@ inline void TensorToVector(const Tensor& src,
 #endif
 #if defined(PADDLE_WITH_XPU)
   else if (platform::is_xpu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, src.place()), src_ptr,
-                 size);
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL

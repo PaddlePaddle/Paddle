@@ -75,11 +75,9 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
     int64_t* label_int64_host =
         reinterpret_cast<int64_t*>(std::malloc(label_int64_size));
     dev_ctx.Wait();
-    memory::Copy(platform::CPUPlace(), indices_int64_host,
-                 BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+    memory::Copy(platform::CPUPlace(), indices_int64_host, ctx.GetPlace(),
                  indices_data, indices_int64_size);
-    memory::Copy(platform::CPUPlace(), label_int64_host,
-                 BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+    memory::Copy(platform::CPUPlace(), label_int64_host, ctx.GetPlace(),
                  label_data, label_int64_size);
     for (size_t i = 0; i < num_samples; ++i) {
       label_int32_host[i] = label_int64_host[i];
@@ -88,12 +86,10 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
             indices_int64_host[i * class_dim + j];
       }
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                 indices_int32_device, platform::CPUPlace(), indices_int32_host,
-                 indices_int32_size);
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                 label_int32_device, platform::CPUPlace(), label_int32_host,
-                 label_int32_size);
+    memory::Copy(ctx.GetPlace(), indices_int32_device, platform::CPUPlace(),
+                 indices_int32_host, indices_int32_size);
+    memory::Copy(ctx.GetPlace(), label_int32_device, platform::CPUPlace(),
+                 label_int32_host, label_int32_size);
     int r = xpu::accuracy(dev_ctx.x_context(), indices_int32_device,
                           label_int32_device, num_samples, class_dim,
                           correct_data, total_data, accuracy_data);

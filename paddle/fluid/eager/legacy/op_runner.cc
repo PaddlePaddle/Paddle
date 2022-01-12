@@ -157,16 +157,14 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
 #endif
     } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-      paddle::platform::SetXPUDeviceId(
-          BOOST_GET_CONST(paddle::platform::XPUPlace, place).device);
+      paddle::platform::SetXPUDeviceId(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      paddle::platform::SetNPUDeviceId(
-          BOOST_GET_CONST(paddle::platform::NPUPlace, place).device);
+      paddle::platform::SetNPUDeviceId(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));

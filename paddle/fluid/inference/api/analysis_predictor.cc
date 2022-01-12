@@ -137,7 +137,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place);
+    auto dst_xpu_place = place;
     memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length());
 #else
@@ -953,7 +953,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
@@ -992,7 +992,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {

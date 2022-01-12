@@ -140,8 +140,7 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
   void operator()(const platform::XPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     int num = input.size();
@@ -179,8 +178,7 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     auto& ins = ref_inputs;

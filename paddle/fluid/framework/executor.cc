@@ -455,8 +455,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       gc.reset(new CPUGarbageCollector(place_, max_memory_size));
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      gc.reset(new XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place_), max_memory_size));
+      gc.reset(new XPUGarbageCollector(place_, max_memory_size));
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));

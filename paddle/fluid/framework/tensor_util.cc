@@ -97,12 +97,10 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_XPU
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_xpu_place(dst_place)) {
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (platform::is_xpu_place(src_place) &&
              platform::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
@@ -110,8 +108,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
               << dst_place;
       return;
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
@@ -461,13 +458,11 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_XPU
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_xpu_place(dst_place)) {
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_xpu_place(dst_place)) {
@@ -476,12 +471,9 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
               << dst_place;
       return;
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
-    platform::XPUPlace xpu_dst_place =
-        BOOST_GET_CONST(platform::XPUPlace, dst_place);
-    platform::XPUPlace xpu_src_place =
-        BOOST_GET_CONST(platform::XPUPlace, src_place);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    platform::XPUPlace xpu_dst_place = dst_place;
+    platform::XPUPlace xpu_src_place = src_place;
     if (xpu_dst_place.device == xpu_src_place.device) {
       auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();
@@ -1017,8 +1009,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        memory::Copy(cpu, buf.get(),
-                     BOOST_GET_CONST(platform::XPUPlace, tensor.place()),
+        memory::Copy(cpu, buf.get(), tensor.place(),
                      reinterpret_cast<const void*>(data), size_to_write);
         xpu_dev_ctx.Wait();
         os.write(buf.get(), size_to_write);

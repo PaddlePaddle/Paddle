@@ -107,7 +107,7 @@ void OpHandleBase::InitXPU() {
                       platform::errors::InvalidArgument(
                           "%s should have only one dev_ctx.", Name()));
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+    int dev_id = place.device;
     platform::SetXPUDeviceId(dev_id);
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);

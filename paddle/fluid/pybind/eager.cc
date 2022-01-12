@@ -112,9 +112,8 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
     SetTensorFromPyArray<platform::CPUPlace>(&temp_tensor, array, place,
                                              zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::XPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_gpu_place(place)) {
     SetTensorFromPyArray<platform::CUDAPlace>(&temp_tensor, array, place,
                                               zero_copy);

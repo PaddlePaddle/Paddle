@@ -44,7 +44,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   TensorAddFunctor(int64_t numel, const T* x, T* y)
       : numel_(numel), x_(x), y_(y) {}
 
-  void operator()(const paddle::platform::CPUPlace& place) {
+  void operator()(const paddle::platform::CPUPlace& place) const {
     paddle::platform::CPUDeviceContext* ctx =
         dynamic_cast<paddle::platform::CPUDeviceContext*>(
             paddle::platform::DeviceContextPool::Instance().Get(place));
@@ -57,7 +57,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 // TODO(jiabin): Support xpu here from gradient_accumulator.cc
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void operator()(const paddle::platform::CUDAPlace& place) {
+  void operator()(const paddle::platform::CUDAPlace& place) const {
     paddle::platform::CUDADeviceContext* ctx =
         dynamic_cast<paddle::platform::CUDADeviceContext*>(
             paddle::platform::DeviceContextPool::Instance().Get(place));
@@ -67,7 +67,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
     blas.AXPY(numel_, 1., x_, y_);
   }
 #else
-  void operator()(const paddle::platform::CUDAPlace& place) {
+  void operator()(const paddle::platform::CUDAPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -77,7 +77,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 
   // TODO(jiabin): Support Npu here from gradient_accumulator.cc
   // there is NO blas in CUDAPinnedPlace
-  void operator()(const paddle::platform::CUDAPinnedPlace& place) {
+  void operator()(const paddle::platform::CUDAPinnedPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -85,14 +85,14 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  void operator()(const paddle::platform::NPUPlace& place) {
+  void operator()(const paddle::platform::NPUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
 #else
-  void operator()(const paddle::platform::NPUPlace& place) {
+  void operator()(const paddle::platform::NPUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -101,14 +101,14 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  void operator()(const paddle::platform::XPUPlace& place) {
+  void operator()(const paddle::platform::XPUPlace& place) const {
     paddle::platform::XPUDeviceContext* ctx =
         dynamic_cast<paddle::platform::XPUDeviceContext*>(
             paddle::platform::DeviceContextPool::Instance().Get(place));
     xpu::add<T>(ctx->x_context(), x_, y_, y_, static_cast<int>(numel_));
   }
 #else
-  void operator()(const paddle::platform::XPUPlace& place) {
+  void operator()(const paddle::platform::XPUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -117,14 +117,14 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #ifdef PADDLE_WITH_MLU
-  void operator()(const paddle::platform::MLUPlace& place) {
+  void operator()(const paddle::platform::MLUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
 #else
-  void operator()(const paddle::platform::MLUPlace& place) {
+  void operator()(const paddle::platform::MLUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -133,14 +133,14 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #ifdef PADDLE_WITH_IPU
-  void operator()(const paddle::platform::IPUPlace& place) {
+  void operator()(const paddle::platform::IPUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
 #else
-  void operator()(const paddle::platform::IPUPlace& place) {
+  void operator()(const paddle::platform::IPUPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -148,7 +148,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
-  void operator()(const paddle::platform::NPUPinnedPlace& place) {
+  void operator()(const paddle::platform::NPUPinnedPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -158,7 +158,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
  private:
   int64_t numel_;
   const T* x_;
-  T* y_;
+  mutable T* y_;
 };
 
 template <typename DeviceContext, typename T>
@@ -219,7 +219,7 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
   if (data_type == paddle::framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(numel, src_tensor->data<cpp_type>(),     \
                                     dst_tensor->mutable_data<cpp_type>());   \
-    platform::VisitPlace(place, func);                                       \
+    paddle::platform::VisitPlace(place, func);                               \
     return;                                                                  \
   }
 
@@ -295,7 +295,7 @@ void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
     TensorAddFunctor<cpp_type> func(                                         \
         numel, src_tensor.data<cpp_type>(),                                  \
         dst_tensor->mutable_data<cpp_type>(place));                          \
-    platform::VisitPlace(place, func);                                       \
+    paddle::platform::VisitPlace(place, func);                               \
     return;                                                                  \
   }
 

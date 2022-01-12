@@ -527,8 +527,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place), max_memory_size));
+      gc.reset(new XPUGarbageCollector(place, max_memory_size));
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(

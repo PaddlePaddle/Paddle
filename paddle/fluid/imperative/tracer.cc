@@ -108,8 +108,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new framework::XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place), 0));
+      gc.reset(new framework::XPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -201,8 +200,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 #endif
     } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-      platform::SetXPUDeviceId(
-          BOOST_GET_CONST(platform::XPUPlace, place).device);
+      platform::SetXPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
