@@ -54,36 +54,39 @@ class Place {
   std::string DebugString() const;
 
   inline bool operator==(const Place& rhs) const {
-    if (GetType() != rhs.GetType()) {
+    if (alloc_type_ != rhs.GetType()) {
       return false;
-    } else if (GetType() == AllocationType::CPU ||
-               GetType() == AllocationType::GPUPINNED ||
-               GetType() == AllocationType::NPUPINNED) {
-      return true;
-    } else {
-      return GetDeviceId() == rhs.GetDeviceId();
     }
+    if (alloc_type_ == AllocationType::CPU ||
+        alloc_type_ == AllocationType::GPUPINNED ||
+        alloc_type_ == AllocationType::NPUPINNED) {
+      return true;
+    }
+    return device == rhs.GetDeviceId();
   }
   inline bool operator!=(const Place& rhs) const { return !(*this == rhs); }
   inline bool operator<(const Place& rhs) const {
-    return GetDeviceId() < rhs.GetDeviceId();
+    if (alloc_type_ != rhs.GetType()) {
+      return static_cast<int>(alloc_type_) < static_cast<int>(rhs.GetType());
+    }
+    return device < rhs.GetDeviceId();
   }
 
  public:
   // TODO(wilber): Just because of backward compatibility, it needs to be
   // changed to private in the future.
-  int8_t device;
+  int8_t device{0};
 
  private:
-  AllocationType alloc_type_;
+  AllocationType alloc_type_{AllocationType::UNDEFINED};
 };
 
 class CPUPlace : public Place {
  public:
-  CPUPlace() : Place(AllocationType::CPU, 0) {}
+  CPUPlace() : Place(AllocationType::CPU) {}
 
   CPUPlace(const CPUPlace&) = default;
-  CPUPlace(const Place& place) : Place(AllocationType::CPU, 0) {}  // NOLINT
+  CPUPlace(const Place& place) : Place(AllocationType::CPU) {}  // NOLINT
 };
 
 class GPUPlace : public Place {

@@ -61,8 +61,8 @@ template <typename T>
 class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto place = ctx.GetPlace();
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
@@ -70,6 +70,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     platform::GpuStreamSync(stream);
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
+    auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
