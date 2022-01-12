@@ -16,7 +16,8 @@ IGNORE_ERRS = os.getenv('IGNORE_ERRS') == '1'
 def TestOneInput(input_bytes):
     m = Mutator(input_bytes, LOGGING)
 
-    x, rank = m.tensor_with_diff_shape(min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=5)
+    x, rank = m.tensor_with_diff_shape(
+        min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=5)
     kernel_size = m.int_range(0, 20, 'kernel_size')
     strides = m.int_range(0, 20, 'strides')
     paddings = m.int_range(0, 20, 'paddings')
@@ -24,11 +25,21 @@ def TestOneInput(input_bytes):
 
     if IGNORE_ERRS:
         try:
-            paddle.nn.functional.unfold(x, kernel_size, strides=strides, paddings=paddings, dilations=dilation)
+            paddle.nn.functional.unfold(
+                x,
+                kernel_size,
+                strides=strides,
+                paddings=paddings,
+                dilations=dilation)
         except IgnoredErrors:
             pass
     else:
-        paddle.nn.functional.unfold(x, kernel_size, strides=strides, paddings=paddings, dilations=dilation)
+        paddle.nn.functional.unfold(
+            x,
+            kernel_size,
+            strides=strides,
+            paddings=paddings,
+            dilations=dilation)
 
 
 def main():

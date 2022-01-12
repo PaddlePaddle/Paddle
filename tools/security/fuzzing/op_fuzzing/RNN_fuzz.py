@@ -81,17 +81,27 @@ def TestOneInput(input_bytes):
     if IGNORE_ERRS:
         try:
             # Create a `SimpleRNNCell` for `RNN`.
-            cell = paddle.nn.SimpleRNNCell(input_size=input_size, hidden_size=hidden_size, activation=activation,
-                                           weight_ih_attr=weight_ih_attr, weight_hh_attr=weight_hh_attr,
-                                           bias_ih_attr=bias_ih_attr, bias_hh_attr=bias_hh_attr)
+            cell = paddle.nn.SimpleRNNCell(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                activation=activation,
+                weight_ih_attr=weight_ih_attr,
+                weight_hh_attr=weight_hh_attr,
+                bias_ih_attr=bias_ih_attr,
+                bias_hh_attr=bias_hh_attr)
             rnn = paddle.nn.RNN(cell, is_reverse, time_major)
             rnn(x, y, sequence_length)
         except IgnoredErrors:
             pass
     else:
-        cell = paddle.nn.SimpleRNNCell(input_size=input_size, hidden_size=hidden_size, activation=activation,
-                                       weight_ih_attr=weight_ih_attr, weight_hh_attr=weight_hh_attr,
-                                       bias_ih_attr=bias_ih_attr, bias_hh_attr=bias_hh_attr)
+        cell = paddle.nn.SimpleRNNCell(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            activation=activation,
+            weight_ih_attr=weight_ih_attr,
+            weight_hh_attr=weight_hh_attr,
+            bias_ih_attr=bias_ih_attr,
+            bias_hh_attr=bias_hh_attr)
         rnn = paddle.nn.RNN(cell, is_reverse, time_major)
         rnn(x, y, sequence_length)
 

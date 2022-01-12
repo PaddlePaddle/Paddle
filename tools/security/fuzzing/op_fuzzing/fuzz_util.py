@@ -16,6 +16,7 @@ class Mutator:
         input_bytes: Input bytes for FDP.
         logging: Should log data or not.
     """
+
     def __init__(self, input_bytes, logging=False):
         self.fdp = atheris.FuzzedDataProvider(input_bytes)
         self.logging = logging
@@ -87,7 +88,9 @@ class Mutator:
         Returns:
             A consumed bool.
         """
-        return self.log(name, self.fdp.ConsumeBool()) if self.logging else self.fdp.ConsumeBool()
+        return self.log(
+            name,
+            self.fdp.ConsumeBool()) if self.logging else self.fdp.ConsumeBool()
 
     def bool_list(self, count=1, name=None):
         """Consume a bool list.
@@ -130,7 +133,9 @@ class Mutator:
         Returns:
             A consumed string list.
         """
-        strings = [self.fdp.ConsumeUnicodeNoSurrogates(length) for _ in range(count)]
+        strings = [
+            self.fdp.ConsumeUnicodeNoSurrogates(length) for _ in range(count)
+        ]
         if self.logging:
             self.log(name, [s.encode('utf-8').hex() for s in strings])
         return strings
@@ -147,8 +152,11 @@ class Mutator:
         Returns:
             A consumed string list.
         """
-        strings = [self.fdp.ConsumeUnicodeNoSurrogates(self.fdp.ConsumeIntInRange(len_min, len_max))
-                   for _ in range(count)]
+        strings = [
+            self.fdp.ConsumeUnicodeNoSurrogates(
+                self.fdp.ConsumeIntInRange(len_min, len_max))
+            for _ in range(count)
+        ]
         if self.logging:
             self.log(name, [s.encode('utf-8').hex() for s in strings])
         return strings
@@ -205,16 +213,23 @@ class Mutator:
             return paddle.to_tensor(value, dtype=dtype)
         elif rank == 2:
             array = np.array(value, dtype=np_type)
-            return paddle.to_tensor(np.reshape(array, (dims[0], dims[1])), dtype=dtype)
+            return paddle.to_tensor(
+                np.reshape(array, (dims[0], dims[1])), dtype=dtype)
         elif rank == 3:
             array = np.array(value, dtype=np_type)
-            return paddle.to_tensor(np.reshape(array, (dims[0], dims[1], dims[2])), dtype=dtype)
+            return paddle.to_tensor(
+                np.reshape(array, (dims[0], dims[1], dims[2])), dtype=dtype)
         elif rank == 4:
             array = np.array(value, dtype=np_type)
-            return paddle.to_tensor(np.reshape(array, (dims[0], dims[1], dims[2], dims[3])), dtype=dtype)
+            return paddle.to_tensor(
+                np.reshape(array, (dims[0], dims[1], dims[2], dims[3])),
+                dtype=dtype)
         elif rank == 5:
             array = np.array(value, dtype=np_type)
-            return paddle.to_tensor(np.reshape(array, (dims[0], dims[1], dims[2], dims[3], dims[4])), dtype=dtype)
+            return paddle.to_tensor(
+                np.reshape(array,
+                           (dims[0], dims[1], dims[2], dims[3], dims[4])),
+                dtype=dtype)
         else:
             return None
 
@@ -265,18 +280,29 @@ class Mutator:
 
         dims = []
         for dim_name, dim in tensor_map['dims'].items():
-            dims.append(self.int_range(dim.get('min', 0), dim.get('max', 10), name + '_' + dim_name))
+            dims.append(
+                self.int_range(
+                    dim.get('min', 0),
+                    dim.get('max', 10), name + '_' + dim_name))
 
         if dtype == 'float32' or dtype == 'float64':
-            value = self.float_list(int(np.prod(dims)), min_val, max_val, name + '_' + 'val')
+            value = self.float_list(
+                int(np.prod(dims)), min_val, max_val, name + '_' + 'val')
         elif dtype == 'int32' or dtype == 'int64':
-            value = self.int_list(int(np.prod(dims)), min_val, max_val, name + '_' + 'val')
+            value = self.int_list(
+                int(np.prod(dims)), min_val, max_val, name + '_' + 'val')
         else:
             raise ValueError('dtype is not supported.')
 
         return self.tensor(value, len(dims), dims, dtype, np_type)
 
-    def tensor_with_diff_shape(self, min_val=-10.0, max_val=100.0, min_dim=0, max_dim=20, max_rank=0, dtype='float32',
+    def tensor_with_diff_shape(self,
+                               min_val=-10.0,
+                               max_val=100.0,
+                               min_dim=0,
+                               max_dim=20,
+                               max_rank=0,
+                               dtype='float32',
                                np_type='float32'):
         """Generate a tensor whose rank value in the range of 0 to max_rank.
 
@@ -293,8 +319,10 @@ class Mutator:
             A random tensor, rank
         """
 
-        if not isinstance(min_dim, int) or not isinstance(max_dim, int) or not isinstance(max_rank, int):
-            raise ValueError('min_dim, max_dim and max_rank should be integers.')
+        if not isinstance(min_dim, int) or not isinstance(
+                max_dim, int) or not isinstance(max_rank, int):
+            raise ValueError(
+                'min_dim, max_dim and max_rank should be integers.')
 
         if np_type == 'float32':
             np_type = np.float32
@@ -321,42 +349,82 @@ class Mutator:
             min_val = float(min_val)
             max_val = float(max_val)
             if rank == 0:
-                return self.tensor(self.float_list(dim1, min_val, max_val, 'val'), dtype=dtype, np_type=np_type), rank
+                return self.tensor(
+                    self.float_list(dim1, min_val, max_val, 'val'),
+                    dtype=dtype,
+                    np_type=np_type), rank
             elif rank == 1:
-                return self.tensor(self.float_list(dim1, min_val, max_val, 'val'), 1, [dim1], dtype=dtype,
-                                   np_type=np_type), rank
+                return self.tensor(
+                    self.float_list(dim1, min_val, max_val, 'val'),
+                    1,
+                    [dim1],
+                    dtype=dtype,
+                    np_type=np_type), rank
             elif rank == 2:
                 val = self.float_list(dim1 * dim2, min_val, max_val, 'val')
-                return self.tensor(val, 2, [dim1, dim2], dtype=dtype, np_type=np_type), rank
+                return self.tensor(
+                    val, 2, [dim1, dim2], dtype=dtype, np_type=np_type), rank
             elif rank == 3:
-                val = self.float_list(dim1 * dim2 * dim3, min_val, max_val, 'val')
-                return self.tensor(val, 3, [dim1, dim2, dim3], dtype=dtype, np_type=np_type), rank
+                val = self.float_list(dim1 * dim2 * dim3, min_val, max_val,
+                                      'val')
+                return self.tensor(
+                    val, 3, [dim1, dim2, dim3], dtype=dtype,
+                    np_type=np_type), rank
             elif rank == 4:
-                val = self.float_list(dim1 * dim2 * dim3 * dim4, min_val, max_val, 'val')
-                return self.tensor(val, 4, [dim1, dim2, dim3, dim4], dtype=dtype, np_type=np_type), rank
+                val = self.float_list(dim1 * dim2 * dim3 * dim4, min_val,
+                                      max_val, 'val')
+                return self.tensor(
+                    val,
+                    4, [dim1, dim2, dim3, dim4],
+                    dtype=dtype,
+                    np_type=np_type), rank
             else:
-                val = self.float_list(dim1 * dim2 * dim3 * dim4 * dim5, min_val, max_val, 'val')
-                return self.tensor(val, 5, [dim1, dim2, dim3, dim4, dim5], dtype=dtype, np_type=np_type), rank
+                val = self.float_list(dim1 * dim2 * dim3 * dim4 * dim5, min_val,
+                                      max_val, 'val')
+                return self.tensor(
+                    val,
+                    5, [dim1, dim2, dim3, dim4, dim5],
+                    dtype=dtype,
+                    np_type=np_type), rank
         elif dtype == 'int32' or dtype == 'int64':
             min_val = int(min_val)
             max_val = int(max_val)
             if rank == 0:
-                return self.tensor(self.int_list(dim1, min_val, max_val, 'val'), dtype=dtype, np_type=np_type), rank
+                return self.tensor(
+                    self.int_list(dim1, min_val, max_val, 'val'),
+                    dtype=dtype,
+                    np_type=np_type), rank
             elif rank == 1:
-                return self.tensor(self.int_list(dim1, min_val, max_val, 'val'), 1, [dim1], dtype=dtype,
-                                   np_type=np_type), rank
+                return self.tensor(
+                    self.int_list(dim1, min_val, max_val, 'val'),
+                    1, [dim1],
+                    dtype=dtype,
+                    np_type=np_type), rank
             elif rank == 2:
                 val = self.int_list(dim1 * dim2, min_val, max_val, 'val')
-                return self.tensor(val, 2, [dim1, dim2], dtype=dtype, np_type=np_type), rank
+                return self.tensor(
+                    val, 2, [dim1, dim2], dtype=dtype, np_type=np_type), rank
             elif rank == 3:
                 val = self.int_list(dim1 * dim2 * dim3, min_val, max_val, 'val')
-                return self.tensor(val, 3, [dim1, dim2, dim3], dtype=dtype, np_type=np_type), rank
+                return self.tensor(
+                    val, 3, [dim1, dim2, dim3], dtype=dtype,
+                    np_type=np_type), rank
             elif rank == 4:
-                val = self.int_list(dim1 * dim2 * dim3 * dim4, min_val, max_val, 'val')
-                return self.tensor(val, 4, [dim1, dim2, dim3, dim4], dtype=dtype, np_type=np_type), rank
+                val = self.int_list(dim1 * dim2 * dim3 * dim4, min_val, max_val,
+                                    'val')
+                return self.tensor(
+                    val,
+                    4, [dim1, dim2, dim3, dim4],
+                    dtype=dtype,
+                    np_type=np_type), rank
             else:
-                val = self.int_list(dim1 * dim2 * dim3 * dim4 * dim5, min_val, max_val, 'val')
-                return self.tensor(val, 5, [dim1, dim2, dim3, dim4, dim5], dtype=dtype, np_type=np_type), rank
+                val = self.int_list(dim1 * dim2 * dim3 * dim4 * dim5, min_val,
+                                    max_val, 'val')
+                return self.tensor(
+                    val,
+                    5, [dim1, dim2, dim3, dim4, dim5],
+                    dtype=dtype,
+                    np_type=np_type), rank
         else:
             raise ValueError('dtype is not supported.')
 
@@ -371,10 +439,17 @@ class Mutator:
         initializer = None
         learning_rate = self.float_range(0.0, 0.99, 'learning_rate')
         regularizer_val = self.float_range(-10.0, 100.0, 'regularizer_val')
-        regularizer = self.pick([None, paddle.regularizer.L1Decay(regularizer_val),
-                                 paddle.regularizer.L2Decay(regularizer_val)], 'regularizer')
+        regularizer = self.pick([
+            None, paddle.regularizer.L1Decay(regularizer_val),
+            paddle.regularizer.L2Decay(regularizer_val)
+        ], 'regularizer')
         trainable = self.bool('trainable')
         do_model_average = self.bool('do_model_average')
         need_clip = self.bool('need_clip')
-        return paddle.ParamAttr(initializer=initializer, learning_rate=learning_rate, regularizer=regularizer,
-                                trainable=trainable, do_model_average=do_model_average, need_clip=need_clip)
+        return paddle.ParamAttr(
+            initializer=initializer,
+            learning_rate=learning_rate,
+            regularizer=regularizer,
+            trainable=trainable,
+            do_model_average=do_model_average,
+            need_clip=need_clip)

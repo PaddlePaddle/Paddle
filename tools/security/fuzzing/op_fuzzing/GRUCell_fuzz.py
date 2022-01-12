@@ -37,15 +37,24 @@ def TestOneInput(input_bytes):
 
     if IGNORE_ERRS:
         try:
-            cell = paddle.nn.GRUCell(input_size=input_size, hidden_size=hidden_size, weight_ih_attr=weight_ih_attr,
-                                     weight_hh_attr=weight_hh_attr, bias_ih_attr=bias_ih_attr,
-                                     bias_hh_attr=bias_hh_attr)
+            cell = paddle.nn.GRUCell(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                weight_ih_attr=weight_ih_attr,
+                weight_hh_attr=weight_hh_attr,
+                bias_ih_attr=bias_ih_attr,
+                bias_hh_attr=bias_hh_attr)
             cell(x, y)
         except IgnoredErrors:
             pass
     else:
-        cell = paddle.nn.GRUCell(input_size=input_size, hidden_size=hidden_size, weight_ih_attr=weight_ih_attr,
-                                 weight_hh_attr=weight_hh_attr, bias_ih_attr=bias_ih_attr, bias_hh_attr=bias_hh_attr)
+        cell = paddle.nn.GRUCell(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            weight_ih_attr=weight_ih_attr,
+            weight_hh_attr=weight_hh_attr,
+            bias_ih_attr=bias_ih_attr,
+            bias_hh_attr=bias_hh_attr)
         cell(x, y)
 
 

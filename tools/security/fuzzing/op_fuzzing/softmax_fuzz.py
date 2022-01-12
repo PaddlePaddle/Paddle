@@ -16,7 +16,8 @@ IGNORE_ERRS = os.getenv('IGNORE_ERRS') == '1'
 def TestOneInput(input_bytes):
     m = Mutator(input_bytes, LOGGING)
 
-    input_tensor, rank = m.tensor_with_diff_shape(min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=4)
+    input_tensor, rank = m.tensor_with_diff_shape(
+        min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=4)
     axis = m.int_range(-rank, rank, 'axis')
 
     if IGNORE_ERRS:

@@ -45,28 +45,38 @@ def TestOneInput(input_bytes):
     if padding_type == 'int':
         padding = m.int_range(0, 10, 'padding')
     elif padding_type == 'list':
-        padding_list_type = m.pick(['4_list', '4_int', '2_int'], 'padding_list_type')
+        padding_list_type = m.pick(['4_list', '4_int', '2_int'],
+                                   'padding_list_type')
         if padding_list_type == '4_list':
             if data_format == 'NCHW':
                 padding_height_top = m.int_range(-10, 10, 'padding_height_top')
-                padding_height_bottom = m.int_range(-10, 10, 'padding_height_bottom')
+                padding_height_bottom = m.int_range(-10, 10,
+                                                    'padding_height_bottom')
                 padding_width_left = m.int_range(-10, 10, 'padding_width_left')
-                padding_width_right = m.int_range(-10, 10, 'padding_width_right')
-                padding = [[0, 0], [0, 0], [padding_height_top, padding_height_bottom],
+                padding_width_right = m.int_range(-10, 10,
+                                                  'padding_width_right')
+                padding = [[0, 0], [0, 0],
+                           [padding_height_top, padding_height_bottom],
                            [padding_width_left, padding_width_right]]
             else:
                 padding_height_top = m.int_range(-10, 10, 'padding_height_top')
-                padding_height_bottom = m.int_range(-10, 10, 'padding_height_bottom')
+                padding_height_bottom = m.int_range(-10, 10,
+                                                    'padding_height_bottom')
                 padding_width_left = m.int_range(-10, 10, 'padding_width_left')
-                padding_width_right = m.int_range(-10, 10, 'padding_width_right')
+                padding_width_right = m.int_range(-10, 10,
+                                                  'padding_width_right')
                 padding = [[0, 0], [padding_height_top, padding_height_bottom],
                            [padding_width_left, padding_width_right], [0, 0]]
         elif padding_list_type == '4_int':
             padding_height_top = m.int_range(-10, 10, 'padding_height_top')
-            padding_height_bottom = m.int_range(-10, 10, 'padding_height_bottom')
+            padding_height_bottom = m.int_range(-10, 10,
+                                                'padding_height_bottom')
             padding_width_left = m.int_range(-10, 10, 'padding_width_left')
             padding_width_right = m.int_range(-10, 10, 'padding_width_right')
-            padding = [padding_height_top, padding_height_bottom, padding_width_left, padding_width_right]
+            padding = [
+                padding_height_top, padding_height_bottom, padding_width_left,
+                padding_width_right
+            ]
         else:
             padding_height = m.int_range(-10, 10, 'padding_height')
             padding_width = m.int_range(-10, 10, 'padding_width')
@@ -81,7 +91,8 @@ def TestOneInput(input_bytes):
         dilation = m.int_list(2, -10, 10, 'dilation')
 
     groups = m.int_range(1, 10, 'groups')
-    padding_mode = m.pick(['zeros', 'reflect', 'replicate', 'circular'], 'padding_mode')
+    padding_mode = m.pick(['zeros', 'reflect', 'replicate', 'circular'],
+                          'padding_mode')
 
     has_weight = m.bool('has_weight')
     weight_attr = m.param_attr() if has_weight else None
@@ -96,23 +107,40 @@ def TestOneInput(input_bytes):
     x_dim2 = m.int_range(0, 5, 'x_dim2')
     x_dim3 = m.int_range(0, 5, 'x_dim3')
     x_dim4 = m.int_range(0, 5, 'x_dim4')
-    x_val = m.float_list(x_dim1 * x_dim2 * x_dim3 * x_dim4, -10.0, 1000.0, 'x_val')
+    x_val = m.float_list(x_dim1 * x_dim2 * x_dim3 * x_dim4, -10.0, 1000.0,
+                         'x_val')
     x = m.tensor(x_val, 4, [x_dim1, x_dim2, x_dim3, x_dim4])
 
     if IGNORE_ERRS:
         try:
-            conv = paddle.nn.Conv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
-                                    stride=stride, padding=padding, dilation=dilation, groups=groups,
-                                    padding_mode=padding_mode, weight_attr=weight_attr, bias_attr=bias_attr,
-                                    data_format=data_format)
+            conv = paddle.nn.Conv2D(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                padding_mode=padding_mode,
+                weight_attr=weight_attr,
+                bias_attr=bias_attr,
+                data_format=data_format)
             conv(x)
         except IgnoredErrors:
             pass
     else:
-        conv = paddle.nn.Conv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
-                                stride=stride, padding=padding, dilation=dilation, groups=groups,
-                                padding_mode=padding_mode, weight_attr=weight_attr, bias_attr=bias_attr,
-                                data_format=data_format)
+        conv = paddle.nn.Conv2D(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            padding_mode=padding_mode,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format)
         conv(x)
 
 

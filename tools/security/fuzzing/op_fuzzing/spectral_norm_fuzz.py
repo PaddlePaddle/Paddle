@@ -16,7 +16,8 @@ IGNORE_ERRS = os.getenv('IGNORE_ERRS') == '1'
 def TestOneInput(input_bytes):
     m = Mutator(input_bytes, LOGGING)
 
-    enc_input, rank = m.tensor_with_diff_shape(min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=3)
+    enc_input, rank = m.tensor_with_diff_shape(
+        min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=3)
 
     weight_shape = []
     weight_shape_rank = m.int_range(0, 10, 'weight_shape_rank')
@@ -28,12 +29,20 @@ def TestOneInput(input_bytes):
 
     if IGNORE_ERRS:
         try:
-            spectral_norm = paddle.nn.SpectralNorm(weight_shape=weight_shape, dim=dim, power_iters=power_iters, eps=eps)
+            spectral_norm = paddle.nn.SpectralNorm(
+                weight_shape=weight_shape,
+                dim=dim,
+                power_iters=power_iters,
+                eps=eps)
             decoder = spectral_norm(enc_input)
         except IgnoredErrors:
             pass
     else:
-        spectral_norm = paddle.nn.SpectralNorm(weight_shape=weight_shape, dim=dim, power_iters=power_iters, eps=eps)
+        spectral_norm = paddle.nn.SpectralNorm(
+            weight_shape=weight_shape,
+            dim=dim,
+            power_iters=power_iters,
+            eps=eps)
         decoder = spectral_norm(enc_input)
 
 

@@ -34,7 +34,8 @@ def TestOneInput(input_bytes):
         x_dim1 = weight_shape[dim]
     elif dim == 1:
         x_dim2 = weight_shape[dim]
-    x_val = m.float_list(x_dim1 * x_dim2 * x_dim3 * x_dim4, -10.0, 1000.0, 'x_val')
+    x_val = m.float_list(x_dim1 * x_dim2 * x_dim3 * x_dim4, -10.0, 1000.0,
+                         'x_val')
     x = m.tensor(x_val, 4, [x_dim1, x_dim2, x_dim3, x_dim4])
 
     # Filter invalid inputs. The conditions can be found in `InferShape` and `Compute`.
@@ -51,12 +52,14 @@ def TestOneInput(input_bytes):
 
     if IGNORE_ERRS:
         try:
-            spectral_norm = paddle.nn.SpectralNorm(weight_shape, dim=dim, power_iters=power_iters, eps=eps)
+            spectral_norm = paddle.nn.SpectralNorm(
+                weight_shape, dim=dim, power_iters=power_iters, eps=eps)
             spectral_norm(x)
         except IgnoredErrors:
             pass
     else:
-        spectral_norm = paddle.nn.SpectralNorm(weight_shape, dim=dim, power_iters=power_iters, eps=eps)
+        spectral_norm = paddle.nn.SpectralNorm(
+            weight_shape, dim=dim, power_iters=power_iters, eps=eps)
         spectral_norm(x)
 
 

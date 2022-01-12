@@ -33,7 +33,8 @@ def TestOneInput(input_bytes):
         x_dim2 = m.int_range(0, 20, 'x_dim2')
         x_val = m.float_list(x_dim1 * x_dim2, -10.0, 1000.0, 'x_val')
         x = m.tensor(x_val, 2, [x_dim1, x_dim2])
-        updates_val = m.float_list(x_dim1 * x_dim2, -10.0, 1000.0, 'updates_val')
+        updates_val = m.float_list(x_dim1 * x_dim2, -10.0, 1000.0,
+                                   'updates_val')
         updates = m.tensor(updates_val, 2, [x_dim1, x_dim2])
     else:
         x_dim1 = m.int_range(0, 20, 'x_dim1')
@@ -41,7 +42,8 @@ def TestOneInput(input_bytes):
         x_dim3 = m.int_range(0, 20, 'x_dim3')
         x_val = m.float_list(x_dim1 * x_dim2 * x_dim3, -10.0, 1000.0, 'x_val')
         x = m.tensor(x_val, 3, [x_dim1, x_dim2, x_dim3])
-        updates_val = m.float_list(x_dim1 * x_dim2 * x_dim3, -10.0, 1000.0, 'updates_val')
+        updates_val = m.float_list(x_dim1 * x_dim2 * x_dim3, -10.0, 1000.0,
+                                   'updates_val')
         updates = m.tensor(updates_val, 3, [x_dim1, x_dim2, x_dim3])
 
     index_val = m.int_list(x_dim1, 0, 1000, 'index_val')

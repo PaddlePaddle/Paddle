@@ -33,12 +33,18 @@ def TestOneInput(input_bytes):
         try:
             # Example in Paddle doc.
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=learning_rate, decay_steps=decay_steps,
-                                                            end_lr=end_lr, power=power, cycle=cycle,
-                                                            last_epoch=last_epoch, verbose=verbose)
+            scheduler = paddle.optimizer.lr.PolynomialDecay(
+                learning_rate=learning_rate,
+                decay_steps=decay_steps,
+                end_lr=end_lr,
+                power=power,
+                cycle=cycle,
+                last_epoch=last_epoch,
+                verbose=verbose)
             scheduler.get_lr()
 
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler,
+                                       parameters=linear.parameters())
             out = linear(x)
             loss = paddle.mean(out)
             loss.backward()
@@ -49,12 +55,18 @@ def TestOneInput(input_bytes):
             pass
     else:
         linear = paddle.nn.Linear(10, 10)
-        scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=learning_rate, decay_steps=decay_steps,
-                                                        end_lr=end_lr, power=power, cycle=cycle,
-                                                        last_epoch=last_epoch, verbose=verbose)
+        scheduler = paddle.optimizer.lr.PolynomialDecay(
+            learning_rate=learning_rate,
+            decay_steps=decay_steps,
+            end_lr=end_lr,
+            power=power,
+            cycle=cycle,
+            last_epoch=last_epoch,
+            verbose=verbose)
         scheduler.get_lr()
 
-        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler,
+                                   parameters=linear.parameters())
         out = linear(x)
         loss = paddle.mean(out)
         loss.backward()

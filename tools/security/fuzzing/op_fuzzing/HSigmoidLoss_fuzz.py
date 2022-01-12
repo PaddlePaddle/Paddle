@@ -41,14 +41,24 @@ def TestOneInput(input_bytes):
 
     if IGNORE_ERRS:
         try:
-            hsl = paddle.nn.HSigmoidLoss(feature_size=feature_size, num_classes=num_classes, weight_attr=weight_attr,
-                                         bias_attr=bias_attr, is_custom=is_custom, is_sparse=is_sparse)
+            hsl = paddle.nn.HSigmoidLoss(
+                feature_size=feature_size,
+                num_classes=num_classes,
+                weight_attr=weight_attr,
+                bias_attr=bias_attr,
+                is_custom=is_custom,
+                is_sparse=is_sparse)
             hsl(x, label)
         except IgnoredErrors:
             pass
     else:
-        hsl = paddle.nn.HSigmoidLoss(feature_size=feature_size, num_classes=num_classes, weight_attr=weight_attr,
-                                     bias_attr=bias_attr, is_custom=is_custom, is_sparse=is_sparse)
+        hsl = paddle.nn.HSigmoidLoss(
+            feature_size=feature_size,
+            num_classes=num_classes,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            is_custom=is_custom,
+            is_sparse=is_sparse)
         hsl(x, label)
 
 

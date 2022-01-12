@@ -16,10 +16,12 @@ IGNORE_ERRS = os.getenv('IGNORE_ERRS') == '1'
 def TestOneInput(input_bytes):
     m = Mutator(input_bytes, LOGGING)
 
-    input_tensor, rank = m.tensor_with_diff_shape(min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=4)
+    input_tensor, rank = m.tensor_with_diff_shape(
+        min_val=0.0, max_val=30.0, min_dim=0, max_dim=10, max_rank=4)
     groups = m.int_range(0, 10, 'groups')
     num_filters = m.int_range(0, 5, 'num_filters')
-    filter_size = (m.int_range(0, 5, 'filter_size'), m.int_range(0, 5, 'filter_size'), m.int_range(0, 5, 'filter_size'))
+    filter_size = (m.int_range(0, 5, 'filter_size'), m.int_range(
+        0, 5, 'filter_size'), m.int_range(0, 5, 'filter_size'))
     stride = m.int_range(0, 20, 'stride')
     padding = m.int_range(0, 20, 'padding')
     dilation = m.int_range(0, 20, 'dilation')
@@ -29,15 +31,33 @@ def TestOneInput(input_bytes):
 
     if IGNORE_ERRS:
         try:
-            paddle.static.nn.conv3d(input=input_tensor, num_filters=num_filters, filter_size=filter_size,
-                                    stride=stride, padding=padding, dilation=dilation, groups=groups, param_attr=None,
-                                    bias_attr=None, use_cudnn=use_cudnn, act=act)
+            paddle.static.nn.conv3d(
+                input=input_tensor,
+                num_filters=num_filters,
+                filter_size=filter_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                param_attr=None,
+                bias_attr=None,
+                use_cudnn=use_cudnn,
+                act=act)
         except IgnoredErrors:
             pass
     else:
-        paddle.static.nn.conv3d(input=input_tensor, num_filters=num_filters, filter_size=filter_size, stride=stride,
-                                padding=padding, dilation=dilation, groups=groups, param_attr=None, bias_attr=None,
-                                use_cudnn=use_cudnn, act=act)
+        paddle.static.nn.conv3d(
+            input=input_tensor,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            param_attr=None,
+            bias_attr=None,
+            use_cudnn=use_cudnn,
+            act=act)
 
 
 def main():
