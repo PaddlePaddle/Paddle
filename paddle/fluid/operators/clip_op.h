@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/transform.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -25,22 +28,11 @@ namespace operators {
 using framework::Tensor;
 using platform::Transform;
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename UnaryOperation>
-__global__ void ClipCudaKernel(const T* input, T* out, int num,
-                               UnaryOperation op) {
-  int idx = threadIdx.x + blockDim.x * blockIdx.x;
-  if (idx < num) {
-    out[idx] = op(input[idx]);
-  }
-}
-#endif
-
 template <typename T>
 class ClipFunctor {
  public:
   explicit ClipFunctor(const T min, const T max) : min_(min), max_(max) {}
-  HOSTDEVICE T operator()(const T& x) const {
+  HOSTDEVICE T operator()(const T x) const {
     return x < min_ ? min_ : x > max_ ? max_ : x;
   }
 
@@ -54,7 +46,7 @@ class ClipGradFunctor {
  public:
   explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T& x, const T& y) const {
-    return (y > min_ && y < max_) ? x : 0;
+    return (y > min_ && y < max_) ? x : static_cast<T>(0);
   }
 
  private:
@@ -79,7 +71,7 @@ class ClipKernel : public framework::OpKernel<T> {
     }
     max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = static_cast<T>(context.Attr<float>("min"));
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
@@ -95,7 +87,7 @@ class ClipKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "max should be greater than or equal to min. "
                           "But received min = %f, max = %f",
-                          min, max));
+                          static_cast<float>(min), static_cast<float>(max)));
 
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
@@ -106,12 +98,12 @@ class ClipKernel : public framework::OpKernel<T> {
       int64_t numel = x->numel();
       if (platform::is_gpu_place(context.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-        int threads = 256;
-        int blocks = (numel + threads - 1) / threads;
-        ClipCudaKernel<T, ClipFunctor<T>><<<
-            blocks, threads, 0,
-            context.template device_context<platform::CUDADeviceContext>()
-                .stream()>>>(x_data, out_data, numel, ClipFunctor<T>(min, max));
+        std::vector<const framework::Tensor*> ins = {x};
+        std::vector<framework::Tensor*> outs = {out};
+        auto functor = ClipFunctor<T>(min, max);
+        LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+            context.template device_context<platform::CUDADeviceContext>(), ins,
+            &outs, functor);
 #endif
       } else {
         Transform<DeviceContext> trans;
@@ -156,7 +148,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
     }
     max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = static_cast<T>(context.Attr<float>("min"));
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");

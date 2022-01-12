@@ -215,13 +215,7 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
                                   kSkipEagerDeletionVars), /*skip_ref_cnt_vars*/
                               true);
 
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lock(mutex);
   StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
-  // TODO(gfwm2013) Function CreateStepScopes would make segmentation fault in
-  // multithreading in eval process, so we use a mutex before function
-  // CreateStepScopes to make sure that the computing process is correct. This
-  // problem will fix in next pull request.
   for (size_t i = 0; i < seq_len; ++i) {
     size_t seq_offset = reverse ? seq_len - i - 1 : i;
     VLOG(3) << "Recurrent operate at the time step " << seq_offset;
@@ -292,6 +286,11 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
 StepScopes RecurrentOp::CreateStepScopes(const platform::DeviceContext &dev_ctx,
                                          const framework::Scope &scope,
                                          size_t seq_len) const {
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lock(mutex);
+  // TODO(baoachun) Function CreateStepScopes may lead to segmentation
+  // fault in multithreading in eval process. The performance drop of
+  // adding mutex need to be fixed.
   auto *var = scope.FindVar(Output(kStepScopes));
   PADDLE_ENFORCE_NOT_NULL(var, platform::errors::InvalidArgument(
                                    "RecurrentOp gets empty StepScopes var"));

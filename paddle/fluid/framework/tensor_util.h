@@ -13,17 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <codecvt>
+#include <locale>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
+
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -48,6 +59,14 @@ class PrintOptions {
   PrintOptions() {}
 };
 
+void TensorToStream(std::ostream& os, const Tensor& tensor,
+                    const platform::DeviceContext& dev_ctx);
+void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx);
+void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx,
+                      const size_t& seek, const std::vector<int64_t>& shape);
+
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
 // be carried out correctly, there is a src_ctx wait operation in TensorCopy.
@@ -58,6 +77,8 @@ class Tensor;
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                const platform::DeviceContext& ctx, pten::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is
@@ -68,6 +89,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 // not completed.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                pten::DenseTensor* dst);
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst);
@@ -225,6 +248,14 @@ void TensorFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(dst_place)) {
+    memory::Copy(
+        BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr, src_place,
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 // The fully specialized function should be inline to avoid
@@ -357,6 +388,14 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
                  size, nullptr);
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 template <>
@@ -397,6 +436,14 @@ inline void TensorToVector(const Tensor& src,
     memory::Copy(dst_place, dst_ptr,
                  BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
                  size, nullptr);
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {

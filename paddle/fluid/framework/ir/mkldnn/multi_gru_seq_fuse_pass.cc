@@ -126,9 +126,9 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(fused_count);
-
-  PrettyLogDetail("---    fused %d sequences of two multi_gru ops",
-                  fused_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d sequences of two multi_gru ops",
+                    fused_count);
 }
 
 }  // namespace ir

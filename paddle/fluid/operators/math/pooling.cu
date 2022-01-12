@@ -16,16 +16,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/pooling.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
-
-#ifdef __HIPCC__
-#define POOLING_BLOCK_SIZE 256
-#else
-#define POOLING_BLOCK_SIZE 512
-#endif
 
 namespace paddle {
 namespace operators {
@@ -95,22 +88,6 @@ __device__ void OffsetPreparationFor4Dimension(
     *stride = input_height_divmod.val[0] * aux_height * aux_width *
               divmods.channel.divisor;
   }
-}
-
-int GetThreadsPerBlock(const platform::CUDADeviceContext& ctx,
-                       int threads_per_block, int64_t numel) {
-  int sm_count = ctx.GetSMCount();
-  if (numel / (sm_count << 1) < threads_per_block) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about twice of SM, to acquire better performance.
-    threads_per_block = platform::RoundToPowerOfTwo(numel / (sm_count << 1));
-  } else if (numel / (sm_count << 2) < threads_per_block) {
-    // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about 4 times of SM, to acquire better performance.
-    threads_per_block = platform::RoundToPowerOfTwo(numel / (sm_count << 2));
-  }
-  // Number of threads per block shall be larger than 64.
-  return std::max(64, threads_per_block);
 }
 
 template <typename PoolProcess, typename T>
@@ -491,14 +468,13 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, POOLING_BLOCK_SIZE, nthreads);
-    int grids = (nthreads + blocks - 1) / blocks;
-
     auto pool_divmods = FastDivModForPoolingWithMoreStaff(
         input_channels, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height);
 
-    KernelPool2DGrad<T, PoolProcess><<<grids, blocks, 0, context.stream()>>>(
+    auto config = GetGpuLaunchConfig1D(context, nthreads);
+    KernelPool2DGrad<T, PoolProcess><<<
+        config.block_per_grid, config.thread_per_block, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, output_width,
         output_height, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height, padding_width, padding_height,
@@ -541,14 +517,13 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, POOLING_BLOCK_SIZE, nthreads);
-    int grids = (nthreads + blocks - 1) / blocks;
-
     auto pool_divmods = FastDivModForPoolingWithMoreStaff(
         input_channels, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height);
 
-    KernelPool2DGrad<T, PoolProcess><<<grids, blocks, 0, context.stream()>>>(
+    auto config = GetGpuLaunchConfig1D(context, nthreads);
+    KernelPool2DGrad<T, PoolProcess><<<
+        config.block_per_grid, config.thread_per_block, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, output_width,
         output_height, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height, padding_width, padding_height,
@@ -979,6 +954,49 @@ __global__ void KernelMaxPool3DGrad(
   }
 }
 
+template <typename PoolProcess, typename T>
+void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
+    const T* input, const std::vector<int>& input_shape,
+    const std::vector<int>& output_shape, const std::vector<int>& ksize,
+    const std::vector<int>& strides, const std::vector<int>& paddings,
+    bool exclusive, bool adaptive, T* output, gpuStream_t stream,
+    PoolProcess pool_compute) {
+  const int batch_size = input_shape[0];
+  const int input_channels = input_shape[1];
+  const int input_depth = input_shape[2];
+  const int input_height = input_shape[3];
+  const int input_width = input_shape[4];
+  const int output_channels = output_shape[1];
+  const int output_depth = output_shape[2];
+  const int output_height = output_shape[3];
+  const int output_width = output_shape[4];
+  const int ksize_depth = ksize[0];
+  const int ksize_height = ksize[1];
+  const int ksize_width = ksize[2];
+  const int stride_depth = strides[0];
+  const int stride_height = strides[1];
+  const int stride_width = strides[2];
+  const int padding_depth = paddings[0];
+  const int padding_height = paddings[1];
+  const int padding_width = paddings[2];
+
+  int nthreads = batch_size * output_channels * output_depth * output_height *
+                 output_width;
+  int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+  thread_num = 512;
+#endif
+  int blocks = (nthreads + thread_num - 1) / thread_num;
+  dim3 threads(thread_num, 1);
+  dim3 grid(blocks, 1);
+
+  KernelPool3D<PoolProcess, T><<<grid, threads, 0, stream>>>(
+      nthreads, input, input_channels, input_depth, input_height, input_width,
+      output_depth, output_height, output_width, ksize_depth, ksize_height,
+      ksize_width, stride_depth, stride_height, stride_width, padding_depth,
+      padding_height, padding_width, pool_compute, exclusive, adaptive, output);
+}
+
 /*
  * Tensors are in NCDHW or NDHWC format.
  * Ksize, strides, paddings are three elements. These three elements represent
@@ -1314,6 +1332,11 @@ class MaxPool3dGradFunctor<platform::CUDADeviceContext, T> {
         padding_width, input_grad_data, channel_last);  // add channel_last
   }
 };
+
+template class Pool3dDirectCUDAFunctor<paddle::operators::math::MaxPool<float>,
+                                       float>;
+template class Pool3dDirectCUDAFunctor<paddle::operators::math::AvgPool<float>,
+                                       float>;
 
 template class MaxPool3dGradFunctor<platform::CUDADeviceContext, float>;
 template class MaxPool3dGradFunctor<platform::CUDADeviceContext, double>;

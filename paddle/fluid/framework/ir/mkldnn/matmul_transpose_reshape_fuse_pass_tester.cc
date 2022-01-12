@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_fuse_pass.h"
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/mkldnn/matmul_v2_transpose_reshape_fuse_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -42,9 +42,15 @@ void SetOp(ProgramDesc *prog, const std::string &type,
     op->SetAttr("transpose_X", true);
     op->SetAttr("transpose_Y", true);
   }
+  if (type == "matmul_v2") {
+    op->SetInput("Y", {inputs[1]});
+    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("trans_x", true);
+    op->SetAttr("trans_y", true);
+  }
 }
 
-ProgramDesc BuildProgramDesc() {
+ProgramDesc BuildProgramDesc(const std::string &op_name) {
   ProgramDesc prog;
   for (auto &v : std::initializer_list<std::string>(
            {"a1", "a2", "b", "c", "cx", "d", "dx", "e"})) {
@@ -52,7 +58,7 @@ ProgramDesc BuildProgramDesc() {
     var->SetType(proto::VarType::SELECTED_ROWS);
   }
 
-  SetOp(&prog, "matmul", {"a1", "a2"}, {"b"});
+  SetOp(&prog, op_name, {"a1", "a2"}, {"b"});
   SetOp(&prog, "transpose2", {"b"}, {"c", "cx"});
   SetOp(&prog, "reshape2", {"c"}, {"d", "dx"});
   SetOp(&prog, "fc", {"d"}, {"e"});
@@ -60,13 +66,13 @@ ProgramDesc BuildProgramDesc() {
   return prog;
 }
 
-void MainTest(const ProgramDesc &prog) {
+void MainTest(const ProgramDesc &prog, const std::string &op_name) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   int original_nodes_num = graph->Nodes().size();
 
   auto pass =
-      PassRegistry::Instance().Get("matmul_transpose_reshape_fuse_pass");
+      PassRegistry::Instance().Get(op_name + "_transpose_reshape_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
@@ -75,7 +81,7 @@ void MainTest(const ProgramDesc &prog) {
   for (auto *node : graph->Nodes()) {
     if (node->IsOp()) {
       auto *op = node->Op();
-      if (op->Type() == "matmul") {
+      if (op->Type() == op_name) {
         EXPECT_EQ(op->GetAttrIfExists<std::vector<int>>("fused_reshape_Out"),
                   std::vector<int>({4, 5, 6}));
         EXPECT_EQ(op->GetAttrIfExists<std::vector<int>>("fused_transpose_Out"),
@@ -85,12 +91,18 @@ void MainTest(const ProgramDesc &prog) {
   }
 }
 
-TEST(MatmulTransposeReshapeFusePass, matmul_inputs) {
-  auto prog = BuildProgramDesc();
-  MainTest(prog);
+TEST(MatmulTransposeReshapeFusePass, matmul_fuse_pass) {
+  auto prog = BuildProgramDesc("matmul");
+  MainTest(prog, "matmul");
+}
+
+TEST(MatmulTransposeReshapeFusePass, matmul_v2_fuse_pass) {
+  auto prog = BuildProgramDesc("matmul_v2");
+  MainTest(prog, "matmul_v2");
 }
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 USE_PASS(matmul_transpose_reshape_fuse_pass);
+USE_PASS(matmul_v2_transpose_reshape_fuse_pass);

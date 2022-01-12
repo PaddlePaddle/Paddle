@@ -17,6 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+
+paddle.enable_static()
 
 
 class TestElementwiseOp(OpTest):
@@ -140,6 +145,55 @@ class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
         self.inputs = {'X': x, 'Y': y}
 
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMinOpFP16(unittest.TestCase):
+    def get_out_and_grad(self, x_np, y_np, axis, place, use_fp32=False):
+        assert x_np.dtype == np.float16
+        assert y_np.dtype == np.float16
+        if use_fp32:
+            x_np = x_np.astype(np.float32)
+            y_np = y_np.astype(np.float32)
+        dtype = np.float16
+
+        with fluid.dygraph.guard(place):
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z = fluid.layers.elementwise_min(x, y, axis)
+            x_g, y_g = paddle.grad([z], [x, y])
+            return z.numpy().astype(dtype), x_g.numpy().astype(
+                dtype), y_g.numpy().astype(dtype)
+
+    def check_main(self, x_shape, y_shape, axis=-1):
+        if not paddle.is_compiled_with_cuda():
+            return
+        place = paddle.CUDAPlace(0)
+        if not core.is_float16_supported(place):
+            return
+
+        x_np = np.random.random(size=x_shape).astype(np.float16)
+        y_np = np.random.random(size=y_shape).astype(np.float16)
+
+        z_1, x_g_1, y_g_1 = self.get_out_and_grad(x_np, y_np, axis, place,
+                                                  False)
+        z_2, x_g_2, y_g_2 = self.get_out_and_grad(x_np, y_np, axis, place, True)
+        self.assertTrue(np.array_equal(z_1, z_2), "{} vs {}".format(z_1, z_2))
+        self.assertTrue(
+            np.array_equal(x_g_1, x_g_2), "{} vs {}".format(x_g_1, x_g_2))
+        self.assertTrue(
+            np.array_equal(y_g_1, y_g_2), "{} vs {}".format(y_g_1, y_g_2))
+
+    def test_main(self):
+        self.check_main((13, 17), (13, 17))
+        self.check_main((10, 3, 4), (1, ))
+        self.check_main((100, ), (100, ))
+        self.check_main((100, 3, 2), (100, ), 0)
+        self.check_main((2, 100, 3), (100, ), 1)
+        self.check_main((2, 3, 100), (100, ))
+        self.check_main((2, 25, 4, 1), (25, 4), 1)
+        self.check_main((2, 10, 2, 5), (2, 10, 1, 5))
 
 
 if __name__ == '__main__':

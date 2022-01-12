@@ -379,5 +379,74 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
             net.forward.outputs
 
 
+class CallNonForwardFuncNet(paddle.nn.Layer):
+    def __init__(self):
+        super(CallNonForwardFuncNet, self).__init__()
+        self.sub = CallNonForwardFuncSubNet()
+
+    @paddle.jit.to_static
+    def forward(self):
+        return self.sub.func()
+
+
+class CallNonForwardFuncSubNet(paddle.nn.Layer):
+    def __init__(self):
+        super(CallNonForwardFuncSubNet, self).__init__()
+        self.a = paddle.to_tensor([1, 2])
+
+    def func(self):
+        x = self.a * 2
+        return x
+
+
+class TestCallNonForwardFunc(unittest.TestCase):
+    def test_call_non_forward(self):
+        paddle.disable_static()
+        net = CallNonForwardFuncNet()
+        out = net()
+        self.assertEqual(out.numpy().tolist(), [2, 4])
+        paddle.enable_static()
+
+
+class SetBuffersNet1(paddle.nn.Layer):
+    def __init__(self):
+        super(SetBuffersNet1, self).__init__()
+        self.a = paddle.to_tensor([1])
+
+    @paddle.jit.to_static
+    def forward(self):
+        self.a = self.a + 1
+        return self.a
+
+
+class SetBuffersNet2(paddle.nn.Layer):
+    def __init__(self):
+        super(SetBuffersNet2, self).__init__()
+        self.b = paddle.to_tensor([2])
+
+    @paddle.jit.to_static
+    def forward(self):
+        self.b = None
+        self.b = paddle.to_tensor([3])
+        return self.b
+
+
+class TestSetBuffers(unittest.TestCase):
+    def test_set_buffers1(self):
+        paddle.disable_static()
+        net = SetBuffersNet1()
+        out = net()
+        self.assertEqual(out.numpy().tolist(), [2])
+        paddle.jit.save(net, './SetBuffersNet1')
+        paddle.enable_static()
+
+    def test_set_buffers2(self):
+        paddle.disable_static()
+        net = SetBuffersNet2()
+        with self.assertRaises(RuntimeError):
+            out = net()
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

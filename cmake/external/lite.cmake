@@ -46,11 +46,11 @@ endif()
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
-  set(LITE_SOURCES_DIR ${THIRD_PARTY_PATH}/lite)
+  set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG d3a3a6931b6d22d504d21ba32b3ae972770e9204)
+    set(LITE_GIT_TAG 4ab64daecc11fbf74fffdc6a4733f388472e7d5d)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -85,8 +85,8 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
-      PREFIX              ${LITE_SOURCES_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
+      PREFIX              ${LITE_PREFIX_DIR}
+      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
@@ -132,9 +132,9 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
         GIT_TAG             ${LITE_GIT_TAG}
-        PREFIX              ${LITE_SOURCES_DIR}
+        PREFIX              ${LITE_PREFIX_DIR}
         UPDATE_COMMAND      ""
-        PATCH_COMMAND       sed -i "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?" ${LITE_SOURCES_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py && sed -i "/general::ssa::ConvertToSSA(cpp_prog)$<SEMICOLON>/d" ${LITE_SOURCES_DIR}/src/extern_lite/lite/model_parser/model_parser.cc
+        PATCH_COMMAND       sed -i "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?" ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
         BUILD_COMMAND       ${LITE_BUILD_COMMAND}
         INSTALL_COMMAND     ""
         CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -197,9 +197,9 @@ set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_
 if (LITE_WITH_NNADAPTER)
   set(LITE_NNADAPTER_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
   if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
-    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
+    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
     set(LITE_DEPS lite_full_static lite_nnadapter)
-    set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
+    set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
   endif()
 else()
   set(LITE_DEPS lite_full_static)

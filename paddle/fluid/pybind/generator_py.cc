@@ -60,6 +60,8 @@ void BindGenerator(py::module* m_ptr) {
                     &framework::Generator::SetIsInitPy);
   m.def("default_cpu_generator", &framework::DefaultCPUGenerator);
   m.def("default_cuda_generator", &framework::GetDefaultCUDAGenerator);
+  m.def("set_random_seed_generator", &framework::SetRandomSeedGenerator);
+  m.def("get_random_seed_generator", &framework::GetRandomSeedGenerator);
 }
 }  // namespace pybind
 }  // namespace paddle

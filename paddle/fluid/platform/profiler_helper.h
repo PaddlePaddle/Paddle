@@ -49,7 +49,7 @@ static ProfilerState g_state = ProfilerState::kDisabled;
 static bool g_enable_nvprof_hook = false;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
-static thread_local int32_t g_thread_id;
+static thread_local uint64_t g_thread_id;
 // The g_next_thread_id is a global counter for threads, by the g_thread_id and
 // g_next_thread_id, we can know how many threads have created EventList.
 static uint32_t g_next_thread_id = 0;
@@ -119,17 +119,17 @@ std::vector<std::vector<MemEvent>> GetMemEvents() {
 
 void SynchronizeAllDevice() {
 #ifdef PADDLE_WITH_CUDA
-  int count = GetCUDADeviceCount();
+  int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 #endif
 #ifdef PADDLE_WITH_HIP
-  int count = GetCUDADeviceCount();
+  int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
 #endif
 }

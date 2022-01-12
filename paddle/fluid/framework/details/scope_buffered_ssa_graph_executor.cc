@@ -22,7 +22,9 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -49,8 +51,29 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
   PrepareLocalExeScopes();
 }
 
+static void RunProgramDescs(const ProgramDescs &programs,
+                            const std::vector<Scope *> &local_exec_scopes,
+                            const std::vector<platform::Place> &places) {
+  for (auto &program : programs) {
+    for (auto &op_desc : program.Block(0).AllOps()) {
+      for (size_t i = 0; i < local_exec_scopes.size(); ++i) {
+        auto op = OpRegistry::CreateOp(*op_desc);
+        op->Run(*local_exec_scopes[i], places[i]);
+      }
+    }
+  }
+}
+
 FetchResultType ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
+#ifdef PADDLE_WITH_CUDA
+  if (platform::IsCUDAGraphCapturing()) {
+    strategy_.num_iteration_per_drop_scope_ =
+        std::numeric_limits<size_t>::max();
+    DropLocalExeScopes(/*need_wait=*/false);
+  }
+#endif
+
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalVars");
     InitVariables();
@@ -84,7 +107,7 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   ++drop_scope_counter_;
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_ ||
       DropScopeOrNot()) {
-    DropLocalExeScopes();
+    DropLocalExeScopes(!platform::IsCUDAGraphCapturing());
   }
 
   if (VLOG_IS_ON(5)) {
@@ -128,15 +151,7 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
     if (graph.Has(details::kStartupProgramDescs)) {
       auto &program_descs =
           graph.Get<details::ProgramDescs>(details::kStartupProgramDescs);
-
-      for (auto &program_desc : program_descs) {
-        for (auto &op_desc : program_desc.Block(0).AllOps()) {
-          for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
-            auto op = OpRegistry::CreateOp(*op_desc);
-            op->Run(*local_exec_scopes_[i], places_[i]);
-          }
-        }
-      }
+      RunProgramDescs(program_descs, local_exec_scopes_, places_);
     }
     is_initialized_ = true;
   }
@@ -144,23 +159,17 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
   if (graph.Has(details::kProgramDescs)) {
     auto &program_descs =
         graph.Get<details::ProgramDescs>(details::kProgramDescs);
-
-    for (auto &program_desc : program_descs) {
-      for (auto &op_desc : program_desc.Block(0).AllOps()) {
-        for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
-          auto op = OpRegistry::CreateOp(*op_desc);
-          op->Run(*local_exec_scopes_[i], places_[i]);
-        }
-      }
-    }
+    RunProgramDescs(program_descs, local_exec_scopes_, places_);
   }
 }
 
-void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
+void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes(bool need_wait) {
   platform::RecordEvent drop_scope_event("DropLocalExeScopes");
   drop_scope_counter_ = 0;
-  for (auto &p : places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  if (need_wait) {
+    for (auto &p : places_) {
+      platform::DeviceContextPool::Instance().Get(p)->Wait();
+    }
   }
   scope_monitor_.ClearHistoryLocalExecScopes();
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {

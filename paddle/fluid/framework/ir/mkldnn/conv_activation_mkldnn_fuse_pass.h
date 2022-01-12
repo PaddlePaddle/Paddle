@@ -72,6 +72,24 @@ class Conv2DHardSwishFusePass : public ConvActivationFusePass {
   Conv2DHardSwishFusePass();
   std::string activation_type() const { return "hard_swish"; }
 };
+/*
+ * Fuse Conv and HardSigmoid class
+ */
+class Conv2DHardSigmoidFusePass : public ConvActivationFusePass {
+ public:
+  Conv2DHardSigmoidFusePass();
+  std::string activation_type() const { return "hard_sigmoid"; }
+};
+
+/*
+ * Fuse Conv and Gelu class
+ */
+class Conv2DGeluFusePass : public ConvActivationFusePass {
+ public:
+  Conv2DGeluFusePass();
+  std::string activation_type() const { return "gelu"; }
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

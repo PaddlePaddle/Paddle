@@ -17,8 +17,11 @@ namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_XPU
 REGISTER_OP_XPU_KERNEL(
     fill_constant, ops::FillConstantKernel<float>,
-    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<double>,
-    ops::FillConstantKernel<bool>, ops::FillConstantKernel<int>,
+    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
+    ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
+    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
+    ops::FillConstantKernel<paddle::platform::float16>,
+    ops::FillConstantKernel<paddle::platform::bfloat16>,
     ops::FillConstantKernel<paddle::platform::complex<float>>,
     ops::FillConstantKernel<paddle::platform::complex<double>>);
 #endif

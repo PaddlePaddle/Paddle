@@ -35,17 +35,17 @@ struct LogicalOrFunctor {
 };
 
 template <typename T>
+struct LogicalNotFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a) const { return !a; }
+};
+
+template <typename T>
 struct LogicalXorFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const {
     return (a || b) && !(a && b);
   }
-};
-
-template <typename T>
-struct LogicalNotFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a) const { return !a; }
 };
 
 template <typename DeviceContext, typename Functor>

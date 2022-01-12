@@ -47,14 +47,13 @@ def _apply_collective_grads(parameters, comm_group):
         nranks = paddle.distributed.get_world_size(
         ) if comm_group is None else comm_group.nranks
         div_factor = paddle.to_tensor(nranks, dtype=coalesced_grad.dtype)
+        paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
         paddle.fluid.framework._dygraph_tracer().trace_op(
             type="elementwise_div",
             inputs={'X': coalesced_grad,
                     'Y': div_factor},
             outputs={'Out': coalesced_grad},
             attrs={'axis': -1})
-
-        paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
 

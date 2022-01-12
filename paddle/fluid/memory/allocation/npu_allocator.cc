@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/memory/allocation/npu_allocator.h"
 #include <string>
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/npu_info.h"
 
 namespace paddle {
 namespace memory {

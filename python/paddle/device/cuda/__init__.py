@@ -27,6 +27,9 @@ __all__ = [
     'device_count',
     'empty_cache',
     'stream_guard',
+    'get_device_properties',
+    'get_device_name',
+    'get_device_capability',
 ]
 
 
@@ -204,3 +207,127 @@ def stream_guard(stream):
             yield
         finally:
             stream = _set_current_stream(pre_stream)
+
+
+def get_device_properties(device=None):
+    '''
+    Return the properties of given device.
+
+    Args:
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
+            the string name of device like 'gpu:x' which to get the properties of the 
+            device from. If device is None, the device is the current device. 
+            Default: None.
+
+    Returns:
+        _gpuDeviceProperties: The properties of the device which include ASCII string 
+        identifying device, major compute capability, minor compute capability, global 
+        memory available and the number of multiprocessors on the device.
+
+    Examples:
+    
+        .. code-block:: python
+
+            # required: gpu
+
+            import paddle
+            paddle.device.cuda.get_device_properties()
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            paddle.device.cuda.get_device_properties(0)
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            paddle.device.cuda.get_device_properties('gpu:0')
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+    '''
+
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            "The API paddle.device.cuda.get_device_properties is not supported in "
+            "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
+            "to call this API.")
+
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
+            device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('gpu:'):
+                device_id = int(device[4:])
+            else:
+                raise ValueError(
+                    "The current string {} is not expected. Because paddle.device."
+                    "cuda.get_device_properties only support string which is like 'gpu:x'. "
+                    "Please input appropriate string again!".format(device))
+        else:
+            raise ValueError(
+                "The device type {} is not expected. Because paddle.device.cuda."
+                "get_device_properties only support int, str or paddle.CUDAPlace. "
+                "Please input appropriate device again!".format(device))
+    else:
+        device_id = -1
+
+    return core.get_device_properties(device_id)
+
+
+def get_device_name(device=None):
+    '''
+    Return the name of the device which is got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
+
+    Parameters:
+        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device.
+
+    Returns:
+        str: The name of the device.
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: gpu
+
+            import paddle
+
+            paddle.device.cuda.get_device_name()
+
+            paddle.device.cuda.get_device_name(0)
+
+            paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
+
+    '''
+
+    return get_device_properties(device).name
+
+
+def get_device_capability(device=None):
+    '''
+    Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
+
+    Parameters:
+        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device. 
+
+    Returns:
+        tuple(int,int): the major and minor revision numbers defining the device's compute capability.
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: gpu
+
+            import paddle
+
+            paddle.device.cuda.get_device_capability()
+
+            paddle.device.cuda.get_device_capability(0)
+
+            paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
+
+    '''
+    prop = get_device_properties(device)
+    return prop.major, prop.minor

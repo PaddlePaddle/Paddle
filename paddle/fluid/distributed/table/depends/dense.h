@@ -99,6 +99,7 @@ class DSGD : public DenseOptimizer {
 };
 
 // adam optimizer for dense tensor
+// TODO(zhaocaibei123): add CHECK(common_dense_table.task_pool_size_) == 1
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
@@ -131,6 +132,8 @@ class DAdam : public DenseOptimizer {
     epsilon = 1.0e-8;
   }
 
+  // make sure common_dense_table.task_pool_size_ == 1;
+  // otherwise, task_pool_size_ times beta1_pow/beta2_pow multiplication
   void update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
@@ -181,6 +184,88 @@ class DAdam : public DenseOptimizer {
   float beta1;
   float beta2;
   float epsilon;
+};
+
+// adam optimizer for dense tensor
+class DAdamD2Sum : public DenseOptimizer {
+ public:
+  explicit DAdamD2Sum(const CommonAccessorParameter& accessor,
+                      std::vector<std::vector<float>>* values) {
+    lr_hardcode = 5e-6;
+    auto& names = accessor.params();
+    for (int x = 0; x < static_cast<int>(names.size()); ++x) {
+      if (names[x] == "LearningRate") {
+        learning_rate = (*values)[x].data();
+      }
+      if (names[x] == "Param") {
+        param = (*values)[x].data();
+      }
+      if (names[x] == "Moment") {
+        mom_velocity = (*values)[x].data();
+      }
+      if (names[x] == "G2Sum") {
+        ada_g2sum = (*values)[x].data();
+      }
+      if (names[x] == "D2Sum") {
+        ada_d2sum = (*values)[x].data();
+      }
+      if (names[x] == "MomentDecayRate") {
+        mom_decay_rate = (*values)[x].data();
+      }
+      if (names[x] == "AdaDecayRate") {
+        ada_decay_rate = (*values)[x].data();
+      }
+      if (names[x] == "AdaEpsilon") {
+        ada_epsilon = (*values)[x].data();
+      }
+    }
+  }
+
+  void update(const float* update_values, size_t num, int begin,
+              int end) override {
+    auto update_numel = end - begin;
+    Eigen::Map<Eigen::MatrixXf> mat_ada_g2sum(ada_g2sum + begin, 1,
+                                              update_numel);
+
+    Eigen::Map<Eigen::MatrixXf> mat_ada_d2sum(ada_d2sum + begin, 1,
+                                              update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_mom_velocity(mom_velocity + begin, 1,
+                                                 update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_w(param + begin, 1, update_numel);
+
+    Eigen::Map<const Eigen::MatrixXf> mat_grad(update_values + begin, 1,
+                                               update_numel);
+
+    mat_ada_d2sum = (mat_ada_d2sum * ada_decay_rate[0]).array() + 1;
+    mat_ada_g2sum =
+        (mat_ada_g2sum * ada_decay_rate[0]) + mat_grad.cwiseProduct(mat_grad);
+
+    thread_local std::vector<float> scale_vec;
+    scale_vec.resize(update_numel);
+    Eigen::Map<Eigen::MatrixXf> scale(scale_vec.data(), 1, update_numel);
+    memcpy(scale_vec.data(), mat_ada_d2sum.data(),
+           sizeof(float) * update_numel);
+
+    scale = scale.array() * ada_epsilon[0];
+    scale = (mat_ada_d2sum + scale).cwiseQuotient(mat_ada_g2sum + scale);
+    scale = scale.cwiseSqrt();
+    mat_mom_velocity =
+        (mat_mom_velocity - mat_grad) * mom_decay_rate[0] + mat_grad;
+
+    mat_w -= learning_rate[0] * mat_mom_velocity.cwiseProduct(scale);
+  }
+
+  float* learning_rate;
+  float lr_hardcode;
+
+  float* param;
+  float* mom_velocity;
+  float* ada_g2sum;
+  float* ada_d2sum;
+
+  float* mom_decay_rate;
+  float* ada_decay_rate;
+  float* ada_epsilon;
 };
 
 }  // namespace distributed

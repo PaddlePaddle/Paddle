@@ -103,19 +103,17 @@ void SerializeLodTensor(framework::Variable* var,
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
-    iobuf->append(reinterpret_cast<const char*>(tensor->data<void>()),
-                  data_len);
+    iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr,
+        BOOST_GET_CONST(platform::CUDAPlace, tensor->place()), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
@@ -138,40 +136,26 @@ void SerializeSelectedRows(framework::Variable* var,
   var_data->clear();
   var_data->resize(rows->size() * sizeof(int64_t));
   char* data_ptr = const_cast<char*>(var_data->data());
-
-  if (platform::is_cpu_place(tensor->place())) {
-    memcpy(data_ptr, &(*rows)[0], rows->size() * sizeof(int64_t));
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), data_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 &(*rows)[0], rows->size() * sizeof(int64_t), stream);
-#endif
-  }
+  memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
   var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
-
   // IO Buffer
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
-    iobuf->append(reinterpret_cast<const char*>(tensor->data<void>()),
-                  data_len);
+    iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr,
+        BOOST_GET_CONST(platform::CUDAPlace, tensor->place()), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
@@ -273,8 +257,8 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
   auto* slr = var->GetMutable<framework::SelectedRows>();
   framework::Tensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
-  std::vector<int64_t> tmp_rows(msg.slr_height());
-  memcpy(&tmp_rows[0], msg.data().data(), msg.slr_height() * sizeof(int64_t));
+  std::vector<int64_t> tmp_rows(msg.dims()[0]);
+  memcpy(tmp_rows.data(), msg.data().data(), msg.dims()[0] * sizeof(int64_t));
   slr->set_rows(tmp_rows);
   std::vector<int> vec_dim;
   for (auto& x : msg.dims()) {

@@ -77,9 +77,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
                        const framework::AttributeMap& attrs);
   virtual ~HeterListenAndServOp();
 
-  void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program,
-                    framework::Scope* recv_scope) const;
+  void RunAsyncLoop(framework::ProgramDesc* program) const;
 
   void Stop() override;
 
@@ -89,7 +87,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
  protected:
   mutable std::shared_ptr<paddle::distributed::HeterServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
-  mutable std::shared_ptr<paddle::distributed::HeterRequestHandler>
+  mutable std::shared_ptr<paddle::distributed::RequestSendAndRecvHandler>
       request_send_and_recv_handler_;
 };
 

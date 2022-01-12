@@ -35,44 +35,11 @@ paddle::test::Record PrepareInput(int batch_size, int image_shape = 640) {
 void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
   // set dynamic shape range
   std::map<std::string, std::vector<int>> min_input_shape = {
-      {"x", {1, 3, 50, 50}},
-      {"conv2d_92.tmp_0", {1, 120, 20, 20}},
-      {"conv2d_91.tmp_0", {1, 24, 10, 10}},
-      {"conv2d_59.tmp_0", {1, 96, 20, 20}},
-      {"nearest_interp_v2_1.tmp_0", {1, 256, 10, 10}},
-      {"nearest_interp_v2_2.tmp_0", {1, 256, 20, 20}},
-      {"conv2d_124.tmp_0", {1, 256, 20, 20}},
-      {"nearest_interp_v2_3.tmp_0", {1, 64, 20, 20}},
-      {"nearest_interp_v2_4.tmp_0", {1, 64, 20, 20}},
-      {"nearest_interp_v2_5.tmp_0", {1, 64, 20, 20}},
-      {"elementwise_add_7", {1, 56, 2, 2}},
-      {"nearest_interp_v2_0.tmp_0", {1, 256, 2, 2}}};
+      {"x", {1, 3, 50, 50}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
-      {"x", {max_batch_size, 3, 2000, 2000}},
-      {"conv2d_92.tmp_0", {max_batch_size, 120, 400, 400}},
-      {"conv2d_91.tmp_0", {max_batch_size, 24, 200, 200}},
-      {"conv2d_59.tmp_0", {max_batch_size, 96, 400, 400}},
-      {"nearest_interp_v2_1.tmp_0", {max_batch_size, 256, 200, 200}},
-      {"nearest_interp_v2_2.tmp_0", {max_batch_size, 256, 400, 400}},
-      {"conv2d_124.tmp_0", {max_batch_size, 256, 400, 400}},
-      {"nearest_interp_v2_3.tmp_0", {max_batch_size, 64, 400, 400}},
-      {"nearest_interp_v2_4.tmp_0", {max_batch_size, 64, 400, 400}},
-      {"nearest_interp_v2_5.tmp_0", {max_batch_size, 64, 400, 400}},
-      {"elementwise_add_7", {max_batch_size, 56, 400, 400}},
-      {"nearest_interp_v2_0.tmp_0", {max_batch_size, 256, 400, 400}}};
+      {"x", {max_batch_size, 3, 1600, 1600}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
-      {"x", {1, 3, 640, 640}},
-      {"conv2d_92.tmp_0", {1, 120, 160, 160}},
-      {"conv2d_91.tmp_0", {1, 24, 80, 80}},
-      {"conv2d_59.tmp_0", {1, 96, 160, 160}},
-      {"nearest_interp_v2_1.tmp_0", {1, 256, 80, 80}},
-      {"nearest_interp_v2_2.tmp_0", {1, 256, 160, 160}},
-      {"conv2d_124.tmp_0", {1, 256, 160, 160}},
-      {"nearest_interp_v2_3.tmp_0", {1, 64, 160, 160}},
-      {"nearest_interp_v2_4.tmp_0", {1, 64, 160, 160}},
-      {"nearest_interp_v2_5.tmp_0", {1, 64, 160, 160}},
-      {"elementwise_add_7", {1, 56, 40, 40}},
-      {"nearest_interp_v2_0.tmp_0", {1, 256, 40, 40}}};
+      {"x", {1, 3, 640, 640}}};
   config->SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                  opt_input_shape);
 }
@@ -123,7 +90,7 @@ TEST(tensorrt_tester_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, true, false);
+      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
   PrepareDynamicShape(&config, 4);
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
@@ -197,6 +164,6 @@ TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

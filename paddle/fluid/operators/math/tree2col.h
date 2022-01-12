@@ -21,8 +21,6 @@
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
-using Tensor = framework::Tensor;
-using DDim = framework::DDim;
 namespace operators {
 namespace math {
 class TreeNode {
@@ -64,7 +62,7 @@ class Tree2ColUtil {
   static std::vector<TreeNode> construct_patch(
       size_t root, int max_depth, const std::vector<std::vector<int>> &tr);
 
-  static void construct_tree(const Tensor &EdgeSet,
+  static void construct_tree(const framework::Tensor &EdgeSet,
                              std::vector<std::vector<int>> *tr,
                              size_t *node_count);
 };

@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/optimizers/adam_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -84,11 +84,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
           *mom2, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), mom2_out);
       framework::TensorCopy(
-          *beta1_pow, ctx.GetPlace(),
+          *beta1_pow, beta1_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta1_pow_out);
       framework::TensorCopy(
-          *beta2_pow, ctx.GetPlace(),
+          *beta2_pow, beta2_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta2_pow_out);
       return;

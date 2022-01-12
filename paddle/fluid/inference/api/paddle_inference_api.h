@@ -41,10 +41,26 @@ limitations under the License. */
 /// \since 2.0.0-beta
 ///
 
+// forward declation
+using cudaStream_t = struct CUstream_st*;
+using hipStream_t = struct ihipStream_t*;
+
 namespace paddle_infer {
 
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
+
+class Predictor;
+namespace experimental {
+class PD_INFER_DECL InternalUtils {
+ public:
+  // Note: Can only be used under thread_local semantics.
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    cudaStream_t stream);
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    hipStream_t stream);
+};
+}  // namespace experimental
 
 ///
 /// \class Predictor
@@ -150,6 +166,7 @@ class PD_INFER_DECL Predictor {
 
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 ///
@@ -169,6 +186,8 @@ PD_INFER_DECL std::shared_ptr<Predictor> CreatePredictor(
 PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
 
 PD_INFER_DECL std::string GetVersion();
+PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
+PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 
 namespace services {

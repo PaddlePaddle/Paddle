@@ -409,5 +409,43 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
         return var.subtract_(self.input_var_2)
 
 
+class TestLossIsInplaceVar(unittest.TestCase):
+    def test_loss_is_inplace_var(self):
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones((2, 2))
+            var_a.stop_gradient = False
+
+            var_b = var_a * 2
+            loss = var_b.tanh_()
+
+            loss.backward()
+            inplace_grad_var_a = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones((2, 2))
+            var_a.stop_gradient = False
+
+            var_b = var_a * 2
+            loss = var_b.tanh()
+
+            loss.backward()
+            grad_var_a = var_a.grad.numpy()
+
+        self.assertTrue(np.array_equal(inplace_grad_var_a, grad_var_a))
+
+
+class TestContinuouslyInplace(unittest.TestCase):
+    def test_continuously_inplace(self):
+        a = paddle.rand([2, 3])
+        a.stop_gradient = False
+        b = a * 2
+
+        b.reshape_([-1])
+        b.reshape_([2, 3])
+        b.reshape_([-1])
+
+        b.backward()
+
+
 if __name__ == '__main__':
     unittest.main()
