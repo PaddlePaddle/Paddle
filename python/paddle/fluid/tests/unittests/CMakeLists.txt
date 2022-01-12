@@ -800,6 +800,10 @@ if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
 
+if (WITH_MLU)
+    add_subdirectory(mlu)
+endif()
+
 add_subdirectory(asp)
 
 add_subdirectory(ir)
