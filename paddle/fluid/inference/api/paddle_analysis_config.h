@@ -499,7 +499,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// V7.2.1 is needed.
   ///
   void EnableTensorRtOSS();
-  void EnableTensorRtInterleaved();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
@@ -886,6 +885,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 }  // namespace paddle

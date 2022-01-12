@@ -1604,5 +1604,11 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
 #endif
   return false;
 }
+void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
+                                            bool with_interleaved) {
+#ifdef PADDLE_WITH_CUDA
+  c->trt_with_interleaved_ = with_interleaved;
+#endif
+}
 }  // namespace experimental
 }  // namespace paddle_infer

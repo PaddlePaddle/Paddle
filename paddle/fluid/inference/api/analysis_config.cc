@@ -433,9 +433,6 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
 }
 
 void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
-void AnalysisConfig::EnableTensorRtInterleaved() {
-  trt_with_interleaved_ = true;
-}
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
