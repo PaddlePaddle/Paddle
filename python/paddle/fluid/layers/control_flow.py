@@ -2373,24 +2373,27 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
             return var
         return None
 
-    def _create_new_var_if_needed(block, var):
-        if var is None: return var
-        if not isinstance(var, Variable):
-            if isinstance(var, support_ret_buildin_type):
-                var = to_static_variable(var)
-            else:
-                raise TypeError(
-                    "Unsupported return type of true_fn or false_fn in cond: false_var "
-                    "returned is type: '{}'".format(type(var)))
-        new_var = var
-        if var is not None and not block.desc.find_var(
-                bytes(var.name, "ascii")):
-            new_var = layers.assign(var)
-        return new_var
-
     def _build_sub_block(branch_fn):
         """ Don't change ConditionalBlock
         """
+        name_set = set()
+
+        def _create_new_var_if_needed(block, var):
+            if var is None: return var
+            if not isinstance(var, Variable):
+                if isinstance(var, support_ret_buildin_type):
+                    var = to_static_variable(var)
+                else:
+                    raise TypeError(
+                        "Unsupported return type of true_fn or false_fn in cond: false_var "
+                        "returned is type: '{}'".format(type(var)))
+            new_var = var
+            if var.name in name_set or not block.desc.find_var(  # from the outside
+                    bytes(var.name, "ascii")):
+                new_var = layers.assign(var)
+            name_set.add(new_var.name)
+            return new_var
+
         if branch_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
@@ -2402,8 +2405,16 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
                 output_buildin = map_structure(_record_buildin_with_same_value,
                                                output)
                 block = helper.main_program.current_block()
+                # var in output may be the same: (tmp1, tmp1), which will cause error. 
+                # if this happen, we create_new_var by assign. This will be done in 
+                # _create_new_var_if_needed()
+                name_set = set()
                 output = map_structure(
                     partial(_create_new_var_if_needed, block), output)
+                output_names = [i.name for i in flatten([output])]
+                assert len(output_names) == len(
+                    set(output_names)
+                ), "The output of true_fn/false_fn have duplicated name. some error happened."
             return output, output_buildin, block
         else:
             return None, None, None
@@ -2497,27 +2508,26 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
             if_outputs_name
         ), "the length of if_outputs and origin_outputs must be the same"
         iter_list = ["true_block", "true_outs"], ["false_block", "false_outs"]
-        for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
-            if old_name == new_name: continue
+        for op in sub_block.ops:
+            for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
+                if old_name == new_name: continue
 
-            for op in sub_block.ops:
                 op._rename_output(old_name, new_name)
                 op._rename_input(old_name, new_name)
-                if op.type == "if":
-                    for item in iter_list:
-                        _rename_sub_block_output_recursively(
-                            sub_block.program.block(
-                                op._block_attr_id(item[0])),
-                            op.attr(item[1]), op.output("out"))
-                        op._set_attr(item[1], op.output("out"))
-                elif op.type == "while":  # we should rename in all subblock. because they may refer the old name.
-                    _rename_sub_block_output_recursively(
-                        sub_block.program.block(
-                            op._block_attr_id('sub_block')), [old_name],
-                        [new_name], false)
 
             if remove_var and sub_block.has_var(old_name):
                 sub_block._remove_var(old_name)
+
+            if op.type == "if":
+                for item in iter_list:
+                    _rename_sub_block_output_recursively(
+                        sub_block.program.block(op._block_attr_id(item[0])),
+                        op.attr(item[1]), op.output("out"), True)
+                    op._set_attr(item[1], op.output("out"))
+            elif op.type == "while":  # we should rename in all subblock. because they may refer the old name.
+                _rename_sub_block_output_recursively(
+                    sub_block.program.block(op._block_attr_id('sub_block')),
+                    origin_outputs_name, if_outputs_name, False)
 
     parent_block = true_block.program.block(true_block.parent_idx)
 
