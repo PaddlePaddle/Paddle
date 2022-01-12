@@ -1058,7 +1058,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
-                 print(t.recursive_sequence_length())  # [[2, 3]]
+                 print(t.recursive_sequence_lengths())  # [[2, 3]]
                  print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
