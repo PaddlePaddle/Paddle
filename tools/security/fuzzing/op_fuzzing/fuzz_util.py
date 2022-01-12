@@ -6,7 +6,8 @@ import atheris_no_libfuzzer as atheris
 import paddle
 import numpy as np
 
-IgnoredErrors = (ValueError, RuntimeError, TypeError, AttributeError, AssertionError)
+IgnoredErrors = (ValueError, RuntimeError, TypeError, AttributeError,
+                 AssertionError)
 
 
 class Mutator:
@@ -356,8 +357,7 @@ class Mutator:
             elif rank == 1:
                 return self.tensor(
                     self.float_list(dim1, min_val, max_val, 'val'),
-                    1,
-                    [dim1],
+                    1, [dim1],
                     dtype=dtype,
                     np_type=np_type), rank
             elif rank == 2:

@@ -34,9 +34,7 @@ def TestOneInput(input_bytes):
         try:
             if is_size:
                 upsample_out = paddle.nn.Upsample(
-                    size=size,
-                    align_corners=align_corners,
-                    align_mode=align_mode)
+                    size=size, align_corners=align_corners, align_mode=align_mode)
                 output = upsample_out(input_tensor)
             else:
                 upsample_out = paddle.nn.Upsample(
