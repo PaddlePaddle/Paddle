@@ -70,7 +70,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     platform::GpuStreamSync(stream);
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
     int ring_id = ctx.Attr<int>("ring_id");

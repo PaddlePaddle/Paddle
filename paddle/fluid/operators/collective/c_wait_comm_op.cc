@@ -35,7 +35,7 @@ class CWaitCommOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "wait_comm op can run on gpu place only for now."));
 

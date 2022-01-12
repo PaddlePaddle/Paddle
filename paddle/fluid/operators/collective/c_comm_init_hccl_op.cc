@@ -41,7 +41,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "CCommInitOpAscend can run on npu place only."));
 
