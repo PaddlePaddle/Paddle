@@ -34,7 +34,7 @@ struct ScaleFunctor {
     bias_after_scale = is_bias_after_sacle;
   }
 
-  __device__ __forceinline__ InT operator()(const InT& x) const {
+  __device__ __forceinline__ InT operator()(const InT x) const {
     if (bias_after_scale) {
       return scale * x + bias;
     } else {
