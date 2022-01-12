@@ -121,9 +121,9 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
     
     **Note**:
     Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None. Please refer 
-    to :code:`paddle.static.IpuGraphConfig` . 
+    to :code:`paddle.static.IpuStrategy` . 
     Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. Please refer 
-    to :code:`paddle.static.IpuPipeliningConfig` .
+    to :code:`paddle.static.IpuStrategy` .
 
     Examples:
         .. code-block:: python

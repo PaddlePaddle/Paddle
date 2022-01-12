@@ -36,11 +36,8 @@ from ..fluid.backward import gradients  # noqa: F401
 from ..fluid.compiler import BuildStrategy  # noqa: F401
 from ..fluid.compiler import CompiledProgram  # noqa: F401
 from ..fluid.compiler import IpuCompiledProgram  # noqa: F401
+from ..fluid.compiler import IpuStrategy  # noqa: F401
 from ..fluid.compiler import ExecutionStrategy  # noqa: F401
-from ..fluid.compiler import IpuConfig  # noqa: F401
-from ..fluid.compiler import IpuGraphConfig  # noqa: F401
-from ..fluid.compiler import IpuPipeliningConfig  # noqa: F401
-from ..fluid.compiler import IpuHalfConfig  # noqa: F401
 from ..fluid.framework import default_main_program  # noqa: F401
 from ..fluid.framework import default_startup_program  # noqa: F401
 from ..fluid.framework import device_guard  # noqa: F401
@@ -82,10 +79,7 @@ __all__ = [     #noqa
            'CompiledProgram',
            'ipu_shard',
            'IpuCompiledProgram',
-           'IpuConfig',
-           'IpuGraphConfig',
-           'IpuPipeliningConfig',
-           'IpuHalfConfig',
+           'IpuStrategy',
            'Print',
            'py_func',
            'ExecutionStrategy',
