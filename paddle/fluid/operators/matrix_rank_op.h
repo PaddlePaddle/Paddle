@@ -48,17 +48,17 @@ static DDim RemoveLastDim(const DDim& dim) {
 
 template <typename T>
 struct GreaterThanFunctor {
-  HOSTDEVICE int operator()(const T& a, const T& b) const { return a > b; }
+  HOSTDEVICE int operator()(const T a, const T b) const { return a > b; }
 };
 
 template <typename T>
 struct LessThanFunctor {
-  HOSTDEVICE int operator()(const T& a, const T& b) const { return a < b; }
+  HOSTDEVICE int operator()(const T a, const T b) const { return a < b; }
 };
 
 template <typename T>
 struct GreaterElementFunctor {
-  HOSTDEVICE T operator()(const T& a, const T& b) const {
+  HOSTDEVICE T operator()(const T a, const T b) const {
     if (a > b) {
       return a;
     } else {
