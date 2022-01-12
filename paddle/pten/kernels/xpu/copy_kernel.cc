@@ -50,7 +50,7 @@ void Copy(const Context& dev_ctx,
 
   if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
       paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::CPUPlace, dst_place),
+    paddle::memory::Copy(dst_place,
                          dst_ptr,
                          BOOST_GET_CONST(paddle::platform::XPUPlace, src_place),
                          src_ptr,
@@ -59,7 +59,7 @@ void Copy(const Context& dev_ctx,
              paddle::platform::is_xpu_place(dst_place)) {
     paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::XPUPlace, dst_place),
                          dst_ptr,
-                         BOOST_GET_CONST(paddle::platform::CPUPlace, src_place),
+                         src_place,
                          src_ptr,
                          size);
   } else if (paddle::platform::is_xpu_place(src_place) &&

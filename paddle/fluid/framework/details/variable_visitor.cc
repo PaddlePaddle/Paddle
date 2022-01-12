@@ -106,7 +106,7 @@ struct EnforceShapeAndDTypeEQVisitor {
 
   void operator()(const LoDTensor& src) {
     auto& tensor = dst_->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(src.place().which(), tensor.place().which(),
+    PADDLE_ENFORCE_EQ(src.place().GetType(), tensor.place().GetType(),
                       platform::errors::PreconditionNotMet(
                           "The place type of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
@@ -127,7 +127,7 @@ struct EnforceShapeAndDTypeEQVisitor {
 
   void operator()(const SelectedRows& src) {
     auto& selected_rows = dst_->Get<SelectedRows>();
-    PADDLE_ENFORCE_EQ(src.place().which(), selected_rows.place().which(),
+    PADDLE_ENFORCE_EQ(src.place().GetType(), selected_rows.place().GetType(),
                       platform::errors::PreconditionNotMet(
                           "The place type of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(src.value().type(), selected_rows.value().type(),

@@ -21,7 +21,7 @@ namespace tests {
 
 TEST(PtenPlace, place) {
   pten::Place place;
-  EXPECT_EQ(place.GetType(), pten::AllocationType::UNDEF);
+  EXPECT_EQ(place.GetType(), pten::AllocationType::UNDEFINED);
 
   place.Reset(pten::AllocationType::GPU, 1);
   EXPECT_EQ(place.GetType(), pten::AllocationType::GPU);

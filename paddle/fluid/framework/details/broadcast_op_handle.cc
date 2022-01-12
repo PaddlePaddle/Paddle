@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -230,7 +231,7 @@ void BroadcastOpHandle::InitOutputValue(
     PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::NotFound(
                                          "Variable %s is not found in scopes.",
                                          out_var_handle->name()));
-    if (is_gpu_place(in_tensor.place())) {
+    if (platform::is_gpu_place(in_tensor.place())) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
                         platform::errors::PreconditionNotMet(
                             "Places of input and output must be all on GPU."));

@@ -19,7 +19,7 @@ limitations under the License. */
 namespace pten {
 
 enum class AllocationType : int8_t {
-  UNDEF = 0,
+  UNDEFINED = 0,
   CPU = 1,
   GPU = 2,
   GPUPINNED = 3,
@@ -30,12 +30,12 @@ enum class AllocationType : int8_t {
   MLU = 8,
 };
 
-const char *AllocationTypeStr(AllocationType type);
+const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
 class Place {
  public:
-  Place() : device(0), alloc_type_(AllocationType::UNDEF) {}
+  Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
 
   explicit Place(AllocationType type, int8_t id)
       : device(id), alloc_type_(type) {}
@@ -53,7 +53,7 @@ class Place {
 
   std::string DebugString() const;
 
-  inline bool operator==(const Place &rhs) const {
+  inline bool operator==(const Place& rhs) const {
     if (GetType() != rhs.GetType()) {
       return false;
     } else if (GetType() == AllocationType::CPU ||
@@ -64,8 +64,8 @@ class Place {
       return GetDeviceId() == rhs.GetDeviceId();
     }
   }
-
-  inline bool operator<(const Place &rhs) const {
+  inline bool operator!=(const Place& rhs) const { return !(*this == rhs); }
+  inline bool operator<(const Place& rhs) const {
     return GetDeviceId() < rhs.GetDeviceId();
   }
 
@@ -81,48 +81,79 @@ class Place {
 class CPUPlace : public Place {
  public:
   CPUPlace() : Place(AllocationType::CPU, 0) {}
+
+  CPUPlace(const CPUPlace&) = default;
+  CPUPlace(const Place& place) : Place(AllocationType::CPU, 0) {}  // NOLINT
 };
 
 class GPUPlace : public Place {
  public:
   GPUPlace() : Place(AllocationType::GPU, 0) {}
   explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
+
+  GPUPlace(const GPUPlace&) = default;
+  GPUPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::GPU, place.GetDeviceId()) {}
 };
 
 class GPUPinnedPlace : public Place {
  public:
   GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
+
+  GPUPinnedPlace(const GPUPinnedPlace&) = default;
+  GPUPinnedPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::GPUPINNED) {}
 };
 
 class XPUPlace : public Place {
  public:
   XPUPlace() : Place(AllocationType::XPU, 0) {}
   explicit XPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
+
+  XPUPlace(const XPUPlace&) = default;
+  XPUPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
 class NPUPlace : public Place {
  public:
   NPUPlace() : Place(AllocationType::NPU, 0) {}
-  explicit NPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
+  explicit NPUPlace(int device_id) : Place(AllocationType::NPU, device_id) {}
+
+  NPUPlace(const NPUPlace&) = default;
+  NPUPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::NPU, place.GetDeviceId()) {}
 };
 
 class NPUPinnedPlace : public Place {
  public:
   NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
+
+  NPUPinnedPlace(const NPUPinnedPlace&) = default;
+  NPUPinnedPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::NPUPINNED) {}
 };
 
 class IPUPlace : public Place {
  public:
-  IPUPlace() : Place(AllocationType::XPU, 0) {}
-  explicit IPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
+  IPUPlace() : Place(AllocationType::IPU, 0) {}
+  explicit IPUPlace(int device_id) : Place(AllocationType::IPU, device_id) {}
+
+  IPUPlace(const IPUPlace&) = default;
+  IPUPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::IPU, place.GetDeviceId()) {}
 };
 
 class MLUPlace : public Place {
  public:
   MLUPlace() : Place(AllocationType::MLU, 0) {}
   explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
+
+  MLUPlace(const MLUPlace&) = default;
+  MLUPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::MLU, place.GetDeviceId()) {}
 };
 
-std::ostream &operator<<(std::ostream &, const Place &);
+std::ostream& operator<<(std::ostream&, const Place&);
 
 }  // namespace pten

@@ -23,8 +23,8 @@ namespace pten {
 
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
-    case AllocationType::UNDEF:
-      return "undef";
+    case AllocationType::UNDEFINED:
+      return "undefined";
     case AllocationType::CPU:
       return "cpu";
     case AllocationType::GPU:

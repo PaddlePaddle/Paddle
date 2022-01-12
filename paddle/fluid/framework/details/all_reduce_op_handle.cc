@@ -15,6 +15,7 @@
 
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -181,7 +182,7 @@ void AllReduceOpHandle::AllReduceFunc(
     const framework::proto::VarType::Type &dtype, int64_t numel,
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &out_var_names) {
-  if (is_gpu_place(places[0])) {
+  if (platform::is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_,
                             platform::errors::InvalidArgument(
@@ -200,7 +201,7 @@ void AllReduceOpHandle::AllReduceFunc(
     PADDLE_THROW(
         platform::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
-  } else if (is_xpu_place(places[0])) {
+  } else if (platform::is_xpu_place(places[0])) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_,
                             platform::errors::InvalidArgument(

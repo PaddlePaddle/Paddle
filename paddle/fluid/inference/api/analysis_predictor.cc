@@ -1049,7 +1049,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
   if (stream != nullptr) {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
     dev_ctx->SetThreadLocalStream(stream);
@@ -1064,7 +1064,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
 #ifdef PADDLE_WITH_HIP

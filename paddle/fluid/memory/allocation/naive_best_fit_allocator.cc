@@ -792,49 +792,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 
 Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr;
-  switch (place_.GetType()) {
-    case pten::AllocationType::GPU: {
-      platform::CUDAPlace place(place_.GetDeviceId());
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    case pten::AllocationType::GPUPINNED: {
-      platform::CUDAPinnedPlace place;
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    case pten::AllocationType::XPU: {
-      platform::XPUPlace place(place_.GetDeviceId());
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    case pten::AllocationType::NPU: {
-      platform::NPUPlace place(place_.GetDeviceId());
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    case pten::AllocationType::NPUPINNED: {
-      platform::NPUPinnedPlace place;
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    case pten::AllocationType::IPU: {
-      platform::IPUPlace place(place_.GetDeviceId());
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    case pten::AllocationType::MLU: {
-      platform::MLUPlace place(place_.GetDeviceId());
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-    default: {
-      platform::CPUPlace place;
-      ptr = legacy::AllocVisitor(size)(place);
-      break;
-    }
-  }
+  void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
@@ -842,88 +800,16 @@ Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
 }
 
 void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
-  switch (allocation->place().GetType()) {
-    case pten::AllocationType::GPU: {
-      platform::CUDAPlace place(place_.GetDeviceId());
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    case pten::AllocationType::GPUPINNED: {
-      platform::CUDAPinnedPlace place;
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    case pten::AllocationType::XPU: {
-      platform::XPUPlace place(place_.GetDeviceId());
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    case pten::AllocationType::NPU: {
-      platform::NPUPlace place(place_.GetDeviceId());
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    case pten::AllocationType::NPUPINNED: {
-      platform::NPUPinnedPlace place;
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    case pten::AllocationType::IPU: {
-      platform::IPUPlace place(place_.GetDeviceId());
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    case pten::AllocationType::MLU: {
-      platform::MLUPlace place(place_.GetDeviceId());
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-    default: {
-      platform::CPUPlace place;
-      legacy::FreeVisitor(allocation->ptr(), allocation->size())(place);
-      break;
-    }
-  }
+  paddle::platform::VisitPlace(
+      allocation->place(),
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()));
   platform::MemEvenRecorder::Instance().PopMemRecord(
       static_cast<void *>(allocation), place_);
   delete allocation;
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  switch (place.GetType()) {
-    case pten::AllocationType::GPU: {
-      platform::CUDAPlace p(place.GetDeviceId());
-      return legacy::ReleaseVisitor()(p);
-    }
-    case pten::AllocationType::GPUPINNED: {
-      platform::CUDAPinnedPlace p;
-      return legacy::ReleaseVisitor()(p);
-    }
-    case pten::AllocationType::XPU: {
-      platform::XPUPlace p(place.GetDeviceId());
-      return legacy::ReleaseVisitor()(p);
-    }
-    case pten::AllocationType::NPU: {
-      platform::NPUPlace p(place.GetDeviceId());
-      return legacy::ReleaseVisitor()(p);
-    }
-    case pten::AllocationType::NPUPINNED: {
-      platform::NPUPinnedPlace p;
-      return legacy::ReleaseVisitor()(p);
-    }
-    case pten::AllocationType::IPU: {
-      platform::IPUPlace p(place.GetDeviceId());
-      return legacy::ReleaseVisitor()(p);
-    }
-    case pten::AllocationType::MLU: {
-      platform::MLUPlace p(place.GetDeviceId());
-      return legacy::ReleaseVisitor()(p);
-    }
-    default: {
-      platform::CPUPlace p;
-      return legacy::ReleaseVisitor()(p);
-    }
-  }
+  return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
 }  // namespace allocation

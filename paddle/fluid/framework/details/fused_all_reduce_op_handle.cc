@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
@@ -291,7 +292,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var, platform::errors::NotFound(
                    "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<LoDTensor>();
-      if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
+      if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
     }

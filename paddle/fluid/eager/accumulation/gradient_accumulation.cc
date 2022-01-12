@@ -219,7 +219,7 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
   if (data_type == paddle::framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(numel, src_tensor->data<cpp_type>(),     \
                                     dst_tensor->mutable_data<cpp_type>());   \
-    boost::apply_visitor(func, place);                                       \
+    platform::VisitPlace(place, func);                                       \
     return;                                                                  \
   }
 
@@ -295,7 +295,7 @@ void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
     TensorAddFunctor<cpp_type> func(                                         \
         numel, src_tensor.data<cpp_type>(),                                  \
         dst_tensor->mutable_data<cpp_type>(place));                          \
-    boost::apply_visitor(func, place);                                       \
+    platform::VisitPlace(place, func);                                       \
     return;                                                                  \
   }
 

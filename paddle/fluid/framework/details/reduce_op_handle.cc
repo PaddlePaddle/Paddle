@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -125,7 +126,8 @@ void ReduceOpHandle::RunImpl() {
 
       // TODO(gongwb): add cpu support
       if (collective_context.endpoints_.size() <= 1 ||
-          is_cpu_place(in_places[0]) || is_cpu_place(t_out_p)) {
+          platform::is_cpu_place(in_places[0]) ||
+          platform::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
             in_selected_rows, in_places, dev_ctxes_, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());

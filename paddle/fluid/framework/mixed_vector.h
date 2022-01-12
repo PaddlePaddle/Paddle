@@ -367,11 +367,11 @@ class Vector {
   // get cuda ptr. immutable
   const T *CUDAData(platform::Place place) const {
     {
+      platform::CUDAPlace p(place.GetDeviceId());
       auto &mtx = m_.Data().Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
-      if (cuda_place == paddle::none ||
-          cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
+      if (cuda_place == paddle::none || cuda_place == p) {
         return m_.Data().CUDAData(place);
       }
     }
@@ -383,11 +383,11 @@ class Vector {
   // get cuda ptr. mutable
   T *CUDAMutableData(platform::Place place) {
     {
+      platform::CUDAPlace p(place.GetDeviceId());
       auto &mtx = m_.Data().Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
-      if (cuda_place == paddle::none ||
-          cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
+      if (cuda_place == paddle::none || cuda_place == p) {
         return m_.MutableData()->CUDAMutableData(place);
       }
     }

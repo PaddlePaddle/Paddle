@@ -150,8 +150,7 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
     VLOG(6) << "Get Device id";
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      paddle::platform::SetDeviceId(
-          BOOST_GET_CONST(paddle::platform::CUDAPlace, place).device);
+      paddle::platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));

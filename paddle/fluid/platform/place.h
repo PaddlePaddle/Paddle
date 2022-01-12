@@ -50,5 +50,85 @@ bool is_npu_pinned_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
+template <typename Visitor>
+typename Visitor::result_type VisitPlace(const Place &place,
+                                         const Visitor &visitor) {
+  switch (place.GetType()) {
+    case pten::AllocationType::GPU: {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::CUDAPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case pten::AllocationType::GPUPINNED: {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::CUDAPinnedPlace p;
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case pten::AllocationType::XPU: {
+#ifdef PADDLE_WITH_XPU
+      platform::XPUPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "Paddle is not compiled with XPU. Cannot visit xpu device"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case pten::AllocationType::NPU: {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::NPUPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case pten::AllocationType::NPUPINNED: {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::NPUPinnedPlace p;
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case pten::AllocationType::IPU: {
+#ifdef PADDLE_WITH_IPU
+      platform::IPUPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with IPU. Cannot visit ipu device"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case pten::AllocationType::MLU: {
+#ifdef PADDLE_WITH_MLU
+      platform::MLUPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with MLU. Cannot visit mlu device"));
+#endif
+    }
+    default: {
+      platform::CPUPlace p;
+      return visitor(p);
+    }
+  }
+}
+
 }  // namespace platform
 }  // namespace paddle
