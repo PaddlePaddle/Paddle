@@ -18,7 +18,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace pten {
 
