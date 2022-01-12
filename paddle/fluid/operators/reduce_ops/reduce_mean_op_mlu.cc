@@ -83,9 +83,6 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
     auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* input_grad = context.Output<Tensor>(framework::GradVarName("X"));
     input_grad->mutable_data<T>(context.GetPlace());
-    printTensor(framework::vectorize(input->dims()), "input");
-    printTensor(framework::vectorize(output_grad->dims()), "output_grad");
-    printTensor(framework::vectorize(input_grad->dims()), "input_grad");
 
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto reduce_dims = context.Attr<std::vector<int>>("dim");

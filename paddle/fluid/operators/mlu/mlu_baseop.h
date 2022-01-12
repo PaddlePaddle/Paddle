@@ -45,9 +45,9 @@ enum MLULogicMethod {
   CNNL_LOGIC_OP_OR = 7,
 };
 
-inline const void* GetBasePtr(const Tensor* t) { return t->data<void>(); }
+inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
-inline void* GetBasePtr(Tensor* t) { return t->data<void>(); }
+inline void* GetBasePtr(Tensor* t) { return t->data(); }
 
 template <typename T>
 inline cnnlDataType_t ToCnnlDataType(const T& t) {
