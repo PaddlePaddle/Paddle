@@ -18,7 +18,6 @@ limitations under the License. */
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
-// only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
