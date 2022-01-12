@@ -124,6 +124,8 @@ EOF
 }
 
 function main() {
+    local CMD=$1
+    local parallel_number=$2
     if [ -z "$1" ]; then
         echo "Usage:"
         echo "      (1)bash infrt_build.sh build_and_test"
@@ -134,24 +136,23 @@ function main() {
     fi
 
     init
-    # Parse command line.
-    for i in "$@"; do
-      case $i in
-        build_and_test)
-          infrt_gen_and_build ${parallel_number}
-          test_infrt
-          ;;
-        build_only)
-          infrt_gen_and_build ${parallel_number}
-          ;;
-        test_only)
-          test_infrt
-          ;;
-        *)
-          parallel_number=$i
-          ;;
-      esac
-    done
+
+    case $CMD in
+      build_and_test)
+        infrt_gen_and_build ${parallel_number}
+        test_infrt
+        ;;
+      build_only)
+        infrt_gen_and_build ${parallel_number}
+        ;;
+      test_only)
+        test_infrt
+        ;;
+      *)
+        print_usage
+        exit 1
+        ;;
+    esac
 
     set +x
     if [[ -f ${PADDLE_ROOT}/build/infrt_summary.txt ]];then
