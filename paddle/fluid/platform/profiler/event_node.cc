@@ -151,20 +151,56 @@ HostEventNode* NodeTrees::BuildTreeRelationship(
         node_stack.pop_back();
         // insert runtime node
         // judge if time range of runtime node within stack_top_node
+        std::vector<std::vector<CudaRuntimeEventNode*>::iterator>
+            target_positions;
         for (auto runtimenode = runtime_event_nodes.begin();
              runtimenode != runtime_event_nodes.end(); ++runtimenode) {
           if (((*runtimenode)->start_ns() >= stack_top_node->start_ns()) &&
               ((*runtimenode)->end_ns() <= stack_top_node->end_ns())) {
             stack_top_node->AddCudaRuntimeNode(*runtimenode);
+            target_positions.push_back(runtimenode);
           } else {
             // from this runtime node, not within stack_top_node, erase the
             // nodes within stack_top_node from runtime_event_nodes
-            runtime_event_nodes.erase(runtime_event_nodes.begin(), runtimenode);
-            break;
+            if ((*runtimenode)->start_ns() > stack_top_node->end_ns()) {
+              break;
+            }
           }
+        }
+        // delete target positions from runtime_event_nodes
+        for (auto target_position = target_positions.begin();
+             target_position != target_positions.end(); ++target_position) {
+          runtime_event_nodes.erase(*target_position);
         }
       }
     }
+  }
+  // to insert left runtimenode into host_event_nodes
+  while (!node_stack.empty()) {
+    auto stack_top_node = node_stack.back();
+    // insert runtime node
+    // judge if time range of runtime node within stack_top_node
+    std::vector<std::vector<CudaRuntimeEventNode*>::iterator> target_positions;
+    for (auto runtimenode = runtime_event_nodes.begin();
+         runtimenode != runtime_event_nodes.end(); ++runtimenode) {
+      if (((*runtimenode)->start_ns() >= stack_top_node->start_ns()) &&
+          ((*runtimenode)->end_ns() <= stack_top_node->end_ns())) {
+        stack_top_node->AddCudaRuntimeNode(*runtimenode);
+        target_positions.push_back(runtimenode);
+      } else {
+        // from this runtime node, not within stack_top_node, erase the
+        // nodes within stack_top_node from runtime_event_nodes
+        if ((*runtimenode)->start_ns() > stack_top_node->end_ns()) {
+          break;
+        }
+      }
+    }
+    // delete target positions from runtime_event_nodes
+    for (auto target_position = target_positions.begin();
+         target_position != target_positions.end(); ++target_position) {
+      runtime_event_nodes.erase(*target_position);
+    }
+    node_stack.pop_back();
   }
   return root_node;
 }
@@ -219,7 +255,7 @@ void NodeTrees::LogMe(BaseLogger* logger) {
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
     for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
-         ++it) {  // skip root node
+         ++hostnode) {  // skip root node
       (*hostnode)->LogMe(logger);
       for (auto runtimenode = (*hostnode)->GetRuntimeEventNodes().begin();
            runtimenode != (*hostnode)->GetRuntimeEventNodes().end();
@@ -245,7 +281,7 @@ void NodeTrees::HandleTrees(
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
     for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
-         ++it) {  // skip root node
+         ++hostnode) {  // skip root node
       host_event_node_handle(*hostnode);
       for (auto runtimenode = (*hostnode)->GetRuntimeEventNodes().begin();
            runtimenode != (*hostnode)->GetRuntimeEventNodes().end();

@@ -104,7 +104,7 @@ void ChromeTracingLogger::LogHostEventNode(const HostEventNode& host_node) {
     }
   },
   )JSON"),
-      host_node.name(), host_node.process_id(), host_node.thread_id(),
+      host_node.name().c_str(), host_node.process_id(), host_node.thread_id(),
       host_node.start_ns(), host_node.duration(),
       categary_name_[static_cast<int>(host_node.type())]);
 }
@@ -126,8 +126,9 @@ void ChromeTracingLogger::LogRuntimeEventNode(
     }
   },
   )JSON"),
-      runtime_node.name(), runtime_node.process_id(), runtime_node.thread_id(),
-      runtime_node.start_ns(), runtime_node.duration(),
+      runtime_node.name().c_str(), runtime_node.process_id(),
+      runtime_node.thread_id(), runtime_node.start_ns(),
+      runtime_node.duration(),
       categary_name_[static_cast<int>(runtime_node.type())],
       runtime_node.correlation_id());
 }
@@ -178,8 +179,8 @@ void ChromeTracingLogger::HandleTypeKernel(const DeviceEventNode& device_node) {
     }
   },
   )JSON"),
-      device_node.name(), device_node.device_id(), device_node.stream_id(),
-      device_node.start_ns(), device_node.duration(),
+      device_node.name().c_str(), device_node.device_id(),
+      device_node.stream_id(), device_node.start_ns(), device_node.duration(),
       categary_name_[static_cast<int>(device_node.type())],
       device_node.device_id(), device_node.context_id(),
       device_node.stream_id(), device_node.correlation_id(),
@@ -208,8 +209,8 @@ void ChromeTracingLogger::HandleTypeMemcpy(const DeviceEventNode& device_node) {
     }
   },
   )JSON"),
-      device_node.name(), device_node.device_id(), device_node.stream_id(),
-      device_node.start_ns(), device_node.duration(),
+      device_node.name().c_str(), device_node.device_id(),
+      device_node.stream_id(), device_node.start_ns(), device_node.duration(),
       categary_name_[static_cast<int>(device_node.type())],
       device_node.stream_id(), device_node.correlation_id(),
       memcpy_info.num_bytes, memory_bandwidth);
@@ -231,8 +232,8 @@ void ChromeTracingLogger::HandleTypeMemset(const DeviceEventNode& device_node) {
     }
   },
   )JSON"),
-      device_node.name(), device_node.device_id(), device_node.stream_id(),
-      device_node.start_ns(), device_node.duration(),
+      device_node.name().c_str(), device_node.device_id(),
+      device_node.stream_id(), device_node.start_ns(), device_node.duration(),
       categary_name_[static_cast<int>(device_node.type())],
       device_node.device_id(), device_node.context_id(),
       device_node.stream_id(), device_node.correlation_id(),
@@ -253,6 +254,7 @@ void ChromeTracingLogger::StartLog() {
 void ChromeTracingLogger::EndLog() {
   output_file_stream_ << std::string(
       R"JSON(
+  {}
   ]
   }
   )JSON");

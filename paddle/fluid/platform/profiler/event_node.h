@@ -104,7 +104,7 @@ class CudaRuntimeEventNode {
     device_node_ptrs_.push_back(node);
   }
   void LogMe(BaseLogger* logger) { logger->LogRuntimeEventNode(*this); }
-  std::vector<DeviceEventNode*> GetDeviceEventNodes() {
+  std::vector<DeviceEventNode*>& GetDeviceEventNodes() {
     return device_node_ptrs_;
   }
 

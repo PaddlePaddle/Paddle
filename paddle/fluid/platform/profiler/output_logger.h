@@ -42,7 +42,7 @@ class ChromeTracingLogger : public BaseLogger {
   void LogDeviceEventNode(const DeviceEventNode&) override;
   void LogHostEventNode(const HostEventNode&) override;
   void LogRuntimeEventNode(const CudaRuntimeEventNode&) override;
-  void LogMetaInfo();
+  // void LogMetaInfo();
 
  private:
   void OpenFile();
