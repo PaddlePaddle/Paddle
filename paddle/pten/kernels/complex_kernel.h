@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/empty_kernel.h"
+
 namespace pten {
 
 template <typename T, typename Context>
