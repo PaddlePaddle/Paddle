@@ -506,7 +506,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use the TensorRT OSS.
   ///
   bool tensorrt_oss_enabled() { return trt_use_oss_; }
-  bool tensorrt_interleaved_enabled() { return trt_with_interleaved_; }
 
   ///
   /// \brief Enable TensorRT DLA
