@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/empty_kernel.h"
+#include "paddle/pten/kernels/flatten_grad_kernel.h"
+#include "paddle/pten/kernels/flatten_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -134,8 +136,8 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Flatten<T, DeviceContext>(dev_ctx, *pt_x.get(), start_axis, stop_axis,
-                                    pt_out.get());
+    pten::FlattenKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), start_axis,
+                                          stop_axis, pt_out.get());
   }
 };
 
@@ -146,15 +148,25 @@ class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
     auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     auto *d_out =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto *xshape = ctx.Input<framework::LoDTensor>("XShape");
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
-    d_x->Resize(x_dims);
+    auto &dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto pt_d_x = paddle::experimental::MakePtenDenseTensor(*d_x);
+    auto pt_d_out = paddle::experimental::MakePtenDenseTensor(*d_out);
+
+    // Because the holder of xshape may be nullptr, we can't use
+    // MakePtenDenseTensor.
+    // So, we create a new DenseTensor to save the dims of xshape.
+    pten::DenseTensorMeta xshape_meta{pten::TransToPtenDataType(d_x->type()),
+                                      xshape->dims(), d_x->layout()};
+    auto pt_xshape =
+        pten::Empty<T, DeviceContext>(dev_ctx, std::move(xshape_meta));
+
+    // call new kernel
+    pten::FlattenGradKernel<T, DeviceContext>(dev_ctx, *pt_d_out.get(),
+                                              pt_xshape, pt_d_x.get());
   }
 };
 

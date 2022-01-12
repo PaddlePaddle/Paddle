@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
+#include "paddle/pten/core/arg_map_context.h"
 #include "paddle/pten/include/core.h"
 
 namespace paddle {
@@ -438,6 +439,45 @@ class ExecutionContext {
   const RuntimeContext& ctx_;
 };
 
+// TODO(chenweihang): split impl based OpProto or Dygraph if needed
+class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
+ public:
+  explicit ExecutionArgumentMappingContext(const ExecutionContext& ctx)
+      : ctx_(ctx) {}
+
+  bool HasInput(const std::string& name) const override {
+    return ctx_.HasInput(name);
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    return ctx_.HasOutput(name);
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return ctx_.HasAttr(name);
+  }
+
+  size_t InputSize(const std::string& name) const override {
+    return ctx_.InputSize(name);
+  }
+
+  size_t OutputSize(const std::string& name) const override {
+    return ctx_.OutputSize(name);
+  }
+
+  bool IsDenseTensorInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::Tensor>() ||
+           ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::SelectedRows>();
+  }
+
+ private:
+  const ExecutionContext& ctx_;
+};
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
 
@@ -555,6 +595,20 @@ class OperatorWithKernel : public OperatorBase {
   virtual KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
+  /* member functions for adapting to pten lib */
+  void ChoosePtenKernel(const ExecutionContext& ctx) const;
+
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx) const;
+
+  void WriteBackToOutputs(RuntimeContext* ctx) const;
+
+  pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+
+  pten::KernelContext* PtenKernelContext() const {
+    return pt_kernel_context_.get();
+  }
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
@@ -594,14 +648,6 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
-
-  /* member functions for adapting to pten lib */
-  void ChoosePtenKernel(const ExecutionContext& ctx) const;
-
-  void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
-
-  void WriteBackToOutputs(RuntimeContext* ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

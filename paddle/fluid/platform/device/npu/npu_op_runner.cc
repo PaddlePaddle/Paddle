@@ -401,7 +401,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
-  void *ptr = tensor.data<void>();
+  void *ptr = tensor.data();
   VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.memory_size();
   auto *buffer = aclCreateDataBuffer(ptr, tensor.memory_size());
   PADDLE_ENFORCE_NOT_NULL(
