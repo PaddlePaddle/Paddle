@@ -35,7 +35,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* pEagerTensorType;
+extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
@@ -167,7 +167,7 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
   EAGER_SYNC_TRY
   VLOG(4) << "ClearGradient " << self->eager_tensor.name();
 
-  egr::EagerTensor grad;
+  egr::EagerTensor* grad;
   if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
     std::shared_ptr<egr::GradNodeBase> grad_node =
@@ -182,14 +182,14 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
     grad = accumulation_grad_node->Grad();
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    grad = meta->Grad();
+    grad = meta->MutableGrad();
   }
 
-  if (grad.initialized()) {
+  if (grad->initialized()) {
     VLOG(4) << "Gradient of " << self->eager_tensor.name()
             << " is initialized, will be released.";
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
+        std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
     dense_tensor->release();
   }
   Py_INCREF(Py_None);
@@ -202,7 +202,6 @@ static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->eager_tensor.name();
 
-  egr::EagerTensor grad;
   if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
     std::shared_ptr<egr::GradNodeBase> grad_node =
@@ -214,18 +213,51 @@ static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    grad = accumulation_grad_node->Grad();
+    if (accumulation_grad_node->Grad()->initialized()) {
+      accumulation_grad_node->Grad()->set_tensor(
+          std::make_shared<paddle::experimental::Tensor>(
+              paddle::experimental::zeros_like(
+                  *(accumulation_grad_node->Grad()->Tensor().get()))));
+    }
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    grad = meta->Grad();
+    if (meta->MutableGrad()->initialized()) {
+      meta->MutableGrad()->set_tensor(
+          std::make_shared<paddle::experimental::Tensor>(
+              paddle::experimental::zeros_like(
+                  *(meta->MutableGrad()->Tensor().get()))));
+    }
   }
 
-  if (grad.initialized()) {
-    grad.set_tensor(std::make_shared<paddle::experimental::Tensor>(
-        paddle::experimental::zeros_like(*(grad.Tensor().get()))));
-  }
   Py_INCREF(Py_None);
   return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_method_detach(EagerTensorObject* self,
+                                            PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  PADDLE_ENFORCE_EQ(
+      self->eager_tensor.initialized(), true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->eager_tensor.name()));
+
+  PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<EagerTensorObject*>(obj);
+    new (&(v->eager_tensor)) egr::EagerTensor();
+    v->eager_tensor.set_impl(self->eager_tensor.impl());
+    v->eager_tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    auto autograd_meta_src =
+        egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->eager_tensor));
+    autograd_meta->SetPersistable(autograd_meta_src->Persistable());
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
+  }
+
+  return obj;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -245,6 +277,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))eager_tensor__clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"detach", (PyCFunction)(void (*)(void))eager_tensor_method_detach,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

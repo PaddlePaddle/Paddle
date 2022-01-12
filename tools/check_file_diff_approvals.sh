@@ -96,8 +96,8 @@ if [[ $changed_env_var_count -gt 0 ]]; then
 fi
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
-    echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
-    check_approval 1 38231817
+    echo_line="You must have Dianhai or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
+    check_approval 1 38231817 46782768
 fi
 
 for API_FILE in ${API_FILES[*]}; do
