@@ -87,18 +87,6 @@ class SparseCooTensor : public TensorBase,
     return non_zero_elements_.mutable_data<T>();
   }
 
-  int64_t Index(const std::vector<int64_t>& indices) const;
-  int64_t Index(int64_t indices) const;
-
-  int64_t AutoGrownIndex(const std::vector<int64_t>& indices,
-                         bool auto_grown,
-                         bool is_test = false) const;
-  int64_t AutoGrownIndex(int64_t indices,
-                         bool auto_grown,
-                         bool is_test = false) const;
-
-  void SyncIndex();
-
  private:
   int64_t sparse_dim_ = 0;
   int64_t dense_dim_ = 0;
@@ -106,10 +94,6 @@ class SparseCooTensor : public TensorBase,
   DenseTensor non_zero_elements_;
   bool coalesced_ = false;
   DDim dims_;
-
-  std::map<int64_t, int64_t> indices_to_index_;
-  int64_t height_;  // height indicates the underline tensor's height
-  std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 
 }  // namespace pten

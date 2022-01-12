@@ -1,2 +1,2 @@
-cc_library(sparse_csr_tensor_utils_cpu SRCS sparse_csr_tensor_utils.cc DEPS dense_tensor sparse_csr_tensor sparse_coo_tensor kernel_context kernel_factory)
-cc_library(sparse_coo_tensor_util_cpu SRCS sparse_coo_tensor_util.cc DEPS dense_tensor sparse_coo_tensor kernel_context kernel_factory)
+cc_library(sparse_csr_tensor_utils_cpu SRCS sparse_csr_tensor_utils.cc DEPS dense_tensor sparse_csr_tensor sparse_coo_tensor kernel_context kernel_factory memory)
+cc_library(sparse_coo_tensor_util_cpu SRCS sparse_coo_tensor_util.cc DEPS dense_tensor sparse_coo_tensor kernel_context kernel_factory memory)

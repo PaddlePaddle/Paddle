@@ -31,7 +31,7 @@ void ToSparseCoo(const CUDAContext& dev_ctx,
 template <typename T>
 void SparseCooToDense(const CUDAContext& dev_ctx,
                       const SparseCooTensor& src,
-                      DenseTensor* dst) {}
+                      DenseTensor* dst);
 
 }  // namespace pten
 

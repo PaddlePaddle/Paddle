@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/sparse.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
@@ -138,14 +139,16 @@ void SparseCooToCsr(const CUDAContext& dev_ctx,
                                          config.thread_per_block>>>(
       src_rows_data, csr_crows_data, dense_dims[0], non_zero_num);
 
-  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
-  paddle::memory::Copy(place,
-                       csr_cols_data,
-                       place,
-                       src_cols_data,
-                       sizeof(int64_t) * non_zero_num);
-  paddle::memory::Copy(
-      place, csr_values_data, place, src_values_data, sizeof(T) * non_zero_num);
+  // auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace,
+  // dev_ctx.GetPlace());
+  // paddle::memory::Copy(place,
+  //                     csr_cols_data,
+  //                     place,
+  //                     src_cols_data,
+  //                     sizeof(int64_t) * non_zero_num);
+  // paddle::memory::Copy(
+  //    place, csr_values_data, place, src_values_data, sizeof(T) *
+  //    non_zero_num);
 }
 
 __global__ void kernel_convert_csr_crows_to_coo_rows(
@@ -185,14 +188,16 @@ void SparseCsrToCoo(const CUDAContext& dev_ctx,
   kernel_convert_csr_crows_to_coo_rows<<<config.block_per_grid,
                                          config.thread_per_block>>>(
       csr_crows_data, coo_rows_data, dense_dim[0], non_zero_num);
-  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
-  paddle::memory::Copy(place,
-                       coo_cols_data,
-                       place,
-                       csr_cols_data,
-                       sizeof(int64_t) * non_zero_num);
-  paddle::memory::Copy(
-      place, coo_values_data, place, csr_values_data, sizeof(T) * non_zero_num);
+  // auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace,
+  // dev_ctx.GetPlace());
+  // paddle::memory::Copy(place,
+  //                     coo_cols_data,
+  //                     place,
+  //                     csr_cols_data,
+  //                     sizeof(int64_t) * non_zero_num);
+  // paddle::memory::Copy(
+  //    place, coo_values_data, place, csr_values_data, sizeof(T) *
+  //    non_zero_num);
 }
 
 }  // namespace pten

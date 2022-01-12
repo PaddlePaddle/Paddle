@@ -32,6 +32,7 @@ set(PTEN_DEPS ${PTEN_DEPS} sparse_coo_tensor_util_cpu)
 set(PTEN_DEPS ${PTEN_DEPS} sparse_csr_tensor_utils_cpu)
 if(WITH_GPU)
   set(PTEN_DEPS ${PTEN_DEPS} sparse_csr_tensor_utils_cuda)
+  set(PTEN_DEPS ${PTEN_DEPS} sparse_coo_tensor_utils_cuda)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
