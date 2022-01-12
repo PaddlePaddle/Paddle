@@ -146,7 +146,7 @@ class BatchNormOpConverter : public OpConverter {
       expand_layer->setReshapeDimensions(expand_shape);
       X = expand_layer->getOutput(0);
       expand_layer->getOutput(0)->setName(
-          ("reshape_before_batchnorm_out: " + out_name).c_str());
+          ("reshape_before_batchnorm_out: " + output_name).c_str());
       expand_layer->setName(
           ("BN_Shuffle: (Output: " + output_name + ")").c_str());
     }

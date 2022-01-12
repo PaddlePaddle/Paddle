@@ -82,7 +82,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
         expand_layer->setReshapeDimensions(expand_shape);
         X = expand_layer->getOutput(0);
         expand_layer->getOutput(0)->setName(
-            ("elementwise_reshape_out: " + out_name).c_str());
+            ("elementwise_reshape_out: " + output_name).c_str());
         expand_layer->setName(
             ("Elewise: Shuffle: (Output: " + output_name + ")").c_str());
       }
