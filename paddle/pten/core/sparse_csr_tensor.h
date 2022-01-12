@@ -52,7 +52,6 @@ class SparseCsrTensor : public TensorBase,
   SparseCsrTensor(const DenseTensor& non_zero_crows,
                   const DenseTensor& non_zero_cols,
                   const DenseTensor& non_zero_elements,
-                  const DenseTensor& non_zero_nums,
                   const DDim& dims);
 
   /// \brief SparseCsrTensor shallow copy assignment.
@@ -80,14 +79,6 @@ class SparseCsrTensor : public TensorBase,
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
-
-  /// \brief Returns the non zero numbers in original dense tensor.
-  /// \return The non zero numbers in original dense tensor.
-  const DenseTensor& non_zero_nums() const { return non_zero_nums_; }
-
-  /// \brief Returns the batch_size of original dense tensor.
-  /// \return The batch_size of original dense tensor.
-  int64_t batch_size() const { return non_zero_nums_.numel(); }
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
@@ -121,20 +112,21 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief resize sparse csr tensor.
   /// \param dense_dims The dims of original dense tensor.
-  /// \param non_zero_nums The number of non zero element in each batch
-  void Resize(const DDim& dense_dims,
-              const std::vector<int64_t>& non_zero_nums);
+  /// \param non_zero_num The total number of non zero element
+  void Resize(const DDim& dense_dims, const int64_t non_zero_num);
 
   /// \brief Get a mutable data pointer of non_zero_crows.
   /// return a mutable data pointer of non_zero_crows.
-  int64_t* mutable_non_zero_crows() {
-    return non_zero_crows_.mutable_data<int64_t>();
+  template <typename T>
+  T* mutable_non_zero_crows() {
+    return non_zero_crows_.mutable_data<T>();
   }
 
   /// \brief Get a mutable data pointer of non_zero_cols.
   /// return a mutable data pointer of non_zero_cols.
-  int64_t* mutable_non_zero_cols() {
-    return non_zero_cols_.mutable_data<int64_t>();
+  template <typename T>
+  T* mutable_non_zero_cols() {
+    return non_zero_cols_.mutable_data<T>();
   }
 
   /// \brief Get a mutable data pointer of non_zero_elements.
@@ -142,12 +134,6 @@ class SparseCsrTensor : public TensorBase,
   template <typename T>
   T* mutable_non_zero_elements() {
     return non_zero_elements_.mutable_data<T>();
-  }
-
-  /// \brief Get a mutable data pointer of non_zero_nums.
-  /// return a mutable data pointer of non_zero_nums.
-  int64_t* mutable_non_zero_nums() {
-    return non_zero_nums_.mutable_data<int64_t>();
   }
 
  private:
@@ -158,9 +144,39 @@ class SparseCsrTensor : public TensorBase,
   // save the non zero elements
   DenseTensor non_zero_elements_;
   // save the number of non zero elements in each batch
-  DenseTensor non_zero_nums_;
-  // the dims of original dense tensor
   DDim dims_;
+  /* --------------------------- */
+  /*   example: 2-D Tensor */
+  /* --------------------------- */
+  /*
+     x = [[0, 1, 0, 0],
+          [2, 0, 0, 3],
+          [0, 0, 4, 0],
+          [0, 5, 0, 6]]
+     dims_ = (4, 4)
+     non_zero_elements_ = [1, 2, 3, 4, 5 ,6]
+     non_zero_crows_ = [0, 1, 3, 4, 6]
+     non_zero_cols_ = [1, 0, 3, 2, 1, 3]
+   */
+
+  /* --------------------------- */
+  /*   example: 3-D Tensor */
+  /*   the non zero elements of different batch will be concat together */
+  /* --------------------------- */
+  /*
+     x = [[[0, 1, 0, 0],
+          [2, 0, 0, 3],
+          [0, 0, 4, 0],
+          [0, 5, 0, 6]],
+         [[0, 1, 0, 0],
+          [2, 0, 0, 3],
+          [0, 0, 4, 0],
+          [0, 5, 0, 0]]]
+     dims_ = (2, 4, 4)
+     non_zero_elements_ = [1, 2, 3, 4, 5 ,6, 1, 2, 3, 4, 5]
+     non_zero_crows_ = [0, 1, 3, 4, 6, 0, 1, 2, 4, 5]
+     non_zero_cols_ = [1, 0, 3, 2, 1, 3, 1, 0, 3, 2, 1]
+   */
 };
 
 }  // namespace pten

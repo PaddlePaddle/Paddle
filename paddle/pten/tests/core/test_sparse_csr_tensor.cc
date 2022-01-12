@@ -29,6 +29,7 @@ TEST(sparse_csr_tensor, construct) {
   std::vector<int64_t> cols_data = {1, 0, 2};
 
   auto alloc = std::make_shared<FancyAllocator>();
+  // create non_zero_crows
   auto crows_dims =
       paddle::framework::make_ddim({static_cast<int>(crows_data.size())});
   DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
@@ -37,6 +38,7 @@ TEST(sparse_csr_tensor, construct) {
          &crows_data[0],
          crows_data.size() * sizeof(int64_t));
 
+  // create non_zero_cols
   auto cols_dims =
       paddle::framework::make_ddim({static_cast<int>(cols_data.size())});
   DenseTensorMeta cols_meta(DataType::INT64, cols_dims, DataLayout::NCHW);
@@ -45,23 +47,19 @@ TEST(sparse_csr_tensor, construct) {
          &cols_data[0],
          cols_data.size() * sizeof(int64_t));
 
-  auto nnz_dims = paddle::framework::make_ddim({1});
-  DenseTensorMeta nnz_meta(DataType::INT64, nnz_dims, DataLayout::NCHW);
-  DenseTensor nnz(alloc, nnz_meta);
-  nnz.mutable_data<int64_t>()[0] = non_zero_data.size();
-
-  auto values_dims =
+  // create non_zero_elements
+  auto elements_dims =
       paddle::framework::make_ddim({static_cast<int>(non_zero_data.size())});
-  DenseTensorMeta values_meta(DataType::FLOAT32, values_dims, DataLayout::NCHW);
-  DenseTensor values(alloc, values_meta);
-  memcpy(values.mutable_data<float>(),
+  DenseTensorMeta elements_meta(
+      DataType::FLOAT32, elements_dims, DataLayout::NCHW);
+  DenseTensor elements(alloc, elements_meta);
+  memcpy(elements.mutable_data<float>(),
          &non_zero_data[0],
          non_zero_data.size() * sizeof(float));
 
-  SparseCsrTensor sparse(crows, cols, values, nnz, dense_dims);
+  SparseCsrTensor sparse(crows, cols, elements, dense_dims);
 
-  CHECK_EQ(sparse.batch_size(), 1);
-  CHECK_EQ(sparse.non_zero_nums().data<int64_t>()[0],
+  CHECK_EQ(sparse.non_zero_cols().numel(),
            static_cast<int64_t>(non_zero_data.size()));
   CHECK_EQ(sparse.numel(), 9);
   CHECK(sparse.dims() == dense_dims);
@@ -78,39 +76,29 @@ TEST(sparse_csr_tensor, other_function) {
   DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
   DenseTensor crows(alloc, crows_meta);
 
-  std::vector<int64_t> non_zero_nums = {5};
-  auto cols_dims = paddle::framework::make_ddim({non_zero_nums[0]});
+  const int64_t non_zero_num = 5;
+  auto cols_dims = paddle::framework::make_ddim({non_zero_num});
   DenseTensorMeta cols_meta(DataType::INT64, cols_dims, DataLayout::NCHW);
   DenseTensor cols(alloc, cols_meta);
   DenseTensorMeta values_meta(DataType::FLOAT32, cols_dims, DataLayout::NCHW);
   DenseTensor values(alloc, values_meta);
 
-  auto nums_dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(non_zero_nums.size())});
-  DenseTensorMeta nums_meta(DataType::INT64, nums_dims, DataLayout::NCHW);
-  DenseTensor nums(alloc, nums_meta);
-
-  SparseCsrTensor csr(crows, cols, values, nums, dense_dims);
+  SparseCsrTensor csr(crows, cols, values, dense_dims);
   CHECK(csr.initialized());
-  CHECK_EQ(csr.batch_size(), 1);
   CHECK_EQ(csr.dims(), dense_dims);
 
   // Test Resize
   auto dense_dims_3d = paddle::framework::make_ddim({2, 4, 4});
-  non_zero_nums.resize(2);
-  non_zero_nums[1] = 3;
-  csr.Resize(dense_dims_3d, non_zero_nums);
-  CHECK_EQ(csr.batch_size(), 2);
+  csr.Resize(dense_dims_3d, 2);
+  CHECK_EQ(csr.non_zero_cols().numel(), 2);
 
   // Test shallow_copy
   SparseCsrTensor csr2(csr);
   CHECK(csr.dims() == csr2.dims());
-  CHECK(csr.batch_size() == csr2.batch_size());
 
   // Test shallow_copy_assignment
   SparseCsrTensor csr3 = csr2;
   CHECK(csr3.dims() == csr2.dims());
-  CHECK(csr3.batch_size() == csr2.batch_size());
 }
 
 }  // namespace tests

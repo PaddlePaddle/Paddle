@@ -23,26 +23,13 @@ inline void check_shape(const DDim& dims) {
                  paddle::platform::errors::InvalidArgument(
                      "the SparseCsrTensor only support 2-D Tensor."));
 }
-#define Check(                                                                 \
-    non_zero_crows, non_zero_cols, non_zero_elements, non_zero_nums, dims)     \
+#define Check(non_zero_crows, non_zero_cols, non_zero_elements, dims)          \
   {                                                                            \
     check_shape(dims);                                                         \
     PADDLE_ENFORCE_EQ(dims.size(),                                             \
                       2,                                                       \
                       paddle::platform::errors::InvalidArgument(               \
                           "the SparseCsrTensor only support 2-D Tensor."));    \
-    PADDLE_ENFORCE_EQ(non_zero_crows.dtype(),                                  \
-                      DataType::INT64,                                         \
-                      paddle::platform::errors::InvalidArgument(               \
-                          "the dtype of non_zero_crows should be int64_t."));  \
-    PADDLE_ENFORCE_EQ(non_zero_cols.dtype(),                                   \
-                      DataType::INT64,                                         \
-                      paddle::platform::errors::InvalidArgument(               \
-                          "the dtype of non_zero_cols should be int64_t."));   \
-    PADDLE_ENFORCE_EQ(non_zero_nums.dtype(),                                   \
-                      DataType::INT64,                                         \
-                      paddle::platform::errors::InvalidArgument(               \
-                          "the dtype of non_zero_nums should be int64_t."));   \
     PADDLE_ENFORCE_EQ(                                                         \
         non_zero_cols.place(),                                                 \
         non_zero_crows.place(),                                                \
@@ -58,25 +45,18 @@ inline void check_shape(const DDim& dims) {
 SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
                                  const DenseTensor& non_zero_cols,
                                  const DenseTensor& non_zero_elements,
-                                 const DenseTensor& non_zero_nums,
                                  const DDim& dims)
     : non_zero_crows_(non_zero_crows),
       non_zero_cols_(non_zero_cols),
       non_zero_elements_(non_zero_elements),
-      non_zero_nums_(non_zero_nums),
       dims_(dims) {
-  Check(non_zero_crows_,
-        non_zero_cols_,
-        non_zero_elements_,
-        non_zero_nums_,
-        dims_);
+  Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
 }
 
 SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
     : non_zero_crows_(other.non_zero_crows_),
       non_zero_cols_(other.non_zero_cols_),
       non_zero_elements_(other.non_zero_elements_),
-      non_zero_nums_(other.non_zero_nums_),
       dims_(other.dims_) {}
 
 SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
@@ -84,12 +64,11 @@ SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
   this->non_zero_crows_ = other.non_zero_crows();
   this->non_zero_cols_ = other.non_zero_cols();
   this->non_zero_elements_ = other.non_zero_elements();
-  this->non_zero_nums_ = other.non_zero_nums();
   return *this;
 }
 
 void SparseCsrTensor::Resize(const DDim& dense_dims,
-                             const std::vector<int64_t>& non_zero_nums) {
+                             const int64_t non_zero_num) {
   PADDLE_ENFORCE(this->initialized(),
                  paddle::platform::errors::InvalidArgument(
                      "the SparseCsrTensor must be initialized when call Resize "
@@ -105,17 +84,8 @@ void SparseCsrTensor::Resize(const DDim& dense_dims,
   DDim crows_dims = paddle::framework::make_ddim({crows_size});
   this->non_zero_crows_.Resize(crows_dims);
 
-  int64_t nnz = 0;
-  int64_t batch_size = static_cast<int64_t>(non_zero_nums.size());
-  for (int64_t i = 0; i < batch_size; i++) {
-    nnz += non_zero_nums[i];
-  }
-
-  DDim col_dims = paddle::framework::make_ddim({nnz});
+  DDim col_dims = paddle::framework::make_ddim({non_zero_num});
   this->non_zero_cols_.Resize(col_dims);
   this->non_zero_elements_.Resize(col_dims);
-
-  DDim nnz_dims = paddle::framework::make_ddim({batch_size});
-  this->non_zero_nums_.Resize(nnz_dims);
 }
 }  // namespace pten
