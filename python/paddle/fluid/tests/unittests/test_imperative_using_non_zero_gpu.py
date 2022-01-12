@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import unittest
 from paddle.fluid.dygraph import to_variable, guard
@@ -30,7 +31,11 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             return
 
         np_arr = np.random.random([11, 13]).astype('float32')
-        self.run_main(np_arr, fluid.CUDAPlace(0))
+        if paddle.device.cuda.device_count() > 1:
+            # should use non zero gpu if there are more than 1 gpu
+            self.run_main(np_arr, fluid.CUDAPlace(1))
+        else:
+            self.run_main(np_arr, fluid.CUDAPlace(0))
 
     def test_non_zero_gpu(self):
         with _test_eager_guard():
