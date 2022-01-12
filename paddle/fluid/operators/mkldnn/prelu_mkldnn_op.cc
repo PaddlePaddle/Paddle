@@ -39,7 +39,7 @@ class PReluMKLDNNHandler
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
                                 uniq_name)) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       auto x_md = memory::desc(framework::vectorize(x->dims()),
                                MKLDNNGetDataType<T>(), x->format());
 

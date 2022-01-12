@@ -40,7 +40,7 @@ class LSTMMKLDNNHandler
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
             is_reverse, N, Ti, IC, OC, 4,
             ctx.InputName("X") + ctx.InputName("WeightH")) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       const bool is_INT8 = std::is_same<T, uint8_t>::value;
       const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
       // oneDNN kernel has hardcoded activation functions
