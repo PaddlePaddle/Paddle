@@ -36,6 +36,5 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
