@@ -22,8 +22,8 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
-#include "paddle/pten/kernels/hybird/transpose.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 namespace pten {
