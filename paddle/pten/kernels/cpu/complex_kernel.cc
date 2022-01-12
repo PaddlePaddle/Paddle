@@ -24,7 +24,7 @@
 PT_REGISTER_CTX_KERNEL(conj,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Conj,
+                       pten::ConjKernel,
                        paddle::platform::complex<float>,
                        paddle::platform::complex<double>,
                        float,

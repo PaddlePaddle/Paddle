@@ -16,7 +16,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/transpose.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/bfloat16.h"

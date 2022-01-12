@@ -105,9 +105,11 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   // Connect ScaleNode -> AccumulationNode via Edge
   {
     auto meta = AutogradMeta();
+    meta.SetStopGradient(false);
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
-    scale_node_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    scale_node_ptr->AddEdges(&res, 0);
   }
 
   // Retain Grad for leaf tensor1
@@ -180,9 +182,11 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   // Connect ScaleNode -> AccumulationNode via Edge
   {
     auto meta = AutogradMeta();
+    meta.SetStopGradient(false);
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
-    scale_node_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    scale_node_ptr->AddEdges(&res, 0);
   }
 
   // Retain Grad for leaf tensor1
