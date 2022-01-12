@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -106,39 +107,43 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
     const T* dz_data = dz->data<T>();
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
+
     if (dx != nullptr) {
+      T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
       if (rdims_for_x.size() == 0) {
-        framework::TensorCopy(
-            *dz, ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(), dx);
+        if (dx_data != dz_data) {
+          framework::TensorCopy(
+              *dz, ctx.GetPlace(),
+              ctx.template device_context<platform::DeviceContext>(), dx);
+        }
       } else {
-        T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+        // For inplace strategy, dx will be stored in addr of dz, which makes
+        // the result of dy wrong.
+        if (dx->IsSharedBufferWith(*dz)) {
+          dx->clear();
+          dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+        }
+
         int ret = xpu::reduce_sum<XPUType>(
             dev_ctx.x_context(), reinterpret_cast<const XPUType*>(dz_data),
             reinterpret_cast<XPUType*>(dx_data), z_dims_vec, rdims_for_x);
-        PADDLE_ENFORCE_EQ(
-            ret, xpu::SUCCESS,
-            platform::errors::External("XPU kernel reduce_sum occur error in "
-                                       "XPUElementwise error code ",
-                                       ret, XPUAPIErrorMsg[ret]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum ");
       }
     }
 
     if (dy != nullptr) {
+      T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
       if (rdims_for_y.size() == 0) {
-        framework::TensorCopy(
-            *dz, ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(), dy);
+        if (dy_data != dz_data) {
+          framework::TensorCopy(
+              *dz, ctx.GetPlace(),
+              ctx.template device_context<platform::DeviceContext>(), dy);
+        }
       } else {
-        T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
         int ret = xpu::reduce_sum<XPUType>(
             dev_ctx.x_context(), reinterpret_cast<const XPUType*>(dz_data),
             reinterpret_cast<XPUType*>(dy_data), z_dims_vec, rdims_for_y);
-        PADDLE_ENFORCE_EQ(
-            ret, xpu::SUCCESS,
-            platform::errors::External("XPU kernel reduce_sum occur error in "
-                                       "XPUElementwise error code ",
-                                       ret, XPUAPIErrorMsg[ret]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum ");
       }
     }
   }

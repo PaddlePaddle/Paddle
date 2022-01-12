@@ -35,10 +35,6 @@ class RuntimeGraph final {
   const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank() const {
     return interceptor_id_to_rank_;
   }
-  const std::unordered_map<int64_t, std::unordered_set<int64_t>>&
-  carrier_id_to_interceptor_ids() const {
-    return carrier_id_to_interceptor_ids_;
-  }
   void SetInterceptorIdToRank(
       const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank) {
     interceptor_id_to_rank_ = interceptor_id_to_rank;
@@ -47,19 +43,12 @@ class RuntimeGraph final {
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
     interceptor_id_to_node_ = interceptor_id_to_node;
   }
-  void SetCarrierIdToInterceptorIds(
-      const std::unordered_map<int64_t, std::unordered_set<int64_t>>&
-          carrier_id_to_interceptor_ids) {
-    carrier_id_to_interceptor_ids_ = carrier_id_to_interceptor_ids;
-  }
   std::string DebugString() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
-  std::unordered_map<int64_t, std::unordered_set<int64_t>>
-      carrier_id_to_interceptor_ids_;
 };
 
 }  // namespace distributed

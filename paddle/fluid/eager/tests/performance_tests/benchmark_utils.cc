@@ -87,8 +87,8 @@ void benchmark_eager_intermediate_matmul(const EagerTensor& X,
     // Examine Forward Grad (w.r.t max_num_runs = 2)
     eager_test::CompareVariableWithValue<float>(input_tensor0, 16);
     // Examine Backward Grad (w.r.t max_num_runs = 2)
-    eager_test::CompareGradVariableWithValue<float>(X, 16);
-    eager_test::CompareGradVariableWithValue<float>(Y, 16);
+    eager_test::CompareGradTensorWithValue<float>(X, 16);
+    eager_test::CompareGradTensorWithValue<float>(Y, 16);
   }
 }
 
@@ -121,8 +121,8 @@ void benchmark_eager_intermediate_mlp(const EagerTensor& X,
     eager_test::CompareVariableWithValue<float>(Out, result["Out"]);
 
     // Examine Backward Grad (w.r.t max_num_runs = 2)
-    eager_test::CompareGradVariableWithValue<float>(X, result["GradX"]);
-    eager_test::CompareGradVariableWithValue<float>(Ws[0], result["GradW"]);
+    eager_test::CompareGradTensorWithValue<float>(X, result["GradX"]);
+    eager_test::CompareGradTensorWithValue<float>(Ws[0], result["GradW"]);
   }
 }
 
