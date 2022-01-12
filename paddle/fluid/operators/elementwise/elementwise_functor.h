@@ -16,9 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
@@ -174,6 +171,27 @@ struct FMaxFunctor<paddle::platform::float16> {
   }
 };
 
+template <>
+struct FMaxFunctor<int> {
+  inline HOSTDEVICE int operator()(const int& a, const int& b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t& a,
+                                       const int64_t& b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmax(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
 // Fmin
 template <typename T>
 struct FMinFunctor {
@@ -191,6 +209,53 @@ struct FMinFunctor<paddle::platform::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
     return static_cast<paddle::platform::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int> {
+  inline HOSTDEVICE int operator()(const int& a, const int& b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t& a,
+                                       const int64_t& b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmin(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
+template <typename T>
+struct MinGradXFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return dout * static_cast<T>(x < y);
+  }
+};
+template <typename T>
+struct MinGradYFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return dout * static_cast<T>(x >= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MinGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+      const InT& x, const InT& y, const InT& dout) {
+    paddle::framework::Array<OutT, 2> outs;
+    // dx = dout * (x < y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
+    // dy = dout * (x >= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    return outs;
   }
 };
 
@@ -232,6 +297,33 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
     // dy = dout * x
     Complex<InT> c_conj(c.real, -c.imag);
     outs[1] = a * c_conj;
+    return outs;
+  }
+};
+
+// Ternary compare
+template <typename T>
+struct MaxGradXFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+template <typename T>
+struct MaxGradYFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+      const InT& x, const InT& y, const InT& dout) {
+    paddle::framework::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
+    // dy = dout * (x <= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
     return outs;
   }
 };

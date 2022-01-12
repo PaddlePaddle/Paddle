@@ -14,15 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
-#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/dense_tensor.h"
 
-namespace paddle {
-namespace experimental {
+namespace pten {
 
-Place ConvertToPtenPlace(const platform::Place& src);
+template <typename Context>
+void ReshapeGradKernel(const Context& dev_ctx,
+                       const DenseTensor& out_grad,
+                       DenseTensor* x_grad);
 
-platform::Place ConvertToPlatformPlace(const Place& src);
+template <typename Context>
+void ReshapeDoubleGradKernel(const Context& dev_ctx,
+                             const DenseTensor& x_grad_grad,
+                             DenseTensor* out_grad_grad);
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace pten
