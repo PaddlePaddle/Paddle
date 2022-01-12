@@ -42,7 +42,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -972,7 +976,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
