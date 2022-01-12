@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 
 namespace pten {
 
@@ -239,18 +239,15 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
-  int block_size = funcs::GetThreadsConfig(ctx, numel, VecSize);
-  int grid_size =
-      ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
-  int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
+  auto gpu_config = GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
+                    gpu_config.GetBlockSize();
   auto stream = ctx.stream();
-  VectorizedElementwiseKernel<InT,
-                              OutT,
-                              Functor,
-                              Arity,
-                              NumOuts,
-                              VecSize><<<grid_size, block_size, 0, stream>>>(
-      ins_data, outs_data, numel, main_offset, func);
+  VectorizedElementwiseKernel<InT, OutT, Functor, Arity, NumOuts, VecSize><<<
+      gpu_config.block_per_grid,
+      gpu_config.thread_per_block,
+      0,
+      stream>>>(ins_data, outs_data, numel, main_offset, func);
 #endif
 }
 
