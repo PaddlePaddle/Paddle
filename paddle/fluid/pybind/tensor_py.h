@@ -440,7 +440,6 @@ void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
-  auto place = in->place();
   auto out_dims = out->dims();
   auto in_dims = in->dims();
 

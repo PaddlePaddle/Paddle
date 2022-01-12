@@ -47,21 +47,21 @@ TEST(Place, Print) {
   {
     std::stringstream ss;
     ss << paddle::platform::XPUPlace(1);
-    EXPECT_EQ("XPUPlace(1)", ss.str());
+    EXPECT_EQ("Place(xpu:1)", ss.str());
   }
   {
     std::stringstream ss;
     ss << paddle::platform::MLUPlace(1);
-    EXPECT_EQ("MLUPlace(1)", ss.str());
+    EXPECT_EQ("Place(mlu:1)", ss.str());
   }
   {
     std::stringstream ss;
     ss << paddle::platform::CUDAPlace(1);
-    EXPECT_EQ("CUDAPlace(1)", ss.str());
+    EXPECT_EQ("Place(gpu:1)", ss.str());
   }
   {
     std::stringstream ss;
     ss << paddle::platform::CPUPlace();
-    EXPECT_EQ("CPUPlace", ss.str());
+    EXPECT_EQ("Place(cpu)", ss.str());
   }
 }

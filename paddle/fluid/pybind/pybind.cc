@@ -372,7 +372,7 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {
-  return static_cast<int>(paddle::platform::Place(p).which());
+  return static_cast<int>(paddle::platform::Place(p).GetType());
 }
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {

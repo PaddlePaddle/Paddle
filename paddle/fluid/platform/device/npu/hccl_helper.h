@@ -149,13 +149,9 @@ struct HCCLContextMap {
 
   NPUDeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  NPUDeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(BOOST_GET_CONST(NPUPlace, p).device);
-  }
+  NPUDeviceContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
 
-  const HCCLContext &at(platform::Place p) const {
-    return this->at(BOOST_GET_CONST(NPUPlace, p).device);
-  }
+  const HCCLContext &at(platform::Place p) const { return this->at(p.device); }
 
   const HCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 

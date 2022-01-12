@@ -86,7 +86,7 @@ class CCommInitOp : public framework::OperatorBase {
             rid));
 #endif
 
-    int device_id = BOOST_GET_CONST(Place, place).device;
+    int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
