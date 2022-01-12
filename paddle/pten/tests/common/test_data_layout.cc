@@ -19,13 +19,16 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/layout.h"
 
+namespace pten {
+namespace tests {
+
 TEST(DataLayout, OStream) {
   std::ostringstream oss;
   oss << pten::DataLayout::UNDEFINED;
-  EXPECT_EQ(oss.str(), "Undefined");
+  EXPECT_EQ(oss.str(), "Undefined(AnyLayout)");
   oss.str("");
   oss << pten::DataLayout::ANY;
-  EXPECT_EQ(oss.str(), "Any");
+  EXPECT_EQ(oss.str(), "Undefined(AnyLayout)");
   oss.str("");
   oss << pten::DataLayout::NHWC;
   EXPECT_EQ(oss.str(), "NHWC");
@@ -40,7 +43,9 @@ TEST(DataLayout, OStream) {
     oss << pten::DataLayout::NUM_DATA_LAYOUTS;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
-    EXPECT_TRUE(ex_msg.find("Invalid enum data layout type") !=
-                std::string::npos);
+    EXPECT_TRUE(ex_msg.find("Unknown Data Layout type") != std::string::npos);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

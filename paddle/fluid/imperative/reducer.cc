@@ -27,8 +27,9 @@
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   framework::Tensor *tensor =
@@ -41,12 +42,25 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
+  } else if (platform::is_npu_place(tensor->place())) {
+    // TODO(kuizhiqing)
+    VLOG(4) << "divnrank for npu not support yet";
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
-    framework::VisitDataTypeSmall(
+#ifdef PADDLE_WITH_HIP
+    if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unsupport BF16 in DataParallel for now"));
+    }
+    framework::VisitDataTypeForHIP(
         dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
                     tensor, nranks, context));
+#else
+    framework::VisitDataType(dtype_,
+                             DivNRanksForAllReduce<platform::CPUDeviceContext>(
+                                 tensor, nranks, context));
+#endif
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -229,6 +243,16 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
+  } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    ConcatTensorsWithType(
+        static_cast<const platform::NPUDeviceContext &>(context),
+        dense_tensors_, &dense_contents_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat npu grads since it's not compiled with HCCL,"
+        "Please recompile or reinstall Paddle with HCCL support."));
+#endif
   } else if (platform::is_cpu_place(place)) {
     ConcatTensorsWithType(
         static_cast<const platform::CPUDeviceContext &>(context),
@@ -260,6 +284,16 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
+#endif
+  } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    SplitTensorsWithType(
+        static_cast<const platform::NPUDeviceContext &>(context),
+        &dense_contents_, &dense_tensors_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split npu grad since it's not compiled with HCCL,"
+        "Please recompile or reinstall Paddle with HCCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(
@@ -811,7 +845,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
       }
     });
 #elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_GLOO)
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL)
     FusedAllReduceSchedule(run_order, group, next_group_);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -994,7 +1028,7 @@ void Reducer::FinalizeBackward() {
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_GLOO)
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars

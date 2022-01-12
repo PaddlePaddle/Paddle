@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,165 +12,199 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
 
 
-class ConvBnFusePassExplicitPaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=6,
-                filter_size=6,
-                groups=3,
-                padding=[1, 1, 1, 1],
-                bias_attr=False,
-                act=None)
-            bn_out = fluid.layers.batch_norm(conv_out, is_test=True)
+class TestConvBnFusePass(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+        # mainly for TRT, which is invalid for current pass test framework!!
+        if attrs[0]['data_format'] == "NHWC":
+            return False
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [bn_out]
+        return True
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(PassVersionChecker.IsCompatible('conv_bn_fuse_pass'))
+    def sample_program_config(self, draw):
+        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        groups = draw(st.integers(min_value=1, max_value=3))
+        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+        axis = draw(st.sampled_from([1]))
+        filter_channel = draw(st.integers(min_value=1, max_value=16)) * 4
+        filter_size = draw(st.integers(min_value=1, max_value=4))
+        in_channel = groups * filter_channel
+        out_channel_factor = draw(st.integers(min_value=1, max_value=16)) * 4
+        out_channel = groups * out_channel_factor
+        batch_size = draw(st.integers(min_value=1, max_value=4))
+        dilations = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=2), min_size=2, max_size=2))
+        paddings = draw(
+            st.lists(
+                st.integers(
+                    min_value=0, max_value=2), min_size=2, max_size=2))
+        strides = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=2), min_size=2, max_size=2))
+        has_bias = draw(st.booleans())
+        use_mkldnn = draw(st.booleans())
+        epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
+        x_shape = [
+            batch_size, in_channel, 64, 64
+        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
+        w_shape = [out_channel, filter_channel, filter_size, filter_size]
+        scale_shape = [out_channel]
+        bias_shape = [out_channel]
+        var_shape = [out_channel]
+        mean_shape = [out_channel]
 
-class ConvBnFusePassValidPaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=6,
-                filter_size=6,
-                groups=3,
-                padding='VALID',
-                bias_attr=False,
-                act=None)
-            bn_out = fluid.layers.batch_norm(conv_out, is_test=True)
+        def generate_conv2d_Input():
+            return np.random.random(x_shape).astype(np.float32)
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [bn_out]
+        def generate_conv2d_Filter():
+            return np.random.random(w_shape).astype(np.float32)
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(PassVersionChecker.IsCompatible('conv_bn_fuse_pass'))
+        def generate_conv2d_Bias():
+            return np.random.random(bias_shape).astype(np.float32)
 
+        def generate_bn_Scale():
+            return np.random.random(scale_shape).astype(np.float32)
 
-class ConvBnFusePassSamePaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=6,
-                filter_size=6,
-                groups=3,
-                padding='SAME',
-                bias_attr=False,
-                act=None)
-            bn_out = fluid.layers.batch_norm(conv_out, is_test=True)
+        def generate_bn_Bias():
+            return np.random.random(bias_shape).astype(np.float32)
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [bn_out]
+        def generate_bn_Mean():
+            return np.random.random(mean_shape).astype(np.float32)
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(PassVersionChecker.IsCompatible('conv_bn_fuse_pass'))
+        def generate_bn_Var():
+            return np.random.random(var_shape).astype(np.float32)
 
+        conv2d_op = OpConfig(
+            "conv2d",
+            inputs={
+                "Input": ["conv2d_input"],
+                "Filter": ["conv2d_weight"],
+            },
+            outputs={"Output": ["conv2d_out"]},
+            data_format=data_format,
+            dilations=dilations,
+            padding_algorithm=padding_algorithm,
+            groups=groups,
+            paddings=paddings,
+            strides=strides,
+            use_mkldnn=use_mkldnn,
+            has_bias=has_bias,
+            is_test=True)
+        bn_op = OpConfig(
+            "batch_norm",
+            inputs={
+                "X": ["conv2d_out"],
+                "Scale": ["batch_norm_Scale"],
+                "Bias": ["batch_norm_Bias"],
+                "Mean": ["batch_norm_Mean"],
+                "Variance": ["batch_norm_Variance"],
+            },
+            outputs={
+                "Y": ["batch_norm_Y"],
+                "MeanOut": ["batch_norm_Mean"],
+                "VarianceOut": ["batch_norm_Variance"],
+                "SavedMean": ["batch_norm_SavedMean"],
+                "SavedVariance": ["batch_norm_SavedVariance"],
+                "ReserveSpace": ["batch_norm_ReserveSpace"],
+            },
+            epsilon=epsilon,
+            trainable_statistics=False,
+            data_layout=data_format,
+            is_test=True)
+        if has_bias == True:
+            conv2d_op.inputs["Bias"] = ["conv2d_bias"]
+        ops = [conv2d_op, bn_op]
 
-class ConvEltwiseAddBnFuseExplicitPaddingPass(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=6,
-                filter_size=6,
-                groups=3,
-                padding=[1, 1, 1, 1],
-                bias_attr=None,
-                act=None)
-            bn_out = fluid.layers.batch_norm(conv_out, is_test=True)
+        program_config = ProgramConfig(
+            ops=ops,
+            inputs={
+                "conv2d_input":
+                TensorConfig(data_gen=partial(generate_conv2d_Input)),
+            },
+            weights={
+                "conv2d_weight":
+                TensorConfig(data_gen=partial(generate_conv2d_Filter)),
+                "batch_norm_Scale": TensorConfig(data_gen=generate_bn_Scale),
+                "batch_norm_Bias": TensorConfig(data_gen=generate_bn_Bias),
+                "batch_norm_Mean": TensorConfig(data_gen=generate_bn_Mean),
+                "batch_norm_Variance": TensorConfig(data_gen=generate_bn_Var),
+            },
+            outputs=["batch_norm_Y"])
+        if has_bias == True:
+            program_config.weights["conv2d_bias"] = TensorConfig(
+                data_gen=partial(generate_conv2d_Bias))
+        return program_config
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [bn_out]
+    def sample_predictor_configs(self, program_config):
+        # for mkldnn
+        if program_config.ops[0].attrs['use_mkldnn']:
+            config = self.create_inference_config()
+            config.enable_mkldnn()
+            yield config, ['conv2d'], (1e-5, 1e-5)
+        else:
+            config = self.create_inference_config()
+            yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass'))
+            config = self.create_inference_config(use_gpu=True)
+            yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
+            config = self.create_trt_inference_config()
+            config.enable_tensorrt_engine(
+                workspace_size=1 << 20,
+                max_batch_size=4,
+                min_subgraph_size=1,
+                precision_mode=paddle_infer.PrecisionType.Float32,
+                use_static=False,
+                use_calib_mode=False)
+            if program_config.ops[0].attrs['has_bias']:
+                yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
+            else:  # it will enter conv_elementwise_add_fuse_pass
+                yield config, ['conv2d_fusion'], (1e-5, 1e-5)
 
-class ConvEltwiseAddBnFuseValidPaddingPass(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=6,
-                filter_size=6,
-                groups=3,
-                padding='VALID',
-                bias_attr=None,
-                act=None)
-            bn_out = fluid.layers.batch_norm(conv_out, is_test=True)
+    def add_ignore_pass_case(self):
+        def teller1(program_config, predictor_config):
+            if program_config.ops[0].attrs['data_format'] == "NHWC":
+                return True
+            return False
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [bn_out]
+        # mkldnn Output has diff with bias!
+        def teller2(program_config, predictor_config):
+            return predictor_config.mkldnn_enabled() and program_config.ops[
+                0].attrs['has_bias'] == True
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass'))
+        self.add_ignore_check_case(
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d is wrong when data_format attribute is NHWC"
+        )
 
+        self.add_ignore_check_case(
+            teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "Currently mkldnn Output has diff with bias!")
 
-class ConvEltwiseAddBnFuseSamePaddingPass(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=6,
-                filter_size=6,
-                groups=3,
-                padding='SAME',
-                bias_attr=None,
-                act=None)
-            bn_out = fluid.layers.batch_norm(conv_out, is_test=True)
-
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [bn_out]
-
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass'))
+    def test(self):
+        self.run_and_statis(
+            quant=False,
+            passes=["conv_bn_fuse_pass"], )
 
 
 if __name__ == "__main__":

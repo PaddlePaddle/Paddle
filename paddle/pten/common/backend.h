@@ -37,14 +37,13 @@ namespace experimental {
  * in the future
  */
 enum class Backend : uint8_t {
-  // kernel backend cannot be undefined
   UNDEFINED = 0,
 
   // basic kernel backend
   CPU,
 
   // various acceleration devices' backends
-  CUDA,
+  GPU,
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
 
@@ -54,6 +53,42 @@ enum class Backend : uint8_t {
 
   // end of backend types
   NUM_BACKENDS,
+
+  /**
+   * [ Why we need ALL in baisc kernel key member? ]
+   *
+   * For Tensor, ALL represents an illegal Backend, but for Kernel, some
+   * kernels may be device-independent by nature, such as reshape; and when
+   * and some kernels are also device-independent when implemented based on
+   * primitive API.
+   *
+   * In this case, we need to provide a more concise registration method,
+   * instead of registering the kernels for each device with almost
+   * repetitive code, we need one registration covers all situations,
+   * so if we provide the ALL field with Register the kernel in this statement.
+   *
+   * Of course, we have also considered solving this problem through different
+   * named macros, for example, if we define
+   *
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND
+   *
+   * Based on this design pattern, the dtype and layout also have the same
+   * requirements, this cause we need to define a series of macros
+   *
+   * PT_REGISTER_KERNEL_FOR_ALL_DTYPE
+   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
+   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
+   *
+   * It makes the system of registering macros more complicated, we think
+   * this is not a simple design, so we still adopt the design of providing
+   * the ALL field.
+   *
+   * Note: ALL_BACKEND only used for Kernel registration and selection
+   */
+  ALL_BACKEND = UNDEFINED,
 };
 
 inline std::ostream& operator<<(std::ostream& os, Backend backend) {
@@ -64,8 +99,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::CPU:
       os << "CPU";
       break;
-    case Backend::CUDA:
-      os << "CUDA";
+    case Backend::GPU:
+      os << "GPU";
       break;
     case Backend::XPU:
       os << "XPU";

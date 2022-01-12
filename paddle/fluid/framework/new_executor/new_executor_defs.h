@@ -86,10 +86,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override;
+      const std::string& name) const override;
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override;
+      const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;
 
@@ -145,6 +145,7 @@ struct OpKernelFunc {
 struct VariableMetaInfo {
   int var_ref_count_{0};
   framework::VarDesc* var_desc_{nullptr};
+  bool sikp_inplace_{false};
 
   VariableMetaInfo() {}
   VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
@@ -155,7 +156,7 @@ class VariableScope;
 class VariableScopeListener : public ScopeListener {
  public:
   explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name) override;
+  void onCreateVariable(const std::string& name, Variable* v) override;
   void onDeleteVariable(const std::string& name) override;
   void onRenameVariable(const std::string& old_name,
                         const std::string& new_name) override;
@@ -177,7 +178,11 @@ class VariableScope : public ScopeBase {
  public:
   explicit VariableScope(Scope* scope);
 
-  const Scope* GetScope() const;
+  Scope* GetMutableScope() const;
+
+  Scope* GetMutableLocalScope() const;
+
+  void SetLocalScope(Scope* local_scope);
 
   Variable* FindVar(const std::string& name) const;
 
@@ -199,7 +204,8 @@ class VariableScope : public ScopeBase {
 
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc);
+  void AddVar(const std::string& name, VarDesc* var_desc,
+              bool local_scope = false);
 
   void AddVar(const std::string& name, const Variable& var);
 
@@ -219,15 +225,25 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
+  const std::shared_ptr<VariableScopeListener>& Listener() const {
+    return listener_;
+  }
+
+  void SetVarSikpInplace(const std::string& name, bool skip);
+
+  bool GetVarSikpInplace(int id) const;
+
   friend class VariableScopeListener;
 
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  Scope* scope_ = nullptr;
+  Scope* scope_{nullptr};
+  // TODO(zhiqiu): find a better way to support local scope.
+  Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_;
+  std::shared_ptr<VariableScopeListener> listener_{nullptr};
 };
 
 class NextInstruction {
@@ -279,6 +295,11 @@ struct OpFuncNode {
 
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
+
+  // fit for pten kernel
+  pten::Kernel* pt_kernel_{nullptr};                 // not owned
+  pten::KernelContext* pt_kernel_context_{nullptr};  // not onwed
+
   OpFuncType type_;
 };
 
@@ -296,6 +317,10 @@ class Instruction {
   const std::unordered_set<int>& NoDataTransformVars() const;
 
   OpKernelComputeFunc KernelFunc() const;
+
+  pten::Kernel* PtenKernel() const;
+
+  pten::KernelContext* PtenKernelContext() const;
 
   OpFuncType KernelType() const;
 
@@ -358,6 +383,7 @@ class Instruction {
 namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+static constexpr char kFetchVarName[] = "fetch";
 
 static bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;

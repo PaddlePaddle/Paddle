@@ -101,7 +101,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 
       void *send_recv_buffer = nullptr;
       if (root_id == dst_id) {
-        send_recv_buffer = const_cast<void *>(in_tensor.data<void>());
+        send_recv_buffer = const_cast<void *>(in_tensor.data());
         out_handle = out_var_handle;
       } else {
         send_recv_buffer = VariableVisitor::GetMutableTensor(out_var)
@@ -111,7 +111,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 
       broadcast_calls.emplace_back(
           [send_recv_buffer, numel, type, root_id, &nccl_ctx] {
-            PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
                 send_recv_buffer, numel, static_cast<ncclDataType_t>(type),
                 root_id, nccl_ctx.comm_, nccl_ctx.stream()));
           });
@@ -162,7 +162,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 
       void *send_recv_buffer = nullptr;
       if (root_id == dst_id) {
-        send_recv_buffer = const_cast<void *>(in_tensor.data<void>());
+        send_recv_buffer = const_cast<void *>(in_tensor.data());
         out_handle = out_var_handle;
       } else {
         send_recv_buffer = VariableVisitor::GetMutableTensor(out_var)

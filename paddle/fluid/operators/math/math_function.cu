@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -101,8 +102,8 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     platform::CPUPlace cpu_place = platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = memory::AllocShared(cpu_place, size);
-    auto cuda_buf_holder = memory::AllocShared(cuda_place, size);
+    auto cpu_buf_holder = memory::Alloc(cpu_place, size);
+    auto cuda_buf_holder = memory::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {
@@ -283,10 +284,18 @@ struct ElementwiseAddTo<platform::CUDADeviceContext, T> {
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }
+  void operator()(platform::CUDADeviceContext* ctx,
+                  const pten::DenseTensor& src, pten::DenseTensor* dst) {
+    auto in = pten::EigenVector<T>::Flatten(src);
+    auto out = pten::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
 };
 
 template struct ElementwiseAddTo<platform::CUDADeviceContext,
                                  platform::float16>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

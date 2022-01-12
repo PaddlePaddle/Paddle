@@ -159,7 +159,7 @@ void ReduceOpHandle::RunImpl() {
           VisitDataType(lod_tensors[0]->type(), func);
 
           auto trg = out_var->GetMutable<framework::LoDTensor>();
-          if (reduce_sum_trg.data<void>() != trg->data<void>()) {
+          if (reduce_sum_trg.data() != trg->data()) {
             TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
           }
         }
@@ -181,7 +181,7 @@ void ReduceOpHandle::RunImpl() {
         int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
 
-        void *buffer = const_cast<void *>(lod_tensor.data<void>());
+        void *buffer = const_cast<void *>(lod_tensor.data());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
           recvbuffer =
@@ -193,7 +193,7 @@ void ReduceOpHandle::RunImpl() {
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
-              PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+              PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
                   buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
                   ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
             });
@@ -227,7 +227,7 @@ void ReduceOpHandle::RunImpl() {
         int dev_id = BOOST_GET_CONST(platform::XPUPlace, p).device;
         auto &bkcl_ctx = bkcl_ctxs_->at(dev_id);
 
-        void *buffer = const_cast<void *>(lod_tensor.data<void>());
+        void *buffer = const_cast<void *>(lod_tensor.data());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
           recvbuffer =

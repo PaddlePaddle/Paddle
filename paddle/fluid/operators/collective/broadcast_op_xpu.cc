@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace ops = paddle::operators;
@@ -52,7 +52,7 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
             "because this op can only be an In-Place operation."));
     void* send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
-        send_recv_buffer, in->data<void>(),
+        send_recv_buffer, in->data(),
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 

@@ -53,6 +53,27 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
   }
 };
 
+class ElementwiseFMinOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "FMin"; }
+  std::string GetEquation() const override { return "Out = fmin(X, Y)"; }
+
+  void AddInputX() override {
+    AddInput("X", "The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y", "The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise minima. If the element of one tensor is nan, "
+           "return the element value of the other tensor, if both are nan, "
+           "return the first nan";
+  }
+};
+
 template <typename T>
 class ElementwiseMinGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -61,6 +82,23 @@ class ElementwiseMinGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_min_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+template <typename T>
+class ElementwiseFMinGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elementwise_fmin_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -103,3 +141,28 @@ REGISTER_OP_VERSION(elementwise_min)
             "In order to support the function of scaling the input Y when "
             "using the operator of elementwise_min.",
             1.0f));
+
+REGISTER_OPERATOR(elementwise_fmin, ops::ElementwiseOp,
+                  ops::ElementwiseFMinOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseFMinGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseFMinGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(elementwise_fmin_grad, ops::ElementwiseOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    elementwise_fmin,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext,
+                               paddle::platform::float16>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    elementwise_fmin_grad,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext,
+                                   paddle::platform::float16>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext,
+                                   int64_t>);

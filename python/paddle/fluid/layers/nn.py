@@ -665,6 +665,69 @@ def _pull_sparse_v2(input,
     return outs
 
 
+def _pull_gpups_sparse(input,
+                       size,
+                       dtype='float32',
+                       is_distributed=False,
+                       is_sparse=False):
+    r"""
+    **Pull GpuPS Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    GpuPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int|list of int): The embedding size parameter of each input, which indicates the size of
+            each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+	    float32 now.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs, whose size are indicated by size respectively.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          slots = []
+          data_1 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          slots.append(data_1)
+          data_2 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          slots.append(data_2)
+          embs = fluid.layers.pull_gpups_sparse(input=slots, size=[11, 35])
+    """
+    helper = LayerHelper('pull_gpups_sparse', **locals())
+    if dtype != 'float32':
+        raise ValueError(
+            "GpuPS only support float type embedding now, and your type is: " +
+            dtype)
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+    helper.append_op(
+        type='pull_gpups_sparse',
+        inputs={'Ids': inputs,
+                'W': w},
+        outputs={'Out': outs},
+        attrs={
+            'size': size,
+            'is_distributed': is_distributed,
+            'is_sparse': is_sparse
+        })
+    if len(outs) == 1:
+        return outs[0]
+    return outs
+
+
 def _pull_box_sparse(input,
                      size,
                      dtype='float32',
@@ -9791,7 +9854,7 @@ def swish(x, beta=1.0, name=None):
 
 
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
-def prelu(x, mode, param_attr=None, name=None):
+def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
     prelu activation.
 
@@ -9818,6 +9881,9 @@ def prelu(x, mode, param_attr=None, name=None):
 
         name (str, optional): Name for the operation (optional, default is None). \
         For more information, please refer to :ref:`api_guide_Name`.
+        
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.
@@ -9839,17 +9905,32 @@ def prelu(x, mode, param_attr=None, name=None):
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
+
     alpha_shape = [1]
-    # NOTE(): The input of this API should be ``N,C,...`` format,
-    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
+
+        true_data_format = [
+            'NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC'
+        ]
+        if data_format not in true_data_format:
+            raise ValueError(
+                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
         assert len(
             x.shape
         ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
         #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
         # To be consistent with Prelu, it is simplified.
         #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
-        alpha_shape = [1, x.shape[1], 1, 1]
+        #NOTE(GuoxiaWang): support NHWC data format
+        if data_format == 'NHWC':
+            alpha_shape = [1, 1, 1, x.shape[-1]]
+        else:
+            alpha_shape = [1, x.shape[1], 1, 1]
+
     elif mode == 'element':
         assert len(
             x.shape
@@ -9867,7 +9948,8 @@ def prelu(x, mode, param_attr=None, name=None):
         type="prelu",
         inputs={"X": x,
                 'Alpha': alpha},
-        attrs={"mode": mode},
+        attrs={"mode": mode,
+               "data_format": data_format},
         outputs={"Out": out})
     return out
 
@@ -11384,6 +11466,8 @@ def shape(input):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = fluid.layers.shape(inputs)
@@ -11396,6 +11480,11 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
+    if in_dygraph_mode():
+        out = _C_ops.shape(input)
+        out.stop_gradient = True
+        return out
+
     check_variable_and_dtype(input, 'input', [
         'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
         'complex128'
@@ -11403,7 +11492,10 @@ def shape(input):
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
-        type='shape', inputs={'Input': input}, outputs={'Out': out})
+        type='shape',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        stop_gradient=True)
 
     return out
 
@@ -14904,28 +14996,37 @@ def deformable_roi_pooling(input,
 @deprecated(since="2.0.0", update_to="paddle.shard_index")
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    Recompute the `input` indices according to the offset of the
-    shard. The length of the indices is evenly divided into N shards, and if
-    the `shard_id` matches the shard with the input index inside, the index is
-    recomputed on the basis of the shard offset, elsewise it is set to
-    `ignore_value`. The detail is as follows:
+    Reset the values of `input` according to the shard it beloning to.
+    Every value in `input` must be a non-negative integer, and
+    the parameter `index_num` represents the integer above the maximum
+    value of `input`. Thus, all values in `input` must be in the range
+    [0, index_num) and each value can be regarded as the offset to the beginning
+    of the range. The range is further split into multiple shards. Specifically,
+    we first compute the `shard_size` according to the following formula,
+    which represents the number of integers each shard can hold. So for the
+    i'th shard, it can hold values in the range [i*shard_size, (i+1)*shard_size).
     ::
 
         shard_size = (index_num + nshards - 1) // nshards
-        y = x % shard_size if x // shard_size == shard_id else ignore_value
 
-    NOTE: If the length of indices cannot be evely divided by the shard number,
-    the size of the last shard will be less than the calculated `shard_size`
+    For each value `v` in `input`, we reset it to a new value according to the
+    following formula:
+    ::
+   
+        v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id+1) * shard_size else ignore_value
+
+    That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
+    if it in the range. Otherwise, we reset it to be `ignore_value`.
 
     Args:
-        input (Tensor): Input indices with data type int64 or int32. It's last dimension must be 1.
-        index_num (int): An integer defining the range of the index.
+        input (Tensor): Input tensor with data type int64 or int32. It's last dimension must be 1.
+        index_num (int): An integer represents the integer above the maximum value of `input`.
         nshards (int): The number of shards.
         shard_id (int): The index of the current shard.
         ignore_value (int): An integer value out of sharded index range.
 
     Returns:
-        Tensor: The sharded index of input.
+        Tensor.
 
     Examples:
         .. code-block:: python
@@ -15090,6 +15191,9 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
+    if in_dygraph_mode():
+        return _C_ops.mish(x, 'threshold', threshold)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
     check_type(threshold, 'threshold', (float, int), 'mish')
     assert threshold > 0, "threshold of mish should be greater than 0, " \
@@ -15101,7 +15205,7 @@ def mish(x, threshold=20, name=None):
         type='mish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold or -1})
+        attrs={'threshold': threshold})
     return out
 
 
