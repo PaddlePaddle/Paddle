@@ -30,11 +30,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 
-#if defined(PADDLE_WITH_PSLIB)
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+#if defined(PADDLE_WITH_PSLIB)
 void BindMetrics(py::module* m) {
   py::class_<framework::Metric, std::shared_ptr<framework::Metric>>(*m,
                                                                     "Metric")
@@ -49,7 +49,7 @@ void BindMetrics(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_name_list", &framework::Metric::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>());
+#endif
 }  // end Metrics
 }  // end namespace pybind
 }  // end namespace paddle
-#endif

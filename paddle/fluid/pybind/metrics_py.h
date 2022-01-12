@@ -22,7 +22,9 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+#if defined(PADDLE_WITH_PSLIB)
 void BindMetrics(py::module* m);
+#endif
 
 }  // namespace pybind
 }  // namespace paddle
