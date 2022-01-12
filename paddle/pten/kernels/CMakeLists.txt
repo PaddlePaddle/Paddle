@@ -17,9 +17,6 @@ if(WITH_MKLDNN)
   # mkldnn will be deprecated and use the new name dnnl
   add_subdirectory(dnnl)
 endif()
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
@@ -28,21 +25,17 @@ add_subdirectory(sparse)
 # pten depends all pten kernel targets
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
-set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
+set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory convert_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
+
+set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel pten_transpose_cpu)
+if(WITH_GPU OR WITH_ROCM)
+  set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_gpu)
+endif()
 
 # auto build kernel targets by cmake
-register_kernels(EXCLUDES flatten_kernel DEPS ${COMMON_KERNEL_DEPS})
-# TODO(chenweihang): auto parse compile deps by include headers later
-set(FLATTEN_DEPS ${COMMON_KERNEL_DEPS} utils_cpu unary)
-if(WITH_GPU OR WITH_ROCM)
-  set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_gpu)
-elseif(WITH_XPU)
-  set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_xpu)
-endif()
-kernel_library(flatten_kernel DEPS ${FLATTEN_DEPS})
-
-get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
-message(STATUS "PTEN_KERNELS: ${pten_kernels}")
+register_kernels(EXCLUDES math_kernel DEPS ${COMMON_KERNEL_DEPS})
+kernel_library(math_kernel DEPS ${MATH_KERNEL_DEPS})
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
