@@ -32,6 +32,10 @@ if os.path.exists(legacy_core):
     except Exception as e:
         raise e
 
+# Patch LoDTensor
+import core
+core.LoDTensor = core.Tensor
+
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
@@ -69,9 +73,6 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-
-import core
-core.LoDTensor = core.Tensor
 
 from .core import LoDTensorArray, Scope, _Scope
 from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
