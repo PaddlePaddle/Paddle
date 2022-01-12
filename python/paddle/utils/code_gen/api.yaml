@@ -36,7 +36,7 @@
   kernel : 
     func : dot
 
-- api : flatten
+- api : flattenli
   args : (const Tensor& x, int start_axis, int stop_axis)
   output : Tensor
   infer_meta : 
@@ -77,6 +77,7 @@
     func : MatmulInferMeta
   kernel : 
     func : matmul
+  backward : matmul_grad
 
 - api : mean
   args : (const Tensor& x, const std::vector<int64_t>& axis={}, bool keep_dim=false)
