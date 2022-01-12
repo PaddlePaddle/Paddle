@@ -30,8 +30,7 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             return
 
         np_arr = np.random.random([11, 13]).astype('float32')
-        # should use non zero gpu
-        self.run_main(np_arr, fluid.CUDAPlace(1))
+        self.run_main(np_arr, fluid.CUDAPlace(0))
 
     def test_non_zero_gpu(self):
         with _test_eager_guard():
