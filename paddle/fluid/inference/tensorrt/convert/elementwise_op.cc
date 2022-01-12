@@ -81,7 +81,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
         expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
         expand_layer->setReshapeDimensions(expand_shape);
         X = expand_layer->getOutput(0);
-        expand_layer->getOutput(0)->setName("elementwise_reshape_out");
+        expand_layer->getOutput(0)->setName(
+            ("elementwise_reshape_out: " + out_name).c_str());
         expand_layer->setName(
             ("Elewise: Shuffle: (Output: " + output_name + ")").c_str());
       }
