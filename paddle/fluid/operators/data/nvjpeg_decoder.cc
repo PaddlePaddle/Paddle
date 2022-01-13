@@ -122,6 +122,8 @@ void NvjpegDecoder::ParseDecodeParams(
     roi_generator->GenerateRandomROI(width, height, &roi);
 
     PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(decode_params_, roi.x, roi.y, roi.w, roi.h));
+    height = roi.h;
+    width = roi.w;
   }
   std::vector<int64_t> out_shape = {output_components, height, width};
   out->Resize(framework::make_ddim(out_shape));
