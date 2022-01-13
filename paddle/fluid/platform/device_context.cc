@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/ipu/ipu_backend.h"
 #endif
 #include "glog/logging.h"
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -849,7 +850,6 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   }
   return num_entries;
 }
-
 
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {

@@ -14,6 +14,7 @@
 
 #include <tuple>
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -449,13 +450,12 @@ class ConvMKLDNNHandlerT
     bool is_multi_channel = scale_weights_data.size() > 1;
     bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
     float activation_scale =
-        force_fp32_output
-            ? 1.0f
-            : has_activation ? ctx.Attr<float>("Scale_out") : 1.0f;
+        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
+                                                  : 1.0f;
     auto scale_out_data =
-        force_fp32_output
-            ? 1.0f
-            : has_activation ? 1.0f : ctx.Attr<float>("Scale_out");
+        force_fp32_output ? 1.0f : has_activation
+                                       ? 1.0f
+                                       : ctx.Attr<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
     int count =
