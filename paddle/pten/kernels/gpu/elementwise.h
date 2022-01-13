@@ -346,7 +346,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();
-  VectorizedElementwiseKernel<InT, OutT, Functor, Arity, NumOuts, VecSize><<<
+  VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize><<<
       gpu_config.block_per_grid,
       gpu_config.thread_per_block,
       0,

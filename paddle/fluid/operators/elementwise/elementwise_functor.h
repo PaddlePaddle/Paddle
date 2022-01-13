@@ -234,13 +234,13 @@ struct FMinFunctor<int64_t> {
 
 template <typename T>
 struct MinGradXFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x < y);
   }
 };
 template <typename T>
 struct MinGradYFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x >= y);
   }
 };
@@ -248,8 +248,8 @@ struct MinGradYFunctor {
 template <typename InT, typename OutT>
 struct MinGradXYFunctor {
   inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
-      const InT& x, const InT& y, const InT& dout) {
-    pten::framework::Array<OutT, 2> outs;
+      const InT x, const InT y, const InT dout) {
+    pten::frcamework::Array<OutT, 2> outs;
     // dx = dout * (x < y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
     // dy = dout * (x >= y)
@@ -303,13 +303,13 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
 // Ternary compare
 template <typename T>
 struct MaxGradXFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x > y);
   }
 };
 template <typename T>
 struct MaxGradYFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x <= y);
   }
 };
@@ -317,7 +317,7 @@ struct MaxGradYFunctor {
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
   inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
-      const InT& x, const InT& y, const InT& dout) {
+      const InT x, const InT y, const InT dout) {
     pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x > y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
