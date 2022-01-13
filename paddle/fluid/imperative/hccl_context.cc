@@ -42,7 +42,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
-  void *src_ptr = const_cast<void *>(src.data<void>());
+  void *src_ptr = const_cast<void *>(src.data());
   dst->Resize(src.dims());
   void *dst_ptr = dst->mutable_data(src.place(), src.type());
   HcclDataType hccl_dtype = platform::ToHCCLDataType(src.type());
@@ -168,7 +168,7 @@ void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
     aclrtStream stream = comm->stream();
 
     void *src_ptr =
-        reinterpret_cast<void *>(const_cast<void *>(src_tensor->data<void>()));
+        reinterpret_cast<void *>(const_cast<void *>(src_tensor->data()));
     auto hccl_dtype = platform::ToHCCLDataType(src_tensor->type());
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         src_ptr, src_tensor->numel(), hccl_dtype, 0, comm->comm(),

@@ -39,7 +39,7 @@ class SignKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Sign<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    pten::SignKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 

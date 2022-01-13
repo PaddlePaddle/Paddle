@@ -19,38 +19,32 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct LogicalAndFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a && b; }
-};
+#define LOGICAL_BINARY_FUNCTOR(func_name, op)                \
+  template <typename T>                                      \
+  struct func_name {                                         \
+    using ELEMENT_TYPE = T;                                  \
+    HOSTDEVICE bool operator()(const T a, const T b) const { \
+      return static_cast<bool>(a) op static_cast<bool>(b);   \
+    }                                                        \
+  };
 
-template <typename T>
-struct LogicalOrFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a || b; }
-};
+LOGICAL_BINARY_FUNCTOR(LogicalOrFunctor, ||)
+LOGICAL_BINARY_FUNCTOR(LogicalAndFunctor, &&)
+LOGICAL_BINARY_FUNCTOR(LogicalXorFunctor, ^)
+#undef LOGICAL_BINARY_FUNCTOR
 
 template <typename T>
 struct LogicalNotFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a) const { return !a; }
-};
-
-template <typename T>
-struct LogicalXorFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const {
-    return (a || b) && !(a && b);
-  }
+  using ELEMENT_TYPE = T;
+  HOSTDEVICE bool operator()(const T a) const { return !a; }
 };
 
 template <typename DeviceContext, typename Functor>
 class BinaryLogicalOpKernel
-    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using T = typename Functor::ELEM_TYPE;
+    using T = typename Functor::ELEMENT_TYPE;
     auto* x = context.Input<framework::Tensor>("X");
     auto* y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
@@ -62,10 +56,10 @@ class BinaryLogicalOpKernel
 
 template <typename DeviceContext, typename Functor>
 class UnaryLogicalOpKernel
-    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using T = typename Functor::ELEM_TYPE;
+    using T = typename Functor::ELEMENT_TYPE;
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor unary_func;

@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 paddle.enable_static()
+paddle.seed(100)
 
 
 class TestExponentialOp1(OpTest):

@@ -19,7 +19,7 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    AllocationPtr underlying_allocation, gpuStream_t owning_stream)
+    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream)
     : Allocation(underlying_allocation->ptr(),
                  underlying_allocation->base_ptr(),
                  underlying_allocation->size(), underlying_allocation->place()),
@@ -116,8 +116,9 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
+pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   ProcessUnfreedAllocations();
+  VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
   try {
     underlying_allocation = underlying_allocator_->Allocate(size);
@@ -135,13 +136,14 @@ Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
     throw;
   }
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
-      std::move(underlying_allocation), default_stream_);
+      static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),
+      default_stream_);
   VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
           << allocation->ptr();
   return allocation;
 }
 
-void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
+void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
@@ -150,10 +152,12 @@ void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
                               "StreamSafeCUDAAllocation*",
                               allocation));
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   if (stream_safe_cuda_allocation->CanBeFreed()) {
+    VLOG(9) << "Directly delete allocation";
     delete stream_safe_cuda_allocation;
   } else {
-    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
+    VLOG(9) << "Put into unfreed_allocation list";
     unfreed_allocations_.emplace_back(stream_safe_cuda_allocation);
   }
 }
