@@ -41,7 +41,8 @@ limitations under the License. */
 #include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/pten/core/arg_map_context.h"
-#include "paddle/pten/include/core.h"
+#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {

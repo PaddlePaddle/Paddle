@@ -29,7 +29,6 @@
 #include "paddle/fluid/eager/utils.h"
 
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
 
 namespace egr {
 
