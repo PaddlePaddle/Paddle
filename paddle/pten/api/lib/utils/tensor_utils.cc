@@ -308,7 +308,7 @@ void MovesStorageOrig(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   dst->ResizeAndAllocate(src->dims());
   dst->set_type(pten::TransToProtoVarType(src->dtype()));
   auto storage = src->release();
-  std::shared_ptr<paddle::memory::allocation::Allocation> holder(
+  std::shared_ptr<pten::Allocation> holder(
       new TensorStorage(std::move(storage)));
   dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);

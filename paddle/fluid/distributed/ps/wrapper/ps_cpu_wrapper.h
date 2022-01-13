@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef PADDLE_FLUID_DISTRIBUTED_PS_WRAPPER_PS_CPU_WRAPPER_H_
+#define PADDLE_FLUID_DISTRIBUTED_PS_WRAPPER_PS_CPU_WRAPPER_H_
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/pten/core/dense_tensor.h"
-
-namespace pten {
-
-namespace math {
-
-template <typename DeviceContext, typename T>
-struct TransposeNormal {
-  // for dims >= 7 situation
-  void operator()(const DeviceContext& dev_ctx,
-                  const pten::DenseTensor& in,
-                  pten::DenseTensor* out,
-                  const std::vector<int64_t>& axis);
-};
-
-}  // namespace math
-}  // namespace pten
+#endif  // PADDLE_FLUID_DISTRIBUTED_PS_WRAPPER_PS_CPU_WRAPPER_H_

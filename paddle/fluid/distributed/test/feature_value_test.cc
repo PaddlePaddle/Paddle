@@ -12,38 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <ThreadPool.h>
-
-#include <unistd.h>
-#include <string>
-#include <thread>  // NOLINT
-#include <vector>
-
-#include "google/protobuf/text_format.h"
-#include "gtest/gtest.h"
 #include "paddle/fluid/distributed/table/depends/feature_value.h"
+#include <vector>
+#include "gtest/gtest.h"
 
 namespace paddle {
 namespace distributed {
 
 TEST(BENCHMARK, LargeScaleKV) {
-  std::shared_ptr<SparseTableShard> shard =
-      std::make_shared<SparseTableShard>();
+  typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
+  shard_type shard;
   uint64_t key = 1;
-  auto itr = shard->Find(key);
-  ASSERT_TRUE(itr == shard->end());
+  auto itr = shard.find(key);
+  ASSERT_TRUE(itr == shard.end());
 
   std::vector<float> vec = {0.0, 0.1, 0.2, 0.3};
 
-  auto* feature_value = shard->Init(key);
-  feature_value->resize(vec.size());
-  memcpy(feature_value->data(), vec.data(), vec.size() * sizeof(float));
+  auto& feature_value = shard[key];
+  feature_value.resize(vec.size());
+  memcpy(feature_value.data(), vec.data(), vec.size() * sizeof(float));
 
-  itr = shard->Find(key);
-  ASSERT_TRUE(itr != shard->end());
+  itr = shard.find(key);
+  ASSERT_TRUE(itr != shard.end());
 
-  feature_value = itr->second;
-  float* value_data = feature_value->data();
+  feature_value = itr.value();
+  float* value_data = feature_value.data();
 
   ASSERT_FLOAT_EQ(value_data[0], 0.0);
   ASSERT_FLOAT_EQ(value_data[1], 0.1);

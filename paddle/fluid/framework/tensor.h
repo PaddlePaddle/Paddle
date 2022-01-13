@@ -33,14 +33,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
-namespace memory {
-namespace allocation {
-class Allocation;
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
-
-namespace paddle {
 
 namespace framework {
 

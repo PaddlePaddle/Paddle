@@ -75,20 +75,10 @@ ElementwiseMulGrad(const framework::ExecutionContext& ctx,
   const auto place = ctx.GetPlace();
 
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y, x};
-    GetGradXAndYOut<ElementwiseType::kBinary, T>(
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
                                                 dx, MulGradFunctor<T>());

@@ -30,7 +30,7 @@ namespace pten {
 
 template <typename InT, typename OutT>
 struct CastFuctor {
-  __device__ __forceinline__ OutT operator()(const InT& x) const {
+  __device__ __forceinline__ OutT operator()(const InT x) const {
     return static_cast<OutT>(x);
   }
 };

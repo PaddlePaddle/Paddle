@@ -78,6 +78,12 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   return *this;
 }
 
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+  meta_ = std::move(other.meta_);
+  storage_.swap(other.storage_);
+  return *this;
+}
+
 int64_t DenseTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;

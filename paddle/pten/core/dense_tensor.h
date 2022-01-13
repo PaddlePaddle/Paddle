@@ -60,6 +60,8 @@ class TensorInplaceVersion {
 class DenseTensor : public TensorBase,
                     public TypeInfoTraits<TensorBase, DenseTensor> {
  public:
+  using Allocator = deprecated::Allocator;
+
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
@@ -96,6 +98,8 @@ class DenseTensor : public TensorBase,
 
   /// \brief DenseTensor shallow copy assignment.
   DenseTensor& operator=(const DenseTensor& other);
+
+  DenseTensor& operator=(DenseTensor&& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~DenseTensor() = default;

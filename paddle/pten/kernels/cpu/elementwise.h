@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace pten {
+
+// FORWARD CODE
 
 // Add
 template <typename DevCtx, typename T, class Enable = void>
@@ -206,6 +209,56 @@ inline int GetElementwiseIndex(const int* x_dims_array,
   return index_;
 }
 
+template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
+void CommonGradBroadcastCPU(const DenseTensor& x,
+                            const DenseTensor& y,
+                            const DenseTensor& out,
+                            const DenseTensor& dout,
+                            DenseTensor* dx,
+                            DenseTensor* dy,
+                            int* x_dims_array,
+                            int* y_dims_array,
+                            int* out_dims_array,
+                            int max_dim,
+                            const CPUContext& ctx,
+                            DX_OP dx_op,
+                            DY_OP dy_op) {
+  std::vector<int> index_array(max_dim, 0);
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+  const Tout* out_data = out.data<Tout>();
+  const Tout* dout_data = dout.data<Tout>();
+  T* dx_data = dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace());
+  T* dy_data = dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace());
+  if (dx_data != nullptr) {
+    memset(dx_data, 0, dx->numel() * sizeof(T));
+  }
+  if (dy_data != nullptr) {
+    memset(dy_data, 0, dy->numel() * sizeof(T));
+  }
+  const int out_size = std::accumulate(
+      out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
+  int x_index, y_index;
+  for (int out_index = 0; out_index < out_size; ++out_index) {
+    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
+    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+    if (dx_data != nullptr) {
+      dx_data[x_index] += dx_op(x_data[x_index],
+                                y_data[y_index],
+                                out_data[out_index],
+                                dout_data[out_index]);
+    }
+    if (dy_data != nullptr) {
+      dy_data[y_index] += dy_op(x_data[x_index],
+                                y_data[y_index],
+                                out_data[out_index],
+                                dout_data[out_index]);
+    }
+
+    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
+  }
+}
+
 template <typename Functor, typename T, typename OutType = T>
 void CommonForwardBroadcastCPU(const DenseTensor& x,
                                const DenseTensor& y,
@@ -214,7 +267,7 @@ void CommonForwardBroadcastCPU(const DenseTensor& x,
                                int* y_dims_array,
                                int* out_dims_array,
                                int max_dim,
-                               const paddle::platform::CPUDeviceContext& ctx,
+                               const CPUContext& ctx,
                                Functor func,
                                const bool is_xsize_larger = true) {
   std::vector<int> index_array(max_dim, 0);
@@ -245,16 +298,15 @@ void CommonForwardBroadcastCPU(const DenseTensor& x,
 }
 
 template <typename Functor, typename T, typename OutType = T>
-void CommonElementwiseBroadcastForward(
-    const paddle::platform::CPUDeviceContext& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    DenseTensor* z,
-    const DDim& x_dims,
-    const DDim& y_dims,
-    Functor func,
-    int axis,
-    const bool is_xsize_larger = true) {
+void CommonElementwiseBroadcastForward(const CPUContext& dev_ctx,
+                                       const DenseTensor& x,
+                                       const DenseTensor& y,
+                                       DenseTensor* z,
+                                       const DDim& x_dims,
+                                       const DDim& y_dims,
+                                       Functor func,
+                                       int axis,
+                                       const bool is_xsize_larger = true) {
   int max_dim = (std::max)(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
   PADDLE_ENFORCE_GE(
@@ -302,7 +354,7 @@ void CommonElementwiseBroadcastForward(
 // TODO(liuyiqun): optimize the CPU implementation to support all broadcast
 // cases and avoid the need of XxxInverseFunctor.
 template <typename Functor, typename T, typename OutType = T>
-void ElementwiseCompute(const paddle::platform::CPUDeviceContext& dev_ctx,
+void ElementwiseCompute(const CPUContext& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         int axis,
@@ -317,9 +369,8 @@ void ElementwiseCompute(const paddle::platform::CPUDeviceContext& dev_ctx,
     is_xsize_larger = false;
     max_dim = y_dims.size();
   }
-  funcs::
-      TransformFunctor<Functor, T, paddle::platform::CPUDeviceContext, OutType>
-          functor(x, y, z, dev_ctx, func, is_xsize_larger);
+  funcs::TransformFunctor<Functor, T, CPUContext, OutType> functor(
+      x, y, z, dev_ctx, func, is_xsize_larger);
   if (x_dims == y_dims) {
     functor.Run();
     return;
@@ -381,12 +432,121 @@ void ElementwiseCompute(const paddle::platform::CPUDeviceContext& dev_ctx,
 
 template <typename Functor>
 struct SameDimsElementwiseCompute {
-  void operator()(const paddle::platform::CPUDeviceContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
     Functor()(dev_ctx, x, y, z);
   }
 };
+
+// BACKWARD CODE
+
+template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
+static void ElemwiseGradBroadcast1CPU(const T* x,
+                                      const T* y,
+                                      const Tout* out,
+                                      const Tout* dout,
+                                      int h,
+                                      int w,
+                                      bool is_xsize_larger,
+                                      DX_OP dx_op,
+                                      DY_OP dy_op,
+                                      T* dx,
+                                      T* dy) {
+  if (is_xsize_larger) {
+    for (int i = 0; i < h; ++i) {
+      for (int j = 0; j < w; ++j) {
+        int x_offset = i * w + j;
+        if (dx != nullptr) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
+        if (dy != nullptr) {
+          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          if (i == 0) {
+            dy[j] = tmp;
+          } else {
+            dy[j] += tmp;
+          }
+        }
+      }
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int i = 0; i < h; ++i) {
+      for (int j = 0; j < w; ++j) {
+        int y_offset = i * w + j;
+        if (dy != nullptr) {
+          dy[y_offset] =
+              dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+        if (dx != nullptr) {
+          T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          if (i == 0) {
+            dx[j] = tmp;
+          } else {
+            dx[j] += tmp;
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
+static void ElemwiseGradBroadcast2CPU(const T* x,
+                                      const T* y,
+                                      const Tout* out,
+                                      const Tout* dout,
+                                      int pre,
+                                      int n,
+                                      int post,
+                                      bool is_xsize_larger,
+                                      DX_OP dx_op,
+                                      DY_OP dy_op,
+                                      T* dx,
+                                      T* dy) {
+  if (is_xsize_larger) {
+    for (int i = 0; i < pre; ++i) {
+      for (int j = 0; j < n; ++j) {
+        for (int k = 0; k < post; ++k) {
+          int x_offset = i * n * post + j * post + k;
+          if (dx != nullptr) {
+            dx[x_offset] =
+                dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          }
+          if (dy != nullptr) {
+            T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+            if (i == 0 && k == 0) {
+              dy[j] = tmp;
+            } else {
+              dy[j] += tmp;
+            }
+          }
+        }
+      }
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int i = 0; i < pre; ++i) {
+      for (int j = 0; j < n; ++j) {
+        for (int k = 0; k < post; ++k) {
+          int y_offset = i * n * post + j * post + k;
+          if (dy != nullptr) {
+            dy[y_offset] =
+                dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          }
+          if (dx != nullptr) {
+            T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+            if (i == 0 && k == 0) {
+              dx[j] = tmp;
+            } else {
+              dx[j] += tmp;
+            }
+          }
+        }
+      }
+    }
+  }
+}
 
 }  // namespace pten
