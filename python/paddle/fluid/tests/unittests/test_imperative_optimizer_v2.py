@@ -648,8 +648,8 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 adam.set_lr(0.01)
 
     def test_set_lr(self):
-        with _test_eager_guard():
-            self.func_test_set_lr()
+        # with _test_eager_guard():
+        #     self.func_test_set_lr()
         self.func_test_set_lr()
 
 

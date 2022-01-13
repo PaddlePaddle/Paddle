@@ -252,9 +252,9 @@ class UniformInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_buffer_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_buffer_to(var)
             return None
         else:
             op = block.append_op(
@@ -334,24 +334,54 @@ class NormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        op = block.append_op(
-            type="gaussian_random",
-            outputs={"Out": var},
-            attrs={
-                "shape": var.shape,
-                "dtype": var.dtype,
-                "mean": self._mean,
-                "std": self._std_dev,
-                "seed": self._seed,
-                "use_mkldnn": False
-            },
-            stop_gradient=True)
+        # to be compatible of fp16 initalizers
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(
+                    ['gaussian_random', var.name, 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
 
-        if not framework.in_dygraph_mode():
+        if framework.in_dygraph_mode():
+            out_var = _C_ops.gaussian_random(
+                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
+                'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                      'out_dtype', var.dtype)
+                var.copy_(var_tmp, False)
+            else:
+                var.copy_(out_var, False)
+            return None
+        else:
+            op = block.append_op(
+                type="gaussian_random",
+                outputs={"Out": out_var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": out_dtype,
+                    "mean": self._mean,
+                    "std": self._std_dev,
+                    "seed": self._seed,
+                    "use_mkldnn": False
+                },
+                stop_gradient=True)
+
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype,
+                           "out_dtype": var.dtype})
             var.op = op
             return op
-        else:
-            return None
 
 
 class TruncatedNormalInitializer(Initializer):
@@ -420,9 +450,9 @@ class TruncatedNormalInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_buffer_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_buffer_to(var)
             return None
         else:
             op = block.append_op(
@@ -560,9 +590,9 @@ class XavierInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_buffer_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_buffer_to(var)
             return None
         else:
             if self._uniform:
@@ -713,9 +743,9 @@ class MSRAInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_buffer_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_buffer_to(var)
             return None
         else:
             if self._uniform:
@@ -881,9 +911,9 @@ class BilinearInitializer(Initializer):
             ]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_buffer_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_buffer_to(var)
             return None
         else:
             op = block.append_op(
@@ -987,9 +1017,9 @@ class NumpyArrayInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_buffer_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_buffer_to(var)
             return None
         else:
             op = block.append_op(
