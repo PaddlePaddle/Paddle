@@ -106,7 +106,7 @@ class RecomputeState(ProgramStats):
                 continue
 
             cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(cur_op)
-            # insert seed op to guarantee that two dropout op have some outputs
+            # insert seed op to guarantee that two dropout op have the same outputs
             op_unique_name = unique_name.generate("seed")
             var_unique_name = unique_name.generate_with_ignorable_key(".".join(
                 [op_unique_name, 'tmp']))
@@ -210,6 +210,10 @@ class RecomputePass(PassBase):
     def _check_self(self):
         if self.get_attr("dist_context") is None:
             return False
+        if self.get_attr("loss") is None:
+            return False
+        if self.get_attr("checkpoints") is None:
+            return False
         return True
 
     def _check_conflict(self, other_pass):
@@ -217,18 +221,14 @@ class RecomputePass(PassBase):
 
     def _apply_single_impl(self, main_programs, startup_programs, context):
         checkpoints = self.get_attr("checkpoints")
-        assert checkpoints is not None
         loss = self.get_attr("loss")
-        assert loss is not None
+        no_grad_set = self.get_attr("no_grad_set")
+        self._dist_context = self.get_attr("dist_context")
 
         main_block = main_programs.global_block()
-        no_grad_set = self.get_attr("no_grad_set")
         no_grad_set_name = _get_stop_gradients(main_programs, no_grad_set)
         # get op_path which is related to loss
         op_path = _find_op_path_(main_block, [loss], [], no_grad_set_name)
-
-        self._dist_context = self.get_attr("dist_context")
-        dist_op_context = self._dist_context.dist_op_context
 
         # step 1: build recompute state
         rc_state = RecomputeState(main_block, op_path)
@@ -309,6 +309,7 @@ class RecomputePass(PassBase):
         ops = main_block.ops
         loss_op = get_loss_op(main_block)
         loss_op_idx = _find_op_index(main_block, loss_op)
+        dist_op_context = self._dist_context.dist_op_context
         assert loss_op_idx != -1
         for i in range(len(ops) - 1, loss_op_idx, -1):
             grad_op = ops[i]

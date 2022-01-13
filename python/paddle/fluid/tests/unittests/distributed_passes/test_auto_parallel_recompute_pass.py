@@ -29,7 +29,7 @@ class TestRecomputePass(AutoPallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-        self.rtol = 1e-5
+        self.rtol = 1e-6
         self.atol = 1e-8
 
         rank = paddle.distributed.get_rank()
