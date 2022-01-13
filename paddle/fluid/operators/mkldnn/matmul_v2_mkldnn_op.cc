@@ -517,7 +517,7 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     dx->set_format(x->format());
     dy->set_layout(paddle::framework::DataLayout::kMKLDNN);
     dy->set_format(y->format());
-    
+
     dx->Resize(x->dims());
     dy->Resize(y->dims());
   }
