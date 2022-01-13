@@ -60,6 +60,7 @@ _complex_dtypes = [
 ]
 
 _already_patch_varbase = False
+_already_patch_eager_tensor = False
 
 
 def monkey_patch_math_varbase():
@@ -220,7 +221,11 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if not isinstance(other_var, core.VarBase):
+            if _in_eager_mode():
+                other_var_should_be = core.eager.EagerTensor
+            else:
+                other_var_should_be = core.VarBase
+            if not isinstance(other_var, other_var_should_be):
                 if isinstance(other_var, complex):
                     import paddle
                     other_var = paddle.to_tensor(other_var, dtype='complex64')
@@ -333,22 +338,30 @@ def monkey_patch_math_varbase():
     ]
 
     global _already_patch_varbase
+    global _already_patch_eager_tensor
 
-    if not _already_patch_varbase:
+    if core._in_eager_mode():
+        local_already_patch = _already_patch_eager_tensor
+        _already_patch_eager_tensor = True
+        local_tensor = core.eager.EagerTensor
+    else:
+        local_already_patch = _already_patch_varbase
+        _already_patch_varbase = True
+        local_tensor = core.VarBase
+
+    if not local_already_patch:
         for method in varbase_methods:
             method_name = method[0]
             method_impl = method[1]
-            setattr(core.VarBase, method_name, method_impl)
+            setattr(local_tensor, method_name, method_impl)
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
         for method_name in paddle.tensor.tensor_method_func:
-            if hasattr(core.VarBase, method_name): continue
+            if hasattr(local_tensor, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
-            if method_impl: setattr(core.VarBase, method_name, method_impl)
+            if method_impl: setattr(local_tensor, method_name, method_impl)
 
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
-            if impl: setattr(core.VarBase, magic_method, impl)
-
-    _already_patch_varbase = True
+            if impl: setattr(local_tensor, magic_method, impl)

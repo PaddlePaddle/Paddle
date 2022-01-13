@@ -40,6 +40,7 @@ extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+extern PyTypeObject* g_framework_tensor_pytype;
 
 int TensorDtype2NumpyDtype(pten::DataType dtype) {
   switch (dtype) {
@@ -221,6 +222,8 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
       }
     }
+  } else if (obj == Py_None) {
+    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -262,6 +265,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
       }
     }
+  } else if (obj == Py_None) {
+    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -298,6 +303,18 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return place;
+}
+
+framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+  if (PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    return ::pybind11::handle(obj).cast<framework::Tensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "EagerTensor, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -544,6 +561,8 @@ std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
           reinterpret_cast<EagerTensorObject*>(PyTuple_GetItem(list, i))
               ->eager_tensor);
     }
+  } else if (list == Py_None) {
+    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "
@@ -621,6 +640,8 @@ std::vector<egr::EagerTensor*> GetEagerTensorPtrListFromArgs(
           &(reinterpret_cast<EagerTensorObject*>(PyTuple_GetItem(list, i))
                 ->eager_tensor));
     }
+  } else if (list == Py_None) {
+    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "
@@ -631,6 +652,5 @@ std::vector<egr::EagerTensor*> GetEagerTensorPtrListFromArgs(
 
   return result;
 }
-
 }  // namespace pybind
 }  // namespace paddle

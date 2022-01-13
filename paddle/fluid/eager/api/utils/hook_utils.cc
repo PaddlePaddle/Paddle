@@ -43,33 +43,37 @@ void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
 void RetainGradForTensor(const egr::EagerTensor& tensor) {
   // TODO(jiabin): Support More Tensor type here
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
-  egr::EagerTensor* grad_tensor = meta->MutableGrad();
+  std::weak_ptr<egr::EagerTensor> weak_grad_tensor = meta->WeakGrad();
 
   // Define Hook
   std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-      [grad_tensor](const egr::EagerTensor& t) {
-        if (!grad_tensor) {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "Detected null grad_tensor."
-              "Grad tensor in AutogradMeta of should not be nullptr"));
-        }
-        if (t.defined()) {
-          // Simply Copy impl() to grad_tensor
-          grad_tensor->set_impl(t.impl());
-          return *grad_tensor;
+      [weak_grad_tensor](const egr::EagerTensor& t) {
+        if (!weak_grad_tensor.expired()) {
+          auto grad_tensor = weak_grad_tensor.lock();
+          if (t.defined()) {
+            VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
+            // Simply Copy impl() to grad_tensor
+            grad_tensor->set_impl(t.impl());
+            return *grad_tensor.get();
+          } else {
+            VLOG(7) << "Set Var for RetainGrad Hook for tensor: " << t.name();
+            PADDLE_ENFORCE_EQ(
+                t.Var().IsInitialized(), true,
+                paddle::platform::errors::Fatal(
+                    "Detected uninitialized variable, causing segmentation "
+                    "fault "
+                    "inside the hook."
+                    "Variable %s has to be initialized while we need to set it."
+                    "please check tensor initialization status.",
+                    t.name()));
+            grad_tensor->MutableVar()
+                ->GetMutable<paddle::framework::LoDTensor>()
+                ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
+            return *grad_tensor.get();
+          }
         } else {
-          PADDLE_ENFORCE_EQ(
-              t.Var().IsInitialized(), true,
-              paddle::platform::errors::Fatal(
-                  "Detected uninitialized variable, causing segmentation fault "
-                  "inside the hook."
-                  "Variable %s has to be initialized while we need to set it."
-                  "please check tensor initialization status.",
-                  t.name()));
-          grad_tensor->MutableVar()
-              ->GetMutable<paddle::framework::LoDTensor>()
-              ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
-          return *grad_tensor;
+          VLOG(7) << "Retain NULL EagerTensor in Grad Hook";
+          return EagerTensor();
         }
       };
 

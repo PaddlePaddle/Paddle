@@ -16,15 +16,15 @@ limitations under the License. */
 
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Scale(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void Scale(const Context& dev_ctx,
            const DenseTensor& x,
            const Scalar& scale,
            float bias,

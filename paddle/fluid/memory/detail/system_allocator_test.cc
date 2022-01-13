@@ -19,12 +19,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#endif
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/enforce.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 DECLARE_bool(use_pinned_memory);
 

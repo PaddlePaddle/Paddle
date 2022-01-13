@@ -16,7 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/common/data_type.h"
@@ -49,13 +49,11 @@ TEST(DEV_API, cast) {
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   pten::DataType out_dtype = pten::DataType::FLOAT64;
-  pten::DataType in_dtype = pten::DataType::FLOAT32;
   // 2. test API
   auto out = pten::Cast<float>(
       *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
       dense_x,
-      out_dtype,
-      in_dtype);
+      out_dtype);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

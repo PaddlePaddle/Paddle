@@ -240,7 +240,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
                       platform::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
     auto* tensor = var->GetMutable<framework::LoDTensor>();
-    auto data = reinterpret_cast<const float*>(tensor->data<void>());
+    auto data = reinterpret_cast<const float*>(tensor->data());
     auto micro_id = static_cast<int>(data[0]);
 
     int minibatch_index = micro_id / 10;
