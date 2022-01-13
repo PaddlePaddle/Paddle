@@ -166,7 +166,7 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);

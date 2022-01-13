@@ -74,7 +74,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
   float expected;
@@ -129,10 +129,10 @@ void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
   op->Run(*scope, place);
 
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   std::vector<T> dy_vec;
-  TensorToVector(*tensor_dy, ctx, &dy_vec);
+  paddle::framework::TensorToVector(*tensor_dy, ctx, &dy_vec);
 
   ctx.Wait();
   float expected_x, expected_y;

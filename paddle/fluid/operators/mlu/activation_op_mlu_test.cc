@@ -80,7 +80,7 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
 
   // eval value
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
@@ -143,7 +143,7 @@ void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
 
   // eval value
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   ctx.Wait();
 

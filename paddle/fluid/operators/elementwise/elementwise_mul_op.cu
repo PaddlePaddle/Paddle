@@ -38,7 +38,8 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
       std::vector<framework::Tensor*> outs;
       int axis =
           PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           cuda_ctx, ins, &outs, axis, MulFunctor<T>());
     } else if (x_var->IsType<framework::LoDTensor>()) {
       auto* x_lod = ctx.Input<framework::LoDTensor>("X");

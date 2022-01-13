@@ -1369,14 +1369,14 @@ class ELUGradCudaKernel : public framework::OpKernel<T> {
     if (alpha > 0) {
       CudaELUGradFunctor<T> functor;
       functor.alpha = alpha;
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-          dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kBinary, T, T>(dev_ctx, ins, &outs, functor);
     } else {
       CudaELUGradNegativeAlphaFunctor<T> functor;
       functor.alpha = alpha;
       ins.push_back(x);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-          dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kBinary, T, T>(dev_ctx, ins, &outs, functor);
     }
   }
 };
@@ -1452,8 +1452,8 @@ class ActivationCudaKernel
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
     }
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
   }
 };
 
@@ -1482,17 +1482,17 @@ class ActivationGradCudaKernel
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
       // Only need forward output Out
       ins.push_back(out);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-          dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kBinary, T, T>(dev_ctx, ins, &outs, functor);
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
       // Only need forward input X
       ins.push_back(x);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-          dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kBinary, T, T>(dev_ctx, ins, &outs, functor);
     } else {
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-          dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
     }
   }
 };

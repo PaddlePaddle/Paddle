@@ -418,8 +418,8 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           }
 
           std::vector<float> device_count_vec(1);
-          TensorToVector(device_count_tensor, ctx.device_context(),
-                         &device_count_vec);
+          paddle::framework::TensorToVector(
+              device_count_tensor, ctx.device_context(), &device_count_vec);
           device_counts = device_count_vec[0];
 
           // HcclAllReduce x_sum
@@ -561,8 +561,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       }
 
       std::vector<float> device_count_vec(1);
-      TensorToVector(device_count_tensor, ctx.device_context(),
-                     &device_count_vec);
+      paddle::framework::TensorToVector(
+          device_count_tensor, ctx.device_context(), &device_count_vec);
       device_counts = device_count_vec[0];
       PADDLE_ENFORCE_GE(device_counts, 2, platform::errors::PreconditionNotMet(
                                               "device_counts should >= 2."));

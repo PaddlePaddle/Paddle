@@ -70,7 +70,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   for (int i = 0; i < static_cast<int>(out_vec.size()); ++i) {
     VLOG(3) << "out_vec[" << i << "] : " << out_vec[i];
@@ -144,7 +144,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_dx, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &out_vec);
 
   ctx.Wait();
 

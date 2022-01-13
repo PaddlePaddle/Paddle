@@ -151,8 +151,8 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     const auto& cuda_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
-                                        UnsignedPowFunctor<MT, T>>(
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, MT, T, UnsignedPowFunctor<MT, T>>(
         cuda_ctx, ins, &outs, func);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(

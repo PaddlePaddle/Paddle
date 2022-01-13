@@ -55,7 +55,7 @@ void Scale(const ContextT& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   out->mutable_data<T>();
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+  pten::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
       dev_ctx,
       inputs,
       &outputs,

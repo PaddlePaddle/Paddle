@@ -85,7 +85,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   sync_op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   // sync op copy
   auto sync_op2 = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},

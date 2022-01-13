@@ -82,7 +82,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // eval value
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   float expected = 0.841192;
   for (uint32_t i = 0; i < out_vec.size(); i++) {
@@ -147,7 +147,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // eval value
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   float expected = 1.082964;
   for (uint32_t i = 0; i < dx_vec.size(); i++) {

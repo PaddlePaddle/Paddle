@@ -57,7 +57,7 @@ void LaunchBroadcastElementwiseCudaKernel(
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>
-void LaunchElementwiseCudaKernel(
+void paddle::operators::LaunchElementwiseCudaKernel(
     const platform::CUDADeviceContext &cuda_ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {

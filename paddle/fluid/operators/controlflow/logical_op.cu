@@ -53,10 +53,12 @@ class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
     int axis = PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
 
     if (ins.size() == 1) {
-      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                     InT, OutT>(
           cuda_ctx, ins, &outs, axis, functor);
     } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     InT, OutT>(
           cuda_ctx, ins, &outs, axis, functor);
     }
   }

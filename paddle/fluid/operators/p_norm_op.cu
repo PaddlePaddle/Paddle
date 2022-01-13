@@ -133,8 +133,8 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
 
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
-                                          UnsignedPowFunctor<MT, T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, MT, T, UnsignedPowFunctor<MT, T>>(
           cuda_ctx, ins, &outs, func);
       framework::Tensor tmp_y;
       tmp_y.mutable_data<T>(ndim, ctx.GetPlace());
@@ -145,8 +145,8 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       outs = {out_norm};
       auto func_inverse = UnsignedPowFunctor<MT, T>(1. / porder);
 
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
-                                          UnsignedPowFunctor<MT, T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, MT, T, UnsignedPowFunctor<MT, T>>(
           cuda_ctx, ins, &outs, func_inverse);
     }
   }
@@ -215,14 +215,14 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
       std::vector<const framework::Tensor*> ins = {in_norm};
       std::vector<framework::Tensor*> outs = {&tmp_norm};
       auto pow_functor = PowFunctor<T>(1. - porder);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T,
-                                          PowFunctor<T>>(cuda_ctx, ins, &outs,
-                                                         pow_functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, T, T, PowFunctor<T>>(cuda_ctx, ins, &outs,
+                                                        pow_functor);
       ins = {in_x};
       outs = {out_dx};
       auto unsigned_pow = UnsignedPowFunctor<T>(porder - 1.);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T,
-                                          UnsignedPowFunctor<T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
           cuda_ctx, ins, &outs, unsigned_pow);
       const framework::Tensor* tmp_norm_const = &tmp_norm;
       LaunchReduceGradKernel<DeviceContext, T, PNormPostGradFunctor<T>>(

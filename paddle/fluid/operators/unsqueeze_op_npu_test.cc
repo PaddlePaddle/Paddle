@@ -75,7 +75,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   EXPECT_EQ((uint32_t)tensor_out->dims()[2], uint32_t(10));
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], static_cast<T>(0.1));
   }
