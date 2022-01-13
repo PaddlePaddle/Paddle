@@ -36,7 +36,7 @@ HostPythonNode* ProfilerResult::_copyTree(HostEventNode* node) {
     return nullptr;
   }
   // copy HostEventNode and its children
-  HostPythonNode* python_node = new HostPythonNode();
+  HostPythonNode* host_python_node = new HostPythonNode();
   host_python_node->name = node->name();
   host_python_node->type = node->type();
   host_python_node->start_ns = node->start_ns();
@@ -73,9 +73,10 @@ HostPythonNode* ProfilerResult::_copyTree(HostEventNode* node) {
       runtime_python_node->device_node_ptrs.push_back(device_python_node);
     }
   }
+  return host_python_node;
 }
 
-ProfilerResult::ProfilerResult(const NodeTrees* tree) : tree_(tree) {
+ProfilerResult::ProfilerResult(NodeTrees* tree) : tree_(tree) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
@@ -92,8 +93,8 @@ ProfilerResult::~ProfilerResult() {
   }
 }
 
-void ProfilerResult::Save(std::string file_name) {
-  ChromeTracingLogger logger = ChromeTracingLogger(file_name);
+void ProfilerResult::Save(const std::string& file_name) {
+  ChromeTracingLogger logger(file_name);
   tree_->LogMe(&logger);
   return;
 }

@@ -24,8 +24,7 @@ namespace paddle {
 namespace platform {
 
 static const char* kSchemaVersion = "1.0.0";
-static const char* kDefaultFilename =
-    "paddle_profiler_tracing_data_pid%s_time%s.json";
+static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
 
 template <typename... Args>
 std::string string_format(const std::string& format, Args... args) {

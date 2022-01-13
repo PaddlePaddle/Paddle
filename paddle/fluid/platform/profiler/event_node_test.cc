@@ -24,6 +24,7 @@ using paddle::platform::HostEvent;
 using paddle::platform::RuntimeEvent;
 using paddle::platform::DeviceEvent;
 using paddle::platform::TracerEventType;
+using paddle::platform::KernelEventInfo;
 TEST(test_node_tree, nodetreelog) {
   std::list<HostEvent> host_events;
   std::list<RuntimeEvent> runtime_events;
