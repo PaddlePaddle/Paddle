@@ -22,9 +22,6 @@
 #include "Python.h"
 #include "boost/optional.hpp"
 #include "gflags/gflags.h"
-#include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -33,7 +30,6 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "pybind11/stl.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
