@@ -91,6 +91,7 @@ class Storage : public intrusive_ref_counter<Storage> {
 class TensorStorage : public Storage {
  public:
   using Place = paddle::platform::Place;
+  using Allocator = deprecated::Allocator;
 
   explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
 

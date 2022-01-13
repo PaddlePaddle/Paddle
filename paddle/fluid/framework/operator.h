@@ -410,8 +410,8 @@ class ExecutionContext {
     auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
-        allocation_ptr, deleter);
+    auto shared_allocation =
+        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
         allocation_ptr->size(), framework::product(dim) * sizeof(T),
@@ -528,11 +528,6 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool IsMKLDNNType() const {
-    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
-                                     framework::DataLayout::kMKLDNN));
-  }
-
   bool SupportGPU() const override {
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
@@ -608,6 +603,8 @@ class OperatorWithKernel : public OperatorBase {
   pten::KernelContext* PtenKernelContext() const {
     return pt_kernel_context_.get();
   }
+
+  const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
