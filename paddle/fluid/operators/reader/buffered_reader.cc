@@ -132,7 +132,7 @@ void BufferedReader::ReadAsync(size_t i) {
 
             memory::Copy(cuda_pinned_place, cuda_pinned_ptrs[i],
                          BOOST_GET_CONST(platform::CPUPlace, cpu[i].place()),
-                         cpu[i].data<void>(), size);
+                         cpu[i].data(), size);
 
             cuda[i].set_lod(cpu[i].lod());
           } else {
@@ -175,7 +175,7 @@ void BufferedReader::ReadAsync(size_t i) {
         platform::RecordEvent record_event("BufferedReader:MemoryCopy");
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
-          auto cpu_ptr = cpu[i].data<void>();
+          auto cpu_ptr = cpu[i].data();
           auto gpu_ptr = gpu_ptrs[i];
           auto size =
               cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
@@ -239,7 +239,7 @@ void BufferedReader::ReadAsync(size_t i) {
       platform::RecordEvent record_event("BufferedReader:MemoryCopy");
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data<void>();
+        auto cpu_ptr = cpu[i].data();
         auto npu_ptr = npu_ptrs[i];
         auto size =
             cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());

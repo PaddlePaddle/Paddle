@@ -60,7 +60,7 @@ class Storage : public intrusive_ref_counter<Storage> {
     return data_;
   }
 
-  void set_data_shared(
+  virtual void set_data_shared(
       const std::shared_ptr<paddle::memory::Allocation>& holder) {
     data_ = holder;
   }
@@ -91,6 +91,7 @@ class Storage : public intrusive_ref_counter<Storage> {
 class TensorStorage : public Storage {
  public:
   using Place = paddle::platform::Place;
+  using Allocator = deprecated::Allocator;
 
   explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
 

@@ -645,6 +645,33 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
                 self.assertTrue(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_cpu_place())
 
+        def test_share_buffer_to():
+            arr = np.ones([4, 16, 16, 32]).astype('float32')
+            arr1 = np.zeros([4, 16]).astype('float32')
+            arr2 = np.ones([4, 16, 16, 32]).astype('float32') + np.ones(
+                [4, 16, 16, 32]).astype('float32')
+            tensor = None
+            tensor2 = None
+            tensor = paddle.to_tensor(arr, core.VarDesc.VarType.FP32,
+                                      core.CPUPlace())
+            tensor3 = core.eager.EagerTensor()
+            if core.is_compiled_with_cuda():
+                tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
+                                           core.CUDAPlace(0))
+            else:
+                tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
+                                           core.CPUPlace())
+            self.assertTrue(np.array_equal(tensor.numpy(), arr1))
+            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            tensor2._share_buffer_to(tensor)
+            self.assertTrue(np.array_equal(tensor.numpy(), arr2))
+            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            self.assertTrue(tensor._is_shared_buffer_with(tensor2))
+            self.assertTrue(tensor2._is_shared_buffer_with(tensor))
+            tensor._share_buffer_to(tensor3)
+            self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+            self.assertTrue(tensor3._is_shared_buffer_with(tensor))
+
     def test_properties(self):
         print("Test_properties")
         with _test_eager_guard():
