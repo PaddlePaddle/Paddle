@@ -30,13 +30,13 @@ const char *AllocationTypeStr(AllocationType type) {
     case AllocationType::GPU:
       return "gpu";
     case AllocationType::GPUPINNED:
-      return "gpu pinned";
+      return "gpu_pinned";
     case AllocationType::XPU:
       return "xpu";
     case AllocationType::NPU:
       return "npu";
     case AllocationType::NPUPINNED:
-      return "npu pinned";
+      return "npu_pinned";
     case AllocationType::IPU:
       return "ipu";
     case AllocationType::MLU:

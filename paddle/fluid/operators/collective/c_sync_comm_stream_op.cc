@@ -71,9 +71,11 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_npu_place(place), true,
+        platform::errors::PreconditionNotMet(
+            "Sync stream op can run on npu place only for now, but got %s",
+            place.DebugString()));
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
