@@ -850,14 +850,6 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   return num_entries;
 }
 
-// TODO(jczaja): Replace with C++20 equivalents when applicable
-#ifdef _WIN32
-#define likely(expr) (expr)
-#define unlikely(expr) (expr)
-#else
-#define likely(expr) (__builtin_expect(!!(expr), 1))
-#define unlikely(expr) (__builtin_expect(!!(expr), 0))
-#endif
 
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
