@@ -333,7 +333,7 @@ def conv1d(x,
         use_dgrad_engine = True
 
     #When use_dgrad_engine is true, the original dimension is expanded
-    if channel_last or use_dgrad_engine:
+    if use_dgrad_engine:
         if len(padding) == 2:
             padding = padding + [0] * 2
         elif len(padding) == 1:
@@ -342,6 +342,7 @@ def conv1d(x,
             raise ValueError(
                 "The size of padding's dimension should be 1 or 2. But got padding={}".
                 format(padding))
+
         stride = convert_to_list(stride, 1, 'stride') + [1]
         dilation = convert_to_list(dilation, 1, 'dilation') + [1]
         weight = unsqueeze(weight, axis=[-1])
@@ -373,9 +374,9 @@ def conv1d(x,
         else:
             l_type = 'conv2d'
 
-    squeeze_aixs = -2
+    squeeze_aixs = -3 if channel_last else -2
     if use_dgrad_engine:
-        squeeze_aixs = -2 if channel_last else -1
+        squeeze_aixs += 1
 
     x = unsqueeze(x, axis=[squeeze_aixs])
 
