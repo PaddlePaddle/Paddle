@@ -125,7 +125,7 @@ template <typename T>
 std::shared_ptr<std::tuple<float, std::vector<float>, float>> get_scales(
     const framework::ExecutionContext& ctx,
     const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
-  return std::make_shared<std::tuple<float, std::vector<float>>>(
+  return std::make_shared<std::tuple<float, std::vector<float>, float>>(
       std::make_tuple(1.0f, std::vector<float>(), 1.0f));
 }
 
@@ -169,9 +169,9 @@ get_scales<int8_t>(const framework::ExecutionContext& ctx,
                                : 1;
   std::vector<float> output_shift_scale(count);
 
-  scale_tuple =
-      std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
-          static_cast<float>(sum_scale), std::vector<float>(count)));
+  scale_tuple = std::make_shared<std::tuple<float, std::vector<float>>>(
+      std::make_tuple(static_cast<float>(sum_scale), std::vector<float>(count),
+                      activation_scale));
   for (int i = 0; i < count; i++) {
     if (scale_weights_data[i] == 0.0)
       // weights data will contain 0 in some models, then weights
@@ -184,7 +184,7 @@ get_scales<int8_t>(const framework::ExecutionContext& ctx,
                               static_cast<double>(scale_weights_data[i])));
   }
 
-  dev_ctx.SetBlob(key_s, scale_tuple, activation_scale);
+  dev_ctx.SetBlob(key_s, scale_tuple);
 
   return scale_tuple;
 }
