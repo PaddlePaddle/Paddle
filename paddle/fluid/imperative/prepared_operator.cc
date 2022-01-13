@@ -514,8 +514,8 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    &default_attrs, op.Type());
+  DygraphInferShapeContext<VarType> infer_shape_ctx(
+      &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
@@ -560,8 +560,8 @@ static void PreparedOpRunPtImpl(
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    &default_attrs, op.Type());
+  DygraphInferShapeContext<VarType> infer_shape_ctx(
+      &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
