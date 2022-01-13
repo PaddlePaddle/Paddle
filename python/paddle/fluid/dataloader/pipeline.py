@@ -111,18 +111,16 @@ class Pipeline:
                 "Pipeline not built, please call build() firstly"
         self._output_vars = self._prepare_output_vars()
 
-        # try:
-        import sys
-        import time
-        tic = time.time()
-        _C_ops.dataloader(self._output_vars, *self._attrs)
-        toc = time.time()
-        print("_C_ops calling cost {}ms".format((toc - tic) * 1000.))
-        sys.stdout.flush()
-        # except:
-        #     print("_C_ops dataloader except enter")
-        #     sys.stdout.flush()
-        #     core._shutdown_dataloader()
+        try:
+            import sys
+            import time
+            tic = time.time()
+            _C_ops.dataloader(self._output_vars, *self._attrs)
+            toc = time.time()
+            print("_C_ops calling cost {}ms".format((toc - tic) * 1000.))
+            sys.stdout.flush()
+        except:
+            raise StopIteration
 
         return {k: v for k, v in zip(self._out_names, self._output_vars)}
 
@@ -130,5 +128,5 @@ class Pipeline:
     def next(self):
         return self.__next__()
 
-    def __del__(self):
-        core._shutdown_dataloader()
+    # def __del__(self):
+    #     core._shutdown_dataloader()

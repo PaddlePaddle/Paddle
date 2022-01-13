@@ -37,6 +37,14 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
         output_var_names);
 
     pipeline->ReadNext(output_vars);
+
+    if (!pipeline->IsRunning()) {
+      LOG(ERROR) << "DataLoaderOpKernel Pipeline not running";
+      data::PipelineManager::Instance()->ShutDownPipeline(program_id);
+      throw platform::EOFException("DataLoaderOpKernel epoch end",
+                                    __FILE__, __LINE__);
+    }
+
     LOG(ERROR) << "DataLoaderOpKernel finish";
   }
 };

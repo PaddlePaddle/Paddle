@@ -896,7 +896,7 @@ def file_label_reader(file_root, batch_size, name=None):
     targets = [s[1] for s in data_folder.samples]
 
     import time
-    unq_reader_id = lambda : int(round(time.time()* 1000*1000))
+    unq_reader_id = int(round(time.time()* 1000*1000))
 
 
     if in_dygraph_mode():

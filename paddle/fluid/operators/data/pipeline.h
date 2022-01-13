@@ -45,6 +45,8 @@ class Pipeline {
 
   void ReadNext(std::vector<Variable *> &out_vars);
 
+  inline bool IsRunning() { return running_.load(); }
+
  private:
 
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
@@ -57,6 +59,8 @@ class Pipeline {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
+  std::atomic<bool> running_;
+  
   Scope scope_;
   std::shared_ptr<BlockDesc> global_block_;
   platform::Place place_;
@@ -103,6 +107,10 @@ class PipelineManager {
     } else {
       return iter->second.get();
     }
+  }
+
+  void ShutDownPipeline(int64_t program_id) {
+    prog_id_to_pipeline_.erase(program_id);
   }
 
   void ShutDown() {

@@ -111,7 +111,6 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
 
 void signal_handler(int sig_num) {
   VLOG(1) << "MapThread crash with signal " << sig_num;
-  LOG(ERROR) << "MapThread crash with signal " << sig_num;
   _exit(-1);
 }
 
@@ -129,7 +128,12 @@ void MapRunner::StartMapThread(const Scope* scope) {
       // LOG(ERROR) << "MapThread Loop " << program_id_ << " start";
       bool success = ShareInputsIntoScope(&scope_);
       if (!success) {
-        ShutDown();
+        for(auto& queue : output_queues_) {
+          while(queue->Size()) sleep(0.5);
+          queue->Close();
+        }
+        running_.store(false);
+        return;
       }
       // LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
 

@@ -98,7 +98,7 @@ void NvjpegDecoder::ParseDecodeParams(
       output_format = NVJPEG_OUTPUT_Y;
       output_components = 1;
     } else if (components == 3) {
-      output_format = NVJPEG_OUTPUT_RGB;
+      output_format = NVJPEG_OUTPUT_RGBI;
       output_components = 3;
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -108,7 +108,7 @@ void NvjpegDecoder::ParseDecodeParams(
     output_format = NVJPEG_OUTPUT_Y;
     output_components = 1;
   } else if (mode_ == "rgb") {
-    output_format = NVJPEG_OUTPUT_RGB;
+    output_format = NVJPEG_OUTPUT_RGBI;
     output_components = 3;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
@@ -125,15 +125,14 @@ void NvjpegDecoder::ParseDecodeParams(
     height = roi.h;
     width = roi.w;
   }
+
   std::vector<int64_t> out_shape = {output_components, height, width};
   out->Resize(framework::make_ddim(out_shape));
 
   // allocate memory and assign to out_image
   auto* data = out->mutable_data<uint8_t>(place);
-  for (int c = 0; c < output_components; c++) {
-    out_image->channel[c] = data + c * width * height;
-    out_image->pitch[c] = width;
-  }
+  out_image->channel[0] = data;
+  out_image->pitch[0] = output_components * width;
 }
 
 void NvjpegDecoder::Decode(const uint8_t* bit_stream, size_t bit_len, nvjpegImage_t* out_image) {

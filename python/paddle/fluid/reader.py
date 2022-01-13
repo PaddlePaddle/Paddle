@@ -437,9 +437,10 @@ class DataLoader(object):
         return self.__iter__()
 
     @staticmethod
-    def from_pipeline(pipeline):
-        assert isinstance(pipeline, Pipeline), \
-                "pipeline should be an instance of paddle.io.Pipeline"
+    def build_pipeline(func, *args, **kwargs):
+        with Pipeline() as pipeline:
+            outputs = func(*args, **kwargs)
+            pipeline.set_outputs(outputs)
         pipeline.build()
         return pipeline
 
