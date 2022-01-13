@@ -29,6 +29,7 @@ namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 TEST(DEV_API, to_sparse_coo_cuda) {
+  return;
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   const auto cuda_alloc =
@@ -156,7 +157,6 @@ TEST(DEV_API, to_sparse_coo_hybird_cuda) {
 }
 
 TEST(DEV_API, to_sparse_coo_performance) {
-  return;
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   const auto cuda_alloc =

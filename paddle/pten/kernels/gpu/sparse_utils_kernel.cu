@@ -70,11 +70,27 @@ __global__ void kernel_get_non_zero_indexs(const T* dense_data,
                                            int* non_zero_num,
                                            int64_t* indexs) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  __shared__ int counter, block_start;
+  __shared__ int64_t cache[1024];
+  if (threadIdx.x == 0) {
+    counter = 0;
+    block_start = 0;
+  }
+  __syncthreads();
   for (int i = tid; i < rows; i += gridDim.x * blockDim.x) {
     if (!dev_is_zero(dense_data + i * cols, cols)) {
-      auto index = atomicAdd(non_zero_num, 1);
-      indexs[index] = i;
+      auto index = atomicAdd(&counter, 1);
+      cache[index] = i;
     }
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    block_start = atomicAdd(non_zero_num, counter);
+  }
+  __syncthreads();
+  if (threadIdx.x < counter) {
+    indexs[block_start + threadIdx.x] = cache[threadIdx.x];
   }
 }
 
