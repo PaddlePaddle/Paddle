@@ -45,8 +45,8 @@ class BufferedAllocator : public Allocator {
   void FreeCache(size_t size);
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(pten::Allocation *allocation) override;
+  pten::Allocation *AllocateImpl(size_t size) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

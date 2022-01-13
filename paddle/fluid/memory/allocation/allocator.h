@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/allocator.h"
 
 DECLARE_string(allocator_strategy);
 
@@ -80,30 +81,19 @@ class Allocator;
  * e.g., something what is done in AlignedAllocator, etc.
  * In this case, we should declare a derived class of Allocation, which
  * contains an underlying Allocation allocated by the underlying allocator.
- * Therefore, `decorated_allocators_` of the new Allocation object would
+ * Therefore, `decorated_allocators_` of the new Allocation object
+ * would
  * be a new chain, differing from the underlying Allocation object.
  */
-class Allocation {
+class Allocation : public pten::Allocation {
  public:
-  inline Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), base_ptr_(ptr), size_(size), place_(place) {}
-  inline Allocation(void* ptr, void* base_ptr, size_t size,
-                    platform::Place place)
-      : ptr_(ptr), base_ptr_(base_ptr), size_(size), place_(place) {}
+  Allocation(void* ptr, size_t size, platform::Place place)
+      : pten::Allocation(ptr, size, place), base_ptr_(ptr) {}
+  Allocation(void* ptr, void* base_ptr, size_t size,
+             const platform::Place& place)
+      : pten::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
-  Allocation(const Allocation& o) = delete;
-  Allocation& operator=(const Allocation& o) = delete;
-  Allocation(Allocation&& o) = delete;
-  Allocation& operator=(Allocation&& o) = delete;
-
-  // Returns the holding pointer.
-  // NOTE: For performance consideration, it is better not to make this method
-  // as a virtual method. If we want to implement a `defragmentation` later,
-  // we might need to make `ptr_` field as a protected field, and add a virtual
-  // method like `defragmentation` to change `ptr_`.
-  inline void* ptr() const { return ptr_; }
-
-  inline void* base_ptr() const {
+  void* base_ptr() const {
     PADDLE_ENFORCE_EQ(FLAGS_allocator_strategy, "auto_growth",
                       paddle::platform::errors::Unimplemented(
                           "base_ptr() is only implemented for auto_growth "
@@ -111,21 +101,6 @@ class Allocation {
                           FLAGS_allocator_strategy));
     return base_ptr_;
   }
-
-  // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
-  // last valid element.
-  //
-  // NOTE: Some allocator might alloc more memory than request. The size
-  // could larger than its request. For example,
-  //    the AlignedAllocator will always allocate memory as size + kAlignment.
-  //    The raw pointer might not aligned, so an offset might be added to raw
-  //    the pointer. The size of this allocation will be
-  //    `size + kAlignemnt - offset`.
-  inline size_t size() const { return size_; }
-
-  inline const platform::Place& place() const { return place_; }
-
-  virtual ~Allocation() {}
 
  private:
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
@@ -139,10 +114,7 @@ class Allocation {
   }
 
  private:
-  void* ptr_;
   void* base_ptr_;  // the point that directly requested from system
-  size_t size_;
-  platform::Place place_;
 
   /**
    * NOTE(zjl): Since decorated_allocators_ is usually a small vector.
@@ -162,52 +134,41 @@ class Allocation {
   friend class Allocator;
 };
 
+using AllocationPtr = pten::Allocator::AllocationPtr;
+using DecoratedAllocationPtr =
+    std::unique_ptr<Allocation, pten::Allocator::DeleterType>;
+
 // Base interface class of memory Allocator.
-class Allocator {
+class Allocator : public pten::Allocator {
  public:
-  virtual ~Allocator() {}
-
-  class AllocationDeleter {
-   public:
-    inline void operator()(Allocation* allocation) const {
-      Allocator* allocator = allocation->TopDecoratedAllocator();
-      allocator->Free(allocation);
-    }
-  };
-
-  using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
+  static void AllocationDeleter(pten::Allocation* allocation) {
+    Allocator* allocator =
+        static_cast<Allocation*>(allocation)->TopDecoratedAllocator();
+    allocator->Free(allocation);
+  }
 
   // Allocate an allocation.
   // size may be 0, but it would be too complex if we handle size == 0
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
-  inline AllocationPtr Allocate(size_t size) {
+  AllocationPtr Allocate(size_t size) override {
     auto ptr = AllocateImpl(size);
-    ptr->RegisterDecoratedAllocator(this);
-    return AllocationPtr(ptr);
+    static_cast<Allocation*>(ptr)->RegisterDecoratedAllocator(this);
+    return AllocationPtr(ptr, AllocationDeleter);
   }
 
-  // This function should not be called outside Allocator class
-  inline void Free(Allocation* allocation) {
-    allocation->PopDecoratedAllocator();
+  void Free(pten::Allocation* allocation) {
+    static_cast<Allocation*>(allocation)->PopDecoratedAllocator();
     FreeImpl(allocation);
   }
 
-  inline uint64_t Release(const platform::Place& place) {
-    return ReleaseImpl(place);
-  }
-
-  // True if the `Allocate` is thread safe.
-  virtual bool IsAllocThreadSafe() const;
+  uint64_t Release(const platform::Place& place) { return ReleaseImpl(place); }
 
  protected:
-  virtual Allocation* AllocateImpl(size_t size) = 0;
-  virtual void FreeImpl(Allocation* allocation);
+  virtual pten::Allocation* AllocateImpl(size_t size) = 0;
+  virtual void FreeImpl(pten::Allocation* allocation);
   virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
 };
-
-using AllocationDeleter = Allocator::AllocationDeleter;
-using AllocationPtr = Allocator::AllocationPtr;
 
 inline size_t AlignedSize(size_t size, size_t alignment) {
   auto remaining = size % alignment;
@@ -218,6 +179,14 @@ inline size_t AlignedPtrOffset(const void* ptr, size_t alignment) {
   auto ptr_addr = reinterpret_cast<uintptr_t>(ptr);
   auto diff = ptr_addr % alignment;
   return diff == 0 ? 0 : alignment - diff;
+}
+
+template <typename Derived, typename Base, typename BaseDel>
+decltype(auto) static_unique_ptr_cast(std::unique_ptr<Base, BaseDel>&& p) {
+  static_assert(std::is_base_of<Base, Derived>::value,
+                "Derived type must derive from Base.");
+  auto d = static_cast<Derived*>(p.release());
+  return std::unique_ptr<Derived, BaseDel>(d, p.get_deleter());
 }
 
 }  // namespace allocation

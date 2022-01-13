@@ -410,8 +410,8 @@ class ExecutionContext {
     auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
-        allocation_ptr, deleter);
+    auto shared_allocation =
+        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
         allocation_ptr->size(), framework::product(dim) * sizeof(T),
