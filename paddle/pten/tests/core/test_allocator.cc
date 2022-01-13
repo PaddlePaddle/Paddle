@@ -24,6 +24,10 @@ limitations under the License. */
 namespace pten {
 namespace tests {
 
+using RawAllocator = pten::deprecated::RawAllocator;
+using Allocator = pten::deprecated::Allocator;
+using Allocation = pten::deprecated::Allocation;
+
 template <typename T>
 bool host_allocator_test(size_t vector_size) {
   std::vector<T> src(vector_size);

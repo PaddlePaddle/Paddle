@@ -158,8 +158,7 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation *allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation *allocation = npu_pinned_tensor.Holder().get();
 
     npu_pinned_allocator->RecordEvent(allocation, GetCurrentNPUStream());
   } else {

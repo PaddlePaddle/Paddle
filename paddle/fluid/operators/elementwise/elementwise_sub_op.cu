@@ -73,10 +73,10 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
     auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
     if (dy->dims() == dout->dims()) {
       if (dy_data != dout_data) {
-        dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
+        dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
         auto size = dy->numel();
-        dim3 grid_size = dim3(
-            (size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
+        dim3 grid_size =
+            dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
         SimpleElemwiseSubGradCUDAKernel<T><<<
             grid_size, block_size, 0,
             ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
@@ -100,10 +100,10 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
+  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
-      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
+      dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<
       T><<<grid_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
