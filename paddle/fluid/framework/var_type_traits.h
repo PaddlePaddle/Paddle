@@ -74,7 +74,6 @@ class Tensor;
 class ReaderHolder;
 class Scope;
 class SelectedRows;
-class Tensor;
 }  // namespace framework
 
 namespace operators {

@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Tensor;
-class Tensor;
 }  // namespace framework
 namespace platform {
 class CPUDeviceContext;

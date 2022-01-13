@@ -46,7 +46,6 @@ namespace framework {
 class Tensor;
 class ProgramDesc;
 class Scope;
-class Tensor;
 }  // namespace framework
 namespace platform {
 class DeviceContext;
