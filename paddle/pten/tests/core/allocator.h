@@ -21,7 +21,7 @@ limitations under the License. */
 namespace pten {
 namespace tests {
 
-class HostAllocatorSample : public pten::RawAllocator {
+class HostAllocatorSample : public pten::deprecated::RawAllocator {
  public:
   using Place = paddle::platform::Place;
   void* Allocate(size_t bytes_size) override {
@@ -36,8 +36,9 @@ class HostAllocatorSample : public pten::RawAllocator {
   Place place_{paddle::platform::CPUPlace()};
 };
 
-class FancyAllocator : public pten::Allocator {
+class FancyAllocator : public pten::deprecated::Allocator {
  public:
+  using Allocation = pten::deprecated::Allocation;
   static void Delete(Allocation* allocation) {
     ::operator delete(allocation->ptr());
   }
@@ -55,7 +56,7 @@ class FancyAllocator : public pten::Allocator {
 template <typename T>
 struct CustomAllocator {
   using value_type = T;
-  using Allocator = pten::RawAllocator;
+  using Allocator = pten::deprecated::RawAllocator;
 
   explicit CustomAllocator(const std::shared_ptr<Allocator>& a) noexcept
       : alloc_(a) {}

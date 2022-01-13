@@ -26,22 +26,6 @@ namespace platform {
 #define CREATE_SHFL_MASK(mask, predicate) \
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
 
-inline static int RoundToPowerOfTwo(int dim) {
-  if (dim > 512) {
-    return 1024;
-  } else if (dim > 256) {
-    return 512;
-  } else if (dim > 128) {
-    return 256;
-  } else if (dim > 64) {
-    return 128;
-  } else if (dim > 32) {
-    return 64;
-  } else {
-    return 32;
-  }
-}
-
 #define CUDA_LAUNCH_KERNEL_BASE(dim, ...)  \
   case (dim): {                            \
     constexpr auto kPowerOfTwoDim = (dim); \
