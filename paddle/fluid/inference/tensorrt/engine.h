@@ -372,6 +372,9 @@ class TensorRTEngine {
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
+  void SetWithInterleaved(bool with_interleaved) {
+    with_interleaved_ = with_interleaved;
+  }
 
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
@@ -445,6 +448,7 @@ class TensorRTEngine {
 
   bool use_oss() { return use_oss_; }
   bool with_ernie() { return with_ernie_; }
+  bool with_interleaved() { return with_interleaved_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
@@ -560,6 +564,7 @@ class TensorRTEngine {
   bool use_dla_{false};
   int dla_core_{0};
   bool with_ernie_{false};
+  bool with_interleaved_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.

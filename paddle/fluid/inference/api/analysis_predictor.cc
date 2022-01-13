@@ -585,6 +585,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+    argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -1531,4 +1532,31 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   return preds_[idx - 1].get();
 }
 }  // namespace services
+
+namespace experimental {
+
+// Note: Can only be used under thread_local semantics.
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
+                                            bool with_interleaved) {
+#ifdef PADDLE_WITH_CUDA
+  c->trt_with_interleaved_ = with_interleaved;
+#endif
+}
+}  // namespace experimental
 }  // namespace paddle_infer
