@@ -36,7 +36,8 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
                const NameTensorMap& ins, const NameTensorMap& outs,
                const paddle::framework::AttributeMap& attrs,
                const paddle::framework::AttributeMap& default_attrs,
-               const paddle::platform::Place& place) {
+               const paddle::platform::Place& place,
+               pten::KernelContext* pt_kernel_context) {
   VLOG(6) << "Get Opertor With Kernel";
   auto* op_kernel =
       dynamic_cast<const paddle::framework::OperatorWithKernel*>(&op);
@@ -82,7 +83,7 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
    */
   VLOG(6) << "Prepare Op";
   auto prepared_op = egr::legacy::PreparedOp::Prepare(
-      ins, outs, *op_kernel, place, attrs, default_attrs);
+      ins, outs, *op_kernel, place, attrs, default_attrs, pt_kernel_context);
   VLOG(6) << "Prepare Data";
   auto tmp_ins_ptr =
       egr::legacy::PrepareData(*op_kernel, ins, prepared_op.kernel_type());
@@ -93,6 +94,7 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
 
+  VLOG(6) << "Run Prepared Op end";
   // TODO(jiabin): Set the output var's grad Forward DataType
 }
 
@@ -102,6 +104,8 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
            paddle::framework::AttributeMap* default_attrs,
            bool override_default_attr_map,
            const std::map<std::string, std::string>& inplace_map) {
+  static pten::KernelContext pt_kernel_context;
+
   VLOG(1) << "Run Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -171,9 +175,12 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
 #endif
     }
     VLOG(6) << "Step in OpRunImpl";
-    OpRunImpl(*op, new_ins, outs, attrs, *default_attrs, place);
+    OpRunImpl(*op, new_ins, outs, attrs, *default_attrs, place,
+              &pt_kernel_context);
   } catch (paddle::platform::EnforceNotMet& exception) {
     paddle::framework::AppendErrorOpHint(type, &exception);
+    // Compatible impl: clear pten kernel context data when throw error
+    pt_kernel_context.ClearData();
     throw std::move(exception);
   } catch (std::exception& ex) {
     PADDLE_THROW(paddle::platform::errors::Fatal(
