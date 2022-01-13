@@ -41,24 +41,48 @@ class SigmoidCrossEntropyWithLogitsXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     // attrs
-    bool normalize = context.Attr<bool>("normalize");
-    PADDLE_ENFORCE_EQ(
-        normalize, false,
-        platform::errors::InvalidArgument("normalize only support true now."));
     int ignore_index = context.Attr<int>("ignore_index");
-    PADDLE_ENFORCE_EQ(ignore_index, kIgnoreIndex,
-                      platform::errors::InvalidArgument(
-                          "ignore_index only support %d now.", kIgnoreIndex));
+    bool normalize = context.Attr<bool>("normalize");
+
+    // allocate temp memory
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    int* hit = RAII_GUARD.alloc_l3_or_gm<int>(input->numel());
 
     int r = xpu::sigmoid_cross_entropy_with_logits(
         dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
         reinterpret_cast<const XPUType*>(label->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), 1, input->numel());
+        reinterpret_cast<XPUType*>(output->data<T>()), 1, input->numel(), hit,
+        ignore_index);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU sigmoid_cross_entropy_with_logits "
                                    "kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
+    if (normalize) {
+      int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
+      int r = xpu::nonzero_count(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(hit),
+                                 non_zero, input->numel());
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU nonzero_count "
+                                     "kernel return wrong value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+      int non_zero_cpu = 0;
+      memory::Copy(platform::CPUPlace(), static_cast<void*>(&non_zero_cpu),
+                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
+                   static_cast<void*>(non_zero), sizeof(int));
+      r = xpu::scale(dev_ctx.x_context(),
+                     reinterpret_cast<const XPUType*>(output->data<T>()),
+                     reinterpret_cast<XPUType*>(output->data<T>()),
+                     input->numel(), false,
+                     1.0f / static_cast<float>(non_zero_cpu), 0.0f);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU scale "
+                                     "kernel return wrong value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+    }
   }
 };
 
@@ -81,16 +105,51 @@ class SigmoidCrossEntropyWithLogitsGradXPUKernel
     dx->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
+    // attrs
+    int ignore_index = context.Attr<int>("ignore_index");
+    bool normalize = context.Attr<bool>("normalize");
+
+    // allocate temp memory
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    int* hit = RAII_GUARD.alloc_l3_or_gm<int>(input->numel());
+
     int r = xpu::sigmoid_cross_entropy_with_logits_grad(
         dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
         reinterpret_cast<const XPUType*>(label->data<T>()),
         reinterpret_cast<const XPUType*>(dy->data<T>()),
-        reinterpret_cast<XPUType*>(dx->data<T>()), 1, input->numel());
+        reinterpret_cast<XPUType*>(dx->data<T>()), 1, input->numel(), hit,
+        ignore_index);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU sigmoid_cross_entropy_with_logits_grad "
                                    "kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
+    if (normalize) {
+      int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
+      // template<typename T> DLL_EXPORT int nonzero_count(Context* ctx, const
+      // T* x, int* y, int len);
+      int r = xpu::nonzero_count(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(hit),
+                                 non_zero, input->numel());
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU nonzero_count "
+                                     "kernel return wrong value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+      int non_zero_cpu = 0;
+      memory::Copy(platform::CPUPlace(), static_cast<void*>(&non_zero_cpu),
+                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
+                   static_cast<void*>(non_zero), sizeof(int));
+      r = xpu::scale(dev_ctx.x_context(),
+                     reinterpret_cast<const XPUType*>(dx->data<T>()),
+                     reinterpret_cast<XPUType*>(dx->data<T>()), input->numel(),
+                     false, 1.0f / static_cast<float>(non_zero_cpu), 0.0f);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU scale "
+                                     "kernel return wrong value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+    }
   }
 };
 
