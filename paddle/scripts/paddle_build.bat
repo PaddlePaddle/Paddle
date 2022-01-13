@@ -42,7 +42,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -261,7 +265,6 @@ set ON_INFER=ON
 set WITH_TESTING=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
-set WITH_TPCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -510,8 +513,12 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
-wmic process where name="cmake.exe" call terminate 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -973,7 +980,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL

@@ -33,7 +33,7 @@ def get_process_group(group_id, g_process_group_map=None):
             group_id, None)
 
 
-def get_world_process_groups():
+def get_world_process_group():
     global _g_process_group_map
     return _g_process_group_map[0]
 

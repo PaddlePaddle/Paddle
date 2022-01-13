@@ -20,6 +20,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using paddle::framework::DataLayout;
 using paddle::framework::ExecutionContext;
+using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::GetMKLDNNFormat;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNGetDataType;
@@ -106,114 +107,6 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
   }
   return strides;
 }
-
-template <typename T>
-class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
- public:
-  MatMulV2MKLDNNHandler(const dnnl::engine engine,
-                        paddle::platform::Place cpu_place,
-                        const std::vector<int64_t>& x_org_dims, bool trans_x,
-                        const std::vector<int64_t>& y_org_dims, bool trans_y,
-                        bool is_output_fused,
-                        const std::vector<int64_t>& x_strides_override,
-                        const std::vector<int64_t>& y_strides_override)
-      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
-                                                                   cpu_place) {
-    // M X K * K X N
-    std::vector<int64_t> x_dims(x_org_dims);
-    std::vector<int64_t> y_dims(y_org_dims);
-
-    const int MB_idx = x_dims.size() - 3;
-    const int H_idx = x_dims.size() - 2;
-    const int W_idx = x_dims.size() - 1;
-
-    if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
-    if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
-
-    const memory::dim M = x_dims[H_idx];
-    const memory::dim K = x_dims[W_idx];
-    const memory::dim N = y_dims[W_idx];
-
-    std::vector<int64_t> x_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> y_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> out_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> out_ddims(x_dims.size() - 3, 1);
-
-    x_strides.reserve(x_dims.size());
-    y_strides.reserve(x_dims.size());
-    out_strides.reserve(x_dims.size());
-
-    if (!x_strides_override.empty()) {
-      x_strides = x_strides_override;
-    } else {
-      if (!trans_x) {
-        x_strides.insert(x_strides.end(), {M * K, K, 1});
-      } else {
-        x_strides.insert(x_strides.end(), {M * K, 1, M});
-      }
-    }
-
-    if (!y_strides_override.empty()) {
-      y_strides = y_strides_override;
-    } else {
-      if (!trans_y) {
-        y_strides.insert(y_strides.end(), {N * K, N, 1});
-      } else {
-        y_strides.insert(y_strides.end(), {N * K, 1, K});
-      }
-    }
-
-    out_strides.insert(out_strides.end(), {M * N, N, 1});
-    out_ddims.insert(out_ddims.end(),
-                     {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
-
-    for (int i = x_dims.size() - 4; i >= 0; --i) {
-      out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-      if (x_strides_override.empty()) {
-        x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
-      }
-      if (y_strides_override.empty()) {
-        y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
-      }
-      out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
-    }
-
-    if (is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
-    }
-
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
-
-    this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
-  }
-
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t>& matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
-  }
-
-  std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
-    const T* input_data = input->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<T>(input_data));
-  }
-};
 
 bool IsOutputFused(const ExecutionContext& ctx) {
   auto& fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
