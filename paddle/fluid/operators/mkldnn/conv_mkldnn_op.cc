@@ -122,24 +122,25 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<int8_t>(
 }
 
 template <typename T>
-std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales(
+std::shared_ptr<std::tuple<float, std::vector<float>, float>> get_scales(
     const framework::ExecutionContext& ctx,
     const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
   return std::make_shared<std::tuple<float, std::vector<float>>>(
-      std::make_tuple(1.0f, std::vector<float>()));
+      std::make_tuple(1.0f, std::vector<float>(), 1.0f));
 }
 
 template <>
-std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
-    const framework::ExecutionContext& ctx,
-    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+std::shared_ptr<std::tuple<float, std::vector<float>, float>>
+get_scales<int8_t>(const framework::ExecutionContext& ctx,
+                   const platform::MKLDNNDeviceContext& dev_ctx,
+                   const std::string& key) {
   // Get scales int8 bias key
   const std::string key_s = key + "@s";
 
   // Scales for int8 bias are to be cached to avoid
   // computing them each iteration
   auto scale_tuple =
-      std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
+      std::static_pointer_cast<std::tuple<float, std::vector<float>, float>>(
           dev_ctx.GetBlob(key_s));
   if (scale_tuple) return scale_tuple;
 
@@ -153,8 +154,14 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
   const auto& scale_in_data = ctx.Attr<float>("Scale_in");
   const auto& scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
   auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+  bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
+  float activation_scale =
+      force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
+                                                : 1.0f;
   bool is_multi_channel = scale_weights_data.size() > 1;
-  auto scale_out_data = force_fp32_output ? 1.0f : ctx.Attr<float>("Scale_out");
+  auto scale_out_data =
+      force_fp32_output ? 1.0f : has_activation ? 1.0f
+                                                : ctx.Attr<float>("Scale_out");
   float sum_scale =
       fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
   int count = is_multi_channel ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0]
@@ -177,7 +184,7 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
                               static_cast<double>(scale_weights_data[i])));
   }
 
-  dev_ctx.SetBlob(key_s, scale_tuple);
+  dev_ctx.SetBlob(key_s, scale_tuple, activation_scale);
 
   return scale_tuple;
 }
@@ -328,7 +335,7 @@ class ConvMKLDNNHandlerT
     auto p_tupple = get_scales<typename remap<T>::type>(ctx, dev_ctx, key);
     const dnnl::primitive_attr conv_attr = CreatePostOps(
         fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
-        std::get<1>(*p_tupple), std::get<0>(*p_tupple));
+        std::get<1>(*p_tupple), std::get<0>(*p_tupple), std::get<2>(*p_tupple));
 
     if (bias) {
       auto bias_tz = framework::vectorize(bias->dims());
