@@ -37,9 +37,6 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                 return False
         if len(attrs[0]["dim"]) == 0:
             return False
-        ## skip not use 
-        if attrs[0]["out_dtype"] != -1:
-            return False
 
         return True
 
@@ -51,7 +48,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
             for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
                         [-4, 1], [3, 4, 5]]:
                 for reduce_all in [False, True]:
-                    for out_dtype in [-1, 0, 1]:
+                    for out_dtype in [0, 1]:
                         dics = [{
                             "keep_dim": keep_dim,
                             "dim": dim,
@@ -135,14 +132,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['out_dtype'] != -1:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "NOT Implemented: we will add out_dtype not equal to  -1 in the future"
-        )
+            return True
 
         pass
 
