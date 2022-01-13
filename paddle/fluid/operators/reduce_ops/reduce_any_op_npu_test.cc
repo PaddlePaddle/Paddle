@@ -65,7 +65,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<bool> out_vec;
-  f::paddle::framework::TensorToVector<bool>(*tensor_out, ctx, &out_vec);
+  f::TensorToVector<bool>(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 

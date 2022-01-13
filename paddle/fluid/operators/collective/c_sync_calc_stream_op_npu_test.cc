@@ -56,9 +56,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init_y.push_back(static_cast<T>(2.0));
   }
 
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
-  TensorFromVector(init_y, ctx, tensor_y);
+  paddle::framework::TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
   f::AttributeMap attrs;

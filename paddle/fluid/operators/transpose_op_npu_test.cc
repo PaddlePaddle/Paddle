@@ -48,7 +48,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   int dim0 = 2;
   int dim1 = 3;
-  TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, x_t);
+  paddle::framework::TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx,
+                                      x_t);
   ctx.Wait();
   x_t->Resize({dim0, dim1});
   out_t->Resize({dim0, dim1});
@@ -93,7 +94,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   int dim1 = 3;
   auto place = ctx.GetPlace();
 
-  TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, out_grad_t);
+  paddle::framework::TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx,
+                                      out_grad_t);
   ctx.Wait();
 
   x_grad_t->Resize({dim0, dim1});

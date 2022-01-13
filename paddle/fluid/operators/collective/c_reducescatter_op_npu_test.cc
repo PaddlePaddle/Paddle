@@ -137,7 +137,7 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
   PrintDebugInfo("input data", init);
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
 
   ctx.Wait();

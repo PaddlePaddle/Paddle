@@ -45,7 +45,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   std::vector<T> init;
   init.push_back(static_cast<T>(1.0));
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({1});
 
   ctx.Wait();

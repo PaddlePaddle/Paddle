@@ -57,9 +57,9 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
     init_y.push_back(static_cast<T>(2.0));
   }
 
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
-  TensorFromVector(init_y, ctx, tensor_y);
+  paddle::framework::TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
   auto place = ctx.GetPlace();
@@ -116,7 +116,7 @@ void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
     init_dout.push_back(static_cast<T>(1.0));
   }
 
-  TensorFromVector(init_dout, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize({2, 3, 5});
 
   // run

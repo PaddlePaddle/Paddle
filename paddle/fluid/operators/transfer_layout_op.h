@@ -81,7 +81,7 @@ class TransferLayoutFunctor {
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        innerTransDataLayoutFromMKLDNN(
+        paddle::framework::innerTransDataLayoutFromMKLDNN(
             in_layout, paddle::platform::MKLDNNDeviceContext::tls()
                            .get_cur_paddle_data_layout(),
             in_tensor, &out_tensor, dev_ctx_.GetPlace());
