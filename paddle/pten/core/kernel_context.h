@@ -63,6 +63,8 @@ class KernelContext {
 
   void EmplaceBackOutputs(paddle::SmallVector<TensorBase*> outputs);
 
+  void SetOutputWithoutSetRange(int index, TensorBase* output);
+
   void EmplaceBackAttr(paddle::any attr);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
@@ -79,11 +81,19 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
+    const auto& input = inputs_.at(idx);
+    return input ? paddle::optional<const TensorType&>{static_cast<
+                       const TensorType&>(*input)}
+                 : paddle::optional<const TensorType&>{paddle::none};
+  }
+
+  template <typename TensorType>
   std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
-      v.emplace_back(std::move(*t));
+      v.emplace_back(*t);
       inputs_.at(i) = nullptr;
     }
     return v;

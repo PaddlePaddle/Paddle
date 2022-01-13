@@ -15,7 +15,7 @@
 from ..dist_attribute import OperatorDistributedAttribute
 
 _g_distributed_operator_impl_registries = {}
-BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale'}
+BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 class DistributedOperatorImplContainer:

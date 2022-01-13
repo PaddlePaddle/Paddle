@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/unary.h"
 
 PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 

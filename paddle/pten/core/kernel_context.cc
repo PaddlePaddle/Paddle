@@ -48,6 +48,10 @@ void KernelContext::EmplaceBackOutputWithoutSetRange(TensorBase* output) {
   outputs_.emplace_back(output);
 }
 
+void KernelContext::SetOutputWithoutSetRange(int index, TensorBase* output) {
+  outputs_.at(index) = output;
+}
+
 void KernelContext::EmplaceBackOutputs(
     paddle::SmallVector<TensorBase*> outputs) {
   int index = outputs_.size();

@@ -884,6 +884,17 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
+  bool IsRunMKLDNNKernel() const override {
+    try {
+      auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
+      return ((op_with_kernel.kernel_type()) &&
+              (op_with_kernel.kernel_type()->data_layout_ ==
+               framework::DataLayout::kMKLDNN));
+    } catch (std::bad_cast exp) {
+      return false;
+    }
+  }
+
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override {
@@ -1178,9 +1189,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
-    // TODO(chenweihang): replace this after removing `this->IsMKLDNNType()`
-    // in some mkldnn infershape functions, such conv2d infershape
-    this->InferShape(&infer_shape_ctx);
+    this->Info().infer_shape_(&infer_shape_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {
@@ -1937,9 +1946,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
                          ->mutable_value();
       }
 
-      VLOG(1) << "####### static out valid: " << tensor_out->initialized();
       experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
-      VLOG(1) << "####### static out valid: " << tensor_out->initialized();
+
       if (current_vector_size > start_idx + offset) {
         pt_kernel_context_->SetOutputAtWithoutSetRange(start_idx + offset,
                                                        tensor_out);
@@ -1947,6 +1955,19 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context_->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }
+
+    // Deal with the case that some outputs are NULL when run the kernel.
+    // For example : the outputs of matmul_grad are dx and dy,
+    // sometimes dx or dy may be NULL.
+    if (outs_vector.empty()) {
+      if (current_vector_size > start_idx) {
+        pt_kernel_context_->SetOutputWithoutSetRange(start_idx, nullptr);
+      } else {
+        pt_kernel_context_->EmplaceBackOutputWithoutSetRange(nullptr);
+      }
+      end_idx = start_idx + 1;
+    }
+
     pt_kernel_context_->AssignOutputRange(std::make_pair(start_idx, end_idx),
                                           i);
   }
@@ -2059,7 +2080,9 @@ void OperatorWithKernel::WriteBackToOutputs(RuntimeContext* ctx) const {
             range_pair.first, range_pair.second);
 
     for (size_t j = 0; j < pten_outs.size(); ++j) {
-      experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
+      if (pten_outs[j]) {
+        experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
+      }
     }
   }
 }
