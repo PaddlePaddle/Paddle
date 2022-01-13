@@ -57,6 +57,13 @@ class PreparedOp {
              const paddle::framework::OperatorWithKernel::OpKernelFunc& func,
              paddle::platform::DeviceContext* dev_ctx);
 
+  PreparedOp(const paddle::framework::OperatorBase& op,
+             const paddle::framework::RuntimeContext& ctx,
+             const paddle::framework::OpKernelType& kernel_type,
+             const paddle::framework::KernelSignature& kernel_signature,
+             const pten::Kernel& pt_kernel,
+             paddle::platform::DeviceContext* dev_ctx);
+
   static PreparedOp Prepare(
       const NameTensorMap& ins, const NameTensorMap& outs,
       const paddle::framework::OperatorWithKernel& op,
@@ -78,6 +85,9 @@ class PreparedOp {
   paddle::framework::OpKernelType kernel_type_;
   paddle::framework::OperatorWithKernel::OpKernelFunc func_;
   paddle::platform::DeviceContext* dev_ctx_;
+  bool run_pten_kernel_{false};
+  pten::KernelSignature pt_kernel_signature_;
+  pten::Kernel pt_kernel_;
 };
 
 }  // namespace legacy

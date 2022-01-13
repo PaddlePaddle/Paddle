@@ -18,6 +18,8 @@
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/kernel_context.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -71,6 +73,21 @@ PreparedOp::PreparedOp(
       func_(func),
       dev_ctx_(dev_ctx) {}
 
+PreparedOp::PreparedOp(
+    const paddle::framework::OperatorBase& op,
+    const paddle::framework::RuntimeContext& ctx,
+    const paddle::framework::OpKernelType& kernel_type,
+    const paddle::framework::KernelSignature& kernel_signature,
+    const pten::Kernel& pt_kernel, paddle::platform::DeviceContext* dev_ctx)
+    : op_(op),
+      ctx_(ctx),
+      kernel_type_(kernel_type),
+      func_(nullptr),
+      dev_ctx_(dev_ctx),
+      run_pten_kernel_(true),
+      pt_kernel_signature_(kernel_signature),
+      pt_kernel_(pt_kernel) {}
+
 PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
                        const paddle::framework::OperatorWithKernel& op,
                        const paddle::platform::Place& place,
@@ -103,6 +120,30 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
       default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  if (FLAGS_run_pten_kernel &&
+      pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
+    VLOG(6) << pt_kernel_signature;
+
+    auto pt_kernel_name = pt_kernel_signature.name;
+    auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
+    auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
+        pt_kernel_name, pt_kernel_key);
+
+    if (pt_kernel.IsValid()) {
+      VLOG(6) << "Eager mode PrepareImpl - kernel name: " << pt_kernel_name
+              << " | kernel key: " << pt_kernel_key
+              << " | kernel: " << pt_kernel;
+
+      // TODO(chenweihang): using CPUKernel when miss device kernel case
+      return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
+                        pt_kernel, dev_ctx);
+    } else {
+      VLOG(6) << "Eager mode ChoosePtenKernel - kernel `" << pt_kernel_name
+              << "` not found.";
+    }
+  }
 
   // 2. check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
@@ -202,11 +243,242 @@ static void PreparedOpRunImpl(
   VLOG(6) << "Finish Runing Prepared Op";
 }
 
+static void BuildEagerPtenKernelContext(
+    const paddle::framework::KernelSignature& pt_kernel_signature,
+    const pten::Kernel& pt_kernel, const NameTensorMap& ins,
+    const NameTensorMap& outs, const paddle::framework::AttributeMap& attrs,
+    const paddle::framework::AttributeMap& default_attrs,
+    paddle::platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
+  kernel_ctx->SetDeviceContext(dev_ctx);
+
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& attr_names = std::get<1>(pt_kernel_signature.args);
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  auto& input_defs = pt_kernel.args_def().input_defs();
+  auto& output_defs = pt_kernel.args_def().output_defs();
+  auto& attr_defs = pt_kernel.args_def().attribute_defs();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "the size of outputs_args names (%d) must be equal to "
+                        "the size of kernel output_defs (%d).",
+                        output_names.size(), output_defs.size()));
+
+  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "the size of attribute_args names (%d) must be equal "
+                        "to the size of kernel attribute_defs (%d).",
+                        attr_names.size(), attr_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ins.at(input_names[i]);
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
+
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const auto& variable = ins_vector[offset]->Var();
+      kernel_ctx->EmplaceBackInputWithoutSetRange(
+          paddle::experimental::MakePtenTensorBaseFromVar(variable, in_def));
+    }
+    kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+  }
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto& out_def = output_defs.at(i);
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
+
+    auto iter = outs.find(output_names[i]);
+    if (iter == outs.end()) {
+      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
+                                    i);
+      continue;
+    }
+
+    auto& outs_vector = iter->second;
+    size_t end_idx = start_idx + outs_vector.size();
+
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(
+          paddle::experimental::MakePtenTensorBaseFromVar(
+              outs_vector[offset]->MutableVar(), out_def));
+    }
+    kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
+  }
+
+  for (size_t i = 0; i < attr_names.size(); ++i) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      if (attrs.find(attr_names[i]) !=
+          attrs.end()) {  // shape is in the attribute
+        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to VectorTensor when "
+              "construct KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          kernel_ctx->EmplaceBackAttr(
+              std::move(paddle::experimental::MakePtenScalarArrayFromVar(
+                  ins_vector[0]->Var())));
+        } else {  // ShapeTensorList
+          std::vector<paddle::framework::Variable*> variables;
+          variables.reserve(ins_vector.size());
+          for (const auto& var_base : ins_vector) {
+            variables.push_back(var_base->MutableVar());
+          }
+          kernel_ctx->EmplaceBackAttr(std::move(
+              paddle::experimental::MakePtenScalarArrayFromVarList(variables)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
+      if (attrs.find(attr_names[i]) != attrs.end() ||
+          default_attrs.find(attr_names[i]) !=
+              default_attrs.end()) {  // scalar is in the attribute
+        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "KernelContext in dygraph.",
+              attr_names[i]));
+        }
+      } else {  // scalar is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        kernel_ctx->EmplaceBackAttr(std::move(
+            paddle::experimental::MakePtenScalarFromVar(ins_vector[0]->Var())));
+      }
+
+    } else {
+      // TODO(chenweihang): support other attrs later
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(pten::DataType))) {
+        auto data_type = pten::TransToPtenDataType(
+            static_cast<paddle::framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        kernel_ctx->EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Emplace Back Attr according to the type of Pten_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          kernel_ctx->EmplaceBackAttr(vector_int64_attr);
+        }
+        // TODO(YuanRisheng) Need support vector<int64_t> attr
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` when construct "
+            "KernelContext in dygraph.",
+            attr_names[i]));
+      }
+    }
+  }
+}
+
+template <typename VarType>
+static void WriteBackToOutputs(
+    const paddle::framework::KernelSignature& pt_kernel_signature,
+    const NameTensorMap& outs, pten::KernelContext* kernel_ctx) {
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto iter = outs.find(output_names[i]);
+    if (iter != outs.end()) {
+      auto& outs_vector = iter->second;
+
+      auto& range_pair = kernel_ctx->OutputRangeAt(i);
+      auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
+          range_pair.first, range_pair.second);
+
+      for (size_t j = 0; j < pten_outs.size(); ++j) {
+        paddle::experimental::MakeVariableFromPtenTensor(
+            pten_outs[j], outs_vector[j]->MutableVar());
+      }
+    }
+  }
+}
+
+static void PreparedOpRunPtImpl(
+    const paddle::framework::OperatorBase& op,
+    const paddle::framework::OpKernelType& kernel_type,
+    const paddle::framework::KernelSignature& pt_kernel_signature,
+    const pten::Kernel& pt_kernel, paddle::platform::DeviceContext* dev_ctx,
+    const NameTensorMap& ins, const NameTensorMap& outs,
+    const paddle::framework::AttributeMap& attrs,
+    const paddle::framework::AttributeMap& default_attrs) {
+  EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
+                                         op.Type(), &kernel_type);
+  op.Info().infer_shape_(&infer_shape_ctx);
+
+  pten::KernelContext kernel_ctx;
+  BuildEagerPtenKernelContext(pt_kernel_signature, pt_kernel, ins, outs, attrs,
+                              default_attrs, dev_ctx, &kernel_ctx);
+
+  pt_kernel(&kernel_ctx);
+
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+  }
+
+  WriteBackToOutputs(pt_kernel_signature, outs, pt_kernel_context);
+
+  // TODO(chenweihang): add debug flags later
+  if (paddle::framework::IsComplexType(kernel_type.data_type_)) {
+    HandleComplexGradToRealGrad<VarType>(outs);
+  }
+}
+
 void PreparedOp::Run(const NameTensorMap& ins, const NameTensorMap& outs,
                      const paddle::framework::AttributeMap& attrs,
                      const paddle::framework::AttributeMap& default_attrs) {
-  PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs, attrs,
-                    default_attrs);
+  if (run_pten_kernel_) {
+    PreparedOpRunPtImpl(op_, kernel_type_, pt_kernel_signature_, pt_kernel_,
+                        dev_ctx_, ins, outs, attrs, default_attrs);
+  } else {
+    PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs,
+                      attrs, default_attrs);
+  }
 }
 
 std::shared_ptr<NameTensorMap> PrepareData(
