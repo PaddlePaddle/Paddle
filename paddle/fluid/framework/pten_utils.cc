@@ -60,7 +60,7 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
-  DataLayout data_layout = pten::TransToFluidDataLayout(kernel_key.layout());
+  DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
@@ -83,8 +83,7 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   } else {
     // do
   }
-  paddle::experimental::DataLayout layout =
-      pten::TransToPtenDataLayout(kernel_type.data_layout_);
+  paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
       pten::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
@@ -99,7 +98,8 @@ KernelSignatureMap& KernelSignatureMap::Instance() {
     for (const auto& pair : OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
       const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+          op_proto) {
         KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
         auto success = kernel_signature_map_->map_
@@ -194,16 +194,6 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
   return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
                          GetInputArgsNames(), GetAttrsArgsNames(),
                          GetOutputArgsNames());
-}
-
-std::string KernelSignatureToString(const KernelSignature& signature) {
-  std::stringstream os;
-  os << "Kernel Signature - name: " << signature.name
-     << "; inputs: " << string::join_strings(std::get<0>(signature.args), ", ")
-     << "; attributes: "
-     << string::join_strings(std::get<1>(signature.args), ", ") << "; outputs: "
-     << string::join_strings(std::get<2>(signature.args), ", ");
-  return os.str();
 }
 
 }  // namespace framework

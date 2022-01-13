@@ -27,8 +27,6 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/pten/include/core.h"
-
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
