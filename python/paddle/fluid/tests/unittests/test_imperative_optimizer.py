@@ -257,6 +257,7 @@ class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
             self.func_test_sgd()
         self.func_test_sgd()
 
+
 class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = SGDOptimizer(

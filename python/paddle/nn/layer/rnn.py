@@ -973,10 +973,10 @@ class RNNBase(LayerList):
                 dtype=fluid.core.VarDesc.VarType.UINT8)
             if fluid.framework.in_dygraph_mode():
                 with paddle.no_grad():
-                    _C_ops.coalesce_tensor(
-                        self._all_weights,
-                        self._all_weights, self._flat_weight[0], "copy_data", True, "use_align",
-                        False, "dtype", params[0].dtype)
+                    _C_ops.coalesce_tensor(self._all_weights, self._all_weights,
+                                           self._flat_weight[0], "copy_data",
+                                           True, "use_align", False, "dtype",
+                                           params[0].dtype)
                     return
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
