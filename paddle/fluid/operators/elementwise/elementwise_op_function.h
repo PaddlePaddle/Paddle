@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
-// only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/kernels/cpu/elementwise.h"
 
