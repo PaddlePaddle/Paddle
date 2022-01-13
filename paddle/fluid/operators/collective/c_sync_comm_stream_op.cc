@@ -74,7 +74,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_npu_place(place), true,
         platform::errors::PreconditionNotMet(
-            "Sync stream op can run on npu place only for now, but got %s",
+            "Sync stream op can run on npu place only for now, but we got %s",
             place.DebugString()));
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
