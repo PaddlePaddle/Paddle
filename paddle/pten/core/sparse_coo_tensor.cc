@@ -24,6 +24,14 @@ SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
       coalesced_(false),
       dims_(dims) {}
 
+SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
+                                 DenseTensor&& non_zero_elements,
+                                 const DDim& dims)
+    : non_zero_indices_(non_zero_indices),
+      non_zero_elements_(non_zero_elements),
+      coalesced_(false),
+      dims_(dims) {}
+
 SparseCooTensor::SparseCooTensor(const SparseCooTensor& other)
     : non_zero_indices_(other.non_zero_indices_),
       non_zero_elements_(other.non_zero_elements_),
@@ -84,6 +92,16 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
 
   this->non_zero_indices_.Resize(indices_dims);
   this->non_zero_elements_.Resize(values_dims);
+}
+
+void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
+                                const DenseTensor& non_zero_elements,
+                                const DDim& dims,
+                                const bool coalesced) {
+  this->non_zero_indices_ = non_zero_indices;
+  this->non_zero_elements_ = non_zero_elements;
+  this->dims_ = dims_;
+  this->coalesced_ = coalesced;
 }
 
 }  // namespace pten
