@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/graph_sample_op.h"
+#include "paddle/fluid/operators/graph_sample_reindex.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -180,9 +181,8 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                        thrust::raw_pointer_cast(output_ptr.data()),
                        thrust::raw_pointer_cast(output_idxs.data()));
 
-  // 5. Get inputs = outputs - inputs
+  // 5. Get inputs = outputs - inputs: 对于采样一层的时候，下面的地方不需要跑，所以后面可以优化，判断一下.
   thrust::device_vector<T> unique_outputs((*outputs).size());
-  // 需要先sort再取diff
   thrust::sort((*inputs).begin(), (*inputs).end());
   thrust::device_vector<T> outputs_sort((*outputs).size());
   thrust::copy((*outputs).begin(), (*outputs).end(), outputs_sort.begin());
@@ -195,6 +195,95 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
   (*inputs).resize(
       thrust::distance(unique_outputs.begin(), unique_outputs_end));
   thrust::copy(unique_outputs.begin(), unique_outputs_end, (*inputs).begin());
+}
+
+template <typename T>
+DeviceHashTable<T>
+FillTableWithDuplicates(const framework::ExecutionContext& ctx, T* input, 
+                        int64_t num_input, thrust::device_vector<T> &unique_items) {
+  VLOG(0) << "Enter FillTableWithDuplicates function";
+
+  VLOG(0) << "1. build DeviceHashTable";
+  DeviceHashTable<T> hash_table = DeviceHashTable<T>(num_input, 1);
+  
+  // 暂且简单写
+  int block = 1024;
+  int grid = (num_input + block - 1) / block;
+  VLOG(0) << "2. insert data into DeviceHashTable";
+  build_hashtable_duplicates<T><<<
+      grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                            ctx.device_context())
+                            .stream()>>>(input, num_input, &hash_table);
+  thrust::device_vector<int> item_count(num_input + 1, 0);
+ 
+  VLOG(0) << "3. Get item index count"; 
+  get_item_index_count<T><<<
+      grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                            ctx.device_context())
+                            .stream()>>>(input, thrust::raw_pointer_cast(item_count.data()),
+                                         num_input, &hash_table);
+ 
+  //using it = thrust::counting_iterator<T>;
+  //using Mapping = typename DeviceHashTable<T>::Mapping;
+  //VLOG(0) << "3.1 Begin!";
+  //thrust::for_each(it(0), it(num_input),
+  //                 [count = thrust::raw_pointer_cast(item_count.data()),
+  //                  table = hash_table,
+  //                  in = input] __device__(T i) mutable {
+  //                      //in[i];
+  //                     //Mapping mapping = *(table.Search(in[i]));
+  //                     //if (mapping.index == i) { count[i] = 1; }
+  //                });
+  //VLOG(0) << "3.2 End!";
+  //thrust::exclusive_scan(item_count.begin(), item_count.end(),
+  //                       item_count.begin());
+  //size_t tos = item_count[num_input];
+  //unique_items.resize(tos);
+
+  //// 填充 unique_items
+  //VLOG(0) << "4. Get unique items";
+  //fill_unique_items<T><<<
+  //    grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+  //                          ctx.device_context())
+  //                          .stream()>>>(input, num_input, 
+  //                                       thrust::raw_pointer_cast(unique_items.data()),
+  //                                       thrust::raw_pointer_cast(item_count.data()), 
+  //                                       hash_table);
+
+  return hash_table;
+}
+
+template <typename T>
+void reindex_func(const framework::ExecutionContext& ctx,
+                  thrust::device_vector<T> &inputs, 
+                  thrust::device_vector<T> &outputs,
+                  thrust::device_vector<T> &subset) {
+  VLOG(0) << "Enter reindex function";
+  subset.resize(inputs.size() + outputs.size());
+  thrust::copy(inputs.begin(), inputs.end(), subset.begin());
+  thrust::copy(outputs.begin(), outputs.end(), subset.begin() + inputs.size());
+  thrust::device_vector<T> unique_items;
+  unique_items.clear();
+
+  VLOG(0) << "Begin to fill hash table";
+  VLOG(0) << "subset.size(): " << subset.size();
+  VLOG(0) << "Print subset";
+  thrust::copy(subset.begin(), subset.end(), std::ostream_iterator<T>(std::cout, " "));
+  std::cout << std::endl;
+  DeviceHashTable<T> table = FillTableWithDuplicates(ctx, thrust::raw_pointer_cast(subset.data()),
+                                  subset.size(), unique_items);
+  subset.resize(unique_items.size());
+  thrust::copy(unique_items.begin(), unique_items.end(), subset.begin());
+  
+  // Fill outputs with reindex result.
+  VLOG(0) << "Fill src output with reindex result";
+  int block = 1024;
+  int grid = (outputs.size() + block - 1) / block;
+  reindex_src_output<T><<<
+      grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                            ctx.device_context())
+                            .stream()>>>(thrust::raw_pointer_cast(outputs.data()),
+                     outputs.size(), table);
 }
 
 template <typename DeviceContext, typename T>
@@ -283,88 +372,41 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
         src_merge.size(), num_sample_edges,
         platform::errors::External("Number of sample edges dismatch."));
 
-    // 5. 还原Dst边(根据dst_counts_merge进行copy)
+    // 5. 根据unique_dst_merge, src_merge 生成 hashtable，unique后的items(subset)，并且对 src_merge 进行reindex.
+    VLOG(0) << "Begin to Reindex";
+    thrust::device_vector<T> subset;
+    reindex_func<T>(ctx, unique_dst_merge, src_merge, subset);
+
+    auto* sample_index = ctx.Output<Tensor>("Sample_index");
+    sample_index->Resize({static_cast<int>(subset.size())});
+    T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
+    const size_t& sample_bytes = subset.size() * sizeof(T);
+    cudaMemset(p_sample_index, 0, sample_bytes);
+    thrust::copy(subset.begin(), subset.end(), p_sample_index);  // Done!
+
+    // 6. 还原Dst边(根据dst_counts_merge进行copy 和 reindex.)
     thrust::device_vector<T> dst_merge(src_size);
+    thrust::device_vector<T> unique_dst_merge_reindex(unique_dst_size);
+    thrust::sequence(unique_dst_merge_reindex.begin(), unique_dst_merge_reindex.end());
     thrust::device_vector<T> dst_ptr(unique_dst_size);
     thrust::exclusive_scan(dst_sample_counts_merge.begin(),
                            dst_sample_counts_merge.end(), dst_ptr.begin());
-
     constexpr int BLOCK_WARPS = 128 / WARP_SIZE;  // 每个block的warp数量
     constexpr int TILE_SIZE = BLOCK_WARPS * 16;  // 设置每个block会处理的节点数?
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((unique_dst_size + TILE_SIZE - 1) / TILE_SIZE);
 
     GetDstEdgeCUDAKernel<T, BLOCK_WARPS,
-                         TILE_SIZE>  // TODO(daisiming): 可以改成 for_each
-                                     // 的写法，看哪个快
+                         TILE_SIZE>
         <<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
                                .stream()>>>(
-            unique_dst_size, thrust::raw_pointer_cast(unique_dst_merge.data()),
+            unique_dst_size, thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
             thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
             thrust::raw_pointer_cast(dst_ptr.data()),
             thrust::raw_pointer_cast(dst_merge.data()));
-
-    // 6. Reindex边: 这个地方之前会带来 system_error 的问题
-    /* thrust::device_vector<T> unique_src(src_size);
-    auto unique_src_end = thrust::set_difference(
-        src_merge.begin(), src_merge.end(), unique_dst_merge.begin(),
-        unique_dst_merge.end(), unique_src.begin());
-    size_t unique_src_size =
-        thrust::unique(unique_src.begin(), unique_src_end) - unique_src.begin();
-    unique_src.resize(unique_src_size);
-
-    thrust::device_vector<T> unique_nodes(unique_src_size + unique_dst_size);
-    auto unique_nodes_end = thrust::copy(
-        unique_dst_merge.begin(), unique_dst_merge.end(), unique_nodes.begin());
-    thrust::copy(unique_src.begin(), unique_src.end(), unique_nodes_end);
-    */
-
-    // Bug - how to get unique nodes.
-    thrust::device_vector<T> unique_nodes(unique_dst_size);
-    auto* sample_index = ctx.Output<Tensor>("Sample_index");
-    sample_index->Resize({static_cast<int>(unique_nodes.size())});
-    T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
-    const size_t& sample_bytes = unique_nodes.size() * sizeof(T);
-    cudaMemset(p_sample_index, 0, sample_bytes);
-    thrust::copy(unique_nodes.begin(), unique_nodes.end(),
-                 p_sample_index);  // Done!
-
-    /*thrust::device_vector<T> unique_nodes_value(unique_nodes.size());
-    thrust::sequence(unique_nodes_value.begin(), unique_nodes_value.end(), 0);
-    VLOG(0) << "7.3 print unique_nodes_value";
-    thrust::copy(unique_nodes_value.begin(), unique_nodes_value.end(),
-    std::ostream_iterator<T>(std::cout, " "));
-    std::cout << std::endl;
-    thrust::sort_by_key(unique_nodes.begin(), unique_nodes.end(),
-                        unique_nodes_value.begin());
-    VLOG(0) << "7.4 print after sort";
-    thrust::copy(unique_nodes_value.begin(), unique_nodes_value.end(),
-    std::ostream_iterator<T>(std::cout, " "));
-    std::cout << std::endl;
-    thrust::copy(unique_nodes.begin(), unique_nodes.end(),
-    std::ostream_iterator<T>(std::cout, " "));
-    std::cout << std::endl;*/
-    // reindex_kernel: 输入unique_nodes_value
-
-    /*
-    int block_ = 512;
-    int grid_ = (src_size + block_ - 1) / block_;
-    ReindexCUDAKernel<T><<<
-        grid_, block_, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(thrust::raw_pointer_cast(unique_nodes_value.data()),
-                                         thrust::raw_pointer_cast(src_merge.data()),
-                                         src_merge.size());
-    ReindexCUDAKernel<T><<<
-        grid_, block_, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(thrust::raw_pointer_cast(unique_nodes_value.data()),
-                                         thrust::raw_pointer_cast(dst_merge.data()),
-                                         dst_merge.size());
-    */
-
-    // 7.  将结果赋值到输出部分.
+ 
+    // 7. 赋值结果.
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
     out_src->Resize({static_cast<int>(src_merge.size())});
