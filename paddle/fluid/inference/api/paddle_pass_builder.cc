@@ -265,7 +265,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              //  "fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
-			 "elt_act_mkldnn_fuse_pass",              //
+             "onednn_replace_pass",
+             "elt_act_mkldnn_fuse_pass",              //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after

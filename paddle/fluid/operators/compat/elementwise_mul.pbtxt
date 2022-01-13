@@ -24,22 +24,6 @@ extra {
     type: STRING
   }
   attrs {
-    name: "activation_type"
-    type: STRING
-  }
-  attrs {
-    name: "activation_alpha"
-    type: FLOAT
-  }
-  attrs {
-    name: "activation_beta"
-    type: FLOAT
-  }
-  attrs {
-    name: "activation_scale"
-    type: FLOAT
-  }
-  attrs {
     name: "Scale_x"
     type: FLOAT
   }
