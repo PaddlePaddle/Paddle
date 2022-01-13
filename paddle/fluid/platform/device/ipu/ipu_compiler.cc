@@ -33,7 +33,10 @@ popart::AdamMode AdamModeFromStr(const std::string& str) {
   } else if (str == "lamb") {
     return popart::AdamMode::Lamb;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument("Uknown AdamMode: %s", str));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Uknown AdamMode: %s, AdamMode must be one of these values: adam, "
+        "adamax or lamb",
+        str));
   }
 }
 
@@ -47,8 +50,10 @@ popart::AdaptiveMode AdaptiveModeFromStr(const std::string& str) {
   } else if (str == "centered_rmsprop") {
     return popart::AdaptiveMode::CenteredRMSProp;
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Uknown AdaptiveMode: %s", str));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Uknown AdaptiveMode: %s, AdaptiveMode must be one of these values: "
+        "adadelta, adagrad, rmsprop or centered_rmsprop",
+        str));
   }
 }
 
@@ -58,8 +63,10 @@ popart::WeightDecayMode WeightDecayModeFromStr(const std::string& str) {
   } else if (str == "l2_regularization") {
     return popart::WeightDecayMode::L2Regularization;
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Uknown WeightDecayMode: %s", str));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Uknown WeightDecayMode: %s, WeightDecayMode must be decay or "
+        "l2_regularization",
+        str));
   }
 }
 
@@ -215,8 +222,10 @@ void Compiler::LowerBody(const Graph* graph) {
       if (itr != name_function_.end()) {
         itr->second(node->Op());
       } else {
-        PADDLE_THROW(
-            platform::errors::NotFound("%s is not registered", op_type));
+        PADDLE_THROW(platform::errors::NotFound(
+            "%s is not registered, please check for unsupported operators for "
+            "running on IPU",
+            op_type));
       }
     }
   }
@@ -250,9 +259,11 @@ void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
     fetch_list_.push_back(fetch_name);
     auto tensor = resources_->tensors.find(fetch_name);
-    PADDLE_ENFORCE_NE(tensor, resources_->tensors.end(),
-                      platform::errors::NotFound(
-                          "output tensor %s does not exist.", fetch_name));
+    PADDLE_ENFORCE_NE(
+        tensor, resources_->tensors.end(),
+        platform::errors::NotFound(
+            "Output tensor %s is not found, please check the model.",
+            fetch_name));
     VLOG(10) << "fetch_name= " << fetch_name;
     VLOG(10) << "popart output tensor id = " << tensor->second;
     builder_->addOutputTensor(tensor->second);
