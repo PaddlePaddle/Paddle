@@ -37,7 +37,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
       size_t size = dis_(random_engine_);
       AllocationPtr allocation = Alloc(place_, size);
 
-      void* base_ptr = allocation->base_ptr();
+      void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
       void* system_ptr =
           platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
       EXPECT_EQ(base_ptr, system_ptr);
@@ -56,7 +56,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
         size_t size = dis_(random_engine_);
         AllocationPtr allocation = Alloc(place_, size);
 
-        void* base_ptr = allocation->base_ptr();
+        void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
         void* system_ptr =
             platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
         EXPECT_EQ(base_ptr, system_ptr);
@@ -77,7 +77,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
       size_t size = dis_(random_engine_);
       AllocationPtr allocation = Alloc(place_, size);
 
-      void* base_ptr = allocation->base_ptr();
+      void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
       void* system_ptr =
           platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
       EXPECT_EQ(base_ptr, system_ptr);
@@ -91,7 +91,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
 
   void ZeroSizeAllocTest() {
     AllocationPtr allocation = Alloc(place_, 0);
-    void* base_ptr = allocation->base_ptr();
+    void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
     void* system_ptr =
         platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
     EXPECT_EQ(base_ptr, system_ptr);

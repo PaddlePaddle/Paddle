@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/hybird/transpose.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"

@@ -61,7 +61,7 @@ struct DivideFunctor {
   HOSTDEVICE explicit inline DivideFunctor(int n)
       : n_inv(static_cast<T>(1.0 / n)) {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
+  HOSTDEVICE inline T operator()(const T x) const { return x * n_inv; }
 
  private:
   T n_inv;

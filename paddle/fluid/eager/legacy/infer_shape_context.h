@@ -31,15 +31,18 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   using DDim = paddle::framework::DDim;
 
  public:
-  EagerInferShapeContext(const NameTensorMap* in, const NameTensorMap* out,
-                         const paddle::framework::AttributeMap* attr,
-                         const paddle::framework::AttributeMap* default_attr,
-                         const std::string op_type)
+  EagerInferShapeContext(
+      const NameTensorMap* in, const NameTensorMap* out,
+      const paddle::framework::AttributeMap* attr,
+      const paddle::framework::AttributeMap* default_attr,
+      const std::string op_type,
+      const paddle::framework::OpKernelType* op_kernel_type = nullptr)
       : tensor_in_(in),
         tensor_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
-        op_type_(op_type) {}
+        op_type_(op_type),
+        op_kernel_type_(op_kernel_type) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -213,6 +216,11 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   }
 
   bool IsRuntime() const override { return true; }
+
+  bool IsRunMKLDNNKernel() const override {
+    return (op_kernel_type_ && (op_kernel_type_->data_layout_ ==
+                                paddle::framework::DataLayout::kMKLDNN));
+  }
 
   // TODO(paddle-dev): Can this be template?
   std::vector<paddle::framework::InferShapeVarPtr> GetInputVarPtrs(
@@ -400,6 +408,7 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   const paddle::framework::AttributeMap* attrs_;
   const paddle::framework::AttributeMap* default_attrs_;
   const std::string op_type_;
+  const paddle::framework::OpKernelType* op_kernel_type_;
 };
 
 }  // namespace legacy

@@ -183,8 +183,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -241,8 +240,7 @@ void TensorFromVector(const std::vector<T>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -312,8 +310,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
