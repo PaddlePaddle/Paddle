@@ -307,6 +307,17 @@ void InterpretercoreInferShapeContext::SetLoDLevel(const std::string& out,
 
 bool InterpretercoreInferShapeContext::IsRuntime() const { return true; }
 
+bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
+  try {
+    auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
+    return ((op_with_kernel.kernel_type()) &&
+            (op_with_kernel.kernel_type()->data_layout_ ==
+             framework::DataLayout::kMKLDNN));
+  } catch (std::bad_cast exp) {
+    return false;
+  }
+}
+
 // TODO(paddle-dev): Can this be template?
 std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
     const std::string& name) const {

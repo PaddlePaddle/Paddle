@@ -60,12 +60,12 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
+  pten::Allocation *AllocateImpl(size_t size) override;
 
-  void FreeImpl(Allocation *allocation) override;
+  void FreeImpl(pten::Allocation *allocation) override;
 
  private:
-  Allocation *AllocFromFreeBlocks(size_t size);
+  pten::Allocation *AllocFromFreeBlocks(size_t size);
   void ExtendAndMerge(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
 
