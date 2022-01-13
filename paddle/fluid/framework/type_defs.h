@@ -84,10 +84,5 @@ using InferShapeFN = std::function<void(InferShapeContext*)>;
 using InplacePair = std::unordered_map<std::string, std::string>;
 using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;
 
-// tuple(input_names, attr_names, output_names)
-using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
-                                   paddle::SmallVector<std::string>,
-                                   paddle::SmallVector<std::string>>;
-
 }  // namespace framework
 }  // namespace paddle

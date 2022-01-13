@@ -15,10 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cmath>
-#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 
 namespace paddle {
 namespace operators {
@@ -68,6 +65,28 @@ struct MaxGradDy {
 };
 
 template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+ElementwiseMaxGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseGradCompute<DeviceContext, T, MaxGradDx<T>, MaxGradDy<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, MaxGradDx<T>(), MaxGradDy<T>());
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+ElementwiseMaxGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy);
+#endif
+
+template <typename DeviceContext, typename T>
 class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -77,12 +96,11 @@ class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = dout;  // out is not necessary
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto* out = dout;  // Fake out, not used
-    int axis = ctx.Attr<int>("axis");
-    ElemwiseGradCompute<DeviceContext, T, MaxGradDx<T>, MaxGradDy<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, MaxGradDx<T>(), MaxGradDy<T>());
+
+    ElementwiseMaxGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
   }
 };
 
