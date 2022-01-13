@@ -43,6 +43,7 @@ if (LITE_WITH_NNADAPTER)
   endif()
 endif()
 
+
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
