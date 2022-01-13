@@ -46,7 +46,8 @@ class PReluOpConverter : public OpConverter {
     std::unique_ptr<framework::LoDTensor> alpha_tensor_temp(
         new framework::LoDTensor());
     alpha_tensor_temp->Resize(alpha_tensor->dims());
-    TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
+    paddle::framework::TensorCopySync(*alpha_tensor, cpu_place,
+                                      alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
     nvinfer1::ILayer* layer = nullptr;

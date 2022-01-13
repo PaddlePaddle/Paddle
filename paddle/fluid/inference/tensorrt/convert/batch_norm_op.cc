@@ -82,10 +82,11 @@ class BatchNormOpConverter : public OpConverter {
 
     platform::CPUPlace cpu_place;
     // copy data from gpu to cpu
-    TensorCopySync((*Bias_t), cpu_place, &bias_tensor);
-    TensorCopySync((*Mean_t), cpu_place, &mean_tensor);
-    TensorCopySync((*Scale_t), cpu_place, &scale_tensor);
-    TensorCopySync((*Variance_t), cpu_place, &variance_tensor);
+    paddle::framework::TensorCopySync((*Bias_t), cpu_place, &bias_tensor);
+    paddle::framework::TensorCopySync((*Mean_t), cpu_place, &mean_tensor);
+    paddle::framework::TensorCopySync((*Scale_t), cpu_place, &scale_tensor);
+    paddle::framework::TensorCopySync((*Variance_t), cpu_place,
+                                      &variance_tensor);
 
     auto* bias_data = bias_tensor.mutable_data<float>(platform::CPUPlace());
     auto* mean_data = mean_tensor.mutable_data<float>(platform::CPUPlace());
