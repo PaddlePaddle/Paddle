@@ -56,7 +56,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set
-        .insert("flatten_contiguous_range", )
+        .insert("flatten_contiguous_range")
 #endif
 #if CUDA_VERSION >= 10020
             teller_set.insert("reshape");
