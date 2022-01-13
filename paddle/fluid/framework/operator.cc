@@ -1196,6 +1196,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (pt_kernel_context_ == nullptr) {
         pt_kernel_context_.reset(new pten::KernelContext());
       }
+      // Do data transform before building KernelContext
+      PreparePtenData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
+                      runtime_ctx);
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
       WriteBackToOutputs(runtime_ctx);
@@ -1791,6 +1794,58 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
       pten::TransToPtenKernelName(Type()));
 }
 
+Scope* OperatorWithKernel::PreparePtenData(
+    const Scope& scope, const pten::Kernel& pt_kernel,
+    const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto input_defs = pt_kernel.args_def().input_defs();
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "The size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+  Scope* new_scope = nullptr;
+  for (size_t i = 0; i < input_defs.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ctx->inputs.at(input_names[i]);
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      // Only tensor can be tranfer to another device.
+      auto* var = ins_vector[offset];
+      if (var == nullptr || !VarIsTensor(*var)) {
+        continue;
+      }
+
+      auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      if (!tensor_in->IsInitialized()) {
+        continue;
+      }
+
+      auto expected_place = pten::TransToFluidPlace(in_def.backend);
+      if (platform::is_same_place(tensor_in->place(), expected_place)) {
+        continue;
+      }
+
+      VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
+              << tensor_in->place() << " to " << expected_place;
+
+      if (!new_scope) {
+        new_scope = &scope.NewScope();
+      }
+
+      // Create new var with the same name in transfer scopes
+      auto* trans_var = new_scope->Var(input_names[i]);
+      ins_vector[i] = trans_var;
+
+      // Do transfer
+      Tensor out;
+      framework::TensorCopySync(*tensor_in, expected_place, &out);
+      SetTensorToVariable(*var, out, trans_var);
+    }
+  }
+
+  return new_scope;
+}
+
 void OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
   if (pt_kernel_context_ == nullptr) {
@@ -1832,7 +1887,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx.inputs.at(input_names[i]);
 
     // calcute the start and end index of the input tensors
@@ -1845,29 +1899,24 @@ void OperatorWithKernel::BuildPtenKernelContext(
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const framework::Tensor* tensor_in = nullptr;
+      auto* var = ins_vector[offset];
+      if (var->IsType<framework::LoDTensor>()) {
+        tensor_in = &(var->Get<framework::LoDTensor>());
+      } else if (var->template IsType<framework::SelectedRows>()) {
+        tensor_in = &(var->Get<framework::SelectedRows>().value());
+      }
       if (current_vector_size > start_idx + offset) {
-        auto& input_ptr =
-            pt_kernel_context_->MutableInputPtrAt(start_idx + offset);
-        if (input_ptr == nullptr) {
-          input_ptr = experimental::MakePtenTensorBaseFromVar(
-              *ins_vector[offset], in_def);
-        } else {
-          experimental::ReMakePtenDenseTensorFromVar(
-              *ins_vector[offset], in_def,
-              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(start_idx +
-                                                                    offset));
-        }
+        pt_kernel_context_->SetInputAtWithoutSetRange(start_idx + offset,
+                                                      tensor_in);
       } else {
-        pt_kernel_context_->EmplaceBackInputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(*ins_vector[offset],
-                                                    in_def));
+        pt_kernel_context_->EmplaceBackInputWithoutSetRange(tensor_in);
       }
     }
     pt_kernel_context_->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& out_def = output_defs.at(i);
     auto& outs_vector = ctx.outputs.at(output_names[i]);
 
     size_t start_idx =
@@ -1879,15 +1928,23 @@ void OperatorWithKernel::BuildPtenKernelContext(
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      framework::Tensor* tensor_out = nullptr;
+      auto* var = outs_vector[offset];
+      if (var->template IsType<framework::LoDTensor>()) {
+        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      } else if (var->template IsType<framework::SelectedRows>()) {
+        tensor_out = var->template GetMutable<framework::SelectedRows>()
+                         ->mutable_value();
+      }
+
+      VLOG(1) << "####### static out valid: " << tensor_out->initialized();
+      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      VLOG(1) << "####### static out valid: " << tensor_out->initialized();
       if (current_vector_size > start_idx + offset) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            outs_vector[offset], out_def,
-            pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
-                                                                   offset));
+        pt_kernel_context_->SetOutputAtWithoutSetRange(start_idx + offset,
+                                                       tensor_out);
       } else {
-        pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(outs_vector[offset],
-                                                    out_def));
+        pt_kernel_context_->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }
     pt_kernel_context_->AssignOutputRange(std::make_pair(start_idx, end_idx),

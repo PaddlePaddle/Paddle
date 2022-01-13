@@ -265,6 +265,45 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
+void PreparePtenData(const pten::Kernel& pt_kernel,
+                     const framework::KernelSignature& pt_kernel_signature,
+                     const NameVarMap<VarType>& ins) {
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& input_defs = pt_kernel.args_def().input_defs();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ins.at(input_names[i]);
+
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      auto var_base = ins_vector[offset];
+      const auto* tensor_in = GetTensorFromVar(var_base->Var());
+      if (tensor_in && tensor_in->IsInitialized()) {
+        auto expected_place = pten::TransToFluidPlace(in_def.backend);
+        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+          continue;
+        }
+
+        VLOG(3) << "Pten Transform Variable " << var_base->Name() << " from "
+                << tensor_in->place() << " to " << expected_place;
+
+        framework::Tensor tmp_tensor;
+        framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
+
+        SetTensorToVariable(var_base->Var(), tmp_tensor,
+                            var_base->MutableVar());
+      }
+    }
+  }
+}
+
+template <typename VarType>
 static void BuildDygraphPtenKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
@@ -307,7 +346,6 @@ static void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
@@ -318,26 +356,17 @@ static void BuildDygraphPtenKernelContext(
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const auto& variable = ins_vector[offset]->Var();
+      const auto* tensor_in = GetTensorFromVar(ins_vector[offset]->Var());
       if (current_vector_size > start_idx + offset) {
-        auto& input_ptr = kernel_ctx->MutableInputPtrAt(start_idx + offset);
-        if (input_ptr == nullptr) {
-          input_ptr = experimental::MakePtenTensorBaseFromVar(variable, in_def);
-        } else {
-          experimental::ReMakePtenDenseTensorFromVar(
-              variable, in_def, kernel_ctx->MutableInputAt<pten::DenseTensor>(
-                                    start_idx + offset));
-        }
+        kernel_ctx->SetInputAtWithoutSetRange(start_idx + offset, tensor_in);
       } else {
-        kernel_ctx->EmplaceBackInputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(variable, in_def));
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       }
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
@@ -347,14 +376,20 @@ static void BuildDygraphPtenKernelContext(
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      auto* var = outs_vector[offset]->MutableVar();
+      framework::Tensor* tensor_out = nullptr;
+      if (var->template IsType<framework::LoDTensor>()) {
+        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      } else if (var->template IsType<framework::SelectedRows>()) {
+        tensor_out = var->template GetMutable<framework::SelectedRows>()
+                         ->mutable_value();
+      }
+      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+
       if (current_vector_size > start_idx + offset) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            outs_vector[offset]->MutableVar(), out_def,
-            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset));
+        kernel_ctx->SetOutputAtWithoutSetRange(start_idx + offset, tensor_out);
       } else {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(
-                outs_vector[offset]->MutableVar(), out_def));
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
@@ -537,6 +572,8 @@ static void PreparedOpRunPtImpl(
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
                                                     &default_attrs, op.Type());
   op.Info().infer_shape_(&infer_shape_ctx);
+
+  PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                          outs, attrs, default_attrs, dev_ctx,
