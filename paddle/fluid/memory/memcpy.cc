@@ -66,7 +66,7 @@ void Copy<platform::XPUPlace, platform::CPUPlace>(platform::XPUPlace dst_place,
     VLOG(1) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  platform::MemcpySyncH2D(dst, src, num, dst_place.device);
+  platform::MemcpySyncH2D(dst, src, num, dst_place);
 }
 
 template <>
@@ -78,7 +78,7 @@ void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
     VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
     return;
   }
-  platform::MemcpySyncD2H(dst, src, num, src_place.device);
+  platform::MemcpySyncD2H(dst, src, num, src_place);
 }
 
 template <>
@@ -90,7 +90,7 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
     VLOG(1) << "memcpy XPU_DEVICE_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  platform::MemcpySyncD2D(dst, dst_place.device, src, src_place.device, num);
+  platform::MemcpySyncD2D(dst, dst_place, src, src_place, num);
 }
 #endif
 

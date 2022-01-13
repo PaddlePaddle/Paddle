@@ -431,6 +431,12 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
   }
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("flatten_grad",
+                                      {framework::GradVarName("Out"), "XShape"},
+                                      {}, {framework::GradVarName("X")});
+  }
 };
 DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceInferer,

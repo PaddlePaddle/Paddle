@@ -108,7 +108,7 @@ class BestFitAllocation : public Allocation {
 // the prev-chunk and the next-chunk when possible.
 class BestFitAllocator : public Allocator {
  public:
-  explicit BestFitAllocator(Allocation* allocation);
+  explicit BestFitAllocator(pten::Allocation* allocation);
 
   void* BasePtr() const { return allocation_->ptr(); }
 
@@ -127,11 +127,11 @@ class BestFitAllocator : public Allocator {
   void InsertFreeNode(const ListIt& it);
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(pten::Allocation* allocation) override;
+  pten::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  Allocation* allocation_;  // not owned
+  pten::Allocation* allocation_;  // not owned
   details::ChunkList chunks_;
   details::FreeChunkBin free_chunks_;
 };

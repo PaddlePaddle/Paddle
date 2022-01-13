@@ -97,7 +97,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (this->IsMKLDNNType() == false) &&
+  const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   // update paddings if "SAME" or global_pooling
