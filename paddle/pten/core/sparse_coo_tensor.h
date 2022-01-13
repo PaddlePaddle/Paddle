@@ -39,6 +39,15 @@ class SparseCooTensor : public TensorBase,
                   const DenseTensor& non_zero_elements,
                   const DDim& dims);
 
+  /// \brief Create the sparse coo tensor
+  /// \param non_zero_indices The indices of non zero elements in original dense
+  /// tensor.
+  /// \param non_zero_elements The non zero elements of original dense tensor.
+  /// \param dims The dims of original dense tensor.
+  SparseCooTensor(DenseTensor&& non_zero_indices,
+                  DenseTensor&& non_zero_elements,
+                  const DDim& dims);
+
   /// \brief SparseCooTensor shallow copy constructor.
   SparseCooTensor(const SparseCooTensor& other);
 
@@ -112,6 +121,17 @@ class SparseCooTensor : public TensorBase,
   void Resize(const DDim& dense_dim,
               const int64_t sparse_dim,
               const int64_t non_zero_num);
+
+  /// \brief set the member of sparse coo tensor.
+  /// \param non_zero_indices The indices of non zero elements in original dense
+  /// tensor.
+  /// \param non_zero_elements The non zero elements of original dense tensor.
+  /// \param dims The dims of original dense tensor.
+  /// \param coalesced whether the indices has coalesced.
+  void SetMember(const DenseTensor& non_zero_indices,
+                 const DenseTensor& non_zero_elements,
+                 const DDim& dims,
+                 const bool coalesced = false);
 
   /// \brief Get a mutable data pointer of non_zero_indices_.
   /// return a mutable data pointer of non_zero_indices_.
