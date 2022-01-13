@@ -169,7 +169,7 @@ get_scales<int8_t>(const framework::ExecutionContext& ctx,
                                : 1;
   std::vector<float> output_shift_scale(count);
 
-  scale_tuple = std::make_shared<std::tuple<float, std::vector<float>>>(
+  scale_tuple = std::make_shared<std::tuple<float, std::vector<float>, float>>(
       std::make_tuple(static_cast<float>(sum_scale), std::vector<float>(count),
                       activation_scale));
   for (int i = 0; i < count; i++) {
