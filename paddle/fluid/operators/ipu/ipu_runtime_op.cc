@@ -38,8 +38,6 @@ class IpuRuntimeOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const {
-    PADDLE_ENFORCE_EQ(platform::is_ipu_place(place), true,
-                      platform::errors::InvalidArgument("must be IPUPlace"));
     auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
     auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);
