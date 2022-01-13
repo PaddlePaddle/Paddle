@@ -895,17 +895,22 @@ def file_label_reader(file_root, batch_size, name=None):
     samples = [s[0] for s in data_folder.samples]
     targets = [s[1] for s in data_folder.samples]
 
+    import time
+    unq_reader_id = int(round(time.time()* 1000*1000))
+
+
     if in_dygraph_mode():
         return _C_ops.file_label_reader('root_dir', file_root, 'batch_size',
                                         batch_size, 'files', samples, 'labels',
-                                        targets)
+                                        targets, 'reader_id', unq_reader_id)
 
     inputs = dict()
     attrs = {
         'root_dir': file_root,
         'batch_size': batch_size,
         'files': samples,
-        'labels': targets
+        'labels': targets,
+        'reader_id': unq_reader_id,
     }
 
     helper = LayerHelper("file_label_reader", **locals())

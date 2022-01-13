@@ -26,7 +26,7 @@
 
 namespace paddle {
 namespace operators {
-
+namespace data {
 using LoDTensorArray = framework::LoDTensorArray;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
@@ -101,11 +101,11 @@ class FileDataReader {
     std::vector<int> labels = ctx.Attr<std::vector<int>>("labels");
     rank_ = ctx.Attr<int>("rank");
     world_size_ = ctx.Attr<int>("world_size");
-    // std::cout << "files and labels size: " << files.size() << " "
-    //           << labels.size() << std::endl;
+ 
     batch_size_ = ctx.Attr<int>("batch_size");
     current_epoch_ = 0;
     current_iter_ = 0;
+    // iters_per_epoch_ = labels.size() / (batch_size_ * world_size_);
     auto total_batch_size = batch_size_ * world_size_;
     iters_per_epoch_ = (labels.size() + total_batch_size) / total_batch_size;
     is_closed_ = false;
@@ -160,18 +160,7 @@ class FileDataReader {
     }
   }
 
-  // LoDTensorArray Read() {
-  //   LoDTensorArray ret;
-  //   ret.reserve(batch_size_);
-  //   int start_index = GetStartIndex();
-  //   for (int32_t i = start_index; i < start_index + batch_size_; ++i) {
-  //     // FIXME
-  //     i %= image_label_pairs_.size();
-  //     framework::LoDTensor tmp = ReadSample(image_label_pairs_[i].first);
-  //     ret.push_back(std::move(tmp));
-  //   }
-  //   return ret;
-  // }
+
   std::pair<LoDTensorArray, std::vector<int>> Read() {
     LoDTensorArray ret;
     std::vector<int> label;
@@ -196,16 +185,8 @@ class FileDataReader {
     return std::make_pair(ret, label);
   }
 
-  // LoDTensorArray Next() {
-  //   LoDTensorArray batch_data;
-  //   batch_buffer_.Pull(&batch_data);
-  //   return batch_data;
-  // }
-  //
+  
   void LoadBatch() {
-    // std::cout << "start LoadBatch 0.01" << std::endl;
-    // LoDTensorArray batch_data = std::move(Read());
-    // queue_->Push(batch_data);
     
     auto batch_data = std::move(Read());
     queue_->Push(batch_data.first);
@@ -239,20 +220,61 @@ class FileDataReader {
   LoDTensorBlockingQueue* label_queue_;
 };
 
-class FileDataReaderWrapper {
+
+class ReaderManager {
+  // PipelineManager is a signleton manager for Pipeline, we
+  // create single Pipeline for a program id
+ private:
+  DISABLE_COPY_AND_ASSIGN(ReaderManager);
+
+  static ReaderManager *rm_instance_ptr_;
+  static std::mutex m_;
+
+  std::map<int64_t, std::unique_ptr<FileDataReader>> prog_id_to_reader_;
+
  public:
-  void SetUp(const framework::ExecutionContext& ctx,
-             LoDTensorBlockingQueue* queue, LoDTensorBlockingQueue* label_queue) {
-    reader.reset(new FileDataReader(ctx, queue, label_queue));
+  static ReaderManager *Instance() {
+    if (rm_instance_ptr_ == nullptr) {
+      std::lock_guard<std::mutex> lk(m_);
+      if (rm_instance_ptr_ == nullptr) {
+        rm_instance_ptr_ = new ReaderManager;
+      }
+    }
+    return rm_instance_ptr_;
   }
 
-  std::shared_ptr<FileDataReader> reader = nullptr;
+  // FileDataReader* GetReader(
+  void GetReader(
+      int64_t program_id, const framework::ExecutionContext& ctx,
+             LoDTensorBlockingQueue* queue, LoDTensorBlockingQueue* label_queue) {
+    auto iter = prog_id_to_reader_.find(program_id);
+    if (iter == prog_id_to_reader_.end()) {
+      prog_id_to_reader_[program_id] = std::unique_ptr<FileDataReader>(new FileDataReader(ctx, queue, label_queue));
+      // return prog_id_to_reader_[program_id].get();
+    } else {
+      // return iter->second.get();
+    }
+  }
 
   void ShutDown() {
-    if (reader.get()) reader->ShutDown();
+    auto iter = prog_id_to_reader_.begin();
+    while (iter != prog_id_to_reader_.end()){
+      if(iter->second.get()){
+        iter->second->ShutDown();
+      }
+      iter++;
+    }
+    prog_id_to_reader_.clear();
+  }
+
+  ReaderManager() { VLOG(1) << "ReaderManager init"; }
+
+  ~ReaderManager() {
+    VLOG(1) << "~ReaderManager";
+    ShutDown();
   }
 };
 
-
+}  // namespace data
 }  // namespace operators
 }  // namespace paddle

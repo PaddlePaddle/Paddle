@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/file_label_reader_op.h"
+#include "paddle/fluid/operators/data/file_label_reader_op.h"
 
 namespace paddle {
 namespace operators {
+namespace data {
+// FileDataReaderWrapper reader_wrapper;
 
-FileDataReaderWrapper reader_wrapper;
+// initialization static variables out of ReaderManager
+ReaderManager *ReaderManager::rm_instance_ptr_ = nullptr;
+std::mutex ReaderManager::m_;
 
 template <typename T>
 class CPUFileLabelKernel : public framework::OpKernel<T> {
@@ -76,10 +80,12 @@ class FileLabelReaderOp : public framework::OperatorBase {
       out_label_queue = label_holder->GetQueue();
     }
 
-    if (reader_wrapper.reader == nullptr) {
-      // create reader
-      reader_wrapper.SetUp(ctx, out_queue.get(), out_label_queue.get());
-    }
+    // if (reader_wrapper.reader == nullptr) {
+    //   // create reader
+    //   reader_wrapper.SetUp(ctx, out_queue.get(), out_label_queue.get());
+    // }
+    ReaderManager::Instance()->GetReader(
+        0, ctx, out_queue.get(), out_label_queue.get());
     // LoDTensorArray samples = reader_wrapper.reader->Next();
     // framework::LoDTensorArray out_array;
     // out_array.resize(samples.size());
@@ -114,6 +120,10 @@ This operator read a file.
     AddAttr<int>("batch_size", "Path of the file to be readed.").SetDefault(1);
     AddAttr<int>("rank", "Path of the file to be readed.").SetDefault(0);
     AddAttr<int>("world_size", "Path of the file to be readed.").SetDefault(1);
+    AddAttr<int64_t>("reader_id",
+                     "(int64_t)"
+                     "The unique hash id used as cache key for "
+                     "ExecutorInfoCache").SetDefault(0);;
     AddAttr<std::vector<std::string>>("files", "Path of the file to be readed.")
         .SetDefault({});
     AddAttr<std::vector<int>>("labels", "Path of the file to be readed.")
@@ -137,10 +147,11 @@ class FileLabelReaderInferVarType : public framework::VarTypeInference {
   }
 };
 
+}  // namespace data
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
+namespace ops = paddle::operators::data;
 
 REGISTER_OPERATOR(
     file_label_reader, ops::FileLabelReaderOp, ops::FileLabelReaderOpMaker,
