@@ -46,8 +46,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
-                                             with_dynamic_shape);
+    bool is_ok = tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                                   with_dynamic_shape);
+    if (!is_ok)
+      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    return is_ok;
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -81,15 +84,6 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
-  for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && node->Op() && node->Op()->Type() != "tensorrt_engine" &&
-        node->Op()->Type() != "feed" && node->Op()->Type() != "fetch") {
-      std::string output_names = "";
-      for (auto *x : node->outputs) output_names += x->Name() + " ";
-      LOG(WARNING) << node->Op()->Type().c_str() << "(" << output_names << ")"
-                   << " op is not in TRT Engine";
-    }
-  }
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,

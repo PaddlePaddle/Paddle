@@ -57,9 +57,11 @@ struct SimpleOpTypeSetTeller : public Teller {
 // #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
+    teller_set
+        .insert("flatten_contiguous_range", )
 #endif
 #if CUDA_VERSION >= 10020
-    teller_set.insert("reshape");
+            teller_set.insert("reshape");
     teller_set.insert("reshape2");
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
@@ -160,7 +162,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "transpose",
                                              "flatten2",
                                              "flatten",
-                                             "flatten_contiguous_range",
                                              "gather",
                                              "gather_nd",
                                              "yolo_box",
