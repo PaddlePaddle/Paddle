@@ -106,6 +106,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       ++index;
     }
   }
+  dst->SetMember(indices, values, src_dims, true);
 }
 
 template <typename T, typename Context>

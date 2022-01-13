@@ -71,7 +71,7 @@ __global__ void kernel_get_non_zero_indexs(const T* dense_data,
                                            int64_t* indexs) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   __shared__ int counter, block_start;
-  __shared__ int64_t cache[1024];
+  extern __shared__ int64_t cache[];
   if (threadIdx.x == 0) {
     counter = 0;
     block_start = 0;
@@ -194,7 +194,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       cudaMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
   kernel_get_non_zero_indexs<<<config.block_per_grid,
                                config.thread_per_block,
-                               0,
+                               config.thread_per_block.x * sizeof(int64_t),
                                dev_ctx.stream()>>>(
       x_data, rows, cols, nums_ptr, indices_data);
 
