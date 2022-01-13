@@ -61,422 +61,424 @@ static dnnl::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
   return dst_dt;
 }
 
+template <typename T>
+struct remap {
+  // Default: Output type is the same as input type.
+  typedef T type;
+};
+
+template <>
+struct remap<uint8_t> {
+  typedef int8_t type;
+};
+
+template <typename T>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  return std::make_shared<std::tuple<float, std::vector<float>>>(
+      std::make_tuple(0.0f, std::vector<float>(1, 1.0f)));
+}
+
+template <>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<int8_t>(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  // Get scales int8 bias key
+  const std::string key_bs = key + "@bs";
+
+  // Scales for int8 bias are to be cached to avoid
+  // computing them each iteration
+  auto bias_scale_tuple =
+      std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
+          dev_ctx.GetBlob(key_bs));
+  if (bias_scale_tuple) return bias_scale_tuple;
+
+  const auto* filter = ctx.Input<Tensor>("Filter");
+  const auto& weights_tz = framework::vectorize(filter->dims());
+  const int groups = std::max(ctx.Attr<int>("groups"), 1);
+
+  const auto& scale_weights_data =
+      ctx.Attr<std::vector<float>>("Scale_weights");
+  const auto& scale_in_data = ctx.Attr<float>("Scale_in");
+
+  bool is_multi_channel = scale_weights_data.size() > 1;
+  int mask_reorder = is_multi_channel ? 1 << 0 : 1;
+  const int count =
+      is_multi_channel
+          ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
+          : 1;
+
+  bias_scale_tuple =
+      std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
+          static_cast<float>(mask_reorder), std::vector<float>(count)));
+  for (int i = 0; i < count; i++) {
+    std::get<1>(*bias_scale_tuple)[i] = scale_in_data * scale_weights_data[i];
+  }
+
+  dev_ctx.SetBlob(key_bs, bias_scale_tuple);
+
+  return bias_scale_tuple;
+}
+
+template <typename T>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  return std::make_shared<std::tuple<float, std::vector<float>>>(
+      std::make_tuple(1.0f, std::vector<float>()));
+}
+
+template <>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  // Get scales int8 bias key
+  const std::string key_s = key + "@s";
+
+  // Scales for int8 bias are to be cached to avoid
+  // computing them each iteration
+  auto scale_tuple =
+      std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
+          dev_ctx.GetBlob(key_s));
+  if (scale_tuple) return scale_tuple;
+
+  const auto* filter = ctx.Input<Tensor>("Filter");
+  const auto& weights_tz = framework::vectorize(filter->dims());
+
+  const bool& force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+  const bool& fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+  const int groups = std::max(ctx.Attr<int>("groups"), 1);
+
+  const auto& scale_in_data = ctx.Attr<float>("Scale_in");
+  const auto& scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
+  auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+  bool is_multi_channel = scale_weights_data.size() > 1;
+  auto scale_out_data = force_fp32_output ? 1.0f : ctx.Attr<float>("Scale_out");
+  float sum_scale =
+      fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+  int count = is_multi_channel ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0]
+                                             : (weights_tz)[0])
+                               : 1;
+  std::vector<float> output_shift_scale(count);
+
+  scale_tuple =
+      std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
+          static_cast<float>(sum_scale), std::vector<float>(count)));
+  for (int i = 0; i < count; i++) {
+    if (scale_weights_data[i] == 0.0)
+      // weights data will contain 0 in some models, then weights
+      // scale couldn't be calculated
+      std::get<1>(*scale_tuple)[i] = scale_out_data;
+    else
+      std::get<1>(*scale_tuple)[i] =
+          static_cast<float>(static_cast<double>(scale_out_data) /
+                             (static_cast<double>(scale_in_data) *
+                              static_cast<double>(scale_weights_data[i])));
+  }
+
+  dev_ctx.SetBlob(key_s, scale_tuple);
+
+  return scale_tuple;
+}
+
 template <typename T, typename K, typename T_out>
 class ConvMKLDNNHandlerT
-    : public platform::MKLDNNHandlerT<T, dnnl::convolution_forward,
-                                      dnnl::convolution_backward_data,
-                                      dnnl::convolution_backward_weights> {
+    : public platform::MKLDNNHandlerNoCachingT<
+          T, dnnl::convolution_forward, dnnl::convolution_backward_data,
+          dnnl::convolution_backward_weights> {
  public:
   ConvMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                      const platform::MKLDNNDeviceContext& dev_ctx,
-                     const dnnl::engine mkldnn_engine,
-                     platform::Place cpu_place, const Tensor* input,
+                     const dnnl::engine mkldnn_engine, const Tensor* input,
                      const Tensor* filter, const Tensor* bias, Tensor* output,
-                     const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, dnnl::convolution_forward,
-                                 dnnl::convolution_backward_data,
-                                 dnnl::convolution_backward_weights>(
-            dev_ctx, mkldnn_engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
-                                unique_name)) {
-    if (!this->isCached()) {
+                     const std::string& key)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::convolution_forward,
+                                          dnnl::convolution_backward_data,
+                                          dnnl::convolution_backward_weights>(
+            mkldnn_engine, ctx.GetPlace()),
+        is_test_(ctx.Attr<bool>("is_test")) {
+    PADDLE_ENFORCE_EQ(input->layout(), framework::DataLayout::kMKLDNN,
+                      platform::errors::InvalidArgument(
+                          "The input tensor's layout should be %d, but got %d.",
+                          framework::DataLayout::kMKLDNN, input->layout()));
+    PADDLE_ENFORCE_NE(
+        input->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
+    PADDLE_ENFORCE_EQ(
+        filter->layout(), framework::DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The Filter tensor's layout should be %d, but got %d.",
+            framework::DataLayout::kMKLDNN, filter->layout()));
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Filter tensor"));
+
+    PADDLE_ENFORCE_GE(input->dims().size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+                          "NCDHW, but got dimension = %d .",
+                          input->dims().size()));
+    PADDLE_ENFORCE_LE(input->dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+                          "NCDHW, but got dimension = %d .",
+                          input->dims().size()));
+
+    PADDLE_ENFORCE_GE(filter->dims().size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
+                          "OIDHW, but got dimension = %d .",
+                          filter->dims().size()));
+    PADDLE_ENFORCE_LE(filter->dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
+                          "OIDHW, but got dimension = %d .",
+                          filter->dims().size()));
+
+    if (bias) {
       PADDLE_ENFORCE_EQ(
-          input->layout(), framework::DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument(
-              "The input tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN, input->layout()));
-      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor"));
+          bias->layout(), framework::DataLayout::kMKLDNN,
+          paddle::platform::errors::InvalidArgument(
+              "The Bias tensor's layout should be %d, but got %d.",
+              framework::DataLayout::kMKLDNN, bias->layout()));
+      PADDLE_ENFORCE_NE(bias->format(), dnnl::memory::format_tag::undef,
+                        paddle::platform::errors::InvalidArgument(
+                            "Got wrong format for Bias tensor."));
 
       PADDLE_ENFORCE_EQ(
-          filter->layout(), framework::DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument(
-              "The Filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN, filter->layout()));
-      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Filter tensor"));
+          bias->dims().size(), 1,
+          platform::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                            "i.e. X, but got dimension = %d .",
+                                            bias->dims().size()));
+    }
 
-      PADDLE_ENFORCE_GE(
-          input->dims().size(), 4,
-          platform::errors::InvalidArgument(
-              "Input must be with 4 or 5 dimensions, i.e. NCHW or "
-              "NCDHW, but got dimension = %d .",
-              input->dims().size()));
-      PADDLE_ENFORCE_LE(
-          input->dims().size(), 5,
-          platform::errors::InvalidArgument(
-              "Input must be with 4 or 5 dimensions, i.e. NCHW or "
-              "NCDHW, but got dimension = %d .",
-              input->dims().size()));
+    const std::string fuse_activation =
+        ctx.Attr<std::string>("fuse_activation");
+    const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    const float fuse_beta = ctx.Attr<float>("fuse_beta");
+    const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    const int groups = ctx.Attr<int>("groups");
+    const std::string padding_algorithm =
+        ctx.Attr<std::string>("padding_algorithm");
 
-      PADDLE_ENFORCE_GE(
-          filter->dims().size(), 4,
-          platform::errors::InvalidArgument(
-              "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
-              "OIDHW, but got dimension = %d .",
-              filter->dims().size()));
-      PADDLE_ENFORCE_LE(
-          filter->dims().size(), 5,
-          platform::errors::InvalidArgument(
-              "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
-              "OIDHW, but got dimension = %d .",
-              filter->dims().size()));
+    const auto input_dims = input->dims();
+    const auto data_dims =
+        framework::slice_ddim(input_dims, 2, input_dims.size());
+    const auto filter_dims = filter->dims();
+    const auto filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
 
-      if (bias) {
-        PADDLE_ENFORCE_EQ(
-            bias->layout(), framework::DataLayout::kMKLDNN,
-            platform::errors::InvalidArgument(
-                "The Bias tensor's layout should be %d, but got %d.",
-                framework::DataLayout::kMKLDNN, bias->layout()));
-        PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
-                          platform::errors::InvalidArgument(
-                              "Got wrong format for Bias tensor."));
+    const auto ksize = framework::vectorize(filter_data_dims);
 
-        PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
-                          platform::errors::InvalidArgument(
-                              "Bias must only have 1 dimension, "
-                              "i.e. X, but got dimension = %d .",
-                              bias->dims().size()));
-      }
+    auto strides_temp = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-      const std::string fuse_activation =
-          ctx.Attr<std::string>("fuse_activation");
-      const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-      const float fuse_beta = ctx.Attr<float>("fuse_beta");
-      const bool fuse_residual_conn =
-          ctx.Attr<bool>("fuse_residual_connection");
-      const int groups = ctx.Attr<int>("groups");
-      const std::string padding_algorithm =
-          ctx.Attr<std::string>("padding_algorithm");
+    auto paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-      const auto input_dims = input->dims();
-      const auto data_dims =
-          framework::slice_ddim(input_dims, 2, input_dims.size());
-      const auto filter_dims = filter->dims();
-      const auto filter_data_dims =
-          framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    auto dilations_temp = ctx.Attr<std::vector<int>>("dilations");
+    std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
 
-      const auto ksize = framework::vectorize(filter_data_dims);
-      const bool is_test = ctx.Attr<bool>("is_test");
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             data_dims, strides, ksize);
 
-      auto strides_temp = ctx.Attr<std::vector<int>>("strides");
-      std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                   [](int64_t i) { return i - 1; });
 
-      auto paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-      std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+    const auto src_tz = framework::vectorize(input->dims());
 
-      auto dilations_temp = ctx.Attr<std::vector<int>>("dilations");
-      std::vector<int64_t> dilations(begin(dilations_temp),
-                                     end(dilations_temp));
+    auto weights_tz = framework::vectorize(filter->dims());
+    platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-      UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                               data_dims, strides, ksize);
+    const auto dst_tz = framework::vectorize(output->dims());
 
-      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
-                     [](int64_t i) { return i - 1; });
+    const dnnl::memory::dims stride_dims = strides;
+    const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+    const dnnl::memory::dims dilations_dims = dilations;
 
-      const auto src_tz = framework::vectorize(input->dims());
+    /* create memory descriptor for convolution without specified format
+     * ('any') which lets a primitive (convolution in this case) choose
+     * the memory format preferred for best performance
+     */
+    auto data_type = dnnl::memory::data_type::f32;
+    if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
+        std::is_same<T_out, platform::bfloat16>::value)
+      data_type = dnnl::memory::data_type::bf16;
 
-      auto weights_tz = framework::vectorize(filter->dims());
-      platform::GetGroupConvWeightsTz(weights_tz, groups);
+    dnnl::memory::desc src_md, weights_md;
+    if (platform::is_int8<T>()) {
+      src_md = platform::MKLDNNMemDesc(
+          src_tz, framework::ToMKLDNNDataType(input->type()),
+          MKLDNNMemoryFormat::any);
+      weights_md = platform::MKLDNNMemDesc(
+          weights_tz, dnnl::memory::data_type::s8, MKLDNNMemoryFormat::any);
+    } else {
+      src_md =
+          platform::MKLDNNMemDesc(src_tz, data_type, MKLDNNMemoryFormat::any);
+      weights_md = platform::MKLDNNMemDesc(weights_tz, data_type,
+                                           MKLDNNMemoryFormat::any);
+    }
 
-      const auto dst_tz = framework::vectorize(output->dims());
+    const auto dst_md = platform::MKLDNNMemDesc(
+        dst_tz, platform::MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
+    const auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
+                                        : dnnl::prop_kind::forward_training;
 
-      const dnnl::memory::dims stride_dims = strides;
-      const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-      const dnnl::memory::dims dilations_dims = dilations;
+    auto p_tupple = get_scales<typename remap<T>::type>(ctx, dev_ctx, key);
+    const dnnl::primitive_attr conv_attr = CreatePostOps(
+        fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
+        std::get<1>(*p_tupple), std::get<0>(*p_tupple));
 
-      /* create memory descriptor for convolution without specified format
-       * ('any') which lets a primitive (convolution in this case) choose
-       * the memory format preferred for best performance
-       */
-      auto chosen_memory_format = MKLDNNMemoryFormat::any;
-      auto data_type = dnnl::memory::data_type::f32;
-      if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
-          std::is_same<T_out, platform::bfloat16>::value)
-        data_type = dnnl::memory::data_type::bf16;
-
-      dnnl::memory::desc src_md, weights_md;
+    if (bias) {
+      auto bias_tz = framework::vectorize(bias->dims());
+      dnnl::memory::desc bias_md;
       if (platform::is_int8<T>()) {
-        src_md = platform::MKLDNNMemDesc(
-            src_tz, framework::ToMKLDNNDataType(input->type()),
-            chosen_memory_format);
-        weights_md = platform::MKLDNNMemDesc(
-            weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
+        bias_md = platform::MKLDNNMemDesc(bias_tz, dnnl::memory::data_type::s32,
+                                          MKLDNNMemoryFormat::x);
       } else {
-        src_md =
-            platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
-        weights_md = platform::MKLDNNMemDesc(weights_tz, data_type,
-                                             MKLDNNMemoryFormat::any);
+        bias_md =
+            platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
       }
 
-      const auto dst_md = platform::MKLDNNMemDesc(
-          dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
-      const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
-                                         : dnnl::prop_kind::forward_training;
-
-      float sum_scale = 1.0f;
-      float activation_scale = 1.0f;
-      std::vector<float> output_shift_scale;
-      if (platform::is_int8<T>())
-        std::tie(sum_scale, output_shift_scale, activation_scale) =
-            get_int8_scales(ctx);
-
-      const dnnl::primitive_attr conv_attr = CreatePostOps(
-          fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
-          output_shift_scale, sum_scale, activation_scale);  // for INT8 only!
-
-      if (bias) {
-        auto bias_tz = framework::vectorize(bias->dims());
-        dnnl::memory::desc bias_md;
-        if (platform::is_int8<T>()) {
-          bias_md = platform::MKLDNNMemDesc(
-              bias_tz, dnnl::memory::data_type::s32, MKLDNNMemoryFormat::x);
-        } else {
-          bias_md = platform::MKLDNNMemDesc(bias_tz, data_type,
-                                            MKLDNNMemoryFormat::x);
-        }
-
-        this->AcquireForwardPrimitiveDescriptor(
-            conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, bias_md, dst_md, stride_dims, dilations_dims,
-            mkldnn_paddings[0], mkldnn_paddings[1]);
-      } else {
-        this->AcquireForwardPrimitiveDescriptor(
-            conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, dst_md, stride_dims, dilations_dims,
-            mkldnn_paddings[0], mkldnn_paddings[1]);
-      }
+      this->AcquireForwardPrimitiveDescriptor(
+          conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct, src_md,
+          weights_md, bias_md, dst_md, stride_dims, dilations_dims,
+          mkldnn_paddings[0], mkldnn_paddings[1]);
+    } else {
+      this->AcquireForwardPrimitiveDescriptor(
+          conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct, src_md,
+          weights_md, dst_md, stride_dims, dilations_dims, mkldnn_paddings[0],
+          mkldnn_paddings[1]);
     }
   }
 
   ConvMKLDNNHandlerT(const framework::ExecutionContext& ctx,
-                     const platform::MKLDNNDeviceContext& dev_ctx,
-                     platform::Place cpu_place, const Tensor* in,
+                     const dnnl::engine mkldnn_engine, const Tensor* in,
                      const Tensor* filter, const Tensor* bias,
                      const Tensor* out_grad, Tensor* filter_grad,
-                     Tensor* in_x_grad, const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, dnnl::convolution_forward,
-                                 dnnl::convolution_backward_data,
-                                 dnnl::convolution_backward_weights>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(in->dims()),
-                                unique_name)) {
-    if (!this->isBwdCached()) {
-      PADDLE_ENFORCE_EQ(
-          in->layout(), framework::DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument(
-              "The input tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN, in->layout()));
-      PADDLE_ENFORCE_NE(in->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Input tensor."));
+                     Tensor* in_x_grad)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::convolution_forward,
+                                          dnnl::convolution_backward_data,
+                                          dnnl::convolution_backward_weights>(
+            mkldnn_engine, ctx.GetPlace()),
+        is_test_(false) {
+    PADDLE_ENFORCE_EQ(in->layout(), framework::DataLayout::kMKLDNN,
+                      platform::errors::InvalidArgument(
+                          "The input tensor's layout should be %d, but got %d.",
+                          framework::DataLayout::kMKLDNN, in->layout()));
+    PADDLE_ENFORCE_NE(in->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Got wrong format for Input tensor."));
 
-      PADDLE_ENFORCE_EQ(
-          filter->layout(), framework::DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument(
-              "The filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN, filter->layout()));
-      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Filter tensor."));
+    PADDLE_ENFORCE_EQ(
+        filter->layout(), framework::DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The filter tensor's layout should be %d, but got %d.",
+            framework::DataLayout::kMKLDNN, filter->layout()));
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Got wrong format for Filter tensor."));
 
-      PADDLE_ENFORCE_EQ(
-          out_grad->layout(), framework::DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument(
-              "The output_grad tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN, out_grad->layout()));
-      PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for output_grad tensor"));
+    PADDLE_ENFORCE_EQ(
+        out_grad->layout(), framework::DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The output_grad tensor's layout should be %d, but got %d.",
+            framework::DataLayout::kMKLDNN, out_grad->layout()));
+    PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for output_grad tensor"));
 
-      PADDLE_ENFORCE_EQ(
-          ctx.Attr<bool>("is_test"), false,
-          platform::errors::InvalidArgument(
-              "is_test attribute should be set to False in training phase."));
+    PADDLE_ENFORCE_EQ(
+        is_test_, false,
+        platform::errors::InvalidArgument(
+            "is_test attribute should be set to False in training phase."));
 
-      std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
-      std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+    std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-      std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-      std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+    std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-      std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
-      std::vector<int64_t> dilations(begin(dilations_temp),
-                                     end(dilations_temp));
+    std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
+    std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
 
-      auto input_dims = in->dims();
-      auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
-      auto filter_dims = filter->dims();
-      auto filter_data_dims =
-          framework::slice_ddim(filter_dims, 2, filter_dims.size());
-      auto ksize = framework::vectorize(filter_data_dims);
+    auto input_dims = in->dims();
+    auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+    auto filter_dims = filter->dims();
+    auto filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    auto ksize = framework::vectorize(filter_data_dims);
 
-      std::string padding_algorithm =
-          ctx.Attr<std::string>("padding_algorithm");
-      UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                               data_dims, strides, ksize);
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             data_dims, strides, ksize);
 
-      auto src_tz = framework::vectorize(in->dims());
-      auto weights_tz = framework::vectorize(filter->dims());
+    auto src_tz = framework::vectorize(in->dims());
+    auto weights_tz = framework::vectorize(filter->dims());
 
-      int groups = ctx.Attr<int>("groups");
-      int g = std::max(groups, 1);
-      platform::GetGroupConvWeightsTz(weights_tz, g);
-      auto dst_tz = framework::vectorize(out_grad->dims());
+    int groups = ctx.Attr<int>("groups");
+    int g = std::max(groups, 1);
+    platform::GetGroupConvWeightsTz(weights_tz, g);
+    auto dst_tz = framework::vectorize(out_grad->dims());
 
-      /* create memory descriptor for conv backward without specified format
-       * ('any') which lets a primitive (conv backward in this case) choose
-       * the memory format preferred for best performance
-       */
-      const auto chosen_memory_format = MKLDNNMemoryFormat::any;
-      const auto weights_format = MKLDNNMemoryFormat::any;
+    /* create memory descriptor for conv backward without specified format
+     * ('any') which lets a primitive (conv backward in this case) choose
+     * the memory format preferred for best performance
+     */
+    auto src_md = platform::MKLDNNMemDesc(
+        src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+    const auto dst_md = platform::MKLDNNMemDesc(
+        dst_tz, platform::MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
+    auto diff_src_md = platform::MKLDNNMemDesc(
+        src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+    auto weights_md = platform::MKLDNNMemDesc(
+        weights_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+    auto diff_weights_md = platform::MKLDNNMemDesc(
+        weights_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+    auto diff_dst_md = platform::MKLDNNMemDesc(
+        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
-      auto src_md = platform::MKLDNNMemDesc(
-          src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      const auto dst_md = platform::MKLDNNMemDesc(
-          dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
-      auto diff_src_md = platform::MKLDNNMemDesc(
-          src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      auto weights_md = platform::MKLDNNMemDesc(
-          weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-      auto diff_weights_md = platform::MKLDNNMemDesc(
-          weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-      auto diff_dst_md = platform::MKLDNNMemDesc(
-          dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+    auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                   [](int64_t i) { return i - 1; });
+    const dnnl::memory::dims dilations_dims = dilations;
 
-      auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
-                     [](int64_t i) { return i - 1; });
-      const dnnl::memory::dims dilations_dims = dilations;
-
-      const dnnl::memory::dims stride_dims = strides;
-      // Recreating FWD PD. For training there are no post ops in convolution
-      dnnl::primitive_attr conv_attr;
-      if (bias) {
-        auto bias_tz = framework::vectorize(bias->dims());
-        dnnl::memory::desc bias_md;
-        if (platform::is_int8<T>()) {
-          bias_md = platform::MKLDNNMemDesc(
-              bias_tz, dnnl::memory::data_type::s32, MKLDNNMemoryFormat::x);
-        } else {
-          bias_md = platform::MKLDNNMemDesc(
-              bias_tz, dnnl::memory::data_type::f32, MKLDNNMemoryFormat::x);
-        }
-
-        this->AcquireForwardPrimitiveDescriptor(
-            conv_attr, dnnl::prop_kind::forward_training,
-            dnnl::algorithm::convolution_direct, src_md, weights_md, bias_md,
-            dst_md, stride_dims, dilations_dims, mkldnn_paddings[0],
-            mkldnn_paddings[1]);
+    const dnnl::memory::dims stride_dims = strides;
+    // Recreating FWD PD. For training there are no post ops in convolution
+    dnnl::primitive_attr conv_attr;
+    if (bias) {
+      auto bias_tz = framework::vectorize(bias->dims());
+      dnnl::memory::desc bias_md;
+      if (platform::is_int8<T>()) {
+        bias_md = platform::MKLDNNMemDesc(bias_tz, dnnl::memory::data_type::s32,
+                                          MKLDNNMemoryFormat::x);
       } else {
-        this->AcquireForwardPrimitiveDescriptor(
-            conv_attr, dnnl::prop_kind::forward_training,
-            dnnl::algorithm::convolution_direct, src_md, weights_md, dst_md,
-            stride_dims, dilations_dims, mkldnn_paddings[0],
-            mkldnn_paddings[1]);
+        bias_md = platform::MKLDNNMemDesc(bias_tz, dnnl::memory::data_type::f32,
+                                          MKLDNNMemoryFormat::x);
       }
 
-      this->AcquireBackwardPrimitiveDescriptor(
-          dnnl::algorithm::convolution_direct, diff_src_md, weights_md,
-          diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+      this->AcquireForwardPrimitiveDescriptor(
+          conv_attr, dnnl::prop_kind::forward_training,
+          dnnl::algorithm::convolution_direct, src_md, weights_md, bias_md,
+          dst_md, stride_dims, dilations_dims, mkldnn_paddings[0],
           mkldnn_paddings[1]);
-
-      this->AcquireBackwardWeightsPrimitiveDescriptor(
-          dnnl::algorithm::convolution_direct, src_md, diff_weights_md,
-          diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
-          mkldnn_paddings[1]);
-    }
-  }
-
-  std::shared_ptr<std::tuple<float, std::vector<float>>> get_int8_bias_scales(
-      const framework::ExecutionContext& ctx) {
-    // Get scales int8 bias key
-    const std::string key_bs = this->key_ + "@bs";
-
-    // Scales for int8 bias are to be cached to avoid
-    // computing them each iteration
-    auto bias_scale_tuple =
-        std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
-            this->dev_ctx_.GetBlob(key_bs));
-    if (bias_scale_tuple) return bias_scale_tuple;
-
-    const auto* filter = ctx.Input<Tensor>("Filter");
-    const auto& weights_tz = framework::vectorize(filter->dims());
-    const int groups = std::max(ctx.Attr<int>("groups"), 1);
-
-    const auto& scale_weights_data =
-        ctx.Attr<std::vector<float>>("Scale_weights");
-    const auto& scale_in_data = ctx.Attr<float>("Scale_in");
-
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    int mask_reorder = is_multi_channel ? 1 << 0 : 1;
-
-    int count = 1;
-    if (is_multi_channel) {
-      count *= weights_tz[0];
-      if (groups > 1) {
-        count *= weights_tz[1];
-      }
+    } else {
+      this->AcquireForwardPrimitiveDescriptor(
+          conv_attr, dnnl::prop_kind::forward_training,
+          dnnl::algorithm::convolution_direct, src_md, weights_md, dst_md,
+          stride_dims, dilations_dims, mkldnn_paddings[0], mkldnn_paddings[1]);
     }
 
-    bias_scale_tuple =
-        std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
-            static_cast<float>(mask_reorder), std::vector<float>(count)));
-    for (int i = 0; i < count; i++) {
-      std::get<1>(*bias_scale_tuple)[i] = scale_in_data * scale_weights_data[i];
-    }
+    this->AcquireBackwardPrimitiveDescriptor(
+        dnnl::algorithm::convolution_direct, diff_src_md, weights_md,
+        diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
 
-    this->dev_ctx_.SetBlob(key_bs, bias_scale_tuple);
-
-    return bias_scale_tuple;
-  }
-
-  std::tuple<float, std::vector<float>, float> get_int8_scales(
-      const framework::ExecutionContext& ctx) const {
-    const auto* filter = ctx.Input<Tensor>("Filter");
-    const auto& weights_tz = framework::vectorize(filter->dims());
-
-    const bool& force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-    const bool& fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-    const int groups = std::max(ctx.Attr<int>("groups"), 1);
-
-    const auto& scale_in_data = ctx.Attr<float>("Scale_in");
-    const auto& scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
-    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
-    float activation_scale =
-        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
-                                                  : 1.0f;
-    auto scale_out_data =
-        force_fp32_output ? 1.0f : has_activation
-                                       ? 1.0f
-                                       : ctx.Attr<float>("Scale_out");
-    float sum_scale =
-        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-    int count =
-        is_multi_channel
-            ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
-    std::vector<float> output_shift_scale(count);
-
-#pragma omp parallel for if (count > 50)
-    for (int i = 0; i < count; i++) {
-      if (scale_weights_data[i] == 0.0)
-        // weights data will contain 0 in some models, then weights
-        // scale couldn't be calculated
-        output_shift_scale[i] = scale_out_data;
-      else
-        output_shift_scale[i] =
-            static_cast<float>(static_cast<double>(scale_out_data) /
-                               (static_cast<double>(scale_in_data) *
-                                static_cast<double>(scale_weights_data[i])));
-    }
-
-    return std::make_tuple(sum_scale, output_shift_scale, activation_scale);
+    this->AcquireBackwardWeightsPrimitiveDescriptor(
+        dnnl::algorithm::convolution_direct, src_md, diff_weights_md,
+        diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
   }
 
   dnnl::primitive_attr CreatePostOps(
@@ -535,6 +537,7 @@ class ConvMKLDNNHandlerT
 
   std::shared_ptr<dnnl::memory>
   AcquireWeightsMemoryWithReorderFromDataPrimitive(
+      const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key,
       const framework::Tensor* filter, const int groups, const bool is_conv3d) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = framework::vectorize(filter->dims());
@@ -545,107 +548,159 @@ class ConvMKLDNNHandlerT
         GetWeightsFormat(filter->format(), groups, is_conv3d));
 
     return this->AcquireMemoryWithReorder(
-        user_src_md, this->bwd_pd_->weights_desc(),
-        platform::to_void_cast<K>(filter_data), "@weights_mem_d_p", false);
+        dev_ctx, user_src_md, this->bwd_pd_->weights_desc(),
+        platform::to_void_cast<K>(filter_data), key, "@weights_mem_d_p", false);
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
       const framework::Tensor* input) {
-    return this->AcquireMemoryWithReorderPrimitive(
-        input, "@src_mem_p_user", "@src_mem_p_target", "@src_mem_p",
-        this->fwd_pd_->src_desc());
+    return this->AcquireMemoryWithReorderPrimitive(input,
+                                                   this->fwd_pd_->src_desc());
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorderFromWeightsPrimitive(
       const framework::Tensor* input) {
-    return this->AcquireMemoryWithReorderPrimitive(
-        input, "@src_mem_w_p_user", "@src_mem_w_p_target", "@src_mem_w_p",
-        this->bwd_w_pd_->src_desc());
+    return this->AcquireMemoryWithReorderPrimitive(input,
+                                                   this->bwd_w_pd_->src_desc());
   }
 
   std::shared_ptr<dnnl::memory>
   AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
       const framework::Tensor* out_grad) {
     return this->AcquireMemoryWithReorderPrimitive(
-        out_grad, "@diff_dst_mem_w_p_user", "@diff_dst_mem_w_p_target",
-        "@diff_dst_mem_w_p", this->bwd_w_pd_->diff_dst_desc());
+        out_grad, this->bwd_w_pd_->diff_dst_desc());
   }
 
   std::shared_ptr<dnnl::memory>
   AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
       const framework::Tensor* out_grad) {
     return this->AcquireMemoryWithReorderPrimitive(
-        out_grad, "@diff_dst_mem_p_user", "@diff_dst_mem_p_target",
-        "@diff_dst_mem_p", this->bwd_pd_->diff_dst_desc());
+        out_grad, this->bwd_pd_->diff_dst_desc());
   }
 
   std::shared_ptr<dnnl::memory> AcquireMemoryWithReorderPrimitive(
-      const framework::Tensor* in_mem, const char* key_mem_user,
-      const char* key_mem_target, const char* key_mem,
-      const dnnl::memory::desc& mem_md) {
+      const framework::Tensor* in_mem, const dnnl::memory::desc& mem_md) {
     const T* in_mem_data = in_mem->data<T>();
-    const std::string user_key_suffix{key_mem_user};
-    auto user_mem_p = this->AcquireMemory(user_key_suffix);
 
-    if (!user_mem_p) {
-      auto user_mem_md = platform::MKLDNNMemDesc(
-          framework::vectorize(in_mem->dims()),
-          platform::MKLDNNGetDataType<T>(), in_mem->format());
-      return this->AcquireMemoryWithReorder(
-          user_mem_md, mem_md, platform::to_void_cast<T>(in_mem_data), key_mem);
-    } else {
-      const std::string target_key_suffix{key_mem_target};
-      const auto target_mem_p = this->AcquireMemory(target_key_suffix);
-      user_mem_p->set_data_handle(platform::to_void_cast<T>(in_mem_data));
-      if (user_mem_p != target_mem_p) {
-        this->AcquireReorder(user_mem_p, target_mem_p);
-      }
-      return target_mem_p;
-    }
+    auto user_mem_md = platform::MKLDNNMemDesc(
+        framework::vectorize(in_mem->dims()), platform::MKLDNNGetDataType<T>(),
+        in_mem->format());
+
+    return platform::MKLDNNHandlerNoCachingT<
+        T, dnnl::convolution_forward, dnnl::convolution_backward_data,
+        dnnl::convolution_backward_weights>::
+        AcquireMemoryWithReorder(user_mem_md, mem_md,
+                                 platform::to_void_cast<T>(in_mem_data),
+                                 is_test_);
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
+      const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key,
       const framework::Tensor* filter, const int groups, const bool is_conv3d,
-      const bool is_test, const std::vector<float>& scale_data = {1.0f},
-      int mask = 0) {
-    // This is workaround to make execution faster, delete
-    // if statement after including md inside Tensor
-    auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
-    if (is_test && weights_mem_p) {
-      return weights_mem_p;
-    } else {
-      const K* filter_data = filter->data<K>();
-      auto weights_tz = framework::vectorize(filter->dims());
-      platform::GetGroupConvWeightsTz(weights_tz, groups);
+      const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
+    const K* filter_data = filter->data<K>();
+    auto weights_tz = framework::vectorize(filter->dims());
+    platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-      auto user_src_md = platform::MKLDNNMemDesc(
-          weights_tz, platform::MKLDNNGetDataType<K>(),
-          GetWeightsFormat(filter->format(), groups, is_conv3d));
+    auto user_src_md = platform::MKLDNNMemDesc(
+        weights_tz, platform::MKLDNNGetDataType<K>(),
+        GetWeightsFormat(filter->format(), groups, is_conv3d));
 
-      return this->AcquireMemoryWithReorder(
-          user_src_md, this->fwd_pd_->weights_desc(),
-          platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test, {},
-          scale_data, mask);
+    return this->AcquireMemoryWithReorder(
+        dev_ctx, user_src_md, this->fwd_pd_->weights_desc(),
+        platform::to_void_cast<K>(filter_data), key, "@weights_mem_p", is_test_,
+        {}, scale_data, mask);
+  }
+
+  template <typename F = T>
+  std::shared_ptr<dnnl::memory> AcquireMemoryWithReorder(
+      const platform::MKLDNNDeviceContext& dev_ctx,
+      const dnnl::memory::desc& user_md, const dnnl::memory::desc& target_md,
+      void* ptr, const std::string& key, const std::string& suffix,
+      bool is_persistent = false,
+      std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {},
+      const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
+    const auto target_key = key + suffix + "_target";
+    const auto key_reorder_p = key + suffix + "reorder_p";
+    const auto user_key = key + suffix + "_user";
+
+    auto target_memory_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(target_key));
+
+    if (target_memory_p == nullptr) {
+      if (custom_reorder_func) {
+        auto reordered_data =
+            custom_reorder_func(reinterpret_cast<const F*>(ptr));
+        dev_ctx.SetBlob(key_reorder_p + "-custom_reorder", reordered_data);
+        ptr = reinterpret_cast<void*>(reordered_data.get());
+      }
+      auto user_memory_p =
+          std::make_shared<dnnl::memory>(user_md, this->engine_, ptr);
+      if (user_md != target_md) {
+        target_memory_p =
+            std::make_shared<dnnl::memory>(target_md, this->engine_);
+        dnnl::reorder::primitive_desc reorder_pdesc;
+        if (platform::is_int8<T>()) {
+          dnnl::primitive_attr attr;
+          attr.set_output_scales(mask, scale_data);
+          reorder_pdesc = dnnl::reorder::primitive_desc(*user_memory_p,
+                                                        *target_memory_p, attr);
+        } else {
+          reorder_pdesc =
+              dnnl::reorder::primitive_desc(*user_memory_p, *target_memory_p);
+        }
+        auto reorder_p = std::make_shared<dnnl::reorder>(reorder_pdesc);
+        dev_ctx.SetBlob(key_reorder_p, reorder_p);
+
+        auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
+        reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
+                                     {DNNL_ARG_TO, *target_memory_p}});
+        astream.wait();
+      } else {
+        target_memory_p = user_memory_p;
+      }
+      dev_ctx.SetBlob(user_key, user_memory_p);
+      dev_ctx.SetBlob(target_key, target_memory_p);
+    } else if (!is_persistent) {
+      auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+      auto user_memory_p =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(user_key));
+      user_memory_p->set_data_handle(ptr);
+
+      // TODO(jczaja): Here we detect if reorder is cached it means it is needed
+      // need to change this to get rid of keys
+      auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
+          dev_ctx.GetBlob(key_reorder_p));
+      if (reorder_p != nullptr) {
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
+        reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
+                                     {DNNL_ARG_TO, *target_memory_p}});
+        astream.wait();
+      }
     }
+    return target_memory_p;
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const framework::Tensor* bias, const bool is_test,
-      const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
-    auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
-    if (is_test && bias_mem_p) {
-      return bias_mem_p;
-    } else {
-      const K* bias_data = bias->data<K>();
-      auto user_bias_md = platform::MKLDNNMemDesc(
-          framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
-          MKLDNNMemoryFormat::x);
+      const framework::ExecutionContext& ctx,
+      const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key,
+      const framework::Tensor* bias) {
+    const K* bias_data = bias->data<K>();
+    auto user_bias_md = platform::MKLDNNMemDesc(
+        framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
+        MKLDNNMemoryFormat::x);
 
-      return this->AcquireMemoryWithReorder(
-          user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test, {},
-          scale_data, mask);
-    }
+    // Get Bias scales for int8
+    auto p_tupple = get_bias_scales<typename remap<T>::type>(ctx, dev_ctx, key);
+
+    return this->AcquireMemoryWithReorder(
+        dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),
+        platform::to_void_cast<K>(bias_data), key, "@bias_mem_p", is_test_, {},
+        std::get<1>(*p_tupple), std::get<0>(*p_tupple));
   }
 
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
@@ -654,19 +709,11 @@ class ConvMKLDNNHandlerT
         residual_param->type() == framework::DataTypeTrait<T_out>::DataType()
             ? platform::to_void_cast<T_out>(residual_param->data<T_out>())
             : platform::to_void_cast<T>(residual_param->data<T>());
-    auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");
-    if (residual_mem_p) {
-      residual_mem_p->set_data_handle(residual_data);
-      return residual_mem_p;
-    } else {
-      auto user_residual_md = platform::MKLDNNMemDesc(
-          framework::vectorize(residual_param->dims()),
-          framework::ToMKLDNNDataType(residual_param->type()),
-          residual_param->format());
-
-      return this->AcquireMemoryFromPrimitive(user_residual_md, residual_data,
-                                              "@user_residual_data_mem_p");
-    }
+    auto user_residual_md = platform::MKLDNNMemDesc(
+        framework::vectorize(residual_param->dims()),
+        framework::ToMKLDNNDataType(residual_param->type()),
+        residual_param->format());
+    return this->AcquireMemoryFromPrimitive(user_residual_md, residual_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemoryWithResidual(
@@ -686,6 +733,9 @@ class ConvMKLDNNHandlerT
     }
     return dst_memory_p;
   }
+
+ private:
+  const bool is_test_;
 };
 
 }  // anonymous namespace
@@ -730,7 +780,6 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const bool is_test = ctx.Attr<bool>("is_test");
     const bool is_conv3d = ctx.Attr<std::vector<int>>("strides").size() == 3U;
     const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
 
@@ -740,15 +789,19 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(
-        ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, filter, bias,
-        output, ctx.InputName("Input") + ctx.InputName("Filter"));
+    // Key is needed for params (weights and biases) to have reordered weights
+    // cached
+    std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
+                                          ctx.InputName("Filter"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
+    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
+                                            filter, bias, output, key);
 
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
-
+        dev_ctx, key, filter, ctx.Attr<int>("groups"), is_conv3d);
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (fuse_residual_conn) {
       auto* residual_param = ctx.Input<Tensor>("ResidualData");
@@ -766,7 +819,8 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {DNNL_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, is_test);
+      auto bias_memory_p =
+          handler.AcquireBiasMemoryWithReorder(ctx, dev_ctx, key, bias);
       args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
 
@@ -808,9 +862,14 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(
-        ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, filter, bias,
-        output, ctx.InputName("Input") + ctx.InputName("Filter"));
+    // Key is needed for params (weights and biases) to have reordered weights
+    // cached
+    std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
+                                          ctx.InputName("Filter"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
+    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
+                                            filter, bias, output, key);
 
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
@@ -820,8 +879,9 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     const int& groups = ctx.Attr<int>("groups");
     int mask_reorder =
         is_multi_channel ? ((groups != 1) ? (1 << 1) + (1 << 0) : 1 << 0) : 0;
+
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, groups, false, true, scale_weights_data, mask_reorder);
+        dev_ctx, key, filter, groups, false, scale_weights_data, mask_reorder);
 
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (fuse_residual_conn) {
@@ -850,11 +910,8 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {DNNL_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
-
-      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          bias, true, std::get<1>(*p_scales_tuple),
-          std::get<0>(*p_scales_tuple));
+      auto bias_memory_p =
+          handler.AcquireBiasMemoryWithReorder(ctx, dev_ctx, key, bias);
       args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
 
@@ -894,10 +951,15 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
     if (!input_grad && !filter_grad) return;
 
     // TODO(jczaja): Are all tensors really needed?
-    ConvMKLDNNHandlerT<T, K, T> handler(
-        ctx, dev_ctx, ctx.GetPlace(), input, filter, bias, output_grad,
-        filter_grad, input_grad,
-        ctx.InputName("Input") + ctx.InputName("Filter"));
+    ConvMKLDNNHandlerT<T, K, T> handler(ctx, dev_ctx.GetEngine(), input, filter,
+                                        bias, output_grad, filter_grad,
+                                        input_grad);
+
+    // Key is needed for params (weights and biases) to have reordered weights
+    // cached
+    std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
+                                          ctx.InputName("Filter"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     // create mkldnn memory from input tensors (data/weights)
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
@@ -973,7 +1035,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
     if (input_grad) {
       auto weights_memory_p =
           handler.AcquireWeightsMemoryWithReorderFromDataPrimitive(
-              filter, ctx.Attr<int>("groups"),
+              dev_ctx, key, filter, ctx.Attr<int>("groups"),
               ctx.Attr<std::vector<int>>("strides").size() == 3U);
 
       auto diff_dst_memory_p =
