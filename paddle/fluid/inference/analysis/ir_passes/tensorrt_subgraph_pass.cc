@@ -369,6 +369,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
                   opt_input_shape, disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
 
