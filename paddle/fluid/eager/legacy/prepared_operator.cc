@@ -26,6 +26,7 @@
 #endif
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
+DECLARE_bool(benchmark);
 
 namespace egr {
 namespace legacy {
@@ -330,7 +331,7 @@ static void BuildEagerPtenKernelContext(
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(paddle::platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
               "construct KernelContext.",
               attr_names[i]));
@@ -365,7 +366,7 @@ static void BuildEagerPtenKernelContext(
           kernel_ctx->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
         } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(paddle::platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "
               "KernelContext in dygraph.",
               attr_names[i]));
@@ -412,7 +413,6 @@ static void BuildEagerPtenKernelContext(
   }
 }
 
-template <typename VarType>
 static void WriteBackToOutputs(
     const paddle::framework::KernelSignature& pt_kernel_signature,
     const NameTensorMap& outs, pten::KernelContext* kernel_ctx) {
@@ -447,25 +447,25 @@ static void PreparedOpRunPtImpl(
                                          op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
-  pten::KernelContext kernel_ctx;
+  pten::KernelContext pt_kernel_context;
   BuildEagerPtenKernelContext(pt_kernel_signature, pt_kernel, ins, outs, attrs,
-                              default_attrs, dev_ctx, &kernel_ctx);
+                              default_attrs, dev_ctx, &pt_kernel_context);
 
-  pt_kernel(&kernel_ctx);
+  pt_kernel(&pt_kernel_context);
 
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
 #endif
   }
 
-  WriteBackToOutputs(pt_kernel_signature, outs, pt_kernel_context);
+  WriteBackToOutputs(pt_kernel_signature, outs, &pt_kernel_context);
 
   // TODO(chenweihang): add debug flags later
   if (paddle::framework::IsComplexType(kernel_type.data_type_)) {
-    HandleComplexGradToRealGrad<VarType>(outs);
+    HandleComplexGradToRealGrad(outs);
   }
 }
 
