@@ -44,12 +44,12 @@ struct ScaleFunctor {
 };
 
 template <typename T, typename ContextT>
-void Scale(const ContextT& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
+void ScaleKernel(const ContextT& dev_ctx,
+                 const DenseTensor& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 DenseTensor* out) {
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
@@ -67,7 +67,7 @@ void Scale(const ContextT& dev_ctx,
 PT_REGISTER_KERNEL(scale,
                    GPU,
                    ALL_LAYOUT,
-                   pten::Scale,
+                   pten::ScaleKernel,
                    float,
                    double,
                    paddle::platform::float16,

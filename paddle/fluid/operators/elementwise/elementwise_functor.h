@@ -301,5 +301,32 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
   }
 };
 
+// Ternary compare
+template <typename T>
+struct MaxGradXFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+template <typename T>
+struct MaxGradYFunctor {
+  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+      const InT& x, const InT& y, const InT& dout) {
+    paddle::framework::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
+    // dy = dout * (x <= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
+    return outs;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
