@@ -18,6 +18,7 @@ add_subdirectory(table)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
 add_subdirectory(fleet_executor)
+add_subdirectory(ps)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
