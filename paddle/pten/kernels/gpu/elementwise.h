@@ -854,7 +854,7 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    ptem::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+    pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, func);
   } else {
     axis = axis == -1
