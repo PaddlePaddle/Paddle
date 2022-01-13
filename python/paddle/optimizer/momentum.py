@@ -133,9 +133,11 @@ class Momentum(Optimizer):
                  rescale_grad=1.0,
                  use_multi_tensor=False,
                  name=None):
-        if learning_rate is None:
+        if learning_rate is None and not self._is_attr_for_all_param_groups(
+                parameters, 'learning_rate'):
             raise ValueError("learning_rate is not set")
-        if momentum is None:
+        if momentum is None and not self._is_attr_for_all_param_groups(
+                parameters, 'momentum'):
             raise ValueError("momentum is not set")
 
         predicate = lambda regular: isinstance(regular, (L2DecayRegularizer, float))
@@ -149,6 +151,10 @@ class Momentum(Optimizer):
                     param_group['regularization_coeff'] = reg_coeff
                     py_regular = None if predicate(decay) else decay
                     param_group['weight_decay'] = py_regular
+                    param_group['learning_rate'] = param_group[
+                        'learning_rate'] if 'learning_rate' in param_group else learning_rate
+                    param_group['momentum'] = param_group[
+                        'momentum'] if 'momentum' in param_group else momentum
 
         py_regular = None if predicate(weight_decay) else weight_decay
         super(Momentum, self).__init__(
@@ -189,6 +195,15 @@ class Momentum(Optimizer):
                 'FP32_LODTensor': [],
                 'FP16_LODTensor': []
             }
+
+    def _is_attr_for_all_param_groups(self, params, name):
+        if isinstance(params, list) and isinstance(params[0], dict):
+            if all([name in group for group in params]):
+                return True
+            else:
+                return False
+
+        return True
 
     def _update_regularization(self, weight_decay):
         reg_method = ""
