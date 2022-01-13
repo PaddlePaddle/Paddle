@@ -13,6 +13,9 @@ cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)
 cc_library(tensor_meta SRCS tensor_meta.cc DEPS enforce mixed_vector)
 cc_library(dense_tensor SRCS dense_tensor.cc DEPS convert_utils tensor_meta tensor_base)
 
+cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
+cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
+
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
     add_dependencies(dense_tensor mkldnn)
