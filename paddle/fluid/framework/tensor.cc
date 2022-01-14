@@ -18,14 +18,6 @@ limitations under the License. */
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
-namespace memory {
-namespace allocation {
-class Allocation;
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {

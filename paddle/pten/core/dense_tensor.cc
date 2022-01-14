@@ -70,6 +70,12 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   return *this;
 }
 
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+  meta_ = std::move(other.meta_);
+  storage_.swap(other.storage_);
+  return *this;
+}
+
 int64_t DenseTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;
@@ -432,6 +438,10 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+        paddle::platform::CPUPlace());
+  }
   if (storage_ != nullptr && tensor.storage_ != nullptr) {
     storage_->set_data_shared(tensor.storage_->data_shared());
   }
