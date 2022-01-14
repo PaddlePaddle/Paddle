@@ -52,13 +52,13 @@ void DotKernel(const Context& dev_ctx,
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_CTX_KERNEL(dot,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::DotKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
+PT_REGISTER_KERNEL(dot,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DotKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}

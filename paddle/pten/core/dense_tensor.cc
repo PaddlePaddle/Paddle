@@ -435,6 +435,10 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+        paddle::platform::CPUPlace());
+  }
   if (storage_ != nullptr && tensor.storage_ != nullptr) {
     storage_->set_data_shared(tensor.storage_->data_shared());
   }

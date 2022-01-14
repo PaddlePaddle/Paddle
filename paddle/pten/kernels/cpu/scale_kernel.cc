@@ -51,15 +51,15 @@ void ScaleKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(scale,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::ScaleKernel,
-                       float,
-                       double,
-                       paddle::platform::bfloat16,
-                       uint8_t,
-                       int8_t,
-                       int16_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(scale,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ScaleKernel,
+                   float,
+                   double,
+                   paddle::platform::bfloat16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
