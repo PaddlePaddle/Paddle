@@ -239,6 +239,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           multi_devices_pass =
               AppendPass("reduce_mode_multi_devices_pass").get();
           break;
+        case BuildStrategy::ReduceStrategy::kNoReduce:
+          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
+          break;
         default:
           PADDLE_THROW(
               platform::errors::Unimplemented("Unknown reduce strategy."));
