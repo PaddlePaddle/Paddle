@@ -107,7 +107,7 @@ class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
 template <typename T>
 struct FMaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x >= y) || isnan(y));
+    return dout * static_cast<T>((x >= y) || std::isnan(y));
   }
 };
 
@@ -139,7 +139,7 @@ struct FMaxGradDx<int64_t> {
 template <typename T>
 struct FMaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>(!((x >= y) || isnan(y)));
+    return dout * static_cast<T>(!((x >= y) || std::isnan(y)));
   }
 };
 
