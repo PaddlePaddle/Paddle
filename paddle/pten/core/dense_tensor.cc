@@ -281,6 +281,9 @@ const paddle::platform::Place& DenseTensor::place() const {
       storage_,
       paddle::platform::errors::PreconditionNotMet(
           "Tensor not initialized yet when Tensor::place() is called."));
+  if (storage_->data_shared()) {
+    return storage_->data_shared()->place();
+  }
   return storage_->place();
 }
 
