@@ -136,6 +136,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     }
   }
 #endif
+  // NOTE(zhiqiu): for kernels on given device, for example NPU, the order to
+  // choose is:
+  // pten npu kernel > fluid npu kernel > pten cpu kernel > fluid cpu kernel
 
   // 1. get expected kernel key
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
@@ -143,13 +146,15 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
-  if (FLAGS_run_pten_kernel &&
-      pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
-    auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
+  framework::KernelSignature pt_kernel_signature;
+  pten::KernelKey pt_kernel_key;
+  std::string pt_kernel_name;
+  if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
 
-    auto pt_kernel_name = pt_kernel_signature.name;
-    auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
+    pt_kernel_name = pt_kernel_signature.name;
+    pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
 
@@ -158,7 +163,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
-      // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {
@@ -170,6 +174,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   // 2. check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
+
   PADDLE_ENFORCE_NE(
       kernels_iter, all_op_kernels.end(),
       platform::errors::NotFound(
@@ -178,6 +183,22 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
+
+  if (kernel_iter == kernels.end() &&
+      pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    // NOTE(zhiqiu): fall back for NPU/XPU/MLU only
+    auto pt_cpu_kernel_key = FallBackToCpu(expected_kernel_key, pt_kernel_key);
+    auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
+        pt_kernel_name, pt_cpu_kernel_key);
+    if (pt_cpu_kernel.IsValid()) {
+      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
+              << " | kernel key: " << pt_cpu_kernel_key
+              << " | kernel: " << pt_cpu_kernel;
+      return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
+                        pt_cpu_kernel, pt_kernel_context, dev_ctx);
+    }
+  }
+
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||

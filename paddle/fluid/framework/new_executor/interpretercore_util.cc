@@ -400,8 +400,7 @@ void build_op_func_list(const platform::Place& place,
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       auto run_pten_kernel = false;
-      if (FLAGS_run_pten_kernel &&
-          pten::KernelFactory::Instance().HasCompatiblePtenKernel(
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(
               op_with_kernel->Type())) {
         op_with_kernel->ChoosePtenKernel(exec_ctx);
         run_pten_kernel = op_with_kernel->PtenKernel()->IsValid();
