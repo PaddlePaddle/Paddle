@@ -144,27 +144,27 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                       const T* dst_count, thrust::device_vector<T>* inputs,
                       thrust::device_vector<T>* outputs,
                       thrust::device_vector<T>* output_counts, T k) {
-  const size_t bs = (*inputs).size();
-  (*output_counts).resize(bs);
+  const size_t bs = inputs->size();
+  output_counts->resize(bs);
 
   // 1. Get degree.
-  thrust::transform((*inputs).begin(), (*inputs).end(),
-                    (*output_counts).begin(), DegreeFunctor<T>(dst_count));
+  thrust::transform(inputs->begin(), inputs->end(), output_counts->begin(),
+                    DegreeFunctor<T>(dst_count));
 
   // 2. Apply sample size k.
   if (k >= 0) {
-    thrust::transform((*output_counts).begin(), (*output_counts).end(),
-                      (*output_counts).begin(), MaxByFunctor<T>(k));
+    thrust::transform(output_counts->begin(), output_counts->end(),
+                      output_counts->begin(), MaxByFunctor<T>(k));
   }
 
   // 3. Get the number of total sample neighbors and some necessary datas.
-  T tos = thrust::reduce((*output_counts).begin(), (*output_counts).end());
-  (*outputs).resize(tos);
+  T tos = thrust::reduce(output_counts->begin(), output_counts->end());
+  outputs->resize(tos);
   thrust::device_vector<T> output_ptr;
   thrust::device_vector<T> output_idxs;
   output_ptr.resize(bs);
   output_idxs.resize(tos);
-  thrust::exclusive_scan((*output_counts).begin(), (*output_counts).end(),
+  thrust::exclusive_scan(output_counts->begin(), output_counts->end(),
                          output_ptr.begin(), 0);
 
   // 4. Sample Kernel.
@@ -175,115 +175,121 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
   GraphSampleCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream()>>>(0, k, bs, thrust::raw_pointer_cast((*inputs).data()),
-                       src, dst_count,
-                       thrust::raw_pointer_cast((*outputs).data()),
+          .stream()>>>(0, k, bs, thrust::raw_pointer_cast(inputs->data()), src,
+                       dst_count, thrust::raw_pointer_cast(outputs->data()),
                        thrust::raw_pointer_cast(output_ptr.data()),
                        thrust::raw_pointer_cast(output_idxs.data()));
 
-  // 5. Get inputs = outputs - inputs: 对于采样一层的时候，下面的地方不需要跑，所以后面可以优化，判断一下.
-  thrust::device_vector<T> unique_outputs((*outputs).size());
-  thrust::sort((*inputs).begin(), (*inputs).end());
-  thrust::device_vector<T> outputs_sort((*outputs).size());
-  thrust::copy((*outputs).begin(), (*outputs).end(), outputs_sort.begin());
+  // 5. Get inputs = outputs - inputs:
+  // 对于采样一层的时候，下面的地方不需要跑，所以后面可以优化，判断一下.
+  thrust::device_vector<T> unique_outputs(outputs->size());
+  thrust::sort(inputs->begin(), inputs->end());
+  thrust::device_vector<T> outputs_sort(outputs->size());
+  thrust::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
   thrust::sort(outputs_sort.begin(), outputs_sort.end());
   auto unique_outputs_end = thrust::set_difference(
-      outputs_sort.begin(), outputs_sort.end(), (*inputs).begin(),
-      (*inputs).end(), unique_outputs.begin());
+      outputs_sort.begin(), outputs_sort.end(), inputs->begin(), inputs->end(),
+      unique_outputs.begin());
   unique_outputs_end =
       thrust::unique(unique_outputs.begin(), unique_outputs_end);
-  (*inputs).resize(
-      thrust::distance(unique_outputs.begin(), unique_outputs_end));
-  thrust::copy(unique_outputs.begin(), unique_outputs_end, (*inputs).begin());
+  inputs->resize(thrust::distance(unique_outputs.begin(), unique_outputs_end));
+  thrust::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
 }
 
 template <typename T>
-DeviceHashTable<T>
-FillTableWithDuplicates(const framework::ExecutionContext& ctx, T* input, 
-                        int64_t num_input, thrust::device_vector<T> &unique_items) {
-  VLOG(0) << "Enter FillTableWithDuplicates function";
+void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
+                   int64_t num_input, int64_t len_hashtable,
+                   thrust::device_vector<T>* unique_items,
+                   thrust::device_vector<T>* keys,
+                   thrust::device_vector<T>* values,
+                   thrust::device_vector<int64_t>* key_index) {
+  VLOG(0) << "Enter FillHashTable function";
 
-  VLOG(0) << "1. build DeviceHashTable";
-  DeviceHashTable<T> hash_table = DeviceHashTable<T>(num_input, 1);
-  
-  // 暂且简单写
-  int block = 1024;
-  int grid = (num_input + block - 1) / block;
-  VLOG(0) << "2. insert data into DeviceHashTable";
-  build_hashtable_duplicates<T><<<
-      grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(input, num_input, &hash_table);
+  int64_t block = 1024;
+  int64_t grid = (num_input + block - 1) / block;
+  VLOG(0) << "1. insert data into keys and values";
+  build_hashtable_duplicates<
+      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               ctx.device_context())
+                               .stream()>>>(
+      input, num_input, len_hashtable, thrust::raw_pointer_cast(keys->data()),
+      thrust::raw_pointer_cast(key_index->data()));
+  VLOG(0) << "Finish insert data";
+
   thrust::device_vector<int> item_count(num_input + 1, 0);
- 
-  VLOG(0) << "3. Get item index count"; 
-  get_item_index_count<T><<<
-      grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(input, thrust::raw_pointer_cast(item_count.data()),
-                                         num_input, &hash_table);
- 
-  //using it = thrust::counting_iterator<T>;
-  //using Mapping = typename DeviceHashTable<T>::Mapping;
-  //VLOG(0) << "3.1 Begin!";
-  //thrust::for_each(it(0), it(num_input),
-  //                 [count = thrust::raw_pointer_cast(item_count.data()),
-  //                  table = hash_table,
-  //                  in = input] __device__(T i) mutable {
-  //                      //in[i];
-  //                     //Mapping mapping = *(table.Search(in[i]));
-  //                     //if (mapping.index == i) { count[i] = 1; }
-  //                });
-  //VLOG(0) << "3.2 End!";
-  //thrust::exclusive_scan(item_count.begin(), item_count.end(),
-  //                       item_count.begin());
-  //size_t tos = item_count[num_input];
-  //unique_items.resize(tos);
+  VLOG(0) << "2. Get item index count";
+  get_item_index_count<
+      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               ctx.device_context())
+                               .stream()>>>(
+      input, thrust::raw_pointer_cast(item_count.data()), num_input,
+      len_hashtable, thrust::raw_pointer_cast(keys->data()),
+      thrust::raw_pointer_cast(key_index->data()));
 
-  //// 填充 unique_items
-  //VLOG(0) << "4. Get unique items";
-  //fill_unique_items<T><<<
-  //    grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-  //                          ctx.device_context())
-  //                          .stream()>>>(input, num_input, 
-  //                                       thrust::raw_pointer_cast(unique_items.data()),
-  //                                       thrust::raw_pointer_cast(item_count.data()), 
-  //                                       hash_table);
+  thrust::exclusive_scan(item_count.begin(), item_count.end(),
+                         item_count.begin());
+  size_t tos = item_count[num_input];
+  unique_items->resize(tos);
 
-  return hash_table;
+  VLOG(0) << "3. Get unique items";
+  fill_unique_items<
+      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               ctx.device_context())
+                               .stream()>>>(
+      input, num_input, len_hashtable,
+      thrust::raw_pointer_cast(unique_items->data()),
+      thrust::raw_pointer_cast(item_count.data()),
+      thrust::raw_pointer_cast(keys->data()),
+      thrust::raw_pointer_cast(values->data()),
+      thrust::raw_pointer_cast(key_index->data()));
 }
 
 template <typename T>
 void reindex_func(const framework::ExecutionContext& ctx,
-                  thrust::device_vector<T> &inputs, 
-                  thrust::device_vector<T> &outputs,
-                  thrust::device_vector<T> &subset) {
+                  thrust::device_vector<T>* inputs,
+                  thrust::device_vector<T>* outputs,
+                  thrust::device_vector<T>* subset) {
   VLOG(0) << "Enter reindex function";
-  subset.resize(inputs.size() + outputs.size());
-  thrust::copy(inputs.begin(), inputs.end(), subset.begin());
-  thrust::copy(outputs.begin(), outputs.end(), subset.begin() + inputs.size());
+  subset->resize(inputs->size() + outputs->size());
+  thrust::copy(inputs->begin(), inputs->end(), subset->begin());
+  thrust::copy(outputs->begin(), outputs->end(),
+               subset->begin() + inputs->size());
   thrust::device_vector<T> unique_items;
   unique_items.clear();
 
   VLOG(0) << "Begin to fill hash table";
-  VLOG(0) << "subset.size(): " << subset.size();
+  VLOG(0) << "subset.size(): " << subset->size();
   VLOG(0) << "Print subset";
-  thrust::copy(subset.begin(), subset.end(), std::ostream_iterator<T>(std::cout, " "));
+  thrust::copy(subset->begin(), subset->end(),
+               std::ostream_iterator<T>(std::cout, " "));
   std::cout << std::endl;
-  DeviceHashTable<T> table = FillTableWithDuplicates(ctx, thrust::raw_pointer_cast(subset.data()),
-                                  subset.size(), unique_items);
-  subset.resize(unique_items.size());
-  thrust::copy(unique_items.begin(), unique_items.end(), subset.begin());
-  
+
+  // 设置三个变量，用于分别代表key, value, index，作为 hashtable 的主体
+  // 计算 hashtable 长度.
+  int64_t num = subset->size();
+  int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
+  int64_t size = log_num << 1;  // 1为scale，后面再看是否要转成参数.
+  thrust::device_vector<T> keys(size, -1);
+  thrust::device_vector<T> values(size, -1);
+  thrust::device_vector<int64_t> key_index(size, -1);
+  FillHashTable<T>(ctx, thrust::raw_pointer_cast(subset->data()),
+                   subset->size(), size, &unique_items, &keys, &values,
+                   &key_index);
+
+  subset->resize(unique_items.size());
+  thrust::copy(unique_items.begin(), unique_items.end(), subset->begin());
+
   // Fill outputs with reindex result.
   VLOG(0) << "Fill src output with reindex result";
   int block = 1024;
-  int grid = (outputs.size() + block - 1) / block;
-  reindex_src_output<T><<<
-      grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(thrust::raw_pointer_cast(outputs.data()),
-                     outputs.size(), table);
+  int grid = (outputs->size() + block - 1) / block;
+  reindex_src_output<
+      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                               ctx.device_context())
+                               .stream()>>>(
+      thrust::raw_pointer_cast(outputs->data()), outputs->size(), size,
+      thrust::raw_pointer_cast(keys.data()),
+      thrust::raw_pointer_cast(values.data()));
 }
 
 template <typename DeviceContext, typename T>
@@ -372,10 +378,11 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
         src_merge.size(), num_sample_edges,
         platform::errors::External("Number of sample edges dismatch."));
 
-    // 5. 根据unique_dst_merge, src_merge 生成 hashtable，unique后的items(subset)，并且对 src_merge 进行reindex.
+    // 5. 根据unique_dst_merge, src_merge 生成
+    // hashtable，unique后的items(subset)，并且对 src_merge 进行reindex.
     VLOG(0) << "Begin to Reindex";
     thrust::device_vector<T> subset;
-    reindex_func<T>(ctx, unique_dst_merge, src_merge, subset);
+    reindex_func<T>(ctx, &unique_dst_merge, &src_merge, &subset);
 
     auto* sample_index = ctx.Output<Tensor>("Sample_index");
     sample_index->Resize({static_cast<int>(subset.size())});
@@ -387,7 +394,8 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     // 6. 还原Dst边(根据dst_counts_merge进行copy 和 reindex.)
     thrust::device_vector<T> dst_merge(src_size);
     thrust::device_vector<T> unique_dst_merge_reindex(unique_dst_size);
-    thrust::sequence(unique_dst_merge_reindex.begin(), unique_dst_merge_reindex.end());
+    thrust::sequence(unique_dst_merge_reindex.begin(),
+                     unique_dst_merge_reindex.end());
     thrust::device_vector<T> dst_ptr(unique_dst_size);
     thrust::exclusive_scan(dst_sample_counts_merge.begin(),
                            dst_sample_counts_merge.end(), dst_ptr.begin());
@@ -396,16 +404,16 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((unique_dst_size + TILE_SIZE - 1) / TILE_SIZE);
 
-    GetDstEdgeCUDAKernel<T, BLOCK_WARPS,
-                         TILE_SIZE>
-        <<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
-            unique_dst_size, thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
-            thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
-            thrust::raw_pointer_cast(dst_ptr.data()),
-            thrust::raw_pointer_cast(dst_merge.data()));
- 
+    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
+        grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                            ctx.device_context())
+                            .stream()>>>(
+        unique_dst_size,
+        thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
+        thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
+        thrust::raw_pointer_cast(dst_ptr.data()),
+        thrust::raw_pointer_cast(dst_merge.data()));
+
     // 7. 赋值结果.
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
