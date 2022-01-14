@@ -18,7 +18,7 @@
 #include "gflags/gflags.h"
 
 #include <mct/hash-map.hpp>
-#include "paddle/fluid/distributed/ps/common/chunk_allocator.h"
+#include "paddle/fluid/distributed/common/chunk_allocator.h"
 
 namespace paddle {
 namespace distributed {
