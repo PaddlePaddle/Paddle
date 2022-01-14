@@ -15,17 +15,21 @@
 #pragma once
 #include <string>
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 struct KernelRegistry;
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 
 /**
  * Register all the test kernels to registry.
  */
 void RegisterTestKernels(host_context::KernelRegistry* registry);
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt
