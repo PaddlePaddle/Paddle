@@ -34,9 +34,11 @@ namespace infrt::dialect {
 
 mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
                                      const std::string& mlir_source) {
-  context->allowUnregisteredDialects();
+  // context->allowUnregisteredDialects();
   RegisterCinnDialects(context->getDialectRegistry());
-  context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
+  // Currenetly, We only used the CinnDialect and mlir::BuiltinDialect is
+  // enough。Don't need StandardOpsDialect.
+  // context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
 
   mlir::ScopedDiagnosticHandler scope_handler(
       context, [](mlir::Diagnostic& diag) {
@@ -54,7 +56,7 @@ mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
 
 mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
                                    mlir::MLIRContext* context) {
-  context->allowUnregisteredDialects();
+  // context->allowUnregisteredDialects();
   RegisterCinnDialects(context->getDialectRegistry());
   context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
 

@@ -32,127 +32,6 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-std::set<std::string> gen_list = {
-    "sigmoid", "matmul_v2", "reduce_sum", "elementwise_add", "rsqrt",
-    "multihead_matmul", "addmm", "gru", "round", "push_dense", "rank_attention",
-    "fused_embedding_fc_lstm", "where_index", "bicubic_interp", "arg_min",
-    "tile", "bilinear_tensor_product", "ctc_align",
-    "pow2_decay_with_linear_warmup", "marker", "split", "fc",
-    "load", "elementwise_max", "adadelta",
-    "tan",
-    "fsp", "where", "logical_xor", "multiclass_nms3", "one_hot_v2",
-    "sequence_softmax", "affine_channel", "triangular_solve",
-    "sequence_topk_avg_pooling", "space_to_depth", "reverse",
-    "fused_embedding_eltwise_layernorm", "expand_v2", "lgamma", "solve",
-    "deformable_psroi_pooling", "instance_norm", "decode_jpeg", "gather_nd",
-    "reduce_prod", "matrix_rank", "asin", "lstmp", "iou_similarity",
-    "huber_loss", "one_hot", "sequence_slice", "lookup_table", "softplus",
-    "depthwise_conv2d", "fused_fc_elementwise_layernorm",
-    "sigmoid_cross_entropy_with_logits", "exp", "scatter", "equal_all",
-    "searchsorted", "fusion_squared_mat_sub", "unique", "log", "conv_shift",
-    "smooth_l1_loss", "linear_interp_v2",
-    "temporal_shift", "nce", "mv", "proximal_gd", "memcpy_h2d",
-    "add_position_encoding", "cosh", "hash", "grad_add", "sign", "prelu",
-    "linspace", "fill_diagonal", "logsigmoid", "load_combine", "fetch_v2",
-    "randperm", "sequence_scatter", "partial_sum", "relu6", "conv3d",
-    "lstm_unit", "not_equal", "transpose2", "uniform_random_batch_size_like",
-    "unfold", "lrn", "softmax_with_cross_entropy", "isfinite_v2", "bernoulli",
-    "max_pool3d_with_index", "gaussian_random", "flatten2",
-    "cvm", "adamax", "masked_select", "range", "bitwise_not", "trace",
-    "multinomial", "modified_huber_loss", "roll", "squared_l2_distance",
-    "conv3d_transpose", "share_data", "fake_quantize_abs_max",
-    "unique_with_counts", "fill", "concat", "fill_zeros_like",
-    "hierarchical_sigmoid", "isinf_v2", "squeeze", "multiclass_nms2",
-    "bpr_loss", "fft_c2c", "bicubic_interp_v2", "reshape", "coalesce_tensor",
-    "roi_align", "reshape2", "reduce_any", "unstack", "scatter_nd_add",
-    "sequence_reshape", "bilateral_slice", "fill_any_like", "empty",
-    "pad_constant_like", "pool2d", "size", "imag", "eigh", "stack",
-    "dgc_momentum",
-    "generate_proposals_v2", "bitwise_or", "gru_unit",
-    "sampling_id", "unsqueeze2",
-    "sequence_enumerate", "fusion_seqconv_eltadd_relu", "bce_loss",
-    "generate_proposal_labels", "im2sequence", "isinf", "adagrad",
-    "linear_chain_crf", "retinanet_target_assign", "fusion_group",
-    "teacher_student_sigmoid_loss", "random_crop", "lookup_table_v2",
-    "detection_map", "l1_norm", "sqrt", "fused_elemwise_activation",
-    "slogdeterminant", "share_buffer", "bitwise_and", "diag_embed", "unbind",
-    "dropout",
-    "beam_search", "log_loss", "greater_than", "kron", "sigmoid_focal_loss",
-    "rmsprop", "conv2d", "uniform_random_inplace", "maxout", "linear_interp",
-    "auc", "logical_or",
-    "acos", "unpool", "cumprod", "sample_logits", "crop_tensor",
-    "deformable_conv", "generate_mask_labels", "locality_aware_nms",
-    "expand_as", "matrix_power", "greater_equal", "generate_proposals",
-    "bilinear_interp", "inplace_abn", "softshrink", "mul", "data_norm",
-    "get_tensor_from_selected_rows", "spp", "floor", "gelu",
-    "retinanet_detection_output", "push_dense", "silu", "sequence_erase",
-    "real", "nearest_interp_v2", "dgc_clip_by_norm", "squeeze2",
-    "strided_slice", "conj", "precision_recall", "save",
-    "fusion_seqexpand_concat_fc", "fake_quantize_range_abs_max",
-    "depthwise_conv2d_transpose", "positive_negative_pair", "square",
-    "var_conv_2d", "log1p", "fused_softmax_mask_upper_triangle", "clip_by_norm",
-    "atan2", "box_decoder_and_assign", "fft_r2c", "roi_pool", "overlap_add",
-    "fill_constant_batch_size_like", "fill_any", "dequantize_log",
-    "max_pool2d_with_index", "pad3d", "norm", "viterbi_decode", "mish",
-    "box_coder", "flatten", "elementwise_mod", "margin_cross_entropy",
-    "logical_and", "pow", "stanh", "label_smooth", "merged_momentum",
-    "ascend_trigger", "fused_feedforward", "rpn_target_assign",
-    "roi_perspective_transform", "expand", "prroi_pool", "pool3d", "memcpy",
-    "distribute_fpn_proposals", "frame", "bincount", "shape", "group_norm",
-    "resnet_unit", "sequence_expand_as", "cos_sim", "eigvals", "save_combine",
-    "class_center_sample", "read_file", "isfinite", "arg_max", "equal",
-    "fake_dequantize_max_abs", "qr", "anchor_generator", "layer_norm",
-    "merge_selected_rows", "less_equal",
-    "fusion_lstm", "lars_momentum", "hard_sigmoid", "isnan",
-    "elementwise_floordiv", "correlation", "histogram", "gather_tree",
-    "segment_pool", 
-    "fusion_repeated_fc_relu", "nop",
-    "expand_as_v2", "filter_by_instag", "nll_loss", "dot", "scale", "ncclBcast",
-    "shuffle_batch", "ncclReduce", "diag", "multiplex", "leaky_relu",
-    "allclose",
-    "elementwise_pow", "prior_box", "p_norm", "unique_consecutive", "lod_reset",
-    "pad", "sequence_conv", "log10", "set_value", "bitwise_xor", "center_loss",
-    "randint", "attention_lstm", "uniform_random", "slice", "meshgrid",
-    "hard_swish", "sin", "mean_iou", "pad2d", "inverse", "spectral_norm",
-    "shuffle_channel", "psroi_pool", "seed", "ceil", "eig", "reduce_min", "cos",
-    "ncclAllReduce", "cudnn_lstm", "digamma", "assign_value", "increment",
-    "tdm_sampler", "fused_softmax_mask", "sequence_reverse", "eigvalsh",
-    "diagonal", "trunc", "log2", "tanh", "yolov3_loss", "graph_send_recv",
-    "atan", "less_than", "unsqueeze", "crf_decoding", "log_softmax", "ftrl",
-    "matrix_nms", "top_k_v2", "cast", "tanh_shrink", "hard_shrink",
-    "multiclass_nms", "fusion_transpose_flatten_concat", "sequence_unpad",
-    "fused_elemwise_add_activation", "frobenius_norm", "crop", "cross_entropy2",
-    "skip_layernorm", "tdm_child", "fused_embedding_seq_pool", "erf",
-    "conv2d_inception_fusion", "trilinear_interp", "logsumexp",
-    "fusion_seqpool_concat", "alloc_float_status", "sequence_concat",
-    "fusion_seqpool_cvm_concat", "similarity_focus", "argsort",
-    "sequence_expand",
-    "fused_bn_add_activation", "bilinear_interp_v2", "clip",
-    "deformable_conv_v1", "hinge_loss", "determinant", "conv2d_transpose",
-    "memcpy_d2h", "softsign",
-    "broadcast_tensors", "grid_sampler", "fft_c2r", "pyramid_hash",
-    "multi_dot", "sequence_pool", "transpose", "top_k", "dist", "affine_grid",
-    "gaussian_random_batch_size_like", "fake_channel_wise_dequantize_max_abs",
-    "reciprocal", "sequence_mask", "fill_diagonal_tensor", "abs",
-    "partial_concat", "elu", "index_select", "row_conv", "cross",
-    "elementwise_mul", "decayed_adagrad", "bipartite_match",
-    "fake_quantize_moving_average_abs_max", "mine_hard_examples",
-    "target_assign", "lstm", "truncated_gaussian_random", "match_matrix_tensor",
-    "elementwise_div", "kldiv_loss", "cumsum", "sum", "proximal_adagrad",
-    "shard_index", "selu", "mean", "gumbel_softmax", "sequence_pad",
-    "tree_conv", "assign", "flatten_contiguous_range", "tril_triu", "brelu",
-    "celu", "reduce_mean", "sinh", "rank_loss", "reduce_max", "fusion_gru",
-    "fill_zeros_like2", "expm1", "squared_l2_norm", "elementwise_sub",
-    "margin_rank_loss", "faster_tokenizer", "relu", "is_empty", "reduce_all",
-    "edit_distance", "bmm", "yolo_box", "soft_relu", "density_prior_box", "eye",
-    "swish", "cross_entropy", "dpsgd", "cholesky", "batch_fc", "nearest_interp",
-    "gather", "trilinear_interp_v2", "box_clip", "isnan_v2", "softmax",
-    "conv2d_fusion", "fused_batch_norm_act",
-    "index_sample", "elementwise_min", "logical_not", "collect_fpn_proposals",
-    "pixel_shuffle", "thresholded_relu", "polygon_box_transform",
-    "lookup_table_dequant", "warpctc", "fake_channel_wise_quantize_abs_max",
-    "dequantize_abs_max", "svd", "flip"};
-
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -191,10 +70,16 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
+    auto& %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
     auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
+
+const char* CAST_VAR_PTR_TEMPLATE = R"(
+    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+
+const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
+    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
@@ -342,13 +227,13 @@ std::string GenerateOpFunctionsBody(
         outs_initializer += ",";
       }
 
-      const auto in_cast_type =
-          output.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
+      const auto in_cast_type = output.duplicable() ? CAST_VAR_PTR_LIST_TEMPLATE
+                                                    : CAST_VAR_PTR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
 
-      // call_api_str += out_name + ", ";
+      call_api_str += out_name + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -411,6 +296,41 @@ std::string GenerateOpFunctionsBody(
   return op_function_str;
 }
 
+static std::string GenerateCoreOpsInfoMap() {
+  std::string result =
+      "static PyObject * eager_get_core_ops_args_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_args_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_returns_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n";
+
+  return result;
+}
+
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
 GenerateOpFunctions() {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
@@ -430,9 +350,6 @@ GenerateOpFunctions() {
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
-      continue;
-    }
-    if (!gen_list.count(op_type)) {
       continue;
     }
     std::string func_name = "eager_api_" + op_type;
@@ -462,6 +379,8 @@ int main(int argc, char* argv[]) {
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
+      "\"paddle/fluid/eager/api/generated/fluid_generated/"
+      "dygraph_forward_api.h\"",
       "\"paddle/fluid/pybind/exception.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
@@ -475,24 +394,34 @@ int main(int argc, char* argv[]) {
   out << "\n\n";
 
   auto op_funcs = GenerateOpFunctions();
+  auto core_ops_infos = GenerateCoreOpsInfoMap();
+  std::string core_ops_infos_registry =
+      "{\"get_core_ops_args_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
+      "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
+      "  {\"get_core_ops_returns_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
+      "METH_NOARGS, \"C++ interface function for "
+      "eager_get_core_ops_returns_info.\"},\n";
 
   out << "namespace paddle {\n"
       << "namespace pybind {\n\n";
+  out << core_ops_infos;
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
   out << "static PyMethodDef ExtestMethods[] = {\n"
-      << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "\n  {nullptr,nullptr,0,nullptr}"
+      << paddle::string::join_strings(std::get<1>(op_funcs), '\n') << "\n"
+      << core_ops_infos_registry << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
   out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
+      << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  InitOpsAttrTypeMap();"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

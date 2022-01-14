@@ -22,14 +22,15 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-class DefaultAllocator : public pten::Allocator {
+class DefaultAllocator : public pten::deprecated::Allocator {
  public:
-  using Allocation = pten::Allocation;
+  using Allocation = pten::deprecated::Allocation;
   explicit DefaultAllocator(const paddle::platform::Place& place)
       : place_(place) {}
 
-  static void Delete(void* data) {
-    deleter_(static_cast<paddle::memory::Allocation*>(data));
+  static void Delete(Allocation* allocation) {
+    paddle::memory::allocation::Allocator::AllocationDeleter(
+        allocation->CastContextWithoutCheck<paddle::memory::Allocation>());
   }
 
   Allocation Allocate(size_t bytes_size) override {
@@ -38,9 +39,10 @@ class DefaultAllocator : public pten::Allocator {
     return Allocation(ptr, a.release(), &Delete, place_);
   }
 
+  const paddle::platform::Place& place() override { return place_; }
+
  private:
   paddle::platform::Place place_;
-  static paddle::memory::Allocator::AllocationDeleter deleter_;
 };
 
 }  // namespace experimental

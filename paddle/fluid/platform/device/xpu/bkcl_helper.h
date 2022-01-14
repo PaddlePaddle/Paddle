@@ -26,8 +26,8 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
 #include "xpu/bkcl.h"
@@ -73,13 +73,9 @@ struct InitBKCLPara {
 
 static void *init_bkcl_context_func(void *args) {
   struct InitBKCLPara *para = (struct InitBKCLPara *)args;
-  PADDLE_ENFORCE_EQ(xpu_set_device(para->dev_id), XPU_SUCCESS,
-                    platform::errors::PreconditionNotMet(
-                        "xpu_set_device failed[%d]", para->dev_id));
-  PADDLE_ENFORCE_EQ(
-      bkcl_init_rank(para->ctx, para->rank, para->nranks, para->bkcl_id),
-      BKCL_SUCCESS,
-      platform::errors::PreconditionNotMet("bkcl_init_rank failed"));
+  platform::SetXPUDeviceId(para->dev_id);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      bkcl_init_rank(para->ctx, para->rank, para->nranks, para->bkcl_id));
   return nullptr;
 }
 

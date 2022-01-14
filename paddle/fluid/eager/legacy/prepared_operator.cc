@@ -76,6 +76,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
                        const paddle::platform::Place& place,
                        const paddle::framework::AttributeMap& attrs,
                        const paddle::framework::AttributeMap& default_attrs) {
+  VLOG(6) << "Preparing an Op";
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
@@ -146,7 +147,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
   if (!(expected_kernel_key.place_ == place)) {
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
-
+  VLOG(6) << "Construct Prepared Op";
   return PreparedOp(op, ctx, expected_kernel_key, kernel_iter->second, dev_ctx);
 }
 
@@ -168,12 +169,12 @@ static void PreparedOpRunImpl(
     const NameTensorMap& outs, const paddle::framework::AttributeMap& attrs,
     const paddle::framework::AttributeMap& default_attrs) {
   // TODO(zjl): remove scope in dygraph
+  VLOG(6) << "Runing Prepared Op";
   paddle::framework::Scope scope;
 
   EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
-                                         op.Type());
-  static_cast<const paddle::framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+                                         op.Type(), &kernel_type);
+  op.Info().infer_shape_(&infer_shape_ctx);
 
   func(EagerExecutionContext(op, scope, *dev_ctx, ctx, ins, outs, attrs,
                              default_attrs));
@@ -198,6 +199,7 @@ static void PreparedOpRunImpl(
   if (paddle::framework::IsComplexType(kernel_type.data_type_)) {
     HandleComplexGradToRealGrad(outs);
   }
+  VLOG(6) << "Finish Runing Prepared Op";
 }
 
 void PreparedOp::Run(const NameTensorMap& ins, const NameTensorMap& outs,

@@ -30,6 +30,11 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
+
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -72,6 +77,8 @@ class Tensor;
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                const platform::DeviceContext& ctx, pten::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is
@@ -82,6 +89,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 // not completed.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
+void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
+                pten::DenseTensor* dst);
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst);
@@ -174,8 +183,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -232,11 +240,18 @@ void TensorFromVector(const std::vector<T>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(dst_place)) {
+    memory::Copy(
+        BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr, src_place,
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
 }
@@ -295,8 +310,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -371,6 +385,14 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
                  size, nullptr);
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 template <>
@@ -411,6 +433,14 @@ inline void TensorToVector(const Tensor& src,
     memory::Copy(dst_place, dst_ptr,
                  BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
                  size, nullptr);
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {

@@ -223,9 +223,10 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
   auto t_place = tensor->place();
 
   paddle::framework::Tensor out;
-  auto mem_allocation = std::make_shared<paddle::memory::Allocation>(
-      static_cast<void *>(data), ele_num * sizeof(T),
-      paddle::platform::CPUPlace());
+  auto mem_allocation =
+      std::make_shared<paddle::memory::allocation::Allocation>(
+          static_cast<void *>(data), ele_num * sizeof(T),
+          paddle::platform::CPUPlace());
   out.ResetHolder(mem_allocation);
 
   if (paddle::platform::is_cpu_place(t_place)) {
@@ -239,6 +240,14 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #else
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#endif
+  } else if (paddle::platform::is_ipu_place(t_place)) {
+#ifdef PADDLE_WITH_IPU
+    std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with IPU place because paddle is not compiled "
+        "with IPU."));
 #endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

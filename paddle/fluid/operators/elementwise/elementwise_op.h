@@ -21,9 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -319,16 +317,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
         ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    // If broadcasting is needed, use native implementation
-    auto CanMKLDNNElementwiseGradBeUsed = [&]() {
-      auto dx_dims = ctx.Input<Tensor>("X")->dims();
-      auto dy_dims = ctx.Input<Tensor>("Y")->dims();
-      // No broadcast or broadcasting of data on inner dims is supported
-      return (dx_dims[dx_dims.size() - 1] == dy_dims[dy_dims.size() - 1]);
-    };
-
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        CanMKLDNNElementwiseGradBeUsed()) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

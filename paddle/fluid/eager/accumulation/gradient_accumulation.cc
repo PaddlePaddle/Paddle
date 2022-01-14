@@ -28,7 +28,6 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/include/core.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
@@ -109,6 +108,22 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #else
   void operator()(const paddle::platform::XPUPlace& place) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  void operator()(const paddle::platform::MLUPlace& place) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const paddle::platform::MLUPlace& place) {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",

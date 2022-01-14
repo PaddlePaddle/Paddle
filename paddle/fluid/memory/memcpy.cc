@@ -14,13 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-
-#ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#endif
 
 namespace paddle {
 namespace memory {
@@ -70,41 +66,7 @@ void Copy<platform::XPUPlace, platform::CPUPlace>(platform::XPUPlace dst_place,
     VLOG(1) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  if (dev_id != dst_place.device) {
-    ret = xpu_set_device(dst_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
-  ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id != dst_place.device) {
-    ret = xpu_set_device(dev_id);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
+  platform::MemcpySyncH2D(dst, src, num, dst_place);
 }
 
 template <>
@@ -116,41 +78,7 @@ void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
     VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
     return;
   }
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  if (dev_id != src_place.device) {
-    ret = xpu_set_device(src_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
-  ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id != src_place.device) {
-    ret = xpu_set_device(dev_id);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-  }
+  platform::MemcpySyncD2H(dst, src, num, src_place);
 }
 
 template <>
@@ -162,64 +90,7 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
     VLOG(1) << "memcpy XPU_DEVICE_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  if (dev_id != src_place.device || dev_id != dst_place.device) {
-    ret = xpu_set_device(src_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    void* tmp = malloc(num);
-    ret = xpu_memcpy(tmp, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    ret = xpu_set_device(dst_place.device);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    ret = xpu_memcpy(dst, tmp, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    ret = xpu_set_device(dev_id);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
-    free(tmp);
-  } else {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetByPlace(src_place);
-    dev_ctx->Wait();
-    int ret = xpu::memcpy_device(dev_ctx->x_context(), dst, src, num);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS, platform::errors::External(
-                                            "XPU API return wrong value[%d %s]",
-                                            ret, XPUAPIErrorMsg[ret]));
-  }
+  platform::MemcpySyncD2D(dst, dst_place, src, src_place, num);
 }
 #endif
 
@@ -620,6 +491,102 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
 }
 
 #endif
+
+#ifdef PADDLE_WITH_MLU
+template <>
+void Copy<platform::CPUPlace, platform::MLUPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::MLUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  mluStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetMLUDeviceId(src_place.device);
+  if (stream) {
+    VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place << " by mlu stream(" << stream << ")";
+    platform::RecordEvent record_event("MLUMemcpyD2HAsync:MLU->CPU");
+    platform::MLUMemcpyD2HAsync(dst, src, num, stream);
+  } else {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+
+    VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place;
+    platform::RecordEvent record_event("MLUMemcpyD2HSync:MLU->CPU");
+    platform::MLUMemcpyD2HSync(dst, src, num);
+  }
+}
+
+template <>
+void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  mluStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetMLUDeviceId(dst_place.device);
+  if (stream) {
+    VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place << " by mlu stream(" << stream << ")";
+    platform::RecordEvent record_event("MLUMemcpyH2DAsync:CPU->MLU");
+    platform::MLUMemcpyH2DAsync(dst, src, num, stream);
+  } else {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+
+    VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place;
+    platform::RecordEvent record_event("MLUMemcpyH2DSync:CPU->MLU");
+    platform::MLUMemcpyH2DSync(dst, src, num);
+  }
+}
+
+template <>
+void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
+                                                  void* dst,
+                                                  platform::MLUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  mluStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  if (dst_place == src_place) {
+    platform::SetMLUDeviceId(dst_place.device);
+    if (stream) {
+      VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place << " by mlu stream(" << stream << ")";
+      platform::RecordEvent record_event(
+          "MLUMemcpyD2DAsync(same_mlu):MLU->MLU");
+      platform::MLUMemcpyD2DAsync(dst, src, num, stream);
+    } else {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+
+      VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place;
+      platform::RecordEvent record_event("MLUMemcpyD2DSync(same_mlu):MLU->MLU");
+      platform::MLUMemcpyD2DSync(dst, src, num);
+    }
+  } else {
+    if (stream) {
+      VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place << " by mlu stream(" << stream << ")";
+      platform::RecordEvent record_event("MLUMemcpyPeerAsync:MLU->MLU");
+      platform::MLUMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
+                                   num, stream);
+    } else {
+      VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place;
+      platform::RecordEvent record_event("MLUMemcpyPeerSync:MLU->MLU");
+      platform::MLUMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
+                                  num);
+    }
+  }
+}
+
+#endif  // PADDLE_WITH_MLU
 
 }  // namespace memory
 }  // namespace paddle

@@ -144,10 +144,12 @@ class AutoScanTest(unittest.TestCase):
                 baseline[key].shape == arr.shape,
                 "The output shapes are not equal, the baseline shape is " +
                 str(baseline[key].shape) + ', but got ' + str(arr.shape))
+            diff = abs(baseline[key] - arr)
             self.assertTrue(
                 np.allclose(
                     baseline[key], arr, atol=atol, rtol=rtol),
-                "Output has diff. ")
+                "Output has diff, Maximum absolute error: {}".format(
+                    np.amax(diff)))
 
     @abc.abstractmethod
     def run_test(self, quant=False):
@@ -328,8 +330,7 @@ class PassAutoScanTest(AutoScanTest):
                        reproduce=None,
                        min_success_num=25,
                        max_duration=180,
-                       passes=None,
-                       use_gpu_run_baseline=False):
+                       passes=None):
         if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
             max_examples *= 10
             min_success_num *= 10
@@ -354,10 +355,7 @@ class PassAutoScanTest(AutoScanTest):
             return self.sample_program_config(draw)
 
         def run_test(prog_config):
-            return self.run_test(
-                quant=quant,
-                prog_configs=[prog_config],
-                use_gpu_run_baseline=use_gpu_run_baseline)
+            return self.run_test(quant=quant, prog_configs=[prog_config])
 
         generator = st.composite(program_generator)
         loop_func = given(generator())(run_test)
@@ -394,10 +392,7 @@ class PassAutoScanTest(AutoScanTest):
                 format(max_duration))
             assert False
 
-    def run_test(self,
-                 quant=False,
-                 prog_configs=None,
-                 use_gpu_run_baseline=False):
+    def run_test(self, quant=False, prog_configs=None):
         status = True
 
         for prog_config in prog_configs:
@@ -416,22 +411,13 @@ class PassAutoScanTest(AutoScanTest):
                     'data': tensor_config.data,
                     'lod': tensor_config.lod
                 }
-            results: List[Dict[str, np.ndarray]] = []
 
-            # baseline: cpu no ir_optim run
-
-            base_config = self.create_inference_config(
-                ir_optim=False, use_gpu=use_gpu_run_baseline)
             logging.info('RUN program_config: ' + str(prog_config))
-            results.append(
-                self.run_test_config(model, params, prog_config, base_config,
-                                     feed_data))
-            self.success_log('RUN_CPU_BASELINE done')
-
             self.num_predictor_kinds = 0
             for pred_config, op_list, (
                     atol, rtol) in self.sample_predictor_configs(prog_config):
                 self.num_predictor_kinds += 1
+
                 # skip info
                 ignore_flag = False
                 for ignore_info in self.ignore_cases:
@@ -452,12 +438,24 @@ class PassAutoScanTest(AutoScanTest):
                 if not os.path.exists(self.cache_dir):
                     os.mkdir(self.cache_dir)
 
+                # baseline: no ir_optim run
+                base_config = self.create_inference_config(
+                    ir_optim=False, use_gpu=pred_config.use_gpu())
                 try:
-                    results.append(
-                        self.run_test_config(model, params, prog_config,
-                                             pred_config, feed_data))
-                    self.assert_tensors_near(atol, rtol, results[-1],
-                                             results[0])
+                    # baseline
+                    base_result = self.run_test_config(
+                        model, params, prog_config, base_config, feed_data)
+                    self.success_log('RUN_BASELINE ' +
+                                     self.inference_config_str(
+                                         base_config) + ' done')
+
+                    if os.path.exists(self.cache_dir):
+                        shutil.rmtree(self.cache_dir)
+
+                    pred_result = self.run_test_config(
+                        model, params, prog_config, pred_config, feed_data)
+                    self.assert_tensors_near(atol, rtol, pred_result,
+                                             base_result)
                     if not ignore_flag:
                         self.assert_op_list(op_list)
 
@@ -699,8 +697,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                              pred_config_deserialize, feed_data)
                 except Exception as e:
                     self.fail_log(
-                        str(prog_config) + ' vs ' + self.inference_config_str(
-                            pred_config) +
+                        self.inference_config_str(pred_config) +
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
                     if not ignore_flag:
                         status = False

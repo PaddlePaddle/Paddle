@@ -43,12 +43,11 @@ class API:
             if 'data_type' not in self.kernel or len(self.kernel[
                     'data_type']) == 0:
                 self.kernel['data_type'] = None
-            if 'param' not in self.kernel or len(self.kernel['param']) == 0:
+            if 'param' not in self.kernel:
                 self.kernel['param'] = None
 
             self.infer_meta = api_item_yaml['infer_meta']
-            if 'param' not in self.infer_meta or len(self.infer_meta[
-                    'param']) == 0:
+            if 'param' not in self.infer_meta:
                 self.infer_meta['param'] = None
 
     def parse_args(self, args_str):
@@ -303,10 +302,10 @@ PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 {input_tensors}
 {self.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_backend));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            pten::TransToFluidPlace(kernel_backend)),
+        std::move(out_meta));
 
   Tensor out;
   out.set_impl(dense_out);
@@ -343,12 +342,14 @@ def source_include(header_file_path):
 
 #include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
-#include "paddle/pten/api/lib/kernel_declare.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/binary.h"
+#include "paddle/pten/infermeta/multiary.h"
+#include "paddle/pten/infermeta/nullary.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/declarations.h"
 """
 
 

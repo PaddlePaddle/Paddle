@@ -53,6 +53,12 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     for (const auto& edge_list : edges) {
       for (const Edge& edge : edge_list) {
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
+
+        // Next node could be nullptr if it is leaf tensor with no
+        // AccumulationNode attached
+        // Or it could also originated from dispensable inputs
+        if (!next_node) continue;
+
         // Update in_degree
         if (!node_in_degree_map.count(next_node))
           node_in_degree_map[next_node] = 0;
@@ -63,6 +69,14 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   }
 
   return node_in_degree_map;
+}
+
+void RunBackwardHooks(
+    const std::vector<std::vector<egr::EagerTensor>>& grad_tensors,
+    egr::GradNodeBase* grad_node) {
+  grad_node->ApplyGradientHooks(grad_tensors);
+  VLOG(6) << "Apply Reduce Hooks for node";
+  grad_node->ApplyReduceHooks();
 }
 
 void RunBackward(const std::vector<egr::EagerTensor>& tensors,
@@ -91,11 +105,6 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     // Get target GradNodeBase from target tensors
     GradNodeBase* grad_node = auto_grad_meta->GetMutableGradNode().get();
 
-    PADDLE_ENFORCE(grad_node,
-                   paddle::platform::errors::Fatal(
-                       "Detected null grad_node."
-                       "Grad Node is nullptr for grad input tensor %d",
-                       i));
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
       VLOG(6) << "Create Value for grad input tensor " << i;
@@ -156,7 +165,11 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
     VLOG(6) << "Run Backward Kernel with input_buffer";
-    // Run Backward Node and get outputs
+
+    RunBackwardHooks(node_input_buffer->Buffers(), node);
+    // TODO(jiabin): Support post hook here and make hook run in seperate
+    // operator
+    // Run Pre Backward Node and get outputs
     std::vector<std::vector<egr::EagerTensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
     // TODO(jiabin): Should we erase it or find a more efficient way.
@@ -168,7 +181,9 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
-                       ") or the same as number of output grad tensors"));
+                       ") or the same as number of output grad tensors, but we "
+                       "got edges size is: %d, grad_output size is: %d",
+                       edges.size(), grad_output_tensors.size()));
 
     for (size_t i = 0; i < edges.size(); i++) {
       for (size_t j = 0; j < edges[i].size(); j++) {
@@ -185,6 +200,11 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
                   << ", rank: " << j << " as uninitialized or undefined tensor";
         }
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
+
+        // Next node could be nullptr if it is leaf tensor with no
+        // AccumulationNode attached
+        // Or it could also originated from dispensable inputs
+        if (!next_node) continue;
 
         if (!node_input_buffers_dict.count(next_node)) {
           node_input_buffers_dict[next_node] =
