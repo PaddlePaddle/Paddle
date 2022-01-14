@@ -38,7 +38,7 @@ class CompatibleDenseTensorUtils {
   // only can deal with SharedStorage now
   static void ClearStorage(DenseTensor* tensor) {
     // use static_cast to improve performance, replace by dynamic_cast later
-    tensor->clear();
+    tensor->MoveMemoryHolder();
   }
 
   static DenseTensor Slice(const DenseTensor& tensor,
