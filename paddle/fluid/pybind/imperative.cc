@@ -1986,6 +1986,7 @@ void BindImperative(py::module *m_ptr) {
                      "Tensor %s has not been initialized!", self->Name()));
              dst_->ShareBufferWith(*src);
              dst_->ShareDataTypeWith(*src);
+             dst_->Resize(src->dims());
            })
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
