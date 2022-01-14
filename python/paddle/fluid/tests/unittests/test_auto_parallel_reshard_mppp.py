@@ -213,7 +213,8 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
@@ -271,7 +272,7 @@ class TestMLPReshard(unittest.TestCase):
         partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads = partitioner.partition(
             complete_train_program, startup_program, [])
         reshard(partitioned_main_prog, partitioned_startup_prog, rank_id,
-                dist_context)
+                dist_context, dist_params_grads)
         # the x should not be slice
         self.assertTrue(check_allgather(partitioned_main_prog))
 

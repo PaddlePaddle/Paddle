@@ -232,7 +232,7 @@ class TestCostModel(unittest.TestCase):
             distributed_program, dist_startup_prog = get_dist_prog(
                 train_program, startup_program, dist_context, rank_id)
             reshard(distributed_program, dist_startup_prog, rank_id,
-                    dist_context)
+                    dist_context, dist_params_grads)
             dist_program.append(distributed_program)
         cluster = None
         cost = estimate_cost(

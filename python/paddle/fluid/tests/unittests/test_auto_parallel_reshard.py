@@ -310,7 +310,9 @@ class TestMLPReshard(unittest.TestCase):
             train_program, startup_program, dist_context, rank_id)
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
+        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
@@ -349,7 +351,8 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 0
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
         # send and recv should not exist in dp scene.
         self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
 
