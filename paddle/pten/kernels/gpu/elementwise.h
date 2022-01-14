@@ -132,12 +132,20 @@ struct DimensionsTransform {
   explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
                                const pten::framework::DDim &dims,
                                int axis) {
-    const int N = ins.size();
+    const int N = max(static_cast<int>(intins.size()), 2);
     dim_size = dims.size();
-    out_dims = pten::framework::vectorize<int64_t>(dims);
-    in_dims.resize(N);
-    for (int j = 0; j < N; ++j) {
-      in_dims[j] = pten::framework::vectorize<int64_t>(ins[j]->dims());
+    out_dims = paddle::framework::vectorize<int64_t>(dims);
+    if (ins.size() == 1) {
+      // when ins.size() = 1 set N = in.size() + 1
+      in_dims.resize(N);
+      in_dims[0] = paddle::framework::vectorize<int64_t>(ins[0]->dims());
+      in_dims[1] = out_dims;
+      // Add out_dims to in_dims to avoid errors in dims merging
+    } else {
+      in_dims.resize(N);
+      for (int j = 0; j < N; ++j) {
+        in_dims[j] = paddle::framework::vectorize<int64_t>(ins[j]->dims());
+      }
     }
     InputDimensionsExtend(N, axis);
 

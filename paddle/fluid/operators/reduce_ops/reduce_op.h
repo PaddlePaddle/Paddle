@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
 #endif
 
@@ -393,7 +394,7 @@ template <typename DeviceContext, typename T, typename Functor,
           bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
  public:
-  void ComputeFromInput(const Tensor* input2,
+  void ComputeFromInput(const framework::Tensor* input2,
                         const framework::ExecutionContext& context) const {
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
@@ -733,6 +734,37 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), reduce_all,
                                            dims_int64, false, pt_out_dtype,
                                            pt_out.get());
+  }
+};
+
+template <typename T, template <typename, typename> class TransformOp>
+class ReduceCudaGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+    auto* input0 = context.Input<Tensor>("X");
+    auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    int dim_size = input0->dims().size();
+    d_x->mutable_data<T>(context.GetPlace());
+    std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
+    auto update_dims = vectorize(d_x->dims());
+    int reduce_num = 1;
+    for (auto i : reduce_dims) {
+      reduce_num *= (input0->dims())[i];
+      update_dims[i] = 1;
+    }
+    Tensor new_d_out;
+    new_d_out.ShareDataWith(*d_out);
+    new_d_out.Resize(paddle::framework::make_ddim(update_dims));
+    std::vector<const framework::Tensor*> inputs = {&new_d_out};
+    std::vector<framework::Tensor*> outputs = {d_x};
+    auto& dev_ctx = context.cuda_device_context();
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    LaunchBroadcastElementwiseCudaKernel<pten::ElementwiseType::kUnary, T, T>(
+        dev_ctx, inputs, &outputs, 0, TransformOp<T, MPType>(reduce_num));
   }
 };
 #endif
