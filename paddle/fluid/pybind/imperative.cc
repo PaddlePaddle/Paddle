@@ -1876,6 +1876,58 @@ void BindImperative(py::module *m_ptr) {
 #endif
            },
            py::return_value_policy::reference)
+      .def("_uva",
+           [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
+             PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
+                               platform::errors::InvalidArgument(
+                                   "UVA only support CPU Tensor currently"));
+             platform::DeviceContextPool &pool =
+                 platform::DeviceContextPool::Instance();
+             auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
+             VLOG(4) << "Tnit the DeviceContext, and the place is "
+                     << dev_ctx->GetPlace();
+             auto *self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             // Register the cpu memory as the cuda host memory
+             const auto &data_numel = self_tensor->numel();
+             const size_t &need_allocate_size =
+                 data_numel * framework::SizeOfType(self_tensor->type());
+             void *data_ptr = self_tensor->data<void>();
+             auto result = cudaHostRegister(data_ptr, need_allocate_size,
+                                            cudaHostRegisterDefault);
+             if (result != CUDA_SUCCESS) {
+               VLOG(4) << "UVA(unified virtual addressing) failed allocate:"
+                       << need_allocate_size << ", the error code:" << result;
+             }
+
+             // Get device pointer from the function of cudaHostGetDevicePointer
+             void *cuda_device_pointer = nullptr;
+             cudaHostGetDevicePointer(
+                 reinterpret_cast<void **>(&cuda_device_pointer),
+                 reinterpret_cast<void *>(data_ptr), 0);
+
+             // Reset the memory with device pointer
+             std::shared_ptr<memory::allocation::Allocation> holder(
+                 new memory::allocation::Allocation(
+                     cuda_device_pointer, need_allocate_size,
+                     platform::CUDAPlace(device_id)));
+             self_tensor->ResetHolderWithType(holder, self_tensor->type());
+           },
+           py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
+        Returns self tensor with the UVA(unified virtual addressing).
+
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
+        Examples:
+            .. code-block:: python
+
+              # required: gpu
+              import paddle
+              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+              x._uva()
+              print(uva)
+       )DOC")
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
