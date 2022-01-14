@@ -32,14 +32,14 @@ TEST(AccumulationNode, EagerTensor) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT16, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
   dt0->mutable_data<paddle::platform::float16>()[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
 
@@ -48,7 +48,7 @@ TEST(AccumulationNode, EagerTensor) {
 
   std::shared_ptr<pten::DenseTensor> grad_dt =
       std::make_shared<pten::DenseTensor>(
-          std::make_shared<paddle::experimental::DefaultAllocator>(
+          pten::make_intrusive<paddle::experimental::SharedStorage>(
               paddle::platform::CPUPlace()),
           meta);
   EagerTensor grad_et = EagerTensor(grad_dt);

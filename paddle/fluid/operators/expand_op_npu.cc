@@ -93,9 +93,9 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
         (out0->numel() == in0->numel()) ? true : false;
 
     if (is_expand_times_all_one) {
-      memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place),
+      memory::Copy(place),
                    out0->mutable_data<T>(place),
-                   BOOST_GET_CONST(platform::NPUPlace, place), in0->data<T>(),
+                   place, in0->data<T>(),
                    in0->numel() * sizeof(T), stream);
       if (out_dims != in_dims) {
         out0->Resize(out_dims);

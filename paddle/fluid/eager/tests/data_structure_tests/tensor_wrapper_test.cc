@@ -25,7 +25,7 @@ TEST(TensorWrapper, Basic) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
   auto* dt_ptr = dt->mutable_data<float>();
@@ -51,9 +51,9 @@ TEST(TensorWrapper, Basic) {
   pten::DenseTensorMeta meta2 = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt2 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
-      meta2);
+      meta);
   auto* dt_ptr2 = dt->mutable_data<float>();
   dt_ptr2[0] = 6.0f;
   dt_ptr2[1] = 11.0f;

@@ -41,7 +41,7 @@ TEST(GradNodeInfo, GradNodeBase) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
   auto* dt_ptr = dt->mutable_data<float>();
@@ -97,7 +97,7 @@ TEST(GradNodeInfo, GradNodeBase) {
     pten::DenseTensorMeta meta = pten::DenseTensorMeta(
         pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
             paddle::platform::CPUPlace()),
         meta);
     auto* dt_ptr = dt->mutable_data<float>();

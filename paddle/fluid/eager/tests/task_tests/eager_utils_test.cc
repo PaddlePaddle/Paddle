@@ -31,14 +31,14 @@ TEST(EagerUtils, AutoGradMeta) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
   dt0->mutable_data<float>()[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
   dt1->mutable_data<float>()[0] = 20.0;
@@ -106,7 +106,7 @@ egr::EagerTensor CreateTestCPUTensor(T val,
       pten::DenseTensorMeta(pten::DataType::FLOAT32, ddim);
   egr::EagerTensor tensor;
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::platform::CPUPlace()),
       meta);
   auto* dt_ptr = dt->mutable_data<T>();
