@@ -1322,7 +1322,31 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   return expected_kernel_key;
 }
 
-void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {}
+pten::KernelKey OperatorWithKernel::ChoosePtenKernel(
+    const ExecutionContext& ctx) const {
+  pt_kernel_signature_.reset(
+      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
+  VLOG(6) << *pt_kernel_signature_.get();
+
+  kernel_type_.reset(
+      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
+
+  auto pt_kernel_name = pt_kernel_signature_->name;
+  auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
+  pt_kernel_.reset(
+      new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+          pt_kernel_name, pt_kernel_key)));
+
+  if (pt_kernel_->IsValid()) {
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
+            << " | kernel key: " << pt_kernel_key
+            << " | kernel: " << *pt_kernel_;
+  } else {
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
+            << "` not found.";
+  }
+  return pt_kernel_key;
+}
 
 void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   // check if op[type] has kernel registered.

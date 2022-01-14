@@ -395,17 +395,41 @@ void build_op_func_list(const platform::Place& place,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
       op_func_node.dev_ctx_ = dev_ctx;
-
+      VLOG(3) << op_with_kernel->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       auto run_pten_kernel = false;
       if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(
               op_with_kernel->Type())) {
-        op_with_kernel->ChoosePtenKernel(exec_ctx);
-        run_pten_kernel = op_with_kernel->PtenKernel()->IsValid();
-      }
+        auto pt_kernel_key = op_with_kernel->ChoosePtenKernel(exec_ctx);
+        auto pt_kernel_name = op_with_kernel->PtenKernelSignature()->name;
 
+        if (op_with_kernel->PtenKernel()->IsValid()) {
+          run_pten_kernel = true;
+        } else {
+          auto kernels_iter = all_op_kernels.find(op_with_kernel->Type());
+          if (kernels_iter == all_op_kernels.end() ||
+              kernels_iter->second.find(expected_kernel_key) ==
+                  kernels_iter->second.end()) {
+            auto pt_cpu_kernel_key = FallBackToCpu(
+                expected_kernel_key, pt_kernel_key, *op_with_kernel);
+            op_with_kernel->ResetPtenKernel(
+                new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+                    pt_kernel_name, pt_cpu_kernel_key)));
+            if (op_with_kernel->PtenKernel()->IsValid()) {
+              VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                      << pt_kernel_name
+                      << " | kernel key: " << pt_cpu_kernel_key
+                      << " | kernel: " << *(op_with_kernel->PtenKernel());
+              run_pten_kernel = true;
+            }
+          }
+        }
+      }
+      VLOG(3) << op_with_kernel->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
       if (run_pten_kernel) {
         pten::KernelContext pt_kernel_context;
         op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx,

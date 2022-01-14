@@ -586,7 +586,7 @@ class OperatorWithKernel : public OperatorBase {
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
-  void ChoosePtenKernel(const ExecutionContext& ctx) const;
+  pten::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx,
@@ -595,7 +595,19 @@ class OperatorWithKernel : public OperatorBase {
   void WriteBackToOutputs(RuntimeContext* ctx,
                           pten::KernelContext* pt_kernel_context) const;
 
+  pten::KernelSignature* PtenKernelSignature() const {
+    return pt_kernel_signature_.get();
+  }
+
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+  
+  void ResetPtenKernel(pten::Kernel* kernel) const {
+    return pt_kernel_.reset(kernel);
+  }
+
+  pten::KernelContext* PtenKernelContext() const {
+    return pt_kernel_context_.get();
+  }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
