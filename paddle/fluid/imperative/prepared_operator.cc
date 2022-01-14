@@ -175,30 +175,31 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
 
+  if (!(kernels_iter != all_op_kernels.end() &&
+        kernels_iter->second.find(expected_kernel_key) ==
+            kernels_iter->second.end())) {
+    if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+      auto pt_cpu_kernel_key =
+          FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
+      auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
+          pt_kernel_name, pt_cpu_kernel_key);
+      if (pt_cpu_kernel.IsValid()) {
+        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
+                << " | kernel key: " << pt_cpu_kernel_key
+                << " | kernel: " << pt_cpu_kernel;
+        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
+                          pt_cpu_kernel, pt_kernel_context, dev_ctx);
+      }
+    }
+  }
+
   PADDLE_ENFORCE_NE(
       kernels_iter, all_op_kernels.end(),
       platform::errors::NotFound(
           "There are no kernels which are registered in the %s operator.",
           op.Type()));
-
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
-
-  if (kernel_iter == kernels.end() &&
-      pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
-    // NOTE(zhiqiu): fall back for NPU/XPU/MLU only
-    auto pt_cpu_kernel_key =
-        FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-    auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
-        pt_kernel_name, pt_cpu_kernel_key);
-    if (pt_cpu_kernel.IsValid()) {
-      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
-              << " | kernel key: " << pt_cpu_kernel_key
-              << " | kernel: " << pt_cpu_kernel;
-      return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_cpu_kernel, pt_kernel_context, dev_ctx);
-    }
-  }
 
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
