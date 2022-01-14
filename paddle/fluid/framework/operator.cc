@@ -1962,6 +1962,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::string))) {
           pt_kernel_context_->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          pt_kernel_context_->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "
