@@ -189,7 +189,7 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
             << " is initialized, will be released.";
     auto dense_tensor =
         std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
-    dense_tensor->release();
+    dense_tensor->MoveMemoryHolder();
   }
   Py_INCREF(Py_None);
   return Py_None;
