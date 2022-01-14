@@ -310,7 +310,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   } else {
     PADDLE_THROW(platform::errors::NotFound(
         "No optimizer found, optimizer must be one of these types: sgd, "
-        "momentum, adam, adamw, adamax, lamb, adadelta, adagrad, rmsprop, "));
+        "momentum, adam, adamw, adamax, lamb, adadelta, adagrad or rmsprop"));
   }
 }
 
