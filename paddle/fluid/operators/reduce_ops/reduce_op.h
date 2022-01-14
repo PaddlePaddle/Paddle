@@ -743,17 +743,17 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     bool reduce_all = context.Attr<bool>("reduce_all");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
-    auto* input0 = context.Input<Tensor>("X");
+    auto* in_x = context.Input<Tensor>("X");
     auto* d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    int dim_size = input0->dims().size();
+    int dim_size = in_x->dims().size();
     d_x->mutable_data<T>(context.GetPlace());
     std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
     auto update_dims = vectorize(d_x->dims());
     int reduce_num = 1;
     for (auto i : reduce_dims) {
-      reduce_num *= (input0->dims())[i];
+      reduce_num *= (in_x->dims())[i];
       update_dims[i] = 1;
     }
     Tensor new_d_out;
