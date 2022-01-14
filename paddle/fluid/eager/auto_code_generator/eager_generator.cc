@@ -1119,7 +1119,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   */
   VLOG(6) << "Generating Dygraph Forward Function";
 
-  std::string generated_function_body = "";
+  const char* FORWARD_FUNCTION_TEMPLATE =
+      "  VLOG(3) << \"Running Eager Forward Op: %s\";\n";
+  std::string generated_function_body =
+      paddle::string::Sprintf(FORWARD_FUNCTION_TEMPLATE, op_type);
+
   std::string dygraph_function_args_str = "";
   core_ops_args_info[op_type] = {};
   core_ops_args_type_info[op_type] = {};
@@ -1459,7 +1463,10 @@ static std::string GenerateGradNodeCCContents(
   }
   */
 
-  std::string generated_grad_function_body = "";
+  const char* EAGER_LOG_TEMPLATE =
+      "  VLOG(3) << \"Running Eager Backward Node: GradNode%s\";\n";
+  std::string generated_grad_function_body =
+      paddle::string::Sprintf(EAGER_LOG_TEMPLATE, fwd_op_type);
   size_t outs_size = 0;
   const auto& op_base_infos = bwd_info.GetOpBaseInfos();
   for (size_t i = 0; i < op_base_infos.size(); i++) {

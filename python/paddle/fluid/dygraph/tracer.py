@@ -82,10 +82,15 @@ class Tracer(core.Tracer):
                 if arg_to_append is None:
                     arg_list.append(arg_to_append)
                 elif arg_type == "tensor":
-                    arg_list.append(arg_to_append[0])
+                    if isinstance(arg_to_append, list):
+                        arg_list.append(arg_to_append[0])
+                    else:
+                        arg_list.append(arg_to_append)
                 elif arg_type == "list":
+                    assert isinstance(arg_to_append, list)
                     arg_list.append(arg_to_append)
                 elif arg_type == "int":
+                    assert isinstance(arg_to_append, int)
                     arg_list.append(arg_to_append)
                 else:
                     assert False
@@ -101,15 +106,25 @@ class Tracer(core.Tracer):
                     retname = op_returns[i]
                     if retname in outputs.keys():
                         # Replaced outputs by function returns
-                        outputs[retname] = returns[i]
+                        if isinstance(returns[i], list):
+                            for j in range(len(returns[i])):
+                                outputs[retname][j].reconstruct_from_(
+                                    returns[i][j], False)
+                        else:
+                            outputs[retname][0].reconstruct_from_(returns[i],
+                                                                  False)
             elif isinstance(returns, list):
                 assert len(outputs.keys()) == 1
                 key = list(outputs.keys())[0]
-                outputs[key] = returns
+                for j in range(len(returns)):
+                    outputs[key][j].reconstruct_from_(returns[j], False)
             else:
                 assert len(outputs.keys()) == 1
                 key = list(outputs.keys())[0]
-                outputs[key] = [returns]
+                if isinstance(outputs[key], list):
+                    outputs[key][0].reconstruct_from_(returns, False)
+                else:
+                    outputs[key].reconstruct_from_(returns, False)
         else:
             self.trace(type, inputs, outputs, attrs,
                        framework._current_expected_place(), self._has_grad and
