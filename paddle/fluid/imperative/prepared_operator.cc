@@ -187,7 +187,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (kernel_iter == kernels.end() &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     // NOTE(zhiqiu): fall back for NPU/XPU/MLU only
-    auto pt_cpu_kernel_key = FallBackToCpu(expected_kernel_key, pt_kernel_key);
+    auto pt_cpu_kernel_key =
+        FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
     auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_cpu_kernel_key);
     if (pt_cpu_kernel.IsValid()) {

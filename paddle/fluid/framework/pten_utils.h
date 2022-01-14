@@ -42,7 +42,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
 pten::KernelKey TransOpKernelTypeToPtenKernelKey(
     const OpKernelType& kernel_type);
 pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                              const pten::KernelKey& kernel_key);
+                              const pten::KernelKey& kernel_key,
+                              const framework::OperatorBase& op);
 
 /* Kernel Args parse */
 

@@ -90,7 +90,8 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 }
 
 pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                              const pten::KernelKey& kernel_key) {
+                              const pten::KernelKey& kernel_key,
+                              const framework::OperatorBase& op) {
 #ifdef PADDLE_WITH_XPU
   if (is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
