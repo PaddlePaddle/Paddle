@@ -21,12 +21,12 @@
 
 #ifdef _LINUX
 #ifndef likely
-#define likely(x) __builtin_expect((x), 1)
+#define likely(expr) (__builtin_expect(!!(expr), 1))
 #endif
 #endif
 
 #ifdef _LINUX
 #ifndef unlikely
-#define unlikely(x) __builtin_expect((x), 0)
+#define unlikely(expr) (__builtin_expect(!!(expr), 0))
 #endif
 #endif
