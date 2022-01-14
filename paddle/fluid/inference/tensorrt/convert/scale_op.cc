@@ -97,23 +97,24 @@ class ScaleOpConverter : public OpConverter {
 
     if (bias_after_scale) {
       layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *input, nvinfer1::ScaleMode::kUNIFORM,
-          shift_weights.get(), scale_weights.get(), power_weights.get());
+          engine_, ScaleNd, *input, nvinfer1::ScaleMode::kUNIFORM,
+          shift_weights.get(), scale_weights.get(), power_weights.get(), 0);
       layer->getOutput(0)->setName(
           ("bias_after_scale_out: " + out_name).c_str());
       layer->setName(("Scale: scale (Output: " + out_name + ")").c_str());
     } else {
       // add bias
       layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *(input), nvinfer1::ScaleMode::kUNIFORM,
-          shift_weights.get(), power_weights.get(), power_weights.get());
+          engine_, ScaleNd, *(input), nvinfer1::ScaleMode::kUNIFORM,
+          shift_weights.get(), power_weights.get(), power_weights.get(), 0);
       layer->getOutput(0)->setName(
           ("bias_before_scale：bias_out: " + out_name).c_str());
       layer->setName(("Scale: scale_bias (Output: " + out_name + ")").c_str());
       // mul scale
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *(layer->getOutput(0)), nvinfer1::ScaleMode::kUNIFORM,
-          power_weights.get(), scale_weights.get(), power_weights.get());
+      layer = TRT_ENGINE_ADD_LAYER(engine_, ScaleNd, *(layer->getOutput(0)),
+                                   nvinfer1::ScaleMode::kUNIFORM,
+                                   power_weights.get(), scale_weights.get(),
+                                   power_weights.get(), 0);
       layer->getOutput(0)->setName(
           ("bias_before_scale：scale_out: " + out_name).c_str());
       layer->setName(("Scale: scale_scale (Output: " + out_name + ")").c_str());
