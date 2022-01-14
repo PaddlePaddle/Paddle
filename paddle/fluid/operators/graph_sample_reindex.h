@@ -25,8 +25,9 @@ inline __device__ size_t Hash(IdType id, int64_t size) {
 template <typename IdType>
 inline __device__ bool AttemptInsert(size_t pos, IdType id, int64_t index,
                                      IdType* keys, int64_t* key_index) {
-  IdType key = atomicCAS(reinterpret_cast<uint64_t*>(&keys[pos]),
-                         static_cast<uint64_t>(-1), static_cast<uint64_t>(id));
+  using Type = unsigned long long int;  // NOLINT
+  IdType key = atomicCAS(reinterpret_cast<Type*>(&keys[pos]),
+                         static_cast<Type>(-1), static_cast<Type>(id));
   return true;
   /*
   if (key == -1 || key == id) {
