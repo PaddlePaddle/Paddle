@@ -154,9 +154,9 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
 
-  if (!(kernels_iter != all_op_kernels.end() &&
-        kernels_iter->second.find(expected_kernel_key) ==
-            kernels_iter->second.end())) {
+  if (kernels_iter == all_op_kernels.end() ||
+      kernels_iter->second.find(expected_kernel_key) ==
+          kernels_iter->second.end()) {
     if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);

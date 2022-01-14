@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -1143,11 +1144,53 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
+  pten::KernelKey pt_kernel_key;
+  std::string pt_kernel_name;
   if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      ChoosePtenKernel(exe_ctx);
+      pt_kernel_signature_.reset(new KernelSignature(
+          std::move(this->GetExpectedPtenKernelArgs(exe_ctx))));
+      VLOG(6) << *pt_kernel_signature_.get();
+
+      kernel_type_.reset(
+          new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
+
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
+      pt_kernel_.reset(
+          new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+              pt_kernel_name, pt_kernel_key)));
+
+      if (pt_kernel_->IsValid()) {
+        VLOG(6) << "Static mode ChoosePtenKernel - kernel name: "
+                << pt_kernel_name << " | kernel key: " << pt_kernel_key
+                << " | kernel: " << *pt_kernel_;
+      } else {
+        VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
+                << "` not found.";
+      }
     }
-    run_pten_kernel_ = pt_kernel_->IsValid();
+    if (pt_kernel_->IsValid()) {
+      run_pten_kernel_ = true;
+    } else {
+      auto& all_op_kernels = AllOpKernels();
+      auto kernels_iter = all_op_kernels.find(type_);
+      if (kernels_iter == all_op_kernels.end() ||
+          kernels_iter->second.find(*kernel_type_.get()) ==
+              kernels_iter->second.end()) {
+        auto pt_cpu_kernel_key =
+            FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
+        pt_kernel_.reset(
+            new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+                pt_kernel_name, pt_cpu_kernel_key)));
+        if (pt_kernel_->IsValid()) {
+          VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
+                  << " | kernel key: " << pt_cpu_kernel_key
+                  << " | kernel: " << *pt_kernel_;
+          run_pten_kernel_ = true;
+        }
+      }
+    }
   }
   if (!run_pten_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
@@ -1279,29 +1322,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   return expected_kernel_key;
 }
 
-void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
-  pt_kernel_signature_.reset(
-      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
-  VLOG(6) << *pt_kernel_signature_.get();
-
-  kernel_type_.reset(
-      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
-
-  auto pt_kernel_name = pt_kernel_signature_->name;
-  auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
-  pt_kernel_.reset(
-      new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
-          pt_kernel_name, pt_kernel_key)));
-
-  if (pt_kernel_->IsValid()) {
-    VLOG(6) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
-            << " | kernel key: " << pt_kernel_key
-            << " | kernel: " << *pt_kernel_;
-  } else {
-    VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
-            << "` not found.";
-  }
-}
+void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {}
 
 void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   // check if op[type] has kernel registered.
