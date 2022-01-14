@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/arg_map_context.h"
 #include "paddle/pten/core/kernel_factory.h"

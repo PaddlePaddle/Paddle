@@ -582,7 +582,7 @@ class OperatorWithKernel : public OperatorBase {
     * When selecting Kernel during Op execution, select the arguments of the
     * original Op according to the GetExpectedPtenKernelArgs returned arguments.
     */
-  virtual KernelSignature GetExpectedPtenKernelArgs(
+  virtual pten::KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
@@ -653,7 +653,7 @@ class OperatorWithKernel : public OperatorBase {
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   mutable bool run_pten_kernel_ = false;
-  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<pten::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
 
