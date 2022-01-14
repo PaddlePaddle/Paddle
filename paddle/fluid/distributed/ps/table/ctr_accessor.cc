@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
 #include <gflags/gflags.h>
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"

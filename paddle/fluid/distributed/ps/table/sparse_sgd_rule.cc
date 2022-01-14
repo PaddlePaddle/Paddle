@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 #include <gflags/gflags.h>
 #include "glog/logging.h"
 

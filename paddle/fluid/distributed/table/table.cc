@@ -24,7 +24,7 @@
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/distributed/table/ssd_sparse_table.h"
 #endif
-#include "paddle/fluid/distributed/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
 #include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
 #include "paddle/fluid/distributed/table/tensor_table.h"
