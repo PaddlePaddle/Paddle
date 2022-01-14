@@ -16,9 +16,6 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -100,18 +97,12 @@ void ReduceGradFunctor(const DeviceContext& context,
   auto reduced_dims = framework::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
-#if defined(__HIPCC__) || defined(__NVCC__)
-  std::vector<const framework::Tensor*> inputs = {&input2};
-  std::vector<framework::Tensor*> outputs = {output};
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  LaunchBroadcastElementwiseCudaKernel<pten::ElementwiseType::kUnary, T, T>(
-      context, inputs, &outputs, 0, kps::IdentityFunctor<T>());
-#else
+
   auto& place = *context.eigen_device();
+
   Functor functor;
   functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
           broad_cats_times);
-#endif
 }
 
 }  // namespace operators
