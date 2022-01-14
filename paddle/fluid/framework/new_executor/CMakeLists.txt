@@ -31,7 +31,7 @@ endif()
 # cc_binary(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 # skip win32 since wget is not installed by default on windows machine.
 # skip COVERAGE_CI since the test runs slowly because of instrumentation.
-if (WITH_TESTING AND NOT WIN32 AND NOT WITH_COVERAGE AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+if (WITH_CUDA AND WITH_TESTING AND NOT WIN32 AND NOT WITH_COVERAGE AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     add_custom_target(
         download_program
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 

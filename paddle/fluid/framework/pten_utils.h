@@ -32,6 +32,10 @@ limitations under the License. */
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#endif
+
 namespace paddle {
 namespace framework {
 

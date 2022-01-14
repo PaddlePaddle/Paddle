@@ -430,7 +430,7 @@ void build_op_func_list(const platform::Place& place,
             platform::errors::NotFound(
                 "Operator (%s) does not have kernel for %s.", op->Type(),
                 KernelTypeToString(expected_kernel_key)));
-
+        // TODO(zhiqiu): add fallback logic
         op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
         op_func_node.kernel_func_(exec_ctx);
       }
