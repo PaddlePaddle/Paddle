@@ -236,7 +236,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   } else if (platform::is_mlu_place(self.place())) {
 #ifdef PADDLE_WITH_MLU
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::MLUPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -277,7 +277,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 #endif
   } else if (platform::is_mlu_place(self->place())) {
 #ifdef PADDLE_WITH_MLU
-    auto p = BOOST_GET_CONST(platform::MLUPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -551,8 +551,7 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    output->mutable_data(BOOST_GET_CONST(platform::MLUPlace, place),
-                         self.type());
+    output->mutable_data(place, self.type());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

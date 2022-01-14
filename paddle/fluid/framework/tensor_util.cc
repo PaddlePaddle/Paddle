@@ -1008,8 +1008,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        memory::Copy(cpu, buf.get(),
-                     BOOST_GET_CONST(platform::MLUPlace, tensor.place()),
+        memory::Copy(cpu, buf.get(), tensor.place(),
                      reinterpret_cast<const void*>(data), size_to_write,
                      mlu_dev_ctx.stream());
         mlu_dev_ctx.Wait();
