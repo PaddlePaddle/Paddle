@@ -2522,8 +2522,8 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
                 for item in iter_list:
                     _rename_sub_block_output_recursively(
                         sub_block.program.block(op._block_attr_id(item[0])),
-                        op.attr(item[1]), op.output("out"), True)
-                    op._set_attr(item[1], op.output("out"))
+                        op.attr(item[1]), op.output("Out"), True)
+                    op._set_attr(item[1], op.output("Out"))
             elif op.type == "while":  # we should rename in all subblock. because they may refer the old name.
                 _rename_sub_block_output_recursively(
                     sub_block.program.block(op._block_attr_id('sub_block')),
