@@ -17,14 +17,15 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <llvm/Support/SourceMgr.h>
-#include <mlir/IR/Function.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/Parser.h>
 
 #include <string>
 
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 TEST(MlirLoader, basic) {
   mlir::MLIRContext context;
@@ -42,8 +43,7 @@ func @main() -> f32 {
 )ROC";
 
   auto module = LoadMlirSource(&context, source);
-  module->verify();
-
+  EXPECT_TRUE(mlir::succeeded(module->verify()));
   LOG(INFO) << "module name: " << module->getOperationName().data();
   for (auto func : module->getOps<mlir::FuncOp>()) {
     LOG(INFO) << "get func " << func.getName().str();
@@ -54,4 +54,5 @@ func @main() -> f32 {
   }
 }
 
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt
