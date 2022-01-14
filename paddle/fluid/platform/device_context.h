@@ -1,4 +1,6 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,6 +24,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/dynload/cusparse.h"
@@ -354,6 +357,8 @@ class CUDAContext {
     return cublas_handle_;
   }
 
+  const cublasLtHandle_t& CublasLtHandle() const { return cublaslt_handle_; }
+
   const std::unique_ptr<CublasHandleHolder>& CublasTensorCoreHandle() const {
     return cublas_tensor_core_handle_;
   }
@@ -419,6 +424,8 @@ class CUDAContext {
     }
   }
 #endif
+
+  void InitCuBlasLtContext() { dynload::cublasLtCreate(&cublaslt_handle_); }
 
 #ifndef PADDLE_WITH_HIP
   void InitCuSparseContext() {
@@ -498,6 +505,8 @@ class CUDAContext {
     cublas_tf32_tensor_core_handle_.reset();
   }
 
+  void DestoryCuBlasLtContext() { dynload::cublasLtDestroy(cublaslt_handle_); }
+
 #ifndef PADDLE_WITH_HIP
   void DestoryCuSparseContext() { cusparse_handle_.reset(); }
 #endif
@@ -523,6 +532,7 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
+  cublasLtHandle_t cublaslt_handle_;
 #ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle_;
   std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
@@ -595,6 +605,7 @@ class CUDADeviceContext : public DeviceContext {
   rocblas_handle cublas_handle() const;
 #else
   cublasHandle_t cublas_handle() const;
+  cublasLtHandle_t cublaslt_handle() const;
   cusparseHandle_t cusparse_handle() const;
 #endif
 

@@ -1,4 +1,6 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -458,6 +460,7 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
+  InitCuBlasLtContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
   InitCuSparseContext();
@@ -470,6 +473,7 @@ void CUDAContext::SetStream(gpuStream_t stream) {
     CUDADeviceGuard guard(place_.device);
     DestoryCuDNNContext();
     DestoryCuBlasContext();
+    DestoryCuBlasLtContext();
 #ifndef PADDLE_WITH_HIP
     DestoryCuSolverContext();
 #endif
@@ -478,6 +482,7 @@ void CUDAContext::SetStream(gpuStream_t stream) {
 
     InitEigenContext();
     InitCuBlasContext();
+    InitCuBlasLtContext();
     InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
     InitCuSolverContext();
@@ -489,6 +494,7 @@ CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
+  DestoryCuBlasLtContext();
 #ifndef PADDLE_WITH_HIP
   DestoryCuSparseContext();
   DestoryCuSolverContext();
@@ -607,6 +613,9 @@ rocblas_handle CUDADeviceContext::cublas_handle() const {
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
+}
+cublasLtHandle_t CUDADeviceContext::cublaslt_handle() const {
+  return context()->CublasLtHandle();
 }
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
   return context()->CusparseHandle()->GetCusparseHandle();
