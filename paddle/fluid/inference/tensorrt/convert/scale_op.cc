@@ -76,10 +76,10 @@ class ScaleOpConverter : public OpConverter {
     nvinfer1::IShuffleLayer* expand_layer = nullptr;
     nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
 
-    if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+    if (input_dim.nbDims < 4 + dynamic_shape_offset) {
       nvinfer1::Dims expand_shape;
-      expand_shape.nbDims = 3 + dynamic_shape_offset;
-      for (int i = 0; i < 3 + dynamic_shape_offset; i++) {
+      expand_shape.nbDims = 4 + dynamic_shape_offset;
+      for (int i = 0; i < 4 + dynamic_shape_offset; i++) {
         if (i < input_dim.nbDims) {
           expand_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
         } else {
@@ -98,7 +98,7 @@ class ScaleOpConverter : public OpConverter {
     if (bias_after_scale) {
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, ScaleNd, *input, nvinfer1::ScaleMode::kUNIFORM,
-          shift_weights.get(), scale_weights.get(), power_weights.get(), 0);
+          shift_weights.get(), scale_weights.get(), power_weights.get(), 1);
       layer->getOutput(0)->setName(
           ("bias_after_scale_out: " + out_name).c_str());
       layer->setName(("Scale: scale (Output: " + out_name + ")").c_str());
@@ -106,7 +106,7 @@ class ScaleOpConverter : public OpConverter {
       // add bias
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, ScaleNd, *(input), nvinfer1::ScaleMode::kUNIFORM,
-          shift_weights.get(), power_weights.get(), power_weights.get(), 0);
+          shift_weights.get(), power_weights.get(), power_weights.get(), 1);
       layer->getOutput(0)->setName(
           ("bias_before_scale：bias_out: " + out_name).c_str());
       layer->setName(("Scale: scale_bias (Output: " + out_name + ")").c_str());
@@ -114,7 +114,7 @@ class ScaleOpConverter : public OpConverter {
       layer = TRT_ENGINE_ADD_LAYER(engine_, ScaleNd, *(layer->getOutput(0)),
                                    nvinfer1::ScaleMode::kUNIFORM,
                                    power_weights.get(), scale_weights.get(),
-                                   power_weights.get(), 0);
+                                   power_weights.get(), 1);
       layer->getOutput(0)->setName(
           ("bias_before_scale：scale_out: " + out_name).c_str());
       layer->setName(("Scale: scale_scale (Output: " + out_name + ")").c_str());
@@ -123,7 +123,7 @@ class ScaleOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(layer != nullptr, true,
                       platform::errors::Fatal("Create scale layer failed."));
 
-    if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+    if (input_dim.nbDims < 4 + dynamic_shape_offset) {
       nvinfer1::Dims squeeze_shape;
       squeeze_shape.nbDims = input_dim.nbDims;
       for (int i = 0; i < squeeze_shape.nbDims; i++) {
