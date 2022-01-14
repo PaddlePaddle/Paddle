@@ -343,7 +343,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             adam.clear_gradients()
             np.testing.assert_allclose(out[0].numpy(), loss_ref[i], rtol=1e-6)
 
-    def _test_adamw_op(self):
+    def test_adamw_op(self):
         paddle.enable_static()
         place = fluid.CUDAPlace(0)
         train_prog = fluid.Program()
@@ -379,7 +379,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         exe.run(startup)
 
         loss_ref = np.array(
-            [0.36120513, 0.2720821, 0.67208904, 0.14607805, 0.24098626])
+            [0.33895183, 0.3159437, 0.19472016, 0.17764759, 0.1520702])
         for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
@@ -388,8 +388,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                  "y": outputs},
                            fetch_list=[avg_cost])
             assert rets[0] is not None
-            print(rets[0])
-            #np.testing.assert_allclose(rets[0], loss_ref[i], rtol=1e-6)
+            np.testing.assert_allclose(rets[0], loss_ref[i], rtol=1e-6)
 
         paddle.disable_static()
 

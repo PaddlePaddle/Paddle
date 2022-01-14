@@ -274,7 +274,7 @@ class TestDistTraning(unittest.TestCase):
         seq_length = 16
         class_size_per_card = 2
         vocab_size = class_size_per_card * self.model_parallel_size
-        seed = 1025
+        seed = 100
 
         set_random_seed(seed)
         rank_id = dist.get_rank()
@@ -300,8 +300,9 @@ class TestDistTraning(unittest.TestCase):
 
             check_group = dist.new_group(list(range(self.model_parallel_size)))
             integral_data = []
+            partial_data = data.clone().detach()
             paddle.distributed.all_gather(
-                integral_data, data.clone().detach(), group=check_group)
+                integral_data, partial_data, group=check_group)
             integral_data = paddle.concat(integral_data, axis=-1)
             integral_data = integral_data.detach().clone()
             integral_data.stop_gradient = False
@@ -317,14 +318,10 @@ class TestDistTraning(unittest.TestCase):
             loss_b.backward()
 
             integral_grad = []
+            partial_grad = data.grad.clone().detach()
             paddle.distributed.all_gather(
-                integral_grad, data.grad.clone().detach(), group=check_group)
+                integral_grad, partial_grad, group=check_group)
             integral_grad = paddle.concat(integral_grad, axis=-1)
-
-            print("data.grad====%20.20f:", data.grad.numpy())
-            print("integral_data.grad====:%20.20f" % integral_data.grad.numpy())
-
-            print("integral_grad====:%20.20f", integral_grad)
 
             np.testing.assert_allclose(
                 integral_data.grad.numpy(), integral_grad.numpy(), rtol=1e-6)
