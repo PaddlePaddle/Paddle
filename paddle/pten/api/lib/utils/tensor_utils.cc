@@ -430,9 +430,7 @@ void ResetTensorByArgDef(pten::DenseTensor* dst,
       !(dst->place() == pten::TransToFluidPlace(arg_def.backend))) {
     auto* storage = static_cast<SharedStorage*>(
         pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
-    VLOG(1) << "###### before storage: " << storage;
     storage->ResetAllocationPlace(pten::TransToFluidPlace(arg_def.backend));
-    VLOG(1) << "###### storage: " << storage;
   }
 }
 

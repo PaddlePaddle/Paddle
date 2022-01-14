@@ -107,7 +107,8 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes + meta_.offset || storage_->size() == 0) {
+  if (!storage_->data() || storage_->size() < bytes + meta_.offset ||
+      storage_->size() == 0) {
     VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
              << ", new size: " << bytes;
     storage_->Realloc(bytes);
