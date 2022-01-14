@@ -233,6 +233,13 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
+  } else if (platform::is_mlu_place(self.place())) {
+#ifdef PADDLE_WITH_MLU
+    const T *a = self.data<T>();
+    auto p = BOOST_GET_CONST(platform::MLUPlace, self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
   } else if (platform::is_npu_place(self.place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
     const T *a = self.data<T>();
@@ -264,6 +271,13 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   } else if (platform::is_gpu_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
+  } else if (platform::is_mlu_place(self->place())) {
+#ifdef PADDLE_WITH_MLU
+    auto p = BOOST_GET_CONST(platform::MLUPlace, self->place());
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -345,6 +359,18 @@ void SetTensorFromPyArrayT(
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use NPUPlace in CPU/GPU/XPU version. "
         "Please recompile or reinstall Paddle with NPU support."));
+#endif
+  } else if (paddle::platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+    platform::Place tmp_place = place;
+    platform::MLUDeviceGuard guard(
+        BOOST_GET_CONST(platform::MLUPlace, tmp_place).device);
+    auto dst = self->mutable_data<T>(place);
+    paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use MLUPlace in CPU/GPU version, "
+        "Please recompile or reinstall Paddle with MLU support."));
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -532,6 +558,11 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
     output->mutable_data(BOOST_GET_CONST(platform::XPUPlace, place),
                          self.type());
 #endif
+  } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+    output->mutable_data(BOOST_GET_CONST(platform::MLUPlace, place),
+                         self.type());
+#endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_cuda_pinned_place(place)) {
@@ -702,6 +733,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
   bool is_npu_tensor = platform::is_npu_place(tensor.place());
+  bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = tensor.type();
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
@@ -716,11 +748,11 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     numel *= py_dims[i];
   }
 
-  const void *tensor_buf_ptr = tensor.data<void>();
+  const void *tensor_buf_ptr = tensor.data();
 
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()), py_dims, py_strides,
@@ -816,6 +848,34 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use NPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with NPU support."));
+#endif
+  } else if (is_mlu_tensor) {
+#ifdef PADDLE_WITH_MLU
+    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                      platform::errors::InvalidArgument(
+                          "PyArray is not writable, in which case memory leak "
+                          "or double free would occur"));
+    PADDLE_ENFORCE_EQ(
+        py_arr.owndata(), true,
+        platform::errors::InvalidArgument(
+            "PyArray does not own data, in which case  memory leak "
+            "or double free would occur"));
+
+    size_t copy_bytes = sizeof_dtype * numel;
+    auto p = BOOST_GET_CONST(platform::MLUPlace, tensor.place());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(tensor.place());
+    paddle::memory::Copy(
+        platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
+        copy_bytes,
+        reinterpret_cast<const platform::MLUDeviceContext &>(ctx).stream());
+    ctx.Wait();
+    return py_arr;
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use MLUPlace in CPU/GPU/XPU/NPU version, "
+        "Please recompile or reinstall Paddle with MLU support."));
 #endif
   }
   PADDLE_THROW(platform::errors::Unimplemented("Place is not supported"));

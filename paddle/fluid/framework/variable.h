@@ -74,7 +74,7 @@ class Variable {
  private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
-  framework::TensorInplaceVersion* InplaceVersionCounter();
+  pten::TensorInplaceVersion* InplaceVersionCounter();
 
  public:
   void SetInplaceVersionToZero();
@@ -116,8 +116,8 @@ class Variable {
   std::shared_ptr<Placeholder> holder_;
 };
 
-inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
-  framework::TensorInplaceVersion* version_counter_ptr(nullptr);
+inline pten::TensorInplaceVersion* Variable::InplaceVersionCounter() {
+  pten::TensorInplaceVersion* version_counter_ptr(nullptr);
   if (IsType<framework::LoDTensor>()) {
     version_counter_ptr =
         &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();

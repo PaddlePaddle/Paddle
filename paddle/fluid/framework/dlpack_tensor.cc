@@ -134,7 +134,7 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
 
 DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // init data, data buffer
-  t_.data = const_cast<void *>(tensor.data<void>());
+  t_.data = const_cast<void *>(tensor.data());
 
   // init device, DLDevice type with device_type and device_id
   auto place = tensor.place();

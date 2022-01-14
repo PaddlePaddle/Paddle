@@ -995,6 +995,21 @@ struct Slice : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+// Nearest Interp op
+// Forward pass for nearest_interp.
+// nearest_interp_out is a result of the operator.
+struct NearestInterp : public PatternBase {
+  NearestInterp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "nearest_interp") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(nearest_interp_in);
+  PATTERN_DECL_NODE(nearest_interp_op);
+  PATTERN_DECL_NODE(nearest_interp_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // Matmul op
 // Forward pass for matmul.
 struct Matmul : public PatternBase {
@@ -1431,6 +1446,7 @@ struct Bfloat16Placement : public PatternBase {
   PDNode* operator()(
       const std::unordered_set<std::string>& bfloat16_enabled_op_types);
 
+  PATTERN_DECL_NODE(op_in);
   PATTERN_DECL_NODE(op);
 };
 

@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
-#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -27,21 +29,39 @@ namespace distributed {
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 
-void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
-                   framework::Scope* root_scope,
-                   framework::Scope* minibatch_scope,
-                   const std::vector<framework::Scope*>& microbatch_scopes,
-                   const platform::Place& place) {
-  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
-                                         "Carrier is already init."));
+void Carrier::Init(
+    int64_t rank,
+    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank) {
   rank_ = rank;
-  runtime_graph_ = runtime_graph;
-  interceptor_id_to_rank_ = runtime_graph_->interceptor_id_to_rank();
-  minibatch_scope_ = minibatch_scope;
-  microbatch_scopes_ = microbatch_scopes;
+  interceptor_id_to_rank_ = interceptor_id_to_rank;
+
+  // TODO(fleet_exe dev): thread pool
+  thread_num_ = 1;
+  thread_pool_.SetThreadNum(thread_num_);
+  thread_pool_.Start();
+}
+
+void Carrier::Init(
+    int64_t rank,
+    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
+    const framework::ProgramDesc& program, framework::Scope* scope,
+    int64_t num_micro_batches, const platform::Place& place) {
+  rank_ = rank;
+  interceptor_id_to_rank_ = interceptor_id_to_rank;
+  interceptor_id_to_node_ = interceptor_id_to_node;
   place_ = place;
-  root_scope_ = root_scope;
+  root_scope_ = scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+
+  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
+                                           "root_scope can not be nullptr"));
+  minibatch_scope_ = &root_scope_->NewScope();
+  microbatch_scopes_.resize(num_micro_batches);
+  for (int i = 0; i < num_micro_batches; ++i) {
+    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+    CopyParameters(i, program);
+  }
 
   // TODO(fleet_exe dev): thread pool
   thread_num_ = 1;
@@ -52,27 +72,44 @@ void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
   is_init_ = true;
 }
 
-void Carrier::Release() {}
+void Carrier::Release() {
+  if (root_scope_) {
+    root_scope_->DropKids();
+  }
+}
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
-bool Carrier::EnqueueInterceptorMessage(
-    const InterceptorMessage& interceptor_message) {
-  if (interceptor_message.ctrl_message()) {
-    VLOG(3) << "Receiving control message from rank "
-            << interceptor_message.src_id() << " to rank "
-            << interceptor_message.dst_id();
-    // for barrier
-    msg_bus_->IncreaseBarrierCount();
-  } else {
-    int64_t dst_id = interceptor_message.dst_id();
-    Interceptor* dst_interceptor = GetInterceptor(dst_id);
-    dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
+void Carrier::CopyParameters(int microbatch_id,
+                             const framework::ProgramDesc& program) {
+  auto& global_block = program.Block(0);
+
+  for (auto& var : global_block.AllVars()) {
+    if (var->Persistable() && microbatch_id == 0) {
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(5) << "Create persistable var: " << var->Name()
+              << ", which pointer is " << ptr;
+    } else if (!var->Persistable()) {
+      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+              << microbatch_id << ", which pointer is " << ptr << ".";
+      InitializeVariable(ptr, var->GetType());
+    }
   }
-  return true;
 }
 
-void Carrier::Barrier() { msg_bus_->Barrier(); }
+bool Carrier::EnqueueInterceptorMessage(
+    const InterceptorMessage& interceptor_message) {
+  PADDLE_ENFORCE_EQ(
+      interceptor_message.ctrl_message(), false,
+      platform::errors::Fatal(
+          "Control message should be only send inter rank using message bus."));
+  int64_t dst_id = interceptor_message.dst_id();
+  Interceptor* dst_interceptor = GetInterceptor(dst_id);
+  dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
+  return true;
+}
 
 Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
@@ -95,12 +132,8 @@ void Carrier::WakeUp() {
 }
 
 void Carrier::Start() {
-  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
-                    platform::errors::PreconditionNotMet(
-                        "Using message bus since it has not been initialized. "
-                        "Please invoke MessageBus::Init() before using it or "
-                        "neccessary components are not ready."));
-
+  PADDLE_ENFORCE_EQ(is_init_, true, platform::errors::PreconditionNotMet(
+                                        "Using carrier before initialized."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
             << ".";
@@ -114,6 +147,15 @@ void Carrier::Start() {
   // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
+  for (auto* micro_scope : microbatch_scopes_) {
+    // By default, we should delete all kid scopes after run executor because
+    // some operators may create local scope when running, such as while_op.
+    // But when while_op also create a local executor to run it's sub block,
+    // the sub scopes it created should not be dropped immediately, because
+    // while_grad_op will use some variables created during while_op run, so
+    // we need to keep the kids and wait for the outer executor to drop them.
+    micro_scope->DropKids();
+  }
 }
 
 bool Carrier::IsInit() const { return is_init_; }
@@ -142,19 +184,10 @@ bool Carrier::Send(const InterceptorMessage& msg) {
             << " to interceptor " << dst_id << ", which are in the same ranks.";
     return EnqueueInterceptorMessage(msg);
   } else {
-    PADDLE_ENFORCE_NOT_NULL(
-        msg_bus_.get(),
-        platform::errors::Unavailable("Message bus is released accidently"));
-    PADDLE_ENFORCE_EQ(
-        msg_bus_->IsInit(), true,
-        platform::errors::PreconditionNotMet(
-            "Using message bus since it has not been initialized. "
-            "Please invoke MessageBus::Init() before using it or "
-            "neccessary components are not ready."));
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id
             << ", which are in different ranks.";
-    return msg_bus_->Send(dst_rank, msg);
+    return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
   }
 }
 
@@ -199,13 +232,13 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 }
 
 void Carrier::CreateInterceptors() {
-  if (runtime_graph_->interceptor_id_to_node().empty()) return;
+  if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
 
   // create each Interceptor
   // no auto init since there is no config
-  for (const auto& item : runtime_graph_->interceptor_id_to_node()) {
+  for (const auto& item : interceptor_id_to_node_) {
     int64_t interceptor_id = item.first;
     TaskNode* task_node = item.second;
 

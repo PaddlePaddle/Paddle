@@ -413,7 +413,23 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     if (op_with_kernel == nullptr) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+      // fit for pten
+      if (instr_node.PtenKernel() && instr_node.PtenKernel()->IsValid()) {
+        VLOG(4) << "Run pten kernel: " << op->Type();
+        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                << &instr_node.DeviceContext();
+        op_with_kernel->BuildPtenKernelContext(
+            *instr_node.InnerRuntimeContext().get(),
+            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()));
+
+        (*instr_node.PtenKernel())(instr_node.PtenKernelContext());
+
+        op_with_kernel->WriteBackToOutputs(
+            instr_node.InnerRuntimeContext().get());
+        instr_node.PtenKernelContext()->ClearData();
+      } else {
+        instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+      }
     }
   }
 
@@ -454,11 +470,20 @@ void InterpreterCore::ExecuteInstructionList(
   }
 
   auto event_name = main_thread_blocker_.WaitEvent();
-  VLOG(3) << "event_name: " << event_name;
+  VLOG(1) << "event_name: " << event_name;
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
-    VLOG(4) << "Exception caught " << exception_holder_.Type();
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    // NOTE(xiongkun) Why we reset ?
+    // The caught exception may be EOFExcetion, under this situation, we need
+    // make async_work_queue_ available, so we need reset.
     async_work_queue_->Cancel();
+    async_work_queue_.reset(new interpreter::AsyncWorkQueue(
+        kHostNumThreads, &main_thread_blocker_));
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(), 0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
     exception_holder_.ReThrow();
   }
 }

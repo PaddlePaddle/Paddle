@@ -51,6 +51,7 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'xpu_places',
+    'mlu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cinn',
@@ -76,6 +77,7 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
+_already_patch_eager_tensor = False
 _global_flags_ = core.globals()
 core._disable_eager_mode()
 
@@ -84,6 +86,13 @@ core._disable_eager_mode()
 def _test_eager_guard(tracer=None):
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
+    global _already_patch_eager_tensor
+    if not _already_patch_eager_tensor:
+        from .dygraph.varbase_patch_methods import monkey_patch_varbase
+        monkey_patch_varbase()
+        from .dygraph import monkey_patch_math_varbase
+        monkey_patch_math_varbase()
+        _already_patch_eager_tensor = True
     if tracer is None:
         core._set_eager_tracer(_dygraph_tracer_)
     else:
@@ -347,6 +356,18 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_mlu():
+            try:
+                device_count = core.get_mlu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.MLUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -423,6 +444,15 @@ def _npu_ids():
         device_ids = [int(s) for s in npus_env.split(",")]
     else:
         device_ids = six.moves.range(core.get_npu_device_count())
+    return device_ids
+
+
+def _mlu_ids():
+    mlus_env = os.getenv("FLAGS_selected_mlus")
+    if mlus_env:
+        device_ids = [int(s) for s in mlus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_mlu_device_count())
     return device_ids
 
 
@@ -719,6 +749,48 @@ def cuda_pinned_places(device_count=None):
     if device_count is None:
         device_count = len(_cuda_ids())
     return [core.CUDAPinnedPlace()] * device_count
+
+
+def mlu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
+        This function creates a list of :code:`paddle.device.MLUPlace` objects.
+        If :code:`device_ids` is None, environment variable of
+        :code:`FLAGS_selected_mlus` would be checked first. For example, if
+        :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
+        be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+        If :code:`FLAGS_selected_mlus` is not set, all visible
+        mlu places would be returned.
+        If :code:`device_ids` is not None, it should be the device
+        ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
+        the returned list would be
+        [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+
+    Parameters:
+        device_ids (list or tuple of int, optional): list of MLU device ids.
+
+    Returns:
+        list of paddle.device.MLUPlace: Created MLU place list.
+
+    Examples:
+        .. code-block:: python
+
+            # required: mlu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+            mlu_places = static.mlu_places()
+    """
+    assert core.is_compiled_with_mlu(), \
+        "Not compiled with MLU"
+    if device_ids is None:
+        device_ids = _mlu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.MLUPlace(dev_id) for dev_id in device_ids]
 
 
 class NameScope(object):
@@ -2090,6 +2162,10 @@ class Variable(object):
             p = core.Place()
             p.set_place(t._place())
             place = core.NPUPlace(p.npu_device_id())
+        elif p.is_mlu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.MLUPlace(p.mlu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -6768,7 +6844,8 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
+                          core.MLUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6823,8 +6900,20 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
+    # MLU
+    avaliable_mlu_place = re.match(r'mlu:\d+', place)
+    if avaliable_mlu_place:
+        if not core.is_compiled_with_mlu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with MLU".format(avaliable_mlu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.MLUPlace(device_id)
+
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, MLUPlace and NPUPlace, but received {}.".
         format(place))
 
 
