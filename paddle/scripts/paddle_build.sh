@@ -1466,6 +1466,7 @@ set -ex
 }
 
 function show_ut_retry_result() {
+    set -x
     if [ "$SYSTEM" == "Darwin" ]; then
         exec_retry_threshold_count=10
     else
