@@ -194,5 +194,259 @@ class PreparedOp {
   pten::Kernel pt_kernel_;
 };
 
+const inline framework::Attribute& GetAttr(
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const std::string& name) {
+  auto it = attrs.find(name);
+  bool found = it != attrs.end();
+  if (!found) {
+    it = default_attrs.find(name);
+    found = it != default_attrs.end();
+  }
+  PADDLE_ENFORCE_EQ(
+      found, true,
+      platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
+  return it->second;
+}
+
+template <typename VarType>
+void BuildDygraphPtenKernelContext(
+    const framework::KernelSignature& pt_kernel_signature,
+    const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
+    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
+  // TODO(chenweihang): now only work for very simple case,
+  // many cases need to be deal with later:
+  // 1. the input and output are not tensor
+  // 2. the dispensbale, duplicable input and output
+  // 3. needless attributes remove
+  // 4. use pt Tensor directly
+  // 5. kernel input is not DenseTensor
+  kernel_ctx->SetDeviceContext(dev_ctx);
+
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& attr_names = std::get<1>(pt_kernel_signature.args);
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  auto& input_defs = pt_kernel.args_def().input_defs();
+  auto& output_defs = pt_kernel.args_def().output_defs();
+  auto& attr_defs = pt_kernel.args_def().attribute_defs();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of outputs_args names (%d) must be equal to "
+                        "the size of kernel output_defs (%d).",
+                        output_names.size(), output_defs.size()));
+
+  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of attribute_args names (%d) must be equal "
+                        "to the size of kernel attribute_defs (%d).",
+                        attr_names.size(), attr_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ins.at(input_names[i]);
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
+    auto current_vector_size = kernel_ctx->InputsSize();
+
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const auto& variable = ins_vector[offset]->Var();
+      if (current_vector_size > start_idx + offset) {
+        auto& input_ptr = kernel_ctx->MutableInputPtrAt(start_idx + offset);
+        if (input_ptr == nullptr) {
+          input_ptr = experimental::MakePtenTensorBaseFromVar(variable, in_def);
+        } else {
+          experimental::ReMakePtenDenseTensorFromVar(
+              variable, in_def, kernel_ctx->MutableInputAt<pten::DenseTensor>(
+                                    start_idx + offset));
+        }
+      } else {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(variable, in_def));
+      }
+    }
+    kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+  }
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto& out_def = output_defs.at(i);
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
+    auto current_vector_size = kernel_ctx->OutputsSize();
+
+    auto iter = outs.find(output_names[i]);
+    if (iter == outs.end()) {
+      if (current_vector_size > start_idx) {
+        kernel_ctx->SetOutputWithoutSetRange(start_idx, {nullptr});
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      }
+      kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
+                                    i);
+      continue;
+    }
+
+    auto& outs_vector = iter->second;
+    size_t end_idx = start_idx + outs_vector.size();
+
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (current_vector_size > start_idx + offset) {
+        auto* buffer_tensor =
+            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset);
+        if (buffer_tensor) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
+        } else {
+          kernel_ctx->SetOutputWithoutSetRange(
+              start_idx + offset,
+              experimental::MakePtenTensorBaseFromVar(
+                  outs_vector[offset]->MutableVar(), out_def));
+        }
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(
+                outs_vector[offset]->MutableVar(), out_def));
+      }
+    }
+    kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
+  }
+
+  for (size_t i = 0; i < attr_names.size(); ++i) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      if (attrs.find(attr_names[i]) !=
+          attrs.end()) {  // shape is in the attribute
+        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to VectorTensor when "
+              "construct KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          kernel_ctx->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVar(ins_vector[0]->Var())));
+        } else {  // ShapeTensorList
+          std::vector<framework::Variable*> variables;
+          variables.reserve(ins_vector.size());
+          for (const auto& var_base : ins_vector) {
+            variables.push_back(var_base->MutableVar());
+          }
+          kernel_ctx->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVarList(variables)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
+      // TODO(chenweihang): support other attrs later
+      // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
+      // attribtue type by attr_defs
+      if (attrs.find(attr_names[i]) != attrs.end() ||
+          default_attrs.find(attr_names[i]) !=
+              default_attrs.end()) {  // scalar is in the attribute
+        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "KernelContext in dygraph.",
+              attr_names[i]));
+        }
+      } else {  // scalar is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        kernel_ctx->EmplaceBackAttr(std::move(
+            experimental::MakePtenScalarFromVar(ins_vector[0]->Var())));
+      }
+
+    } else {
+      // TODO(chenweihang): support other attrs later
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(pten::DataType))) {
+        auto data_type = pten::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        kernel_ctx->EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Emplace Back Attr according to the type of Pten_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          kernel_ctx->EmplaceBackAttr(vector_int64_attr);
+        }
+        // TODO(YuanRisheng) Need support vector<int64_t> attr
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` when construct "
+            "KernelContext in dygraph.",
+            attr_names[i]));
+      }
+    }
+  }
+}
+
+template <typename VarType>
+void WriteBackToOutputs(const framework::KernelSignature& pt_kernel_signature,
+                        const NameVarMap<VarType>& outs,
+                        pten::KernelContext* kernel_ctx) {
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto iter = outs.find(output_names[i]);
+    if (iter != outs.end()) {
+      auto& outs_vector = iter->second;
+
+      auto& range_pair = kernel_ctx->OutputRangeAt(i);
+      auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
+          range_pair.first, range_pair.second);
+
+      for (size_t j = 0; j < pten_outs.size(); ++j) {
+        experimental::MakeVariableFromPtenTensor(pten_outs[j],
+                                                 outs_vector[j]->MutableVar());
+      }
+    }
+  }
+}
+
 }  // namespace imperative
 }  // namespace paddle

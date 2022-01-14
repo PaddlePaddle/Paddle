@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/legacy/prepared_operator.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
 
 #include "paddle/fluid/eager/legacy/infer_shape_context.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -126,7 +127,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
   if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
-    VLOG(6) << paddle::framework::KernelSignatureToString(pt_kernel_signature);
+    VLOG(6) << pt_kernel_signature;
 
     auto pt_kernel_name = pt_kernel_signature.name;
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
@@ -248,7 +249,8 @@ static void PreparedOpRunImpl(
 }
 
 static void PreparedOpRunPtImpl(
-    const framework::OperatorBase& op,
+    const paddle::framework::OperatorBase& op,
+    const paddle::framework::OpKernelType& kernel_type,
     const paddle::framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
     paddle::platform::DeviceContext* dev_ctx, const NameTensorMap& ins,
@@ -256,24 +258,19 @@ static void PreparedOpRunPtImpl(
     const paddle::framework::AttributeMap& default_attrs) {
   EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
                                          op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
+  static_cast<const paddle::framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  BuildDygraphPtenKernelContext<EagerTensor>(pt_kernel_signature, pt_kernel,
-                                             ins, outs, attrs, default_attrs,
-                                             dev_ctx, pt_kernel_context);
+  paddle::imperative::BuildDygraphPtenKernelContext<EagerTensor>(
+      pt_kernel_signature, pt_kernel,
+      static_cast<paddle::imperative::NameTensorMap>(ins),
+      static_cast<paddle::imperative::NameTensorMap>(outs), attrs,
+      default_attrs, dev_ctx, pt_kernel_context);
 
   pt_kernel(pt_kernel_context);
 
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
-  }
-
-  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
+  paddle::imperative::WriteBackToOutputs<EagerTensor>(pt_kernel_signature, outs,
+                                                      pt_kernel_context);
 
   // Ensure that it does not affect the VarBase life cycle management
   pt_kernel_context->ClearData();
@@ -285,8 +282,14 @@ static void PreparedOpRunPtImpl(
 void PreparedOp::Run(const NameTensorMap& ins, const NameTensorMap& outs,
                      const paddle::framework::AttributeMap& attrs,
                      const paddle::framework::AttributeMap& default_attrs) {
-  PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs, attrs,
-                    default_attrs);
+  if (run_pten_kernel_) {
+    PreparedOpRunPtImpl(op_, kernel_type_, pt_kernel_signature_, pt_kernel_,
+                        pt_kernel_context_, dev_ctx_, ins, outs, attrs,
+                        default_attrs);
+  } else {
+    PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs,
+                      attrs, default_attrs);
+  }
 }
 
 std::shared_ptr<NameTensorMap> PrepareData(
