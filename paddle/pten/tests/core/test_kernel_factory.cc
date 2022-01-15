@@ -41,7 +41,7 @@ TEST(KernelKey, ConstructAndOStream) {
 
 TEST(KernelFactory, SelectedKernelMap) {
   auto kernel_map = pten::KernelFactory::Instance().SelectKernelMap("scale");
-  CHECK_GT(kernel_map.size(), 1);
+  EXPECT_GT(kernel_map.size(), 1UL);
   for (auto& iter : kernel_map) {
     std::cout << iter.first << ": " << iter.second;
   }
