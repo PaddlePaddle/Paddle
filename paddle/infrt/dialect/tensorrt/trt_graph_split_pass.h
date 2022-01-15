@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mlir/Pass/Pass.h"
+#include <mlir/Pass/Pass.h>
 
 namespace infrt {
 namespace trt {
@@ -31,9 +31,9 @@ namespace trt {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...
- *     "pd.fetch" %n, %s
+ *     "pd.return" (%n, %s)
  *  } ...
- *  "pd.fetch" %d, %f
+ *  "pd.fetch" (%d, %f)
  * }
  *
  * destination func:
@@ -42,11 +42,11 @@ namespace trt {
  *  %c = "pd.conv2d"(%a) ...
  *  %d = "pd.conv3d"(%c) ...
  *  %f = "pd.conv2d"(%a) ...
- *  "pd.fetch" %d, %f
+ *  "pd.fetch" (%d, %f)
  * }
  */
 class trtGraphSplitPass
-    : public ::mlir::PassWrapper<trtGraphSplitPass, ::mlir::FunctionPass> {
+    : public mlir::PassWrapper<trtGraphSplitPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "trtGraphSplitPass"; }
   void runOnFunction() override;

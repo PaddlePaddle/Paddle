@@ -15,16 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
-// only can include the headers in paddle/pten/include dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/math_kernel.h"
+
 namespace paddle {
 namespace operators {
 

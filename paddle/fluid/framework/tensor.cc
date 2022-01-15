@@ -18,14 +18,6 @@ limitations under the License. */
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
-namespace memory {
-namespace allocation {
-class Allocation;
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
@@ -110,7 +102,10 @@ std::vector<Tensor> Tensor::Chunk(int64_t chunks, int64_t axis) const {
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();
+  // Preserve LoD
+  auto lod = meta_.lod;
   *this = src;
+  meta_.lod = lod;
   return *this;
 }
 Tensor& Tensor::ShareInplaceVersionCounterWith(const Tensor& src) {

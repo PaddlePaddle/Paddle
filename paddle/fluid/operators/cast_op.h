@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/transform.h"
 
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 
 namespace paddle {
