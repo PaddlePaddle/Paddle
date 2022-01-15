@@ -478,6 +478,7 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
+USE_PASS(no_reduce_multi_devices_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
