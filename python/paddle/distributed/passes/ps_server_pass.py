@@ -11,3 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import paddle
+
+
+@register_pass("ps_not_geo_server_pass")
+class PsNotGeoServerPass(PassBase):
+    def __init__(self):
+        super(ShardingPass, self).__init__()
+
+    def _check_self(self):
+        return True
+
+    def _check_conflict(self, other_pass):
+        return True
+
+    def _apply_single_impl(self, main_program, startup_program, context):
+        pass
