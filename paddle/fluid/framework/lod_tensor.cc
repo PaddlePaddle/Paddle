@@ -19,12 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 std::ostream &operator<<(std::ostream &os, const LoD &lod) {

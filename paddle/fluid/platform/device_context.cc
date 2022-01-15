@@ -225,19 +225,11 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
+CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 
-Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-Place CPUDeviceContext::GetPlace() const { return place_; }
+// Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {

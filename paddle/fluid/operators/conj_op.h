@@ -38,7 +38,11 @@ class ConjKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::ConjKernel<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    pten::ConjKernel<T>(
+        reinterpret_cast<const typename paddle::framework::
+                             ConvertPtenDeviceContext<DeviceContext>::type&>(
+            dev_ctx),
+        *pt_x.get(), pt_out.get());
   }
 };
 

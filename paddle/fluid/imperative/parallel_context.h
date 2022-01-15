@@ -19,14 +19,9 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-
 namespace framework {
 class Variable;
 }  // namespace framework
-
 }  // namespace paddle
 
 namespace paddle {

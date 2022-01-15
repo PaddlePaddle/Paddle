@@ -31,9 +31,6 @@ namespace paddle {
 namespace framework {
 class LoDTensor;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

@@ -257,8 +257,12 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    pten::Reduce<DeviceContext, T, Functor>(
-        dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
+    pten::Reduce<
+        typename framework::ConvertPtenDeviceContext<DeviceContext>::type, T,
+        Functor>(
+        reinterpret_cast<const typename framework::ConvertPtenDeviceContext<
+            DeviceContext>::type&>(dev_ctx),
+        *pt_x.get(), reduce_all, tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }
 };

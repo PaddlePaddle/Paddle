@@ -28,7 +28,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-class DeviceContext;
 class Place;
 }  // namespace platform
 }  // namespace paddle

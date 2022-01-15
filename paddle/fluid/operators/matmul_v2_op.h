@@ -57,8 +57,11 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
 
     // call new kernel
-    pten::MatmulKernel<T>(dev_ctx, *pt_x, *pt_y, trans_x, trans_y,
-                          pt_out.get());
+    pten::MatmulKernel<T>(
+        reinterpret_cast<const typename paddle::framework::
+                             ConvertPtenDeviceContext<DeviceContext>::type&>(
+            dev_ctx),
+        *pt_x, *pt_y, trans_x, trans_y, pt_out.get());
   }
 };
 
@@ -162,8 +165,12 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::MatmulGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, transpose_x,
-                              transpose_y, pt_dx.get(), pt_dy.get());
+    pten::MatmulGradKernel<T>(
+        reinterpret_cast<const typename paddle::framework::
+                             ConvertPtenDeviceContext<DeviceContext>::type&>(
+            dev_ctx),
+        *pt_x, *pt_y, *pt_dout, transpose_x, transpose_y, pt_dx.get(),
+        pt_dy.get());
   }
 };
 
@@ -200,9 +207,12 @@ class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
-    pten::MatmulDoubleGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, *pt_ddx,
-                                    *pt_ddy, transpose_x, transpose_y,
-                                    pt_dx.get(), pt_dy.get(), pt_ddout.get());
+    pten::MatmulDoubleGradKernel<T>(
+        reinterpret_cast<const typename paddle::framework::
+                             ConvertPtenDeviceContext<DeviceContext>::type&>(
+            dev_ctx),
+        *pt_x, *pt_y, *pt_dout, *pt_ddx, *pt_ddy, transpose_x, transpose_y,
+        pt_dx.get(), pt_dy.get(), pt_ddout.get());
   }
 };
 
@@ -255,11 +265,14 @@ class MatMulV2TripleGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = context.device_context<DeviceContext>();
     // call new kernel
-    pten::MatmulTripleGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, *pt_ddx,
-                                    *pt_ddy, *pt_d_dx, *pt_d_dy, *pt_d_ddout,
-                                    transpose_x, transpose_y, pt_out_d_x.get(),
-                                    pt_out_d_y.get(), pt_out_d_dout.get(),
-                                    pt_out_d_ddx.get(), pt_out_d_ddy.get());
+    pten::MatmulTripleGradKernel<T>(
+        reinterpret_cast<const typename paddle::framework::
+                             ConvertPtenDeviceContext<DeviceContext>::type&>(
+            dev_ctx),
+        *pt_x, *pt_y, *pt_dout, *pt_ddx, *pt_ddy, *pt_d_dx, *pt_d_dy,
+        *pt_d_ddout, transpose_x, transpose_y, pt_out_d_x.get(),
+        pt_out_d_y.get(), pt_out_d_dout.get(), pt_out_d_ddx.get(),
+        pt_out_d_ddy.get());
   }
 };
 

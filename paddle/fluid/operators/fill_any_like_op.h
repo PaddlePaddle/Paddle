@@ -64,7 +64,11 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
-    pten::FullLikeKernel<T>(dev_ctx, value, pt_out.get());
+    pten::FullLikeKernel<T>(
+        reinterpret_cast<const typename paddle::framework::
+                             ConvertPtenDeviceContext<DeviceContext>::type&>(
+            dev_ctx),
+        value, pt_out.get());
   }
 };
 

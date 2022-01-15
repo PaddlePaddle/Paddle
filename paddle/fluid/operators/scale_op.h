@@ -69,8 +69,10 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::ScaleKernel<T>(dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,
-                         pt_out.get());
+    pten::ScaleKernel<T>(
+        reinterpret_cast<const typename framework::ConvertPtenDeviceContext<
+            DeviceContext>::type&>(dev_ctx),
+        *pt_x.get(), scale, bias, bias_after_scale, pt_out.get());
   }
 };
 

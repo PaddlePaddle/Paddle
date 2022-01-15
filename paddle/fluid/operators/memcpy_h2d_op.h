@@ -18,12 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 class LoDTensor;
 class Variable;

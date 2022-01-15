@@ -25,6 +25,5 @@ limitations under the License. */
 #include "paddle/pten/backends/xpu/xpu_context.h"
 
 namespace pten {
-using DeviceContext = paddle::platform::DeviceContext;
 using DeviceContextPool = paddle::platform::DeviceContextPool;
 }  // namespace pten
