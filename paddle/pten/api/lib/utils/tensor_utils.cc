@@ -371,7 +371,7 @@ void ReMakePtenDenseTensorByArgDef(const paddle::framework::Tensor& src,
       src.place() == pten::TransToFluidPlace(arg_def.backend)) {
     dst->ResetHolder(src.Holder());
   } else {
-    dst->mutable_data(pten::TransToFluidPlace(arg_def.backend));
+    // dst->mutable_data(pten::TransToFluidPlace(arg_def.backend));
   }
 }
 
