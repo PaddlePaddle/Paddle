@@ -47,8 +47,8 @@ TEST(ProfilerTest, TestHostTracer) {
   for (const auto evt : collector.HostEvents()) {
     host_events.insert(evt.name);
   }
-  EXPECT_EQ(host_events.count("TestTraceLevel_record1"), 1);
-  EXPECT_EQ(host_events.count("TestTraceLevel_record2"), 0);
+  EXPECT_EQ(host_events.count("TestTraceLevel_record1"), 1u);
+  EXPECT_EQ(host_events.count("TestTraceLevel_record2"), 0u);
 }
 
 TEST(ProfilerTest, TestCudaTracer) {
@@ -72,6 +72,6 @@ TEST(ProfilerTest, TestCudaTracer) {
 #endif
   auto collector = profiler->Stop();
 #ifdef PADDLE_WITH_CUDA
-  EXPECT_GT(collector.RuntimeEvents().size(), 0);
+  EXPECT_GT(collector.RuntimeEvents().size(), 0u);
 #endif
 }
