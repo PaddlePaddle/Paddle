@@ -202,7 +202,7 @@ void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
     auto tmp_allocation_ptr =
         memory::Alloc(place, std::max(product(tensor->dims()) *
                                           experimental::SizeOf(tensor->dtype()),
-                                      0UL));
+                                      static_cast<size_t>(0)));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation =
