@@ -37,7 +37,7 @@ struct CommonEvent {
         role(role),
         type(type) {}
 
-  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
+  CommonEvent(std::function<void *(size_t)> arena_allocator,
               const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
               EventRole role, TracerEventType type, const std::string &attr_str)
       : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
@@ -49,10 +49,10 @@ struct CommonEvent {
     attr = buf;
   }
 
-  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
+  CommonEvent(std::function<void *(size_t)> arena_allocator,
               const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
+              EventRole role, TracerEventType type)
+      : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
     name = buf;

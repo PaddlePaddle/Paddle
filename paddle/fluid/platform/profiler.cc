@@ -168,14 +168,16 @@ void RecordEvent::End() {
   if (LIKELY(FLAGS_enable_host_event_recorder_hook)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
       HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
-                                                   start_ns_, end_ns, role_);
+                                                   start_ns_, end_ns, role_,
+                                                   TracerEventType::NumTypes);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
-                                                     role_);
+        HostEventRecorder::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, TracerEventType::NumTypes);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
-                                                     role_, *attr_);
+        HostEventRecorder::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, TracerEventType::NumTypes,
+            *attr_);
         delete attr_;
       }
       delete name_;
@@ -196,7 +198,7 @@ void RecordEvent::End() {
   delete attr_;
 }
 
-RecordInstantEvent::RecordInstantEvent(const char *name, const EventRole role,
+RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
                                        uint32_t level) {
   if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
     return;
@@ -206,7 +208,8 @@ RecordInstantEvent::RecordInstantEvent(const char *name, const EventRole role,
     return;
   }
   auto start_end_ns = PosixInNsec();
-  recorder.RecordEvent(name, start_end_ns, start_end_ns, role);
+  recorder.RecordEvent(name, start_end_ns, start_end_ns, EventRole::kOrdinary,
+                       type);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -300,8 +303,8 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
-    HostEventRecorder::GetInstance().RecordEvent(name, 0, 0,
-                                                 EventRole::kOrdinary);
+    HostEventRecorder::GetInstance().RecordEvent(
+        name, 0, 0, EventRole::kOrdinary, TracerEventType::NumTypes);
     return;
   }
   GetEventList().Record(EventType::kMark, name, g_thread_id);
