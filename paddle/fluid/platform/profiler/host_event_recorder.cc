@@ -21,11 +21,12 @@ ThreadEventRecorder::ThreadEventRecorder() {
 }
 
 ThreadEventRecorder::~ThreadEventRecorder() {
-  // HostEventRecorder::GetInstance().UnregisterThreadRecorder(thread_id_);
+  HostEventRecorder::GetInstance().UnregisterThreadRecorder(thread_id_);
 }
 
 HostEventSection HostEventRecorder::GatherEvents() {
   HostEventSection host_sec;
+  host_sec.process_id = GetProcessId();
   std::lock_guard<std::mutex> guard(thread_recorders_lock_);
   host_sec.thr_sections.reserve(thread_recorders_.size());
   for (auto &kv : thread_recorders_) {

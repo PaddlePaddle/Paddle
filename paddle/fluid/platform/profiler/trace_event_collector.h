@@ -15,25 +15,27 @@ limitations under the License. */
 #pragma once
 
 #include <list>
-#include "paddle/fluid/platform/profiler/event_record.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
 
 class TraceEventCollector {
  public:
-  void AddHostEvent(HostEvent&& event) { host_events_.push_back(event); }
+  void AddHostEvent(HostTraceEvent&& event) { host_events_.push_back(event); }
 
-  void AddRuntimeEvent(RuntimeEvent&& event) {
+  void AddRuntimeEvent(RuntimeTraceEvent&& event) {
     runtime_events_.push_back(event);
   }
 
-  void AddDeviceEvent(DeviceEvent&& event) { device_events_.push_back(event); }
+  void AddDeviceEvent(DeviceTraceEvent&& event) {
+    device_events_.push_back(event);
+  }
 
  private:
-  std::list<HostEvent> host_events_;
-  std::list<RuntimeEvent> runtime_events_;
-  std::list<DeviceEvent> device_events_;
+  std::list<HostTraceEvent> host_events_;
+  std::list<RuntimeTraceEvent> runtime_events_;
+  std::list<DeviceTraceEvent> device_events_;
 };
 
 }  // namespace platform

@@ -97,10 +97,11 @@ struct MemsetEventInfo {
   uint32_t value;
 };
 
-struct HostEvent {
-  HostEvent() = default;
-  HostEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
-            uint64_t end_ns, uint64_t process_id, uint64_t thread_id)
+struct HostTraceEvent {
+  HostTraceEvent() = default;
+  HostTraceEvent(const std::string& name, TracerEventType type,
+                 uint64_t start_ns, uint64_t end_ns, uint64_t process_id,
+                 uint64_t thread_id)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -121,11 +122,11 @@ struct HostEvent {
   uint64_t thread_id;
 };
 
-struct RuntimeEvent {
-  RuntimeEvent() = default;
-  RuntimeEvent(const std::string& name, uint64_t start_ns, uint64_t end_ns,
-               uint64_t process_id, uint64_t thread_id, uint32_t correlation_id,
-               uint32_t callback_id)
+struct RuntimeTraceEvent {
+  RuntimeTraceEvent() = default;
+  RuntimeTraceEvent(const std::string& name, uint64_t start_ns, uint64_t end_ns,
+                    uint64_t process_id, uint64_t thread_id,
+                    uint32_t correlation_id, uint32_t callback_id)
       : name(name),
         start_ns(start_ns),
         end_ns(end_ns),
@@ -152,12 +153,12 @@ struct RuntimeEvent {
   uint32_t callback_id;
 };
 
-struct DeviceEvent {
-  DeviceEvent() = default;
-  DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
-              uint64_t end_ns, uint64_t device_id, uint64_t context_id,
-              uint64_t stream_id, uint32_t correlation_id,
-              const KernelEventInfo& kernel_info)
+struct DeviceTraceEvent {
+  DeviceTraceEvent() = default;
+  DeviceTraceEvent(const std::string& name, TracerEventType type,
+                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
+                   uint64_t context_id, uint64_t stream_id,
+                   uint32_t correlation_id, const KernelEventInfo& kernel_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -167,10 +168,10 @@ struct DeviceEvent {
         stream_id(stream_id),
         correlation_id(correlation_id),
         kernel_info(kernel_info) {}
-  DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
-              uint64_t end_ns, uint64_t device_id, uint64_t context_id,
-              uint64_t stream_id, uint32_t correlation_id,
-              const MemcpyEventInfo& memcpy_info)
+  DeviceTraceEvent(const std::string& name, TracerEventType type,
+                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
+                   uint64_t context_id, uint64_t stream_id,
+                   uint32_t correlation_id, const MemcpyEventInfo& memcpy_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -180,10 +181,10 @@ struct DeviceEvent {
         stream_id(stream_id),
         correlation_id(correlation_id),
         memcpy_info(memcpy_info) {}
-  DeviceEvent(const std::string& name, TracerEventType type, uint64_t start_ns,
-              uint64_t end_ns, uint64_t device_id, uint64_t context_id,
-              uint64_t stream_id, uint32_t correlation_id,
-              const MemsetEventInfo& memset_info)
+  DeviceTraceEvent(const std::string& name, TracerEventType type,
+                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
+                   uint64_t context_id, uint64_t stream_id,
+                   uint32_t correlation_id, const MemsetEventInfo& memset_info)
       : name(name),
         type(type),
         start_ns(start_ns),

@@ -26,15 +26,18 @@ void ProcessHostEvents(const HostEventSection& host_events,
   for (const auto& thr_sec : host_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     for (const auto& evt : thr_sec.events) {
-      HostEvent event;
+      HostTraceEvent event;
       event.name = evt.name;
+      event.type = evt.type;
       event.start_ns = evt.start_ns;
       event.end_ns = evt.end_ns;
+      event.process_id = host_events.process_id;
       event.thread_id = tid;
       collector->AddHostEvent(std::move(event));
     }
   }
 }
+
 }  // namespace
 
 void HostTracer::StartTracing() {

@@ -41,7 +41,7 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel, uint64_t start_ns,
   if (kernel->start < start_ns) {
     return;
   }
-  DeviceEvent event;
+  DeviceTraceEvent event;
   event.name = kernel->name;
   event.start_ns = kernel->start;
   event.end_ns = kernel->end;
@@ -82,7 +82,7 @@ void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy, uint64_t start_ns,
   if (memcpy->start < start_ns) {
     return;
   }
-  DeviceEvent event;
+  DeviceTraceEvent event;
   event.name = MemcpyKind(memcpy->copyKind);
   event.start_ns = memcpy->start;
   event.end_ns = memcpy->end;
@@ -95,7 +95,7 @@ void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2, uint64_t start_ns,
   if (memcpy2->start < start_ns) {
     return;
   }
-  DeviceEvent event;
+  DeviceTraceEvent event;
   event.name = MemcpyKind(memcpy2->copyKind);
   event.start_ns = memcpy2->start;
   event.end_ns = memcpy2->end;
@@ -108,7 +108,7 @@ void AddMemsetRecord(const CUpti_ActivityMemset* memset, uint64_t start_ns,
   if (memset->start < start_ns) {
     return;
   }
-  DeviceEvent event;
+  DeviceTraceEvent event;
   event.name = "MEMSET";
   event.start_ns = memset->start;
   event.end_ns = memset->end;
@@ -198,7 +198,7 @@ void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
   if (api->start < start_ns) {
     return;
   }
-  RuntimeEvent event;
+  RuntimeTraceEvent event;
   event.name = RuntimeKind(api->cbid);
   event.start_ns = api->start;
   event.end_ns = api->end;
