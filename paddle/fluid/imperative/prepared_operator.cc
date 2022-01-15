@@ -606,8 +606,6 @@ static void PreparedOpRunPtImpl(
 #endif
   }
 
-  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
-
   // Ensure that it does not affect the VarBase life cycle management
   pt_kernel_context->ClearData();
 

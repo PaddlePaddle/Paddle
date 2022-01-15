@@ -1210,7 +1210,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                       runtime_ctx);
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
-      WriteBackToOutputs(runtime_ctx);
       pt_kernel_context_->ClearData();
     } else {
       (*kernel_func_)(
