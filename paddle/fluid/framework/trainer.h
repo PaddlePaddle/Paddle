@@ -40,7 +40,7 @@ namespace paddle {
 namespace framework {
 
 class Dataset;
-class LoDTensor;
+class Tensor;
 class ProgramDesc;
 class PullDenseWorker;
 class Scope;

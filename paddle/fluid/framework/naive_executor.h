@@ -31,7 +31,7 @@ namespace framework {
  * Simple, intuitive and effective. Only single thread is supported, and
  * currently designed for inference.
  */
-class LoDTensor;
+class Tensor;
 class ProgramDesc;
 class Scope;
 

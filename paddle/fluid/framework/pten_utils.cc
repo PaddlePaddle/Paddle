@@ -196,5 +196,21 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
                          GetOutputArgsNames());
 }
 
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place) {
+  if (!tensor->IsInitialized() || !(tensor->place() == place)) {
+    auto tmp_allocation_ptr =
+        memory::Alloc(place, std::max(product(tensor->dims()) *
+                                          experimental::SizeOf(tensor->dtype()),
+                                      0UL));
+    auto& deleter = tmp_allocation_ptr.get_deleter();
+    auto* allocation_ptr = tmp_allocation_ptr.release();
+    auto shared_allocation =
+        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+
+    tensor->ResetHolder(shared_allocation);
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
