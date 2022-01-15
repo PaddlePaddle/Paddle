@@ -36,7 +36,7 @@ namespace paddle {
 
 namespace framework {
 
-class LoDTensor;
+using LoD = std::vector<paddle::framework::Vector<size_t>>;
 
 /*
  NOTE(liym27): [ What is TensorInplaceVersion used for? ]
@@ -73,6 +73,13 @@ class Tensor : public pten::DenseTensor {
  public:
   using DenseTensor = pten::DenseTensor;
   using DenseTensor::DenseTensor;
+
+  // Split Tensor and copy to each place specified in places.
+  std::vector<Tensor> SplitLoDTensor(
+      const std::vector<platform::Place> places) const;
+
+  void MergeLoDTensor(const std::vector<const Tensor*>& lod_tensors,
+                      platform::Place place);
 
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);

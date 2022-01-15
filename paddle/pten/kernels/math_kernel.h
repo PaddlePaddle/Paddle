@@ -67,8 +67,8 @@ void SumKernel(const Context& dev_ctx,
                DataType out_dtype,
                DenseTensor* out);
 
-template <typename T, typename ContextT>
-DenseTensor Add(const ContextT& dev_ctx,
+template <typename T, typename Context>
+DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y,
                 int axis) {
@@ -77,12 +77,12 @@ DenseTensor Add(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  AddKernel<T, ContextT>(dev_ctx, x, y, axis, &dense_out);
+  AddKernel<T, Context>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
-template <typename T, typename ContextT>
-DenseTensor Subtract(const ContextT& dev_ctx,
+template <typename T, typename Context>
+DenseTensor Subtract(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      int axis) {
@@ -91,12 +91,12 @@ DenseTensor Subtract(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  SubtractKernel<T, ContextT>(dev_ctx, x, y, axis, &dense_out);
+  SubtractKernel<T, Context>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
-template <typename T, typename ContextT>
-DenseTensor Divide(const ContextT& dev_ctx,
+template <typename T, typename Context>
+DenseTensor Divide(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    int axis) {
@@ -105,12 +105,12 @@ DenseTensor Divide(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  DivideKernel<T, ContextT>(dev_ctx, x, y, axis, &dense_out);
+  DivideKernel<T, Context>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
-template <typename T, typename ContextT>
-DenseTensor Multiply(const ContextT& dev_ctx,
+template <typename T, typename Context>
+DenseTensor Multiply(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      int axis) {
@@ -119,7 +119,7 @@ DenseTensor Multiply(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  MultiplyKernel<T, ContextT>(dev_ctx, x, y, axis, &dense_out);
+  MultiplyKernel<T, Context>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 

@@ -27,34 +27,6 @@ class DeviceContext;
 namespace paddle {
 namespace framework {
 
-std::ostream &operator<<(std::ostream &os, const LoD &lod) {
-  os << "{";
-  for (auto &v : lod) {
-    os << "{";
-    bool is_first = true;
-    for (auto &i : v) {
-      if (is_first) {
-        os << i;
-        is_first = false;
-      } else {
-        os << ", " << i;
-      }
-    }
-    os << "}";
-  }
-  os << "}";
-
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  if (t.lod().size() > 0) {
-    os << "  - lod: " << t.lod() << "\n";
-  }
-  os << static_cast<Tensor>(t);
-  return os;
-}
-
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
   stream << lod;
