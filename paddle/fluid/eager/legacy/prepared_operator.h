@@ -25,8 +25,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 
-#include "paddle/pten/include/core.h"
-
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {

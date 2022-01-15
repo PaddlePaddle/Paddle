@@ -14,7 +14,9 @@
 
 #include "paddle/infrt/paddle/pb/op_desc.h"
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 
 google::protobuf::internal::RepeatedPtrIterator<framework_proto::OpDesc_Attr>
 FindAttr(framework_proto::OpDesc *desc, const std::string &name) {
@@ -136,4 +138,6 @@ GET_ATTRS_IMPL(std::vector<std::string>, strings);
 GET_ATTR_IMPL(std::string, s);
 GET_ATTRS_IMPL(std::vector<int64_t>, longs);
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

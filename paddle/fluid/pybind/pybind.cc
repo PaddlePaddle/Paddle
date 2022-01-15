@@ -1058,7 +1058,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
-                 print(t.recursive_sequence_length())  # [[2, 3]]
+                 print(t.recursive_sequence_lengths())  # [[2, 3]]
                  print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
@@ -1152,7 +1152,7 @@ PYBIND11_MODULE(core_noavx, m) {
              // follow fetch_op's inplementation
              framework::Tensor dst;
              if (self.IsInitialized() && self.numel() > 0) {
-               paddle::framework::TensorCopySync(self, place, &dst);
+               TensorCopySync(self, place, &dst);
              } else {
                // Not copy, if the src tensor is empty.
                dst.clear();

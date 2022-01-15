@@ -174,12 +174,6 @@ class DenseTensor : public TensorBase,
   /// \return The actual storage size occupied by tensor.
   size_t capacity() const { return storage_->size(); }
 
-  /// \brief Release the storage area for other purposes. Because of the
-  /// destruction of encapsulation, we do not support two dense tensors directly
-  /// sharing the same intrusive pointer.
-  /// \return The rvalue of instrusize pointer releated to the released storage.
-  intrusive_ptr<Storage> release() { return std::move(storage_); }
-
   /// \brief Get the mutable data pointer value of type T.
   /// Memory allocation may occur when calling this interface:
   /// 1. When the storage size is not enough to meet the current shape of the

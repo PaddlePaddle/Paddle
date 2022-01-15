@@ -31,7 +31,7 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
   }
 }
 
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorOrig(
+std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorBase(
     const paddle::framework::Tensor& src) {
   VLOG(3) << "MakePtenDenseTensor based Tensor.";
   pten::DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
@@ -44,15 +44,15 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorOrig(
 }
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
-    const paddle::framework::LoDTensor& src) {
-  auto out = MakePtenDenseTensorOrig(
+    const paddle::framework::Tensor& src) {
+  auto out = MakePtenDenseTensorBase(
       static_cast<const paddle::framework::Tensor&>(src));
   SetLoD(&(pten::CompatibleDenseTensorUtils::GetMutableMeta(out.get())->lod),
          src.lod());
   return std::move(out);
 }
 
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorOrig(
+std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorBase(
     const paddle::framework::Tensor& src, const pten::TensorArgDef& arg_def) {
   pten::DenseTensorMeta meta{
       arg_def.dtype, src.dims(), src.layout(), src.offset()};
@@ -71,16 +71,15 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorOrig(
 }
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
-    const paddle::framework::LoDTensor& src,
-    const pten::TensorArgDef& arg_def) {
-  auto out = MakePtenDenseTensorOrig(
+    const paddle::framework::Tensor& src, const pten::TensorArgDef& arg_def) {
+  auto out = MakePtenDenseTensorBase(
       static_cast<const paddle::framework::Tensor&>(src), arg_def);
   SetLoD(&(pten::CompatibleDenseTensorUtils::GetMutableMeta(out.get())->lod),
          src.lod());
   return std::move(out);
 }
 
-pten::Scalar MakePtenScalar(const paddle::framework::LoDTensor& src) {
+pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src) {
   PADDLE_ENFORCE_EQ(src.numel(),
                     1,
                     paddle::platform::errors::InvalidArgument(
@@ -138,7 +137,7 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-pten::ScalarArray MakePtenScalarArray(const paddle::framework::LoDTensor& src) {
+pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
   if (src.type() == paddle::framework::proto::VarType::INT64) {
     return {src.data<int64_t>(), src.numel()};
   } else if (src.type() == paddle::framework::proto::VarType::INT32) {
@@ -296,7 +295,7 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
   return {};
 }
 
-void MovesStorageOrig(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
+void MovesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   PADDLE_ENFORCE_NOT_NULL(
       src,
       platform::errors::InvalidArgument(
@@ -307,19 +306,17 @@ void MovesStorageOrig(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
           "The destination Tensor is nullptr when move storage."));
   dst->ResizeAndAllocate(src->dims());
   dst->set_type(pten::TransToProtoVarType(src->dtype()));
-  auto storage = src->release();
-  std::shared_ptr<pten::Allocation> holder(
-      new TensorStorage(std::move(storage)));
-  dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->dtype()));
+  auto storage = src->MoveMemoryHolder();
+  dst->ResetHolderWithType(storage, pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);
 }
 
-void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
-  MovesStorageOrig(src, static_cast<paddle::framework::Tensor*>(dst));
+void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
+  MovesStorageBase(src, static_cast<paddle::framework::Tensor*>(dst));
   SetLoD(dst->mutable_lod(), src->lod());
 }
 
-void SharesStorageOrig(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
+void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   PADDLE_ENFORCE_NOT_NULL(
       src,
       platform::errors::InvalidArgument(
@@ -336,12 +333,12 @@ void SharesStorageOrig(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   dst->set_offset(src->meta().offset);
 }
 
-void SharesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
-  SharesStorageOrig(src, static_cast<paddle::framework::Tensor*>(dst));
+void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
+  SharesStorageBase(src, static_cast<paddle::framework::Tensor*>(dst));
   SetLoD(dst->mutable_lod(), src->lod());
 }
 
-void ReMakePtenDenseTensorOrig(const paddle::framework::Tensor& src,
+void ReMakePtenDenseTensorBase(const paddle::framework::Tensor& src,
                                pten::DenseTensor* dst) {
   VLOG(3) << "ReMakePtenDenseTensor based Tensor.";
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
@@ -364,15 +361,15 @@ void ReMakePtenDenseTensorOrig(const paddle::framework::Tensor& src,
   shared_storage->ResetAllocation(src.Holder());
 }
 
-void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   SetLoD(&meta->lod, src.lod());
-  ReMakePtenDenseTensorOrig(static_cast<const paddle::framework::Tensor&>(src),
+  ReMakePtenDenseTensorBase(static_cast<const paddle::framework::Tensor&>(src),
                             dst);
 }
 
-void ReMakePtenDenseTensorByArgDefOrig(const paddle::framework::Tensor& src,
+void ReMakePtenDenseTensorByArgDefBase(const paddle::framework::Tensor& src,
                                        const pten::TensorArgDef& arg_def,
                                        pten::DenseTensor* dst) {
   VLOG(3) << "ReMakePtenDenseTensor based Tensor and TensorArgDef.";
@@ -398,12 +395,12 @@ void ReMakePtenDenseTensorByArgDefOrig(const paddle::framework::Tensor& src,
   }
 }
 
-void ReMakePtenDenseTensorByArgDef(const paddle::framework::LoDTensor& src,
+void ReMakePtenDenseTensorByArgDef(const paddle::framework::Tensor& src,
                                    const pten::TensorArgDef& arg_def,
                                    pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   SetLoD(&meta->lod, src.lod());
-  ReMakePtenDenseTensorByArgDefOrig(
+  ReMakePtenDenseTensorByArgDefBase(
       static_cast<const paddle::framework::Tensor&>(src), arg_def, dst);
 }
 

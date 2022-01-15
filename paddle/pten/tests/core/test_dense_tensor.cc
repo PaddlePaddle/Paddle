@@ -116,9 +116,6 @@ TEST(dense_tensor, resize) {
   CHECK_EQ(tensor_0.capacity(), 6u);
   tensor_0.mutable_data<int8_t>();
   CHECK_EQ(tensor_0.capacity(), 6u);
-
-  auto storage = tensor_0.release();
-  CHECK_EQ(storage->size(), 6u);
 }
 
 TEST(dense_tensor, shallow_copy) {
@@ -133,10 +130,6 @@ TEST(dense_tensor, shallow_copy) {
 
   DenseTensor tensor_1(tensor_0);
   CHECK(tensor_0.meta() == tensor_1.meta());
-
-  // Copy constructor: Now shares the underlying shared_ptr<Allocation> instead
-  // of Storage
-  CHECK(tensor_0.release() != tensor_1.release());
 }
 
 }  // namespace tests
