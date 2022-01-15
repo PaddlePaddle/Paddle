@@ -589,15 +589,13 @@ class OperatorWithKernel : public OperatorBase {
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
+                              platform::DeviceContext* dev_ctx,
+                              pten::KernelContext* pt_kernel_context) const;
 
-  void WriteBackToOutputs(RuntimeContext* ctx) const;
+  void WriteBackToOutputs(RuntimeContext* ctx,
+                          pten::KernelContext* pt_kernel_context) const;
 
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
-
-  pten::KernelContext* PtenKernelContext() const {
-    return pt_kernel_context_.get();
-  }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
@@ -657,9 +655,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
-  // In order to reduce the compatibility phase
-  // performance overhead, temporarily cache KernelContext
-  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
