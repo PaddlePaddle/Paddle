@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
+class Tensor;
 class Scope;
 
 void SetFeedVariable(Scope* scope, const LoDTensor& input,

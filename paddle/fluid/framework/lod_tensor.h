@@ -29,12 +29,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
 
-namespace paddle {
-namespace framework {
+using LoDTensor = paddle::framework::Tensor;
 
 /*
  * LoD is short for Level of Details.
@@ -52,9 +48,6 @@ namespace framework {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
-
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 std::string LoDToString(const LoD& lod);
 
@@ -98,22 +91,6 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *     tensor_height>0.
  */
 bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
-
-/*
- * LoDTensor (Level of details Tensor)
- * see https://en.wikipedia.org/wiki/Level_of_details for reference.
- */
-class LoDTensor : public Tensor {
- public:
-  using Tensor::Tensor;
-
-  // Split LoDTensor and copy to each place specified in places.
-  std::vector<LoDTensor> SplitLoDTensor(
-      const std::vector<platform::Place> places) const;
-
-  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
-                      platform::Place place);
-};
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
