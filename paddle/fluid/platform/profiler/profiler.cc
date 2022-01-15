@@ -14,11 +14,23 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "glog/logging.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 
 namespace paddle {
 namespace platform {
+
+void SynchronizeAllDevice();
 
 std::atomic<bool> Profiler::alive_{false};
 
@@ -29,11 +41,37 @@ std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
   return std::unique_ptr<Profiler>(new Profiler(options));
 }
 
+Profiler::Profiler(const ProfilerOptions& options) {
+  options_ = options;
+  HostTracerOptions host_tracer_options;
+  host_tracer_options.trace_level = options.trace_level;
+  tracers_.emplace_back(new HostTracer(host_tracer_options), true);
+  tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+}
+
 Profiler::~Profiler() { alive_.store(false); }
 
-Profiler::Profiler(const ProfilerOptions& options) {
-  tracers_.emplace_back(new HostTracer(), true);
-  tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+void Profiler::Prepare() {
+  for (auto& tracer : tracers_) {
+    tracer.Get().PrepareTracing();
+  }
+}
+
+void Profiler::Start() {
+  SynchronizeAllDevice();
+  for (auto& tracer : tracers_) {
+    tracer.Get().StartTracing();
+  }
+}
+
+TraceEventCollector Profiler::Stop() {
+  SynchronizeAllDevice();
+  TraceEventCollector collector;
+  for (auto& tracer : tracers_) {
+    tracer.Get().StopTracing();
+    tracer.Get().CollectTraceData(&collector);
+  }
+  return collector;
 }
 
 }  // namespace platform

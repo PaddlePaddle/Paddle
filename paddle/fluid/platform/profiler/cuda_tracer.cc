@@ -256,7 +256,7 @@ CudaTracer::CudaTracer() {
 
 void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::UNINITED,
+      state_ == TracerState::UNINITED || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("Tracer must be UNINITED"));
   EnableCuptiActivity();
   state_ = TracerState::READY;
@@ -264,7 +264,7 @@ void CudaTracer::PrepareTracing() {
 
 void CudaTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::READY || state_ == TracerState::STOPED, true,
+      state_ == TracerState::READY, true,
       platform::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
   ConsumeBuffers();
   tracing_start_ns_ = PosixInNsec();

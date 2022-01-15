@@ -200,9 +200,6 @@ void RecordEvent::End() {
 
 RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
                                        uint32_t level) {
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
-    return;
-  }
   auto &recorder = HostEventRecorder::GetInstance();
   if (UNLIKELY(recorder.NeedTrace(level) == false)) {
     return;

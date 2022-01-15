@@ -32,6 +32,16 @@ class TraceEventCollector {
     device_events_.push_back(event);
   }
 
+  const std::list<HostTraceEvent>& HostEvents() const { return host_events_; }
+
+  const std::list<RuntimeTraceEvent>& RuntimeEvents() const {
+    return runtime_events_;
+  }
+
+  const std::list<DeviceTraceEvent>& DeviceEvents() const {
+    return device_events_;
+  }
+
  private:
   std::list<HostTraceEvent> host_events_;
   std::list<RuntimeTraceEvent> runtime_events_;

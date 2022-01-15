@@ -17,15 +17,18 @@ limitations under the License. */
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <list>
 #include <memory>
-#include <vector>
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
 namespace paddle {
 namespace platform {
 
-struct ProfilerOptions {};
+struct ProfilerOptions {
+  uint32_t trace_level = 0;
+};
 
 class Profiler {
  public:
@@ -35,7 +38,7 @@ class Profiler {
 
   void Start();
 
-  void Stop();
+  TraceEventCollector Stop();
 
   ~Profiler();
 
@@ -62,8 +65,9 @@ class Profiler {
   DISABLE_COPY_AND_ASSIGN(Profiler);
 
   static std::atomic<bool> alive_;
+  ProfilerOptions options_;
   uint64_t profile_start_ns_ = UINT64_MAX;
-  std::vector<TracerHolder> tracers_;
+  std::list<TracerHolder> tracers_;
 };
 
 }  // namespace platform

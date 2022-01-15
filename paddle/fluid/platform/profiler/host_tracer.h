@@ -26,20 +26,21 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+struct HostTracerOptions {
+  uint32_t trace_level = 0;
+};
+
 class HostTracer : public TracerBase {
  public:
-  void PrepareTracing() {}
+  explicit HostTracer(const HostTracerOptions& options) {
+    trace_level_ = options.trace_level;
+  }
 
   void StartTracing() override;
 
   void StopTracing() override;
 
-  void CollectTraceData(TraceEventCollector *collector) override;
-
-  void SetTraceLevel(uint32_t trace_level) {
-    trace_level_ = trace_level;
-    state_ = TracerState::READY;
-  }
+  void CollectTraceData(TraceEventCollector* collector) override;
 
  private:
   uint32_t trace_level_;
