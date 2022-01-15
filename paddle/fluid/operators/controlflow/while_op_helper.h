@@ -24,7 +24,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class ProgramDesc;
 }  // namespace framework
 }  // namespace paddle

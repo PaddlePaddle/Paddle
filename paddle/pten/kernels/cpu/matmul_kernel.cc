@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
-PT_REGISTER_CTX_KERNEL(matmul,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::MatmulKernel,
-                       float,
-                       double,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+PT_REGISTER_KERNEL(matmul,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::MatmulKernel,
+                   float,
+                   double,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}

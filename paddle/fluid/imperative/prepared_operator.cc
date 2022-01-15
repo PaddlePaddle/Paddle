@@ -117,7 +117,6 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::OpKernelType& kernel_type,
                        const framework::KernelSignature& kernel_signature,
                        const pten::Kernel& pt_kernel,
-                       pten::KernelContext* pt_kernel_context,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
@@ -126,8 +125,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       dev_ctx_(dev_ctx),
       run_pten_kernel_(true),
       pt_kernel_signature_(kernel_signature),
-      pt_kernel_(pt_kernel),
-      pt_kernel_context_(pt_kernel_context) {}
+      pt_kernel_(pt_kernel) {}
 
 template <typename VarType>
 PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
@@ -135,8 +133,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        const framework::OperatorWithKernel& op,
                        const platform::Place& place,
                        const framework::AttributeMap& attrs,
-                       const framework::AttributeMap& default_attrs,
-                       pten::KernelContext* pt_kernel_context) {
+                       const framework::AttributeMap& default_attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -178,7 +175,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_kernel, pt_kernel_context, dev_ctx);
+                        pt_kernel, dev_ctx);
     } else {
       VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
               << "` not found.";
@@ -247,10 +244,8 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
                                const framework::AttributeMap& attrs,
-                               const framework::AttributeMap& default_attrs,
-                               pten::KernelContext* pt_kernel_context) {
-  return PrepareImpl<VarBase>(ins, outs, op, place, attrs, default_attrs,
-                              pt_kernel_context);
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<VarBase>(ins, outs, op, place, attrs, default_attrs);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
@@ -258,10 +253,9 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
                                const framework::AttributeMap& attrs,
-                               const framework::AttributeMap& default_attrs,
-                               pten::KernelContext* pt_kernel_context) {
+                               const framework::AttributeMap& default_attrs) {
   return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs,
-                                      default_attrs, pt_kernel_context);
+                                      default_attrs);
 }
 
 template <typename VarType>
@@ -271,13 +265,6 @@ static void BuildDygraphPtenKernelContext(
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
     platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
-  // TODO(chenweihang): now only work for very simple case,
-  // many cases need to be deal with later:
-  // 1. the input and output are not tensor
-  // 2. the dispensbale, duplicable input and output
-  // 3. needless attributes remove
-  // 4. use pt Tensor directly
-  // 5. kernel input is not DenseTensor
   kernel_ctx->SetDeviceContext(dev_ctx);
 
   auto& input_names = std::get<0>(pt_kernel_signature.args);
@@ -312,26 +299,11 @@ static void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
-    auto current_vector_size = kernel_ctx->InputsSize();
 
-    // If the memory needed is less than the current memory allocated, we will
-    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
-    // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const auto& variable = ins_vector[offset]->Var();
-      if (current_vector_size > start_idx + offset) {
-        auto& input_ptr = kernel_ctx->MutableInputPtrAt(start_idx + offset);
-        if (input_ptr == nullptr) {
-          input_ptr = experimental::MakePtenTensorBaseFromVar(variable, in_def);
-        } else {
-          experimental::ReMakePtenDenseTensorFromVar(
-              variable, in_def, kernel_ctx->MutableInputAt<pten::DenseTensor>(
-                                    start_idx + offset));
-        }
-      } else {
-        kernel_ctx->EmplaceBackInputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(variable, in_def));
-      }
+      kernel_ctx->EmplaceBackInputWithoutSetRange(
+          paddle::experimental::MakePtenTensorBaseFromVar(variable, in_def));
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -340,15 +312,10 @@ static void BuildDygraphPtenKernelContext(
     auto& out_def = output_defs.at(i);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
-    auto current_vector_size = kernel_ctx->OutputsSize();
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
-      if (current_vector_size > start_idx) {
-        kernel_ctx->SetOutputWithoutSetRange(start_idx, {nullptr});
-      } else {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
-      }
+      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -357,27 +324,10 @@ static void BuildDygraphPtenKernelContext(
     auto& outs_vector = iter->second;
     size_t end_idx = start_idx + outs_vector.size();
 
-    // If the memory needed is less than the current memory allocated, we will
-    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
-    // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      if (current_vector_size > start_idx + offset) {
-        auto* buffer_tensor =
-            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset);
-        if (buffer_tensor) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
-        } else {
-          kernel_ctx->SetOutputWithoutSetRange(
-              start_idx + offset,
-              experimental::MakePtenTensorBaseFromVar(
-                  outs_vector[offset]->MutableVar(), out_def));
-        }
-      } else {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(
-                outs_vector[offset]->MutableVar(), out_def));
-      }
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(
+          paddle::experimental::MakePtenTensorBaseFromVar(
+              outs_vector[offset]->MutableVar(), out_def));
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -514,8 +464,8 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    &default_attrs, op.Type());
+  DygraphInferShapeContext<VarType> infer_shape_ctx(
+      &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
@@ -556,19 +506,20 @@ static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::OpKernelType& kernel_type,
     const framework::KernelSignature& pt_kernel_signature,
-    const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
-    platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
+    const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
+    const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
+    const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    &default_attrs, op.Type());
+  DygraphInferShapeContext<VarType> infer_shape_ctx(
+      &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
+  pten::KernelContext pt_kernel_context;
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                          outs, attrs, default_attrs, dev_ctx,
-                                         pt_kernel_context);
+                                         &pt_kernel_context);
 
-  pt_kernel(pt_kernel_context);
+  pt_kernel(&pt_kernel_context);
 
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
@@ -578,10 +529,7 @@ static void PreparedOpRunPtImpl(
 #endif
   }
 
-  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
-
-  // Ensure that it does not affect the VarBase life cycle management
-  pt_kernel_context->ClearData();
+  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, &pt_kernel_context);
 
   // TODO(chenweihang): add debug flags later
   if (framework::IsComplexType(kernel_type.data_type_)) {
@@ -595,8 +543,8 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
-                                 pt_kernel_, pt_kernel_context_, dev_ctx_, ins,
-                                 outs, attrs, default_attrs);
+                                 pt_kernel_, dev_ctx_, ins, outs, attrs,
+                                 default_attrs);
   } else {
     PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
                                outs, attrs, default_attrs);
@@ -609,8 +557,8 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(
-        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, pt_kernel_context_,
-        dev_ctx_, ins, outs, attrs, default_attrs);
+        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
+        outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);
