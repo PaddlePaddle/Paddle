@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/event.h"  // TODO(TIEXING): remove later
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -29,13 +30,17 @@ namespace platform {
 struct CommonEvent {
  public:
   CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {}
+              EventRole role, TracerEventType type)
+      : name(name),
+        start_ns(start_ns),
+        end_ns(end_ns),
+        role(role),
+        type(type) {}
 
-  CommonEvent(std::function<void *(size_t)> &arena_allocator,
+  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
               const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, const std::string &attr_str)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
+              EventRole role, TracerEventType type, const std::string &attr_str)
+      : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
     name = buf;
@@ -57,6 +62,7 @@ struct CommonEvent {
   uint64_t start_ns = 0;
   uint64_t end_ns = 0;
   EventRole role = EventRole::kOrdinary;
+  TracerEventType type = TracerEventType::NumTypes;
   const char *attr = nullptr;  // not owned, designed for performance
 };
 
