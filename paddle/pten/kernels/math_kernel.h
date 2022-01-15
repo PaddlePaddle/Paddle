@@ -16,7 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/binary.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {

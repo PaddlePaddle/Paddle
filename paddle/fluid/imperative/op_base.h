@@ -25,7 +25,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace imperative {

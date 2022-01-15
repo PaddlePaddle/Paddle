@@ -19,7 +19,6 @@ limitations under the License. */
 
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace paddle {
@@ -67,7 +66,7 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::Scale<T>(dev_ctx, *in, scale, bias, bias_after_scale, out);
+    pten::ScaleKernel<T>(dev_ctx, *in, scale, bias, bias_after_scale, out);
   }
 };
 

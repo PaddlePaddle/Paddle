@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/sign_kernel.h"
 
 namespace paddle {
