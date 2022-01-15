@@ -14,10 +14,18 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/sign_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
+
+class SignOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
 
 template <typename AttrType>
 class SignOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -51,9 +59,12 @@ class SignGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sign, ops::OperatorWithKernel, ops::SignOpMaker<float>,
+DELCARE_INFER_SHAPE_FUNCTOR(sign, SignInferShapeFunctor,
+                            PT_INFER_META(pten::UnchangedInferMetaNew));
+REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
                   ops::SignGradMaker<paddle::framework::OpDesc>,
-                  ops::SignGradMaker<paddle::imperative::OpBase>);
+                  ops::SignGradMaker<paddle::imperative::OpBase>,
+                  SignInferShapeFunctor);
 REGISTER_OP_CPU_KERNEL(
     sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SignKernel<paddle::platform::CPUDeviceContext, double>);

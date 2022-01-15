@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include "paddle/pten/core/meta_tensor.h"
 
 #include "paddle/pten/core/compat_utils.h"
@@ -25,16 +23,7 @@ namespace pten {
 
 int64_t MetaTensor::numel() const { return tensor_->numel(); }
 
-const DDim& MetaTensor::dims() const { return tensor_->dims(); }
-
-const LoD& MetaTensor::lod() const {
-  if (pten::DenseTensor::classof(tensor_)) {
-    return static_cast<DenseTensor*>(tensor_)->lod();
-  } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported getting lod from `%s`.", tensor_->type_info().name()));
-  }
-}
+DDim MetaTensor::dims() const { return tensor_->dims(); }
 
 DataType MetaTensor::dtype() const { return tensor_->dtype(); }
 
@@ -51,22 +40,11 @@ void MetaTensor::set_dims(const DDim& dims) {
   }
 }
 
-void MetaTensor::set_lod(const LoD& lod) {
-  if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
-        ->lod = lod;
-  } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported setting lod for `%s`.", tensor_->type_info().name()));
-  }
-}
-
 void MetaTensor::set_dtype(DataType dtype) {
   if (pten::DenseTensor::classof(tensor_)) {
     CompatibleDenseTensorUtils::GetMutableMeta(
         static_cast<DenseTensor*>(tensor_))
-        ->lod = lod;
+        ->dtype = dtype;
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -84,15 +62,24 @@ void MetaTensor::set_layout(DataLayout layout) {
   }
 }
 
-void MetaTensor::copy_(const MetaTensor& meta_tensor) {
+void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   if (pten::DenseTensor::classof(tensor_)) {
-    set_dims(meta_tensor.dims());
-    set_dtype(meta_tensor.dtype());
-    set_layout(meta_tensor.layout());
-    set_lod(meta_tensor.lod());
+    CompatibleDenseTensorUtils::GetMutableMeta(
+        static_cast<DenseTensor*>(tensor_))
+        ->lod = meta_tensor.lod();
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported copy inplace for `%s`.", tensor_->type_info().name()));
+        "Unsupported share lod inplace for `%s`.",
+        tensor_->type_info().name()));
+  }
+}
+
+const LoD& MetaTensor::lod() const {
+  if (pten::DenseTensor::classof(tensor_)) {
+    return static_cast<DenseTensor*>(tensor_)->lod();
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
   }
 }
 

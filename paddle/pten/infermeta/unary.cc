@@ -20,10 +20,11 @@ limitations under the License. */
 
 namespace pten {
 
-void UnchangedInferMeta(const MetaTensor& x,
-                        MetaTensor* out,
-                        const InferMetaConfigs& configs) {
-  out->copy_(x);
+void UnchangedInferMetaNew(const MetaTensor& x,
+                           MetaTensor* out,
+                           const InferMetaConfigs& configs) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
 }
 
 DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {

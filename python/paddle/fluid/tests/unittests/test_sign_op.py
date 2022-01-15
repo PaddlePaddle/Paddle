@@ -31,10 +31,10 @@ class TestSignOp(OpTest):
         self.outputs = {'Out': np.sign(self.inputs['X'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestSignOpError(unittest.TestCase):
@@ -56,14 +56,14 @@ class TestSignOpError(unittest.TestCase):
 
 
 class TestSignAPI(unittest.TestCase):
-    def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([-1., 0., -0., 1.2, 1.5], dtype='float64')
-            x = paddle.to_tensor(np_x)
-            z = paddle.sign(x)
-            np_z = z.numpy()
-            z_expected = np.sign(np_x)
-            self.assertEqual((np_z == z_expected).all(), True)
+    # def test_dygraph(self):
+    #     with fluid.dygraph.guard():
+    #         np_x = np.array([-1., 0., -0., 1.2, 1.5], dtype='float64')
+    #         x = paddle.to_tensor(np_x)
+    #         z = paddle.sign(x)
+    #         np_z = z.numpy()
+    #         z_expected = np.sign(np_x)
+    #         self.assertEqual((np_z == z_expected).all(), True)
 
     def test_static(self):
         with program_guard(Program(), Program()):

@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/pten/core/op_utils.h"
 
 namespace pten {
 class InferMetaContext;
@@ -28,17 +30,14 @@ namespace framework {
 pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type);
 
-template <typename Fn, typename T>
-struct InferMetaFunctor;
-
-#define DELCARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn) \
-  struct functor_name : InferMetaFunctor<fn, functor_name> {   \
-    functor_name() = default;                                  \
-    functor_name(const functor_name&) = delete;                \
-    functor_name& operator=(const functor_name&) = delete;     \
-    void operator(InferShapeContext* ctx) {                    \
-      fn(&(BuildInferMetaContext(ctx, #op_type)));             \
-    }                                                          \
+#define DELCARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn)      \
+  struct functor_name : public paddle::framework::InferShapeBase {  \
+    void operator()(                                                \
+        paddle::framework::InferShapeContext* ctx) const override { \
+      auto infer_meta_context =                                     \
+          paddle::framework::BuildInferMetaContext(ctx, #op_type);  \
+      fn(&infer_meta_context);                                      \
+    }                                                               \
   }
 
 }  // namespace framework

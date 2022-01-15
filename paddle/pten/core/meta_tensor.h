@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 
@@ -28,27 +29,25 @@ class MetaTensor {
  public:
   explicit MetaTensor(TensorBase* tensor) : tensor_(tensor) {}
 
-  MetaTensor() = delete;
-  MetaTensor(const MetaTensor&) = delete;
-  MetaTensor(MetaTensor&&) = delete;
+  MetaTensor() = default;
+  MetaTensor(const MetaTensor&) = default;
+  MetaTensor(MetaTensor&&) = default;
   MetaTensor& operator=(const MetaTensor&) = delete;
   MetaTensor& operator=(MetaTensor&&) = delete;
 
   virtual ~MetaTensor() = default;
 
   virtual int64_t numel() const;
-  virtual const DDim& dims() const;
-  virtual const LoD& lod() const;
+  virtual DDim dims() const;
   virtual DataType dtype() const;
   virtual DataLayout layout() const;
   virtual void set_dims(const DDim& dims);
-  virtual void set_lod(const LoD& lod);
   virtual void set_dtype(DataType dtype);
   virtual void set_layout(DataLayout layout);
-
-  virtual void copy_(const MetaTensor& meta_tensor);
+  virtual void share_lod(const MetaTensor& meta_tensor);
 
  private:
+  const LoD& lod() const;
   TensorBase* tensor_;
 };
 

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/op_utils.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -89,48 +90,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
-KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
-std::once_flag KernelSignatureMap::init_flag_;
-
-KernelSignatureMap& KernelSignatureMap::Instance() {
-  std::call_once(init_flag_, [] {
-    kernel_signature_map_ = new KernelSignatureMap();
-    for (const auto& pair : OpInfoMap::Instance().map()) {
-      const auto& op_type = pair.first;
-      const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
-          op_proto) {
-        KernelArgsNameMakerByOpProto maker(op_proto);
-        VLOG(10) << "Register kernel signature for " << op_type;
-        auto success = kernel_signature_map_->map_
-                           .emplace(pten::TransToPtenKernelName(op_type),
-                                    std::move(maker.GetKernelSignature()))
-                           .second;
-        PADDLE_ENFORCE_EQ(
-            success, true,
-            platform::errors::PermissionDenied(
-                "Kernel signature of the operator %s has been registered.",
-                op_type));
-      }
-    }
-  });
-  return *kernel_signature_map_;
-}
-
-bool KernelSignatureMap::Has(const std::string& op_type) const {
-  return map_.find(op_type) != map_.end();
-}
-
-const KernelSignature& KernelSignatureMap::Get(
-    const std::string& op_type) const {
-  auto it = map_.find(op_type);
-  PADDLE_ENFORCE_NE(
-      it, map_.end(),
-      platform::errors::NotFound(
-          "Operator `%s`'s kernel signature is not registered.", op_type));
-  return it->second;
-}
-
 const paddle::SmallVector<std::string>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {
@@ -198,3 +157,49 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
 
 }  // namespace framework
 }  // namespace paddle
+
+// NOTE: [Why the definition of KernelSignatureMap method isn't in op_utils.cc]
+// - In order to avoid introducing fluid proto and op-related dependencies
+// into pten
+namespace pten {
+
+KernelSignatureMap& KernelSignatureMap::Instance() {
+  std::call_once(init_flag_, [] {
+    kernel_signature_map_ = new KernelSignatureMap();
+    for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
+      const auto& op_type = pair.first;
+      const auto* op_proto = pair.second.proto_;
+      if (KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+          op_proto) {
+        paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
+        VLOG(10) << "Register kernel signature for " << op_type;
+        auto success = kernel_signature_map_->map_
+                           .emplace(TransToPtenKernelName(op_type),
+                                    std::move(maker.GetKernelSignature()))
+                           .second;
+        PADDLE_ENFORCE_EQ(
+            success, true,
+            paddle::platform::errors::PermissionDenied(
+                "Kernel signature of the operator %s has been registered.",
+                op_type));
+      }
+    }
+  });
+  return *kernel_signature_map_;
+}
+
+bool KernelSignatureMap::Has(const std::string& op_type) const {
+  return map_.find(op_type) != map_.end();
+}
+
+const KernelSignature& KernelSignatureMap::Get(
+    const std::string& op_type) const {
+  auto it = map_.find(op_type);
+  PADDLE_ENFORCE_NE(
+      it, map_.end(),
+      paddle::platform::errors::NotFound(
+          "Operator `%s`'s kernel signature is not registered.", op_type));
+  return it->second;
+}
+
+}  // namespace pten

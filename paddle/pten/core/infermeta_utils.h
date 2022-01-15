@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <utility>
 
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -22,6 +23,8 @@ limitations under the License. */
 
 namespace pten {
 
+// TODO(chenweihang): add can_cached flag to judge the infer result
+// whether can be cached
 struct InferMetaConfigs {
   bool is_runtime{true};
 
@@ -33,18 +36,21 @@ class InferMetaContext {
  public:
   InferMetaContext() = default;
 
-  void EmplaceBackInput(pten::MetaTensor input);
-  void EmplaceBackOutput(pten::MetaTensor output);
+  void EmplaceBackInput(std::shared_ptr<pten::MetaTensor> input);
+  void EmplaceBackOutput(std::shared_ptr<pten::MetaTensor> output);
   void EmplaceBackAttr(paddle::any attr);
 
-  void EmplaceBackInputs(paddle::SmallVector<pten::MetaTensor> inputs);
-  void EmplaceBackOutputs(paddle::SmallVector<pten::MetaTensor> outputs);
+  void EmplaceBackInputs(
+      paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs);
+  void EmplaceBackOutputs(
+      paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
   const MetaTensor& InputAt(size_t idx) const;
-  MetaTensor& MutableOutputAt(size_t idx);
+  MetaTensor* MutableOutputAt(size_t idx);
+  const InferMetaConfigs& Configs() const;
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -57,23 +63,28 @@ class InferMetaContext {
   }
 
  private:
-  paddle::SmallVector<pten::MetaTensor> inputs_;
-  paddle::SmallVector<pten::MetaTensor> outputs_;
+  // NOTE(chenweihang): Because the MetaTensor is a base class, and MetaTensor
+  // objects are all created in each round, so we have to use smart pointer
+  // here, maybe we can implemented a new InferMetaContext and a series utils
+  // specifically for fluid
+  paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs_;
+  paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
 
-  InferMetaConfigs configs;
+  InferMetaConfigs configs_;
 };
 
-#define PT_INFER_META(...) ::pten::InferMetaFnImpl<decltype(&__VA_ARGS__)>
+#define PT_INFER_META(...) \
+  ::pten::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
 
 #define PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                                  \
   struct InferMetaFnCallHelper<attr_type, Tail...> {                           \
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
-    static void Compute(InferMetaContext* ctx, PreviousArgs&... pargs) {       \
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {          \
       static_assert(out_idx == 0,                                              \
                     "InferMeta's Attributes should appear before Outputs.");   \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                        \
@@ -84,7 +95,7 @@ class InferMetaContext {
   }
 
 template <typename T>
-struct TypeTag {};
+struct InferMetaTypeTag {};
 
 template <typename Fn, Fn fn>
 struct InferMetaFnImpl;
@@ -92,15 +103,16 @@ struct InferMetaFnImpl;
 template <typename Return, typename... Args, Return (*infer_meta_fn)(Args...)>
 struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   static void Call(InferMetaContext* ctx) {
-    InferMetaFnCallHelper<Args..., TypeTag<int>>::template Call<0, 0, 0>(ctx);
+    InferMetaFnCallHelper<Args...,
+                          InferMetaTypeTag<int>>::template Call<0, 0, 0>(ctx);
   }
 
  private:
-  template <typename... RemainingArgs...>
+  template <typename... RemainingArgs>
   struct InferMetaFnCallHelper;
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<const pten::MetaTensor&, Tail...> {
+  struct InferMetaFnCallHelper<const MetaTensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
@@ -108,26 +120,49 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       static_assert(out_idx == 0,
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      const pten::MetaTensor& arg = ctx->InputAt(range.first);
+      const MetaTensor& arg = ctx->InputAt(range.first);
       InferMetaFnCallHelper<
-          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(pargs..., arg);
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
     }
   };
 
   // TODO(chenweihang): support vector<Meta> input later
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<const pten::MetaTensor&, Tail...> {
+  struct InferMetaFnCallHelper<MetaTensor*, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
-      const pten::MetaTensor& arg = ctx->OutputAt(range.first);
+      MetaTensor* arg = ctx->MutableOutputAt(range.first);
       InferMetaFnCallHelper<
-          Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(pargs..., arg);
+          Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                 pargs...,
+                                                                 arg);
     }
   };
 
   // TODO(chenweihang): support vector<Meta> output later
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const InferMetaConfigs&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      const InferMetaConfigs& arg = ctx->Configs();
+      InferMetaFnCallHelper<Tail...>::template Call<in_idx, attr_idx, out_idx>(
+          ctx, pargs..., arg);
+    }
+  };
+
+  /* End case */
+  template <typename T>
+  struct InferMetaFnCallHelper<InferMetaTypeTag<T>> {
+    template <int in_idx, int attr_idx, int out_idx>
+    static void Call(InferMetaContext* ctx, Args&... args) {
+      return infer_meta_fn(args...);
+    }
+  };
 };
 
 }  // namespace pten

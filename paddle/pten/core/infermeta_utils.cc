@@ -16,12 +16,14 @@ limitations under the License. */
 
 namespace pten {
 
-void InferMetaContext::EmplaceBackInput(pten::MetaTensor input) {
+void InferMetaContext::EmplaceBackInput(
+    std::shared_ptr<pten::MetaTensor> input) {
   int index = inputs_.size();
   inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
-void InferMetaContext::EmplaceBackOutput(pten::MetaTensor output) {
+void InferMetaContext::EmplaceBackOutput(
+    std::shared_ptr<pten::MetaTensor> output) {
   int index = outputs_.size();
   outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
@@ -31,7 +33,7 @@ void InferMetaContext::EmplaceBackAttr(paddle::any attr) {
 }
 
 void InferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<pten::MetaTensor> inputs) {
+    paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs) {
   int index = inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -39,7 +41,7 @@ void InferMetaContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 void InferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<pten::MetaTensor> outputs) {
+    paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs) {
   int index = outputs_.size();
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
@@ -56,10 +58,12 @@ const std::pair<int, int>& InferMetaContext::OutputRangeAt(size_t idx) const {
 }
 
 const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
-  return inputs_.at(idx);
+  return *inputs_.at(idx);
 }
-MetaTensor& InferMetaContext::MutableOutputAt(size_t idx) {
-  return outputs_.at(idx);
+MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
+  return outputs_.at(idx).get();
 }
+
+const InferMetaConfigs& InferMetaContext::Configs() const { return configs_; }
 
 }  // namespace pten

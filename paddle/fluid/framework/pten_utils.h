@@ -44,26 +44,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 
 /* Kernel Args parse */
 
-// TODO(chenweihang): we can generate this map by proto info in compile time
-class KernelSignatureMap {
- public:
-  static KernelSignatureMap& Instance();
-
-  bool Has(const std::string& op_type) const;
-
-  const KernelSignature& Get(const std::string& op_type) const;
-
- private:
-  KernelSignatureMap() = default;
-  DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
-
- private:
-  static KernelSignatureMap* kernel_signature_map_;
-  static std::once_flag init_flag_;
-
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
-};
-
 class KernelArgsNameMaker {
  public:
   virtual ~KernelArgsNameMaker() {}

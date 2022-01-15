@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/op_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -1803,7 +1804,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(
+  return pten::KernelSignatureMap::Instance().Get(
       pten::TransToPtenKernelName(Type()));
 }
 

@@ -16,6 +16,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
 
@@ -37,10 +38,9 @@ class InferMetaConfigs;
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-MetaTensor UnchangedInferMeta(
-    const MetaTensor& x,
-    MetaTensor* out,
-    const InferMetaConfigs& config = InferMetaConfigs());
+void UnchangedInferMetaNew(const MetaTensor& x,
+                           MetaTensor* out,
+                           const InferMetaConfigs& config = InferMetaConfigs());
 
 DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta);
 
