@@ -16,8 +16,81 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/gelu_op.h"
 
+DECLARE_bool(use_fast_math);
+
 namespace paddle {
 namespace operators {
+
+#ifdef __NVCC__
+template <bool FastMode>
+static __device__ __forceinline__ float FP32Gelu(float x) {
+  auto tmp = 0.79788456f * x * (1.0f + 0.044715f * x * x);
+  float tanh_tmp;
+#if __CUDA_ARCH__ >= 750 && !defined(_WIN32)
+  if (FastMode) {
+    asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(tanh_tmp) : "f"(tmp));
+  } else {
+    tanh_tmp = tanhf(tmp);
+  }
+#else
+  tanh_tmp = tanhf(tmp);
+#endif
+  return x * 0.5f * (1.0f + tanh_tmp);
+}
+
+template <int VecSize, bool FastMode>
+static __global__ void FP16FastGeluCUDAKernel(const __half* x, __half* y,
+                                              size_t n) {
+  size_t offset =
+      static_cast<size_t>(threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
+  size_t stride = static_cast<size_t>(blockDim.x * gridDim.x) * VecSize;
+  for (; offset < n; offset += stride) {
+    using ArrT = platform::AlignedVector<__half, VecSize>;
+    ArrT in_arr = *reinterpret_cast<const ArrT*>(x + offset);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      float tmp = __half2float(in_arr[i]);
+      in_arr[i] = __float2half(FP32Gelu<FastMode>(tmp));
+    }
+    *reinterpret_cast<ArrT*>(y + offset) = in_arr;
+  }
+}
+
+static bool TryLaunchFP16FastGeluVectorizeCUDAKernel(
+    const platform::CUDADeviceContext& dev_ctx, const __half* x, __half* y,
+    size_t n) {
+  auto is_aligned = [](const void* p, size_t alignment) {
+    return reinterpret_cast<uintptr_t>(p) % alignment == 0;
+  };
+
+#define PD_LAUNCH_FP16_FAST_GELU_KERNEL(__vec_size, __use_fast_math)          \
+  do {                                                                        \
+    constexpr auto kAlignment =                                               \
+        alignof(platform::AlignedVector<__half, __vec_size>);                 \
+    if (n % __vec_size == 0 && is_aligned(x, kAlignment) &&                   \
+        is_aligned(y, kAlignment)) {                                          \
+      size_t thread = std::min<size_t>(512, dev_ctx.GetMaxThreadsPerBlock()); \
+      size_t block = (n / __vec_size + thread - 1) / thread;                  \
+      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize().x);     \
+      VLOG(10) << "Use FP16 fast gelu kernel, block = " << block              \
+               << " , thread = " << thread;                                   \
+      FP16FastGeluCUDAKernel<                                                 \
+          __vec_size,                                                         \
+          __use_fast_math><<<block, thread, 0, dev_ctx.stream()>>>(x, y, n);  \
+      return true;                                                            \
+    }                                                                         \
+  } while (0)
+
+  if (FLAGS_use_fast_math) {
+    PD_LAUNCH_FP16_FAST_GELU_KERNEL(8, true);
+  } else {
+    PD_LAUNCH_FP16_FAST_GELU_KERNEL(8, false);
+  }
+
+#undef PD_LAUNCH_FP16_FAST_GELU_KERNEL
+  return false;
+}
+#endif
 
 template <typename T>
 struct GeluWithApproximateFunctor {
@@ -59,7 +132,19 @@ class GeluKernel<platform::CUDADeviceContext, T>
     std::vector<framework::Tensor*> outs = {out};
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
+
     if (approximate) {
+#ifdef __NVCC__
+      size_t n = in->numel();
+      if (std::is_same<T, platform::float16>::value) {
+        const auto* in_ptr = reinterpret_cast<const __half*>(in->data<T>());
+        auto* out_ptr = reinterpret_cast<__half*>(out->data<T>());
+        if (TryLaunchFP16FastGeluVectorizeCUDAKernel(dev_ctx, in_ptr, out_ptr,
+                                                     n)) {
+          return;
+        }
+      }
+#endif
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
     } else {
