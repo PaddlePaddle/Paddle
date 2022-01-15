@@ -328,7 +328,7 @@ void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move allocation."));
   dst->Resize(src->dims());
-  dst->ResetHolderWithType(src->Holder(),
+    dst->ResetHolderWithType(src->Holder(),
                            pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);
 }
@@ -367,11 +367,20 @@ void ReMakePtenDenseTensorByArgDef(const paddle::framework::Tensor& src,
   meta->layout = src.layout();
   meta->offset = src.offset();
 
+  auto* shared_storage = static_cast<SharedStorage*>(
+      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
+  PADDLE_ENFORCE_NOT_NULL(
+      shared_storage,
+      platform::errors::NotFound(
+          "Target DenseTensor's shared storage is nullptr."));
+
   if (src.IsInitialized() &&
       src.place() == pten::TransToFluidPlace(arg_def.backend)) {
     dst->ResetHolder(src.Holder());
+    //shared_storage->ResetAllocation(src.Holder());
   } else {
-    dst->mutable_data(pten::TransToFluidPlace(arg_def.backend));
+    //shared_storage->ResetAllocationPlace(
+    //    pten::TransToFluidPlace(arg_def.backend));
   }
 }
 
@@ -462,9 +471,13 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     tensor->Resize(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
+    // here dynamic_cast is slow
+    auto* storage = static_cast<SharedStorage*>(
+        pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+
     if (!tensor->IsInitialized() ||
         (tensor->IsInitialized() &&
-         !IsSameAllocation(tensor->Holder(), src->Holder()))) {
+         !IsSameAllocation(tensor->Holder(), storage->GetAllocation()))) {
       tensor->ResetHolderWithType(std::move(src->Holder()), dtype);
     } else {
       // Even the pten tensor and Variable have the same Alloctation (both have
@@ -479,7 +492,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     auto dtype = pten::TransToProtoVarType(src->dtype());
 
     if (!tensor->value().IsInitialized()) {
-      tensor->mutable_value()->ResetHolderWithType(std::move(src->Holder()),
+            tensor->mutable_value()->ResetHolderWithType(std::move(src->Holder()),
                                                    dtype);
     }
   } else {
