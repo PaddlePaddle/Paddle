@@ -16,7 +16,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// Try loading custom kernel from fixed path or PADDLE_PLUGIN_ROOT
+// Try loading custom kernel from fixed path
 void TryLoadCustomKernel();
 
 // Load custom kernel api: register kernel after user compiled
