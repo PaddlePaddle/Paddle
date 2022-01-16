@@ -196,12 +196,6 @@ static void RunKernelFunc(const OpKernelInfo& op_kernel_info,
   DeviceContext dev_ctx;
   if (op_kernel_info.GetBackend() == pten::Backend::CPU) {
 // do nothing
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (op_kernel_info.GetBackend() == pten::Backend::GPU) {
-    const pten::CUDAContext& dev_context =
-        ctx->GetDeviceContext<pten::CUDAContext>();
-    dev_ctx.set_stream(static_cast<void*>(dev_context.Stream().get()));
-#endif
 #ifdef PADDLE_WITH_ASCEND_CL
   } else if (op_kernel_info.GetBackend() == pten::Backend::NPU) {
     const pten::NPUContext& dev_context =
