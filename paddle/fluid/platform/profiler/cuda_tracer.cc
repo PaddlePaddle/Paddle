@@ -329,6 +329,7 @@ void CudaTracer::EnableCuptiActivity() {
   CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
   CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
   CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
+  VLOG(3) << "enable cupti activity";
 #endif
 }
 
@@ -340,6 +341,7 @@ void CudaTracer::DisableCuptiActivity() {
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
+  VLOG(3) << "disable cupti activity";
 #endif
 }
 

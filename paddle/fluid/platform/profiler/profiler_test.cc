@@ -71,7 +71,7 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStreamSynchronize(stream);
 #endif
   auto collector = profiler->Stop();
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUPTI
   EXPECT_GT(collector.RuntimeEvents().size(), 0u);
 #endif
 }
