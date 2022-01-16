@@ -199,8 +199,11 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
                                   const platform::Place& place) {
   if (!tensor->IsInitialized() || !(tensor->place() == place)) {
-    auto tmp_allocation_ptr = memory::Alloc(
-        place, product(tensor->dims()) * experimental::SizeOf(tensor->dtype()));
+    int dtype_size = tensor->dtype() == DataType::UNDEFINED
+                         ? 0
+                         : experimental::SizeOf(tensor->dtype());
+    auto tmp_allocation_ptr =
+        memory::Alloc(place, product(tensor->dims()) * dtype_size);
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation =
