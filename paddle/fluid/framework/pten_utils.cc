@@ -202,8 +202,9 @@ void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
     int dtype_size = tensor->dtype() == DataType::UNDEFINED
                          ? 0
                          : experimental::SizeOf(tensor->dtype());
-    auto tmp_allocation_ptr =
-        memory::Alloc(place, product(tensor->dims()) * dtype_size);
+    int64_t numels = product(tensor->dims());
+    numels = numels < 0 ? 0 : numels;
+    auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation =
