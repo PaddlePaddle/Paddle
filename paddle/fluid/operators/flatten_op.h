@@ -135,11 +135,10 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::FlattenKernel<T, typename paddle::framework::ConvertPtenDeviceContext<
-                               DeviceContext>::type>(
-        reinterpret_cast<const typename paddle::framework::
-                             ConvertPtenDeviceContext<DeviceContext>::type &>(
-            dev_ctx),
+    pten::FlattenKernel<T, typename paddle::framework::ConvertToPtenContext<
+                               DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
         *pt_x.get(), start_axis, stop_axis, pt_out.get());
   }
 };
@@ -168,12 +167,10 @@ class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
         pten::Empty<T, DeviceContext>(dev_ctx, std::move(xshape_meta));
 
     // call new kernel
-    pten::FlattenGradKernel<
-        T, typename paddle::framework::ConvertPtenDeviceContext<
-               DeviceContext>::type>(
-        reinterpret_cast<const typename paddle::framework::
-                             ConvertPtenDeviceContext<DeviceContext>::type &>(
-            dev_ctx),
+    pten::FlattenGradKernel<T, typename paddle::framework::ConvertToPtenContext<
+                                   DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
         *pt_d_out.get(), pt_xshape, pt_d_x.get());
   }
 };

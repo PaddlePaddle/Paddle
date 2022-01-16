@@ -45,11 +45,10 @@ class DotKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::DotKernel<T, typename paddle::framework::ConvertPtenDeviceContext<
-                           DeviceContext>::type>(
-        reinterpret_cast<const typename paddle::framework::
-                             ConvertPtenDeviceContext<DeviceContext>::type&>(
-            dev_ctx),
+    pten::DotKernel<T, typename paddle::framework::ConvertToPtenContext<
+                           DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
         *pt_x.get(), *pt_y.get(), pt_out.get());
   }
 };
@@ -77,9 +76,8 @@ class DotGradKernel : public framework::OpKernel<T> {
 
     // call new kernel
     pten::DotGradKernel<T>(
-        reinterpret_cast<const typename paddle::framework::
-                             ConvertPtenDeviceContext<DeviceContext>::type&>(
-            dev_ctx),
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
         *pt_x, *pt_y, *pt_dout, pt_dx.get(), pt_dy.get());
   }
 };

@@ -125,8 +125,8 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
       pten::MultiplyKernel<T>(
-          reinterpret_cast<const typename framework::ConvertPtenDeviceContext<
-              DeviceContext>::type&>(dev_ctx),
+          static_cast<const typename framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
           *pt_x.get(), *pt_y.get(), axis, pt_z.get());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

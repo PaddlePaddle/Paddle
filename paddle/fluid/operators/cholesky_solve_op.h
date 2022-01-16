@@ -206,9 +206,8 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       auto pt_y = paddle::experimental::MakePtenDenseTensor(commonterm_conj);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(commonterm);
       pten::AddKernel<T>(
-          reinterpret_cast<const typename paddle::framework::
-                               ConvertPtenDeviceContext<DeviceContext>::type &>(
-              dev_ctx),
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE &>(dev_ctx),
           *pt_x.get(), *pt_y.get(), -1, pt_z.get());
 
       auto mat_dim_u = math::CreateMatrixDescriptor(u_bst.dims(), 0, false);
