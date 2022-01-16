@@ -24,6 +24,8 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
     return Backend::GPU;
+  } else if (paddle::platform::is_npu_place(place)) {
+    return Backend::NPU;
   } else {
     return Backend::UNDEFINED;
   }

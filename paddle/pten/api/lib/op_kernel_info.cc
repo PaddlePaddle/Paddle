@@ -9,40 +9,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/api/ext/op_kernel_api.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/fluid/framework/custom_kernel.h"  // todo
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
-
 ////////////////////// Op Kernel Info //////////////////////
-
-OpKernelInfo& OpKernelInfo::SetKernelFn(KernelFunc&& func) {
-  kernel_fn_ = std::forward<KernelFunc>(func);
+OpKernelInfo& OpKernelInfo::SetKernelFn(CustomKernelFunc&& func) {
+  kernel_fn_ = std::forward<CustomKernelFunc>(func);
   return *this;
 }
 
-OpKernelInfo& OpKernelInfo::SetPtenKernelFn(PtenKernelFunc&& func) {
-  pten_kernel_fn_ = std::forward<PtenKernelFunc>(func);
+OpKernelInfo& OpKernelInfo::SetVariadicKernelFn(void* func) {
+  variadic_kernel_fn_ = func;
   return *this;
 }
 
-OpKernelInfo& OpKernelInfo::SetPtenVariadicFn(void* func) {
-  variadic_fn_ = func;
-  return *this;
-}
-
-OpKernelInfo& OpKernelInfo::SetPtenArgsParseFn(PtenKernelArgsParseFn&& func) {
-  pten_kernel_args_parse_fn_ = func;
-  return *this;
-}
-
-OpKernelInfo& OpKernelInfo::SetPtenArgsDefFn(PtenKernelArgsDefFn&& func) {
-  pten_kernel_args_def_fn_ = func;
-  return *this;
-}
 //////////////// Op Kernel Info Map /////////////////
-
 std::vector<OpKernelInfo>& OpKernelInfoMap::operator[](
     const std::string& name) {
   return map_[name];
@@ -54,7 +37,6 @@ OpKernelInfoMap::GetMap() const {
 }
 
 //////////////// Op Kernel Info Builder /////////////////
-
 OpKernelInfoBuilder::OpKernelInfoBuilder(std::string&& op_name,
                                          pten::Backend backend,
                                          pten::DataLayout data_layout,
@@ -65,46 +47,63 @@ OpKernelInfoBuilder::OpKernelInfoBuilder(std::string&& op_name,
   layout_ = data_layout;
   dtype_ = data_type;
 
-  // 2. check and meta info build
+  // 2. check and info build
   auto& info_vector = OpKernelInfoMap::Instance()[op_name_];
-  auto kernel_meta = OpKernelInfo(op_name_, backend_, layout_, dtype_);
-  info_vector.emplace_back(std::move(kernel_meta));
+  auto op_kernel_info = OpKernelInfo(op_name_, backend_, layout_, dtype_);
+  info_vector.emplace_back(std::move(op_kernel_info));
 
   // 3. get current info ptr
   info_ptr_ = &(info_vector.back());
 }
 
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetKernelFn(KernelFunc func) {
-  info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
+OpKernelInfoBuilder& OpKernelInfoBuilder::SetKernelFn(CustomKernelFunc func) {
+  info_ptr_->SetKernelFn(std::forward<CustomKernelFunc>(func));
   return *this;
 }
 
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetPtenKernelFn(PtenKernelFunc func) {
-  info_ptr_->SetPtenKernelFn(std::forward<PtenKernelFunc>(func));
+OpKernelInfoBuilder& OpKernelInfoBuilder::SetVariadicKernelFn(void* func) {
+  info_ptr_->SetVariadicKernelFn(func);
   return *this;
 }
 
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetPtenVariadicFn(void* func) {
-  info_ptr_->SetPtenVariadicFn(func);
+OpKernelInfoBuilder& OpKernelInfoBuilder::ArgsParse(
+    CustomKernelArgsParseFn func) {
+  func(this->info_ptr_);
   return *this;
 }
 
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetPtenArgsParseFn(
-    PtenKernelArgsParseFn func) {
-  info_ptr_->SetPtenArgsParseFn(std::forward<PtenKernelArgsParseFn>(func));
+OpKernelInfoBuilder& OpKernelInfoBuilder::ArgsDef(CustomKernelArgsDefFn func) {
+  func(this->info_ptr_);
   return *this;
 }
 
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetPtenArgsDefFn(
-    PtenKernelArgsDefFn func) {
-  info_ptr_->SetPtenArgsDefFn(std::forward<PtenKernelArgsDefFn>(func));
-  return *this;
-}
 /////////////////////// Op register API /////////////////////////
+// For inference: compile directly with framework
+// Call after PD_REGISTER_KERNEL(...)
+void RegisterAllCustomKernel() {
+  auto& op_kernel_info_map = OpKernelInfoMap::Instance();
+  framework::RegisterKernelWithMetaInfoMap(op_kernel_info_map);
+}
+
+// Using this api to load compiled custom kernel's dynamic library and
+// register custom kernels
+void LoadCustomKernelLib(const std::string& dso_name) {
+  paddle::framework::LoadOpKernelInfoAndRegister(dso_name);
+}
 
 }  // namespace paddle
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef _WIN32
 // C-API to get global OpKernelInfoMap.
 paddle::OpKernelInfoMap& PD_GetOpKernelInfoMap() {
   return paddle::OpKernelInfoMap::Instance();
 }
+#endif
+
+#ifdef __cplusplus
+}  // end extern "C"
+#endif

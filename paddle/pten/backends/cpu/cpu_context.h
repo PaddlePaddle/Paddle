@@ -19,4 +19,7 @@ limitations under the License. */
 
 namespace pten {
 using CPUContext = paddle::platform::CPUDeviceContext;
+#ifdef PADDLE_WITH_ASCEND_CL
+using NPUContext = paddle::platform::NPUDeviceContext;
+#endif
 }  // namespace pten

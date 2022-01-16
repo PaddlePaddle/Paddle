@@ -14,7 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/pten/api/ext/op_kernel_api.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
@@ -28,24 +28,20 @@ class OpKernelInfoHelper {
   static pten::KernelKey GetKernelKey(const paddle::OpKernelInfo& info) {
     return pten::KernelKey(info.backend_, info.layout_, info.dtype_);
   }
-  static const KernelFunc& GetKernelFn(const paddle::OpKernelInfo& info) {
+  static const CustomKernelFunc& GetKernelFn(const paddle::OpKernelInfo& info) {
     return info.kernel_fn_;
   }
-  static const PtenKernelFunc& GetPtenKernelFn(
-      const paddle::OpKernelInfo& info) {
-    return info.pten_kernel_fn_;
+  static void* GetVariadicKernelFn(const paddle::OpKernelInfo& info) {
+    return info.variadic_kernel_fn_;
   }
-  static void* GetPtenVariadicKernelFn(const paddle::OpKernelInfo& info) {
-    return info.variadic_fn_;
-  }
-  static const PtenKernelArgsParseFn& GetPtenArgsParseFn(
-      const paddle::OpKernelInfo& info) {
-    return info.pten_kernel_args_parse_fn_;
-  }
-  static const PtenKernelArgsDefFn& GetPtenArgsDefFn(
-      const paddle::OpKernelInfo& info) {
-    return info.pten_kernel_args_def_fn_;
-  }
+  // static const PtenKernelArgsParseFn& GetPtenArgsParseFn(
+  //     const paddle::OpKernelInfo& info) {
+  //   return info.pten_kernel_args_parse_fn_;
+  // }
+  // static const PtenKernelArgsDefFn& GetPtenArgsDefFn(
+  //     const paddle::OpKernelInfo& info) {
+  //   return info.pten_kernel_args_def_fn_;
+  // }
 };
 
 }  // namespace framework

@@ -2348,7 +2348,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_meta_info_and_register_op",
         framework::LoadOpMetaInfoAndRegisterOp);
-  m.def("load_custom_kernel_dso", framework::LoadCustomKernel);
+  m.def("try_load_custom_kernel", []() { framework::TryLoadCustomKernel(); });
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);

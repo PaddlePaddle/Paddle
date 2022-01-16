@@ -46,6 +46,7 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"mean", "deprecated"},
     {"reshape", "deprecated"},
     {"reshape_grad", "deprecated"},
+    {"abs", "abs"},
     {"sum", "deprecated"}};
 
 }  // namespace pten

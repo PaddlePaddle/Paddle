@@ -135,10 +135,6 @@ def load_op_meta_info_and_register_op(lib_filename):
     return OpProtoHolder.instance().update_op_proto()
 
 
-def load_custom_kernel_dso(lib_filename):
-    core.load_custom_kernel_dso(lib_filename)
-
-
 def custom_write_stub(resource, pyfile):
     """
     Customized write_stub function to allow us to inject generated python

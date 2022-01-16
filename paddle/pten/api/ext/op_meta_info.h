@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/api/ext/utils.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/utils/any.h"
 
@@ -37,21 +38,6 @@ class PADDLE_API OpMetaInfoHelper;
 }  // namespace framework
 
 using Tensor = paddle::experimental::Tensor;
-
-///////////////// Util Marco Define ////////////////
-
-#define PD_DISABLE_COPY_AND_ASSIGN(classname)      \
- private:                                          \
-  classname(const classname&) = delete;            \
-  classname(classname&&) = delete;                 \
-  classname& operator=(const classname&) = delete; \
-  classname& operator=(classname&&) = delete
-
-#define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
-  struct __test_global_namespace_##uniq_name##__ {};                          \
-  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
-                             __test_global_namespace_##uniq_name##__>::value, \
-                msg)
 
 ///////////////// Util Define and Function ////////////////
 

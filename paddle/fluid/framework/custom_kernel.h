@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,22 +11,23 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
-#include "paddle/pten/api/ext/op_kernel_api.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 
 namespace paddle {
 namespace framework {
 
+// Try loading custom kernel from fixed path or PADDLE_PLUGIN_ROOT
+void TryLoadCustomKernel();
+
 // Load custom kernel api: register kernel after user compiled
-void LoadCustomKernel(const std::string& dso_name);
+void LoadOpKernelInfoAndRegister(const std::string& dso_name);
 
 // Register custom kernel api: register kernel directly
 void RegisterKernelWithMetaInfoMap(
-    const paddle::OpKernelInfoMap& op_meta_info_map);
+    const paddle::OpKernelInfoMap& op_kernel_info_map);
 
 // Interface for selective register custom kernel.
 void RegisterKernelWithMetaInfo(
     const std::vector<OpKernelInfo>& op_kernel_infos);
-
 }  // namespace framework
 }  // namespace paddle
