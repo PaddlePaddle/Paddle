@@ -32,13 +32,11 @@ extern void TensorCopy(const pten::DenseTensor& src,
 
 namespace pten {
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         const DenseTensorMeta& meta)
+DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         DenseTensorMeta&& meta)
+DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
     : meta_(std::move(meta)),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 

@@ -43,8 +43,8 @@ struct ScaleFunctor {
   }
 };
 
-template <typename T, typename ContextT>
-void ScaleKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
                  float bias,
