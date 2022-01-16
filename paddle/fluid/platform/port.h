@@ -45,18 +45,7 @@
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
 #endif  // S_ISDIR
 
-// try dlsym but not throw
-static void *try1_dlsym(void *handle, const char *symbol_name) {
-  FARPROC found_symbol;
-  found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
-
-  if (found_symbol == NULL) {
-    VLOG(1) << "Load symbol " << symbol_name << " failed.";
-  }
-  return reinterpret_cast<void *>(found_symbol);
-}
-
-static void *dlsym1(void *handle, const char *symbol_name) {
+static void *dlsym(void *handle, const char *symbol_name) {
   FARPROC found_symbol;
   found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
 

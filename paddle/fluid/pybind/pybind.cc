@@ -727,21 +727,6 @@ PYBIND11_MODULE(core_noavx, m) {
     return all_kernels_info;
   });
 
-  m.def("_get_all_pten_op_kernels", [] {
-    auto &all_kernels = pten::KernelFactory::Instance().kernels();
-    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
-    for (auto &kernel_pair : all_kernels) {
-      auto op_type = kernel_pair.first;
-      std::vector<std::string> kernel_types;
-      for (auto &info_pair : kernel_pair.second) {
-        pten::KernelKey kernel_key = info_pair.first;
-        kernel_types.push_back(pten::KernelKeyToString(kernel_key));
-      }
-      all_kernels_info.emplace(op_type, kernel_types);
-    }
-    return all_kernels_info;
-  });
-
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.

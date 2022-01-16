@@ -62,26 +62,9 @@ static T* DynLoad(void* handle, std::string name) {
 
 }  // namespace detail
 
-// custom op kernel call function define
-static void RunFluidKernelFunc(const framework::ExecutionContext& ctx,
-                               const CustomKernelFunc& func) {
-  std::cout << "[CUSTOM KERNEL] Run ComputeFunc." << std::endl;
-  /*
-    这种方式下由于内部为ExecutionContext,用户函数签名为CustomKernelFunc
-    需要强制用户按照框架内fluid context的参数个数和顺序进行自定义kernel
-    function的声明和编写
-    但这种方式不容易保证稳定：
-    1. 参照OpMaker逐个声明, 其中有Attr仅为内部使用
-    2. 如果内部kernel增减或修改参数, 用户函数无法调用, 有兼容性问题
-    如果让用户在注册自定义kernel时指定参数个数和顺序(fluid下采用name)则可实现功能,
-    但对用户太繁琐
-    pten方式不存在此问题: pten kernel function唯一确定
-  */
-}
-
 // set pten::Kernel args_def_ from op_kernel_info
-// because I can not set directly to pten::Kernel without exposing
-// pten::KernelArgsDef to out
+// because we can not set directly to pten::Kernel without exposing
+// pten::KernelArgsDef
 static void ParseArgs(const OpKernelInfo& op_kernel_info,
                       pten::KernelArgsDef* args_def) {
   auto& input_defs = op_kernel_info.input_defs();
@@ -100,10 +83,10 @@ static void ParseArgs(const OpKernelInfo& op_kernel_info,
 }
 
 // custom pten kernel call function define
-static void RunPtenKernelFunc(const OpKernelInfo& op_kernel_info,
-                              pten::KernelContext* ctx,
-                              const CustomKernelFunc& func) {
-  VLOG(3) << "[CUSTOM KERNEL] RunPtenKernelFunc";
+static void RunKernelFunc(const OpKernelInfo& op_kernel_info,
+                          pten::KernelContext* ctx,
+                          const CustomKernelFunc& func) {
+  VLOG(3) << "[CUSTOM KERNEL] RunKernelFunc";
 
   size_t input_size = ctx->InputsSize();
   size_t output_size = ctx->OutputsSize();
@@ -239,6 +222,10 @@ static void RunPtenKernelFunc(const OpKernelInfo& op_kernel_info,
 
 void RegisterKernelWithMetaInfo(
     const std::vector<OpKernelInfo>& op_kernel_infos) {
+  PADDLE_ENFORCE_EQ(FLAGS_run_pten_kernel, true,
+                    platform::errors::Unimplemented(
+                        "Custom Kernel depend on pten kernel enabled,"));
+
   for (size_t i = 0; i < op_kernel_infos.size(); ++i) {
     auto& kernel_info = op_kernel_infos[i];
     auto op_type = OpKernelInfoHelper::GetOpName(kernel_info);
@@ -247,81 +234,36 @@ void RegisterKernelWithMetaInfo(
     VLOG(3) << "[CUSTOM KERNEL] registering [" << op_type << "]" << kernel_key;
 
     // 1.Check wether this kernel is valid for a specific operator
-    if (!OpInfoMap::Instance().Has(op_type) &&
-        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+    if (!pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << op_type
-                   << " is not a valid operator.";
+                   << " is not ready for custom kernel registering.";
       continue;
     }
 
-    // 2.Check wether this kernel should be registered to pten or fluid kernel
-    // for pten kernel, meet the following three condition:
-    // condition-0: FLAGS_run_pten_kernel is on
-    // condition-1: op_type in pten::KernelFactory::Instance().kernels()
-    // condition-2: kernel_key not in
-    // pten::KernelFactory::Instance().kernels()[op_type]
-    // others should be registered to fluid kernel
-    bool register_to_pten = false;
-    if (FLAGS_run_pten_kernel) {
-      VLOG(3) << "[CUSTOM KERNEL] FLAGS_run_pten_kernel: "
-              << FLAGS_run_pten_kernel;
-      register_to_pten = true;
-      if (!pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
-        VLOG(3) << "[CUSTOM KERNEL] " << op_type
-                << " has no compatible pten kernel.";
-        register_to_pten = false;
-      } else {
-        VLOG(3) << "[CUSTOM KERNEL] " << op_type
-                << " has compatible pten kernel.";
-        if (pten::KernelFactory::Instance().kernels()[op_type].find(
-                kernel_key) !=
-            pten::KernelFactory::Instance().kernels()[op_type].end()) {
-          LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << kernel_key
-                       << " has been registered already.";
-          register_to_pten = false;
-          continue;
-        }
-      }
+    // 2.Check wether kernel_key has been already registed
+    if (pten::KernelFactory::Instance().kernels()[op_type].find(kernel_key) !=
+        pten::KernelFactory::Instance().kernels()[op_type].end()) {
+      LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << kernel_key
+                   << " has been registered already.";
+      continue;
     }
-    VLOG(1) << "[CUSTOM KERNEL] register_to_pten: " << register_to_pten;
 
-    if (register_to_pten) {
-      VLOG(3) << "[CUSTOM KERNEL] try registering custom PTEN kernel";
-      // pten::KernelFn
-      auto& user_kernel_fn = OpKernelInfoHelper::GetKernelFn(kernel_info);
-      pten::KernelFn kernel_fn = [kernel_info,
-                                  user_kernel_fn](pten::KernelContext* ctx) {
-        VLOG(3) << "[CUSTOM KERNEL] run custom PTEN kernel func in lambda.";
-        RunPtenKernelFunc(kernel_info, ctx, user_kernel_fn);
-      };
-      // variadic_kernel_fn
-      void* variadic_kernel_fn =
-          OpKernelInfoHelper::GetVariadicKernelFn(kernel_info);
-      pten::Kernel kernel(kernel_fn, variadic_kernel_fn);
-      // args info
-      ParseArgs(kernel_info, kernel.mutable_args_def());
-      // register custom kernel to pten::KernelFactory
-      pten::KernelFactory::Instance().kernels()[op_type][kernel_key] = kernel;
-      VLOG(3) << "[CUSTOM KERNEL] registered custom PTEN kernel";
-    } else {
-      VLOG(3) << "[CUSTOM KERNEL] try registering custom FLUID kernel";
-      // trans pten kernelkey to org kernel key
-      auto key = TransPtenKernelKeyToOpKernelType(kernel_key);
-      if (OperatorWithKernel::AllOpKernels()[op_type].find(key) !=
-          OperatorWithKernel::AllOpKernels()[op_type].end()) {
-        LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << kernel_key
-                     << " has been registered already.";
-        continue;
-      }
-      // register custom kernel to OperatorWithKernel::AllOpKernels()
-      auto& user_kernel_fn = OpKernelInfoHelper::GetKernelFn(kernel_info);
-      OperatorWithKernel::AllOpKernels()[op_type][key] = [user_kernel_fn](
-          const framework::ExecutionContext& ctx) {
-        VLOG(3) << "[CUSTOM KERNEL] run custom FLUID kernel func in lambda.";
-        RunFluidKernelFunc(ctx, user_kernel_fn);
-      };
-      VLOG(3) << "[CUSTOM KERNEL] registered custom FLUID kernel";
-    }
+    // pten::KernelFn
+    auto& user_kernel_fn = OpKernelInfoHelper::GetKernelFn(kernel_info);
+    pten::KernelFn kernel_fn = [kernel_info,
+                                user_kernel_fn](pten::KernelContext* ctx) {
+      VLOG(3) << "[CUSTOM KERNEL] run custom PTEN kernel func in lambda.";
+      RunKernelFunc(kernel_info, ctx, user_kernel_fn);
+    };
+    // variadic_kernel_fn
+    void* variadic_kernel_fn =
+        OpKernelInfoHelper::GetVariadicKernelFn(kernel_info);
+    pten::Kernel kernel(kernel_fn, variadic_kernel_fn);
+    // args info
+    ParseArgs(kernel_info, kernel.mutable_args_def());
+    // register custom kernel to pten::KernelFactory
+    pten::KernelFactory::Instance().kernels()[op_type][kernel_key] = kernel;
+    VLOG(3) << "[CUSTOM KERNEL] registered custom PTEN kernel";
   }
 }
 

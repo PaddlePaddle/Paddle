@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 
 namespace paddle {
 namespace experimental {
@@ -25,10 +24,6 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (p == PlaceType::kGPU) {
     return platform::Place(platform::CUDAPlace(platform::GetCurrentDeviceId()));
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-  } else if (p == PlaceType::kNPU) {
-    return platform::Place(platform::NPUPlace());
 #endif
   } else {
     PADDLE_THROW(
@@ -45,10 +40,6 @@ PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
   } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     return PlaceType::kGPU;
-#endif
-  } else if (platform::is_npu_place(p)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-    return PlaceType::kNPU;
 #endif
   } else {
     PADDLE_THROW(

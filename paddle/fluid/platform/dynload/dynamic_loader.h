@@ -42,7 +42,6 @@ void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 void* GetLAPACKDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
-void* GetKnDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
 void* GetCUFFTDsoHandle();
 void* GetMKLRTDsoHandle();

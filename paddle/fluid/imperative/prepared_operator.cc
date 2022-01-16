@@ -168,9 +168,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
 
-    VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
-            << " | kernel key: " << pt_kernel_key << " | kernel: " << pt_kernel;
-
     if (pt_kernel.IsValid()) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key

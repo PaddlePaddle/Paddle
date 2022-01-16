@@ -66,9 +66,6 @@ DEFINE_string(mkl_dir, "",
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
-DEFINE_string(kernel_dir, "",
-              "Specify path for loading user-defined kernel library.");
-
 #ifdef PADDLE_WITH_HIP
 
 DEFINE_string(miopen_dir, "",
@@ -533,10 +530,6 @@ void* GetLAPACKDsoHandle() {
 
 void* GetOpDsoHandle(const std::string& dso_name) {
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
-}
-
-void* GetKnDsoHandle(const std::string& dso_name) {
-  return GetDsoHandleFromSearchPath(FLAGS_kernel_dir, dso_name);
 }
 
 void* GetNvtxDsoHandle() {

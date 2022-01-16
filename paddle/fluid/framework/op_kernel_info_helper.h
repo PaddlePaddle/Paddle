@@ -34,14 +34,6 @@ class OpKernelInfoHelper {
   static void* GetVariadicKernelFn(const paddle::OpKernelInfo& info) {
     return info.variadic_kernel_fn_;
   }
-  // static const PtenKernelArgsParseFn& GetPtenArgsParseFn(
-  //     const paddle::OpKernelInfo& info) {
-  //   return info.pten_kernel_args_parse_fn_;
-  // }
-  // static const PtenKernelArgsDefFn& GetPtenArgsDefFn(
-  //     const paddle::OpKernelInfo& info) {
-  //   return info.pten_kernel_args_def_fn_;
-  // }
 };
 
 }  // namespace framework
