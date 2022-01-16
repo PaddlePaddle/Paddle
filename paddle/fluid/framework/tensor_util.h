@@ -39,9 +39,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-std::ostream& operator<<(std::ostream& os, const Tensor& t);
-
 class PrintOptions {
  public:
   static PrintOptions& Instance() {
