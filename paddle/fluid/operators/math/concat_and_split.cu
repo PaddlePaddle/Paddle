@@ -336,9 +336,8 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     auto* data_alloc_released = data_alloc.release();
     auto* col_alloc_released = col_alloc.release();
     context.AddStreamCallback([data_alloc_released, col_alloc_released] {
-      memory::allocation::AllocationDeleter deleter;
-      deleter(data_alloc_released);
-      deleter(col_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(data_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(col_alloc_released);
     });
 #endif
   }
@@ -466,9 +465,8 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     auto* data_alloc_released = data_alloc.release();
     auto* cols_alloc_released = cols_alloc.release();
     context.AddStreamCallback([data_alloc_released, cols_alloc_released] {
-      memory::allocation::AllocationDeleter deleter;
-      deleter(data_alloc_released);
-      deleter(cols_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(data_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(cols_alloc_released);
     });
 #endif
   }

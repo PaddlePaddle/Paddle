@@ -50,7 +50,7 @@ DECLARE_bool(enable_slotrecord_reset_shrink);
 namespace paddle {
 namespace framework {
 class DataFeedDesc;
-class LoDTensor;
+class Tensor;
 class Scope;
 class Variable;
 }  // namespace framework

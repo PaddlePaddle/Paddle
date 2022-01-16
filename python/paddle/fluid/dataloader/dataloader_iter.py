@@ -202,22 +202,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
-        # NOTE(chenweihang): [ Why need to set not to execute pten kernel here? ]
-        # Now, in order to ensure that the execution performance of the dynamic
-        # graph mode in pten compatible state does not decline significantly,
-        # we have adopted the approach of caching a KernelContext globally for
-        # the dynamic graph tracer to reduce the construction and deconstruction
-        # overhead of data interfaces such as the compatible state DenseTensor.
-        # The static graph is each op caches a KernelContext, but the op of
-        # the dynamic graph will be constructed and destroyed every round of
-        # execution, so it is impossible to cache KernelContext for each op.
-        # However, it is not thread-safe if using only one global kernel context in
-        # dynamic graph. If the pten op of paddle is used in the DataLoader thread,
-        # it may cause access errors. We temporarily do not execute pten kernel
-        # in this scenario and will find a better solution later and remove
-        # this setting.
-        set_flags({'FLAGS_run_pten_kernel': False})
-
         while not self._thread_done_event.is_set():
             try:
                 indices = next(self._sampler_iter)
@@ -518,9 +502,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
-
-        # NOTE(chenweihang): See Note [ Why need to set not to execute pten kernel here? ]
-        set_flags({'FLAGS_run_pten_kernel': False})
 
         while not self._thread_done_event.is_set():
             batch = self._get_data()

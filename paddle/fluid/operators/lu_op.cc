@@ -149,7 +149,67 @@ class LUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class LUOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("lu_grad");
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Out", this->Output("Out"));
+    retv->SetInput("Pivots", this->Output("Pivots"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    retv->SetAttrMap(this->Attrs());
+  }
+};
+
+class LUGradOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto var_type = ctx->GetInputType("X", 0);
+    auto data_type = ctx->GetInputDataType("X", 0);
+
+    ctx->SetOutputType(framework::GradVarName("X"), var_type,
+                       framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(framework::GradVarName("X"), data_type,
+                           framework::ALL_ELEMENTS);
+  }
+};
+
+class LUGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lu");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "lu");
+    OP_INOUT_CHECK(ctx->HasInput("Pivots"), "Input", "Pivots", "lu");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "lu");
+
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_grad_name = framework::GradVarName("X");
+
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(LUOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(LUGradOpInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -157,6 +217,13 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(lu, ops::LUOp, ops::LUOpMaker, ops::LUOpVarTypeInference,
+                  ops::LUOpGradMaker<paddle::framework::OpDesc>,
+                  ops::LUOpGradMaker<paddle::imperative::OpBase>,
                   ops::LUOpInplaceInferer);
+REGISTER_OPERATOR(lu_grad, ops::LUGradOp, ops::LUGradOpVarTypeInference,
+                  ops::LUGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(lu, ops::LUKernel<float>, ops::LUKernel<double>);
+REGISTER_OP_CPU_KERNEL(lu_grad,
+                       ops::LUGradKernel<plat::CPUDeviceContext, float>,
+                       ops::LUGradKernel<plat::CPUDeviceContext, double>);

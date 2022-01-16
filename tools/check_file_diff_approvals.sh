@@ -96,8 +96,8 @@ if [[ $changed_env_var_count -gt 0 ]]; then
 fi
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
-    echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
-    check_approval 1 38231817
+    echo_line="You must have Dianhai or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
+    check_approval 1 38231817 46782768
 fi
 
 for API_FILE in ${API_FILES[*]}; do
@@ -226,7 +226,7 @@ if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 HAS_MODIFIED_ALLOCATION=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/memory/allocation" || true`
 if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by zhiqiu and Shixiaowei02 for paddle/fluid/memory/allocation.\nIt is being modularized and refactored. Thanks!\n"
-    check_approval 2 6888866 39303645
+    check_approval 1 6888866 39303645
   fi
 
 HAS_MODIFIED_TENSOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/tensor" || true`
@@ -240,23 +240,6 @@ if [ "${HAS_MODIFIED_TENSOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by jim19930609 or chenwhql for paddle/fluid/framework/lod_tensor. It is being modularized and refactored. Thanks!\n"
     check_approval 1 22561442 22334008
   fi
-
-ALLOCSHARED_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -E "*\.(h|cc)" || true`
-if [ "${ALLOCSHARED_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    ERROR_LINES=""
-    for TEST_FILE in ${ALLOCSHARED_FILE_CHANGED};
-    do
-        HAS_SKIP_CHECK_ALLOC_CI=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep "AllocShared" || true`
-        if [ "${HAS_SKIP_CHECK_ALLOC_CI}" != "" ]; then
-            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${HAS_SKIP_CHECK_ALLOC_CI}\n"
-        fi
-    done
-    if [ "${ERROR_LINES}" != "" ]; then
-        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="memory::AllocShared is not recommended, because it is being modularized and refactored. Please use memory::Alloc here. Otherwise, please request zhiqiu and Shixiaowei02 review and approve.\n"
-        check_approval 2 6888866 39303645
-    fi
-fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
