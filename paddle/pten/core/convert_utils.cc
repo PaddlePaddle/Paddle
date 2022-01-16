@@ -79,10 +79,6 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
     case pten::Backend::MKLDNN:
       return paddle::platform::CPUPlace();
 #endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    case pten::Backend::NPU:
-      return paddle::platform::NPUPlace();
-#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::CUDNN:
       return paddle::platform::CUDAPlace(
