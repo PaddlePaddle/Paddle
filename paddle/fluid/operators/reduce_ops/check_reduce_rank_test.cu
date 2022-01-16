@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {

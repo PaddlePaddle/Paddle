@@ -264,19 +264,7 @@ XPUDeviceContext::XPUDeviceContext() {
 XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+  platform::XPUDeviceGuard guard(place.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: " << place_.device;
 
@@ -303,22 +291,10 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
       break;
     }
   }
-
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
 }
 
 void XPUDeviceContext::Wait() const {
-  int ret = xpu_set_device(place_.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+  platform::SetXPUDeviceId(place_.device);
   xpu_wait(context_->xpu_stream);
 }
 
@@ -484,6 +460,7 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitCuBlasContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+  InitCuSparseContext();
   InitCuSolverContext();
 #endif
 }
@@ -513,6 +490,7 @@ CUDAContext::~CUDAContext() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+  DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
 }
@@ -629,6 +607,9 @@ rocblas_handle CUDADeviceContext::cublas_handle() const {
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
+}
+cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
+  return context()->CusparseHandle()->GetCusparseHandle();
 }
 #endif
 

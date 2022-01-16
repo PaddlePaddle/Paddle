@@ -24,7 +24,8 @@
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 
 void PrintShape(const tensor::TensorShape& shape) {
   llvm::raw_os_ostream oos(std::cout);
@@ -35,4 +36,5 @@ void RegisterTensorShapeKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("ts.print_shape", INFRT_KERNEL(PrintShape));
 }
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt

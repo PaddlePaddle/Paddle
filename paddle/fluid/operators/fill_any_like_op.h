@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/creation.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -65,7 +64,7 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
-    pten::FullLike<T>(dev_ctx, value, pt_out.get());
+    pten::FullLikeKernel<T>(dev_ctx, value, pt_out.get());
   }
 };
 

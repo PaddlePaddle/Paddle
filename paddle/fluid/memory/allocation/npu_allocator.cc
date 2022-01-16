@@ -22,7 +22,7 @@ namespace memory {
 namespace allocation {
 
 bool NPUAllocator::IsAllocThreadSafe() const { return true; }
-void NPUAllocator::FreeImpl(Allocation* allocation) {
+void NPUAllocator::FreeImpl(pten::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       BOOST_GET_CONST(platform::NPUPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(
@@ -32,7 +32,7 @@ void NPUAllocator::FreeImpl(Allocation* allocation) {
   delete allocation;
 }
 
-Allocation* NPUAllocator::AllocateImpl(size_t size) {
+pten::Allocation* NPUAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_,
                  [this] { platform::SetNPUDeviceId(place_.device); });
 

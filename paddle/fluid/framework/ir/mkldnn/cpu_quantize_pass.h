@@ -62,6 +62,7 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizeMultiGru(Graph* graph) const;
   void QuantizeFusionLSTM(Graph* graph) const;
   void QuantizeSlice(Graph* graph) const;
+  void QuantizeNearestInterp(Graph* graph) const;
 
   void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
                      double scale_to_one, bool is_input_unsigned,

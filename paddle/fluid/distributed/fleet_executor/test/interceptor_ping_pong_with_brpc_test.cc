@@ -20,7 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -106,43 +106,33 @@ TEST(InterceptorTest, PingPong) {
   std::cout << "ip1: " << ip1 << std::endl;
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank = {{0, 0},
                                                                  {1, 1}};
+  std::string carrier_id = "0";
 
-  int exe_pid = fork();
-  if (exe_pid == 0) {
-    int pid = fork();
-    if (pid == 0) {
-      Carrier* carrier =
-          FleetExecutor::CreateCarrier(0, interceptor_id_to_rank);
-      auto msg_bus = std::make_shared<MessageBus>();
-      carrier->SetMsgBus(msg_bus);
-      // NOTE: need Init msg_bus after carrier SetMsgBus
-      msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
-      Interceptor* a = carrier->SetInterceptor(
-          0, InterceptorFactory::Create("PingPong", 0, nullptr));
-      carrier->Barrier();
-
-      InterceptorMessage msg;
-      a->Send(1, msg);
-      carrier->Wait();
-    } else {
-      Carrier* carrier =
-          FleetExecutor::CreateCarrier(1, interceptor_id_to_rank);
-      auto msg_bus = std::make_shared<MessageBus>();
-      carrier->SetMsgBus(msg_bus);
-      msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
-      carrier->SetInterceptor(
-          1, InterceptorFactory::Create("PingPong", 1, nullptr));
-      carrier->Barrier();
-
-      carrier->Wait();
-      int status;
-      int ret = waitpid(pid, &status, 0);
-      CHECK_EQ(ret, pid);
-    }
+  int pid = fork();
+  if (pid == 0) {
+    Carrier* carrier =
+        GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
+    msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
+    carrier->Init(0, interceptor_id_to_rank);
+    Interceptor* a = carrier->SetInterceptor(
+        0, InterceptorFactory::Create("PingPong", 0, nullptr));
+    msg_bus->Barrier();
+    InterceptorMessage msg;
+    a->Send(1, msg);
+    carrier->Wait();
   } else {
-    int status;
-    int ret = waitpid(exe_pid, &status, 0);
-    CHECK_EQ(ret, exe_pid);
+    Carrier* carrier =
+        GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
+    msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
+    carrier->Init(1, interceptor_id_to_rank);
+    carrier->SetInterceptor(1,
+                            InterceptorFactory::Create("PingPong", 1, nullptr));
+    msg_bus->Barrier();
+    carrier->Wait();
   }
 }
 

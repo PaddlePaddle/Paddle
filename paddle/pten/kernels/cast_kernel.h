@@ -15,13 +15,24 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Cast(const ContextT& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DenseTensor* out);
+template <typename T, typename Context>
+void CastKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DataType out_dtype,
+                DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Cast(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DataType out_dtype) {
+  auto out_meta = CastInferMeta(x.meta(), out_dtype);
+  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  CastKernel<T, Context>(dev_ctx, x, out_dtype, &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten
