@@ -152,11 +152,6 @@ void RecordEvent::OriginalConstruct(const std::string &name,
 }
 
 void RecordEvent::End() {
-  if (UNLIKELY(is_enabled_ == false)) {
-    return;
-  }
-  // use this flag to avoid double End();
-  is_enabled_ = false;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed_) {
@@ -165,7 +160,7 @@ void RecordEvent::End() {
 #endif
 #endif
   uint64_t end_ns = PosixInNsec();
-  if (LIKELY(FLAGS_enable_host_event_recorder_hook)) {
+  if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
       HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
                                                    start_ns_, end_ns, role_,
@@ -182,6 +177,8 @@ void RecordEvent::End() {
       }
       delete name_;
     }
+    // use this flag to avoid double End();
+    is_enabled_ = false;
     return;
   }
 
@@ -196,6 +193,8 @@ void RecordEvent::End() {
   PopEvent(*name_, role_);
   delete name_;
   delete attr_;
+  // use this flag to avoid double End();
+  is_enabled_ = false;
 }
 
 RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
