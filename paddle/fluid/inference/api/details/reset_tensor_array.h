@@ -23,7 +23,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Scope;
 class SelectedRows;
 }  // namespace framework

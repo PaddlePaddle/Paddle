@@ -46,8 +46,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
-                                             with_dynamic_shape);
+    bool is_ok = tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                                   with_dynamic_shape);
+    if (!is_ok)
+      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    return is_ok;
   };
 
   framework::ir::SubGraphFuser fuser(

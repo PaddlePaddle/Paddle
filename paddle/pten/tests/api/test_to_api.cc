@@ -28,10 +28,10 @@ namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT64,
                             framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
