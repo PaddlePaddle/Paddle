@@ -508,6 +508,9 @@ void Copy<platform::CPUPlace, platform::MLUPlace>(platform::CPUPlace dst_place,
     platform::RecordEvent record_event("MLUMemcpyD2HAsync:MLU->CPU");
     platform::MLUMemcpyD2HAsync(dst, src, num, stream);
   } else {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+
     VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place;
     platform::RecordEvent record_event("MLUMemcpyD2HSync:MLU->CPU");
@@ -530,6 +533,9 @@ void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
     platform::RecordEvent record_event("MLUMemcpyH2DAsync:CPU->MLU");
     platform::MLUMemcpyH2DAsync(dst, src, num, stream);
   } else {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+
     VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place;
     platform::RecordEvent record_event("MLUMemcpyH2DSync:CPU->MLU");
@@ -554,6 +560,10 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
           "MLUMemcpyD2DAsync(same_mlu):MLU->MLU");
       platform::MLUMemcpyD2DAsync(dst, src, num, stream);
     } else {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+
       VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place;
       platform::RecordEvent record_event("MLUMemcpyD2DSync(same_mlu):MLU->MLU");

@@ -189,7 +189,7 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
             << " is initialized, will be released.";
     auto dense_tensor =
         std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
-    dense_tensor->release();
+    dense_tensor->MoveMemoryHolder();
   }
   Py_INCREF(Py_None);
   return Py_None;
@@ -298,6 +298,21 @@ static PyObject* eager_tensor_method_detach(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_tensor_method_get_underline_tensor(
+    EagerTensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  if (self->eager_tensor.is_dense_tensor()) {
+    auto* tensor = static_cast<paddle::framework::LoDTensor*>(
+        self->eager_tensor.impl().get());
+    VLOG(6) << "tensor: " << tensor->IsInitialized();
+    return ToPyObject(tensor);
+  } else {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -315,13 +330,16 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_is_shared_buffer_to",
+    {"_share_buffer_to",
      (PyCFunction)(void (*)(void))eager_tensor__share_buffer_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_share_buffer_with",
+    {"_is_shared_buffer_with",
      (PyCFunction)(void (*)(void))eager_tensor__is_shared_buffer_with,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"detach", (PyCFunction)(void (*)(void))eager_tensor_method_detach,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"get_tensor",
+     (PyCFunction)(void (*)(void))eager_tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
