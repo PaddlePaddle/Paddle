@@ -34,4 +34,5 @@ DenseTensor Dot(const Context& dev_ctx,
   DotKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
+
 }  // namespace pten

@@ -95,7 +95,8 @@ class ShardingStage2(nn.Layer):
 
         # Global statistical parameters
         self._all_params = list(
-            chain(*[optim.local_params for optim in self._sharding_optimizers]))
+            chain(
+                * [optim.local_params for optim in self._sharding_optimizers]))
         self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
@@ -489,7 +490,7 @@ class ShardingStage2(nn.Layer):
                            ._fill))
 
         self._grad_storage_list = list(
-            chain(*[
+            chain(* [
                 self._grad_storages[dtype].values()
                 for dtype in self._grad_storages.keys()
             ]))
