@@ -452,12 +452,7 @@ class Quant2Int8MkldnnPass(object):
             graph = self._apply_pass(graph, 'fc_act_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
-        graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph, 'batch_norm_act_fuse_pass')
-        graph = self._apply_pass(graph,
-                                 'reshape_transpose_matmul_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph,
-                                 'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'softplus_activation_mkldnn_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
         graph = self._apply_pass(graph, 'runtime_context_cache_pass')
@@ -665,6 +660,11 @@ class Quant2Int8MkldnnPass(object):
             graph, 'cpu_quantize_placement_pass',
             ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
             [self._ops_to_quantize, self._find_avg_pooling_ids(graph)])
+        graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'reshape_transpose_matmul_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales, self._get_data_layout(graph)])
