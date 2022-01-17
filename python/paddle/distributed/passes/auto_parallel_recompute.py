@@ -53,6 +53,7 @@ class RecomputeState(ProgramStats):
                     self.var_op_deps[name]["var_as_output_ops"] = [i]
 
     def get_recompute_segments(self, checkpoints):
+        """ get recompute segments from checkpoints """
         segments = []
         start_idx = -1
         pre_segment_end_idx = -1
@@ -89,6 +90,10 @@ class RecomputeState(ProgramStats):
         return segments
 
     def modify_forward_desc_for_recompute(self, dist_context):
+        """
+        If program's foward part has 'dropout' op, this function will insert 
+        a seed op before it to guarantee that two dropout op have the same outputs.
+        """
         op_types = [op.desc.type() for op in self._ops]
         if "dropout" not in op_types:
             return
@@ -155,6 +160,7 @@ def _find_op_index(block, cur_op):
 
 
 def _get_stop_gradients(program, no_grad_set):
+    """ get no grad var """
     if no_grad_set is None:
         no_grad_set = set()
     else:
@@ -173,6 +179,9 @@ def _get_stop_gradients(program, no_grad_set):
 
 def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars,
                                dist_context):
+    """
+    Get the recomputed ops which will insert the backward part
+    """
     if len(descs) == 0:
         return []
     result_descs = []
@@ -253,7 +262,7 @@ class RecomputePass(PassBase):
         vars_should_be_hold = list(set(vars_should_be_hold))
         vars_in_memory = vars_should_be_hold + checkpoints
 
-        # step 3: get recompute fwd ops desc
+        # step 3: get recomputed fwd ops desc
         var_name_dict = {}
         ckpt_ops_dict = {}
         buffer_block = main_block.program._create_block()
@@ -280,6 +289,8 @@ class RecomputePass(PassBase):
                         else:
                             ref_dims_mapping = cur_op_dist_attr.get_output_dims_mapping(
                                 name)
+                        # record recomputed var's old_name and new_name (old_name.subprog_XXX)
+                        # create new var with new name
                         var_name_dict[name] = name + var_suffix
                         ref_var = main_block.var(name)
                         rc_var = main_block.create_var(
@@ -289,13 +300,14 @@ class RecomputePass(PassBase):
                             type=ref_var.type,
                             persistable=ref_var.persistable,
                             stop_gradient=ref_var.stop_gradient)
-                        # set new recompute var's dist attr
+                        # set new recomputed var's dist attr
                         set_var_dist_attr(self._dist_context, rc_var,
                                           ref_dims_mapping, ref_process_mesh)
-
+            # get recomputed segment's descs
             segment_descs = _add_needed_descs_to_block(
                 fwd_ops, buffer_block, main_block, vars_in_memory,
                 self._dist_context)
+            # rename recomputed ops' input and output var name
             for key in var_name_dict:
                 _rename_arg_(segment_descs, key, var_name_dict[key])
 
@@ -305,12 +317,14 @@ class RecomputePass(PassBase):
             ckpt_op = op_path[segment[1] - 1]
             ckpt_ops_dict[ckpt_op.desc.id()] = [True, segment_descs]
 
-        # step 4: insert recompute fwd ops
+        # step 4: insert recomputed fwd ops
         ops = main_block.ops
         loss_op = get_loss_op(main_block)
         loss_op_idx = _find_op_index(main_block, loss_op)
         dist_op_context = self._dist_context.dist_op_context
         assert loss_op_idx != -1
+        # Traversing all grad_ops in reverse, and if the fwd op corresponding to reverse op is checkpoints,
+        # segments ops should be inserted.
         for i in range(len(ops) - 1, loss_op_idx, -1):
             grad_op = ops[i]
             # remove some attrs of dropout_grad op's desc
@@ -324,7 +338,7 @@ class RecomputePass(PassBase):
                 self.reset_op_dist_attr(grad_op, var_name_dict)
                 _rename_arg_([grad_op.desc], key, var_name_dict[key])
 
-            # insert recompute ops
+            # insert recomputed ops
             if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
                 fwd_op_id = dist_op_context.grad_op_id_to_op_id[grad_op.desc.id(
                 )]
@@ -338,7 +352,7 @@ class RecomputePass(PassBase):
                         rc_desc.copy_from(op_desc)
                         rc_op = Operator(main_block, rc_desc)
                         main_block.ops.insert(idx, rc_op)
-                        # set recompute ops' dist attr
+                        # set recomputed ops' dist attr
                         fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program_with_id(
                             rc_desc.original_id())
                         assert fwd_op_dist_attr is not None

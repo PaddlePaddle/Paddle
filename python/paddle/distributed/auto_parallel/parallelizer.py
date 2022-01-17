@@ -97,7 +97,7 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _apply_pre_optimization_passed(self, main_program, startup_program,
+    def _apply_pre_optimization_passes(self, main_program, startup_program,
                                        loss, params_grads, no_grad_set):
         # apply amp pass
         if self._dist_strategy.amp:
@@ -147,7 +147,7 @@ class AutoParallelizer:
 
         return optimize_ops
 
-    def _apply_post_optimization_passed(self, main_program, startup_program,
+    def _apply_post_optimization_passes(self, main_program, startup_program,
                                         rank, params_grads):
 
         if self._dist_strategy.sharding:
@@ -191,7 +191,7 @@ class AutoParallelizer:
             self._parameter_list, self._no_grad_set, self._callbacks)
 
         # serial forward pass
-        self._apply_pre_optimization_passed(completed_main_program,
+        self._apply_pre_optimization_passes(completed_main_program,
                                             serial_startup_program, serial_loss,
                                             params_grads, self._no_grad_set)
         # Logical partition 
@@ -210,7 +210,7 @@ class AutoParallelizer:
 
         reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
 
-        self._apply_post_optimization_passed(dist_main_prog, dist_startup_prog,
+        self._apply_post_optimization_passes(dist_main_prog, dist_startup_prog,
                                              rank, dist_params_grads)
         g_process_group_map = None
         if not relaunch_phase:
