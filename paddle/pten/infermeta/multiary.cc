@@ -14,11 +14,12 @@ limitations under the License. */
 
 #include "paddle/pten/infermeta/multiary.h"
 
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/kernels/funcs/concat_funcs.h"
 namespace pten {
 
 DenseTensorMeta ConcatInferMeta(const std::vector<DenseTensorMeta>& x_meta,
-                                int axis,
+                                const Scalar& axis_scalar,
                                 bool is_runtime) {
   PADDLE_ENFORCE_GE(x_meta.size(),
                     0,
@@ -26,6 +27,7 @@ DenseTensorMeta ConcatInferMeta(const std::vector<DenseTensorMeta>& x_meta,
                         "The size of input meta vector should be greater"
                         "than 0."));
 
+  int axis = axis_scalar.to<int>();
   // 1. calculate axis
   int rank = x_meta[0].dims.size();
   PADDLE_ENFORCE_EQ(
