@@ -180,8 +180,11 @@ def monkey_patch_varbase():
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
                     self.name, self_tensor_np.dtype, value_np.dtype)
 
-            self.value().get_tensor().set(value_np,
-                                          framework._current_expected_place())
+            if _in_eager_mode():
+                self.set(value_np)
+            else:
+                self.value().get_tensor().set(
+                    value_np, framework._current_expected_place())
 
     @framework.dygraph_only
     def backward(self, grad_tensor=None, retain_graph=False):

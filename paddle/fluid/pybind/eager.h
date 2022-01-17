@@ -11,6 +11,8 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -19,6 +21,9 @@ namespace pybind {
 
 void BindEager(pybind11::module* m);
 void BindFunctions(PyObject* module);
+void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
+                                   const pybind11::object& array,
+                                   bool zero_copy);
 
 }  // namespace pybind
 }  // namespace paddle
