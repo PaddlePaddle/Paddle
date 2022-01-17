@@ -33,7 +33,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
                 1] * attrs[0]['groups']:
             return False
-        print('my log')
+
         return True
 
     def sample_program_configs(self):

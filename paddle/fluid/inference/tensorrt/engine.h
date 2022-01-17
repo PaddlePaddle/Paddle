@@ -128,6 +128,11 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       dims.d[0] = shape[1];
       return dims;
     }
+    // static shape doesn't support these shapes so far.
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The input [%s] shape of trt subgraph is %s."
+        "it's not supported by trt so far",
+        input, ShapeStr(shape)));
     return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
     if (shape.size() == 4UL) {
