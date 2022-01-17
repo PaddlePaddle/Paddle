@@ -32,10 +32,18 @@ DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
                          const DenseTensorMeta& meta)
-    : meta_(meta), holder_(storage->move_data_shared()) {}
+    : meta_(meta), holder_(storage->move_data_shared()) {
+  if (meta.valid()) {
+    mutable_data(storage->place());
+  }
+}
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
+    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {
+  if (meta.valid()) {
+    mutable_data(storage->place());
+  }
+}
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
@@ -93,20 +101,6 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
                      "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
-/* @jim19930609: This interface will be further modified util we finalized the
-   design for Allocator - Allocation
-   For now, we have to temporarily accommodate two independent use cases:
-   1. Designed behaviour: DenseTensor constructed with its underlying storage_
-   initialized
-   2. Legacy behaviour(fluid): DenseTensor constructed using default
-   constructor, where
-                               storage_ won't be initialized until the first
-   call to mutable_data(place)
-   */
-void DenseTensor::ResizeAndAllocate(const DDim& dims, Allocator* allocator) {
-  meta_.dims = dims;
-  AllocateFrom(allocator);
-}
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
@@ -114,72 +108,6 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
 }
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
-
-void* DenseTensor::AllocateFrom(Allocator* allocator, size_t request_bytes) {
-  PADDLE_ENFORCE(
-      valid(),
-      paddle::platform::errors::PreconditionNotMet(
-          "The meta data must be valid when call the mutable data function."));
-  PADDLE_ENFORCE_NOT_NULL(
-      allocator,
-      paddle::platform::errors::InvalidArgument(
-          "The allocator must be valid when call the mutable data function."));
-  size_t bytes = numel() * SizeOf(dtype());
-  if (request_bytes) {
-    PADDLE_ENFORCE_GE(request_bytes,
-                      bytes,
-                      paddle::platform::errors::InvalidArgument(
-                          "The reserved size %d should be enough to meet the "
-                          "volume required by metadata %d.",
-                          request_bytes,
-                          bytes));
-    bytes = request_bytes;
-  }
-  if (holder_->size() < bytes + meta_.offset || holder_->size() == 0) {
-    VLOG(10) << "mutbale data realloc, original size: " << holder_->size()
-             << ", new size: " << bytes;
-    holder_ = allocator->Allocate(bytes);
-    meta_.offset = 0;
-  }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
-}
-
-void* DenseTensor::AllocateFrom(Allocator* allocator,
-                                DataType type,
-                                size_t requested_size) {
-  meta_.dtype = type;
-  return AllocateFrom(allocator, requested_size);
-}
-
-template <typename T>
-inline T* DenseTensor::AllocateFrom(Allocator* allocator,
-                                    size_t requested_size) {
-  static_assert(std::is_pod<T>::value, "T must be POD");
-  return static_cast<T*>(AllocateFrom(allocator, requested_size));
-}
-
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
-  template dtype* DenseTensor::AllocateFrom(Allocator* allocator, \
-                                            size_t requested_size);
-
-DATA_MEMBER_FUNC_INSTANTIATION(bool);
-DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
-DATA_MEMBER_FUNC_INSTANTIATION(uint8_t);
-DATA_MEMBER_FUNC_INSTANTIATION(int16_t);
-DATA_MEMBER_FUNC_INSTANTIATION(uint16_t);
-DATA_MEMBER_FUNC_INSTANTIATION(int32_t);
-DATA_MEMBER_FUNC_INSTANTIATION(uint32_t);
-DATA_MEMBER_FUNC_INSTANTIATION(int64_t);
-DATA_MEMBER_FUNC_INSTANTIATION(uint64_t);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::float16);
-DATA_MEMBER_FUNC_INSTANTIATION(float);
-DATA_MEMBER_FUNC_INSTANTIATION(double);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
-
-#undef DATA_MEMBER_FUNC_INSTANTIATION
 
 /* --------------------------- */
 /*   From framework::Tensor    */
@@ -226,10 +154,6 @@ const paddle::platform::Place& DenseTensor::place() const {
 }
 
 paddle::framework::proto::VarType::Type DenseTensor::type() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      holder_,
-      paddle::platform::errors::PreconditionNotMet(
-          "Tensor not initialized yet when DenseTensor::type() is called."));
   return TransToProtoVarType(meta_.dtype);
 }
 
@@ -273,15 +197,43 @@ void DenseTensor::set_type(
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 paddle::framework::proto::VarType::Type type,
                                 size_t requested_size) {
-  return AllocateFrom(paddle::memory::GetDefaultAllocator(place),
-                      TransToPtenDataType(type),
-                      requested_size);
+  meta_.dtype = TransToPtenDataType(type);
+  PADDLE_ENFORCE_GE(
+      numel(),
+      0,
+      paddle::platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(),
+          "] now"));
+  size_t size = numel() * SizeOf(dtype());
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(
+        requested_size,
+        size,
+        paddle::platform::errors::InvalidArgument(
+            "The requested memory size is less than the memory size of Tensor. "
+            "But received requested memory size is %d, "
+            "memory size of Tensor is %d.",
+            requested_size,
+            size));
+    size = requested_size;
+  }
+  /* some versions of boost::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + meta_.offset) {
+    // Reset holder first before re-allocate to save memory
+    holder_.reset();
+    holder_ = paddle::memory::AllocShared(place, size);
+    meta_.offset = 0;
+  }
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 size_t requested_size) {
-  return AllocateFrom(paddle::memory::GetDefaultAllocator(place),
-                      requested_size);
+  return mutable_data(place, type(), requested_size);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
@@ -321,17 +273,16 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  meta_.dims = dims;
-  return AllocateFrom<T>(paddle::memory::GetDefaultAllocator(place),
-                         requested_size);
+  Resize(dims);
+  return mutable_data<T>(place, requested_size);
 }
 
 template <typename T>
 inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return static_cast<T*>(
-      AllocateFrom(paddle::memory::GetDefaultAllocator(place), requested_size));
+  return reinterpret_cast<T*>(mutable_data(
+      place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
@@ -374,11 +325,8 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int16_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint16_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint32_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16)
