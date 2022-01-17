@@ -148,8 +148,7 @@ class Allocator : public pten::Allocator {
  public:
   static void AllocationDeleter(pten::Allocation* allocation) {
     if (platform::is_gpu_place(allocation->place())) {
-      int dev_id = BOOST_GET_CONST(platform::CUDAPlace, allocation->place())
-                       .GetDeviceId();
+      int dev_id = allocation->place().GetDeviceId();
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
                    allocation->size());
     }

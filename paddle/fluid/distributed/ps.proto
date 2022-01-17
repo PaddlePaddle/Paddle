@@ -172,6 +172,8 @@ message CommonAccessorParameter {
   optional string entry = 7;
   optional int32 trainer_num = 8;
   optional bool sync = 9;
+  optional uint32 table_num = 10;
+  optional uint32 table_dim = 11;
 }
 
 message TableAccessorSaveParameter {

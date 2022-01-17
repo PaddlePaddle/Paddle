@@ -814,8 +814,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return m_->GetAllocator(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -836,8 +835,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 #ifdef PADDLE_WITH_CUDA
     if (UNLIKELY(!platform::CUDAGraph::IsCapturing())) {
 #endif
-      platform::CUDAPlace cuda_place =
-          BOOST_GET_CONST(platform::CUDAPlace, place);
+      platform::CUDAPlace cuda_place(place.GetDeviceId());
       return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
 #ifdef PADDLE_WITH_CUDA
     }
@@ -847,7 +845,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   AllocationPtr allocation = m_->GetAllocator(place, size)->Allocate(size);
   if (platform::is_gpu_place(place)) {
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    int dev_id = place.GetDeviceId();
     int64_t alloc_size =
         STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
                      allocation->size());
@@ -870,8 +868,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Release(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -946,7 +943,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
   }
 #endif
 
-  platform::CUDAPlace p = BOOST_GET_CONST(platform::CUDAPlace, place);
+  platform::CUDAPlace p(place.GetDeviceId());
   AllocationPtr allocation;
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     allocation = m_->GetAllocator(p, stream, /* create_if_not_found = */ true)

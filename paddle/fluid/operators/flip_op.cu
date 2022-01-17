@@ -56,7 +56,7 @@ class FlipKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gplace = ctx.GetPlace();
     auto cplace = platform::CPUPlace();
     auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
 
