@@ -23,17 +23,7 @@ DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 
-namespace platform {
-#ifdef PADDLE_WITH_ASCEND_CL
-class NPUDeviceContext;
-#endif
-}  // namespace platform
-
 namespace framework {
-
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUContext = paddle::platform::NPUDeviceContext;
-#endif
 
 namespace detail {
 
@@ -91,9 +81,8 @@ static void ParseArgs(const OpKernelInfo& op_kernel_info,
 }
 
 // custom pten kernel call function define
-static void RunKernelFunc(const OpKernelInfo& op_kernel_info,
-                          pten::KernelContext* ctx,
-                          const CustomKernelFunc& func) {
+static void RunKernelFunc(pten::KernelContext* ctx,
+                          const OpKernelInfo& op_kernel_info) {
   VLOG(3) << "[CUSTOM KERNEL] RunKernelFunc";
 
   size_t input_size = ctx->InputsSize();
@@ -206,7 +195,8 @@ static void RunKernelFunc(const OpKernelInfo& op_kernel_info,
 // do nothing
 #ifdef PADDLE_WITH_ASCEND_CL
   } else if (op_kernel_info.GetBackend() == pten::Backend::NPU) {
-    const NPUContext& dev_context = ctx->GetDeviceContext<NPUContext>();
+    const paddle::platform::NPUDeviceContext& dev_context =
+        ctx->GetDeviceContext<paddle::platform::NPUDeviceContext>();
     dev_ctx.set_stream(dev_context.stream());
 #endif
   } else {
@@ -214,10 +204,10 @@ static void RunKernelFunc(const OpKernelInfo& op_kernel_info,
                << op_kernel_info.GetBackend() << " with compiled paddle.";
     return;
   }
-
+  auto& user_kernel_fn = OpKernelInfoHelper::GetKernelFn(op_kernel_info);
   // call user function
-  func(dev_ctx, custom_ins, custom_vec_ins, custom_attrs, &custom_outs,
-       &custom_vec_outs);
+  user_kernel_fn(dev_ctx, custom_ins, custom_vec_ins, custom_attrs,
+                 &custom_outs, &custom_vec_outs);
   VLOG(3) << "[CUSTOM KERNEL] finished call user kernel function";
 }
 
@@ -225,7 +215,7 @@ void RegisterKernelWithMetaInfo(
     const std::vector<OpKernelInfo>& op_kernel_infos) {
   PADDLE_ENFORCE_EQ(FLAGS_run_pten_kernel, true,
                     platform::errors::Unimplemented(
-                        "Custom Kernel depend on pten kernel enabled,"));
+                        "Custom Kernel depends on pten kernel enabled,"));
 
   for (size_t i = 0; i < op_kernel_infos.size(); ++i) {
     auto& kernel_info = op_kernel_infos[i];
@@ -250,11 +240,9 @@ void RegisterKernelWithMetaInfo(
     }
 
     // pten::KernelFn
-    auto& user_kernel_fn = OpKernelInfoHelper::GetKernelFn(kernel_info);
-    pten::KernelFn kernel_fn = [kernel_info,
-                                user_kernel_fn](pten::KernelContext* ctx) {
+    pten::KernelFn kernel_fn = [kernel_info](pten::KernelContext* ctx) {
       VLOG(3) << "[CUSTOM KERNEL] run custom PTEN kernel func in lambda.";
-      RunKernelFunc(kernel_info, ctx, user_kernel_fn);
+      RunKernelFunc(ctx, kernel_info);
     };
     // variadic_kernel_fn
     void* variadic_kernel_fn =

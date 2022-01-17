@@ -54,12 +54,15 @@ class DeviceContext {
  private:
   void* stream_;
 };
+class CPUContext : public DeviceContext {};
+class NPUContext : public DeviceContext {};
+
 // use paddle::Tensor temporarily before DenseTensor and SparseTensor exposed
 using Tensor = paddle::experimental::Tensor;
 using Scalar = pten::Scalar;
 using ScalarArray = pten::ScalarArray;
 
-// Record custom kernel core function
+// Record custom kernel core information
 // we can not use pten::KernelFn directly for lacking of header exposing
 // and also, we need unify user function for both pten and fluid now
 using CustomKernelFunc =
@@ -99,7 +102,7 @@ using CustomKernelFunc =
                     "Kernel's DeviceContext should appear before Outputs."); \
       static_assert(vec_out_idx == 0,                                        \
                     "Kernel's DeviceContext should appear before Outputs."); \
-      const device_ctx& arg = dev_ctx;                                       \
+      const device_ctx& arg = static_cast<const device_ctx&>(dev_ctx);       \
       CustomComputeCallHelper<Tail...>::template Compute<dev_ctx_idx + 1,    \
                                                          in_idx,             \
                                                          vec_in_idx,         \
@@ -346,7 +349,8 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
   struct CustomComputeCallHelper;
 
   /* DeviceContext Helpers */
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(DeviceContext);
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(CPUContext);
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(NPUContext);
 
   /* Input Helpers */
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(Tensor);
@@ -542,7 +546,9 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
     }
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
-      if (arg_type == std::type_index(typeid(const DeviceContext&))) {
+      if (arg_type == std::type_index(typeid(const CPUContext&))) {
+        // do nothing, skip context arg now
+      } else if (arg_type == std::type_index(typeid(const NPUContext&))) {
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const Tensor&))) {
         op_kernel_info->AppendInput(backend, default_tensor_layout, dtype);
