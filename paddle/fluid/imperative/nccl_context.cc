@@ -143,7 +143,7 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = comm->stream();
 
-  void *src_ptr = src_tensor->data<void>();
+  void *src_ptr = src_tensor->data();
   auto nccl_dtype = platform::ToNCCLDataType(src_tensor->type());
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));

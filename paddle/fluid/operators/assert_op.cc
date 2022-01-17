@@ -19,7 +19,7 @@
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 class Scope;
 class Variable;

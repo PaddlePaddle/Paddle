@@ -152,6 +152,9 @@ def ShardingScaler(scaler):
         param_grads = []
         param_grads_fp16 = []
         param_grads_fp32 = []
+        if hasattr(optimizer, "update_slice"):
+            optimizer.update_slice()
+            optimizer.update_scaler = True
 
         if getattr(optimizer._optim, '_param_groups', None) and isinstance(
                 optimizer._optim._param_groups[0], dict):
@@ -161,27 +164,21 @@ def ShardingScaler(scaler):
                     if param._grad_ivar() is not None:
                         param_grads.append(param._grad_ivar())
                         if param._grad_ivar(
-                        ).dtype == core.VarDesc.VarType.FP16:
+                        ).dtype in [core.VarDesc.VarType.FP16, paddle.float16]:
                             param_grads_fp16.append(param._grad_ivar())
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            param_grads = [
-                param._grad_ivar() for param in optimizer._optim._parameter_list
-                if param._grad_ivar() is not None
-            ]
-            param_grads_fp16 = [
-                param._grad_ivar() for param in optimizer._optim._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16
-                           )
-            ]
-            param_grads_fp32 = [
-                param._grad_ivar() for param in optimizer._optim._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
-                           )
-            ]
+            for param in optimizer._optim._parameter_list:
+                if param.grad is not None:
+                    param_grads.append(param.grad)
+                    if param.grad.dtype in [
+                            core.VarDesc.VarType.FP16, paddle.float16
+                    ]:
+                        param_grads_fp16.append(param.grad)
+                    else:
+                        param_grads_fp32.append(param.grad)
+
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
 
