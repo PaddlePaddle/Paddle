@@ -1,4 +1,5 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -174,6 +175,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#endif
+
+// TODO(Ming Huang): Temp test, official release should be 11060.
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11040)
+    AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
+                        "fuse_gemm_epilogue_pass");
 #endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
@@ -502,4 +509,8 @@ USE_PASS(mkldnn_placement_pass);
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
+#endif
+// TODO(Ming Huang): Temp test, official release should be 11060.
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11040)
+USE_PASS(fuse_gemm_epilogue_pass);
 #endif
