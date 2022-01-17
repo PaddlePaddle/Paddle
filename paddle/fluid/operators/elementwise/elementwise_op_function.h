@@ -195,11 +195,24 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
 // cases and avoid the need of XxxInverseFunctor.
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-ElementwiseComputeEx(const framework::ExecutionContext &ctx,
-                     const framework::Tensor *x, const framework::Tensor *y,
-                     int axis, Functor func, framework::Tensor *z) {
+void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, int axis, Functor func,
+                          framework::Tensor *z) {
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+    std::vector<const framework::Tensor *> ins = {x, y};
+    std::vector<framework::Tensor *> outs = {z};
+    z->mutable_data<OutType>(ctx.GetPlace());
+
+    const auto &dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+        dev_ctx, ins, &outs, axis, func);
+#endif
+    return;
+  }
+
   z->mutable_data<OutType>(ctx.GetPlace());
   auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
   auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
@@ -210,27 +223,6 @@ ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   pten::ElementwiseCompute<Functor, T, OutType>(
       dev_ctx, *pt_x.get(), *pt_y.get(), axis, func, pt_z.get());
 }
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-// It is the GPU implementation for the common interface to compute binary
-// calculation with the support of all the broadcast cases.
-template <typename Functor, typename DeviceContext, typename T,
-          typename OutType = T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-ElementwiseComputeEx(const framework::ExecutionContext &ctx,
-                     const framework::Tensor *x, const framework::Tensor *y,
-                     int axis, Functor func, framework::Tensor *z) {
-  std::vector<const framework::Tensor *> ins = {x, y};
-  std::vector<framework::Tensor *> outs = {z};
-  z->mutable_data<OutType>(ctx.GetPlace());
-
-  const auto &dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
-      dev_ctx, ins, &outs, axis, func);
-}
-#endif
 
 // FusedElemwiseAndAct
 // --- forward

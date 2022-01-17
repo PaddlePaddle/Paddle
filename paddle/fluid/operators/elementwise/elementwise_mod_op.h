@@ -46,7 +46,7 @@ struct ModFunctor<T,
 
 template <typename T, typename Enable = void>
 struct InverseModFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = b % a;
     if ((res != 0) && ((res < 0) != (a < 0))) res += a;
     return res;
@@ -56,7 +56,7 @@ struct InverseModFunctor {
 template <typename T>
 struct InverseModFunctor<
     T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(T a, T b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = fmod(b, a);
     if ((res != 0) && ((a < 0) != (res < 0))) res += a;
     return res;
