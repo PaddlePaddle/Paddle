@@ -170,7 +170,6 @@ PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
-PyTypeObject *g_framework_lodtensor_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
@@ -951,102 +950,6 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_share_data_with", &framework::Tensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
-      .def("__str__", [](const framework::Tensor &self) {
-        std::stringstream ostr;
-        ostr << self;
-        return ostr.str();
-      });
-
-  // TODO(cql): add reference: en_user_guide_lod_tensor
-  py::class_<LoDTensor, framework::Tensor> pylodtensor(m, "LoDTensor", R"DOC(
-    LoDTensor is a Tensor with optional LoD (Level of Details) information, 
-    it can be used for variable-length sequences, 
-    see :ref:`user_guide_lod_tensor` for details.
-
-    LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
-
-    You can skip the following explanation if you don't need to know details 
-    of LoDTensor.
-
-    The following two examples show how to use LODtensor to represent 
-    variable-length sequences.
-    
-    Example 1:
-    
-    Suppose x is a LoDTensor representing a variable-length sequence. 
-    It contains two logical subsequences, the length of first logical sequence 
-    is 2 (e.g., number of samples is 2), the length of second logical sequence 
-    is 3, and the total length is 5. The data of the first logical sequence is 
-    [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], 
-    [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final 
-    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is 
-    the dimension of each sample.
-    
-    Logically, we can represent the variable-length sequence in two ways: one 
-    is in the form of recursive sequence lengths, that is, 
-    x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets, 
-    that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and 
-    you can set and retrieve recursive_sequence_lengths or LoD through the 
-    corresponding interfaces of LoDTensor introduced later.
-
-    Actually, in order to access sequence faster, Paddle uses offset to store 
-    different lengths of sequences. 
-    Therefore, the operations on recursive_sequence_lengths will be converted 
-    to the operations on LoD eventually.
-    
-    .. code-block:: python
-
-      y.data = [[1, 2], [3, 4],
-                [5, 6], [7, 8],
-                [9, 10], [11, 12], [13, 14]]
-
-      y.shape = [2+2+3, 2]
-
-      y.recursive_sequence_lengths = [[2, 1], [2, 2, 3]]
-
-      y.lod = [[0, 2, 3], [0, 2, 4, 7]]
-
-    Example 2:
-
-    LoD may have more than one level (for example, a paragraph may have more 
-    than one sentence and a sentence may have more than one word). Suppose y 
-    is a LoDTensor and its lod_level is 2. 
-    From level = 0, there are two logical sequences, the length of which is 
-    2 and 1, respectively, indicating that the first logical sequence contains 
-    two sub-sequences and the second logical sequence contains one sub-sequence. 
-    From level = 1, the lengths of two sub-sequences contained by the first 
-    logical sequence is 2 and 2, and the length of sub-sequence contained by 
-    the second logical sequence is 3.
-      
-    Therefore, the LoDTensor is represented in the form of recursive sequence 
-    lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
-    the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7]].
-
-    .. code-block:: python
-
-      y.data = [[1, 2], [3, 4],
-                [5, 6], [7, 8],
-                [9, 10], [11, 12], [13, 14]]
-
-      y.shape = [2+2+3, 2]
-
-      y.recursive_sequence_lengths = [[2, 1], [2, 2, 3]]
-
-      y.lod = [[0, 2, 3], [0, 2, 4, 7]]
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-
-          t = fluid.LoDTensor()
-
-        )DOC");
-  g_framework_lodtensor_pytype =
-      reinterpret_cast<PyTypeObject *>(pylodtensor.ptr());
-  pylodtensor
-      .def("__array__",
-           [](framework::Tensor &self) { return TensorToPyArray(self); })
       .def("__str__",
            [](const framework::Tensor &self) {
              std::stringstream ostr;

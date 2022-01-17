@@ -40,7 +40,6 @@ extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
-extern PyTypeObject* g_framework_lodtensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 
 int TensorDtype2NumpyDtype(pten::DataType dtype) {
@@ -318,16 +317,16 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-std::vector<framework::LoDTensor> CastPyArg2VectorOfLoDTensor(PyObject* obj,
-                                                              ssize_t arg_pos) {
+std::vector<framework::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
+                                                        ssize_t arg_pos) {
   std::vector<framework::LoDTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_IsInstance(item, reinterpret_cast<PyObject*>(
-                                        g_framework_lodtensor_pytype))) {
+      if (PyObject_IsInstance(
+              item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
         result.emplace_back(
             ::pybind11::handle(item).cast<framework::LoDTensor>());
       } else {
@@ -343,8 +342,8 @@ std::vector<framework::LoDTensor> CastPyArg2VectorOfLoDTensor(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_IsInstance(item, reinterpret_cast<PyObject*>(
-                                        g_framework_lodtensor_pytype))) {
+      if (PyObject_IsInstance(
+              item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
         result.emplace_back(
             ::pybind11::handle(item).cast<framework::LoDTensor>());
       } else {

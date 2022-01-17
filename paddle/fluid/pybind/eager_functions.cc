@@ -152,18 +152,18 @@ static PyObject* eager_api_read_next_eager_tensor_list(PyObject* self,
                                                        PyObject* args,
                                                        PyObject* kwargs) {
   EAGER_TRY
-  auto tensor_list = CastPyArg2VectorOfLoDTensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   std::vector<egr::EagerTensor> eager_tensor_list;
   eager_tensor_list.reserve(tensor_list.size());
-  auto func = [](framework::LoDTensor& lod_tensor) {
+  auto func = [](framework::Tensor& tensor) {
     egr::EagerTensor eager_tensor(
         egr::Controller::Instance().GenerateUniqueName());
     auto autograd_meta = egr::EagerUtils::autograd_meta(&eager_tensor);
     autograd_meta->SetPersistable(false);
     autograd_meta->SetStopGradient(true);
-    auto tensor = std::move(lod_tensor);
+    auto tmp = std::move(tensor);
     eager_tensor.set_impl(
-        std::move(paddle::experimental::MakePtenDenseTensor(tensor)));
+        std::move(paddle::experimental::MakePtenDenseTensor(tmp)));
     return eager_tensor;
   };
   for (auto& tensor : tensor_list) {
