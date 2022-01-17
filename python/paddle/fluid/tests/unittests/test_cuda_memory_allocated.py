@@ -25,7 +25,7 @@ class TestMemoryAllocated(unittest.TestCase):
             tensor = paddle.zeros(shape=[256])
             alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
             memory_allocated_size = memory_allocated(device)
-            self.assertEqual(memory_allocated_size, alloc_size)
+            self.assertGreaterEqual(memory_allocated_size, alloc_size)
 
     def test_memory_allocated_for_all_places(self):
         if core.is_compiled_with_cuda():
