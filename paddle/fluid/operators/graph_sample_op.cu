@@ -181,7 +181,6 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                        thrust::raw_pointer_cast(output_idxs.data()));
 
   // 5. Get inputs = outputs - inputs:
-  // 对于采样一层的时候，下面的地方不需要跑，所以后面可以优化，判断一下.
   thrust::device_vector<T> unique_outputs(outputs->size());
   thrust::sort(inputs->begin(), inputs->end());
   thrust::device_vector<T> outputs_sort(outputs->size());
@@ -203,21 +202,18 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
                    thrust::device_vector<T>* keys,
                    thrust::device_vector<T>* values,
                    thrust::device_vector<int64_t>* key_index) {
-  VLOG(0) << "Enter FillHashTable function";
-
   int64_t block = 1024;
   int64_t grid = (num_input + block - 1) / block;
-  VLOG(0) << "1. insert data into keys and values";
+  // 1. Insert data into keys and values.
   build_hashtable_duplicates<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
                                .stream()>>>(
       input, num_input, len_hashtable, thrust::raw_pointer_cast(keys->data()),
       thrust::raw_pointer_cast(key_index->data()));
-  VLOG(0) << "Finish insert data";
 
   thrust::device_vector<int> item_count(num_input + 1, 0);
-  VLOG(0) << "2. Get item index count";
+  // 2. Get item index count.
   get_item_index_count<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
@@ -231,7 +227,7 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   size_t tos = item_count[num_input];
   unique_items->resize(tos);
 
-  VLOG(0) << "3. Get unique items";
+  // 3. Get unique items.
   fill_unique_items<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
@@ -249,7 +245,6 @@ void reindex_func(const framework::ExecutionContext& ctx,
                   thrust::device_vector<T>* inputs,
                   thrust::device_vector<T>* outputs,
                   thrust::device_vector<T>* subset) {
-  VLOG(0) << "Enter reindex function";
   subset->resize(inputs->size() + outputs->size());
   thrust::copy(inputs->begin(), inputs->end(), subset->begin());
   thrust::copy(outputs->begin(), outputs->end(),
@@ -257,15 +252,7 @@ void reindex_func(const framework::ExecutionContext& ctx,
   thrust::device_vector<T> unique_items;
   unique_items.clear();
 
-  VLOG(0) << "Begin to fill hash table";
-  VLOG(0) << "subset.size(): " << subset->size();
-  VLOG(0) << "Print subset";
-  thrust::copy(subset->begin(), subset->end(),
-               std::ostream_iterator<T>(std::cout, " "));
-  std::cout << std::endl;
-
-  // 设置三个变量，用于分别代表key, value, index，作为 hashtable 的主体
-  // 计算 hashtable 长度.
+  // Fill hash table.
   int64_t num = subset->size();
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t size = log_num << 1;  // 1为scale，后面再看是否要转成参数.
@@ -280,7 +267,6 @@ void reindex_func(const framework::ExecutionContext& ctx,
   thrust::copy(unique_items.begin(), unique_items.end(), subset->begin());
 
   // Fill outputs with reindex result.
-  VLOG(0) << "Fill src output with reindex result";
   int block = 1024;
   int grid = (outputs->size() + block - 1) / block;
   reindex_src_output<
@@ -296,7 +282,7 @@ template <typename DeviceContext, typename T>
 class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // 1. 获取inputs数据
+    // 1. Get inputs.
     auto* src = ctx.Input<Tensor>("Src");
     auto* dst_count = ctx.Input<Tensor>("Dst_Count");
     auto* vertices = ctx.Input<Tensor>("X");
@@ -305,12 +291,9 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     const T* src_data = src->data<T>();
     const T* dst_count_data = dst_count->data<T>();
     const T* p_vertices = vertices->data<T>();
-
-    // 2. 获取采样节点信息
     const size_t bs = vertices->dims()[0];
 
-    // 3.
-    // 处理基本变量，用于存储采样的邻居和个数统计，同时保存采样过程中的中间结果.
+    // 2. Sample neighbors.
     thrust::device_vector<T> inputs;
     thrust::device_vector<T> outputs;
     thrust::device_vector<T> output_counts;
@@ -335,8 +318,8 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
       output_counts_vec.push_back(output_counts);
     }
 
-    // 4. 对中间存储结果进行连接，得到采样后的Src 边(src_merge), unique 后的 Dst
-    // 边(unique_dst_merge)，以及dst的sample count(dst_sample_counts_merge)
+    // 3. Concat intermediate sample results
+    // Including src_merge, unique_dst_merge and dst_sample_counts_merge.
     thrust::device_vector<T> unique_dst_merge;         // unique dst
     thrust::device_vector<T> src_merge;                // src
     thrust::device_vector<T> dst_sample_counts_merge;  // dst degree
@@ -378,9 +361,8 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
         src_merge.size(), num_sample_edges,
         platform::errors::External("Number of sample edges dismatch."));
 
-    // 5. 根据unique_dst_merge, src_merge 生成
-    // hashtable，unique后的items(subset)，并且对 src_merge 进行reindex.
-    VLOG(0) << "Begin to Reindex";
+    // 4. Get hashtable according to unique_dst_merge and src_merge.
+    // We can get unique items(subset) and reindex src_merge.
     thrust::device_vector<T> subset;
     reindex_func<T>(ctx, &unique_dst_merge, &src_merge, &subset);
 
@@ -391,7 +373,7 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     cudaMemset(p_sample_index, 0, sample_bytes);
     thrust::copy(subset.begin(), subset.end(), p_sample_index);  // Done!
 
-    // 6. 还原Dst边(根据dst_counts_merge进行copy 和 reindex.)
+    // 5. Reindex dst_merge.
     thrust::device_vector<T> dst_merge(src_size);
     thrust::device_vector<T> unique_dst_merge_reindex(unique_dst_size);
     thrust::sequence(unique_dst_merge_reindex.begin(),
@@ -400,7 +382,7 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     thrust::exclusive_scan(dst_sample_counts_merge.begin(),
                            dst_sample_counts_merge.end(), dst_ptr.begin());
     constexpr int BLOCK_WARPS = 128 / WARP_SIZE;  // 每个block的warp数量
-    constexpr int TILE_SIZE = BLOCK_WARPS * 16;  // 设置每个block会处理的节点数?
+    constexpr int TILE_SIZE = BLOCK_WARPS * 16;  // 设置每个block会处理的节点数
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((unique_dst_size + TILE_SIZE - 1) / TILE_SIZE);
 
@@ -414,7 +396,7 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
         thrust::raw_pointer_cast(dst_ptr.data()),
         thrust::raw_pointer_cast(dst_merge.data()));
 
-    // 7. 赋值结果.
+    // 6. Give output results.
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
     out_src->Resize({static_cast<int>(src_merge.size())});

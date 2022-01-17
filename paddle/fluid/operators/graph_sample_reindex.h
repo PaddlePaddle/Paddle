@@ -25,31 +25,43 @@ inline __device__ size_t Hash(IdType id, int64_t size) {
 template <typename IdType>
 inline __device__ bool AttemptInsert(size_t pos, IdType id, int64_t index,
                                      IdType* keys, int64_t* key_index) {
-  using Type = unsigned long long int;  // NOLINT
-  IdType key = atomicCAS(reinterpret_cast<Type*>(&keys[pos]),
-                         static_cast<Type>(-1), static_cast<Type>(id));
-  return true;
-  /*
-  if (key == -1 || key == id) {
-    atomicMin(
-        reinterpret_cast<T*>(&key_index[pos]), static_cast<T>(index));
-    return true;
-  } else {
-    return false;
-  }*/
+  if (sizeof(IdType) == 4) {
+    const IdType key =
+        atomicCAS(reinterpret_cast<unsigned int*>(&keys[pos]),
+                  static_cast<unsigned int>(-1), static_cast<unsigned int>(id));
+    if (key == -1 || key == id) {
+      atomicMin(
+          reinterpret_cast<unsigned long long int*>(&key_index[pos]),  // NOLINT
+          static_cast<unsigned long long int>(index));                 // NOLINT
+      return true;
+    } else {
+      return false;
+    }
+  } else if (sizeof(IdType) == 8) {
+    const IdType key = atomicCAS(
+        reinterpret_cast<unsigned long long int*>(&keys[pos]),  // NOLINT
+        static_cast<unsigned long long int>(-1),                // NOLINT
+        static_cast<unsigned long long int>(id));               // NOLINT
+    if (key == -1 || key == id) {
+      atomicMin(
+          reinterpret_cast<unsigned long long int*>(&key_index[pos]),  // NOLINT
+          static_cast<unsigned long long int>(index));                 // NOLINT
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
 
 template <typename IdType>
 inline __device__ void Insert(IdType id, int64_t index, int64_t size,
                               IdType* keys, int64_t* key_index) {
   size_t pos = Hash(id, size);
-  printf("Insert something\n");
   size_t delta = 1;
   while (!AttemptInsert(pos, id, index, keys, key_index)) {
     pos = Hash(pos + delta, size);
     delta += 1;
   }
-  printf("Finish Insert\n");
 }
 
 template <typename IdType>
