@@ -269,7 +269,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         try:
             if in_dygraph_mode():
                 if _in_eager_mode():
-                    data = core.eager.read_next_eagertensor_list(
+                    data = core.eager.read_next_eager_tensor_list(
                         self._reader.read_next_list()[0])
                 else:
                     data = self._reader.read_next_var_list()
@@ -465,7 +465,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
                 if _in_eager_mode():
-                    data = core.eager.read_next_eagertensor_list(
+                    data = core.eager.read_next_eager_tensor_list(
                         self._reader.read_next_list()[0])
                 else:
                     self._reader.read_next_var_list()
@@ -724,7 +724,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
             if in_dygraph_mode():
                 if _in_eager_mode():
-                    data = core.eager.read_next_eagertensor_list(
+                    data = core.eager.read_next_eager_tensor_list(
                         self._reader.read_next_list()[0])
                 else:
                     data = self._reader.read_next_var_list()
