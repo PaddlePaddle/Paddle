@@ -77,8 +77,7 @@ PreparedOp::PreparedOp(
     const paddle::framework::RuntimeContext& ctx,
     const paddle::framework::OpKernelType& kernel_type,
     const paddle::framework::KernelSignature& kernel_signature,
-    const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
-    paddle::platform::DeviceContext* dev_ctx)
+    const pten::Kernel& pt_kernel, paddle::platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_type_(kernel_type),
@@ -86,15 +85,13 @@ PreparedOp::PreparedOp(
       dev_ctx_(dev_ctx),
       run_pten_kernel_(true),
       pt_kernel_signature_(kernel_signature),
-      pt_kernel_(pt_kernel),
-      pt_kernel_context_(pt_kernel_context) {}
+      pt_kernel_(pt_kernel) {}
 
 PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
                        const paddle::framework::OperatorWithKernel& op,
                        const paddle::platform::Place& place,
                        const paddle::framework::AttributeMap& attrs,
-                       const paddle::framework::AttributeMap& default_attrs,
-                       pten::KernelContext* pt_kernel_context) {
+                       const paddle::framework::AttributeMap& default_attrs) {
   VLOG(6) << "Preparing an Op";
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
@@ -143,7 +140,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
 
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_kernel, pt_kernel_context, dev_ctx);
+                        pt_kernel, dev_ctx);
     } else {
       VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
               << "` not found.";
@@ -167,7 +164,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_cpu_kernel, pt_kernel_context, dev_ctx);
+                          pt_cpu_kernel, dev_ctx);
       }
     }
   }
@@ -221,10 +218,8 @@ PreparedOp PreparedOp::Prepare(
     const paddle::framework::OperatorWithKernel& op,
     const paddle::platform::Place& place,
     const paddle::framework::AttributeMap& attrs,
-    const paddle::framework::AttributeMap& default_attrs,
-    pten::KernelContext* pt_kernel_context) {
-  return PrepareImpl(ins, outs, op, place, attrs, default_attrs,
-                     pt_kernel_context);
+    const paddle::framework::AttributeMap& default_attrs) {
+  return PrepareImpl(ins, outs, op, place, attrs, default_attrs);
 }
 
 static void PreparedOpRunImpl(
@@ -273,28 +268,26 @@ static void PreparedOpRunPtImpl(
     const paddle::framework::OperatorBase& op,
     const paddle::framework::OpKernelType& kernel_type,
     const paddle::framework::KernelSignature& pt_kernel_signature,
-    const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
-    paddle::platform::DeviceContext* dev_ctx, const NameTensorMap& ins,
-    const NameTensorMap& outs, const paddle::framework::AttributeMap& attrs,
+    const pten::Kernel& pt_kernel, paddle::platform::DeviceContext* dev_ctx,
+    const NameTensorMap& ins, const NameTensorMap& outs,
+    const paddle::framework::AttributeMap& attrs,
     const paddle::framework::AttributeMap& default_attrs) {
   EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
                                          op.Type());
   static_cast<const paddle::framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
+  pten::KernelContext pt_kernel_context;
   paddle::imperative::BuildDygraphPtenKernelContext<EagerTensor>(
       pt_kernel_signature, pt_kernel,
       static_cast<paddle::imperative::NameTensorMap>(ins),
       static_cast<paddle::imperative::NameTensorMap>(outs), attrs,
-      default_attrs, dev_ctx, pt_kernel_context);
+      default_attrs, dev_ctx, &pt_kernel_context);
 
-  pt_kernel(pt_kernel_context);
+  pt_kernel(&pt_kernel_context);
 
   paddle::imperative::WriteBackToOutputs<EagerTensor>(pt_kernel_signature, outs,
-                                                      pt_kernel_context);
-
-  // Ensure that it does not affect the VarBase life cycle management
-  pt_kernel_context->ClearData();
+                                                      &pt_kernel_context);
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later
@@ -305,8 +298,7 @@ void PreparedOp::Run(const NameTensorMap& ins, const NameTensorMap& outs,
                      const paddle::framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl(op_, kernel_type_, pt_kernel_signature_, pt_kernel_,
-                        pt_kernel_context_, dev_ctx_, ins, outs, attrs,
-                        default_attrs);
+                        dev_ctx_, ins, outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs,
                       attrs, default_attrs);

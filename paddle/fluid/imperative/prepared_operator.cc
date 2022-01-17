@@ -188,7 +188,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_cpu_kernel, pt_kernel_context, dev_ctx);
+                          pt_cpu_kernel, dev_ctx);
       }
     }
   }

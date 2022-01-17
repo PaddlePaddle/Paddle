@@ -600,13 +600,9 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
-  
+
   void ResetPtenKernel(pten::Kernel* kernel) const {
     return pt_kernel_.reset(kernel);
-  }
-
-  pten::KernelContext* PtenKernelContext() const {
-    return pt_kernel_context_.get();
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }

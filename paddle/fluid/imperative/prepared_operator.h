@@ -216,13 +216,6 @@ void BuildDygraphPtenKernelContext(
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
     platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
-  // TODO(chenweihang): now only work for very simple case,
-  // many cases need to be deal with later:
-  // 1. the input and output are not tensor
-  // 2. the dispensbale, duplicable input and output
-  // 3. needless attributes remove
-  // 4. use pt Tensor directly
-  // 5. kernel input is not DenseTensor
   kernel_ctx->SetDeviceContext(dev_ctx);
 
   auto& input_names = std::get<0>(pt_kernel_signature.args);
@@ -257,26 +250,11 @@ void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
-    auto current_vector_size = kernel_ctx->InputsSize();
 
-    // If the memory needed is less than the current memory allocated, we will
-    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
-    // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const auto& variable = ins_vector[offset]->Var();
-      if (current_vector_size > start_idx + offset) {
-        auto& input_ptr = kernel_ctx->MutableInputPtrAt(start_idx + offset);
-        if (input_ptr == nullptr) {
-          input_ptr = experimental::MakePtenTensorBaseFromVar(variable, in_def);
-        } else {
-          experimental::ReMakePtenDenseTensorFromVar(
-              variable, in_def, kernel_ctx->MutableInputAt<pten::DenseTensor>(
-                                    start_idx + offset));
-        }
-      } else {
-        kernel_ctx->EmplaceBackInputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(variable, in_def));
-      }
+      kernel_ctx->EmplaceBackInputWithoutSetRange(
+          paddle::experimental::MakePtenTensorBaseFromVar(variable, in_def));
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -285,15 +263,10 @@ void BuildDygraphPtenKernelContext(
     auto& out_def = output_defs.at(i);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
-    auto current_vector_size = kernel_ctx->OutputsSize();
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
-      if (current_vector_size > start_idx) {
-        kernel_ctx->SetOutputWithoutSetRange(start_idx, {nullptr});
-      } else {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
-      }
+      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -302,27 +275,10 @@ void BuildDygraphPtenKernelContext(
     auto& outs_vector = iter->second;
     size_t end_idx = start_idx + outs_vector.size();
 
-    // If the memory needed is less than the current memory allocated, we will
-    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
-    // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      if (current_vector_size > start_idx + offset) {
-        auto* buffer_tensor =
-            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset);
-        if (buffer_tensor) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[offset]->MutableVar(), out_def, buffer_tensor);
-        } else {
-          kernel_ctx->SetOutputWithoutSetRange(
-              start_idx + offset,
-              experimental::MakePtenTensorBaseFromVar(
-                  outs_vector[offset]->MutableVar(), out_def));
-        }
-      } else {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange(
-            experimental::MakePtenTensorBaseFromVar(
-                outs_vector[offset]->MutableVar(), out_def));
-      }
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(
+          paddle::experimental::MakePtenTensorBaseFromVar(
+              outs_vector[offset]->MutableVar(), out_def));
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
