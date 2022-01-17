@@ -149,8 +149,7 @@ bool Tensor::is_cuda() const {
 template <typename T>
 T *Tensor::mutable_data() {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)
-        ->mutable_data<T>();
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
   }
   return nullptr;
 }

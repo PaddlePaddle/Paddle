@@ -36,7 +36,7 @@ TEST(Tensor, slice) {
   ASSERT_EQ(slice_x.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(slice_x.initialized(), true);
   for (int64_t i = 0; i < slice_x.numel(); ++i) {
-    ASSERT_EQ(slice_x.mutable_data<int64_t>()[i], 1);
+    ASSERT_EQ(slice_x.data<int64_t>()[i], 1);
   }
 }
 

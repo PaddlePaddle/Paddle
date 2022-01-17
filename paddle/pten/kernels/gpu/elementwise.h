@@ -243,7 +243,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->data<OutT>();
   }
 #ifdef PADDLE_WITH_XPU2
   int block_size = 64;
@@ -649,7 +649,7 @@ void LaunchKernel(const KPDevice &ctx,
   paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->data<OutT>();
   }
 
   for (int i = 0; i < Arity; i++) {

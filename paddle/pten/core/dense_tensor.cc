@@ -76,26 +76,6 @@ const T* DenseTensor::data() const {
   return static_cast<const T*>(data());
 }
 
-template <typename T>
-T* DenseTensor::data() {
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
-  return static_cast<T*>(data());
-}
-
-void* DenseTensor::data() {
-  check_memory_size();
-  PADDLE_ENFORCE_NOT_NULL(
-      holder_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the data function."));
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
-}
-
 const void* DenseTensor::data() const {
   check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
@@ -180,8 +160,6 @@ inline T* DenseTensor::AllocateFrom(Allocator* allocator,
 }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
-  template const dtype* DenseTensor::data() const;                \
-  template dtype* DenseTensor::data();                            \
   template dtype* DenseTensor::AllocateFrom(Allocator* allocator, \
                                             size_t requested_size);
 
@@ -362,7 +340,29 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
   meta_.dtype = tensor.dtype();
 }
 
+template <typename T>
+T* DenseTensor::data() {
+  PADDLE_ENFORCE(
+      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      paddle::platform::errors::InvalidArgument(
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+  return static_cast<T*>(data());
+}
+
+void* DenseTensor::data() {
+  check_memory_size();
+  PADDLE_ENFORCE_NOT_NULL(
+      holder_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the data function."));
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
+}
+
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype) \
+  template const dtype* DenseTensor::data() const;   \
+  template dtype* DenseTensor::data();               \
   template dtype* DenseTensor::mutable_data(         \
       const DDim& dims,                              \
       const paddle::platform::Place& place,          \
@@ -374,8 +374,11 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int16_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint16_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint32_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16)
