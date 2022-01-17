@@ -53,6 +53,15 @@ TEST(DeviceContext, cpu_context) {
     pten::CPUContext ctx2(ctx1);
     CHECK_EQ(ctx1.eigen_device(), ctx2.eigen_device());
   }
+
+  std::cout << "test move constructor" << std::endl;
+  {
+    pten::CPUContext ctx1 = pten::CPUContext();
+    auto* eigen_device1 = ctx1.eigen_device();
+    pten::CPUContext ctx2(std::move(ctx1));
+    auto* eigen_device2 = ctx2.eigen_device();
+    CHECK_EQ(eigen_device1, eigen_device2);
+  }
 }
 
 }  // namespace tests

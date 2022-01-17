@@ -17,15 +17,13 @@ limitations under the License. */
 #include <memory>
 
 // TODO(wilber): Do we need to use place in pten kernel?
-// TODO(wilber): use pten::Place when
-// https://github.com/PaddlePaddle/Paddle/pull/38899 merge.
-// #include "paddle/pten/common/place.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/pten/common/place.h"
 
 #include "paddle/pten/core/candidate/allocator.h"
 
 namespace pten {
 class TensorBase;
+
 /**
  * DeviceContext provides device-related interfaces.
  *
@@ -45,6 +43,11 @@ class DeviceContext {
    * @brief Copy construct.
    */
   DeviceContext(const DeviceContext&);
+
+  /**
+   * @brief Move construct.
+   */
+  DeviceContext(DeviceContext&&);
 
   /**
    * @brief Default destruct.
@@ -72,7 +75,9 @@ class DeviceContext {
 
   // TODO(wilber): Just for the convenience of migrating the code, it will be
   // modified or removed later.
-  virtual paddle::platform::Place GetPlace() const = 0;
+  virtual Place GetPlace() const = 0;
+  // TODO(wilber): The fluid framework uses wait() in many places, how to delete
+  // this API interface.
   virtual void Wait() const {}
 
  private:

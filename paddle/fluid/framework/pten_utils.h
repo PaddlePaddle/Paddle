@@ -81,11 +81,5 @@ template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
-
-// template <>
-// struct ConvertToPtenContext<platform::CUDADeviceContext> {
-//   using TYPE = platform::CUDADeviceContext;
-// };
-
 }  // namespace framework
 }  // namespace paddle

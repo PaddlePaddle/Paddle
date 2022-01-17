@@ -16,14 +16,11 @@ limitations under the License. */
 
 #include <memory>
 
-// TODO(wilber): Do we need to use place in pten kernel?
-// TODO(wilber): use pten::Place when
-// https://github.com/PaddlePaddle/Paddle/pull/38899 merge.
-// #include "paddle/pten/common/place.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/pten/backends/cpu/forwards.h"
 #include "paddle/pten/core/device_context.h"
+
+// TODO(wilber): Do we need to use place in pten kernel?
+#include "paddle/pten/common/place.h"
 
 namespace pten {
 
@@ -36,14 +33,18 @@ class CPUContext : public DeviceContext {
   // NOTE: DeviceContext hold resources. Used in training scenarios.
   CPUContext();
 
-  explicit CPUContext(const CPUContext&);
+  // NOTE: Share the same underlying resources, please ensure that resources are
+  // not released.
+  CPUContext(const CPUContext&);
+
+  CPUContext(CPUContext&&);
 
   ~CPUContext();
 
   Eigen::DefaultDevice* eigen_device() const;
 
   // TODO(wilber): Whether the interface should be preserved.
-  paddle::platform::Place GetPlace() const override;
+  Place GetPlace() const override;
 
  public:
   // NOTE: External users manage resources. Used in inference scenarios.
@@ -52,8 +53,8 @@ class CPUContext : public DeviceContext {
   void SetEigenDevice(Eigen::DefaultDevice* device);
 
  private:
-  struct Impl;
-  std::unique_ptr<Impl> impl_;
+  struct CPUImpl;
+  std::unique_ptr<CPUImpl> cpu_impl_;
 };
 
 }  // namespace pten

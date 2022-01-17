@@ -123,12 +123,12 @@ constexpr DeviceType kMLU = DeviceType::MLU;
 using DeviceContext = pten::DeviceContext;
 
 // using CPUDeviceContext = pten::CPUContext;
+// TODO(wilber): The place constructor is used in many places, it is more
+// difficult to use CPUDeviceContext = pten::CPUContext directly.
 class CPUDeviceContext : public pten::CPUContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
-
-  // Place GetPlace() const override;
 };
 
 template <typename Place>

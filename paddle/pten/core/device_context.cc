@@ -37,6 +37,10 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetAllocator(const_cast<Allocator*>(&other.GetAllocator()));
 }
 
+DeviceContext::DeviceContext(DeviceContext&& other) {
+  impl_ = std::move(other.impl_);
+}
+
 DeviceContext::~DeviceContext() = default;
 
 void DeviceContext::SetAllocator(Allocator* allocator) {
