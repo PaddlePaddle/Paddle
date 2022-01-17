@@ -426,8 +426,27 @@ def get_device_properties(device=None):
             "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
             "to call this API.")
 
-    device_id = extract_cuda_device_id(
-        device, op_name="paddle.device.cuda.get_device_properties")
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
+            device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('gpu:'):
+                device_id = int(device[4:])
+            else:
+                raise ValueError(
+                    "The current string {} is not expected. Because paddle.device."
+                    "cuda.get_device_properties only support string which is like 'gpu:x'. "
+                    "Please input appropriate string again!".format(device))
+        else:
+            raise ValueError(
+                "The device type {} is not expected. Because paddle.device.cuda."
+                "get_device_properties only support int, str or paddle.CUDAPlace. "
+                "Please input appropriate device again!".format(device))
+    else:
+        device_id = -1
+
     return core.get_device_properties(device_id)
 
 
