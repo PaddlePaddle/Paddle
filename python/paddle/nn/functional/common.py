@@ -351,7 +351,6 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
-
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
@@ -362,6 +361,8 @@ def interpolate(x,
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
                     out_shape = list(out_shape.numpy())
+                else:
+                    out_shape = list(out_shape)
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
                         out_shape[i] = dim.numpy()[0]
