@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
 
+#include "paddle/pten/kernels/concat_kernel.h"
 #include "paddle/pten/kernels/funcs/concat_funcs.h"
 
 namespace paddle {
@@ -72,61 +73,14 @@ class ConcatKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    // If axis is 0, the lod of the output is not the same as inputs.
-    if (axis == 0 && ins[0]->lod().size() > 0) {
-      size_t lod_size_0 = ins[0]->lod().size();
-      size_t lod_size = lod_size_0;
-      for (size_t i = 1; i < ins.size(); ++i) {
-        if (ins[i]->lod().size() > 0) {
-          PADDLE_ENFORCE_EQ(
-              ins[i]->lod().size(), lod_size_0,
-              platform::errors::Unimplemented(
-                  "The lod level of all input LoDTensors should be same. "
-                  "Maybe different lod level of input LoDTensors can concat,"
-                  "it is not supported currently. The lod level of %dth input "
-                  "is %d and first input is %d.",
-                  i, ins[i]->lod().size(), lod_size_0));
-        } else {
-          lod_size = 0;
-          break;
-        }
-      }
-      if (lod_size) {
-        auto* out_lod = out->mutable_lod();
-        for (size_t i = 1; i < ins.size(); ++i) {
-          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
-          AppendLoD(out_lod, in_lod);
-        }
-      }
+    // call new kernel
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    std::vector<pten::DenseTensor> pt_ins;
+    for (auto& in : ins) {
+      pt_ins.push_back(*in);
     }
 
-    // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && ins.size() < 10) {
-      size_t output_offset = 0;
-      for (auto* in : ins) {
-        if (!in || in->numel() == 0UL) {
-          continue;
-        }
-        auto in_stride = framework::stride_numel(in->dims());
-        auto out_stride = framework::stride_numel(out->dims());
-        StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
-                                    out->data<T>() + output_offset, out_stride,
-                                    in->data<T>(), in_stride, in_stride[axis]);
-        output_offset += in_stride[axis];
-      }
-    } else {
-      std::vector<framework::Tensor> inputs;
-      for (size_t j = 0; j < ins.size(); ++j) {
-        if (ins[j] && ins[j]->numel() > 0) {
-          inputs.push_back(*ins[j]);
-        } else {
-          continue;
-        }
-      }
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
-      concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
-    }
+    pten::ConcatKernel<T>(dev_ctx, pt_ins, axis, out);
   }
 };
 
