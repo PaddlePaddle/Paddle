@@ -29,8 +29,7 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter InferenceProcessPass::ApplyImpl";
 
   // Get a new instance of ipu_backend
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetNewInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
 
   // Set scope
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
@@ -40,18 +39,34 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   static std::shared_ptr<platform::ipu::IpuStrategy> ipu_strategy_instance_(
       new platform::ipu::IpuStrategy());
   ipu_strategy_instance_->is_training = false;
+  // Set graph replication
+  auto replica_num = graph->Get<int>("replica_num");
+  if (replica_num > 1) {
+    ipu_strategy_instance_->popart_options.enableReplicatedGraphs = true;
+    ipu_strategy_instance_->popart_options.replicatedGraphCount = replica_num;
+  }
+  // Set the num of IPUs
   auto num_ipus = graph->Get<int>("num_ipus");
-  ipu_strategy_instance_->num_ipus = num_ipus;
+  // Set sharding
   if (num_ipus > 1) {
-    ipu_strategy_instance_->popart_options_.virtualGraphMode =
+    ipu_strategy_instance_->need_avg_shard = true;
+    ipu_strategy_instance_->popart_options.virtualGraphMode =
         platform::ipu::VirtualGraphMode::Manual;
   } else {
-    ipu_strategy_instance_->popart_options_.virtualGraphMode =
+    ipu_strategy_instance_->need_avg_shard = false;
+    ipu_strategy_instance_->popart_options.virtualGraphMode =
         platform::ipu::VirtualGraphMode::Off;
   }
+  // total num IPUs = num_ipus * replica_num
+  ipu_strategy_instance_->num_ipus = num_ipus * replica_num;
 
+  // Set micro_batch_size for shape inference
+  ipu_strategy_instance_->micro_batch_size =
+      graph->Get<int>("micro_batch_size");
+
+  // Set pipelining
   auto enable_pipelining = graph->Get<bool>("enable_pipelining");
-  ipu_strategy_instance_->popart_options_.enablePipelining = enable_pipelining;
+  ipu_strategy_instance_->popart_options.enablePipelining = enable_pipelining;
   if (enable_pipelining) {
     auto batches_per_step = graph->Get<int>("batches_per_step");
     PADDLE_ENFORCE_GE(
@@ -60,8 +75,20 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
                                           "greater than the number of IPUs"));
     ipu_strategy_instance_->batches_per_step = batches_per_step;
   }
-  ipu_strategy_instance_->batch_size = graph->Get<int>("batch_size");
-  ipu_strategy_instance_->need_avg_shard = graph->Get<bool>("need_avg_shard");
+
+  // Set FP16
+  auto enable_fp16 = graph->Get<bool>("enable_fp16");
+  ipu_strategy_instance_->enable_fp16 = enable_fp16;
+  if (enable_fp16) {
+    auto enable_half_partial = graph->Get<bool>("enable_half_partial");
+    if (enable_half_partial) {
+      ipu_strategy_instance_->popart_options.partialsTypeMatMuls = "half";
+    }
+  }
+
+  // Set available memory proportion for matmul/conv
+  ipu_strategy_instance_->available_memory_proportion =
+      graph->Get<float>("available_memory_proportion");
 
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
 
@@ -94,9 +121,9 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   // Run passes
-  std::vector<std::string> graph_pass = {"forward_graph_extract_pass",
-                                         "infer_shape_pass", "avg_shard_pass",
-                                         "popart_canonicalization_pass"};
+  std::vector<std::string> graph_pass = {
+      "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
+      "popart_canonicalization_pass", "transfer_cast_op_pass"};
   std::vector<std::string> compile_pass = {
       "ipu_inplace_pass", "ipu_graph_builder_pass", "ipu_runtime_replacer_pass",
       "inference_postprocess_pass"};
