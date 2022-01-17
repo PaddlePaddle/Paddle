@@ -68,19 +68,19 @@ class TestVarBase(unittest.TestCase):
                     np.array_equal(x.grad.numpy(),
                                    np.array([2.4]).astype('float32')))
                 y = x.cpu()
-                self.assertEqual(y.place.__repr__(), "CPUPlace")
+                self.assertEqual(y.place.__repr__(), "Place(cpu)")
                 if core.is_compiled_with_cuda():
                     y = x.pin_memory()
-                    self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu_pinned)")
                     y = x.cuda()
                     y = x.cuda(None)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=False)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=True)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
 
@@ -271,17 +271,17 @@ class TestVarBase(unittest.TestCase):
             with paddle.fluid.dygraph.guard(core.CPUPlace()):
                 a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
                 a = paddle.to_tensor(a)
-                self.assertEqual(a.place.__repr__(), "CPUPlace")
+                self.assertEqual(a.place.__repr__(), "Place(cpu)")
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
                 a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
                 a = paddle.to_tensor(a)
-                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
+                self.assertEqual(a.place.__repr__(), "Place(gpu:0)")
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
                 a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
-                self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
+                self.assertEqual(a.place.__repr__(), "Place(gpu_pinned)")
 
     def test_to_tensor_with_lodtensor(self):
         if core.is_compiled_with_cuda():
@@ -297,7 +297,7 @@ class TestVarBase(unittest.TestCase):
                 lod_tensor.set(a_np, core.CUDAPlace(0))
                 a = paddle.to_tensor(lod_tensor, place=core.CPUPlace())
                 self.assertTrue(np.array_equal(a_np, a.numpy()))
-                self.assertTrue(a.place.__repr__(), "CPUPlace")
+                self.assertTrue(a.place.__repr__(), "Place(cpu)")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
@@ -984,7 +984,7 @@ class TestVarBase(unittest.TestCase):
         paddle.set_printoptions(4, 100, 3)
         a_str = str(a)
 
-        expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[10, 20], dtype=float32, place=Place(cpu), stop_gradient=True,
        [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
         [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
         [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
@@ -1001,7 +1001,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor([[1.5111111, 1.0], [0, 0]])
         a_str = str(a)
 
-        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
        [[1.5111, 1.    ],
         [0.    , 0.    ]])'''
 
@@ -1013,7 +1013,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor([[-1.5111111, 1.0], [0, -0.5]])
         a_str = str(a)
 
-        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
        [[-1.5111,  1.    ],
         [ 0.    , -0.5000]])'''
 
@@ -1025,7 +1025,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor(np.array(False))
         a_str = str(a)
 
-        expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
        False)'''
 
         self.assertEqual(a_str, expected)
@@ -1037,7 +1037,7 @@ class TestVarBase(unittest.TestCase):
         y = paddle.fluid.layers.where(x == 0)
         a_str = str(y)
 
-        expected = '''Tensor(shape=[0, 2], dtype=int64, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[0, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
        [])'''
 
         self.assertEqual(a_str, expected)
@@ -1051,7 +1051,7 @@ class TestVarBase(unittest.TestCase):
             precision=4, threshold=1000, edgeitems=3, linewidth=80)
         a_str = str(x)
 
-        expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[128], dtype=float32, place=Place(cpu), stop_gradient=True,
        [0.3759, 0.0278, 0.2489, 0.3110, 0.9105, 0.7381, 0.1905, 0.4726, 0.2435,
         0.9142, 0.3367, 0.7243, 0.7664, 0.9915, 0.2921, 0.1363, 0.8096, 0.2915,
         0.9564, 0.9972, 0.2573, 0.2597, 0.3429, 0.2484, 0.9579, 0.7003, 0.4126,
@@ -1078,7 +1078,7 @@ class TestVarBase(unittest.TestCase):
         paddle.set_printoptions(precision=4, linewidth=160, sci_mode=True)
         a_str = str(x)
 
-        expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[128], dtype=float32, place=Place(cpu), stop_gradient=True,
        [3.7587e-01, 2.7798e-02, 2.4891e-01, 3.1097e-01, 9.1053e-01, 7.3811e-01, 1.9045e-01, 4.7258e-01, 2.4354e-01, 9.1415e-01, 3.3666e-01, 7.2428e-01,
         7.6640e-01, 9.9146e-01, 2.9215e-01, 1.3625e-01, 8.0957e-01, 2.9153e-01, 9.5642e-01, 9.9718e-01, 2.5732e-01, 2.5973e-01, 3.4292e-01, 2.4841e-01,
         9.5794e-01, 7.0029e-01, 4.1260e-01, 4.2737e-01, 7.3788e-03, 9.6863e-01, 9.9102e-01, 1.4416e-02, 6.5640e-01, 2.9318e-01, 7.1136e-01, 9.3008e-01,

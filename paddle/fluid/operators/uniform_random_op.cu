@@ -141,8 +141,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     T diag_val = static_cast<T>(context.Attr<float>("diag_val"));
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);

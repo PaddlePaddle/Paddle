@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
@@ -40,6 +39,18 @@ PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
                                            void* closure) {
   EAGER_SYNC_TRY
   return ToPyObject(self->eager_tensor.name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager_tensor_properties_get_type(EagerTensorObject* self,
+                                           void* closure) {
+  EAGER_SYNC_TRY
+  if (self->eager_tensor.is_dense_tensor()) {
+    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
+  } else {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -63,7 +74,6 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
                                            void* closure) {
   EAGER_SYNC_TRY
   if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
-    // Add RetainGrad as PostHook to AccumulationNode
     std::shared_ptr<egr::GradNodeBase> grad_node =
         egr::EagerUtils::grad_node(self->eager_tensor);
     PADDLE_ENFORCE(
@@ -73,13 +83,39 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    return ToPyObject(accumulation_grad_node->Grad());
+    return ToPyObject(*accumulation_grad_node->Grad());
   } else {
     VLOG(6) << "Get grad for tensor: " << self->eager_tensor.name();
-    auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    return ToPyObject(meta->Grad());
+    auto meta = egr::EagerUtils::nullable_autograd_meta(self->eager_tensor);
+    if (meta) {
+      return ToPyObject(meta->Grad());
+    } else {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int eager_tensor_properties_set_grad(EagerTensorObject* self, PyObject* value,
+                                     void* closure) {
+  EAGER_SYNC_TRY
+  auto src = CastPyArg2EagerTensor(value, 0);
+  PADDLE_ENFORCE(
+      egr::egr_utils_api::IsLeafTensor(self->eager_tensor),
+      paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->eager_tensor);
+  PADDLE_ENFORCE(
+      grad_node.get() != nullptr,
+      paddle::platform::errors::Fatal("Detected NULL grad_node"
+                                      "Leaf tensor should have had grad_node "
+                                      "with type: GradNodeAccumulation"));
+  auto accumulation_grad_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  accumulation_grad_node->Grad()->copy_(src, true);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
 int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
@@ -147,8 +183,8 @@ PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
 }
 
 struct PyGetSetDef variable_properties[] = {
-    {"grad", (getter)eager_tensor_properties_get_grad, nullptr, nullptr,
-     nullptr},
+    {"grad", (getter)eager_tensor_properties_get_grad,
+     (setter)eager_tensor_properties_set_grad, nullptr, nullptr},
     {"name", (getter)eager_tensor_properties_get_name,
      (setter)eager_tensor_properties_set_name, nullptr, nullptr},
     {"stop_gradient", (getter)eager_tensor_properties_get_stop_gradient,
@@ -165,6 +201,8 @@ struct PyGetSetDef variable_properties[] = {
     {"_place_str", (getter)eager_tensor_properties_get_place_str, nullptr,
      nullptr, nullptr},
     {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
+     nullptr},
+    {"type", (getter)eager_tensor_properties_get_type, nullptr, nullptr,
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 

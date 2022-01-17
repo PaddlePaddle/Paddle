@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/pten/kernels/gpu/elementwise.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
-#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -30,11 +30,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
-
-namespace kps = paddle::operators::kernel_primitives;
 
 namespace pten {
 
@@ -64,7 +61,7 @@ struct DivideFunctor {
   HOSTDEVICE explicit inline DivideFunctor(int n)
       : n_inv(static_cast<T>(1.0 / n)) {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
+  HOSTDEVICE inline T operator()(const T x) const { return x * n_inv; }
 
  private:
   T n_inv;
@@ -113,64 +110,64 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_CTX_KERNEL(
+PT_REGISTER_KERNEL(
     mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
-PT_REGISTER_CTX_KERNEL(add,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::AddKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       float16,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(subtract,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::SubtractKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       float16,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(divide,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::DivideKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       float16,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(multiply,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::MultiplyKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       bool,
-                       float16,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(sum,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::SumKernel,
-                       bool,
-                       float,
-                       double,
-                       float16,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {
+PT_REGISTER_KERNEL(add,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::AddKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(subtract,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::SubtractKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(divide,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DivideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(multiply,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::MultiplyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(sum,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::SumKernel,
+                   bool,
+                   float,
+                   double,
+                   float16,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }

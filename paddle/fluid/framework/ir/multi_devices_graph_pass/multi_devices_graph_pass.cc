@@ -1283,3 +1283,5 @@ REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::ir::DistSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(async_multi_devices_pass,
                             paddle::framework::ir::AsyncSSAGraphBuilder);
+REGISTER_MULTI_DEVICES_PASS(no_reduce_multi_devices_pass,
+                            paddle::framework::ir::NoReduceSSAGraphBuilder);
