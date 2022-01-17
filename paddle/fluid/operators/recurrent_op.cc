@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 }  // namespace framework
 }  // namespace paddle

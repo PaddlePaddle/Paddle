@@ -115,7 +115,7 @@ class NCCLCommContext {
 
   // retrieve a communicator by the ring id and place
   NCCLComm* Get(int ring_id, Place place) const {
-    return Get(ring_id, BOOST_GET_CONST(CUDAPlace, place).device);
+    return Get(ring_id, place.device);
   }
 
  private:
@@ -212,7 +212,7 @@ class HCCLCommContext {
 
   // retrieve a communicator by the ring id and place
   HCCLComm* Get(int ring_id, Place place) const {
-    return Get(ring_id, BOOST_GET_CONST(NPUPlace, place).device);
+    return Get(ring_id, place.device);
   }
 
  private:
@@ -317,7 +317,7 @@ class BKCLCommContext {
 
   // retrieve a communicator by the ring id and place
   BKCLComm* Get(int ring_id, Place place) const {
-    return Get(ring_id, BOOST_GET_CONST(XPUPlace, place).device);
+    return Get(ring_id, place.device);
   }
 
  private:

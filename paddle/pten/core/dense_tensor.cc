@@ -24,13 +24,11 @@ limitations under the License. */
 
 namespace pten {
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         const DenseTensorMeta& meta)
+DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         DenseTensorMeta&& meta)
+DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
     : meta_(std::move(meta)),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
@@ -287,6 +285,9 @@ const paddle::platform::Place& DenseTensor::place() const {
       storage_,
       paddle::platform::errors::PreconditionNotMet(
           "Tensor not initialized yet when Tensor::place() is called."));
+  if (storage_->data_shared()) {
+    return storage_->data_shared()->place();
+  }
   return storage_->place();
 }
 

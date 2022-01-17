@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/squared_l2_norm.h"
 
 namespace paddle {
 namespace operators {
@@ -24,16 +25,15 @@ template <typename DeviceContext, typename T>
 class SquaredL2NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    framework::Tensor *Out = context.Output<framework::Tensor>("Out");
-    Out->mutable_data<T>(context.GetPlace());
+    const framework::Tensor *x = context.Input<framework::Tensor>("X");
+    const auto *x_ptr = x->data<T>();
+    auto numel = x->numel();
 
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto out = framework::EigenScalar<T>::From(*Out);
-    auto *place =
-        context.template device_context<DeviceContext>().eigen_device();
+    framework::Tensor *out = context.Output<framework::Tensor>("Out");
+    auto *out_ptr = out->mutable_data<T>(context.GetPlace());
 
-    out.device(*place) = x.square().sum();
+    math::SquaredL2Norm(context.template device_context<DeviceContext>(), x_ptr,
+                        out_ptr, numel);
   }
 };
 
