@@ -48,7 +48,7 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
-    'ipu_shard',
+    'ipu_shard_guard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
