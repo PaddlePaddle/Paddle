@@ -28,10 +28,10 @@ namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT64,
                             framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
@@ -64,7 +64,7 @@ TEST(API, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = paddle::experimental::copy_to(x, pten::Backend::CUDA, false);
+  auto tmp = paddle::experimental::copy_to(x, pten::Backend::GPU, false);
   auto out = paddle::experimental::copy_to(tmp, pten::Backend::CPU, true);
 #else
   auto out = paddle::experimental::copy_to(x, pten::Backend::CPU, false);
@@ -80,7 +80,7 @@ TEST(Tensor, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.copy_to(pten::Backend::CUDA, false);
+  auto tmp = x.copy_to(pten::Backend::GPU, false);
   auto out = tmp.copy_to(pten::Backend::CPU, true);
 #else
   auto out = x.copy_to(pten::Backend::CPU, false);

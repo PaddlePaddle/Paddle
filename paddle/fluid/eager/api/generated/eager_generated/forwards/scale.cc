@@ -29,7 +29,6 @@
 #include "paddle/fluid/eager/utils.h"
 
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
 
 namespace egr {
 
@@ -80,7 +79,7 @@ egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
     scale_node->SetAttributes_scale(scale);
 
     // Set Next Edges
-    scale_node->AddEdges(*p_autograd_in, /*slot id*/ 0);
+    scale_node->AddEdges(p_autograd_in, /*slot id*/ 0);
 
     // Set TensorWrappers
     scale_node->SetTensorWrappers_X({x});

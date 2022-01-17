@@ -49,6 +49,10 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnDpotrf_bufferSize); \
   __macro(cusolverDnSpotrf);            \
   __macro(cusolverDnDpotrf);            \
+  __macro(cusolverDnSpotrs);            \
+  __macro(cusolverDnDpotrs);            \
+  __macro(cusolverDnCpotrs);            \
+  __macro(cusolverDnZpotrs);            \
   __macro(cusolverDnSsyevd_bufferSize); \
   __macro(cusolverDnDsyevd_bufferSize); \
   __macro(cusolverDnCheevd_bufferSize); \
@@ -64,13 +68,21 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 #define CUSOLVER_ROUTINE_EACH_R1(__macro) \
   __macro(cusolverDnSpotrfBatched);       \
   __macro(cusolverDnDpotrfBatched);       \
+  __macro(cusolverDnSpotrsBatched);       \
+  __macro(cusolverDnDpotrsBatched);       \
   __macro(cusolverDnSgesvdj_bufferSize);  \
+  __macro(cusolverDnSgetrf_bufferSize);   \
+  __macro(cusolverDnDgetrf_bufferSize);   \
+  __macro(cusolverDnCgetrf_bufferSize);   \
+  __macro(cusolverDnZgetrf_bufferSize);   \
   __macro(cusolverDnSgeqrf_bufferSize);   \
   __macro(cusolverDnDgeqrf_bufferSize);   \
   __macro(cusolverDnCgeqrf_bufferSize);   \
   __macro(cusolverDnZgeqrf_bufferSize);   \
   __macro(cusolverDnSorgqr_bufferSize);   \
   __macro(cusolverDnDorgqr_bufferSize);   \
+  __macro(cusolverDnSormqr_bufferSize);   \
+  __macro(cusolverDnDormqr_bufferSize);   \
   __macro(cusolverDnCungqr_bufferSize);   \
   __macro(cusolverDnZungqr_bufferSize);   \
   __macro(cusolverDnDestroyGesvdjInfo);   \
@@ -78,12 +90,18 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnDgesvdj_bufferSize);  \
   __macro(cusolverDnSgesvdj);             \
   __macro(cusolverDnDgesvdj);             \
+  __macro(cusolverDnSgetrf);              \
+  __macro(cusolverDnDgetrf);              \
+  __macro(cusolverDnCgetrf);              \
+  __macro(cusolverDnZgetrf);              \
   __macro(cusolverDnSgeqrf);              \
   __macro(cusolverDnDgeqrf);              \
   __macro(cusolverDnCgeqrf);              \
   __macro(cusolverDnZgeqrf);              \
   __macro(cusolverDnSorgqr);              \
   __macro(cusolverDnDorgqr);              \
+  __macro(cusolverDnSormqr);              \
+  __macro(cusolverDnDormqr);              \
   __macro(cusolverDnCungqr);              \
   __macro(cusolverDnZungqr);
 

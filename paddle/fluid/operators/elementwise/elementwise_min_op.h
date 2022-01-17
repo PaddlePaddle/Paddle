@@ -15,10 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cmath>
-#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 
 namespace paddle {
 namespace operators {
@@ -67,6 +64,50 @@ struct MinGradDy {
   }
 };
 
+#ifdef PADDLE_CUDA_FP16
+template <>
+struct MinGradDx<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(platform::float16 x,
+                                          platform::float16 y,
+                                          platform::float16 out,
+                                          platform::float16 dout) const {
+    return x < y ? dout : static_cast<platform::float16>(0);
+  }
+};
+
+template <>
+struct MinGradDy<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(platform::float16 x,
+                                          platform::float16 y,
+                                          platform::float16 out,
+                                          platform::float16 dout) const {
+    return x >= y ? dout : static_cast<platform::float16>(0);
+  }
+};
+#endif
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+ElementwiseMinGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseGradCompute<DeviceContext, T, MinGradDx<T>, MinGradDy<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, MinGradDx<T>(), MinGradDy<T>());
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+ElementwiseMinGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy);
+#endif
+
 template <typename DeviceContext, typename T>
 class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
  public:
@@ -80,9 +121,7 @@ class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto* out = dout;  // Fake out, not used
-    int axis = ctx.Attr<int>("axis");
-    ElemwiseGradCompute<DeviceContext, T, MinGradDx<T>, MinGradDy<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, MinGradDx<T>(), MinGradDy<T>());
+    ElementwiseMinGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
   }
 };
 

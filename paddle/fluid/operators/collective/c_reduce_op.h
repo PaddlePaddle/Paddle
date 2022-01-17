@@ -187,7 +187,7 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(stream)));
 
     if (rank_id != root_id) {
-      auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+      auto npu_place = place;
       memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
                    npu_place,
                    reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
@@ -213,7 +213,7 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     BKCLDataType dtype = platform::ToBKCLDataType(in->type());
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
@@ -276,7 +276,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 

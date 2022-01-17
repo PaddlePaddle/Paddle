@@ -144,28 +144,44 @@ class OpConverter {
     it->SetEngine(engine);
     (*it)(op, scope, test_mode);
 
-    bool has_out_scale = op_desc.HasAttr("out_threshold");
-    if (has_out_scale) {
-      float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-      std::string output_name = "";
-      if (op_desc.HasOutput("Output")) {
-        output_name = op_desc.Output("Output").front();
-      } else if (op_desc.HasOutput("Out")) {
-        output_name = op_desc.Output("Out").front();
-      } else if (op_desc.HasOutput("Y")) {
-        output_name = op_desc.Output("Y").front();
-      } else {
-        PADDLE_THROW(
-            platform::errors::NotFound("Op %s has out threshold but doesn't "
-                                       "have an output named \"Output\", "
-                                       "\"Out\" or \"Y\".",
-                                       op_desc.Type()));
+    size_t output_num = op_desc.OutputNames().size();
+    if (output_num == 1) {  // The number of output is 1
+      if (op_desc.HasAttr("out_threshold")) {
+        float out_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        std::string output_name = "";
+        if (op_desc.HasOutput("Output")) {
+          output_name = op_desc.Output("Output").front();
+        } else if (op_desc.HasOutput("Out")) {
+          output_name = op_desc.Output("Out").front();
+        } else if (op_desc.HasOutput("Y")) {
+          output_name = op_desc.Output("Y").front();
+        } else {
+          PADDLE_THROW(
+              platform::errors::NotFound("Op %s has out threshold but doesn't "
+                                         "have an output named \"Output\", "
+                                         "\"Out\" or \"Y\".",
+                                         op_desc.Type()));
+        }
+        auto* output_itensor = engine->GetITensor(output_name);
+        engine->SetTensorDynamicRange(output_itensor, out_scale);
+        VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+                << output_name << ".";
       }
-      auto* output_itensor = engine->GetITensor(output_name);
-      engine->SetTensorDynamicRange(output_itensor, out_scale);
-      VLOG(1) << "Set out scale = " << out_scale << " for tensor "
-              << output_name << ".";
+    } else if (output_num > 1) {  // The number of outputs greater than 1
+      for (size_t i = 0; i < output_num; ++i) {
+        if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
+          float out_scale = BOOST_GET_CONST(
+              float,
+              op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
+          std::string output_name =
+              op_desc.Output(op_desc.OutputNames()[i]).front();
+          auto* output_itensor = engine->GetITensor(output_name);
+          engine->SetTensorDynamicRange(output_itensor, out_scale);
+          VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+                  << output_name << ".";
+        }
+      }
     }
   }
 

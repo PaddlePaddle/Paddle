@@ -45,10 +45,9 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       // Copy all elements of input matrix A to a temporary memory space to
       // avoid being overriden by getrf.
       tmp_gpu_mat_data = memory::Alloc(context, a.numel() * sizeof(T));
-      memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
-                   tmp_gpu_mat_data->ptr(),
-                   boost::get<platform::CUDAPlace>(context.GetPlace()),
-                   a.data<void>(), a.numel() * sizeof(T), context.stream());
+      memory::Copy(context.GetPlace(), tmp_gpu_mat_data->ptr(),
+                   context.GetPlace(), a.data(), a.numel() * sizeof(T),
+                   context.stream());
       gpu_mat = reinterpret_cast<const T*>(tmp_gpu_mat_data->ptr());
     }
 
@@ -61,9 +60,8 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
     // Copy the addresses of A and A_inv from host to device.
     memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
         memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-    memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
-                 tmp_gpu_ptrs_data->ptr(), platform::CPUPlace(),
-                 static_cast<void*>(cpu_ptrs.data()),
+    memory::Copy(context.GetPlace(), tmp_gpu_ptrs_data->ptr(),
+                 platform::CPUPlace(), static_cast<void*>(cpu_ptrs.data()),
                  cpu_ptrs.size() * sizeof(T*), context.stream());
     T** gpu_inv_ptrs =
         reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
@@ -102,8 +100,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
                         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                         gpu_pivot_ptr, gpu_inv_ptrs, gpu_info_ptr, batch_size);
     }
-    memory::Copy(platform::CPUPlace(), info.data(),
-                 BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
+    memory::Copy(platform::CPUPlace(), info.data(), context.GetPlace(),
                  gpu_info_ptr, sizeof(int) * batch_size, context.stream());
     for (int i = 0; i < batch_size; ++i) {
       PADDLE_ENFORCE_EQ(info[i], 0,

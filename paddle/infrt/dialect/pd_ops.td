@@ -6,14 +6,14 @@ include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/pd_op_base.td"
 
-def PD_FeedOp : PD_Op<"Feed", [NoSideEffect]> {
+def PD_FeedOp : PD_Op<"feed"> {
   let summary = "Feed Op";
 
   let description = [{
     Feed a tensor into the model.
   }];
 
-  let arguments = (ins);
+  let arguments = (ins StrAttr:$name);
   let results = (outs PD_Tensor:$out);
 
   let assemblyFormat = [{
@@ -21,7 +21,37 @@ def PD_FeedOp : PD_Op<"Feed", [NoSideEffect]> {
   }];
 }
 
-def PD_ConstantOp : PD_Op<"Constant", [NoSideEffect, ConstantLike, DeclareOpInterfaceMethods<InferTypeOpInterface>, AllTypesMatch<["value", "output"]>]> {
+def PD_FetchOp : PD_Op<"fetch", [Terminator]> {
+  let summary = "fetch Op";
+
+  let description = [{
+    Return the output tensor from the subgraph.
+  }];
+
+  let arguments = (ins PD_Tensor :$inputs, StrAttr:$name);
+}
+
+def PD_ReturnOp : PD_Op<"return", [Terminator]> {
+  let summary = "return Op";
+
+  let description = [{
+    Fetch tensor from the graph.
+  }];
+
+  let arguments = (ins Variadic<PD_Tensor>:$inputs);
+}
+
+def PD_GraphOp : PD_Op<"graph", [SingleBlockImplicitTerminator<"ReturnOp">]> {
+  let summary = "paddle graph Op";
+  let description = [{
+    Describe a paddle graph or subgraph.
+  }];
+  let regions = (region SizedRegion<1>:$body);
+  let arguments = (ins Variadic<PD_Tensor>:$inputs);
+  let results = (outs Variadic<PD_Tensor>:$outputs);
+}
+
+def PD_ConstantOp : PD_Op<"constant", [NoSideEffect, ConstantLike, DeclareOpInterfaceMethods<InferTypeOpInterface>, AllTypesMatch<["value", "output"]>]> {
   let summary = "constant Op";
   let description = [{}];
 
@@ -30,11 +60,11 @@ def PD_ConstantOp : PD_Op<"Constant", [NoSideEffect, ConstantLike, DeclareOpInte
   let hasFolder = 1;
 
   let builders = [
-    OpBuilder<"OpBuilder &builder, OperationState &state, Attribute value">,
+    OpBuilder<(ins "Attribute":$value)>,
   ];
 }
 
-def PD_AbsOp : PD_Op<"Abs", [NoSideEffect, SameOperandsAndResultType]> {
+def PD_AbsOp : PD_Op<"abs", [NoSideEffect, SameOperandsAndResultType]> {
   let summary = "Computes the absolute value of a tensor";
 
   let description = [{
@@ -54,7 +84,7 @@ def PD_SqrtOp : PD_Op<"sqrt", [NoSideEffect, SameOperandsAndResultType]> {
   let results = (outs PD_Tensor:$y);
 }
 
-def PD_ReluOp : PD_Op<"Relu", [NoSideEffect, SameOperandsAndResultType]> {
+def PD_ReluOp : PD_Op<"relu", [NoSideEffect, SameOperandsAndResultType]> {
   let summary = "Computes the Relu of a tensor";
 
   let description = [{
@@ -65,7 +95,7 @@ def PD_ReluOp : PD_Op<"Relu", [NoSideEffect, SameOperandsAndResultType]> {
   let hasCanonicalizer = 1;
 }
 
-def PD_Relu6Op : PD_Op<"Relu6", [NoSideEffect, SameOperandsAndResultType]> {
+def PD_Relu6Op : PD_Op<"relu6", [NoSideEffect, SameOperandsAndResultType]> {
   let summary = "Computes the Relu6 of a tensor";
 
   let description = [{
@@ -75,7 +105,7 @@ def PD_Relu6Op : PD_Op<"Relu6", [NoSideEffect, SameOperandsAndResultType]> {
   let results = (outs PD_Tensor:$y);
 }
 
-def PD_ElementwiseAdd : PD_Op<"ElementwiseAdd", [NoSideEffect, Commutative, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ElementwiseAdd : PD_Op<"elementwise_add", [NoSideEffect, Commutative, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let summary = "ElementwiseAdd Op";
   let description = [{
   }];
@@ -86,7 +116,7 @@ def PD_ElementwiseAdd : PD_Op<"ElementwiseAdd", [NoSideEffect, Commutative, Decl
   let hasFolder = 1;
 }
 
-def PD_ElementwiseSub : PD_Op<"ElementwiseSub", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ElementwiseSub : PD_Op<"elementwise_sub", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let summary = "ElementwiseSub Op";
   let description = [{
   }];
@@ -95,7 +125,7 @@ def PD_ElementwiseSub : PD_Op<"ElementwiseSub", [NoSideEffect, DeclareOpInterfac
   let results = (outs PD_Tensor:$out);
 }
 
-def PD_ElementwiseMul : PD_Op<"ElementwiseMul", [NoSideEffect, Commutative, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ElementwiseMul : PD_Op<"elementwise_mul", [NoSideEffect, Commutative, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let summary = "ElementwiseMul Op";
   let description = [{
   }];
@@ -104,7 +134,7 @@ def PD_ElementwiseMul : PD_Op<"ElementwiseMul", [NoSideEffect, Commutative, Decl
   let results = (outs PD_Tensor:$out);
 }
 
-def PD_ElementwiseDiv : PD_Op<"ElementwiseDiv", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+def PD_ElementwiseDiv : PD_Op<"elementwise_div", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let summary = "ElementwiseDiv Op";
   let description = [{
   }];
@@ -113,7 +143,7 @@ def PD_ElementwiseDiv : PD_Op<"ElementwiseDiv", [NoSideEffect, DeclareOpInterfac
   let results = (outs PD_Tensor:$out);
 }
 
-def PD_MatmulOp : PD_Op<"Matmul", [NoSideEffect]> {
+def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect]> {
   let summary = "Computes the matrix mulplication result of two tensors";
   let description = [{
   }];
@@ -161,7 +191,7 @@ def PD_BatchNormOp : PD_Op<"batch_norm", [NoSideEffect]> {
   let hasCanonicalizer = 1;
 }
 
-def PD_FusedFC : PD_Op<"FC", [NoSideEffect]> {
+def PD_FusedFC : PD_Op<"fc", [NoSideEffect]> {
     let summary = "Computes the Fully Connected result of two tensors";
     let description = [{
     }];
@@ -170,7 +200,7 @@ def PD_FusedFC : PD_Op<"FC", [NoSideEffect]> {
     let results = (outs PD_Tensor:$out);
 }
 
-def PD_FusedRepeatedFCRelu : PD_Op<"RepeatedFCRelu", [SameVariadicOperandSize, NoSideEffect]> {
+def PD_FusedRepeatedFCRelu : PD_Op<"fusion_repeated_fc_relu", [SameVariadicOperandSize, NoSideEffect]> {
     let summary = "";
     let description = [{ }];
 
