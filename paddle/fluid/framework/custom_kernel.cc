@@ -25,7 +25,18 @@ limitations under the License. */
 DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
+
+namespace platform {
+#ifdef PADDLE_WITH_ASCEND_CL
+class NPUDeviceContext;
+#endif
+}  // namespace platform
+
 namespace framework {
+
+#ifdef PADDLE_WITH_ASCEND_CL
+using NPUContext = paddle::platform::NPUDeviceContext;
+#endif
 
 namespace detail {
 
