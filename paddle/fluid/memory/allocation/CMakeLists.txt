@@ -1,4 +1,4 @@
-cc_library(allocator SRCS allocator.cc DEPS place)
+cc_library(allocator SRCS allocator.cc DEPS place monitor)
 cc_library(cpu_allocator SRCS cpu_allocator.cc DEPS allocator)
 cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
 cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)

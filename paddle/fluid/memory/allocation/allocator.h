@@ -21,9 +21,14 @@
 
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 
 DECLARE_string(allocator_strategy);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+USE_GPU_ALLOC_STAT;
+#endif
 
 namespace paddle {
 namespace memory {
@@ -170,6 +175,12 @@ class Allocator {
   class AllocationDeleter {
    public:
     inline void operator()(Allocation* allocation) const {
+      if (platform::is_gpu_place(allocation->place())) {
+        int dev_id = BOOST_GET_CONST(platform::CUDAPlace, allocation->place())
+                         .GetDeviceId();
+        STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
+                     allocation->size());
+      }
       Allocator* allocator = allocation->TopDecoratedAllocator();
       allocator->Free(allocation);
     }

@@ -14,36 +14,42 @@
 
 import paddle
 import unittest
-import numpy as np
 from paddle.fluid import core
-from paddle.device.cuda import device_count, memory_reserved
+from paddle.device.cuda import device_count, memory_allocated, max_memory_allocated
 
 
-class TestMemoryreserved(unittest.TestCase):
-    def test_memory_reserved(self, device=None):
+class TestMaxMemoryAllocated(unittest.TestCase):
+    def test_max_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
-            tensor = paddle.zeros(shape=[256])
-            alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
-            memory_reserved_size = memory_reserved(device)
-            self.assertEqual(memory_reserved_size, alloc_size)
+            alloc_time = 100
+            max_alloc_size = 10000
+            peak_memory_allocated_size = max_memory_allocated(device)
+            for i in range(alloc_time):
+                shape = paddle.randint(max_alloc_size)
+                tensor = paddle.zeros(shape)
+                peak_memory_allocated_size = max(peak_memory_allocated_size,
+                                                 memory_allocated(device))
+                del tensor
+            self.assertEqual(peak_memory_allocated_size,
+                             max_memory_allocated(device))
 
-    def test_memory_reserved_for_all_places(self):
+    def test_max_memory_allocated_for_all_places(self):
         if core.is_compiled_with_cuda():
             gpu_num = device_count()
             for i in range(gpu_num):
                 paddle.device.set_device("gpu:" + str(i))
-                self.test_memory_reserved(core.CUDAPlace(i))
-                self.test_memory_reserved(i)
-                self.test_memory_reserved("gpu:" + str(i))
+                self.test_max_memory_allocated(core.CUDAPlace(i))
+                self.test_max_memory_allocated(i)
+                self.test_max_memory_allocated("gpu:" + str(i))
 
-    def test_memory_reserved_exception(self):
+    def test_max_memory_allocated_exception(self):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(), device_count() + 1, -2, 0.5, "gpu1", "npu"
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):
-                    memory_reserved(device)
+                    max_memory_allocated(device)
 
 
 if __name__ == "__main__":

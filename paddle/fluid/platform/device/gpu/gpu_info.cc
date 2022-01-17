@@ -166,10 +166,6 @@ class RecordedGpuMallocHelper {
       }
     });
 
-    if (dev_id == -1) {
-      dev_id = platform::GetCurrentDeviceId();
-    }
-
     PADDLE_ENFORCE_GE(
         dev_id, 0,
         platform::errors::OutOfRange(
@@ -201,8 +197,10 @@ class RecordedGpuMallocHelper {
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
-      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-
+      int64_t mem_size = STAT_INT_ADD(
+          "STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      STAT_INT_UPDATE_MAXIMUM(
+          "STAT_gpu" + std::to_string(dev_id_) + "_max_mem_size", mem_size);
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
 #endif

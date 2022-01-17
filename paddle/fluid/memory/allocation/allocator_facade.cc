@@ -23,6 +23,7 @@
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -831,18 +832,28 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       size > 0 && FLAGS_use_system_allocator == false) {
 #ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-      return m_->GetAllocator(place, size)->Allocate(size);
+    if (UNLIKELY(!platform::CUDAGraph::IsCapturing())) {
+#endif
+      platform::CUDAPlace cuda_place =
+          BOOST_GET_CONST(platform::CUDAPlace, place);
+      return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
+#ifdef PADDLE_WITH_CUDA
     }
 #endif
-
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
-    return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
   }
 #endif
 
-  return m_->GetAllocator(place, size)->Allocate(size);
+  AllocationPtr allocation = m_->GetAllocator(place, size)->Allocate(size);
+  if (platform::is_gpu_place(place)) {
+    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    int64_t alloc_size =
+        STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
+                     allocation->size());
+    STAT_INT_UPDATE_MAXIMUM(
+        "STAT_gpu" + std::to_string(dev_id) + "_max_alloc_size", alloc_size);
+  }
+
+  return allocation;
 }
 
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
@@ -934,12 +945,21 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
 #endif
 
   platform::CUDAPlace p = BOOST_GET_CONST(platform::CUDAPlace, place);
+  AllocationPtr allocation;
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
-    return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
-        ->Allocate(size);
+    allocation = m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
+                     ->Allocate(size);
   } else {
-    return m_->GetAllocator(p, size)->Allocate(size);
+    allocation = m_->GetAllocator(p, size)->Allocate(size);
   }
+
+  int dev_id = p.GetDeviceId();
+  int64_t alloc_size = STAT_INT_ADD(
+      "STAT_gpu" + std::to_string(dev_id) + "_alloc_size", allocation->size());
+  STAT_INT_UPDATE_MAXIMUM(
+      "STAT_gpu" + std::to_string(dev_id) + "_max_alloc_size", alloc_size);
+
+  return allocation;
 }
 
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,

@@ -57,6 +57,10 @@ class StatValue : public MonitorRegistrar {
     std::lock_guard<std::mutex> lock(mu_);
     return v_ -= inc;
   }
+  T update_maximum(T value) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return v_ < value ? v_ = value : v_;
+  }
   T reset(T value = 0) {
     std::lock_guard<std::mutex> lock(mu_);
     return v_ = value;
@@ -135,6 +139,10 @@ class StatRegistry {
   paddle::platform::StatRegistry<int64_t>::Instance().get(item)->increase(t)
 #define STAT_INT_SUB(item, t) \
   paddle::platform::StatRegistry<int64_t>::Instance().get(item)->decrease(t)
+#define STAT_INT_UPDATE_MAXIMUM(item, t)              \
+  paddle::platform::StatRegistry<int64_t>::Instance() \
+      .get(item)                                      \
+      ->update_maximum(t)
 
 #define STAT_FLOAT_ADD(item, t) \
   paddle::platform::StatRegistry<float>::Instance().get(item)->increase(t)
@@ -170,23 +178,73 @@ class StatRegistry {
   extern paddle::platform::StatValue<float> _##item; \
   USE_STAT(item)
 
-#define USE_GPU_MEM_STAT             \
-  USE_INT_STAT(STAT_gpu0_mem_size);  \
-  USE_INT_STAT(STAT_gpu1_mem_size);  \
-  USE_INT_STAT(STAT_gpu2_mem_size);  \
-  USE_INT_STAT(STAT_gpu3_mem_size);  \
-  USE_INT_STAT(STAT_gpu4_mem_size);  \
-  USE_INT_STAT(STAT_gpu5_mem_size);  \
-  USE_INT_STAT(STAT_gpu6_mem_size);  \
-  USE_INT_STAT(STAT_gpu7_mem_size);  \
-  USE_INT_STAT(STAT_gpu8_mem_size);  \
-  USE_INT_STAT(STAT_gpu9_mem_size);  \
-  USE_INT_STAT(STAT_gpu10_mem_size); \
-  USE_INT_STAT(STAT_gpu11_mem_size); \
-  USE_INT_STAT(STAT_gpu12_mem_size); \
-  USE_INT_STAT(STAT_gpu13_mem_size); \
-  USE_INT_STAT(STAT_gpu14_mem_size); \
-  USE_INT_STAT(STAT_gpu15_mem_size)
+#define USE_GPU_MEM_STAT                 \
+  USE_INT_STAT(STAT_gpu0_mem_size);      \
+  USE_INT_STAT(STAT_gpu1_mem_size);      \
+  USE_INT_STAT(STAT_gpu2_mem_size);      \
+  USE_INT_STAT(STAT_gpu3_mem_size);      \
+  USE_INT_STAT(STAT_gpu4_mem_size);      \
+  USE_INT_STAT(STAT_gpu5_mem_size);      \
+  USE_INT_STAT(STAT_gpu6_mem_size);      \
+  USE_INT_STAT(STAT_gpu7_mem_size);      \
+  USE_INT_STAT(STAT_gpu8_mem_size);      \
+  USE_INT_STAT(STAT_gpu9_mem_size);      \
+  USE_INT_STAT(STAT_gpu10_mem_size);     \
+  USE_INT_STAT(STAT_gpu11_mem_size);     \
+  USE_INT_STAT(STAT_gpu12_mem_size);     \
+  USE_INT_STAT(STAT_gpu13_mem_size);     \
+  USE_INT_STAT(STAT_gpu14_mem_size);     \
+  USE_INT_STAT(STAT_gpu15_mem_size);     \
+  USE_INT_STAT(STAT_gpu0_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu1_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu2_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu3_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu4_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu5_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu6_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu7_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu8_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu9_max_mem_size);  \
+  USE_INT_STAT(STAT_gpu10_max_mem_size); \
+  USE_INT_STAT(STAT_gpu11_max_mem_size); \
+  USE_INT_STAT(STAT_gpu12_max_mem_size); \
+  USE_INT_STAT(STAT_gpu13_max_mem_size); \
+  USE_INT_STAT(STAT_gpu14_max_mem_size); \
+  USE_INT_STAT(STAT_gpu15_max_mem_size)
+
+#define USE_GPU_ALLOC_STAT                 \
+  USE_INT_STAT(STAT_gpu0_alloc_size);      \
+  USE_INT_STAT(STAT_gpu1_alloc_size);      \
+  USE_INT_STAT(STAT_gpu2_alloc_size);      \
+  USE_INT_STAT(STAT_gpu3_alloc_size);      \
+  USE_INT_STAT(STAT_gpu4_alloc_size);      \
+  USE_INT_STAT(STAT_gpu5_alloc_size);      \
+  USE_INT_STAT(STAT_gpu6_alloc_size);      \
+  USE_INT_STAT(STAT_gpu7_alloc_size);      \
+  USE_INT_STAT(STAT_gpu8_alloc_size);      \
+  USE_INT_STAT(STAT_gpu9_alloc_size);      \
+  USE_INT_STAT(STAT_gpu10_alloc_size);     \
+  USE_INT_STAT(STAT_gpu11_alloc_size);     \
+  USE_INT_STAT(STAT_gpu12_alloc_size);     \
+  USE_INT_STAT(STAT_gpu13_alloc_size);     \
+  USE_INT_STAT(STAT_gpu14_alloc_size);     \
+  USE_INT_STAT(STAT_gpu15_alloc_size);     \
+  USE_INT_STAT(STAT_gpu0_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu1_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu2_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu3_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu4_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu5_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu6_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu7_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu8_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu9_max_alloc_size);  \
+  USE_INT_STAT(STAT_gpu10_max_alloc_size); \
+  USE_INT_STAT(STAT_gpu11_max_alloc_size); \
+  USE_INT_STAT(STAT_gpu12_max_alloc_size); \
+  USE_INT_STAT(STAT_gpu13_max_alloc_size); \
+  USE_INT_STAT(STAT_gpu14_max_alloc_size); \
+  USE_INT_STAT(STAT_gpu15_max_alloc_size)
 
 #define USE_NPU_MEM_STAT            \
   USE_INT_STAT(STAT_npu0_mem_size); \

@@ -2666,6 +2666,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetGPUDeviceCount);
+  m.def("get_cuda_current_device_id", &platform::GetCurrentDeviceId);
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
@@ -2674,8 +2675,6 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
-  m.def("cuda_memory_reserved", platform::RecordedGpuMallocSize,
-        py::return_value_policy::copy);
   m.def("get_device_properties",
         [](int id) -> const gpuDeviceProp & {
           return platform::GetDeviceProperties(id);
