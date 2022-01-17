@@ -19,12 +19,7 @@
 #include <map>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-
-namespace paddle {
-namespace platform {
-class Place;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform//place.h"
 
 namespace paddle {
 namespace memory {
