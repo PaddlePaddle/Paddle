@@ -18,14 +18,12 @@
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/funcs/concat_funcs.h"
-
 #include "paddle/pten/kernels/cpu/concat_and_split.h"
+#include "paddle/pten/kernels/funcs/concat_funcs.h"
 
 namespace pten {
 
