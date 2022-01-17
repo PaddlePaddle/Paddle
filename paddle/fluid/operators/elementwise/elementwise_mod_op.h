@@ -19,6 +19,50 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T, typename Enable = void>
+struct ModFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = a % b;
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((b ^ res) < 0)) res += b;
+    return res;
+  }
+};
+
+template <typename T>
+struct ModFunctor<T,
+                  typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(a, b);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((res < 0) != (b < 0))) res += b;
+    return res;
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseModFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    T res = b % a;
+    if ((res != 0) && ((res < 0) != (a < 0))) res += a;
+    return res;
+  }
+};
+
+template <typename T>
+struct InverseModFunctor<
+    T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    T res = fmod(b, a);
+    if ((res != 0) && ((a < 0) != (res < 0))) res += a;
+    return res;
+  }
+};
+
 template <typename DeviceContext, typename T>
 void elementwise_mod(const framework::ExecutionContext &ctx,
                      const framework::Tensor *x, const framework::Tensor *y,

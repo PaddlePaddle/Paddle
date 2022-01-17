@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "mlir/IR/Dialect.h"
-
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/MLIRContext.h>
 namespace infrt {
-
-void RegisterCinnDialects(mlir::DialectRegistry& registry);  // NOLINT
-
+void registerCinnDialects(mlir::DialectRegistry &registry);  // NOLINT
 }  // namespace infrt

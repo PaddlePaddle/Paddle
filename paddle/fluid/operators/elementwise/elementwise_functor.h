@@ -55,7 +55,7 @@ using InverseDivFunctor = pten::funcs::InverseDivideFunctor<T>;
 // Floor Divide
 template <typename T>
 struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     return static_cast<T>(std::trunc(a / b));
   }
@@ -63,7 +63,7 @@ struct FloorDivFunctor {
 
 template <typename T>
 struct InverseFloorDivFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
     return static_cast<T>(std::trunc(b / a));
   }
@@ -74,7 +74,7 @@ struct InverseFloorDivFunctor {
 // Maximum
 template <typename T>
 struct MaxFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     return a > b ? a : b;
   }
 };
@@ -82,47 +82,8 @@ struct MaxFunctor {
 // Minmum
 template <typename T>
 struct MinFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     return a < b ? a : b;
-  }
-};
-
-// Mod
-template <typename T, typename Enable = void>
-struct ModFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    T res = a % b;
-
-    // Accoding to PR#26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
-    return ((res != 0) && ((b ^ res) < 0)) ? res + b : res;
-  }
-};
-
-template <typename T>
-struct ModFunctor<T,
-                  typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    T res = fmod(a, b);
-    return ((res != 0) && ((res < 0) != (b < 0))) ? res + b : res;
-  }
-};
-
-template <typename T, typename Enable = void>
-struct InverseModFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    T res = b % a;
-    res = ((res != 0) && ((a ^ res) < 0)) ? res + a : res;
-    return res;
-  }
-};
-
-template <typename T>
-struct InverseModFunctor<
-    T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    T res = fmod(b, a);
-    return ((res != 0) && ((res < 0) != (a < 0))) ? res + a : res;
   }
 };
 
@@ -159,14 +120,14 @@ struct DivGradXYFunctor<Complex<InT>, Complex<OutT>> {
 // Float div grad
 template <typename T>
 struct DivGradXFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
 };
 
 // Complex div grad
 template <typename T>
 struct DivGradXFunctor<Complex<T>> {
-  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
-                                          const Complex<T>& b) const {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T> a,
+                                          const Complex<T> b) const {
     Complex<T> b_conj(b.real, -b.imag);
     return a / b_conj;
   }
@@ -175,7 +136,7 @@ struct DivGradXFunctor<Complex<T>> {
 // Float mul and div
 template <typename T>
 struct DivGradYFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+  inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
     return -a * b / c;
   }
 };
@@ -183,9 +144,9 @@ struct DivGradYFunctor {
 // Complex mul and div
 template <typename T>
 struct DivGradYFunctor<Complex<T>> {
-  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
-                                          const Complex<T>& b,
-                                          const Complex<T>& c) const {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T> a,
+                                          const Complex<T> b,
+                                          const Complex<T> c) const {
     Complex<T> out_div_c_conj((b / c).real, -(b / c).imag);
     return -a * out_div_c_conj;
   }
@@ -194,7 +155,7 @@ struct DivGradYFunctor<Complex<T>> {
 // Fmax
 template <typename T>
 struct FMaxFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     return std::fmax(a, b);
   }
 };
@@ -202,8 +163,8 @@ struct FMaxFunctor {
 template <>
 struct FMaxFunctor<paddle::platform::float16> {
   inline HOSTDEVICE paddle::platform::float16 operator()(
-      const paddle::platform::float16& a,
-      const paddle::platform::float16& b) const {
+      const paddle::platform::float16 a,
+      const paddle::platform::float16 b) const {
     float float_a = static_cast<float>(a);
     float float_b = static_cast<float>(b);
     auto result = std::fmax(float_a, float_b);
@@ -213,7 +174,7 @@ struct FMaxFunctor<paddle::platform::float16> {
 
 template <>
 struct FMaxFunctor<int> {
-  inline HOSTDEVICE int operator()(const int& a, const int& b) const {
+  inline HOSTDEVICE int operator()(const int a, const int b) const {
     float float_a = static_cast<float>(a);
     float float_b = static_cast<float>(b);
     auto result = std::fmax(float_a, float_b);
@@ -223,8 +184,7 @@ struct FMaxFunctor<int> {
 
 template <>
 struct FMaxFunctor<int64_t> {
-  inline HOSTDEVICE int64_t operator()(const int64_t& a,
-                                       const int64_t& b) const {
+  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
     double double_a = static_cast<double>(a);
     double double_b = static_cast<double>(b);
     auto result = std::fmax(double_a, double_b);
@@ -235,7 +195,7 @@ struct FMaxFunctor<int64_t> {
 // Fmin
 template <typename T>
 struct FMinFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     return std::fmin(a, b);
   }
 };
@@ -243,8 +203,8 @@ struct FMinFunctor {
 template <>
 struct FMinFunctor<paddle::platform::float16> {
   inline HOSTDEVICE paddle::platform::float16 operator()(
-      const paddle::platform::float16& a,
-      const paddle::platform::float16& b) const {
+      const paddle::platform::float16 a,
+      const paddle::platform::float16 b) const {
     float float_a = static_cast<float>(a);
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
@@ -254,7 +214,7 @@ struct FMinFunctor<paddle::platform::float16> {
 
 template <>
 struct FMinFunctor<int> {
-  inline HOSTDEVICE int operator()(const int& a, const int& b) const {
+  inline HOSTDEVICE int operator()(const int a, const int b) const {
     float float_a = static_cast<float>(a);
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
@@ -264,8 +224,7 @@ struct FMinFunctor<int> {
 
 template <>
 struct FMinFunctor<int64_t> {
-  inline HOSTDEVICE int64_t operator()(const int64_t& a,
-                                       const int64_t& b) const {
+  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
     double double_a = static_cast<double>(a);
     double double_b = static_cast<double>(b);
     auto result = std::fmin(double_a, double_b);
@@ -301,12 +260,12 @@ struct MinGradXYFunctor {
 
 template <typename T>
 struct MulGradFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
 };
 template <typename T>
 struct MulGradFunctor<Complex<T>> {
-  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
-                                          const Complex<T>& b) const {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T> a,
+                                          const Complex<T> b) const {
     Complex<T> b_conj(b.real, -b.imag);
     return a * b_conj;
   }
@@ -314,9 +273,9 @@ struct MulGradFunctor<Complex<T>> {
 
 template <typename InT, typename OutT>
 struct MulGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT& a,
-                                                                 const InT& b,
-                                                                 const InT& c) {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT a,
+                                                                 const InT b,
+                                                                 const InT c) {
     paddle::framework::Array<OutT, 2> outs;
     // dx = dout * y
     outs[0] = a * b;
@@ -329,7 +288,7 @@ struct MulGradXYFunctor {
 template <typename InT, typename OutT>
 struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
   inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
-      const Complex<InT>& a, const Complex<InT>& b, const Complex<InT>& c) {
+      const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
     paddle::framework::Array<Complex<OutT>, 2> outs;
     // dx = dout * y
     Complex<InT> b_conj(b.real, -b.imag);

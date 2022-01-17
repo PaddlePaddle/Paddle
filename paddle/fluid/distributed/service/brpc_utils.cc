@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Variable;
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 

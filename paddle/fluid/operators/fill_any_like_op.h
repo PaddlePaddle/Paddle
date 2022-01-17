@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/full_kernel.h"
 
 namespace paddle {
