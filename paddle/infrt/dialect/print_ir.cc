@@ -15,7 +15,7 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/ScopedPrinter.h>
 #include <mlir/IR/BuiltinOps.h>
-#include <llvm/Support/raw_os_ostream.hv
+#include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
 #include <mlir/IR/AsmState.h>
@@ -74,7 +74,7 @@ void printOperation(mlir::Operation *op, int indent) {
   if (!op->getAttrs().empty()) {
     printIndent(indent) << op->getAttrs().size() << " attributes:\n";
     for (mlir::NamedAttribute attr : op->getAttrs()) {
-      printIndent(indent + 1) << "- {" << attr.first << " : " << attr.second
+      printIndent(indent + 1) << "- {" << attr.getName() << " : " << attr.getValue()
                               << "}\n";
     }
   }
