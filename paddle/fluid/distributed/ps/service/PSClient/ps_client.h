@@ -20,7 +20,15 @@ namespace ps {
 struct LoadConfig {
     int table;
     int mode;
-}
+};
+struct RequestContext {
+  int type; // sparse / dense / graph
+  int table_id;
+  int num;
+  void* keys;
+  void* values;
+};
+
 class PSClient {
  public:
   PSClient() {}
@@ -31,13 +39,13 @@ class PSClient {
   // Load model
   virtual void Load(const LoadConfig& load_config) = 0;
   // save model
-  virtual void Save(const SaveConfig& save_config) = 0;
+  virtual void Save(const LoadConfig& LoadConfig) = 0;
   // pull sparse/dense
-  virtual void PullSparse() = 0;
-  virtual void PullDense() = 0;
+  virtual void Pull(RequestContext* req_context) = 0;
+
   // push sparse/dense grads
-  virtual void PushSparse() = 0;
-  virtual void PushSparse() = 0;
+  virtual void PushSparse(RequestContext* req_context) = 0;
+
   // shrink sparse 
   virtual void Delete() = 0；
   // stop client

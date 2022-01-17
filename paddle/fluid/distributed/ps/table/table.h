@@ -12,9 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 namespace paddle {
 namespace ps {
+
+struct PullContext {
+  int type_id;
+  int num;
+  void* keys;
+  void* values;
+};
 
 class Table {
  public:
@@ -22,15 +28,14 @@ class Table {
   virtual ~Table() {}
   virtual int32_t initialize(const TableParameter &config,
                              const FsClientParameter &fs_config) = 0;
-  virtual int32_t Add() = 0;  // load、push 等
+  virtual int32_t Load() = 0;  // load
   virtual int32_t Delete() = 0;
-  virtual int32_t Update() = 0;  // push
-  virtual int32_t Query() = 0;  // pull
+  virtual int32_t Push() = 0;  // push
+  virtual int32_t Pull(PullContext* pull_context) = 0;  // pull
   virtual int32_t Save() = 0;
  protected:
   std::shared_ptr<ValueAccessor> _value_accesor;
-}:
-
+};
 
 }
 }
