@@ -374,7 +374,7 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {
-  return static_cast<int>(paddle::platform::Place(p).which());
+  return static_cast<int>(paddle::platform::Place(p).GetType());
 }
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -877,12 +877,12 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
-        Set the data of LoDTensor on place with given numpy array.
+        Set the data of Tensor on place with given numpy array.
         
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
-          LoDTensor is to be set.
+          Tensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
 
@@ -895,17 +895,17 @@ PYBIND11_MODULE(core_noavx, m) {
                 import paddle.fluid as fluid
                 import numpy as np
 
-                t = fluid.LoDTensor()
+                t = fluid.Tensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
 
       .def("shape",
            [](framework::Tensor &self) { return vectorize(self.dims()); },
            R"DOC(
-           Return the shape of LoDTensor.
+           Return the shape of Tensor.
 
            Returns:
-               list[int]: The shape of LoDTensor.
+               list[int]: The shape of Tensor.
 
 
            Examples:
@@ -914,7 +914,7 @@ PYBIND11_MODULE(core_noavx, m) {
                   import paddle.fluid as fluid
                   import numpy as np
 
-                  t = fluid.LoDTensor()
+                  t = fluid.Tensor()
                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                   print(t.shape())  # [5, 30]
            )DOC")
@@ -1047,24 +1047,34 @@ PYBIND11_MODULE(core_noavx, m) {
   pylodtensor
       .def("__array__",
            [](framework::Tensor &self) { return TensorToPyArray(self); })
+      .def("__str__",
+           [](const framework::Tensor &self) {
+             std::stringstream ostr;
+             ostr << self;
+             return ostr.str();
+           }) /* ------ End of original Tensor ------ */
+      .def(
+          "__init__",
+          [](framework::Tensor &instance, const std::vector<std::vector<size_t>>
+                                              &recursive_sequence_lengths) {
+            LoD new_lod;
+            new_lod.reserve(recursive_sequence_lengths.size());
+            std::copy(recursive_sequence_lengths.begin(),
+                      recursive_sequence_lengths.end(),
+                      std::back_inserter(new_lod));
+            LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+            PADDLE_ENFORCE_EQ(
+                CheckLoD(new_offset_lod, -1), true,
+                platform::errors::InvalidArgument(
+                    "The provided recursive_sequence_lengths info is invalid, "
+                    "the LoD converted by recursive_sequence_lengths is %s",
+                    new_lod));
+            new (&instance) framework::Tensor(new_offset_lod);
+          })
       .def("__init__",
-           [](LoDTensor &instance, const std::vector<std::vector<size_t>>
-                                       &recursive_sequence_lengths) {
-             LoD new_lod;
-             new_lod.reserve(recursive_sequence_lengths.size());
-             std::copy(recursive_sequence_lengths.begin(),
-                       recursive_sequence_lengths.end(),
-                       std::back_inserter(new_lod));
-             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE_EQ(
-                 CheckLoD(new_offset_lod, -1), true,
-                 platform::errors::InvalidArgument(
-                     "The provided recursive_sequence_lengths info is invalid, "
-                     "the LoD converted by recursive_sequence_lengths is %s",
-                     new_lod));
-             new (&instance) LoDTensor(new_offset_lod);
+           [](framework::Tensor &instance) {
+             new (&instance) framework::Tensor();
            })
-      .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
       // Python API. So we changed set_lod to set_recursive_sequence_lengths
       // to
@@ -1072,7 +1082,8 @@ PYBIND11_MODULE(core_noavx, m) {
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
-           [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+           [](framework::Tensor &self,
+              const std::vector<std::vector<size_t>> &lod) {
              // the input lod is offset-based level-of-detail info
              LoD new_lod;
              new_lod.reserve(lod.size());
@@ -1084,7 +1095,7 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_lod(new_lod);
            },
            py::arg("lod"), R"DOC(
-           Set LoD of the LoDTensor.
+           Set LoD of the Tensor.
 
            Args:
                lod (list[list[int]]): The lod to set.
@@ -1098,14 +1109,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
       .def("set_recursive_sequence_lengths",
-           [](LoDTensor &self, const std::vector<std::vector<size_t>>
-                                   &recursive_sequence_lengths) {
+           [](framework::Tensor &self, const std::vector<std::vector<size_t>>
+                                           &recursive_sequence_lengths) {
              // the input recursive_sequence_lengths is length-based
              // level-of-detail info
              LoD new_lod;
@@ -1124,7 +1135,7 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_lod(new_offset_lod);
            },
            py::arg("recursive_sequence_lengths"), R"DOC(
-           Set LoD of the LoDTensor according to recursive sequence lengths.
+           Set LoD of the Tensor according to recursive sequence lengths.
 
            For example, if recursive_sequence_lengths=[[2, 3]], which means
            there are two sequences with length 2 and 3 respectively, the
@@ -1142,14 +1153,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
-                 print(t.recursive_sequence_length())  # [[2, 3]]
+                 print(t.recursive_sequence_lengths())  # [[2, 3]]
                  print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
-           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+           [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the offset-based lod info
              LoD lod = self.lod();
              std::vector<std::vector<size_t>> new_lod;
@@ -1158,10 +1169,10 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the LoD of the LoDTensor.
+           Return the LoD of the Tensor.
 
            Returns:
-               list[list[int]]: The lod of the LoDTensor.
+               list[list[int]]: The lod of the Tensor.
            
            Examples:
                .. code-block:: python
@@ -1169,14 +1180,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
-           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+           [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
              LoD lod = ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
@@ -1186,7 +1197,7 @@ PYBIND11_MODULE(core_noavx, m) {
            },
            R"DOC(
            Return the recursive sequence lengths corresponding to of the LodD 
-           of the LoDTensor.
+           of the Tensor.
 
            Returns:
                 list[list[int]]: The recursive sequence lengths.
@@ -1197,19 +1208,19 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
       .def("has_valid_recursive_sequence_lengths",
-           [](LoDTensor &self) -> bool {
+           [](framework::Tensor &self) -> bool {
              // Check that the lod info is valid and match the outermost
-             // dimension of the LoDTensor data
+             // dimension of the Tensor data
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
            },
            R"DOC(
-           Check whether the LoD of the LoDTensor is valid.
+           Check whether the LoD of the Tensor is valid.
 
            Returns:
                bool: Whether the LoD is valid.
@@ -1220,91 +1231,80 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.has_valid_recursive_sequence_lengths()) # True
            )DOC")
-      .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
-           R"DOC(
-           Slice the original Tensor, and remove the LoD information.
-
-           Returns:
-               out (Tensor): new Tensor(NOT LoDTensor).
-           )DOC")
-      .def("__str__",
-           [](const LoDTensor &self) {
-             std::stringstream ostr;
-             ostr << self;
-             return ostr.str();
-           })
       .def("_as_type",
-           [](const LoDTensor &self,
+           [](const framework::Tensor &self,
               paddle::framework::proto::VarType::Type type) {
-             LoDTensor dst;
+             framework::Tensor dst;
              if (self.IsInitialized() && self.numel() > 0) {
                TransDataType(self, type, &dst);
              }
              return dst;
            })
-      .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
-        // follow fetch_op's inplementation
-        LoDTensor dst;
-        if (self.IsInitialized() && self.numel() > 0) {
-          TensorCopySync(self, place, &dst);
-        } else {
-          // Not copy, if the src tensor is empty.
-          dst.clear();
-          dst.Resize({0});
-        }
-        dst.set_lod(self.lod());
-        return dst;
+      .def("_copy",
+           [](const framework::Tensor &self, const platform::Place &place) {
+             // follow fetch_op's inplementation
+             framework::Tensor dst;
+             if (self.IsInitialized() && self.numel() > 0) {
+               TensorCopySync(self, place, &dst);
+             } else {
+               // Not copy, if the src tensor is empty.
+               dst.clear();
+               dst.Resize({0});
+             }
+             dst.set_lod(self.lod());
+             return dst;
 #ifdef _WIN32
-      });
+           });
 #else
            })
       .def(py::pickle(
-          [](const LoDTensor &t) {  // __getstate__
+          [](const framework::Tensor &t) {  // __getstate__
             auto holder = t.Holder();
-            PADDLE_ENFORCE_EQ(
-              platform::is_cpu_place(holder->place()), true,
-              platform::errors::PreconditionNotMet(
-                  "LoDTensor is not on CPU."
-                  "Now only LoDTensor on CPU can be serialized."));
-            auto* mmap_writer_allocation =
-              dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
-                holder.get());
-            PADDLE_ENFORCE_NOT_NULL(mmap_writer_allocation,
-              platform::errors::PreconditionNotMet(
-                "LoDTensor is not in shared memory."
-                "Now only LoDTensor on shared memory can be serialized."));
+            PADDLE_ENFORCE_EQ(platform::is_cpu_place(holder->place()), true,
+                              platform::errors::PreconditionNotMet(
+                                  "Tensor is not on CPU."
+                                  "Now only Tensor on CPU can be serialized."));
+            auto *mmap_writer_allocation =
+                dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+                    holder.get());
+            PADDLE_ENFORCE_NOT_NULL(
+                mmap_writer_allocation,
+                platform::errors::PreconditionNotMet(
+                    "Tensor is not in shared memory."
+                    "Now only Tensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
 
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
-                                  mmap_writer_allocation->size(),
-                                  type_idx, vectorize(t.dims()), t.lod());
+                                  mmap_writer_allocation->size(), type_idx,
+                                  vectorize(t.dims()), t.lod());
           },
           [](py::tuple t) {  // __setstate__
             if (t.size() != 5)
-              throw std::runtime_error("Invalid LoDTensor state!");
+              throw std::runtime_error("Invalid Tensor state!");
 
             // 1. Create a new C++ instance
-            LoDTensor tensor;
+            framework::Tensor tensor;
 
             // 2. Rebuild Allocation
             const std::string &ipc_name = t[0].cast<std::string>();
             size_t size = t[1].cast<size_t>();
             auto shared_reader_holder =
-              memory::allocation::RebuildMemoryMapReaderAllocation(
-                ipc_name, size);
+                memory::allocation::RebuildMemoryMapReaderAllocation(ipc_name,
+                                                                     size);
 
             // 3. Maintain global fd set
-            VLOG(3) << "LoDTensor ipc name: " << ipc_name;
+            VLOG(3) << "Tensor ipc name: " << ipc_name;
             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
 
-            // 4. Rebuild LoDTensor
-            tensor.ResetHolderWithType(shared_reader_holder,
-              static_cast<proto::VarType::Type>(t[2].cast<int>()));
+            // 4. Rebuild Tensor
+            tensor.ResetHolderWithType(
+                shared_reader_holder,
+                static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
@@ -2148,26 +2148,11 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("is_mlu_place",
            [](platform::Place &self) { return platform::is_mlu_place(self); })
-      .def("gpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::CUDAPlace, self).device;
-           })
-      .def("xpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::XPUPlace, self).device;
-           })
-      .def("npu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::NPUPlace, self).device;
-           })
-      .def("ipu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::IPUPlace, self).device;
-           })
-      .def("mlu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::MLUPlace, self).device;
-           })
+      .def("gpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("xpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("npu_device_id", [](platform::Place &self) { return self.device; })
+      .def("ipu_device_id", [](platform::Place &self) { return self.device; })
+      .def("mlu_device_id", [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",
@@ -3085,7 +3070,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
-      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce);
+      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce)
+      .value("_NoReduce", BuildStrategy::ReduceStrategy::kNoReduce);
   py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
                                                   "GradientScaleStrategy")
       .value("CoeffNumDevice",

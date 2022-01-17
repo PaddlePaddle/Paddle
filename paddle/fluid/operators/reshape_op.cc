@@ -20,7 +20,6 @@ limitations under the License. */
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/reshape_grad_kernel.h"
 #include "paddle/pten/kernels/reshape_kernel.h"
 namespace paddle {
@@ -32,8 +31,6 @@ namespace imperative {
 class OpBase;
 }  // namespace imperative
 namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
 struct float16;
 }  // namespace platform
 }  // namespace paddle

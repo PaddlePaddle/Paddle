@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -42,20 +43,35 @@ using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 
 namespace utils {
 
-OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
+OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
+    const Tensor& tensor, bool skip_trans_type = false) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
     info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
-  auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
+  // use FP32 as default type if skip_trans_type=true to pass CINN
+  // enforce check that is shape and type of each input should be filled,
+  // and we will ensure these feeds doesn't be used in execution on cinn_launch
+  // op
+  auto tensor_type = ::paddle::framework::proto::VarType::FP32;
+  if (!skip_trans_type) {
+    tensor_type = tensor.type();
+  }
+  auto cinn_var_type = TransformVarDataTypeToCinn(tensor_type);
   info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
   return info;
 }
 }  // namespace utils
 
 FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
+  const std::unordered_set<std::string>* no_need_buffer_feeds = nullptr;
+  if (graph_.Has(kNoNeedBufferFeeds)) {
+    no_need_buffer_feeds =
+        &graph_.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  }
+
   FeedInfoMap feed_map;
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
@@ -67,7 +83,14 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
                           feed_name.c_str()));
 
     VLOG(4) << "Get feed info from input: " << feed_name;
-    feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+    // if this feed declared as no need buffer then we can not access
+    // its type so passing skip_trans_type=true
+    if (no_need_buffer_feeds) {
+      feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(
+          *tensor, no_need_buffer_feeds->count(feed_name) > 0);
+    } else {
+      feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+    }
 
     PADDLE_ENFORCE_NE(
         feed_map[feed_name].shape.size(), 0UL,

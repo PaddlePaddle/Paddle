@@ -762,10 +762,10 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def _grad_ivar(self):
-        if self.grad._is_initialized():
-            return self.grad
-        else:
-            return None
+        if self.grad is not None:
+            if self.grad._is_initialized():
+                return self.grad
+        return None
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -785,6 +785,10 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def clone(self):
         return _C_ops_.assign(self)
+
+    @framework.dygraph_only
+    def value(self):
+        return self
 
     if core._in_eager_mode() and not hasattr(core, "eager"):
         return
@@ -809,6 +813,7 @@ def monkey_patch_varbase():
         setattr(core.eager.EagerTensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.EagerTensor, "clear_gradient", clear_gradient)
         setattr(core.eager.EagerTensor, "clone", clone)
+        setattr(core.eager.EagerTensor, "value", value)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

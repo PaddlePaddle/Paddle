@@ -1852,7 +1852,7 @@ static std::string GenerateGradNodeCCContents(
       "  %s\n"
       "  return outputs;\n";
   generated_grad_function_body = paddle::string::Sprintf(
-      BWD_RETURN_TEMPLATE, outs_size, generated_grad_function_body);
+      BWD_RETURN_TEMPLATE, in_vars.size(), generated_grad_function_body);
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
