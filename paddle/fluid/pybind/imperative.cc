@@ -1876,6 +1876,7 @@ void BindImperative(py::module *m_ptr) {
 #endif
            },
            py::return_value_policy::reference)
+#if defined(PADDLE_WITH_CUDA)
       .def("_uva",
            [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
              PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
@@ -1929,6 +1930,7 @@ void BindImperative(py::module *m_ptr) {
               x._uva()
               print(x)
        )DOC")
+#endif
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
