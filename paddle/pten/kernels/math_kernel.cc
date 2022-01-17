@@ -84,8 +84,7 @@ using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL(
     mean, CPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool) {}
-PT_REGISTER_KERNEL(
-    mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
+
 PT_REGISTER_KERNEL(sum,
                    CPU,
                    ALL_LAYOUT,
@@ -100,6 +99,52 @@ PT_REGISTER_KERNEL(sum,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
+
+PT_REGISTER_KERNEL(add,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::AddKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(subtract,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SubtractKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(divide,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::DivideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(multiply,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::MultiplyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   complex64,
+                   complex128) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_REGISTER_KERNEL(
+    mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
 PT_REGISTER_KERNEL(sum,
                    GPU,
                    ALL_LAYOUT,
@@ -114,49 +159,6 @@ PT_REGISTER_KERNEL(sum,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
-
-PT_REGISTER_KERNEL(add,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::AddKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(subtract,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::SubtractKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(divide,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::DivideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(multiply,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::MultiplyKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   complex64,
-                   complex128) {}
-
 PT_REGISTER_KERNEL(add,
                    GPU,
                    ALL_LAYOUT,
@@ -202,3 +204,4 @@ PT_REGISTER_KERNEL(multiply,
                    float16,
                    complex64,
                    complex128) {}
+#endif
