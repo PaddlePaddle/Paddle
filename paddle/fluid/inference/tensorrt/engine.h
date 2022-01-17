@@ -138,7 +138,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     nvinfer1::Dims dims;
     dims.nbDims = shape.size() - 1;
     for (size_t i = 1; i < shape.size(); i++) {
-      dims.d[i] = shape[i];
+      dims.d[i - 1] = shape[i];
     }
     return dims;
   } else {
