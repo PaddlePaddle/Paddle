@@ -87,7 +87,7 @@ TEST(dense_tensor, ctor) {
     r = r && (t.layout() == m.layout);
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();
-    r = r && t.IsSharedWith(t);
+    r = r && t.IsSharedBufferWith(t);
     return r;
   };
 
@@ -111,8 +111,9 @@ TEST(dense_tensor, resize) {
 
   CHECK_EQ(tensor_0.capacity(), 2u);
   tensor_0.Resize({1, 2, 3});
-  CHECK_EQ(tensor_0.capacity(), 6u);
-  tensor_0.mutable_data<int8_t>();
+  CHECK_EQ(tensor_0.capacity(), 2u);
+  tensor_0.AllocateFrom<int8_t>(
+      std::unique_ptr<Allocator>(new FancyAllocator).get());
   CHECK_EQ(tensor_0.capacity(), 6u);
 }
 

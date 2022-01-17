@@ -25,29 +25,20 @@ limitations under the License. */
 namespace pten {
 
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
-    : meta_(meta),
-      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)),
-      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
+    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
                          const DenseTensorMeta& meta)
-    : meta_(meta), storage_(std::move(storage)) {}
+    : meta_(meta), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), storage_(std::move(storage)) {}
+    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
-  if (storage_ == nullptr) {
-    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
-        paddle::platform::CPUPlace());
-  }
-  if (other.storage_ != nullptr && other.storage_->data_shared()) {
-    storage_->set_data_shared(other.storage_->data_shared());
-  }
-
+  holder_ = other.holder_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
 #endif
@@ -55,13 +46,7 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
-  if (storage_ == nullptr) {
-    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
-        paddle::platform::CPUPlace());
-  }
-  if (other.storage_ != nullptr && other.storage_->data_shared()) {
-    storage_->set_data_shared(other.storage_->data_shared());
-  }
+  holder_ = other.holder_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
 #endif
@@ -70,7 +55,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 
 DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
-  storage_.swap(other.storage_);
+  std::swap(holder_, other.holder_);
   return *this;
 }
 
@@ -81,19 +66,84 @@ int64_t DenseTensor::numel() const {
   return product(meta_.dims);
 }
 
-bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
-  return storage_.get() == b.storage_.get() && storage_.get() != nullptr;
+template <typename T>
+const T* DenseTensor::data() const {
+  PADDLE_ENFORCE(
+      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      paddle::platform::errors::InvalidArgument(
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+  return static_cast<const T*>(data());
 }
 
-void* DenseTensor::mutable_data(size_t request_bytes) {
+template <typename T>
+T* DenseTensor::data() {
+  PADDLE_ENFORCE(
+      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      paddle::platform::errors::InvalidArgument(
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+  return static_cast<T*>(data());
+}
+
+void* DenseTensor::data() {
+  check_memory_size();
+  PADDLE_ENFORCE_NOT_NULL(
+      holder_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the data function."));
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
+}
+
+const void* DenseTensor::data() const {
+  check_memory_size();
+  PADDLE_ENFORCE_NOT_NULL(
+      holder_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the data function."));
+  return reinterpret_cast<const void*>(
+      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+}
+
+void DenseTensor::set_meta(DenseTensorMeta&& meta) {
+  PADDLE_ENFORCE(!meta_.valid(),
+                 paddle::platform::errors::InvalidArgument(
+                     "Only when the original attribute of Tensor is "
+                     "incomplete, can it be reset."));
+  meta_ = std::move(meta);
+}
+/* @jim19930609: This interface will be further modified util we finalized the
+   design for Allocator - Allocation
+   For now, we have to temporarily accommodate two independent use cases:
+   1. Designed behaviour: DenseTensor constructed with its underlying storage_
+   initialized
+   2. Legacy behaviour(fluid): DenseTensor constructed using default
+   constructor, where
+                               storage_ won't be initialized until the first
+   call to mutable_data(place)
+   */
+void DenseTensor::ResizeAndAllocate(const DDim& dims, Allocator* allocator) {
+  meta_.dims = dims;
+  AllocateFrom(allocator);
+}
+
+DenseTensor& DenseTensor::Resize(const DDim& dims) {
+  meta_.dims = dims;
+  return *this;
+}
+
+void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
+
+void* DenseTensor::AllocateFrom(Allocator* allocator, size_t request_bytes) {
   PADDLE_ENFORCE(
       valid(),
       paddle::platform::errors::PreconditionNotMet(
           "The meta data must be valid when call the mutable data function."));
   PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
+      allocator,
+      paddle::platform::errors::InvalidArgument(
+          "The allocator must be valid when call the mutable data function."));
   size_t bytes = numel() * SizeOf(dtype());
   if (request_bytes) {
     PADDLE_ENFORCE_GE(request_bytes,
@@ -105,112 +155,35 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes + meta_.offset || storage_->size() == 0) {
-    VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
+  if (holder_->size() < bytes + meta_.offset || holder_->size() == 0) {
+    VLOG(10) << "mutbale data realloc, original size: " << holder_->size()
              << ", new size: " << bytes;
-    storage_->Realloc(bytes);
+    holder_ = allocator->Allocate(bytes);
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
 }
 
-template <typename T>
-T* DenseTensor::mutable_data() {
-  // In order to be compatible with the original Tensor design and
-  // execution system, we have to reset the datatype in mutable_data<T>.
-  // When the compatibility phase is over in the future, we can delete it
-  if (meta_.dtype == DataType::UNDEFINED) {
-    VLOG(10) << "change data type in mutbale_data, target dtype - "
-             << paddle::experimental::CppTypeToDataType<T>::Type();
-    const_cast<DataType&>(meta_.dtype) =
-        paddle::experimental::CppTypeToDataType<T>::Type();
-  }
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
-          "The type of data (%d) we are trying to retrieve does not match the "
-          "type of data currently contained in the container (%d).",
-          static_cast<int>(paddle::experimental::CppTypeToDataType<T>::Type()),
-          static_cast<int>(dtype())));
-  return static_cast<T*>(mutable_data());
+void* DenseTensor::AllocateFrom(Allocator* allocator,
+                                DataType type,
+                                size_t requested_size) {
+  meta_.dtype = type;
+  return AllocateFrom(allocator, requested_size);
 }
 
 template <typename T>
-const T* DenseTensor::data() const {
-  check_memory_size();
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
-  return static_cast<const T*>(data());
+inline T* DenseTensor::AllocateFrom(Allocator* allocator,
+                                    size_t requested_size) {
+  static_assert(std::is_pod<T>::value, "T must be POD");
+  return static_cast<T*>(AllocateFrom(allocator, requested_size));
 }
 
-template <typename T>
-T* DenseTensor::data() {
-  check_memory_size();
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<T*>(data());
-}
-
-void* DenseTensor::data() {
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
-                                 meta_.offset);
-}
-
-const void* DenseTensor::data() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(storage_->data()) + meta_.offset);
-}
-
-void DenseTensor::set_meta(DenseTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 paddle::platform::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
-  meta_ = std::move(meta);
-}
-
-/* @jim19930609: This interface will be further modified util we finalized the
-   design for Allocator - Allocation
-   For now, we have to temporarily accommodate two independent use cases:
-   1. Designed behaviour: DenseTensor constructed with its underlying storage_
-   initialized
-   2. Legacy behaviour(fluid): DenseTensor constructed using default
-   constructor, where
-                               storage_ won't be initialized until the first
-   call to mutable_data(place)
-   */
-void DenseTensor::Resize(const DDim& dims) {
-  meta_.dims = dims;
-  if (storage_ != nullptr) {
-    mutable_data();
-  }
-}
-
-void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
-
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
-  template dtype* DenseTensor::mutable_data();     \
-  template const dtype* DenseTensor::data() const; \
-  template dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
+  template const dtype* DenseTensor::data() const;                \
+  template dtype* DenseTensor::data();                            \
+  template dtype* DenseTensor::AllocateFrom(Allocator* allocator, \
+                                            size_t requested_size);
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -234,68 +207,51 @@ DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
 /*   From framework::Tensor    */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
-  storage_ = make_intrusive<paddle::experimental::SharedStorage>(
-      paddle::platform::CPUPlace());
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
   meta_.dtype = paddle::experimental::DataType::FLOAT32;
   meta_.offset = 0;
 }
 
 DenseTensor::DenseTensor(const paddle::framework::proto::VarType::Type& dtype) {
-  storage_ = make_intrusive<paddle::experimental::SharedStorage>(
-      paddle::platform::CPUPlace());
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
   meta_.dtype = TransToPtenDataType(dtype);
   meta_.offset = 0;
 }
 
 size_t DenseTensor::memory_size() const {
-  if (storage_ == nullptr || storage_->data_shared() == nullptr) {
-    return 0UL;
-  }
-
-  return storage_->data_shared()->size() - meta_.offset;
+  return holder_ == nullptr ? 0UL : holder_->size() - meta_.offset;
 }
 
 void DenseTensor::check_memory_size() const {
-  PADDLE_ENFORCE_NOT_NULL(storage_,
+  PADDLE_ENFORCE_NOT_NULL(holder_,
                           paddle::platform::errors::PreconditionNotMet(
                               "Tensor holds no memory. "
                               "Call Tensor::mutable_data firstly."));
-  PADDLE_ENFORCE_NOT_NULL(storage_->data_shared(),
-                          paddle::platform::errors::PreconditionNotMet(
-                              "Tensor holds no memory. "
-                              "Call Tensor::mutable_data firstly."));
-  size_t size = numel() * SizeOf(dtype());
-
   PADDLE_ENFORCE_LE(
-      size,
+      numel() * SizeOf(dtype()),
       memory_size(),
       paddle::platform::errors::PreconditionNotMet(
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received  Tensor's dimension is d%, memory's size is %d.",
-          size,
+          "But received Tensor's dimension is d%, memory's size is %d.",
+          numel() * SizeOf(dtype()),
           memory_size()));
 }
 
 const paddle::platform::Place& DenseTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
-      storage_,
+      holder_,
       paddle::platform::errors::PreconditionNotMet(
-          "Tensor not initialized yet when Tensor::place() is called."));
-  if (storage_->data_shared()) {
-    return storage_->data_shared()->place();
-  }
-  return storage_->place();
+          "Tensor not initialized yet when DenseTensor::place() is called."));
+  return holder_->place();
 }
 
 paddle::framework::proto::VarType::Type DenseTensor::type() const {
   PADDLE_ENFORCE_NOT_NULL(
-      storage_,
+      holder_,
       paddle::platform::errors::PreconditionNotMet(
-          "Tensor not initialized yet when Tensor::type() is called."));
+          "Tensor not initialized yet when DenseTensor::type() is called."));
   return TransToProtoVarType(meta_.dtype);
 }
 
@@ -314,21 +270,14 @@ void DenseTensor::ResetHolder(
       0,
       paddle::platform::errors::Fatal(
           "Only the offset is supported to zero when the holder is reset."));
-
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-
-  if (storage_->data_shared()) {
+  if (holder_) {
     PADDLE_ENFORCE_LE(
         numel() * SizeOf(dtype()) + meta_.offset,
         holder->size(),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
   }
-
-  storage_->set_data_shared(holder);
+  holder_ = holder;
 }
 
 void DenseTensor::ResetHolderWithType(
@@ -346,39 +295,15 @@ void DenseTensor::set_type(
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 paddle::framework::proto::VarType::Type type,
                                 size_t requested_size) {
-  set_type(type);
-  PADDLE_ENFORCE_GE(
-      numel(),
-      0,
-      paddle::platform::errors::PreconditionNotMet(
-          "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
-  size_t size = numel() * SizeOf(dtype());
-  if (requested_size && (requested_size > size)) {
-    size = requested_size;
-  }
-
-  if (storage_ == nullptr) {
-    storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
-  }
-
-  /* some versions of boost::variant don't have operator!= */
-  if (storage_->data_shared() == nullptr ||
-      !(storage_->data_shared()->place() == place) ||
-      storage_->data_shared()->size() < size + meta_.offset) {
-    storage_->Clear();
-    storage_->set_data_shared(paddle::memory::AllocShared(place, size));
-    meta_.offset = 0;
-  }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
-                                 meta_.offset);
+  return AllocateFrom(paddle::memory::GetDefaultAllocator(place),
+                      TransToPtenDataType(type),
+                      requested_size);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 size_t requested_size) {
-  return mutable_data(place, type(), requested_size);
+  return AllocateFrom(paddle::memory::GetDefaultAllocator(place),
+                      requested_size);
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
@@ -395,21 +320,16 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
           "] now"));
   size_t size = numel() * SizeOf(dtype());
 
-  if (storage_ == nullptr) {
-    storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
-  }
-
   /* some versions of boost::variant don't have operator!= */
-  if (storage_->data_shared() == nullptr ||
-      !(storage_->data_shared()->place() == place) ||
-      storage_->data_shared()->size() < size + meta_.offset ||
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + meta_.offset ||
       !(paddle::platform::is_gpu_place(place) &&
-        paddle::memory::InSameStream(storage_->data_shared(), stream))) {
-    storage_->Clear();
-    storage_->set_data_shared(paddle::memory::AllocShared(place, size, stream));
+        paddle::memory::InSameStream(holder_, stream))) {
+    holder_.reset();
+    holder_ = paddle::memory::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(storage_->data()) +
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
 }
 
@@ -424,26 +344,22 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   meta_.dims = dims;
-  return mutable_data<T>(place, requested_size);
+  return AllocateFrom<T>(paddle::memory::GetDefaultAllocator(place),
+                         requested_size);
 }
 
 template <typename T>
 inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(
-      place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
+  return static_cast<T*>(
+      AllocateFrom(paddle::memory::GetDefaultAllocator(place), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
-  if (storage_ == nullptr) {
-    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
-        paddle::platform::CPUPlace());
-  }
-  if (storage_ != nullptr && tensor.storage_ != nullptr) {
-    storage_->set_data_shared(tensor.storage_->data_shared());
-  }
+  holder_ = tensor.holder_;
   meta_.offset = tensor.meta().offset;
+  meta_.dtype = tensor.dtype();
 }
 
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype) \

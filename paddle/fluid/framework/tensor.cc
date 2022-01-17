@@ -42,9 +42,8 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   } else {
     size_t base = numel() / meta_.dims[0];
     Tensor dst;
-    dst.storage_ = pten::make_intrusive<paddle::experimental::SharedStorage>(
-        storage_->data_shared());
-    dst.meta_.layout = meta_.layout;
+    dst.holder_ = holder_;
+    dst.set_layout(meta_.layout);
     dst.meta_.dtype = meta_.dtype;
     DDim dst_dims = meta_.dims;
     dst_dims[0] = end_idx - begin_idx;
