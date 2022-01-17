@@ -37,11 +37,11 @@ namespace pten {
 
 #define DEFINE_CUDA_ELEMENTWISE_OP(name)                             \
   template <typename T, typename Context>                            \
-  void name##Kernel(const Context& dev_ctx,                          \
-                    const DenseTensor& x,                            \
-                    const DenseTensor& y,                            \
-                    int axis,                                        \
-                    DenseTensor* out) {                              \
+  void name##RawKernel(const Context& dev_ctx,                       \
+                       const DenseTensor& x,                         \
+                       const DenseTensor& y,                         \
+                       int axis,                                     \
+                       DenseTensor* out) {                           \
     std::vector<const DenseTensor*> inputs;                          \
     std::vector<DenseTensor*> outputs;                               \
     inputs.emplace_back(&x);                                         \
@@ -72,14 +72,26 @@ struct DivideFunctor {
  */
 
 template <typename T, typename Context>
-void MeanKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::vector<int64_t>& dims,
-                bool keep_dim,
-                bool reduce_all,
-                DenseTensor* out) {
+void MeanRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void SumRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype,
+                  DenseTensor* out) {
+  pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -92,30 +104,16 @@ DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 // Create the definition of Divide
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
-template <typename T, typename Context>
-void SumKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               bool reduce_all,
-               DataType out_dtype,
-               DenseTensor* out) {
-  pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
 }  // namespace pten
 
 using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(
-    mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
-PT_REGISTER_KERNEL(add,
+PT_REGISTER_KERNEL(add_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::AddKernel,
+                   pten::AddRawKernel,
                    float,
                    double,
                    int,
@@ -123,10 +121,10 @@ PT_REGISTER_KERNEL(add,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract,
+PT_REGISTER_KERNEL(subtract_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SubtractKernel,
+                   pten::SubtractRawKernel,
                    float,
                    double,
                    int,
@@ -134,10 +132,10 @@ PT_REGISTER_KERNEL(subtract,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(divide,
+PT_REGISTER_KERNEL(divide_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DivideKernel,
+                   pten::DivideRawKernel,
                    float,
                    double,
                    int,
@@ -145,10 +143,10 @@ PT_REGISTER_KERNEL(divide,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply,
+PT_REGISTER_KERNEL(multiply_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MultiplyKernel,
+                   pten::MultiplyRawKernel,
                    float,
                    double,
                    int,
@@ -157,10 +155,10 @@ PT_REGISTER_KERNEL(multiply,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(sum,
+PT_REGISTER_KERNEL(sum_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SumKernel,
+                   pten::SumRawKernel,
                    bool,
                    float,
                    double,
@@ -171,3 +169,12 @@ PT_REGISTER_KERNEL(sum,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
+
+PT_REGISTER_KERNEL(mean_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::MeanRawKernel,
+                   float,
+                   double,
+                   bool,
+                   float16) {}

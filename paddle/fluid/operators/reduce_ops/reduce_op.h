@@ -550,14 +550,14 @@ class ReduceOp : public framework::OperatorWithKernel {
     if (Type() == "reduce_sum") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         return framework::KernelSignature(
-            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            "sum_raw", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
             {"Out"});
       }
     }
     if (Type() == "reduce_mean") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         return framework::KernelSignature(
-            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+            "mean_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
       }
     }
     // TODO(chentianyu03): support other cases after selected rows added

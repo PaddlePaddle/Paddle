@@ -103,36 +103,34 @@ function(kernel_library TARGET)
     list(LENGTH gpu_srcs gpu_srcs_len)
     list(LENGTH xpu_srcs xpu_srcs_len)
 
-    if (${common_srcs_len} GREATER 0)
-        # If the kernel has a device independent public implementation,
-        # we will use this implementation and will not adopt the implementation
-        # under specific devices
+    if(${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0 OR
+        ${xpu_srcs_len} GREATER 0)
         if (WITH_GPU)
-            nv_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
+            if (${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0)
+                nv_library(${TARGET} SRCS ${cpu_srcs} ${gpu_srcs} ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
+            endif()
         elseif (WITH_ROCM)
-            hip_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
+            if (${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0)
+                hip_library(${TARGET} SRCS ${cpu_srcs} ${gpu_srcs} ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
+            endif()
         else()
-            cc_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
+            if (${cpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0)
+                cc_library(${TARGET} SRCS ${cpu_srcs} ${xpu_srcs} ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
+            endif()
         endif()
     else()
-        # If the kernel has a header file declaration, but no corresponding
-        # implementation can be found, this is not allowed
-        if (${cpu_srcs_len} EQUAL 0 AND ${gpu_srcs_len} EQUAL 0 AND
-            ${xpu_srcs_len} EQUAL 0)
+        if (${common_srcs_len} EQUAL 0)
             message(FATAL_ERROR "Cannot find any implementation for ${TARGET}")
         else()
+            # If the kernel has a device independent public implementation,
+            # we will use this implementation and will not adopt the implementation
+            # under specific devices
             if (WITH_GPU)
-                if (${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0)
-                    nv_library(${TARGET} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
-                endif()
+                nv_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
             elseif (WITH_ROCM)
-                if (${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0)
-                    hip_library(${TARGET} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
-                endif()
+                hip_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
             else()
-                if (${cpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0)
-                    cc_library(${TARGET} SRCS ${cpu_srcs} ${xpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
-                endif()
+                cc_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
             endif()
         endif()
     endif()
