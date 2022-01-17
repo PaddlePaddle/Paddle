@@ -419,7 +419,7 @@ void LU_Unpack(const DeviceContext& dev_ctx, const framework::Tensor* LU,
   batchsize = std::max(static_cast<int>(batchsize), 1);
   arange<DeviceContext>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (is_gpu_place(dev_ctx.GetPlace())) {
+  if (platform::is_gpu_place(dev_ctx.GetPlace())) {
     framework::TensorCopy(rowtensor, dev_ctx.GetPlace(), &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
