@@ -863,6 +863,29 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+// The following patterns are used to fuse linear and act (ReLu or GeLU)
+// formula: act(F.linear(x)) ->
+// op: matmul_v2 + elementwise_add + act
+// named nodes: elementwise_add, act
+//              ele_x, ele_y, elewise_add_out, act_out
+struct LinearAct : public PatternBase {
+  LinearAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "linear_act") {}
+
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(ele_add);
+  PATTERN_DECL_NODE(act);
+  // declare variable node's name
+  PATTERN_DECL_NODE(matmul_w);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(elewise_add_out);
+  PATTERN_DECL_NODE(ele_bias);
+  PATTERN_DECL_NODE(act_out);
+};
+
 // Conv with Elementwise_add as bias
 // op: conv + elementwise_add
 // named nodes:

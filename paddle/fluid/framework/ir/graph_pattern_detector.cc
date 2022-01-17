@@ -1461,31 +1461,6 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   return bn_grad;
 }
 
-PDNode *patterns::ElewiseAddAct::operator()(
-    paddle::framework::ir::PDNode *ele_x_var,
-    std::unordered_set<std::string> act_types) {
-  auto *ele_y_var = pattern->NewNode(ele_y_repr())
-                        ->assert_is_op_input("elementwise_add", "Y");
-
-  auto *ele_add =
-      pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
-
-  auto *ele_out_var = pattern->NewNode(elewise_add_out_repr())
-                          ->assert_is_op_output("elementwise_add", "Out");
-
-  ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
-
-  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
-
-  auto *act_out_var =
-      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
-
-  ele_add->LinksFrom({ele_x_var, ele_y_var}).LinksTo({ele_out_var});
-  act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
-
-  return act_out_var;
-}
-
 PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
     paddle::framework::ir::PDNode *d_act_out_var,
     std::unordered_set<std::string> act_types) {
@@ -1524,6 +1499,67 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
       .LinksTo({d_ele_x_var, d_ele_y_var});
 
   return ele_add_grad;
+}
+
+PDNode *patterns::ElewiseAddAct::operator()(
+    paddle::framework::ir::PDNode *ele_x_var,
+    std::unordered_set<std::string> act_types) {
+  auto *ele_y_var = pattern->NewNode(ele_y_repr())
+                        ->assert_is_op_input("elementwise_add", "Y");
+
+  auto *ele_add =
+      pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
+
+  auto *ele_out_var = pattern->NewNode(elewise_add_out_repr())
+                          ->assert_is_op_output("elementwise_add", "Out");
+
+  ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
+
+  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+
+  auto *act_out_var =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+
+  ele_add->LinksFrom({ele_x_var, ele_y_var}).LinksTo({ele_out_var});
+  act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
+
+  return act_out_var;
+}
+
+PDNode *patterns::LinearAct::operator()(
+    paddle::framework::ir::PDNode *linear_x_var,
+    std::unordered_set<std::string> act_types) {
+  auto *matmul_w_var =
+      pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
+
+  auto *matmul = pattern->NewNode(matmul_repr())->assert_is_op("matmul_v2");
+
+  auto *matmul_out_var = pattern->NewNode(matmul_out_repr())
+                             ->assert_is_op_output("matmul_v2", "Out");
+
+  matmul_out_var->AsIntermediate()->assert_is_op_input("elementwise_add", "X");
+
+  auto *ele_bias_var = pattern->NewNode(ele_bias_repr())
+                           ->assert_is_op_input("elementwise_add", "Y");
+
+  auto *ele_add =
+      pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
+
+  auto *ele_out_var = pattern->NewNode(elewise_add_out_repr())
+                          ->assert_is_op_output("elementwise_add", "Out");
+
+  ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
+
+  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+
+  auto *act_out_var =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+
+  matmul->LinksFrom({linear_x_var, matmul_w_var}).LinksTo({matmul_out_var});
+  ele_add->LinksFrom({matmul_out_var, ele_bias_var}).LinksTo({ele_out_var});
+  act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
+
+  return act_out_var;
 }
 
 // conv_type: conv2d, conv3d, conv2d_transpose
