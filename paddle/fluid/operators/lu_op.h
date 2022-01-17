@@ -220,14 +220,12 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
                 const framework::Tensor& src2, framework::Tensor* out) {
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
+
   pten::AddKernel<
       T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
       static_cast<const typename paddle::framework::ConvertToPtenContext<
           DeviceContext>::TYPE&>(dev_ctx),
-      *pt_x.get(), *pt_y.get(), -1, pt_z.get());
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T>
@@ -235,14 +233,12 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
                 const framework::Tensor& src2, framework::Tensor* out) {
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
+
   pten::SubtractKernel<
       T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
       static_cast<const typename paddle::framework::ConvertToPtenContext<
           DeviceContext>::TYPE&>(dev_ctx),
-      *pt_x.get(), *pt_y.get(), -1, pt_z.get());
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T, size_t D>

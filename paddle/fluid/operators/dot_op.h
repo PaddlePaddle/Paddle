@@ -40,16 +40,12 @@ class DotKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
     out->mutable_data<T>(x->place());
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
-
     // call new kernel
     pten::DotKernel<T, typename paddle::framework::ConvertToPtenContext<
                            DeviceContext>::TYPE>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *pt_x.get(), *pt_y.get(), pt_out.get());
+        *x, *y, out);
   }
 };
 
@@ -66,19 +62,13 @@ class DotGradKernel : public framework::OpKernel<T> {
     if (tensor_dx) tensor_dx->mutable_data<T>(ctx.GetPlace());
     if (tensor_dy) tensor_dy->mutable_data<T>(ctx.GetPlace());
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*tensor_x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*tensor_y);
-    auto pt_dout = paddle::experimental::MakePtenDenseTensor(*tensor_dout);
-    auto pt_dx = paddle::experimental::MakePtenDenseTensor(*tensor_dx);
-    auto pt_dy = paddle::experimental::MakePtenDenseTensor(*tensor_dy);
-
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
     pten::DotGradKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *pt_x, *pt_y, *pt_dout, pt_dx.get(), pt_dy.get());
+        *tensor_x, *tensor_y, *tensor_dout, tensor_dx, tensor_dy);
   }
 };
 
