@@ -108,8 +108,7 @@ void SvdGPUKernel<float>::GesvdjBatched(
         info, gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -151,8 +150,7 @@ void SvdGPUKernel<double>::GesvdjBatched(
         info, gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
