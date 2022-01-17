@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,4 +13,18 @@
 // limitations under the License.
 
 #pragma once
-#include <mlir/IR/StandardTypes.h>
+
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+namespace paddle {
+namespace framework {
+namespace ir {
+
+class DeleteScaleOpPass : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

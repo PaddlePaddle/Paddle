@@ -253,7 +253,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, t_place);
+    auto gpu_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -280,7 +280,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #endif
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
-    auto xpu_place = BOOST_GET_CONST(paddle::platform::XPUPlace, t_place);
+    auto xpu_place = t_place;
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), xpu_place, t_data,
                          ele_num * sizeof(T));
@@ -293,7 +293,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #ifdef PADDLE_WITH_ASCEND_CL
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto npu_place = BOOST_GET_CONST(paddle::platform::NPUPlace, t_place);
+    auto npu_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
         pool.Get(npu_place));
     paddle::memory::Copy(paddle::platform::CPUPlace(),

@@ -813,8 +813,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return m_->GetAllocator(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -838,8 +837,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -859,8 +857,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Release(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -935,7 +932,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
   }
 #endif
 
-  platform::CUDAPlace p = BOOST_GET_CONST(platform::CUDAPlace, place);
+  platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
         ->Allocate(size);
