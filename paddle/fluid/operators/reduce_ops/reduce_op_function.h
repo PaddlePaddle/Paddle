@@ -74,7 +74,7 @@ void ReduceGradFunctor(const DeviceContext& context,
                        const framework::Tensor& input0,
                        const framework::Tensor& input1,
                        const framework::Tensor& input2,
-                       framework::Tensor* output,
+                       framework::Tensor* output, Functor functor,
                        const std::vector<int>& dims) {
   auto x = EigenTensor<T, D>::From(input0);
   auto x_grad = EigenTensor<T, D>::From(*output);
@@ -100,7 +100,6 @@ void ReduceGradFunctor(const DeviceContext& context,
 
   auto& place = *context.eigen_device();
 
-  Functor functor;
   functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
           broad_cats_times);
 }
