@@ -1184,13 +1184,14 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = imperative_actual.numpy()
+                        imperative_actual_t = np.array(imperative_actual.value()
+                                                       .get_tensor())
                     if check_eager:
                         with _test_eager_guard():
                             eager_imperative_actual = find_imperative_actual(
                                 sub_out_name, eager_dygraph_outs, place)
-                            eager_imperative_actual_t = eager_imperative_actual.numpy(
-                            )
+                            eager_imperative_actual_t = np.array(
+                                eager_imperative_actual.value().get_tensor())
 
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
@@ -1245,13 +1246,14 @@ class OpTest(unittest.TestCase):
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
-                    imperative_actual_t = imperative_actual.numpy()
+                    imperative_actual_t = np.array(imperative_actual.value()
+                                                   .get_tensor())
                 if check_eager:
                     with _test_eager_guard():
                         eager_imperative_actual = find_imperative_actual(
                             out_name, eager_dygraph_outs, place)
-                        eager_imperative_actual_t = eager_imperative_actual.numpy(
-                        )
+                        eager_imperative_actual_t = np.array(
+                            eager_imperative_actual.value().get_tensor())
 
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
