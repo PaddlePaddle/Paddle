@@ -105,10 +105,6 @@ def _test_eager_guard(tracer=None):
         _C_ops.switch_to_core_ops()
 
 
-def in_eager_mode():
-    return _eager_mode_
-
-
 global_ipu_index = None
 global_ipu_stage = None
 ipu_index_attr_name = 'ipu_index'
@@ -116,22 +112,24 @@ ipu_stage_attr_name = 'ipu_stage'
 
 
 @signature_safe_contextmanager
-def ipu_shard(ipu_index=None, ipu_stage=None):
+def ipu_shard_guard(index=None, stage=None):
     """
     Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
-        ipu_index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
             The default value is None, which means the Op only run on IPU 0.
-        ipu_stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
             The sharded model will be computed from small to large. The default value is None, 
             which means no pipelining computation order and run Ops in terms of graph.
     
     **Note**:
-    Only if the enable_manual_shard=True, the ‘ipu_index’ is able to be set not None. Please refer 
+    Only if the enable_manual_shard=True, the ‘index’ is able to be set not None. Please refer 
     to :code:`paddle.static.IpuStrategy` . 
-    Only if the enable_pipelining=True, the ‘ipu_stage’ is able to be set not None. Please refer 
+    Only if the enable_pipelining=True, the ‘stage’ is able to be set not None. Please refer 
     to :code:`paddle.static.IpuStrategy` .
+    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
+    duplicated index.
 
     Examples:
         .. code-block:: python
@@ -141,8 +139,12 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
             import paddle
             paddle.enable_static()
             a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-            with paddle.static.ipu_shard(ipu_index=1):
+            with paddle.static.ipu_shard_guard(index=0, stage=0):
                 b = a + 1
+            with paddle.static.ipu_shard_guard(index=1, stage=1):
+                c = b + 1
+            with paddle.static.ipu_shard_guard(index=0, stage=2):
+                d = c + 1
     """
     if not core.is_compiled_with_ipu():
         raise ValueError(
@@ -153,8 +155,8 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
     global global_ipu_stage
     prev_ipu_index = global_ipu_index
     prev_ipu_stage = global_ipu_stage
-    global_ipu_index = ipu_index
-    global_ipu_stage = ipu_stage
+    global_ipu_index = index
+    global_ipu_stage = stage
     try:
         yield
     finally:
