@@ -27,12 +27,12 @@
 namespace pten {
 
 template <typename T>
-__global__ void ConcatKernel(const T** inputs,
-                             const int64_t* input_cols,
-                             int col_size,
-                             const int64_t output_rows,
-                             const int64_t output_cols,
-                             T* output) {
+__global__ void ConcatKernel_(const T** inputs,
+                              const int64_t* input_cols,
+                              int col_size,
+                              const int64_t output_rows,
+                              const int64_t output_cols,
+                              T* output) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   int curr_segment = 0;
   int curr_offset = input_cols[0];
@@ -75,12 +75,12 @@ __device__ void ConcatKernelDetail(const T** inputs_data,
 }
 
 template <typename T>
-__global__ void ConcatKernel(const T* input_addr0,
-                             const T* input_addr1,
-                             const int64_t fixed_in_col,
-                             const int64_t out_rows,
-                             const int64_t out_cols,
-                             T* output_data) {
+__global__ void ConcatKernel_(const T* input_addr0,
+                              const T* input_addr1,
+                              const int64_t fixed_in_col,
+                              const int64_t out_rows,
+                              const int64_t out_cols,
+                              T* output_data) {
   const T* inputs_data[2];
   inputs_data[0] = input_addr0;
   inputs_data[1] = input_addr1;
@@ -89,13 +89,13 @@ __global__ void ConcatKernel(const T* input_addr0,
 }
 
 template <typename T>
-__global__ void ConcatKernel(const T* input_addr0,
-                             const T* input_addr1,
-                             const T* input_addr2,
-                             const int64_t fixed_in_col,
-                             const int64_t out_rows,
-                             const int64_t out_cols,
-                             T* output_data) {
+__global__ void ConcatKernel_(const T* input_addr0,
+                              const T* input_addr1,
+                              const T* input_addr2,
+                              const int64_t fixed_in_col,
+                              const int64_t out_rows,
+                              const int64_t out_cols,
+                              T* output_data) {
   const T* inputs_data[3];
   inputs_data[0] = input_addr0;
   inputs_data[1] = input_addr1;
@@ -105,14 +105,14 @@ __global__ void ConcatKernel(const T* input_addr0,
 }
 
 template <typename T>
-__global__ void ConcatKernel(const T* input_addr0,
-                             const T* input_addr1,
-                             const T* input_addr2,
-                             const T* input_addr3,
-                             const int64_t fixed_in_col,
-                             const int64_t out_rows,
-                             const int64_t out_cols,
-                             T* output_data) {
+__global__ void ConcatKernel_(const T* input_addr0,
+                              const T* input_addr1,
+                              const T* input_addr2,
+                              const T* input_addr3,
+                              const int64_t fixed_in_col,
+                              const int64_t out_rows,
+                              const int64_t out_cols,
+                              T* output_data) {
   const T* inputs_data[4];
   inputs_data[0] = input_addr0;
   inputs_data[1] = input_addr1;
@@ -123,12 +123,12 @@ __global__ void ConcatKernel(const T* input_addr0,
 }
 
 template <typename T>
-__global__ void ConcatKernel(const T** inputs_data,
-                             const int in_num,
-                             const int64_t fixed_in_col,
-                             const int64_t out_rows,
-                             const int64_t out_cols,
-                             T* output_data) {
+__global__ void ConcatKernel_(const T** inputs_data,
+                              const int in_num,
+                              const int64_t fixed_in_col,
+                              const int64_t out_rows,
+                              const int64_t out_cols,
+                              T* output_data) {
   ConcatKernelDetail<T>(
       inputs_data, fixed_in_col, out_rows, out_cols, output_data);
 }
@@ -337,7 +337,7 @@ void ConcatImpl(const Context& context,
 
   if (has_same_shape) {
     if (in_num == 2) {
-      ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           inputs_data[0],
           inputs_data[1],
           in_col,
@@ -345,7 +345,7 @@ void ConcatImpl(const Context& context,
           out_col,
           output->data<T>());
     } else if (in_num == 3) {
-      ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           inputs_data[0],
           inputs_data[1],
           inputs_data[2],
@@ -354,7 +354,7 @@ void ConcatImpl(const Context& context,
           out_col,
           output->data<T>());
     } else if (in_num == 4) {
-      ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           inputs_data[0],
           inputs_data[1],
           inputs_data[2],
@@ -364,7 +364,7 @@ void ConcatImpl(const Context& context,
           out_col,
           output->data<T>());
     } else {
-      ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
     }
   } else {
@@ -382,7 +382,7 @@ void ConcatImpl(const Context& context,
     int64_t* dev_ins_col_data =
         static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
-    ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+    ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
         dev_ins_data,
         dev_ins_col_data,
         static_cast<int>(inputs_col_num),
@@ -448,7 +448,7 @@ void SplitImpl(const Context& context,
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
-  memory::AllocationPtr data_alloc, cols_alloc;
+  paddle::memory::AllocationPtr data_alloc, cols_alloc;
   data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                      o_num * sizeof(T*));
   outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
