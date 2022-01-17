@@ -155,7 +155,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
         place));
   }
 
-  void operator()(const paddle::platform::CustomPlace& place) {
+  void operator()(const paddle::platform::CustomPlace& place) const {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",

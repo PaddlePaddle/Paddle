@@ -535,11 +535,10 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new CustomDeviceUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::CustomPlace, place), max_memory_size));
+        gc.reset(
+            new CustomDeviceUnsafeFastGarbageCollector(place, max_memory_size));
       } else {
-        gc.reset(new CustomStreamGarbageCollector(
-            BOOST_GET_CONST(platform::CustomPlace, place), max_memory_size));
+        gc.reset(new CustomStreamGarbageCollector(place, max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else

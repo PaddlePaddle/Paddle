@@ -52,10 +52,8 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   size_t seed =
       hasher(place + data_type + data_layout + library_type + customized_value);
   if (platform::is_custom_place(key.place_)) {
-    seed ^= std::hash<std::string>{}(
-                BOOST_GET_CONST(platform::CustomPlace, key.place_)
-                    .GetDeviceType()) +
-            0x9e3779b9 + (seed << 6) + (seed >> 2) + 4;
+    seed ^= std::hash<std::string>{}(key.place_.GetDeviceType()) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2) + 4;
   }
   return seed;
 #else

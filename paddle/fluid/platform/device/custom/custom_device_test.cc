@@ -22,16 +22,16 @@
 #include "paddle/fluid/platform/device_context.h"
 
 void RegisterDevice() {
-  RuntimePluginParams plugin_params;
-  plugin_params.size = sizeof(RuntimePluginParams);
+  CustomRuntimeParams runtime_params;
+  runtime_params.size = sizeof(CustomRuntimeParams);
   auto device_interface = std::make_unique<C_DeviceInterface>();
-  plugin_params.interface = device_interface.get();
-  std::memset(plugin_params.interface, 0, sizeof(C_DeviceInterface));
-  plugin_params.interface->size = sizeof(C_DeviceInterface);
+  runtime_params.interface = device_interface.get();
+  std::memset(runtime_params.interface, 0, sizeof(C_DeviceInterface));
+  runtime_params.interface->size = sizeof(C_DeviceInterface);
 
-  InitFakeCPUPlugin(&plugin_params);
-  EXPECT_TRUE(paddle::platform::LoadRuntimePlugin(
-      plugin_params, std::move(device_interface), nullptr));
+  InitFakeCPUDevice(&runtime_params);
+  EXPECT_TRUE(paddle::platform::LoadCustomRuntimeLib(
+      runtime_params, std::move(device_interface), nullptr));
 }
 
 void InitDevice() {
@@ -68,9 +68,7 @@ void TestDeviceInterface(const paddle::platform::Place& place) {
 
     paddle::platform::DeviceManager::SetDevice(place);
     auto dev_id = paddle::platform::DeviceManager::GetDevice(dev_type);
-    EXPECT_EQ(
-        dev_id,
-        BOOST_GET_CONST(paddle::platform::CustomPlace, place).GetDeviceId());
+    EXPECT_EQ(dev_id, place.GetDeviceId());
   }
 }
 
@@ -127,8 +125,7 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  paddle::platform::CustomDeviceContext gpu_ctx(
-      BOOST_GET_CONST(paddle::platform::CustomPlace, place));
+  paddle::platform::CustomDeviceContext gpu_ctx(place);
   paddle::framework::TensorCopy(src_tensor, place, gpu_ctx, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor

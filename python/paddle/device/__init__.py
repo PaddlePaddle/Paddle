@@ -21,10 +21,6 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
-from paddle.fluid.core import get_all_device_type
-from paddle.fluid.core import get_all_custom_device_type
-from paddle.fluid.core import get_available_device
-from paddle.fluid.core import get_available_custom_device
 
 from . import cuda
 
@@ -243,19 +239,17 @@ def _convert_to_place(device):
         avaliable_mlu_device = re.match(r'mlu:\d+', lower_device)
         if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device and not avaliable_mlu_device:
             device_info_list = device.split(':', 1)
-            platform_name = device_info_list[0]
-            if platform_name in core.get_all_custom_device_type():
+            device_type = device_info_list[0]
+            if device_type in core.get_all_custom_device_type():
                 device_id = device_info_list[1]
                 device_id = int(device_id)
-                place = core.CustomPlace(platform_name, device_id)
+                place = core.CustomPlace(device_type, device_id)
             else:
                 raise ValueError(
-                    "The device must be a string which is like 'cpu', " +
-                    ', '.join([
-                        "'{}', '{}:x'".format(x, x) for x in [
-                            'gpu', 'xpu', 'npu', 'mlu'
-                        ] + core.get_all_custom_device_type()
-                    ]))
+                    "The device must be a string which is like 'cpu', {}".
+                    format(', '.join("'{}', '{}:x'".format(x, x)
+                                     for x in ['gpu', 'xpu', 'npu', 'mlu'] +
+                                     core.get_all_custom_device_type())))
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
@@ -360,3 +354,67 @@ def get_device():
         raise ValueError("The device specification {} is invalid".format(place))
 
     return device
+
+
+def get_all_device_type():
+    """
+    Get all available device types
+
+    Returns:
+        A list of all available device types
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_all_device_type()
+    """
+    return core.get_all_device_type()
+
+
+def get_all_custom_device_type():
+    """
+    Get all available custom device types
+
+    Returns: 
+        A list of all available custom device types
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_all_custom_device_type()
+    """
+    return core.get_all_custom_device_type()
+
+
+def get_available_device():
+    """
+    Get all available devices
+
+    Returns:
+        A list of all available devices
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_available_device()
+    """
+    return core.get_available_device()
+
+
+def get_available_custom_device():
+    """
+    Get all available custom devices
+
+    Returns:
+       A list of all available custom devices
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_available_custom_device()
+    """
+    return core.get_available_custom_device()

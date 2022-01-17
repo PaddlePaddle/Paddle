@@ -32,14 +32,10 @@ class CustomDevice : public DeviceInterface {
       : DeviceInterface(type, priority, is_custom),
         pimpl_(std::move(pimpl)),
         dso_handle_(dso_handle) {
-    // TODO(wangran16): avoid call initialize on constructor
     Initialize();
   }
 
-  ~CustomDevice() override {
-    // TODO(wangran16): avoid call finalize on deconstructor
-    Finalize();
-  }
+  ~CustomDevice() override { Finalize(); }
 
   size_t GetDeviceCount() override {
     size_t count;
@@ -530,7 +526,7 @@ class CustomDevice : public DeviceInterface {
 
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
-    int dev_id = BOOST_GET_CONST(CustomPlace, place).GetDeviceId();
+    int dev_id = place.GetDeviceId();
     return dev_id;
   }
 
@@ -548,24 +544,24 @@ class CustomDevice : public DeviceInterface {
   std::unordered_map<size_t, C_Device_st> devices_pool;
 };
 
-bool ValidCustomRuntimePluginParams(const RuntimePluginParams* params) {
-#define CHECK_PTR(ptr, required)                                  \
-  if (params->interface->ptr == nullptr && required) {            \
-    LOG(WARNING) << "DevicePlugin [type: " << params->device_type \
-                 << "] pointer: " << #ptr << " is not set.";      \
-    return false;                                                 \
+bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
+#define CHECK_PTR(ptr, required)                                   \
+  if (params->interface->ptr == nullptr && required) {             \
+    LOG(WARNING) << "CustomRuntime [type: " << params->device_type \
+                 << "] pointer: " << #ptr << " is not set.";       \
+    return false;                                                  \
   }
 
   int version = params->version.major * 10000 + params->version.minor * 100 +
                 params->version.patch;
-  const int platfrom_version = PADDLE_DEVICE_PLUGIN_MAJOR_VERSION * 10000 +
-                               PADDLE_DEVICE_PLUGIN_MINOR_VERSION * 100 +
-                               PADDLE_DEVICE_PLUGIN_PATCH_VERSION;
+  const int runtime_version = PADDLE_CUSTOM_RUNTIME_MAJOR_VERSION * 10000 +
+                              PADDLE_CUSTOM_RUNTIME_MINOR_VERSION * 100 +
+                              PADDLE_CUSTOM_RUNTIME_PATCH_VERSION;
 
-  if (version < platfrom_version) {
-    LOG(WARNING) << "DevicePlugin [type: " << params->device_type
-                 << "] version: " << version << " < PLATFROM_PLUGIN_VERSION "
-                 << platfrom_version;
+  if (version < runtime_version) {
+    LOG(WARNING) << "CustomRuntime [type: " << params->device_type
+                 << "] version: " << version
+                 << " < PADDLE_CUSTOM_RUNTIME_VERSION " << runtime_version;
     return false;
   }
 
@@ -623,54 +619,53 @@ bool ValidCustomRuntimePluginParams(const RuntimePluginParams* params) {
 #undef CHECK_PTR
 }
 
-typedef bool (*RegisterDevicePluginFn)(RuntimePluginParams* plugin_params);
+typedef bool (*RegisterDevicePluginFn)(CustomRuntimeParams* runtime_params);
 
-bool LoadRuntimePlugin(const RuntimePluginParams& plugin_params,
-                       std::unique_ptr<C_DeviceInterface> device_interface,
-                       void* dso_handle) {
-  if (ValidCustomRuntimePluginParams(&plugin_params)) {
+bool LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
+                          std::unique_ptr<C_DeviceInterface> device_interface,
+                          void* dso_handle) {
+  if (ValidCustomCustomRuntimeParams(&runtime_params)) {
     auto device =
-        std::make_unique<CustomDevice>(plugin_params.device_type, 255, true,
+        std::make_unique<CustomDevice>(runtime_params.device_type, 255, true,
                                        std::move(device_interface), dso_handle);
     if (false == DeviceManager::Register(std::move(device))) {
       LOG(WARNING) << "Skip this library. Register failed!!! there may be a "
-                      "Plugin with the same name.";
+                      "Custom Runtime with the same name.";
       return false;
     }
   } else {
     LOG(WARNING)
         << "Skip this library. Wrong parameters!!! please check the version "
-           "compatibility between PaddlePaddle and Plugin.";
+           "compatibility between PaddlePaddle and Custom Runtime.";
     return false;
   }
   return true;
 }
 
-bool LoadRuntimePlugin(const std::string& plugin_path) {
-  RuntimePluginParams plugin_params;
-  std::memset(&plugin_params, 0, sizeof(RuntimePluginParams));
-  plugin_params.size = sizeof(RuntimePluginParams);
+bool LoadCustomRuntimeLib(void* dso_handle) {
+  CustomRuntimeParams runtime_params;
+  std::memset(&runtime_params, 0, sizeof(CustomRuntimeParams));
+  runtime_params.size = sizeof(CustomRuntimeParams);
   auto device_interface = std::make_unique<C_DeviceInterface>();
-  plugin_params.interface = device_interface.get();
-  std::memset(plugin_params.interface, 0, sizeof(C_DeviceInterface));
-  plugin_params.interface->size = sizeof(C_DeviceInterface);
+  runtime_params.interface = device_interface.get();
+  std::memset(runtime_params.interface, 0, sizeof(C_DeviceInterface));
+  runtime_params.interface->size = sizeof(C_DeviceInterface);
 
-  auto dso_handle = dlopen(plugin_path.c_str(), RTLD_NOW);
   RegisterDevicePluginFn init_plugin_fn =
       reinterpret_cast<RegisterDevicePluginFn>(dlsym(dso_handle, "InitPlugin"));
   if (!init_plugin_fn) {
     LOG(WARNING) << "Skip this library. InitPlugin symbol not found.";
     return false;
   }
-  init_plugin_fn(&plugin_params);
-  if (plugin_params.device_type == nullptr) {
+  init_plugin_fn(&runtime_params);
+  if (runtime_params.device_type == nullptr) {
     LOG(WARNING)
         << "Skip this library. InitPlugin failed!!! please check the version "
-           "compatibility between PaddlePaddle and Plugin.";
+           "compatibility between PaddlePaddle and Custom Runtime.";
     return false;
   }
-  return LoadRuntimePlugin(plugin_params, std::move(device_interface),
-                           dso_handle);
+  return LoadCustomRuntimeLib(runtime_params, std::move(device_interface),
+                              dso_handle);
 }
 
 }  // namespace platform

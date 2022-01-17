@@ -183,8 +183,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
-        BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
+        dst_place, dst_ptr, src_place, src_ptr, size,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
@@ -256,8 +255,7 @@ void TensorFromVector(const std::vector<T>& src,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
-        BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
+        dst_place, dst_ptr, src_place, src_ptr, size,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
@@ -328,8 +326,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size, stream);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
   else {  // NOLINT
@@ -407,9 +404,7 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::CustomPlace, src.place()), src_ptr,
-                 size, nullptr);
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
   else {  // NOLINT
@@ -460,9 +455,7 @@ inline void TensorToVector(const Tensor& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr,
-                 BOOST_GET_CONST(platform::CustomPlace, src.place()), src_ptr,
-                 size, nullptr);
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {

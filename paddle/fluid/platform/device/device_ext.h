@@ -21,9 +21,9 @@
 extern "C" {
 #endif
 
-#define PADDLE_DEVICE_PLUGIN_MAJOR_VERSION 0
-#define PADDLE_DEVICE_PLUGIN_MINOR_VERSION 1
-#define PADDLE_DEVICE_PLUGIN_PATCH_VERSION 1
+#define PADDLE_CUSTOM_RUNTIME_MAJOR_VERSION 0
+#define PADDLE_CUSTOM_RUNTIME_MINOR_VERSION 1
+#define PADDLE_CUSTOM_RUNTIME_PATCH_VERSION 1
 
 typedef enum {
   C_SUCCESS = 0,    // success
@@ -469,17 +469,17 @@ struct C_DeviceInterface {
   void* reserved_other_api[8];
 };
 
-struct RuntimePluginVersion {
+struct CustomRuntimeVersion {
   size_t major, minor, patch;
 };
 
-struct RuntimePluginParams {
+struct CustomRuntimeParams {
   // Core fill it and plugin must to check it
   size_t size;
   // Plugin fill it
   C_DeviceInterface* interface;
   // Plugin fill it and Core will to check it
-  RuntimePluginVersion version;
+  CustomRuntimeVersion version;
   // Plugin fill it
   char* device_type;
   // Plugin fill it
@@ -488,8 +488,8 @@ struct RuntimePluginParams {
   char reserved[32];
 };
 
-// Plugin implement it and fill RuntimePluginParams
-void InitPlugin(RuntimePluginParams*);
+// Plugin implement it and fill CustomRuntimeParams
+void InitPlugin(CustomRuntimeParams*);
 
 #ifdef __cplusplus
 }  // extern "C"

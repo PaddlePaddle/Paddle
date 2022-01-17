@@ -256,8 +256,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_custom_place(p)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      EmplaceDeviceContext<CustomDeviceContext, CustomPlace>(&device_contexts_,
-                                                             p);
+      EmplaceDeviceContext<CustomDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CustomPlace is not supported. Please re-compile with "

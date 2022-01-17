@@ -1661,55 +1661,57 @@ All parameter, weight, gradient are variables in Paddle.
     auto device_types = platform::DeviceManager::GetAllDeviceTypes();
     return device_types;
 #else
-  LOG(ERROR) << string::Sprintf(
-      "Cannot use get_all_device_type because you have installed"
-      "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use get_all_device_type, please try to install"
-      "CustomDevice version "
-      "PaddlePaddle by: pip install paddlepaddle-core\n");
-  std::exit(-1);
+          LOG(ERROR) << string::Sprintf(
+              "Cannot use get_all_device_type because you have installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_all_device_type, please try to install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
+          std::exit(-1);
 #endif
   });
   m.def("get_all_custom_device_type", []() {
+    std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
-    return device_types;
+    device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
 #else
-  LOG(ERROR) << string::Sprintf(
-      "Cannot use get_all_custom_device_type because you have installed"
-      "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use get_all_custom_device_type, please try to "
-      "install CustomDevice version "
-      "PaddlePaddle by: pip install paddlepaddle-core\n");
-    std::exit(-1);
+          LOG(WARNING) << string::Sprintf(
+              "Cannot use get_all_custom_device_type because you have installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_all_custom_device_type, please try to "
+              "install CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
 #endif
+    return device_types;
   });
   m.def("get_available_device", [] {
+    std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto devices = platform::DeviceManager::GetAllDeviceList();
-    return devices;
+    devices = platform::DeviceManager::GetAllDeviceList();
 #else
-  LOG(ERROR) << string::Sprintf(
-      "Cannot use get_available_device because you have installed"
-      "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use get_available_device, please try to install"
-      "CustomDevice version "
-      "PaddlePaddle by: pip install paddlepaddle-core\n");
-  std::exit(-1);
+          LOG(WARNING) << string::Sprintf(
+              "Cannot use get_available_device because you have installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_available_device, please try to install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
 #endif
+    return devices;
   });
   m.def("get_available_custom_device", [] {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto devices = platform::DeviceManager::GetAllCustomDeviceList();
     return devices;
 #else
-  LOG(ERROR) << string::Sprintf(
-      "Cannot use get_available_custom_device because you have installed"
-      "CPU/GPU version PaddlePaddle.\n"
-      "If you want to use get_available_custom_device, please try to install"
-      "CustomDevice version "
-      "PaddlePaddle by: pip install paddlepaddle-core\n");
-  std::exit(-1);
+          LOG(ERROR) << string::Sprintf(
+              "Cannot use get_available_custom_device because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_available_custom_device, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
+          std::exit(-1);
 #endif
   });
   py::class_<platform::CustomPlace>(m, "CustomPlace",
@@ -2238,16 +2240,16 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("is_mlu_place",
            [](platform::Place &self) { return platform::is_mlu_place(self); })
-      .def("is_custom_place",
-           [](platform::Place &self) {
-             return platform::is_custom_place(self);
-           })
+      .def(
+          "is_custom_place",
+          [](platform::Place &self) { return platform::is_custom_place(self); })
       .def("gpu_device_id", [](platform::Place &self) { return self.device; })
       .def("xpu_device_id", [](platform::Place &self) { return self.device; })
       .def("npu_device_id", [](platform::Place &self) { return self.device; })
       .def("ipu_device_id", [](platform::Place &self) { return self.device; })
       .def("mlu_device_id", [](platform::Place &self) { return self.device; })
-      .def("custom_device_id", [](platform::Place &self) { return self.device; })
+      .def("custom_device_id",
+           [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",

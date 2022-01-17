@@ -251,7 +251,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   } else if (platform::is_custom_place(self.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::CustomPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -299,7 +299,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 #endif
   } else if (platform::is_custom_place(self->place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-    auto p = BOOST_GET_CONST(platform::CustomPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -950,9 +950,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
-        platform::CPUPlace(), py_arr.mutable_data(),
-        BOOST_GET_CONST(platform::CustomPlace, tensor.place()), tensor_buf_ptr,
-        copy_bytes,
+        platform::CPUPlace(), py_arr.mutable_data(), tensor.place(),
+        tensor_buf_ptr, copy_bytes,
         reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
     ctx.Wait();
     return py_arr;

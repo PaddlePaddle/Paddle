@@ -132,12 +132,12 @@ C_Status DeviceMaxAllocSize(const C_Device device, size_t *size) {
 #define DEVICE_TYPE "FakeCPU"
 #define SUB_DEVICE_TYPE "V100"
 
-void InitFakeCPUPlugin(RuntimePluginParams *params) {
+void InitFakeCPUDevice(CustomRuntimeParams *params) {
   params->device_type = const_cast<char *>(DEVICE_TYPE);
   params->sub_device_type = const_cast<char *>(SUB_DEVICE_TYPE);
-  params->version.major = PADDLE_DEVICE_PLUGIN_MAJOR_VERSION;
-  params->version.minor = PADDLE_DEVICE_PLUGIN_MINOR_VERSION;
-  params->version.patch = PADDLE_DEVICE_PLUGIN_PATCH_VERSION;
+  params->version.major = PADDLE_CUSTOM_RUNTIME_MAJOR_VERSION;
+  params->version.minor = PADDLE_CUSTOM_RUNTIME_MINOR_VERSION;
+  params->version.patch = PADDLE_CUSTOM_RUNTIME_PATCH_VERSION;
 
   memset(reinterpret_cast<void *>(params->interface), 0,
          sizeof(C_DeviceInterface));

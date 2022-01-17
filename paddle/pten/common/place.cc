@@ -50,7 +50,11 @@ const char *AllocationTypeStr(AllocationType type) {
 std::string Place::DebugString() const {
   std::ostringstream os;
   os << "Place(";
-  os << AllocationTypeStr(alloc_type_);
+  if (alloc_type_ == AllocationType::CUSTOM) {
+    os << device_type;
+  } else {
+    os << AllocationTypeStr(alloc_type_);
+  }
   if (alloc_type_ == AllocationType::GPUPINNED ||
       alloc_type_ == AllocationType::NPUPINNED ||
       alloc_type_ == AllocationType::CPU) {

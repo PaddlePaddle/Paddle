@@ -1057,7 +1057,6 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
         "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
   }
 #endif
-
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)

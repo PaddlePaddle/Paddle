@@ -28,6 +28,7 @@ enum class AllocationType : int8_t {
   NPUPINNED = 6,
   IPU = 7,
   MLU = 8,
+  CUSTOM = 9,
 };
 
 const char* AllocationTypeStr(AllocationType type);
@@ -37,19 +38,29 @@ class Place {
  public:
   Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
 
-  explicit Place(AllocationType type, int8_t id)
-      : device(id), alloc_type_(type) {}
+  explicit Place(AllocationType type,
+                 int8_t id,
+                 const std::string& dev_type = "")
+      : device(id), alloc_type_(type), device_type(dev_type) {}
 
-  explicit Place(AllocationType type) : device(0), alloc_type_(type) {}
+  explicit Place(AllocationType type, const std::string& dev_type = "")
+      : device(0), alloc_type_(type), device_type(dev_type) {}
 
-  void Reset(AllocationType type, int8_t device_id = 0) noexcept {
+  void Reset(AllocationType type,
+             int8_t device_id = 0,
+             const std::string& dev_type = "") noexcept {
     alloc_type_ = type;
     device = device_id;
+    if (!dev_type.empty()) {
+      device_type = dev_type;
+    }
   }
 
   AllocationType GetType() const { return alloc_type_; }
 
   int8_t GetDeviceId() const { return device; }
+
+  std::string GetDeviceType() const { return device_type; }
 
   std::string DebugString() const;
 
@@ -79,6 +90,9 @@ class Place {
 
  private:
   AllocationType alloc_type_{AllocationType::UNDEFINED};
+
+ public:
+  std::string device_type;
 };
 
 class CPUPlace : public Place {
@@ -155,6 +169,22 @@ class MLUPlace : public Place {
   MLUPlace(const MLUPlace&) = default;
   MLUPlace(const Place& place)  // NOLINT
       : Place(AllocationType::MLU, place.GetDeviceId()) {}
+};
+
+class CustomPlace : public Place {
+ public:
+  explicit CustomPlace(const std::string dev_type)
+      : Place(AllocationType::CUSTOM, 0, dev_type) {}
+  CustomPlace(const std::string dev_type, int device_id)
+      : Place(AllocationType::CUSTOM, device_id, dev_type) {}
+
+  CustomPlace(const CustomPlace&) = default;
+  CustomPlace(const Place& place)  // NOLINT
+      : Place(AllocationType::CUSTOM, place.GetDeviceId()) {
+    if (place.GetType() == AllocationType::CUSTOM) {
+      device_type = reinterpret_cast<const CustomPlace&>(place).GetDeviceType();
+    }
+  }
 };
 
 std::ostream& operator<<(std::ostream&, const Place&);

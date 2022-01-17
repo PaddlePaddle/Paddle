@@ -95,16 +95,12 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
            platform::is_cpu_place(dst_place)) {
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CustomPlace, src_place), src_ptr,
-                 size, stream);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (platform::is_cpu_place(src_place) &&  // NOLINT
              platform::is_custom_place(dst_place)) {
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size,
-                 stream);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (platform::is_custom_place(src_place) &&  // NOLINT
              platform::is_custom_place(dst_place)) {
     if (src_ptr == dst_ptr) {
@@ -114,9 +110,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
     }
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CustomPlace, src_place), src_ptr,
-                 size, stream);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -466,28 +460,22 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {     /* pluggable_device -> cpu*/
-    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CustomPlace, src_place), src_ptr,
-                 size, nullptr);
+           platform::is_cpu_place(dst_place)) {     /* custom_device -> cpu*/
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
   else if (platform::is_cpu_place(src_place) &&    // NOLINT
-           platform::is_custom_place(dst_place)) { /* cpu -> pluggable_device*/
-    memory::Copy(BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size,
-                 nullptr);
+           platform::is_custom_place(dst_place)) { /* cpu -> custom_device*/
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_custom_place(
-               dst_place)) { /* pluggable_device -> pluggable_device*/
+               dst_place)) { /* custom_device -> custom_device*/
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
               << dst_place;
       return;
     }
-    memory::Copy(BOOST_GET_CONST(platform::CustomPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CustomPlace, src_place), src_ptr,
-                 size, nullptr);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -719,9 +707,9 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
-                 const platform::CustomPlace& plug_dev) const {
+                 const platform::CustomPlace& custom_dev) const {
     PADDLE_THROW(platform::errors::Unimplemented("Not supported on place (%s) ",
-                                                 plug_dev));
+                                                 custom_dev));
     return false;
   }
 };
@@ -963,7 +951,7 @@ struct BothFalseVisitor : public boost::static_visitor<> {
     }
   }
 
-  void VisitorImpl(const platform::CustomPlace& plug_dev) const {
+  void VisitorImpl(const platform::CustomPlace& custom_dev) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("CustomPlace is not supported"));
   }
@@ -1105,17 +1093,16 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& pluggable_device_context =
+      auto& custom_device_context =
           static_cast<const platform::CustomDeviceContext&>(dev_ctx);
       platform::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        memory::Copy(cpu, buf.get(),
-                     BOOST_GET_CONST(platform::CustomPlace, tensor.place()),
+        memory::Copy(cpu, buf.get(), tensor.place(),
                      reinterpret_cast<const void*>(data), size_to_write,
-                     pluggable_device_context.stream());
-        pluggable_device_context.Wait();
+                     custom_device_context.stream());
+        custom_device_context.Wait();
         os.write(buf.get(), size_to_write);
         data += size_to_write;
         size -= size_to_write;
@@ -1123,7 +1110,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CustomPlace is not supported when not compiled with "
-          "PluggableDevice"));
+          "CustomDevice"));
 #endif
     } else {
       os.write(static_cast<const char*>(data_ptr),

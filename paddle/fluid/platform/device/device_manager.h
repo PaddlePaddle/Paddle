@@ -21,8 +21,8 @@
 #include "paddle/fluid/platform/device/stream.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/framework/rw_lock.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace platform {
@@ -162,11 +162,11 @@ class DeviceManager {
       device_map_;
 };
 
-bool LoadRuntimePlugin(const std::string& plugin_path);
+bool LoadCustomRuntimeLib(void* dso_handle);
 
-bool LoadRuntimePlugin(const RuntimePluginParams& plugin_params,
-                       std::unique_ptr<C_DeviceInterface> device_interface,
-                       void* dso_handle);
+bool LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
+                          std::unique_ptr<C_DeviceInterface> device_interface,
+                          void* dso_handle);
 
 bool LoadCustomDevice(const std::string& library_path);
 
