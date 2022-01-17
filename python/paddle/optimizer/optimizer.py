@@ -722,6 +722,13 @@ class Optimizer(object):
                         self._append_optimize_multi_tensor_op(
                             target_block, parameters_and_grads)
         else:
+            if not framework.in_dygraph_mode():
+                params_grads_device_map = parameters_and_grads[
+                    'params'] if isinstance(parameters_and_grads,
+                                            dict) else parameters_and_grads
+                self._update_param_device_map(params_grads_device_map,
+                                              target_block)
+
             if isinstance(parameters_and_grads, list):
                 self._create_accumulators(target_block, [
                     p[0] for p in parameters_and_grads if not p[0].stop_gradient
