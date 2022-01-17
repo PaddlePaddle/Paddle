@@ -295,11 +295,12 @@ void ConcatImpl(const Context& context,
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
-  memory::AllocationPtr data_alloc, col_alloc;
-  data_alloc = memory::Alloc(platform::CUDAPinnedPlace(), in_num * sizeof(T*));
+  paddle::memory::AllocationPtr data_alloc, col_alloc;
+  data_alloc =
+      paddle::memory::Alloc(platform::CUDAPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-  col_alloc =
-      memory::Alloc(platform::CUDAPinnedPlace(), inputs_col_num * sizeof(int));
+  col_alloc = paddle::memory::Alloc(platform::CUDAPinnedPlace(),
+                                    inputs_col_num * sizeof(int));
   inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 #endif
 
