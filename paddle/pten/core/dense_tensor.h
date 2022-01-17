@@ -63,12 +63,12 @@ class DenseTensor : public TensorBase,
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
-  DenseTensor(const std::shared_ptr<Allocator>& a, const DenseTensorMeta& meta);
+  DenseTensor(Allocator* a, const DenseTensorMeta& meta);
 
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
-  DenseTensor(const std::shared_ptr<Allocator>& a, DenseTensorMeta&& meta);
+  DenseTensor(Allocator* a, DenseTensorMeta&& meta);
 
   /// \brief Use existing storage space to create dense tensor. This interface
   /// can be used to deliberately create an uninitialized dense tensor.
@@ -96,6 +96,8 @@ class DenseTensor : public TensorBase,
 
   /// \brief DenseTensor shallow copy assignment.
   DenseTensor& operator=(const DenseTensor& other);
+
+  DenseTensor& operator=(DenseTensor&& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~DenseTensor() = default;
@@ -167,12 +169,6 @@ class DenseTensor : public TensorBase,
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
   size_t capacity() const { return storage_->size(); }
-
-  /// \brief Release the storage area for other purposes. Because of the
-  /// destruction of encapsulation, we do not support two dense tensors directly
-  /// sharing the same intrusive pointer.
-  /// \return The rvalue of instrusize pointer releated to the released storage.
-  intrusive_ptr<Storage> release() { return std::move(storage_); }
 
   /// \brief Get the mutable data pointer value of type T.
   /// Memory allocation may occur when calling this interface:

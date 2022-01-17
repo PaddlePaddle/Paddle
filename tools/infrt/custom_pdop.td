@@ -23,6 +23,16 @@ def PD_FetchOp : PD_Op<"fetch", [Terminator]> {
   let arguments = (ins Variadic<PD_Tensor>:$inputs);
 }
 
+def PD_ReturnOp : PD_Op<"return", [Terminator]> {
+  let summary = "return Op";
+
+  let description = [{
+    Fetch tensor from the graph.
+  }];
+
+  let arguments = (ins Variadic<PD_Tensor>:$inputs);
+}
+
 def PD_GraphOp : PD_Op<"graph", [SingleBlockImplicitTerminator<"FetchOp">]> {
   let summary = "paddle graph Op";
   let description = [{
