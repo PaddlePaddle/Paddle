@@ -21,6 +21,9 @@ mlir_tablegen_on(dense_tensor DIALECT dt)
 mlir_tablegen_on(pd_op_base DIALECT pd)
 mlir_tablegen_on(pd_ops)
 mlir_add_rewriter(rewrite)
+# Add a demo for testing Op -> Kernel mapping
+mlir_tablegen_on(pd_test_kernels)
+mlir_add_rewriter(pd_test_op_kernel_mappings)
 
 # TODO(Superjomn) add a cmake function cc_executable to ecapsulate the following code
 add_executable(infrtopt opt.cc)

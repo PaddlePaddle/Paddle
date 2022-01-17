@@ -53,6 +53,12 @@ static mlir::IntegerAttr createI32Attr(mlir::OpBuilder &b,  // NOLINT
   return b.getIntegerAttr(b.getI32Type(), constant);
 }
 
+static mlir::BoolAttr createBoolAttr(mlir::OpBuilder &b,
+                                     mlir::Location loc,
+                                     bool constant) {
+  return b.getBoolAttr(constant);
+}
+
 static mlir::SmallVector<mlir::Value, 4> cvtValueToValueRange(
     const mlir::Value &operand) {
   return mlir::SmallVector<mlir::Value, 4>(1, operand);

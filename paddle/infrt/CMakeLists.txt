@@ -85,6 +85,8 @@ set(infrt_mlir_incs
         pd_ops_inc
         rewrite_inc
         trt_ops_inc
+        pd_test_kernels_inc
+        pd_test_op_kernel_mappings_inc
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 

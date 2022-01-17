@@ -29,6 +29,8 @@ def BufferType : OpaqueType<"b", "buffer", "buffer">;
 
 class INFRT_createI32Attr<string value> : NativeCodeCall<
     "infrt::createI32Attr($_builder, $_loc, " # value # ")">;
+class INFRT_createBoolAttr<string value> : NativeCodeCall<
+    "infrt::createBoolAttr($_builder, $_loc, " # value # ")">;
 
 def INFRT_cvtValueToValueRange : NativeCodeCall<
     "infrt::cvtValueToValueRange($0)">;
