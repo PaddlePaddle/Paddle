@@ -70,11 +70,10 @@ class BKCLCommunicator;
 namespace framework {
 class LoDRankTable;
 class ScopeBase;
-class LoDTensor;
+class Tensor;
 class ReaderHolder;
 class Scope;
 class SelectedRows;
-class Tensor;
 }  // namespace framework
 
 namespace operators {
@@ -164,8 +163,8 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    Strings, LoDTensorArray, platform::PlaceList, ReaderHolder, String, Scope *,
+    Tensor, SelectedRows, std::vector<Scope *>, LoDRankTable, Strings,
+    LoDTensorArray, platform::PlaceList, ReaderHolder, String, Scope *,
     operators::reader::LoDTensorBlockingQueueHolder, FetchList, FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

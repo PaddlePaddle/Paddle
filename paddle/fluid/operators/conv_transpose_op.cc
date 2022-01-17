@@ -49,8 +49,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   const std::string data_layout_str =
       ctx->Attrs().Get<std::string>("data_format");
   const DataLayout data_layout =
-      this->IsMKLDNNType() ? DataLayout::kNCHW
-                           : framework::StringToDataLayout(data_layout_str);
+      ctx->IsRunMKLDNNKernel() ? DataLayout::kNCHW
+                               : framework::StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
                     platform::errors::InvalidArgument(

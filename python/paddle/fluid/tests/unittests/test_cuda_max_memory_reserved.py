@@ -29,7 +29,9 @@ class TestMaxMemoryreserved(unittest.TestCase):
                 tensor = paddle.zeros(shape)
                 peak_memory_reserved_size = max(peak_memory_reserved_size,
                                                 memory_reserved(device))
+                del shape
                 del tensor
+
             self.assertEqual(peak_memory_reserved_size,
                              max_memory_reserved(device))
 

@@ -15,15 +15,17 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void Flatten(const Context& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out);
+void FlattenKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int start_axis,
+                   int stop_axis,
+                   DenseTensor* out);
 
 template <typename T, typename Context>
 void FlattenWithXShape(const Context& dev_ctx,
@@ -32,5 +34,16 @@ void FlattenWithXShape(const Context& dev_ctx,
                        int stop_axis,
                        DenseTensor* out,
                        DenseTensor* xshape);
+
+template <typename T, typename Context>
+DenseTensor Flatten(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    int start_axis,
+                    int stop_axis) {
+  auto out_meta = FlattenInferMeta(x.meta(), start_axis, stop_axis);
+  auto dense_out = Empty<T, Context>(dev_ctx, std::move(out_meta));
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten

@@ -26,8 +26,10 @@ __all__ = [
     'synchronize',
     'device_count',
     'empty_cache',
-    'memory_reserved',
+    'max_memory_allocated',
     'max_memory_reserved',
+    'memory_allocated',
+    'memory_reserved',
     'stream_guard',
     'get_device_properties',
     'get_device_name',
@@ -160,7 +162,7 @@ def extract_cuda_device_id(device, op_name):
             the string name of device like 'gpu:x'.
             Default: None.
 
-    Returns:
+    Return:
         int: The id of the given device. If device is None, return the id of current device.
     '''
     if (device is None):
@@ -190,48 +192,51 @@ def extract_cuda_device_id(device, op_name):
     return device_id
 
 
-def memory_reserved(device=None):
+def max_memory_allocated(device=None):
     '''
-    Returns the current GPU memory held by the allocator of the given device in bytes.
+    Return the peak size of gpu memory that is allocated to tensor of the given device.
+
+    .. note::
+        The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need. For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str): The device, the id of the device or 
             the string name of device like 'gpu:x'. If device is None, the device is the current device. 
             Default: None.
 
-    Returns:
-        int: The current GPU memory held by the allocator of the given device in bytes.
+    Return:
+        int: The peak size of gpu memory that is allocated to tensor of the given device, in bytes.
 
-    Examples:    
+    Examples:
         .. code-block:: python
 
             # required: gpu
             import paddle
 
-            memory_reserved_size = paddle.device.cuda.memory_reserved(place)
-            memory_reserved_size = paddle.device.cuda.memory_reserved(0)
-            memory_reserved_size = paddle.device.cuda.memory_reserved("gpu:0")
+            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(place)
+            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(0)
+            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated("gpu:0")
     '''
-    name = "paddle.device.cuda.memory_reserved"
+    name = "paddle.device.cuda.max_memory_allocated"
     if not core.is_compiled_with_cuda():
         raise ValueError(
             f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
         )
     device_id = extract_cuda_device_id(device, op_name=name)
-    return core.get_int_stats()["STAT_gpu" + str(device_id) + "_mem_size"]
+    return core.get_int_stats()["STAT_gpu" + str(device_id) + "_max_alloc_size"]
 
 
 def max_memory_reserved(device=None):
     '''
-    Returns the peak GPU memory held by the allocator of the given device in bytes.
+    Return the peak size of GPU memory that is held by the allocator of the given device.
 
     Args:
         device(paddle.CUDAPlace or int or str): The device, the id of the device or 
             the string name of device like 'gpu:x'. If device is None, the device is the current device. 
             Default: None.
 
-    Returns:
-        int: The peak GPU memory held by the allocator of the given device in bytes.
+    Return:
+        int: The peak size of GPU memory that is held by the allocator of the given device, in bytes.
 
     Examples:
         .. code-block:: python
@@ -254,15 +259,18 @@ def max_memory_reserved(device=None):
 
 def memory_allocated(device=None):
     '''
-    Returns the current gpu memory allocated to tensor of the given device in bytes.
+    Return the current size of gpu memory that is allocated to tensor of the given device.
+
+    .. note::
+        The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need. For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes. 
 
     Args:
         device(paddle.CUDAPlace or int or str): The device, the id of the device or 
             the string name of device like 'gpu:x'. If device is None, the device is the current device. 
             Default: None.
 
-    Returns:
-        int: The current gpu memory allocated to tensor of the given device in bytes
+    Return:
+        int: The current size of gpu memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
         .. code-block:: python
@@ -283,35 +291,35 @@ def memory_allocated(device=None):
     return core.get_int_stats()["STAT_gpu" + str(device_id) + "_alloc_size"]
 
 
-def max_memory_allocated(device=None):
+def memory_reserved(device=None):
     '''
-    Returns the peak gpu memory allocated to tensor of the given device in bytes.
+    Return the current size of GPU memory that is held by the allocator of the given device.
 
     Args:
         device(paddle.CUDAPlace or int or str): The device, the id of the device or 
             the string name of device like 'gpu:x'. If device is None, the device is the current device. 
             Default: None.
 
-    Returns:
-        int: The peak gpu memory allocated to tensor of the given device in bytes
+    Return:
+        int: The current size of GPU memory that is held by the allocator of the given device, in bytes.
 
-    Examples:
+    Examples:    
         .. code-block:: python
 
             # required: gpu
             import paddle
 
-            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(place)
-            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated(0)
-            max_memory_allocated_size = paddle.device.cuda.max_memory_allocated("gpu:0")
+            memory_reserved_size = paddle.device.cuda.memory_reserved(place)
+            memory_reserved_size = paddle.device.cuda.memory_reserved(0)
+            memory_reserved_size = paddle.device.cuda.memory_reserved("gpu:0")
     '''
-    name = "paddle.device.cuda.max_memory_allocated"
+    name = "paddle.device.cuda.memory_reserved"
     if not core.is_compiled_with_cuda():
         raise ValueError(
             f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
         )
     device_id = extract_cuda_device_id(device, op_name=name)
-    return core.get_int_stats()["STAT_gpu" + str(device_id) + "_max_alloc_size"]
+    return core.get_int_stats()["STAT_gpu" + str(device_id) + "_mem_size"]
 
 
 def _set_current_stream(stream):
