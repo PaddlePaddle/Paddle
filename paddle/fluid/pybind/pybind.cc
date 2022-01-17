@@ -170,6 +170,7 @@ PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
+PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -372,7 +373,7 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {
-  return static_cast<int>(paddle::platform::Place(p).which());
+  return static_cast<int>(paddle::platform::Place(p).GetType());
 }
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -2050,26 +2051,11 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("is_mlu_place",
            [](platform::Place &self) { return platform::is_mlu_place(self); })
-      .def("gpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::CUDAPlace, self).device;
-           })
-      .def("xpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::XPUPlace, self).device;
-           })
-      .def("npu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::NPUPlace, self).device;
-           })
-      .def("ipu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::IPUPlace, self).device;
-           })
-      .def("mlu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::MLUPlace, self).device;
-           })
+      .def("gpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("xpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("npu_device_id", [](platform::Place &self) { return self.device; })
+      .def("ipu_device_id", [](platform::Place &self) { return self.device; })
+      .def("mlu_device_id", [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",
@@ -2435,7 +2421,7 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
+  py::class_<LoDTensorArray> pylodtensorarray(m, "LoDTensorArray", R"DOC(
     LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
@@ -2444,7 +2430,10 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle.fluid as fluid
 
           arr = fluid.LoDTensorArray()
-)DOC")
+)DOC");
+  g_framework_lodtensorarray_pytype =
+      reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
+  pylodtensorarray
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
@@ -2984,7 +2973,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
-      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce);
+      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce)
+      .value("_NoReduce", BuildStrategy::ReduceStrategy::kNoReduce);
   py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
                                                   "GradientScaleStrategy")
       .value("CoeffNumDevice",

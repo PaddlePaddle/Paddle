@@ -164,8 +164,7 @@ void distribution_and_transform(const platform::CUDADeviceContext &dev_ctx,
   T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
   auto size = out->numel();
 
-  int64_t device_id =
-      BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()).GetDeviceId();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
   size_t block_size = 256;

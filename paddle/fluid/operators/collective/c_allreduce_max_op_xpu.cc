@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-struct XPUPlace;
+
 struct float16;
 }  // namespace platform
 }  // namespace paddle

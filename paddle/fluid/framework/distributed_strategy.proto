@@ -117,6 +117,7 @@ message BuildStrategy {
   optional bool enable_addto = 12 [ default = false ];
   optional bool fix_op_run_order = 13 [ default = false ];
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
+  optional int32 reduce_strategy = 15 [ default = 0 ];
 }
 
 message ExecutionStrategy {

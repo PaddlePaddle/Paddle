@@ -34,6 +34,7 @@ using gpuStream_t = hipStream_t;
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/common/place.h"
 
 namespace pten {
 class TensorBase;
@@ -43,9 +44,7 @@ namespace paddle {
 namespace framework {
 class DDim;
 }
-namespace platform {
-class Place;
-}
+
 namespace experimental {
 
 class Tensor;
@@ -229,7 +228,7 @@ class PADDLE_API Tensor final {
    *
    * @return paddle::platform::Place
    */
-  paddle::platform::Place inner_place() const;
+  pten::Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
