@@ -1895,7 +1895,7 @@ void BindImperative(py::module *m_ptr) {
              void *data_ptr = self_tensor->data<void>();
              auto result = cudaHostRegister(data_ptr, need_allocate_size,
                                             cudaHostRegisterDefault);
-             if (result != CUDA_SUCCESS) {
+             if (cudaSuccess != result) {
                VLOG(4) << "UVA(unified virtual addressing) failed allocate:"
                        << need_allocate_size << ", the error code:" << result;
              }
