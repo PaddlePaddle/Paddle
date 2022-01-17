@@ -1926,7 +1926,7 @@ void BindImperative(py::module *m_ptr) {
               import paddle
               x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
               x._uva()
-              print(uva)
+              print(x)
        )DOC")
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
