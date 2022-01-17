@@ -225,7 +225,7 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     const auto *y_data = y->data<T>();
     const auto *dy_data = dy->data<T>();
 
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto place = ctx.GetPlace();
     const auto &dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
     auto *dx_data = dx->mutable_data<T>(place);

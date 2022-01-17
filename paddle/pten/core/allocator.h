@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <cstdint>
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/candidate/allocator.h"
 
 namespace pten {
+namespace deprecated {
 
 /// \brief Encapsulates strategies for access/addressing, allocation/
 /// deallocation and construction/destruction of objects.
@@ -134,9 +136,12 @@ inline void swap(Allocation& a, Allocation& b) noexcept {
 /// mainly used for general data structures such as Tensor. The raw
 /// allocator is more universal and efficient.
 class Allocator {
+  using Place = paddle::platform::Place;
+
  public:
   virtual ~Allocator() = default;
   virtual Allocation Allocate(size_t bytes_size) = 0;
+  virtual const Place& place() = 0;
 };
 
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
@@ -144,4 +149,5 @@ inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
   return a->Allocate(n);
 }
 
+}  // namespace deprecated
 }  // namespace pten

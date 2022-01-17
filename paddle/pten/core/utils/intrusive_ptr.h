@@ -40,6 +40,11 @@ class intrusive_ptr {
     rhs.reset();
   }
 
+  intrusive_ptr& operator=(intrusive_ptr&& rhs) {
+    swap(rhs);
+    return *this;
+  }
+
   void reset() { this_type().swap(*this); }
 
   void reset(T* rhs) { this_type(rhs).swap(*this); }

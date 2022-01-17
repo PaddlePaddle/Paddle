@@ -26,18 +26,11 @@
 
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/pten/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     init_allocated_mem, false,
@@ -153,24 +146,9 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+
+  platform::XPUDeviceGuard gurad(place.device);
+  int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
     xpu_wait();
@@ -184,12 +162,6 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
   VLOG(10) << "  pointer=" << p;
   return p;
 #else
@@ -205,30 +177,9 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+
+  platform::XPUDeviceGuard gurad(place.device);
   xpu_free(p);
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
@@ -840,25 +791,25 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 
-Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+pten::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
+  void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
 }
 
-void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
-  boost::apply_visitor(
-      legacy::FreeVisitor(allocation->ptr(), allocation->size()),
-      allocation->place());
+void NaiveBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
+  paddle::platform::VisitPlace(
+      allocation->place(),
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()));
   platform::MemEvenRecorder::Instance().PopMemRecord(
       static_cast<void *>(allocation), place_);
   delete allocation;
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
+  return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
 }  // namespace allocation

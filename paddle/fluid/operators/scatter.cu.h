@@ -221,7 +221,7 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   // put output_dims int CUDA
   // gplace and cplace
   const auto& ctx = context.template device_context<DeviceContext>();
-  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  const auto gplace = ctx.GetPlace();
   auto cplace = platform::CPUPlace();
 
   std::vector<int64_t> v_output_dims(output_dims_size);

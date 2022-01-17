@@ -48,9 +48,19 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
-    framework::VisitDataTypeSmall(
+#ifdef PADDLE_WITH_HIP
+    if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unsupport BF16 in DataParallel for now"));
+    }
+    framework::VisitDataTypeForHIP(
         dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
                     tensor, nranks, context));
+#else
+    framework::VisitDataType(dtype_,
+                             DivNRanksForAllReduce<platform::CPUDeviceContext>(
+                                 tensor, nranks, context));
+#endif
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -825,7 +835,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // thrown in comm_pool_.
     auto next_group = next_group_;
     comm_pool_->enqueue([this, run_order, next_group, &group] {
-      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+      auto dev_id = place_.device;
       platform::SetXPUDeviceId(dev_id);
       FusedAllReduceSchedule(run_order, group, next_group);
       {

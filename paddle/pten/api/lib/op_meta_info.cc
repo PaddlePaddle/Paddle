@@ -122,13 +122,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
-  PADDLE_ENFORCE_EQ(
-      index_,
-      0UL,
-      platform::errors::Unimplemented(
-          "Currently, the InferShapeFn setting of Grad Op is not supported, "
-          "And backward Tensor `X@GRAD` will use the shape of forward Tensor "
-          "`X` by default."));
   info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
   return *this;
 }

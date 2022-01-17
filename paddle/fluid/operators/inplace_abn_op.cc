@@ -100,10 +100,10 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
 
-    const int C =
-        ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
-             ? y_dims[1]
-             : y_dims[y_dims.size() - 1]);
+    const int C = ((ctx->IsRunMKLDNNKernel() == true) ||
+                           (data_layout == DataLayout::kNCHW)
+                       ? y_dims[1]
+                       : y_dims[y_dims.size() - 1]);
 
     ctx->SetOutputDim(framework::GradVarName("X"), y_dims);
     // has_scale_grad == has_bias_grad, judge has_scale_grad is enough

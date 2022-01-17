@@ -170,24 +170,18 @@ static void InitVarBaseAndTensor(
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::XPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::CUDAPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(tensor, array, place,
+                                                    zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::NPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::MLUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -763,7 +757,6 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
-
   // Dygraph DataLoader reader process & thread related functions
   m.def(
       "_convert_to_tensor_list",
@@ -793,7 +786,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -828,7 +821,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -866,7 +859,10 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
-
+  m.def("_set_eager_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          egr::Controller::Instance().SetCurrentTracer(tracer);
+        });
   m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
   m.def("_is_dygraph_debug_enabled",
@@ -876,9 +872,8 @@ void BindImperative(py::module *m_ptr) {
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           if (egr::Controller::Instance().InEagerMode()) {
             egr::Controller::Instance().SetCurrentTracer(tracer);
-          } else {
-            imperative::SetCurrentTracer(tracer);
           }
+          imperative::SetCurrentTracer(tracer);
         });
   m.def("_enable_eager_mode",
         []() { egr::Controller::Instance().SetInEagerMode(true); });
@@ -1856,7 +1851,7 @@ void BindImperative(py::module *m_ptr) {
              // 1. get LoDTensor
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
-             void *data_ptr = t->data<void>();
+             void *data_ptr = t->data();
              size_t data_size = t->numel() * framework::SizeOfType(t->type());
              auto shared_writer_holder =
                  memory::allocation::AllocateMemoryMapWriterAllocation(
@@ -1984,6 +1979,7 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));
              dst_->ShareBufferWith(*src);
+             dst_->ShareDataTypeWith(*src);
            })
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
@@ -2150,6 +2146,8 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
+              // TODO(jiabin): Support eager here when we need to make all
+              // dygraph in eager mode
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::XPUPlace>(obj)) {

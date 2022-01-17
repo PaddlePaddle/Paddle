@@ -46,8 +46,8 @@ void SetMicroId(paddle::framework::Scope* scope,
     temp_ptr_float[0] = micro_id;
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
-                 platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+    memory::Copy(place, tensor_data, platform::CPUPlace(),
+                 reinterpret_cast<void*>(temp_ptr),
                  tensor->numel() * framework::SizeOfType(tensor->type()),
                  stream);
 #endif

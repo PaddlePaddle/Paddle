@@ -51,6 +51,7 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'xpu_places',
+    'mlu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cinn',
@@ -76,14 +77,26 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
+_already_patch_eager_tensor = False
 _global_flags_ = core.globals()
 core._disable_eager_mode()
 
 
 @signature_safe_contextmanager
-def _test_eager_guard():
+def _test_eager_guard(tracer=None):
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
+    global _already_patch_eager_tensor
+    if not _already_patch_eager_tensor:
+        from .dygraph.varbase_patch_methods import monkey_patch_varbase
+        monkey_patch_varbase()
+        from .dygraph import monkey_patch_math_varbase
+        monkey_patch_math_varbase()
+        _already_patch_eager_tensor = True
+    if tracer is None:
+        core._set_eager_tracer(_dygraph_tracer_)
+    else:
+        core._set_eager_tracer(tracer)
     try:
         yield
     finally:
@@ -343,6 +356,18 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_mlu():
+            try:
+                device_count = core.get_mlu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.MLUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -419,6 +444,15 @@ def _npu_ids():
         device_ids = [int(s) for s in npus_env.split(",")]
     else:
         device_ids = six.moves.range(core.get_npu_device_count())
+    return device_ids
+
+
+def _mlu_ids():
+    mlus_env = os.getenv("FLAGS_selected_mlus")
+    if mlus_env:
+        device_ids = [int(s) for s in mlus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_mlu_device_count())
     return device_ids
 
 
@@ -717,6 +751,48 @@ def cuda_pinned_places(device_count=None):
     return [core.CUDAPinnedPlace()] * device_count
 
 
+def mlu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
+        This function creates a list of :code:`paddle.device.MLUPlace` objects.
+        If :code:`device_ids` is None, environment variable of
+        :code:`FLAGS_selected_mlus` would be checked first. For example, if
+        :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
+        be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+        If :code:`FLAGS_selected_mlus` is not set, all visible
+        mlu places would be returned.
+        If :code:`device_ids` is not None, it should be the device
+        ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
+        the returned list would be
+        [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+
+    Parameters:
+        device_ids (list or tuple of int, optional): list of MLU device ids.
+
+    Returns:
+        list of paddle.device.MLUPlace: Created MLU place list.
+
+    Examples:
+        .. code-block:: python
+
+            # required: mlu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+            mlu_places = static.mlu_places()
+    """
+    assert core.is_compiled_with_mlu(), \
+        "Not compiled with MLU"
+    if device_ids is None:
+        device_ids = _mlu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.MLUPlace(dev_id) for dev_id in device_ids]
+
+
 class NameScope(object):
     def __init__(self, name="", parent=None):
         self._children = dict()
@@ -920,6 +996,14 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if _in_eager_mode():
+        eager_tensor = core.eager.EagerTensor(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape) if shape else [], name, type
+            if type else core.VarDesc.VarType.LOD_TENSOR, True
+            if persistable else False)
+        eager_tensor.retain_grads()
+        return eager_tensor
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
                         if type else core.VarDesc.VarType.LOD_TENSOR, True
@@ -931,6 +1015,8 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, core.eager.EagerTensor)
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -941,6 +1027,8 @@ class ParameterMetaClass(VariableMetaClass):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, EagerParamBase)
             return issubclass(t, ParamBase)
         else:
             return issubclass(t, Parameter)
@@ -2074,6 +2162,10 @@ class Variable(object):
             p = core.Place()
             p.set_place(t._place())
             place = core.NPUPlace(p.npu_device_id())
+        elif p.is_mlu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.MLUPlace(p.mlu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -3244,7 +3336,10 @@ class Block(object):
         global_block = self.program.global_block()
         param = None
         if in_dygraph_mode():
-            param = ParamBase(*args, **kwargs)
+            if _in_eager_mode():
+                param = EagerParamBase(*args, **kwargs)
+            else:
+                param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
 
@@ -6243,6 +6338,153 @@ class ParamBase(core.VarBase):
     __repr__ = __str__
 
 
+if hasattr(core, "eager"):
+    _core_eager_eagertensor = core.eager.EagerTensor
+else:
+    _core_eager_eagertensor = object
+
+
+class EagerParamBase(_core_eager_eagertensor):
+    """
+    EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode). 
+    A EagerParamBase is a persistable Tensor, and will be updated by optimizers 
+    after each iteration.
+    The training of a neural network is essentially the updating of
+    its EagerParamBase.
+
+    Relative to a general Tensor, a EagerParamBase has several its own
+    member variables:
+
+    Args:
+        trainable(bool): True if the EagerParamBase need to be updated after
+            iterations.
+        optimize_attr(map): EagerParamBase attributes related with optimizing.
+            Currently, it only contains 'learning_rate'.
+            Default: {'learning_rate': 1.0}
+        regularizer(WeightDecayRegularizer): The Regularizer which will
+            be applied on the EagerParamBase. Default: None
+        do_model_average(bool): True if the model average strategy will
+            be applied on this EagerParamBase.
+        need_clip (bool): Whether the parameter gradient need to be cliped 
+            in optimizer. Default is True.
+    """
+
+    @dygraph_only
+    def __init__(self, shape, dtype, **kwargs):
+        if shape is None:
+            raise ValueError("The shape of Parameter should not be None")
+        if dtype is None:
+            raise ValueError("The dtype of Parameter should not be None")
+
+        if len(shape) == 0:
+            raise ValueError(
+                "The dimensions of shape for Parameter must be greater than 0")
+
+        for each in shape:
+            if each < 0:
+                raise ValueError(
+                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
+                    % list(shape))
+
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
+        name = kwargs.get('name', unique_name.generate('_eager_param_base'))
+
+        super(EagerParamBase, self).__init__(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape)
+            if shape else [], name, core.VarDesc.VarType.LOD_TENSOR, True)
+        self.retain_grads()
+
+        trainable = kwargs.get('trainable', True)
+        self.stop_gradient = not trainable
+
+        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+
+        self.regularizer = kwargs.get('regularizer', None)
+
+        self.do_model_average = kwargs.get('do_model_average', None)
+
+        self.need_clip = kwargs.get('need_clip', True)
+
+        self.is_distributed = kwargs.get('is_distributed', False)
+        # self.block = default_main_program().global_block()
+
+    @property
+    def trainable(self):
+        return not self.stop_gradient
+
+    @trainable.setter
+    def trainable(self, trainable):
+        if isinstance(trainable, bool):
+            self.stop_gradient = not trainable
+        else:
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
+
+    def __str__(self):
+        """
+        Convert a EagerParamBase object to a readable string.
+
+        Returns(str): A readable string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                linear = paddle.nn.Linear(3, 3)
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [[ 0.48948765,  0.05829060, -0.25524026],
+                #         [-0.70368278,  0.52986908, -0.68742192],
+                #         [-0.54217887,  0.48439729,  0.34082305]])
+        """
+        return "Parameter containing:\n{tensor}".format(
+            tensor=super(EagerParamBase, self).__str__())
+
+    def __deepcopy__(self, memo):
+        """
+        Deep copy parameter, it will always performs Tensor copy.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import copy
+                linear = paddle.nn.Linear(1, 3)
+                linear_copy = copy.deepcopy(linear)
+
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+                print(linear_copy.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+        """
+        state = copy.deepcopy(self.__dict__, memo)
+        state["name"] = self.name + unique_name.generate("_deepcopy")
+        new_param = EagerParamBase(self.shape, self.dtype, **state)
+        memo[id(self)] = new_param
+        new_param.copy_(self, True)
+        return new_param
+
+    def _copy_to(self, device, blocking):
+        state = copy.deepcopy(self.__dict__)
+        new_param = EagerParamBase(self.shape, self.dtype, **state)
+        core.eager.tensor_copy(self, new_param, device, blocking)
+        return new_param
+
+    __repr__ = __str__
+
+
 # program is a global instance.
 _main_program_ = Program()
 _startup_program_ = Program()
@@ -6602,7 +6844,8 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
+                          core.MLUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6657,8 +6900,20 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
+    # MLU
+    avaliable_mlu_place = re.match(r'mlu:\d+', place)
+    if avaliable_mlu_place:
+        if not core.is_compiled_with_mlu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with MLU".format(avaliable_mlu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.MLUPlace(device_id)
+
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, MLUPlace and NPUPlace, but received {}.".
         format(place))
 
 
