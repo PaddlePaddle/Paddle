@@ -15,41 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T, bool LogMode = false>
-class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    int input_axis = ctx.Attr<int>("axis");
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, *x, input_axis, out);
-  }
-};
-
-template <typename T, bool LogMode = false>
-class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    dx->mutable_data<T>(ctx.GetPlace());
-
-    int input_axis = ctx.Attr<int>("axis");
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx, *out, *dout, input_axis, dx);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
@@ -60,6 +25,12 @@ REGISTER_OP_KERNEL(softmax, CUDNN, plat::CUDAPlace,
 REGISTER_OP_KERNEL(softmax_grad, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxGradCUDNNKernel<float>,
                    ops::SoftmaxGradCUDNNKernel<plat::float16>);
+REGISTER_OP_KERNEL(log_softmax, CUDNN, plat::CUDAPlace,
+                   ops::SoftmaxCUDNNKernel<float, true>,
+                   ops::SoftmaxCUDNNKernel<plat::float16, true>);
+REGISTER_OP_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
+                   ops::SoftmaxGradCUDNNKernel<float, true>,
+                   ops::SoftmaxGradCUDNNKernel<plat::float16, true>);
 #else
 REGISTER_OP_KERNEL(softmax, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxCUDNNKernel<float>,
@@ -69,4 +40,12 @@ REGISTER_OP_KERNEL(softmax_grad, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxGradCUDNNKernel<float>,
                    ops::SoftmaxGradCUDNNKernel<double>,
                    ops::SoftmaxGradCUDNNKernel<plat::float16>);
+REGISTER_OP_KERNEL(log_softmax, CUDNN, plat::CUDAPlace,
+                   ops::SoftmaxCUDNNKernel<float, true>,
+                   ops::SoftmaxCUDNNKernel<double, true>,
+                   ops::SoftmaxCUDNNKernel<plat::float16, true>);
+REGISTER_OP_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
+                   ops::SoftmaxGradCUDNNKernel<float, true>,
+                   ops::SoftmaxGradCUDNNKernel<double, true>,
+                   ops::SoftmaxGradCUDNNKernel<plat::float16, true>);
 #endif

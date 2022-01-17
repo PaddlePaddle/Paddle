@@ -1359,11 +1359,12 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
+    use_cudnn = True
 
     if in_dygraph_mode():
         if dtype is not None:
             x = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        return _C_ops.log_softmax(x, 'axis', axis)
+        return _C_ops.log_softmax(x, 'axis', axis, 'use_cudnn', use_cudnn)
 
     if dtype is None:
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1388,7 +1389,8 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         type='log_softmax',
         inputs={'X': out_cast},
         outputs={'Out': out},
-        attrs={'axis': axis})
+        attrs={'axis': axis,
+               'use_cudnn': use_cudnn})
 
     return out
 

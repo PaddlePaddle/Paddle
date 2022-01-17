@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -31,9 +32,17 @@ class LogSoftmaxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    // choose cudnn kernel if the runtime supported.
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.device_context(),
+                                   layout, library);
   }
 };
 
@@ -48,6 +57,11 @@ class LogSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The dimension index of Input(x) to perform log_softmax,"
                  "default -1 for last dimension")
         .SetDefault(-1);
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 LogSoftmax Operator.
 
@@ -86,9 +100,18 @@ class LogSoftmaxGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    // choose cudnn kernel if the runtime supported.
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.device_context(),
+                                   layout, library);
   }
 };
 
