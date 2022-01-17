@@ -1880,11 +1880,12 @@ void BindImperative(py::module *m_ptr) {
            [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
              PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
                                platform::errors::InvalidArgument(
-                                   "UVA only support CPU Tensor currently"));
+                                   "Unified virtual addressing only support "
+                                   "CPU Tensor currently."));
              platform::DeviceContextPool &pool =
                  platform::DeviceContextPool::Instance();
              auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
-             VLOG(4) << "Tnit the DeviceContext, and the place is "
+             VLOG(4) << "Init the DeviceContext, and the place is "
                      << dev_ctx->GetPlace();
              auto *self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -1892,7 +1893,7 @@ void BindImperative(py::module *m_ptr) {
              const auto &data_numel = self_tensor->numel();
              const size_t &need_allocate_size =
                  data_numel * framework::SizeOfType(self_tensor->type());
-             void *data_ptr = self_tensor->data<void>();
+             void *data_ptr = self_tensor->data();
              auto result = cudaHostRegister(data_ptr, need_allocate_size,
                                             cudaHostRegisterDefault);
              if (cudaSuccess != result) {
