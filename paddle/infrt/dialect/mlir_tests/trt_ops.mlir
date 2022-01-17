@@ -18,5 +18,5 @@ func @main() -> tensor<?xf32> {
   %d2 = "pd.elementwise_add"(%c2, %bias2) {axis=1:i32} : (tensor<?xf32>, tensor<?xf32>) -> tensor<?xf32>
   %e2 = "pd.relu"(%d2) {} : (tensor<?xf32>) -> tensor<?xf32>
   
-  "pd.fetch"(%e2) :(tensor<?xf32>)->()
+  "pd.fetch"(%e2) {name="output"} :(tensor<?xf32>)->()
 }

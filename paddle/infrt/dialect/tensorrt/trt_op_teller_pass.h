@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mlir/Pass/Pass.h"
+#include <mlir/Pass/Pass.h>
 
 namespace infrt {
 namespace trt {
@@ -29,7 +29,7 @@ namespace trt {
  *  %c = "pd.conv2d"(%a) ...
  *  %d = "pd.conv3d"(%c) ...
  *  %f = "pd.conv2d"(%a) ...
- *  "pd.fetch" %d, %f
+ *  "pd.fetch" (%d, %f)
  * }
  *
  * destination func:
@@ -37,23 +37,23 @@ namespace trt {
  *  %a = "pd.feed"()...
  *  %c = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
- *     "pd.fetch" %m
+ *     "pd.return" (%m)
  *  } ...
  *  %d = "pd.graph"(%c) {
  *      %m = "pd.conv3d"(%c)...
- *      "pd.fetch" %m
+ *      "pd.return" (%m)
  *  } ...
  *  %f = "pd.graph"(%a) {
  *      %m = "pd.conv2d"(%a)...
- *      "pd.fetch" %m
+ *      "pd.return" (%m)
  *  } ...
- *  "pd.fetch" %d, %f
+ *  "pd.fetch" (%d, %f)
  * }
  * TODO(winter-wang): Supplementary how to judge the operators can be supported
  * by tensorrt.
  */
 class trtOpTellerPass
-    : public ::mlir::PassWrapper<trtOpTellerPass, ::mlir::FunctionPass> {
+    : public mlir::PassWrapper<trtOpTellerPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
   void runOnFunction() override;

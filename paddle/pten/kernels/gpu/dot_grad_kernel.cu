@@ -20,13 +20,13 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/complex.h"
 
-PT_REGISTER_CTX_KERNEL(dot_grad,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::DotGradKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+PT_REGISTER_KERNEL(dot_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DotGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
