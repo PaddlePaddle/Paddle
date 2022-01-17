@@ -11,12 +11,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/custom_kernel.h"
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_context.h"
@@ -209,8 +206,7 @@ static void RunKernelFunc(const OpKernelInfo& op_kernel_info,
 // do nothing
 #ifdef PADDLE_WITH_ASCEND_CL
   } else if (op_kernel_info.GetBackend() == pten::Backend::NPU) {
-    const pten::NPUContext& dev_context =
-        ctx->GetDeviceContext<pten::NPUContext>();
+    const NPUContext& dev_context = ctx->GetDeviceContext<NPUContext>();
     dev_ctx.set_stream(dev_context.stream());
 #endif
   } else {

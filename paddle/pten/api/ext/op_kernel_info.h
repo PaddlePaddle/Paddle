@@ -49,7 +49,7 @@ class DeviceContext {
  public:
   DeviceContext() { stream_ = nullptr; }
   void set_stream(void* stream) { stream_ = stream; }
-  void* get_stream() const { return stream_; }
+  void* stream() const { return stream_; }
 
  private:
   void* stream_;

@@ -11,9 +11,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
-#include <vector>
-
 #include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/core/kernel_factory.h"
 
