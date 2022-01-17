@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class LoDRankTable;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 class Scope;
 }  // namespace framework

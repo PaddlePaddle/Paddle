@@ -18,12 +18,10 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/kernel_registry.h"
-
-#include "paddle/pten/kernels/cpu/elementwise_impl.h"
+#include "paddle/pten/kernels/cpu/elementwise.h"
+#include "paddle/pten/kernels/cpu/reduce.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
-
-#include "paddle/pten/kernels/hybird/eigen/reduce.h"
-#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
+#include "paddle/pten/kernels/funcs/reduce_functor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -57,14 +55,14 @@ namespace pten {
   }
 
 template <typename T, typename Context>
-void Mean(const Context& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out) {
+void MeanKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
   auto out_dtype = x.dtype();
-  pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
+  pten::Reduce<CPUContext, T, pten::funcs::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -93,14 +91,14 @@ void DivideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Sum(const Context& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out) {
-  pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
+void SumKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               bool reduce_all,
+               DataType out_dtype,
+               DenseTensor* out) {
+  pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -120,60 +118,60 @@ using complex128 = ::paddle::platform::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::paddle::platform::bfloat16;
-PT_REGISTER_CTX_KERNEL(mean, CPU, ALL_LAYOUT, pten::Mean, float, double, bool) {
-}
-PT_REGISTER_CTX_KERNEL(add,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::AddKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(subtract,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::SubtractKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(divide,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::DivideKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(multiply,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::MultiplyKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       bool,
-                       complex64,
-                       complex128) {}
-PT_REGISTER_CTX_KERNEL(sum,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::Sum,
-                       bool,
-                       float,
-                       double,
-                       paddle::platform::float16,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {
+PT_REGISTER_KERNEL(
+    mean, CPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool) {}
+PT_REGISTER_KERNEL(add,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::AddKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(subtract,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SubtractKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(divide,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::DivideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(multiply,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::MultiplyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(sum,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SumKernel,
+                   bool,
+                   float,
+                   double,
+                   paddle::platform::float16,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
