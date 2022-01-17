@@ -48,7 +48,10 @@ bool InSameStream(const std::shared_ptr<Allocation>& allocation,
 }
 
 pten::Allocator* GetDefaultAllocator(const platform::Place& place) {
-  return allocation::AllocatorFacade::Instance().GetAllocator(place).get();
+  auto* allocator =
+      allocation::AllocatorFacade::Instance().GetAllocator(place).get();
+  CHECK(allocator);
+  return allocator;
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -112,9 +112,6 @@ TEST(dense_tensor, resize) {
   CHECK_EQ(tensor_0.capacity(), 2u);
   tensor_0.Resize({1, 2, 3});
   CHECK_EQ(tensor_0.capacity(), 2u);
-  tensor_0.AllocateFrom<int8_t>(
-      std::unique_ptr<Allocator>(new FancyAllocator).get());
-  CHECK_EQ(tensor_0.capacity(), 6u);
 }
 
 TEST(dense_tensor, shallow_copy) {

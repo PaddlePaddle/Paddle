@@ -148,8 +148,6 @@ class DenseTensor : public TensorBase,
   /// \param dims The new dims of the dense tensor.
   /// \param lod The new lod of the dense tensor.
   // void Resize(const DDim& dims);
-  void ResizeAndAllocate(const DDim& dims, Allocator* allocator);
-
   DenseTensor& Resize(const DDim& dims);
 
   /// \brief Change the lod information in the metadata.
@@ -169,16 +167,16 @@ class DenseTensor : public TensorBase,
   /// \brief Get the const data pointer value of raw type.
   /// \return The const data pointer value of raw type.
   const void* data() const;
+  /*
+    template <typename T>
+    T* AllocateFrom(Allocator* allocator, size_t requested_size = 0);
 
-  template <typename T>
-  T* AllocateFrom(Allocator* allocator, size_t requested_size = 0);
+    void* AllocateFrom(Allocator* allocator,
+                       DataType type,
+                       size_t requested_size = 0);
 
-  void* AllocateFrom(Allocator* allocator,
-                     DataType type,
-                     size_t requested_size = 0);
-
-  void* AllocateFrom(Allocator* allocator, size_t requested_size = 0);
-
+    void* AllocateFrom(Allocator* allocator, size_t requested_size = 0);
+  */
  public:
   bool IsInitialized() const { return holder_ != nullptr; }
 
