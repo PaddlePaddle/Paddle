@@ -1065,15 +1065,12 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const GPUContext& ctx,
+void TensorReduceFunctorImpl(
                              const pten::DenseTensor& x,
                              pten::DenseTensor* y,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
-  // Allocate memory
-  y->mutable_data<Ty>(ctx.GetPlace());
-
   auto x_dim = paddle::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
@@ -1247,7 +1244,6 @@ void Reduce(const GPUContext& dev_ctx,
                                                  data_t,
                                                  ReduceOp,
                                                  TransformOp<T, MPType>>(
-              dev_ctx,
               x,
               out,
               TransformOp<T, MPType>(reduce_num),
@@ -1258,7 +1254,6 @@ void Reduce(const GPUContext& dev_ctx,
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     pten::kernels::
         TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
-            dev_ctx,
             x,
             out,
             TransformOp<T, MPType>(reduce_num),

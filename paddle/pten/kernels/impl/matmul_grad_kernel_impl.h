@@ -64,7 +64,7 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                                      T,
                                      kps::AddFunctor,
                                      kps::IdentityFunctor<T>>(
-        dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
+        input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };
 #endif
