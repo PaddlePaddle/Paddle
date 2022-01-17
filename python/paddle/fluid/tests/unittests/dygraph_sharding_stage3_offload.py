@@ -24,14 +24,13 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
 
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
 
 epoch = 10
-paddle.seed(2021)
-np.random.seed(2021)
+batch_size = 32
+paddle.seed(2022)
+np.random.seed(2022)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
@@ -65,10 +64,10 @@ def reader_decorator(linear_size=1000):
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    optimizer = paddle.optimizer.Momentum(
+    optimizer = paddle.optimizer.AdamW(
         parameters=[{
-            "params": list(model.parameters())
-        }] if opt_group else list(model.parameters()),
+            "params": model.parameters()
+        }] if opt_group else model.parameters(),
         learning_rate=0.001,
         weight_decay=0.00001,
         grad_clip=clip,
@@ -78,40 +77,21 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
 
 
 def train_mlp(model,
-              sharding_stage,
               use_pure_fp16=False,
               accumulate_grad=False,
-              batch_size=100,
-              opt_group=False,
-              recompute=False):
+              offload=False,
+              convert2cpu=False):
     group = paddle.distributed.new_group([0, 1])
-    if opt_group:
-        optimizer = optimizer_setting(
-            model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group)
-    else:
-        optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
+    optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if use_pure_fp16:
         model = paddle.amp.decorate(
             models=model, level='O2', save_dtype='float32')
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = ShardingScaler(scaler)
-    if sharding_stage == 2:
-        optimizer = ShardingOptimizerStage2(
-            params=model.parameters(), optim=optimizer, group=group)
-        model = ShardingStage2(
-            model,
-            optimizer,
-            group=group,
-            buffer_max_size=2**21,
-            accumulate_grads=batch_size == 20)
-    elif sharding_stage == 3:
-        model = ShardingStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            accumulate_grads=batch_size == 20,
-            sync_comm=recompute)
+
+    model = ShardingStage3(
+        model, optimizer=optimizer, group=group, offload=offload)
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)
@@ -139,7 +119,6 @@ def train_mlp(model,
                 avg_loss.backward()
             else:
                 scaler.scale(avg_loss).backward()
-
             if not accumulate_grad:
                 if not use_pure_fp16:
                     optimizer.step()
@@ -154,14 +133,16 @@ def train_mlp(model,
                 scaler.step(optimizer)
                 scaler.update()
             optimizer.clear_grad()
-    if sharding_stage == 3:
+    if not convert2cpu:
         model.get_all_parameters()
+    else:
+        model.get_all_parameters(convert2cpu)
     return model.parameters()
 
 
-def test_stage2_stage3():
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8 = MLP(), MLP(), MLP(
-    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
+def test_stage3_offload():
+    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6 = MLP(), MLP(), MLP(), MLP(), MLP(
+    ), MLP(), MLP()
     state_dict = mlp.state_dict()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
@@ -169,68 +150,43 @@ def test_stage2_stage3():
     mlp4.set_state_dict(state_dict)
     mlp5.set_state_dict(state_dict)
     mlp6.set_state_dict(state_dict)
-    mlp7.set_state_dict(state_dict)
-    mlp8.set_state_dict(state_dict)
-    # fp32 
-    stage2_params = train_mlp(
-        mlp1, sharding_stage=2, use_pure_fp16=False, opt_group=False)
-    stage3_params = train_mlp(
-        mlp2, sharding_stage=3, use_pure_fp16=False, opt_group=False)
 
-    for i in range(len(stage2_params)):
-        np.testing.assert_allclose(
-            stage2_params[i].numpy(),
-            stage3_params[i].numpy(),
-            rtol=1e-6,
-            atol=1e-6)
-
-    # fp32 accumulate grad
-    stage3_params = train_mlp(
-        mlp3,
-        sharding_stage=3,
-        use_pure_fp16=False,
-        accumulate_grad=True,
-        opt_group=True)
-    stage3_params_add = train_mlp(
-        mlp4,
-        sharding_stage=3,
-        use_pure_fp16=False,
-        accumulate_grad=True,
-        batch_size=20,
-        opt_group=True)
+    # fp32 offload
+    stage3_params = train_mlp(mlp1, use_pure_fp16=False)
+    stage3_params_offload = train_mlp(mlp2, use_pure_fp16=False, offload=True)
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
             stage3_params[i].numpy(),
-            stage3_params_add[i].numpy(),
+            stage3_params_offload[i].numpy(),
             rtol=1e-6,
-            atol=1e-6)
+            atol=1e-8)
 
-    # fp16
-    stage2_params = train_mlp(
-        mlp5, sharding_stage=2, use_pure_fp16=True, opt_group=False)
-    stage3_params = train_mlp(
-        mlp6, sharding_stage=3, use_pure_fp16=True, opt_group=False)
-    for i in range(len(stage2_params)):
-        np.testing.assert_allclose(
-            stage2_params[i].numpy(),
-            stage3_params[i].numpy(),
-            rtol=1e-4,
-            atol=1e-4)
-
-    # fp16 recompute
-    stage3_params = train_mlp(
-        mlp7, sharding_stage=3, use_pure_fp16=True, opt_group=False)
-    stage3_params_re = train_mlp(
-        mlp8,
-        sharding_stage=3,
-        use_pure_fp16=True,
-        opt_group=False,
-        recompute=True)
+    # fp16 offload
+    stage3_params = train_mlp(mlp3, use_pure_fp16=True)
+    stage3_params_offload = train_mlp(mlp4, use_pure_fp16=True, offload=True)
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
-            stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6)
+            stage3_params[i].numpy(),
+            stage3_params_offload[i].numpy(),
+            rtol=1e-2,
+            atol=1e-2)
+
+    # fp32 accumulate grad offload
+    stage3_params = train_mlp(mlp5, use_pure_fp16=False, accumulate_grad=True)
+    stage3_params_offload = train_mlp(
+        mlp6,
+        use_pure_fp16=False,
+        accumulate_grad=True,
+        offload=True,
+        convert2cpu=True)
+    for i in range(len(stage3_params)):
+        np.testing.assert_allclose(
+            stage3_params[i].numpy(),
+            stage3_params_offload[i].numpy(),
+            rtol=1e-6,
+            atol=1e-8)
     return
 
 
 if __name__ == '__main__':
-    test_stage2_stage3()
+    test_stage3_offload()
