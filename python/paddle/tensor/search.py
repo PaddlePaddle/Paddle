@@ -523,23 +523,26 @@ def mode(x, axis=-1, keepdim=False, name=None):
     return values, indices
 
 
-def where(condition, x, y, name=None):
+def where(condition, x=None, y=None, name=None):
     r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+
+    **Note**:
+        ``paddle.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``.
 
     .. math::
 
       out_i =
-      \\begin{cases}
-      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
-      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
-      \\end{cases}
+      \begin{cases}
+      x_i, \quad  \text{if}  \ condition_i \  is \ True \\
+      y_i, \quad  \text{if}  \ condition_i \  is \ False \\
+      \end{cases}
 
 
     Args:
         condition(Tensor): The condition to choose x or y.
-        x(Tensor): x is a Tensor with data type float32, float64, int32, int64.
-        y(Tensor): y is a Tensor with data type float32, float64, int32, int64.
+        x(Tensor, optional): x is a Tensor with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
+        y(Tensor, optional): y is a Tensor with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
 
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -559,7 +562,19 @@ def where(condition, x, y, name=None):
 
           print(out)
           #out: [1.0, 1.0, 3.2, 1.2]
+
+          out = paddle.where(x>1)
+          print(out)
+          #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
+          #            [[2],
+          #             [3]]),)
     """
+    if x is None and y is None:
+        return nonzero(condition, as_tuple=True)
+
+    if x is None or y is None:
+        raise ValueError("either both or neither of x and y should be given")
+
     if not in_dygraph_mode():
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(

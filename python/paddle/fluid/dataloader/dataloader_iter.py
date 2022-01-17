@@ -31,7 +31,7 @@ import queue
 
 import paddle
 from .. import core, layers
-from ..framework import in_dygraph_mode
+from ..framework import in_dygraph_mode, _in_eager_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
@@ -202,22 +202,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
-        # NOTE(chenweihang): [ Why need to set not to execute pten kernel here? ]
-        # Now, in order to ensure that the execution performance of the dynamic
-        # graph mode in pten compatible state does not decline significantly,
-        # we have adopted the approach of caching a KernelContext globally for
-        # the dynamic graph tracer to reduce the construction and deconstruction
-        # overhead of data interfaces such as the compatible state DenseTensor.
-        # The static graph is each op caches a KernelContext, but the op of
-        # the dynamic graph will be constructed and destroyed every round of
-        # execution, so it is impossible to cache KernelContext for each op.
-        # However, it is not thread-safe if using only one global kernel context in
-        # dynamic graph. If the pten op of paddle is used in the DataLoader thread,
-        # it may cause access errors. We temporarily do not execute pten kernel
-        # in this scenario and will find a better solution later and remove
-        # this setting.
-        set_flags({'FLAGS_run_pten_kernel': False})
-
         while not self._thread_done_event.is_set():
             try:
                 indices = next(self._sampler_iter)
@@ -268,7 +252,11 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def __next__(self):
         try:
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_eager_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
@@ -460,7 +448,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
-                self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_eager_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    self._reader.read_next_var_list()
             elif self._return_list:
                 self._reader.read_next_list()
             else:
@@ -518,9 +510,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
-
-        # NOTE(chenweihang): See Note [ Why need to set not to execute pten kernel here? ]
-        set_flags({'FLAGS_run_pten_kernel': False})
 
         while not self._thread_done_event.is_set():
             batch = self._get_data()
@@ -715,7 +704,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._blocking_queue.close()
 
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_eager_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:

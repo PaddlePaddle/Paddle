@@ -24,25 +24,15 @@ namespace experimental {
 
 class DefaultAllocator : public pten::Allocator {
  public:
-  using Allocation = pten::Allocation;
   explicit DefaultAllocator(const paddle::platform::Place& place)
       : place_(place) {}
 
-  static void Delete(Allocation* allocation) {
-    deleter_(allocation->CastContextWithoutCheck<paddle::memory::Allocation>());
+  AllocationPtr Allocate(size_t bytes_size) override {
+    return memory::Alloc(place_, bytes_size);
   }
-
-  Allocation Allocate(size_t bytes_size) override {
-    paddle::memory::AllocationPtr a = memory::Alloc(place_, bytes_size);
-    void* ptr = a->ptr();
-    return Allocation(ptr, a.release(), &Delete, place_);
-  }
-
-  const paddle::platform::Place& place() override { return place_; }
 
  private:
   paddle::platform::Place place_;
-  static paddle::memory::Allocator::AllocationDeleter deleter_;
 };
 
 }  // namespace experimental

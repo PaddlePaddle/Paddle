@@ -14,17 +14,31 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename Enable = void>
 struct ModFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = a % b;
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((b ^ res) < 0)) res += b;
+    return res;
+  }
+};
+
+template <typename T>
+struct ModFunctor<T,
+                  typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(a, b);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
     if ((res != 0) && ((res < 0) != (b < 0))) res += b;
     return res;
   }
@@ -35,15 +49,6 @@ struct InverseModFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
     T res = b % a;
     if ((res != 0) && ((res < 0) != (a < 0))) res += a;
-    return res;
-  }
-};
-
-template <typename T>
-struct ModFunctorFP {
-  inline HOSTDEVICE T operator()(T a, T b) const {
-    T res = fmod(a, b);
-    if ((res != 0) && ((b < 0) != (res < 0))) res += b;
     return res;
   }
 };
@@ -81,8 +86,8 @@ void elementwise_mod_fp(const framework::ExecutionContext &ctx,
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   if (x_dims.size() >= y_dims.size()) {
-    ElementwiseComputeEx<ModFunctorFP<T>, DeviceContext, T>(
-        ctx, x, y, axis, ModFunctorFP<T>(), z);
+    ElementwiseComputeEx<ModFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          ModFunctor<T>(), z);
   } else {
     ElementwiseComputeEx<InverseModFunctorFP<T>, DeviceContext, T>(
         ctx, x, y, axis, InverseModFunctorFP<T>(), z);

@@ -170,24 +170,18 @@ static void InitVarBaseAndTensor(
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::XPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::CUDAPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(tensor, array, place,
+                                                    zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::NPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::MLUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -1988,6 +1982,29 @@ void BindImperative(py::module *m_ptr) {
              dst_->ShareDataTypeWith(*src);
            })
       .def("_is_shared_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
+           })
+      .def("_share_underline_tensor_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
+             dst_->ShareDataTypeWith(*src);
+             dst_->Resize(src->dims());
+           })
+      .def("_is_shared_underline_tensor_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
              auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();

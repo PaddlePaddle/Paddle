@@ -30,7 +30,7 @@ namespace pten {
 
 template <typename InT, typename OutT>
 struct CastFuctor {
-  __device__ __forceinline__ OutT operator()(const InT& x) const {
+  __device__ __forceinline__ OutT operator()(const InT x) const {
     return static_cast<OutT>(x);
   }
 };
@@ -60,24 +60,24 @@ void CastKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)     \
-  PT_REGISTER_CTX_KERNEL(cast,                              \
-                         GPU,                               \
-                         ALL_LAYOUT,                        \
-                         pten::CastKernel,                  \
-                         float,                             \
-                         double,                            \
-                         int,                               \
-                         int64_t,                           \
-                         int16_t,                           \
-                         bool,                              \
-                         uint8_t,                           \
-                         paddle::platform::float16,         \
-                         paddle::platform::complex<float>,  \
-                         paddle::platform::complex<double>, \
-                         ##__VA_ARGS__) {                   \
-    kernel->OutputAt(0).SetDataType(                        \
-        paddle::experimental::DataType::UNDEFINED);         \
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
+  PT_REGISTER_KERNEL(cast,                              \
+                     GPU,                               \
+                     ALL_LAYOUT,                        \
+                     pten::CastKernel,                  \
+                     float,                             \
+                     double,                            \
+                     int,                               \
+                     int64_t,                           \
+                     int16_t,                           \
+                     bool,                              \
+                     uint8_t,                           \
+                     paddle::platform::float16,         \
+                     paddle::platform::complex<float>,  \
+                     paddle::platform::complex<double>, \
+                     ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                    \
+        paddle::experimental::DataType::UNDEFINED);     \
   }
 
 #if !defined(PADDLE_WITH_HIP)

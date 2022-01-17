@@ -252,9 +252,9 @@ class UniformInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
@@ -334,24 +334,28 @@ class NormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        op = block.append_op(
-            type="gaussian_random",
-            outputs={"Out": var},
-            attrs={
-                "shape": var.shape,
-                "dtype": var.dtype,
-                "mean": self._mean,
-                "std": self._std_dev,
-                "seed": self._seed,
-                "use_mkldnn": False
-            },
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            out_var = _C_ops.gaussian_random(
+                'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
+                'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
+            out_var._share_underline_tensor_to(var)
+            return None
+        else:
+            op = block.append_op(
+                type="gaussian_random",
+                outputs={"Out": var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": var.dtype,
+                    "mean": self._mean,
+                    "std": self._std_dev,
+                    "seed": self._seed,
+                    "use_mkldnn": False
+                },
+                stop_gradient=True)
 
-        if not framework.in_dygraph_mode():
             var.op = op
             return op
-        else:
-            return None
 
 
 class TruncatedNormalInitializer(Initializer):
@@ -420,9 +424,9 @@ class TruncatedNormalInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
@@ -560,9 +564,9 @@ class XavierInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             if self._uniform:
@@ -713,9 +717,9 @@ class MSRAInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             if self._uniform:
@@ -881,9 +885,9 @@ class BilinearInitializer(Initializer):
             ]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
@@ -987,9 +991,9 @@ class NumpyArrayInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
