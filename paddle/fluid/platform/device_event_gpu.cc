@@ -26,7 +26,7 @@ struct CUDADeviceEventWrapper {
         platform::errors::PreconditionNotMet(
             "Required device shall be CUDAPlace, but received %d. ", place));
 
-    device_id_ = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    device_id_ = place.device;
     PADDLE_ENFORCE_GT(
         device_id_, -1,
         platform::errors::PreconditionNotMet(

@@ -1540,8 +1540,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                              const GPUContext &ctx,
                              DX_OP dx_op,
                              DY_OP dy_op) {
-  const auto gplace =
-      BOOST_GET_CONST(paddle::platform::CUDAPlace, ctx.GetPlace());
+  const auto gplace = ctx.GetPlace();
   auto cplace = paddle::platform::CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();

@@ -150,24 +150,21 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
     VLOG(6) << "Get Device id";
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      paddle::platform::SetDeviceId(
-          BOOST_GET_CONST(paddle::platform::CUDAPlace, place).device);
+      paddle::platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-      paddle::platform::SetXPUDeviceId(
-          BOOST_GET_CONST(paddle::platform::XPUPlace, place).device);
+      paddle::platform::SetXPUDeviceId(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      paddle::platform::SetNPUDeviceId(
-          BOOST_GET_CONST(paddle::platform::NPUPlace, place).device);
+      paddle::platform::SetNPUDeviceId(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
