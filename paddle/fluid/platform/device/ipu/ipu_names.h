@@ -12,27 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device/ipu/device.h"
+#pragma once
+
+#include <popart/names.hpp>
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-Device::Device(const popart::DeviceInfo& device_info)
-    : id_(device_info.getId()), is_attached_(device_info.isAttached()) {
-  popart::DeviceType popart_device_type = device_info.getType();
-  switch (popart_device_type) {
-    case popart::DeviceType::IpuModel:
-      device_type_ = DeviceType::IpuModel;
-      break;
-    case popart::DeviceType::Ipu:
-      device_type_ = DeviceType::Ipu;
-      break;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "popart::DeviceType:Unsupported type %d", popart_device_type));
-  }
-}
+static constexpr const char *sIpuIndexAttr = "ipu_index";
+static constexpr const char *sIpuStageAttr = "ipu_stage";
+static constexpr const char *sMatmulSerializeFactor = "serialize_factor";
+static constexpr const char *sMatmulSerializeMode = "serialize_mode";
+static constexpr const char *sOpIdentifyIdAttr = "op_identify_id";
+static constexpr const char *sDebugInfoId = "__debug_info_id";
+
+static constexpr const char *sBeta1 = "beta1";
+static constexpr const char *sBeta2 = "beta2";
+static constexpr const char *sBeta1Pow = "Beta1Pow";
+static constexpr const char *sBeta2Pow = "Beta2Pow";
+static constexpr const char *sLossScaling = "LossScaling";
 
 }  // namespace ipu
 }  // namespace platform
