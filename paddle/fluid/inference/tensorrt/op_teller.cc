@@ -271,36 +271,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      if (desc.HasAttr("padding_algorithm")) {
-        auto padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-        if (padding_algorithm == "VALID") {
-          return false;
-        }
-        if (padding_algorithm == "SAME") {
-          if (desc.HasAttr("dilations")) {
-            const std::vector<int> dilations =
-                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
-            if (dilations[0] != 1 || dilations[1] != 1) {
-              VLOG(3) << "In Same mode, Dilations must be (1, 1) for "
-                         "tensorRT, but given ("
-                      << dilations[0] << ", " << dilations[1] << ")";
-              return false;
-            }
-          }
-        }
-      }
-
-      if (use_no_calib_int8) {
-        if (desc.HasAttr("padding_algorithm")) {
-          auto padding_algorithm =
-              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-          if (padding_algorithm == "SAME") {
-            return false;
-          }
-        }
-      }
-
       if (desc.HasAttr("enable_int8")) {
         if (op_type == "conv2d" || op_type == "conv2d_fusion") {
           if (!desc.HasAttr("Input_scale")) {

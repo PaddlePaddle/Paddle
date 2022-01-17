@@ -68,39 +68,27 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                                         "data_format": data_format
                                     }, {}]
 
-                                    if padding_algorithm == 'EXPLICIT':
-                                        ops_config = [{
-                                            "op_type": "conv2d",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"]
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["conv_output_data"]
-                                            },
-                                            "op_attrs": dics[0]
-                                        }, {
-                                            "op_type": "relu",
-                                            "op_inputs": {
-                                                "X": ["conv_output_data"]
-                                            },
-                                            "op_outputs": {
-                                                "Out": ["output_data"]
-                                            },
-                                            "op_attrs": dics[1]
-                                        }]
-                                    else:
-                                        ops_config = [{
-                                            "op_type": "conv2d",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"]
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["output_data"]
-                                            },
-                                            "op_attrs": dics[0]
-                                        }]
+                                    ops_config = [{
+                                        "op_type": "conv2d",
+                                        "op_inputs": {
+                                            "Input": ["input_data"],
+                                            "Filter": ["conv2d_weight"]
+                                        },
+                                        "op_outputs": {
+                                            "Output": ["conv_output_data"]
+                                        },
+                                        "op_attrs": dics[0]
+                                    }, {
+                                        "op_type": "relu",
+                                        "op_inputs": {
+                                            "X": ["conv_output_data"]
+                                        },
+                                        "op_outputs": {
+                                            "Out": ["output_data"]
+                                        },
+                                        "op_attrs": dics[1]
+                                    }]
+
                                     ops = self.generate_op_config(ops_config)
 
                                     program_config = ProgramConfig(
@@ -188,7 +176,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             attrs, False), (1e-5, 1e-5)
 
         # for dynamic_shape
-
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
@@ -200,25 +187,10 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs[
-                    'padding_algorithm'] == "SAME" or program_config.ops[
-                        0].attrs['padding_algorithm'] == "VALID":
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When padding_algorithm is 'SAME' or 'VALID', Trt dose not support. In this case, trt build error is caused by scale op."
-        )
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
     def test_quant(self):
-        self.add_skip_trt_case()
         self.run_test(quant=True)
 
 
