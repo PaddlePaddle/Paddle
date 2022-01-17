@@ -1980,9 +1980,31 @@ void BindImperative(py::module *m_ptr) {
                      "Tensor %s has not been initialized!", self->Name()));
              dst_->ShareBufferWith(*src);
              dst_->ShareDataTypeWith(*src);
-             dst_->Resize(src->dims());
            })
       .def("_is_shared_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
+           })
+      .def("_share_underline_tensor_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
+             dst_->ShareDataTypeWith(*src);
+             dst_->Resize(src->dims());
+           })
+      .def("_is_shared_underline_tensor_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
              auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
