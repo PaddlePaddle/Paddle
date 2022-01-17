@@ -296,10 +296,10 @@ void ConcatImpl(const Context& context,
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
   paddle::memory::AllocationPtr data_alloc, col_alloc;
-  data_alloc =
-      paddle::memory::Alloc(platform::CUDAPinnedPlace(), in_num * sizeof(T*));
+  data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                     in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-  col_alloc = paddle::memory::Alloc(platform::CUDAPinnedPlace(),
+  col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                     inputs_col_num * sizeof(int));
   inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 #endif
@@ -449,10 +449,11 @@ void SplitImpl(const Context& context,
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
   memory::AllocationPtr data_alloc, cols_alloc;
-  data_alloc = memory::Alloc(platform::CUDAPinnedPlace(), o_num * sizeof(T*));
+  data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                     o_num * sizeof(T*));
   outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
-  cols_alloc = memory::Alloc(platform::CUDAPinnedPlace(),
-                             (outputs_cols_num) * sizeof(int64_t));
+  cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                     (outputs_cols_num) * sizeof(int64_t));
   outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
 #endif
 
