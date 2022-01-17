@@ -30,9 +30,9 @@ using DDim = paddle::framework::DDim;
 
 TEST(DEV_API, conj) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
+  pten::DenseTensor dense_x(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::COMPLEX64,
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));

@@ -450,6 +450,18 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
+  auto obj = ::pybind11::cast(type);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const paddle::framework::LoDTensor* value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::copy);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const void* value) {
   if (value == nullptr) {
     Py_INCREF(Py_None);

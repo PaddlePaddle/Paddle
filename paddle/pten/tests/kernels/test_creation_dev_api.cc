@@ -46,9 +46,9 @@ TEST(DEV_API, empty) {
 
 TEST(DEV_API, empty_like) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
+  pten::DenseTensor dense_x(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 2}),
                                                   pten::DataLayout::NCHW));
@@ -90,9 +90,9 @@ TEST(DEV_API, full) {
 
 TEST(DEV_API, full_like) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
+  pten::DenseTensor dense_x(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 2}),
                                                   pten::DataLayout::NCHW));
