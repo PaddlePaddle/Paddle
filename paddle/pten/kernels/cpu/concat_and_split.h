@@ -53,8 +53,7 @@ void ConcatImpl(const Context& context,
     out_cols += t_cols;
     input_cols[i] = t_cols;
   }
-  auto cpu_place =
-      BOOST_GET_CONST(paddle::platform::CPUPlace, context.GetPlace());
+  auto cpu_place = context.GetPlace();
 
   // computation
   auto output_data = output->data<T>();
@@ -114,8 +113,7 @@ void SplitImpl(const Context& context,
     input_cols += t_cols;
     output_cols[i] = t_cols;
   }
-  auto cpu_place =
-      BOOST_GET_CONST(paddle::platform::CPUPlace, context.GetPlace());
+  auto cpu_place = context.GetPlace();
 
   // computation
   for (int k = 0; k < input_rows; ++k) {

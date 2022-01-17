@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.h"
+#include "paddle/fluid/framework/ir/ipu/transfer_cast_op_pass.h"
 
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
@@ -21,31 +21,33 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void IpuGraphBuilderPass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(10) << "enter IpuGraphBuilderPass::ApplyImpl";
+// Transfer the target dtype of Cast Op to FP16 if the original target is FP32
+// and enable FP16 mode.
+void TransferCastOpPass::ApplyImpl(ir::Graph* graph) const {
+  VLOG(10) << "enter TransferCastOpPass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  std::vector<std::string> feed_list;
-  feed_list = Get<std::vector<std::string>>("feed_list");
-
-  std::vector<std::string> fetch_list;
-  fetch_list = Get<std::vector<std::string>>("fetch_list");
-
   auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
-
-  ipu_backend->Compile(graph, feed_list, fetch_list);
+  auto enable_fp16 = ipu_backend->GetIpuStrategy()->enable_fp16;
+  if (enable_fp16) {
+    for (auto* node : graph->Nodes()) {
+      if (node->IsOp() && node->Op()->Type() == "popart_cast") {
+        if (BOOST_GET_CONST(std::string, node->Op()->GetAttr("to")) ==
+            "FLOAT") {
+          node->Op()->SetAttr("to", std::string("FLOAT16"));
+        }
+      }
+    }
+  }
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
-  VLOG(10) << "leave IpuGraphBuilderPass::ApplyImpl";
+  VLOG(10) << "leave TransferCastOpPass::ApplyImpl";
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(ipu_graph_builder_pass,
-              paddle::framework::ir::IpuGraphBuilderPass)
-    .RequirePassAttr("feed_list")
-    .RequirePassAttr("fetch_list");
+REGISTER_PASS(transfer_cast_op_pass, paddle::framework::ir::TransferCastOpPass);

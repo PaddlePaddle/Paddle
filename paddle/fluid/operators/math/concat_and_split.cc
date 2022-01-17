@@ -81,8 +81,7 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
   void operator()(const platform::XPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     int num = input.size();
@@ -120,8 +119,7 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     auto& ins = ref_inputs;
@@ -166,8 +164,7 @@ class ConcatFunctor<platform::NPUDeviceContext, T> {
   void operator()(const platform::NPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    int dev_id =
-        BOOST_GET_CONST(platform::NPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::NPUDeviceGuard guard(dev_id);
 
     std::vector<std::string> names;
@@ -211,7 +208,7 @@ class SplitFunctor<platform::NPUDeviceContext, T> {
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, context.GetPlace());
+    auto npu_place = context.GetPlace();
 
     // computation
     for (int k = 0; k < input_rows; ++k) {

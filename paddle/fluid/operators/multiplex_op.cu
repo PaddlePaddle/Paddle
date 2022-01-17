@@ -44,8 +44,7 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     TensorCopySync(*ids, platform::CPUPlace(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = ctx.cuda_device_context().stream();
-    platform::CUDAPlace place =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    platform::CUDAPlace place = ctx.GetPlace();
     for (auto i = 0; i < rows; i++) {
       int32_t k = index[i];
       PADDLE_ENFORCE_GE(k, 0, platform::errors::PreconditionNotMet(
@@ -89,8 +88,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = ctx.cuda_device_context().stream();
-    platform::CUDAPlace place =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    platform::CUDAPlace place = ctx.GetPlace();
     for (auto i = 0; i < rows; i++) {
       size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {

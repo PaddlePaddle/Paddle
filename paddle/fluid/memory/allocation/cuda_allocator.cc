@@ -34,7 +34,7 @@ namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAAllocator::FreeImpl(pten::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
+      allocation->place(), place_,
       platform::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
   platform::RecordedGpuFree(allocation->ptr(), allocation->size(),

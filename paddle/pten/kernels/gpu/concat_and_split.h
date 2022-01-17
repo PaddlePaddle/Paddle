@@ -325,13 +325,12 @@ void ConcatImpl(const Context& context,
     tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
         inputs_data, in_num);
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, context.GetPlace()),
-        tmp_dev_ins_data->ptr(),
-        paddle::platform::CPUPlace(),
-        restored,
-        in_num * sizeof(T*),
-        context.stream());
+    paddle::memory::Copy(context.GetPlace(),
+                         tmp_dev_ins_data->ptr(),
+                         paddle::platform::CPUPlace(),
+                         restored,
+                         in_num * sizeof(T*),
+                         context.stream());
     dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
   }
 
@@ -373,13 +372,12 @@ void ConcatImpl(const Context& context,
 
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, context.GetPlace()),
-        tmp_dev_ins_col_data->ptr(),
-        paddle::platform::CPUPlace(),
-        restored,
-        inputs_col_num * sizeof(int64_t),
-        context.stream());
+    paddle::memory::Copy(context.GetPlace(),
+                         tmp_dev_ins_col_data->ptr(),
+                         paddle::platform::CPUPlace(),
+                         restored,
+                         inputs_col_num * sizeof(int64_t),
+                         context.stream());
     int64_t* dev_ins_col_data =
         static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
@@ -399,8 +397,10 @@ void ConcatImpl(const Context& context,
   auto* data_alloc_released = data_alloc.release();
   auto* col_alloc_released = col_alloc.release();
   context.AddStreamCallback([data_alloc_released, col_alloc_released] {
-    memory::allocation::Allocator::AllocationDeleter(data_alloc_released);
-    memory::allocation::Allocator::AllocationDeleter(col_alloc_released);
+    paddle::memory::allocation::Allocator::AllocationDeleter(
+        data_alloc_released);
+    paddle::memory::allocation::Allocator::AllocationDeleter(
+        col_alloc_released);
   });
 #endif
 }
@@ -480,13 +480,12 @@ void SplitImpl(const Context& context,
     tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
         outputs_data, o_num);
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, context.GetPlace()),
-        tmp_dev_outs_data->ptr(),
-        paddle::platform::CPUPlace(),
-        restored,
-        o_num * sizeof(T*),
-        context.stream());
+    paddle::memory::Copy(context.GetPlace(),
+                         tmp_dev_outs_data->ptr(),
+                         paddle::platform::CPUPlace(),
+                         restored,
+                         o_num * sizeof(T*),
+                         context.stream());
     dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
   }
 
@@ -527,13 +526,12 @@ void SplitImpl(const Context& context,
         paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
         outputs_cols, outputs_cols_num);
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, context.GetPlace()),
-        tmp_dev_ins_col_data->ptr(),
-        paddle::platform::CPUPlace(),
-        restored,
-        outputs_cols_num * sizeof(int64_t),
-        context.stream());
+    paddle::memory::Copy(context.GetPlace(),
+                         tmp_dev_ins_col_data->ptr(),
+                         paddle::platform::CPUPlace(),
+                         restored,
+                         outputs_cols_num * sizeof(int64_t),
+                         context.stream());
     int64_t* dev_outs_col_data =
         reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
