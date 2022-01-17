@@ -33,6 +33,11 @@ void Copy(const Context& dev_ctx,
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
 
+  VLOG(1) << "###### SRC: " << src_ptr << "   " << src_place;
+  VLOG(1) << "###### DST: " << dst_place;
+  VLOG(1) << "### paddle::platform::is_cpu_place(dst_place):"
+          << paddle::platform::is_cpu_place(dst_place);
+
   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The src and dst tensor are all CPU tensor, you should call copy "
@@ -41,6 +46,8 @@ void Copy(const Context& dev_ctx,
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
+
+  VLOG(1) << "##### out: " << dst->data();
 
   dst->Resize(src.dims());
   auto* dst_ptr = dst->mutable_data();
@@ -51,6 +58,15 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
+  VLOG(1) << "##### src:" << src.dtype() << ", dst:" << dst->dtype();
+  VLOG(1) << "### paddle::platform::is_cpu_place(src_place):"
+          << paddle::platform::is_cpu_place(src_place);
+  VLOG(1) << "### paddle::platform::is_gpu_place(dst_place):"
+          << paddle::platform::is_gpu_place(dst->place());
+  VLOG(1) << "### paddle::platform::is_cpu_place(dst_place):"
+          << paddle::platform::is_cpu_place(dst_place);
+  VLOG(1) << "################### src:" << src.dtype()
+          << ", dst:" << dst->dtype();
   CHECK(dst->layout() == src.layout());
 
   auto size = src.numel() *
@@ -198,6 +214,7 @@ void Copy(const Context& dev_ctx,
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_gpu_place(dst_place)) {
+    VLOG(1) << "########## gpu_place to gpu_place";
     auto src_gpu_place =
         BOOST_GET_CONST(paddle::platform::CUDAPlace, src_place);
     auto dst_gpu_place =
