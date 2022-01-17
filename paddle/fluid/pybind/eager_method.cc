@@ -248,9 +248,9 @@ static PyObject* eager_tensor__share_buffer_to(EagerTensorObject* self,
   auto* src_tensor =
       static_cast<paddle::framework::Tensor*>(self->eager_tensor.impl().get());
   auto dst_tensor =
-      (*static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get()));
-  src_tensor->ShareDataWith(dst_tensor);
-  src_tensor->ShareDataTypeWith(dst_tensor);
+      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  dst_tensor->ShareDataWith(*src_tensor);
+  dst_tensor->ShareDataTypeWith(*src_tensor);
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -275,10 +275,9 @@ static PyObject* eager_tensor__is_shared_buffer_with(EagerTensorObject* self,
   auto* self_ptr =
       static_cast<paddle::framework::Tensor*>(self->eager_tensor.impl().get());
   auto dst_tensor =
-      (*static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get()));
-  self_ptr->IsSharedBufferWith(dst_tensor);
-  Py_INCREF(Py_None);
-  return Py_None;
+      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  res = dst_tensor->IsSharedBufferWith(*self_ptr);
+  return ToPyObject(res);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
