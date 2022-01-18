@@ -89,9 +89,7 @@ struct NCCLContext {
   gpuStream_t stream() const { return ctx_->stream(); }
   ncclComm_t comm() const { return comm_; }
 
-  int device_id() const {
-    return BOOST_GET_CONST(platform::CUDAPlace, ctx_->GetPlace()).device;
-  }
+  int device_id() const { return ctx_->GetPlace().device; }
 };
 
 struct NCCLContextMap {
@@ -106,7 +104,7 @@ struct NCCLContextMap {
                           "The NCCL place should not be empty."));
     order_.reserve(places.size());
     for (auto &p : places) {
-      int dev_id = BOOST_GET_CONST(CUDAPlace, p).device;
+      int dev_id = p.device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, NCCLContext(dev_id));
     }
@@ -155,12 +153,10 @@ struct NCCLContextMap {
   CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
   CUDADeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(BOOST_GET_CONST(CUDAPlace, p).device);
+    return DevCtx(p.device);
   }
 
-  const NCCLContext &at(platform::Place p) const {
-    return this->at(BOOST_GET_CONST(CUDAPlace, p).device);
-  }
+  const NCCLContext &at(platform::Place p) const { return this->at(p.device); }
 
   const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 
@@ -259,7 +255,7 @@ class NCCLCommunicator {
     for (int ring_id = 0; ring_id < nrings; ++ring_id) {
       for (size_t p = 0; p < places.size(); ++p) {
         int rank = trainer_id * places.size() + p;
-        int dev_id = BOOST_GET_CONST(CUDAPlace, places[p]).device;
+        int dev_id = places[p].device;
         auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
         NCCLCommContext::Instance().AssignNCCLComm(ctx.comm_, nranks, rank,
                                                    dev_id, ring_id);

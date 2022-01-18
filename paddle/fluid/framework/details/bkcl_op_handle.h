@@ -85,7 +85,7 @@ class BKCLOpHandleBase : public OpHandleBase {
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_bkcl_ctxs = bkcl_ctxs_->GetFlatCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+    int dev_id = place.device;
     auto& bkcl_ctx = flat_bkcl_ctxs->at(dev_id);
     auto comm = bkcl_ctx.comm_;
 

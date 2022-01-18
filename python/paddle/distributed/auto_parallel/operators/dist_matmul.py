@@ -670,7 +670,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -878,7 +878,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -1178,7 +1178,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -1382,7 +1382,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 

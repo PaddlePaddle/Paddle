@@ -613,7 +613,7 @@ class ConvMKLDNNHandlerT
     auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
     if (is_test && weights_mem_p) {
       return weights_mem_p;
-    } else {
+    } else if (is_test) {
       const K* filter_data = filter->data<K>();
       auto weights_tz = framework::vectorize(filter->dims());
       platform::GetGroupConvWeightsTz(weights_tz, groups);
@@ -625,6 +625,19 @@ class ConvMKLDNNHandlerT
       return this->AcquireMemoryWithReorder(
           user_src_md, this->fwd_pd_->weights_desc(),
           platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test, {},
+          scale_data, mask);
+    } else {
+      const T* filter_data = filter->data<T>();
+      auto weights_tz = framework::vectorize(filter->dims());
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
+
+      auto user_src_md = platform::MKLDNNMemDesc(
+          weights_tz, platform::MKLDNNGetDataType<T>(),
+          GetWeightsFormat(filter->format(), groups, is_conv3d));
+
+      return this->AcquireMemoryWithReorder(
+          user_src_md, this->fwd_pd_->weights_desc(),
+          platform::to_void_cast<T>(filter_data), "@weights_mem_p", is_test, {},
           scale_data, mask);
     }
   }
@@ -1027,7 +1040,8 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
     conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace, BF16,
     ops::kConvMKLDNNFP32,
-    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16, float>);
+    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16,
+                                paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,

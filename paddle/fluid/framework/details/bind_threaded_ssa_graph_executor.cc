@@ -46,7 +46,7 @@ BindThreadedSSAGraphExecutor::BindThreadedSSAGraphExecutor(
   }
   int index = 0;
   for (uint32_t i = 0; i < places.size(); i++) {
-    int id = BOOST_GET_CONST(platform::XPUPlace, places_[i]).device;
+    int id = places_[i].device;
     if (place_to_index_.find(id) == place_to_index_.end()) {
       place_to_index_[id] = index;
       index++;
@@ -145,8 +145,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       RunMultiDeviceOpAsync(cur_op, op_deps.get(), ready_ops);
       continue;
     } else {
-      cur_place =
-          BOOST_GET_CONST(platform::XPUPlace, dev_ctxes_.begin()->first);
+      cur_place = dev_ctxes_.begin()->first;
       int cur_index = place_to_index_[cur_place.device];
       RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
     }
