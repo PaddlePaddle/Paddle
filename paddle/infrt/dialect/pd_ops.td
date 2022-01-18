@@ -154,7 +154,7 @@ def PD_MatmulOp : PD_Op<"matmul", [NoSideEffect]> {
                   DefaultValuedAttr<F32Attr, "1.0">:$alpha);
   let results = (outs PD_Tensor:$out);
 
-  //let hasCanonicalizer = 1;
+  let hasCanonicalizer = 1;
 }
 
 def PD_MulOp : PD_Op<"mul", [NoSideEffect, DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
