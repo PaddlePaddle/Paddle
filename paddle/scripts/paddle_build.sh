@@ -652,7 +652,7 @@ EOF
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
