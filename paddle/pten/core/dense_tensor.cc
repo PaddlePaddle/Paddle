@@ -311,6 +311,11 @@ void* DenseTensor::data() {
                                  meta_.offset);
 }
 
+template const uint32_t* DenseTensor::data() const;
+template uint32_t* DenseTensor::data();
+template const uint16_t* DenseTensor::data() const;
+template uint16_t* DenseTensor::data();
+
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype) \
   template const dtype* DenseTensor::data() const;   \
   template dtype* DenseTensor::data();               \
