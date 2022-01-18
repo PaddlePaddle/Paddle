@@ -26,8 +26,6 @@ limitations under the License. */
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
 #include "paddle/pten/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
@@ -39,7 +37,8 @@ namespace operators {
 
 #define HANDLE_DIM(NDIM, RDIM)                                            \
   if (ndim == NDIM && rdim == RDIM) {                                     \
-    ReduceFunctor<DeviceContext, OutT, NDIM, RDIM, Functor>(              \
+    paddle::operators::ReduceFunctor<DeviceContext, OutT, NDIM, RDIM,     \
+                                     Functor>(                            \
         context.template device_context<DeviceContext>(), *input, output, \
         dims, keep_dim);                                                  \
   }
@@ -133,7 +132,7 @@ void HandleLargeDim(const framework::ExecutionContext& context,
   shuffled_input.Resize({unreduced, reduced});
   DDim output_dim = output->dims();
   output->Resize({unreduced});
-  ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
+  paddle::operators::ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
       context.template device_context<DeviceContext>(), shuffled_input, output,
       {1}, keep_dim);
   output->Resize(output_dim);

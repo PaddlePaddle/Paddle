@@ -18,7 +18,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 // pten deps
-#include "paddle/pten/all.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -164,6 +163,14 @@ class EagerTensor final {
    * @return {void}
    */
   void reset() { tensor_->reset(); }
+
+  /**
+   * @brief Determine whether tensor is DenseTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dense_tensor() const { return tensor_->is_dense_tensor(); }
 
   /**
  * @brief Transfer the current Tensor to the specified device and return.

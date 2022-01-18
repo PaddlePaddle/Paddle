@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace pybind {
@@ -447,6 +446,18 @@ PyObject* ToPyObject(const platform::Place& value) {
 
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype) {
   auto obj = ::pybind11::cast(dtype);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
+  auto obj = ::pybind11::cast(type);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const paddle::framework::LoDTensor* value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::copy);
   obj.inc_ref();
   return obj.ptr();
 }
