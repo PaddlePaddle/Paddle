@@ -364,6 +364,10 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
     storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
   }
 
+  if (!(storage_->data_shared()->place() == place)) {
+    LOG(INFO) << "========= !(storage_->data_shared()->place() == place)";
+  }
+
   /* some versions of boost::variant don't have operator!= */
   if (storage_->data_shared() == nullptr ||
       !(storage_->data_shared()->place() == place) ||
@@ -397,6 +401,10 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
 
   if (storage_ == nullptr) {
     storage_ = make_intrusive<paddle::experimental::SharedStorage>(place);
+  }
+
+  if (!(storage_->data_shared()->place() == place)) {
+    LOG(INFO) << "========= !(storage_->data_shared()->place() == place)";
   }
 
   /* some versions of boost::variant don't have operator!= */
