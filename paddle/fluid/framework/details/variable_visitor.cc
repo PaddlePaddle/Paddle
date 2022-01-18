@@ -16,9 +16,12 @@
 
 #include "paddle/fluid/framework/selected_rows.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -106,9 +109,12 @@ struct EnforceShapeAndDTypeEQVisitor {
 
   void operator()(const LoDTensor& src) {
     auto& tensor = dst_->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(src.place().which(), tensor.place().which(),
-                      platform::errors::PreconditionNotMet(
-                          "The place type of the two variables is not equal."));
+    PADDLE_ENFORCE_EQ(
+        src.place().GetType(), tensor.place().GetType(),
+        platform::errors::PreconditionNotMet(
+            "The place type of the two variables is not equal. The src place "
+            "is %s, but the dst place is %s",
+            src.place().DebugString(), tensor.place().DebugString()));
     PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));
@@ -127,9 +133,12 @@ struct EnforceShapeAndDTypeEQVisitor {
 
   void operator()(const SelectedRows& src) {
     auto& selected_rows = dst_->Get<SelectedRows>();
-    PADDLE_ENFORCE_EQ(src.place().which(), selected_rows.place().which(),
-                      platform::errors::PreconditionNotMet(
-                          "The place type of the two variables is not equal."));
+    PADDLE_ENFORCE_EQ(
+        src.place().GetType(), selected_rows.place().GetType(),
+        platform::errors::PreconditionNotMet(
+            "The place type of the two variables is not equal. The src place "
+            "is %s, but the dst place is %s",
+            src.place().DebugString(), selected_rows.place().DebugString()));
     PADDLE_ENFORCE_EQ(src.value().type(), selected_rows.value().type(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));

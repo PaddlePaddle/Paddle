@@ -22,14 +22,15 @@ void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
           << " dst_place: " << dst_place;
 
   PADDLE_ENFORCE_NE(
-      in.place().which(), dst_place.which(),
+      in.place().GetType(), dst_place.GetType(),
       platform::errors::Unavailable("Currently, model parallelism is only "
                                     "supported between CPU and CUDA."));
 
   // NOTE(zhiqiu): Special case for CPU->NPU, avoid stream sync.
   if (platform::is_cpu_place(in.place()) && platform::is_npu_place(dst_place)) {
-    TensorCopy(in, dst_place,
-               *platform::DeviceContextPool::Instance().Get(dst_place), out);
+    paddle::framework::TensorCopy(
+        in, dst_place, *platform::DeviceContextPool::Instance().Get(dst_place),
+        out);
     return;
   }
 

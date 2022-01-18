@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -36,7 +36,7 @@ void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(paddle::framework::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 

@@ -320,8 +320,10 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
     LoDTensor scores;
     LoDTensor boxes;
-    TensorCopySync(*scores_input, platform::CPUPlace(), &scores);
-    TensorCopySync(*boxes_input, platform::CPUPlace(), &boxes);
+    paddle::framework::TensorCopySync(*scores_input, platform::CPUPlace(),
+                                      &scores);
+    paddle::framework::TensorCopySync(*boxes_input, platform::CPUPlace(),
+                                      &boxes);
     std::vector<std::map<int, std::vector<int>>> all_indices;
     std::vector<size_t> batch_starts = {0};
     int64_t batch_size = score_dims[0];

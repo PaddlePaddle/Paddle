@@ -20,7 +20,6 @@ limitations under the License. */
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/reshape_grad_kernel.h"
 #include "paddle/pten/kernels/reshape_kernel.h"
 namespace paddle {
@@ -32,8 +31,6 @@ namespace imperative {
 class OpBase;
 }  // namespace imperative
 namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
 struct float16;
 }  // namespace platform
 }  // namespace paddle
@@ -59,7 +56,7 @@ inline std::vector<int> get_new_shape(
     if (platform::is_gpu_place(tensor->place()) ||
         platform::is_xpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
 
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
@@ -413,7 +410,8 @@ class ReshapeKernel {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
           framework::Tensor temp;
-          TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+          paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                            &temp);
           pt_vec_shape.push_back(
               std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
         } else {
@@ -427,7 +425,8 @@ class ReshapeKernel {
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*shape_tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                          &temp);
         pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
       } else {
         pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);

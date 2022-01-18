@@ -76,8 +76,7 @@ struct DirichletSampler<platform::CUDADeviceContext, T> {
     auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
 
     // init state, seed & offset for all threads
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int device_id = ctx.GetPlace().GetDeviceId();
     auto p_gen = framework::GetDefaultCUDAGenerator(device_id);
     auto seed_and_offset = p_gen->IncrementOffset(10);  // hard-coded offset
     auto seed = seed_and_offset.first;

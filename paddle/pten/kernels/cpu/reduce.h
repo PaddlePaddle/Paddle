@@ -22,8 +22,8 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
-#include "paddle/pten/kernels/hybird/transpose.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 namespace pten {
@@ -118,7 +118,7 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   std::vector<int64_t> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
-  shuffled_input->Resize(shuffled_dims);
+  shuffled_input->ResizeAndAllocate(shuffled_dims);
   shuffled_input->mutable_data<OutT>();
 
   pten::math::TransposeNormal<DeviceContext, OutT> trans;
@@ -141,12 +141,12 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
   const int64_t reduced = shuffled_input.numel() / unreduced;
-  shuffled_input.Resize({unreduced, reduced});
+  shuffled_input.ResizeAndAllocate({unreduced, reduced});
   DDim output_dim = output->dims();
-  output->Resize({unreduced});
+  output->ResizeAndAllocate({unreduced});
   ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
       dev_ctx, shuffled_input, output, {1}, keep_dim);
-  output->Resize(output_dim);
+  output->ResizeAndAllocate(output_dim);
 }
 
 ////////////// ReduceKernel

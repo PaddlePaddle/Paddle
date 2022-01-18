@@ -15,9 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle

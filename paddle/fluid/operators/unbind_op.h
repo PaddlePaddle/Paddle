@@ -43,9 +43,6 @@ class UnbindOpKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto in_dims = in->dims();
-
-    auto place = ctx.GetPlace();
-
     axis = axis < 0 ? in_dims.size() + axis : axis;
     std::vector<const framework::Tensor*> shape_refer;
     for (size_t j = 0; j < outs.size(); ++j) {
