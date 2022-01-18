@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,11 +33,7 @@ namespace detail {
 // dynamic lib open
 static inline void* DynOpen(const std::string& dso_name) {
   void* dso_handle = nullptr;
-#if !defined(_WIN32)
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
-#else
-  int dynload_flags = 0;
-#endif  // !_WIN32
   dso_handle = dlopen(dso_name.c_str(), dynload_flags);
   PADDLE_ENFORCE_NOT_NULL(
       dso_handle,
@@ -46,11 +45,7 @@ static inline void* DynOpen(const std::string& dso_name) {
 template <typename T>
 static T* DynLoad(void* handle, std::string name) {
   T* func = reinterpret_cast<T*>(dlsym(handle, name.c_str()));
-#if !defined(_WIN32)
   auto errorno = dlerror();
-#else
-  auto errorno = GetLastError();
-#endif  // !_WIN32
   PADDLE_ENFORCE_NOT_NULL(
       func, platform::errors::NotFound(
                 "Failed to load dynamic operator library, error message(%s).",
@@ -83,20 +78,25 @@ static void ParseArgs(const OpKernelInfo& op_kernel_info,
 // custom pten kernel call function define
 static void RunKernelFunc(pten::KernelContext* ctx,
                           const OpKernelInfo& op_kernel_info) {
-  VLOG(3) << "[CUSTOM KERNEL] RunKernelFunc";
+  VLOG(3) << "[CUSTOM KERNEL] RunKernelFunc begin...";
 
   size_t input_size = ctx->InputsSize();
   size_t output_size = ctx->OutputsSize();
   size_t attr_size = ctx->AttrsSize();
 
-  // input:
+  VLOG(3) << "[CUSTOM KERNEL] InputSize: " << input_size
+          << " AttrsSize: " << attr_size << " OutputSize: " << output_size;
+  // Inputs mapping
   std::vector<paddle::experimental::Tensor> custom_ins;
   std::vector<std::vector<paddle::experimental::Tensor>> custom_vec_ins;
   for (size_t in_idx = 0; in_idx < input_size; ++in_idx) {
+    VLOG(3) << "Mapping Input[" << in_idx << "]";
     const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
     if (range.first + 1 == range.second) {
       paddle::experimental::Tensor custom_t(ctx->InputSharedPtrAt(range.first));
       custom_ins.push_back(custom_t);
+      VLOG(3) << "Mapped Input[" << in_idx
+              << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor> custom_vec_in;
       auto ctx_tensor_vec =
@@ -106,12 +106,17 @@ static void RunKernelFunc(pten::KernelContext* ctx,
         custom_vec_in.push_back(custom_t);
       }
       custom_vec_ins.push_back(custom_vec_in);
+      VLOG(3) << "Mapped Input[" << in_idx
+              << "] with range.first: " << range.first
+              << ", and rang.second: " << range.second;
     }
   }
-  // attr:
+
+  // Attributes mapping
   std::vector<paddle::any> custom_attrs;
   auto attribute_defs = op_kernel_info.attribute_defs();
   for (size_t attr_idx = 0; attr_idx < attr_size; ++attr_idx) {
+    VLOG(3) << "Mapping Attribute[" << attr_idx << "]";
     if (attribute_defs[attr_idx].type_index == std::type_index(typeid(bool))) {
       bool arg = ctx->AttrAt<bool>(attr_idx);
       custom_attrs.push_back(arg);
@@ -160,27 +165,37 @@ static void RunKernelFunc(pten::KernelContext* ctx,
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported attribute attribute_defs[%d].type_index", attr_idx));
     }
+    VLOG(3) << "Mapped Attribute[" << attr_idx << "]";
   }
-  // output:
+
+  // Outputs mapping
   std::vector<paddle::experimental::Tensor*> custom_outs;
   std::vector<std::vector<paddle::experimental::Tensor*>> custom_vec_outs;
   for (size_t out_idx = 0; out_idx < output_size; ++out_idx) {
+    VLOG(3) << "Mapping Output[" << out_idx << "]";
     const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
     if (range.first + 1 == range.second) {
       auto ctx_tensor = ctx->OutputSharedPtrAt(range.first);
       paddle::experimental::Tensor* custom_t =
           new paddle::experimental::Tensor(ctx_tensor);
       custom_outs.push_back(custom_t);
+      VLOG(3) << "Mapped Output[" << out_idx
+              << "] with range.first: " << range.first;
     } else {
+      std::cout << "5.5.3 ---------------" << std::endl;
       std::vector<paddle::experimental::Tensor*> custom_vec_out;
       auto ctx_tensor_vec =
           ctx->OutputSharedPtrBetween(range.first, range.second);
+      std::cout << "5.5.4 ---------------" << std::endl;
       for (auto& ctx_tensor : ctx_tensor_vec) {
         paddle::experimental::Tensor* custom_t =
             new paddle::experimental::Tensor(ctx_tensor);
         custom_vec_out.push_back(custom_t);
       }
       custom_vec_outs.push_back(custom_vec_out);
+      VLOG(3) << "Mapped Output[" << out_idx
+              << "] with range.first: " << range.first
+              << ", and rang.second: " << range.second;
     }
   }
 
@@ -190,13 +205,7 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   // and need mapping to user kernel function with backend from OpKernelInfo
   DeviceContext dev_ctx;
   if (op_kernel_info.GetBackend() == pten::Backend::CPU) {
-// do nothing
-#ifdef PADDLE_WITH_ASCEND_CL
-  } else if (op_kernel_info.GetBackend() == pten::Backend::NPU) {
-    const paddle::platform::NPUDeviceContext& dev_context =
-        ctx->GetDeviceContext<paddle::platform::NPUDeviceContext>();
-    dev_ctx.set_stream(dev_context.stream());
-#endif
+    // do nothing
   } else {
     LOG(ERROR) << "[CUSTOM KERNEL] mismatched kernel backend: "
                << op_kernel_info.GetBackend() << " with compiled paddle.";
@@ -233,17 +242,21 @@ void RegisterKernelWithMetaInfo(
     VLOG(3) << "[CUSTOM KERNEL] registering [" << op_type << "]" << kernel_key;
 
     // 1.Check whether this kernel is valid for a specific operator
-    if (!pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
-      LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << op_type
-                   << " is not ready for custom kernel registering.";
-      continue;
-    }
+    PADDLE_ENFORCE_EQ(
+        pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type), true,
+        platform::errors::InvalidArgument(
+            "[CUSTOM KERNEL] %s is not ready for custom kernel registering",
+            op_type));
 
     // 2.Check whether kernel_key has been already registed
     if (pten::KernelFactory::Instance().kernels()[op_type].find(kernel_key) !=
         pten::KernelFactory::Instance().kernels()[op_type].end()) {
-      LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << kernel_key
-                   << " has been registered already.";
+      LOG(WARNING)
+          << "[CUSTOM KERNEL] The operator <" << op_type << ">'s kernel "
+          << kernel_key << " has been already existed in Paddle, "
+          << "please contribute PR if need to optimize the kernel code. "
+          << "Custom kernel do NOT support to replace existing kernel in "
+             "Paddle.";
       continue;
     }
 
@@ -260,7 +273,9 @@ void RegisterKernelWithMetaInfo(
     ParseArgs(kernel_info, kernel.mutable_args_def());
     // register custom kernel to pten::KernelFactory
     pten::KernelFactory::Instance().kernels()[op_type][kernel_key] = kernel;
-    VLOG(3) << "[CUSTOM KERNEL] registered custom PTEN kernel";
+    VLOG(3) << "[CUSTOM KERNEL] Successed in registering operator <" << op_type
+            << ">'s kernel " << kernel_key << " to Paddle. "
+            << "It will be used like native ones";
   }
 }
 
@@ -294,22 +309,22 @@ void LoadOpKernelInfoAndRegister(const std::string& dso_name) {
   }
 }
 
-// Try loading custom kernel from PADDLE_CUSTOM_KERNEL
+// Try loading custom kernel from PADDLE_PLUGIN_ROOT
 // PADDLE_CUSTOM_KERNEL is an abstract path of custom kernel library, such
 // as '/path/to/libmy_custom_kernel.so', default value is ''
 // TODO(SJC): common loading with pluggable device
 void TryLoadCustomKernel() {
-  const char* env_dso_ptr = std::getenv("PADDLE_CUSTOM_KERNEL");
+  const char* env_dso_ptr = std::getenv("PADDLE_PLUGIN_ROOT");
   if (env_dso_ptr == nullptr) {
-    VLOG(3) << "[CUSTOM KERNEL] PADDLE_CUSTOM_KERNEL is not set";
+    VLOG(3) << "[CUSTOM KERNEL] PADDLE_PLUGIN_ROOT is not set";
     return;
   }
   std::string dso_name(env_dso_ptr);
   if (dso_name.empty()) {
-    VLOG(3) << "[CUSTOM KERNEL] PADDLE_CUSTOM_KERNEL is empty";
+    VLOG(3) << "[CUSTOM KERNEL] PADDLE_PLUGIN_ROOT is empty";
     return;
   }
-  VLOG(3) << "[CUSTOM KERNEL] PADDLE_CUSTOM_KERNEL=" << dso_name;
+  VLOG(3) << "[CUSTOM KERNEL] PADDLE_PLUGIN_ROOT=" << dso_name;
 
   LoadOpKernelInfoAndRegister(dso_name);
 }

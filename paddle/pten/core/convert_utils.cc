@@ -24,8 +24,6 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
     return Backend::GPU;
-  } else if (paddle::platform::is_npu_place(place)) {
-    return Backend::NPU;
   } else {
     return Backend::UNDEFINED;
   }
@@ -78,10 +76,6 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
 #ifdef PADDLE_WITH_MKLDNN
     case pten::Backend::MKLDNN:
       return paddle::platform::CPUPlace();
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    case pten::Backend::NPU:
-      return paddle::platform::NPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::CUDNN:

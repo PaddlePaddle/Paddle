@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +23,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/exception.h"
-#include "paddle/pten/api/ext/utils.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
@@ -363,11 +366,11 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
+  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
+  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
 
   /* Output Helpers */
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(Tensor);
@@ -641,41 +644,24 @@ void LoadCustomKernelLib(const std::string& dso_name);
 #define PD_DATALAYOUT(arg__) pten::DataLayout::arg__
 #define PD_DATATYPE(arg__) pten::DataType::arg__
 
-#define PD_REGISTER_KERNEL(op_name, dev, layout, dtype, func)              \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_kernel__##op_name##_##dev##_##layout##_##dtype,                \
-      "PD_REGISTER_KERNEL must be called in global namespace.");           \
-  void __PD_PT_USER_args_def_FN_##op_name##_##dev##_##layout(              \
-      ::paddle::OpKernelInfo* op_kernel_info);                             \
-  static ::paddle::OpKernelInfoBuilder                                     \
-      __op_kernel_info_##op_name##_##dev##_##layout##_##dtype =            \
-          ::paddle::OpKernelInfoBuilder(#op_name,                          \
-                                        PD_BACKEND(dev),                   \
-                                        PD_DATALAYOUT(layout),             \
-                                        PD_DATATYPE(dtype))                \
-              .SetKernelFn(PD_PT_KERNEL(func))                             \
-              .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(func))            \
-              .ArgsParse(PD_PT_ARGS_PARSE(func))                           \
-              .ArgsDef(                                                    \
-                  &__PD_PT_USER_args_def_FN_##op_name##_##dev##_##layout); \
-  void __PD_PT_USER_args_def_FN_##op_name##_##dev##_##layout(              \
+#define PD_REGISTER_KERNEL(op_name, dev, layout, dtype, func)                  \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
+      __reg_kernel__##op_name##_##dev##_##layout##_##dtype,                    \
+      "PD_REGISTER_KERNEL must be called in global namespace.");               \
+  void __PD_USER_args_def_F_##op_name##_##dev##_##layout_##dtype(              \
+      ::paddle::OpKernelInfo* op_kernel_info);                                 \
+  static ::paddle::OpKernelInfoBuilder                                         \
+      __op_kernel_info_##op_name##_##dev##_##layout##_##dtype =                \
+          ::paddle::OpKernelInfoBuilder(#op_name,                              \
+                                        PD_BACKEND(dev),                       \
+                                        PD_DATALAYOUT(layout),                 \
+                                        PD_DATATYPE(dtype))                    \
+              .SetKernelFn(PD_PT_KERNEL(func))                                 \
+              .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(func))                \
+              .ArgsParse(PD_PT_ARGS_PARSE(func))                               \
+              .ArgsDef(                                                        \
+                  &__PD_USER_args_def_F_##op_name##_##dev##_##layout_##dtype); \
+  void __PD_USER_args_def_F_##op_name##_##dev##_##layout_##dtype(              \
       ::paddle::OpKernelInfo* kernel)
 
 }  // namespace paddle
-
-///////////////////// C API ///////////////////
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#if defined(_WIN32)
-// C-API to get global OpKernelInfoMap.
-__declspec(dllexport) inline paddle::OpKernelInfoMap& PD_GetOpKernelInfoMap() {
-  return paddle::OpKernelInfoMap::Instance();
-}
-#endif  // _WIN32
-
-#ifdef __cplusplus
-}
-#endif
