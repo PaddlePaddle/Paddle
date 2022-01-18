@@ -21,4 +21,4 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/bfloat16.h"
 
-PT_REGISTER_CTX_KERNEL(sign, CPU, ALL_LAYOUT, pten::Sign, float, double) {}
+PT_REGISTER_KERNEL(sign, CPU, ALL_LAYOUT, pten::SignKernel, float, double) {}

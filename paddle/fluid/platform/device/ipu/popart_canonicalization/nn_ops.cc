@@ -22,7 +22,7 @@ namespace ipu {
 namespace {
 
 Node *conv2d_handler(Graph *graph, Node *node) {
-  OpDesc *op = node->Op();
+  auto *op = node->Op();
   auto dilations_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
   auto dilations = std::vector<int64_t>{dilations_.begin(), dilations_.end()};
   auto group_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
@@ -193,6 +193,21 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto begin_norm_axis_ = BOOST_GET_CONST(int, op->GetAttr("begin_norm_axis"));
   auto input_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
+  auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+  int64_t groups_ = 1;
+
+  auto groupnorm_attrs_ =
+      AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
+
+  if (input_shape_.size() == 2) {
+    return CreateBaseOp(
+        graph, node, "popart_groupnormalization_v2",
+        {GetInputVarNode("X", node), GetInputVarNode("Scale", node),
+         GetInputVarNode("Bias", node)},
+        {GetOutputVarNode("Y", node), GetOutputVarNode("Mean", node),
+         GetOutputVarNode("Variance", node)},
+        groupnorm_attrs_);
+  }
 
   std::vector<int64_t> norm_shape_{1, 1};
   for (int i = 0; i < input_shape_.size(); i++) {
@@ -213,10 +228,6 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       graph, node, "popart_reshape",
       {GetInputVarNode("X", node), reshape1_const->outputs[0]}, {}, {});
 
-  auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
-  int64_t groups_ = 1;
-  auto groupnorm_attrs_ =
-      AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
   auto out_Y_ = MakeVarNode(graph, node);
   CreateBaseOp(graph, node, "popart_groupnormalization_v2",
                {new_node_reshape1->outputs[0], GetInputVarNode("Scale", node),
@@ -262,7 +273,7 @@ Node *dropout_handler(Graph *graph, Node *node) {
           CreateConst(graph, node, {}, {},
                       {{"value", std::vector<float>{1 - dropout_prob_}},
                        {"dims", std::vector<int64_t>{1}},
-                       {"dtype", ONNXDataType::FLOAT}});
+                       {"dtype", GetOutputVarDtype(node)}});
       return CreateBaseOp(graph, node, "popart_mul",
                           {GetInputVarNode("X", node), scale->outputs[0]},
                           {GetOutputVarNode("Out", node)}, {});

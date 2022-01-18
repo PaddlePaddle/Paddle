@@ -56,6 +56,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
 
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
@@ -69,9 +70,11 @@ TEST(Backward, SingleNodeEmptyGrad) {
 
     // Connect Node0 -> AccumulationNode via Edge
     auto meta = egr::AutogradMeta();
+    meta.SetStopGradient(false);
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
-    node0_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    node0_ptr->AddEdges(&res, 0);
   }
   std::vector<egr::EagerTensor> outs = {target_tensor};
   // Run Backward
@@ -117,7 +120,7 @@ TEST(Backward, SingleNodeCustomGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-
+    auto_grad_meta->SetStopGradient(false);
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
 
@@ -130,9 +133,11 @@ TEST(Backward, SingleNodeCustomGrad) {
 
     // Connect Node0 -> AccumulationNode via Edge
     auto meta = egr::AutogradMeta();
+    meta.SetStopGradient(false);
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
-    node0_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    node0_ptr->AddEdges(&res, 0);
   }
 
   // Run Backward
@@ -185,12 +190,14 @@ TEST(Backward, LinearNodes) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-
+    auto_grad_meta->SetStopGradient(false);
     // Connect Node0 -> Node1 via Edge
     auto meta0 = egr::AutogradMeta();
+    meta0.SetStopGradient(false);
     meta0.SetSingleOutRankWithSlot(0, 0);
     meta0.SetGradNode(node1_ptr);
-    node0_ptr->AddEdges({&meta0}, 0);
+    std::vector<egr::AutogradMeta*> res0 = {&meta0};
+    node0_ptr->AddEdges(&res0, 0);
 
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
@@ -204,9 +211,11 @@ TEST(Backward, LinearNodes) {
 
     // Connect Node1 -> AccumulationNode via Edge
     auto meta1 = egr::AutogradMeta();
+    meta1.SetStopGradient(false);
     meta1.SetSingleOutRankWithSlot(0, 0);
     meta1.SetGradNode(acc_node_ptr);
-    node1_ptr->AddEdges({&meta1}, 0);
+    std::vector<egr::AutogradMeta*> res1 = {&meta1};
+    node1_ptr->AddEdges(&res1, 0);
   }
 
   // Use Empty Grad Tensor
@@ -273,25 +282,30 @@ TEST(Backward, WithAccumulation) {
     auto_grad_meta0->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta0->SetSingleOutRankWithSlot(0, 0);
-
+    auto_grad_meta0->SetStopGradient(false);
     // Connect Inp1 and Node1 via AutoGradMeta
     AutogradMeta* auto_grad_meta1 =
         EagerUtils::autograd_meta(&(target_tensors[1]));
     auto_grad_meta1->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node1_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta1->SetStopGradient(false);
 
     // Connect Node0 -> Node2 via Edge
     auto meta0 = egr::AutogradMeta();
+    meta0.SetStopGradient(false);
     meta0.SetSingleOutRankWithSlot(0, 0);
     meta0.SetGradNode(node2_ptr);
-    node0_ptr->AddEdges({&meta0}, 0);
+    std::vector<egr::AutogradMeta*> res0 = {&meta0};
+    node0_ptr->AddEdges(&res0, 0);
 
     // Connect Node1 -> Node2 via Edge
     auto meta1 = egr::AutogradMeta();
+    meta1.SetStopGradient(false);
     meta1.SetSingleOutRankWithSlot(0, 0);
     meta1.SetGradNode(node2_ptr);
-    node1_ptr->AddEdges({&meta1}, 0);
+    std::vector<egr::AutogradMeta*> res1 = {&meta1};
+    node1_ptr->AddEdges(&res1, 0);
 
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
@@ -305,9 +319,11 @@ TEST(Backward, WithAccumulation) {
 
     // Connect Node2 -> AccumulationNode via Edge
     auto meta2 = egr::AutogradMeta();
+    meta2.SetStopGradient(false);
     meta2.SetSingleOutRankWithSlot(0, 0);
     meta2.SetGradNode(acc_node_ptr);
-    node2_ptr->AddEdges({&meta2}, 0);
+    std::vector<egr::AutogradMeta*> res2 = {&meta2};
+    node2_ptr->AddEdges(&res2, 0);
   }
 
   RunBackward(target_tensors, grad_tensors);

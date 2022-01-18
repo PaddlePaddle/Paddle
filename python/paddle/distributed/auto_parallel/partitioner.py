@@ -25,7 +25,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext, Di
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
 from .utils import set_dist_op_desc_original_id
-from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_recompute_op
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
@@ -200,7 +200,8 @@ class Partitioner(object):
                         serial_output_varname] = new_varname
 
             # partition op
-            if is_forward_op(op):
+            op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
+            if is_forward_op(op) or op_dist_attr.is_recompute:
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_forward_impl = _get_dist_op_forward_implement(
                     op, self._dist_context)
@@ -380,9 +381,9 @@ def _get_dist_op_backward_implement(backward_op, dist_context,
     # NOTE trick for dist ops that only have backward implement 
     if backward_op.type in BACKWARD_ONLY_DIST_OPS:
         op_dist_attr = dist_context.get_op_dist_attr_for_program(backward_op)
-        assert op_dist_attr.impl_idx >= 0
-        return get_distributed_operator_impl_container(
-            backward_op.type).get_impl(op_dist_attr.impl_idx)
+        dist_op = get_distributed_operator_impl_container(backward_op.type)
+        if dist_op and op_dist_attr.impl_idx >= 0:
+            return dist_op.get_impl(op_dist_attr.impl_idx)
 
     dist_op = get_distributed_operator_impl_container("default")
     return dist_op.get_impl(0)

@@ -305,6 +305,36 @@ class TestWhereDygraphAPI(unittest.TestCase):
         b_shape = [2, 2, 1]
         self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
+    def test_where_condition(self):
+        data = np.array([[True, False], [False, True]])
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(name='x', shape=[-1, 2])
+            y = paddle.where(x)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 2)
+            z = fluid.layers.concat(list(y), axis=1)
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            res, = exe.run(feed={'x': data},
+                           fetch_list=[z.name],
+                           return_numpy=False)
+        expect_out = np.array([[0, 0], [1, 1]])
+        self.assertTrue(np.allclose(expect_out, np.array(res)))
+
+        data = np.array([True, True, False])
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(name='x', shape=[-1])
+            y = paddle.where(x)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 1)
+            z = fluid.layers.concat(list(y), axis=1)
+            exe = fluid.Executor(fluid.CPUPlace())
+            res, = exe.run(feed={'x': data},
+                           fetch_list=[z.name],
+                           return_numpy=False)
+        expect_out = np.array([[0], [1]])
+        self.assertTrue(np.allclose(expect_out, np.array(res)))
+
 
 class TestWhereOpError(unittest.TestCase):
     def test_errors(self):
@@ -325,6 +355,14 @@ class TestWhereOpError(unittest.TestCase):
                 paddle.where(cond, x, y)
 
             self.assertRaises(TypeError, test_type)
+
+    def test_value_error(self):
+        with fluid.dygraph.guard():
+            cond_shape = [2, 2, 4]
+            cond_tmp = paddle.rand(cond_shape)
+            cond = cond_tmp < 0.3
+            a = paddle.rand(cond_shape)
+            self.assertRaises(ValueError, paddle.where, cond, a)
 
 
 if __name__ == '__main__':

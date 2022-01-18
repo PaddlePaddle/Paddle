@@ -41,7 +41,8 @@ limitations under the License. */
 #include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/pten/core/arg_map_context.h"
-#include "paddle/pten/include/core.h"
+#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -410,8 +411,8 @@ class ExecutionContext {
     auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
-        allocation_ptr, deleter);
+    auto shared_allocation =
+        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
         allocation_ptr->size(), framework::product(dim) * sizeof(T),
@@ -479,14 +480,8 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
 };
 
 template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -526,11 +521,6 @@ class OperatorWithKernel : public OperatorBase {
   AllOpKernels() {
     static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
-  }
-
-  bool IsMKLDNNType() const {
-    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
-                                     framework::DataLayout::kMKLDNN));
   }
 
   bool SupportGPU() const override {
@@ -599,15 +589,15 @@ class OperatorWithKernel : public OperatorBase {
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
+                              platform::DeviceContext* dev_ctx,
+                              pten::KernelContext* pt_kernel_context) const;
 
-  void WriteBackToOutputs(RuntimeContext* ctx) const;
+  void WriteBackToOutputs(RuntimeContext* ctx,
+                          pten::KernelContext* pt_kernel_context) const;
 
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
 
-  pten::KernelContext* PtenKernelContext() const {
-    return pt_kernel_context_.get();
-  }
+  const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
@@ -665,9 +655,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
-  // In order to reduce the compatibility phase
-  // performance overhead, temporarily cache KernelContext
-  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

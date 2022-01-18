@@ -103,7 +103,17 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     VLOG(2) << "Out Rank of Tensor is slot: " << input_info.first
             << ", rank: " << input_info.second;
     // Get target GradNodeBase from target tensors
-    GradNodeBase* grad_node = auto_grad_meta->GetMutableGradNode().get();
+    auto shared_grad_node = auto_grad_meta->GetMutableGradNode();
+
+    if (shared_grad_node == nullptr || shared_grad_node.get() == nullptr ||
+        auto_grad_meta->StopGradient()) {
+      VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+                 "stop_gradient=True: "
+              << tensor.name();
+      continue;
+    }
+
+    GradNodeBase* grad_node = shared_grad_node.get();
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
@@ -181,7 +191,9 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
-                       ") or the same as number of output grad tensors"));
+                       ") or the same as number of output grad tensors, but we "
+                       "got edges size is: %d, grad_output size is: %d",
+                       edges.size(), grad_output_tensors.size()));
 
     for (size_t i = 0; i < edges.size(); i++) {
       for (size_t j = 0; j < edges[i].size(); j++) {
@@ -190,19 +202,38 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with
         // the same rank(i, j)
-        VLOG(6) << "Get Edge with slot: " << i << ", rank: " << j;
-        egr::EagerTensor& grad_output_tensor = grad_output_tensors[i][j];
-        if (!grad_output_tensor.defined() ||
-            !grad_output_tensor.initialized()) {
-          VLOG(6) << "We get grad_output_tensor with slot: " << i
-                  << ", rank: " << j << " as uninitialized or undefined tensor";
-        }
-        GradNodeBase* next_node = edge.GetMutableGradNode().get();
+        auto next_node_shared = edge.GetMutableGradNode();
 
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
-        if (!next_node) continue;
+        if (!next_node_shared || !next_node_shared.get() ||
+            grad_output_tensors[i].empty()) {
+          continue;
+        }
+        PADDLE_ENFORCE_LT(
+            j, grad_output_tensors[i].size(),
+            paddle::platform::errors::Fatal(
+                "Rank of grad_output_tensors should be less than "
+                "grad_output_tensors[i].size(), which is: %d. This error may "
+                "indicate autoprune or autograd api error. ",
+                grad_output_tensors.size()));
+        egr::EagerTensor& grad_output_tensor = grad_output_tensors[i][j];
+
+        if ((!grad_output_tensor.defined() ||
+             !grad_output_tensor.initialized())) {
+          if (!grad_output_tensor.Var().IsInitialized()) {
+            VLOG(6)
+                << "We get grad_output_tensor with slot: " << i
+                << ", rank: " << j
+                << " as uninitialized or undefined in both tensor and variable";
+          }
+        }
+        VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
+                << ", rank: " << j
+                << " 's name is: " << grad_output_tensor.name();
+
+        auto* next_node = next_node_shared.get();
 
         if (!node_input_buffers_dict.count(next_node)) {
           node_input_buffers_dict[next_node] =

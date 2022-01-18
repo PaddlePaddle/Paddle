@@ -38,7 +38,8 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
       std::vector<framework::Tensor*> outs;
       int axis =
           PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           cuda_ctx, ins, &outs, axis, MulFunctor<T>());
     } else if (x_var->IsType<framework::LoDTensor>()) {
       auto* x_lod = ctx.Input<framework::LoDTensor>("X");
@@ -74,20 +75,10 @@ ElementwiseMulGrad(const framework::ExecutionContext& ctx,
   const auto place = ctx.GetPlace();
 
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y, x};
-    GetGradXAndYOut<ElementwiseType::kBinary, T>(
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
                                                 dx, MulGradFunctor<T>());
