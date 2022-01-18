@@ -436,6 +436,13 @@ class MLPLayer(nn.Layer):
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
+        if _global_parallel_strategy == "dp_mp_pp":
+            auto.shard_tensor(
+                out,
+                dist_attr={
+                    "process_mesh": _global_process_mesh[1],
+                    "dims_mapping": [0, -1]
+                })
         return out
 
 
@@ -487,6 +494,9 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
         no_grad_set=None,
         callbacks=None)
 
+    print("1****************", rank_id, flush=True)
+    print_program_with_dist_attr(complete_train_program, dist_context)
+
     partitioner = Partitioner(dist_context, rank_id)
     dist_train_program, dist_startup_prog, dist_params_grads = partitioner.partition(
         complete_train_program, startup_program, params_grads)
@@ -494,7 +504,11 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         dist_train_program, dist_startup_prog, dist_params_grads)
 
+    print("2****************", rank_id, flush=True)
     reshard(dist_train_program, dist_startup_prog, rank_id, dist_context)
+    print("3****************", rank_id, flush=True)
+    print_program_with_dist_attr(dist_train_program, dist_context)
+    print("4****************", rank_id, flush=True)
     return dist_train_program, dist_startup_prog
 
 
@@ -537,8 +551,8 @@ class TestAutoParallelMapper(unittest.TestCase):
             dist_context = DistributedContext()
             dist_train_program, dist_startup_prog = get_dist_prog(
                 train_program, startup_program, dist_context, rank_id)
-            # if rank_id == 0:
-            #   print_program_with_dist_attr(dist_train_program, dist_context)
+            if rank_id == 6:
+                print_program_with_dist_attr(dist_train_program, dist_context)
             dist_programs[rank_id] = [dist_train_program, None]
 
         rank_mapping = mapping(dist_programs, cluster)

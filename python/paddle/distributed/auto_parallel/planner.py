@@ -28,7 +28,7 @@ from .cost_model import estimate_cost
 from .dist_op import DistributedOperator
 from .process_group import _g_process_group_map
 from .process_group import ProcessGroup, get_process_group
-from .completion import is_elementwise_like_op
+from .operators.common import is_elementwise_op
 from .operators.common import get_distributed_operator_impl_container
 from .utils import update_op_dims_mapping_by_default_dist_impl
 from .utils import update_op_dims_mapping_by_elementwise_like_dist_impl
@@ -216,7 +216,7 @@ class PlanSpace:
         # compose dims mapping
         composed_dims_mapping_list = list(
             product(
-                *[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+                * [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
         for composed_dims_mapping in composed_dims_mapping_list:
             op_dist_attr = OperatorDistributedAttribute()
             op_dist_attr.process_mesh = process_mesh
@@ -237,7 +237,7 @@ class PlanSpace:
 
             dist_op = DistributedOperator(op, op_dist_attr)
             if dist_op_impl_container is None:
-                if is_elementwise_like_op(op.type):
+                if is_elementwise_op(op.type):
                     changed = True
                     valid = True
                     try:
@@ -271,7 +271,7 @@ class PlanSpace:
                     continue
 
             # if op has distributed implements, find all valid dist attr of this op
-            impls = dist_op_impl_container.get_impls()
+            impls = dist_op_impl_container.impls
             for idx, impl in enumerate(impls):
                 if impl.is_auto_compatible(dist_op):
                     if PlanFilter.check_dims_mapping_for_op(

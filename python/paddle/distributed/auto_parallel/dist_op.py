@@ -98,7 +98,7 @@ class DistributedOperator:
         if self._dist_attr.impl_type is None:
             self._dist_attr.impl_type = "default"
         if self._dist_attr.impl_idx is None:
-            self._dist_attr.impl_idx = -2
+            self._dist_attr.impl_idx = 0
 
     def _filter_dist_attr(self, dist_attr):
         if dist_attr is None:
@@ -215,7 +215,8 @@ class DistributedOperator:
 
         str += ", pipeline stage: {}".format(None)
 
-        str += ", dist_impl idx: {} }}".format(self.dist_attr._impl_idx)
+        str += ", dist_impl idx: {} , dist_impl type {} }}".format(
+            self.dist_attr._impl_idx, self.dist_attr._impl_type)
 
         return str
 

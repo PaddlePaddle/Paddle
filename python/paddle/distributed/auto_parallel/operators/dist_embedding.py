@@ -34,22 +34,20 @@ from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedEmbedding, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedEmbedding, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("lookup_table_v2",
-                                             DistributedEmbedding("embedding"))
-register_distributed_operator_impl_container("c_embedding",
-                                             DistributedEmbedding("embedding"))
+register_distributed_operator_impl_container(
+    DistributedEmbedding("lookup_table_v2"))
+register_distributed_operator_impl_container(
+    DistributedEmbedding("c_embedding"))
 
 
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedEmbeddingImpl, self).__init__()
-        self._name = name
+        super(DistributedEmbeddingImpl, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -81,6 +79,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+            return False
+
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         ids_name = op_desc.input('Ids')[0]
@@ -89,18 +91,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
-        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(w_dims_mapping[
-                -1]):
-            return False
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in ids_dims_mapping[1:]:
-            if is_dim_shard(mapping):
-                return False
-        for mapping in out_dims_mapping[1:]:
-            if is_dim_shard(mapping):
-                return False
-        if w_dims_mapping[-1] != out_dims_mapping[-1]:
-            return False
+
         if ids_dims_mapping != out_dims_mapping[:len(ids_dims_mapping)]:
             return False
 
@@ -248,6 +239,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         # matmulv2
         embedding_op_dist_attr = OperatorDistributedAttribute()
         embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        embedding_op_dist_attr.impl_type = op_dist_attr.impl_type
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_embedding_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
@@ -266,6 +258,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         # allreduce
         allreduce_op_dist_attr = OperatorDistributedAttribute()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
             input_var = main_block.var(input_varname)

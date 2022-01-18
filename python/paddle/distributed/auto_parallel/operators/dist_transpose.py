@@ -22,22 +22,21 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedTranspose2, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedTranspose2, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    "transpose2", DistributedTranspose2("transpose2"))
+    DistributedTranspose2("transpose2"))
 
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedTranspose2Impl, self).__init__()
-        self._name = name
+        super(DistributedTranspose2Impl, self).__init__(name)
         self._forward_implemented = False
         self._backward_implemented = False
 
@@ -48,6 +47,10 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+            return False
+
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         perm = op_desc.attr('axis')
@@ -112,8 +115,12 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         return changed
 
     @staticmethod
+    def forward(ctx, *args, **kwargs):
+        DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
+
+    @staticmethod
     def backward(ctx, *args, **kwargs):
-        pass
+        DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
 register_distributed_operator_impl(

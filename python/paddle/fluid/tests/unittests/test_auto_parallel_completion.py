@@ -76,15 +76,13 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(
                 self.linear0.weight,
                 dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 1]
+                    "process_mesh": [0, 1, 2, 3],
+                    "dims_mapping": [-1, 0]
                 })
             auto.shard_tensor(
                 self.linear1.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [1, -1]
-                })
+                dist_attr={"process_mesh": [1, 5],
+                           "dims_mapping": [0, -1]})
         elif _global_parallel_strategy == "pp":
             auto.shard_tensor(
                 self.linear0.weight,
@@ -102,7 +100,15 @@ class MLPLayer(nn.Layer):
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
+        # if _global_parallel_strategy == "dp_mp":
+        #     auto.shard_tensor(
+        #         out,
+        #         dist_attr={
+        #             "process_mesh": [1, 5],
+        #             "dims_mapping": [-1, 1]
+        #         })
         out = self.linear1(out)
+        out = self.linear0(out)
         out = self.dropout(out)
 
         return out
@@ -127,12 +133,13 @@ def mlp_pretrain_forward(train_program, start_program):
                     "dims_mapping": [0, -1, -1]
                 })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                input,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [0, -1, -1]
-                })
+            pass
+            # auto.shard_tensor(
+            #     input,
+            #     dist_attr={
+            #         "process_mesh": [2, 4],
+            #         "dims_mapping": [0, -1, -1]
+            #     })
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
