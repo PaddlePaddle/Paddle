@@ -29,6 +29,10 @@ namespace kps = paddle::operators::kernel_primitives;
 
 #endif
 
+#define MAX_NUM_INPUTS \
+  3  // Maximum number of inputs supported by kernel, MAX_NUM_INPUTS  is equal
+     // to the maximum value in ElementwiseType
+
 namespace pten {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
@@ -502,12 +506,13 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+    const paddle::framework::Array<const _ptr_ InT *__restrict__,
+                                   MAX_NUM_INPUTS> &in,
     paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[Arity][VecSize];
+  InT args[MAX_NUM_INPUTS][VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
@@ -537,7 +542,7 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    paddle::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS> ins,
     paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
@@ -578,7 +583,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = ins[0]->numel();
-  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  paddle::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
+      ins_data;
   paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
