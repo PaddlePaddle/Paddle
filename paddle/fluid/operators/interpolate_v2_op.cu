@@ -66,13 +66,11 @@ __global__ void KeNearestNeighborInterpNCHWFw(
   int out_index_stride = nc_stride * out_img_h * out_img_w;
 
   // prevent from multiple threads writing
-  if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
-    while (nc_id < nc) {
-      out[out_index] = in[in_index];
-      in_index += in_index_stride;
-      out_index += out_index_stride;
-      nc_id += nc_stride;
-    }
+  while (nc_id < nc && out_img_idx < out_img_w && out_img_idy < out_img_h) {
+    out[out_index] = in[in_index];
+    in_index += in_index_stride;
+    out_index += out_index_stride;
+    nc_id += nc_stride;
   }
 }
 

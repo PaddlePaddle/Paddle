@@ -172,8 +172,8 @@ inline GpuLaunchConfig GetCpuLaunchConfig3D(
   int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
   int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
 
-  int block_x = std::min(width, max_threads);
-  int block_y = std::min(height, max_threads / block_x);
+  int block_x = std::min(RoundToPowerOfTwo(width), max_threads);
+  int block_y = std::min(RoundToPowerOfTwo(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
   dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
