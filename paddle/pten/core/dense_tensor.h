@@ -172,24 +172,6 @@ class DenseTensor : public TensorBase,
   /// \return The actual storage size occupied by tensor.
   size_t capacity() const { return storage_->size(); }
 
-  /// \brief Get the mutable data pointer value of type T.
-  /// Memory allocation may occur when calling this interface:
-  /// 1. When the storage size is not enough to meet the current shape of the
-  /// data.
-  /// \return The mutable data pointer value of type T.
-  template <typename T>
-  T* mutable_data();
-
-  /// \brief Get the mutable data pointer value of raw type.
-  /// Memory allocation may occur when calling this interface:
-  /// 1. When the storage size is not enough to meet the current shape of the
-  /// data.
-  /// 2. When more request_bytes parameters are used to reserve the data
-  /// storage.
-  /// param request_bytes The bytes to reserve the data storage.
-  /// \return The mutable data pointer value of type T.
-  void* mutable_data(size_t request_bytes = 0);
-
   /// \brief Get the const data pointer value of type T.
   /// \return The const data pointer value of type T.
   template <typename T>
