@@ -1255,6 +1255,24 @@ void Reduce(const GPUContext& dev_ctx,
             x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
   }
 }
+
+template <typename InT, typename Functor>
+void ReduceGrad(const GPUContext& dev_ctx,
+                DenseTensor* d_out,
+                DenseTensor* d_x,
+                DataType out_dtype,
+                Functor functor) {
+  std::vector<const DenseTensor*> inputs = {d_out};
+  std::vector<DenseTensor*> outputs = {d_x};
+  PD_VISIT_ALL_TYPES(
+      out_dtype, "LaunchBroadcastElementwiseCudaKernel", ([&] {
+        LaunchBroadcastElementwiseCudaKernel<pten::ElementwiseType::kUnary,
+                                             InT,
+                                             data_t>(
+            dev_ctx, inputs, &outputs, 0, functor);
+      }));
+}
+
 }  // namespace pten
 
 #endif
