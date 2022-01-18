@@ -56,6 +56,9 @@ class AmpOperators {
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();
 
+  std::shared_ptr<std::unordered_set<std::string>>
+  GetMutableUnsupportedBf16Ops();
+
  private:
   AmpOperators();  // forbid calling default constructor
 
@@ -69,6 +72,9 @@ class AmpOperators {
 
   // The set of ops that has no fp16 CUDA kennel.
   std::shared_ptr<std::unordered_set<std::string>> unsupported_fp16_ops_;
+
+  // The set of ops that has no bf16 CUDA kennel.
+  std::shared_ptr<std::unordered_set<std::string>> unsupported_bf16_ops_;
 };
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);

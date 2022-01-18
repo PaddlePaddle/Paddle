@@ -38,20 +38,30 @@ AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
       block_ops_(new std::unordered_set<std::string>()),
-      unsupported_fp16_ops_(new std::unordered_set<std::string>()) {
+      unsupported_fp16_ops_(new std::unordered_set<std::string>()),
+      unsupported_bf16_ops_(new std::unordered_set<std::string>()) {
   auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
   auto fp16_dtype = framework::proto::VarType::FP16;
+  auto bf16_dtype = framework::proto::VarType::BF16;
   for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
-    bool supported = false;
+    bool fp16_supported = false;
+    bool bf16_supported = false;
     for (auto& kernel_type : it->second) {
-      if ((platform::is_gpu_place(kernel_type.first.place_) ||
-           platform::is_xpu_place(kernel_type.first.place_)) &&
-          kernel_type.first.data_type_ == fp16_dtype) {
-        supported = true;
+      if (platform::is_gpu_place(kernel_type.first.place_) ||
+          platform::is_xpu_place(kernel_type.first.place_)) {
+        if (kernel_type.first.data_type_ == fp16_dtype) {
+          fp16_supported = true;
+        }
+        if (kernel_type.first.data_type_ == bf16_dtype) {
+          bf16_supported = true;
+        }
       }
     }
-    if (!supported) {
+    if (!fp16_supported) {
       unsupported_fp16_ops_->insert(it->first);
+    }
+    if (!bf16_supported) {
+      unsupported_bf16_ops_->insert(it->first);
     }
   }
 }
@@ -78,6 +88,11 @@ AmpOperators::GetMutableUnsupportedFp16Ops() {
   return unsupported_fp16_ops_;
 }
 
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableUnsupportedBf16Ops() {
+  return unsupported_bf16_ops_;
+}
+
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "allow ops: ";
   auto allow_ops = ops.GetMutableAllowOps();
@@ -92,6 +107,11 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "unsupported fp16 ops: ";
   auto unsupported_fp16_ops = ops.GetMutableUnsupportedFp16Ops();
   std::copy((*unsupported_fp16_ops).begin(), (*unsupported_fp16_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  os << "\n";
+  os << "unsupported bf16 ops: ";
+  auto unsupported_bf16_ops = ops.GetMutableUnsupportedBf16Ops();
+  std::copy((*unsupported_bf16_ops).begin(), (*unsupported_bf16_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
   return os;
 }
