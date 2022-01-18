@@ -574,7 +574,7 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+    pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
 }

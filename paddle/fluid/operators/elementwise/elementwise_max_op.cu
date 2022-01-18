@@ -28,8 +28,9 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
         ctx.template device_context<platform::CUDADeviceContext>();
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, axis, MaxFunctor<T>());
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(dev_ctx, ins, &outs, axis,
+                                                      MaxFunctor<T>());
   }
 };
 

@@ -14,10 +14,13 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 
-class Tensor;
 class Scope;
 class Variable;
 

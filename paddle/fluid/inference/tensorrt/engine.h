@@ -36,12 +36,6 @@ limitations under the License. */
 #include "paddle/utils/any.h"
 
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 

@@ -27,8 +27,9 @@ class ElementwiseModKernel<platform::CUDADeviceContext, T>
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, ModFunctor<T>());
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(cuda_ctx, ins, &outs,
+                                                      axis, ModFunctor<T>());
   }
 };
 
