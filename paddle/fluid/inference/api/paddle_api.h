@@ -405,3 +405,24 @@ PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
     const std::string& config_file);
 
 }  // namespace paddle
+
+// forward declation
+using cudaStream_t = struct CUstream_st*;
+using hipStream_t = struct ihipStream_t*;
+
+namespace paddle_infer {
+class Predictor;
+using Config = paddle::AnalysisConfig;
+namespace experimental {
+class PD_INFER_DECL InternalUtils {
+ public:
+  // Note: Can only be used under thread_local semantics.
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    cudaStream_t stream);
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    hipStream_t stream);
+  static void UpdateConfigInterleaved(paddle_infer::Config* c,
+                                      bool with_interleaved);
+};
+}  // namespace experimental
+}  // namespace paddle_infer

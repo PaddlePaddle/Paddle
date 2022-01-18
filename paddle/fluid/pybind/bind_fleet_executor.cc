@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include <pybind11/stl.h>
+#include "paddle/fluid/distributed/fleet_executor/dist_model.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,6 +29,8 @@ namespace pybind {
 
 using paddle::distributed::FleetExecutor;
 using paddle::distributed::TaskNode;
+using paddle::distributed::DistModelConfig;
+using paddle::distributed::DistModel;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 
@@ -51,6 +54,30 @@ void BindFleetExecutor(py::module* m) {
       .def("role", &TaskNode::role)
       .def("init", &TaskNode::Init)
       .def("set_program", &TaskNode::SetProgram);
+
+  py::class_<DistModelConfig>(*m, "DistModelConfig")
+      .def(py::init<>())
+      .def_readwrite("model_dir", &DistModelConfig::model_dir)
+      .def_readwrite("program_desc", &DistModelConfig::program_desc)
+      .def_readwrite("scope", &DistModelConfig::scope)
+      .def_readwrite("place", &DistModelConfig::place)
+      .def_readwrite("device_id", &DistModelConfig::device_id)
+      .def_readwrite("trainer_endpoints", &DistModelConfig::trainer_endpoints)
+      .def_readwrite("current_endpoint", &DistModelConfig::current_endpoint)
+      .def_readwrite("nranks", &DistModelConfig::nranks)
+      .def_readwrite("local_rank", &DistModelConfig::local_rank)
+      .def_readwrite("mp_degree", &DistModelConfig::mp_degree)
+      .def_readwrite("pp_degree", &DistModelConfig::pp_degree)
+      .def_readwrite("mp_ring_id", &DistModelConfig::mp_ring_id)
+      .def_readwrite("pp_upstream_ring_id",
+                     &DistModelConfig::pp_upstream_ring_id)
+      .def_readwrite("pp_downstream_ring_id",
+                     &DistModelConfig::pp_downstream_ring_id);
+
+  py::class_<DistModel>(*m, "DistModel")
+      .def(py::init<const DistModelConfig&>())
+      .def("init", &DistModel::Init)
+      .def("run", &DistModel::Run, py::call_guard<py::gil_scoped_release>());
 }
 }  // namespace pybind
 }  // namespace paddle

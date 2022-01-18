@@ -59,7 +59,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
 #elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
 

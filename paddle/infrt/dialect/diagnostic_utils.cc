@@ -14,9 +14,11 @@
 
 #include "paddle/infrt/dialect/diagnostic_utils.h"
 
+#include <llvm/Support/raw_ostream.h>
 #include <string>
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 struct MyScopedDiagnosicHandler::Impl {
   Impl() : diag_stream_(diag_str_) {}
@@ -49,4 +51,5 @@ mlir::LogicalResult MyScopedDiagnosicHandler::handler(mlir::Diagnostic *diag) {
   return mlir::failure(true);
 }
 
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt

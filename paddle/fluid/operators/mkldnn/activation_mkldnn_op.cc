@@ -16,10 +16,12 @@
 #include "paddle/fluid/operators/mkldnn/softplus_mkldnn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class MKLDNNDeviceContext;
 }  // namespace platform

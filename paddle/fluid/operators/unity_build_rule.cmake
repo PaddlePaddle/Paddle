@@ -192,7 +192,6 @@ register_unity_group(cc
     pad_op.cc)
 register_unity_group(cc
     modified_huber_loss_op.cc
-    mkldnn/mul_mkldnn_op.cc
     partial_sum_op.cc
     pixel_shuffle_op.cc
     pool_op.cc

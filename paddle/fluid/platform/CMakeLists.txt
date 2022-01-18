@@ -47,6 +47,7 @@ ENDIF()
 cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 cc_library(os_info SRCS os_info.cc DEPS enforce)
+cc_test(os_info_test SRCS os_info_test.cc DEPS os_info)
 
 IF(WITH_GPU)
     nv_library(cuda_graph_with_memory_pool SRCS cuda_graph_with_memory_pool.cc DEPS device_context allocator_facade cuda_graph)
@@ -54,7 +55,7 @@ ELSE()
     cc_library(cuda_graph_with_memory_pool SRCS cuda_graph_with_memory_pool.cc DEPS device_context allocator_facade)
 ENDIF()
 
-cc_library(place SRCS place.cc DEPS enforce boost)
+cc_library(place SRCS place.cc DEPS enforce boost pten_place)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(device)
@@ -121,7 +122,7 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    place pten_place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS})
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
@@ -169,7 +170,8 @@ cc_test(timer_test SRCS timer_test.cc DEPS timer)
 cc_library(lodtensor_printer SRCS lodtensor_printer.cc DEPS ddim place tensor scope lod_tensor variable_helper framework_proto)
 cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_printer)
 
-cc_library(host_event_recorder SRCS host_event_recorder.cc DEPS os_info)
+add_subdirectory(profiler)
+
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS host_event_recorder os_info device_tracer gpu_info enforce dynload_cuda)

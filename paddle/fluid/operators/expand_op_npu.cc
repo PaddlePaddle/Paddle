@@ -81,14 +81,28 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
       out_dims[i] *= expand_times[i];
     }
 
-    out0->Resize(out_dims);
-    out0->mutable_data<T>(context.device_context().GetPlace());
-    const auto& runner =
-        NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
+    auto place = context.GetPlace();
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    runner.Run(stream);
+
+    out0->Resize(out_dims);
+    out0->mutable_data<T>(place);
+
+    bool is_expand_times_all_one =
+        (out0->numel() == in0->numel()) ? true : false;
+
+    if (is_expand_times_all_one) {
+      memory::Copy(place, out0->mutable_data<T>(place), place, in0->data<T>(),
+                   in0->numel() * sizeof(T), stream);
+      if (out_dims != in_dims) {
+        out0->Resize(out_dims);
+      }
+    } else {
+      const auto& runner =
+          NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
+      runner.Run(stream);
+    }
   }
 };
 }  // namespace operators

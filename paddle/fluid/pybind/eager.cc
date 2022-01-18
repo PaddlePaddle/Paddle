@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -109,25 +108,20 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
   paddle::platform::Place place = impl_ptr->place();
   paddle::framework::LoDTensor temp_tensor = paddle::framework::LoDTensor();
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::XPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPlace>(&temp_tensor, array, place,
+                                              zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(&temp_tensor, array, place,
+                                                    zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::NPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -741,6 +735,10 @@ extern struct PyGetSetDef variable_properties[];
 
 extern PyMethodDef variable_methods[];
 
+PyNumberMethods number_methods;
+PySequenceMethods sequence_methods;
+PyMappingMethods mapping_methods;
+
 PyTypeObject eager_tensor_type = {
     PyVarObject_HEAD_INIT(NULL, 0) "core_avx.eager.EagerTensor", /* tp_name */
     sizeof(EagerTensorObject),       /* tp_basicsize */
@@ -751,9 +749,9 @@ PyTypeObject eager_tensor_type = {
     0,                               /* tp_setattr */
     0,                               /* tp_reserved */
     0,                               /* tp_repr */
-    0,                               /* tp_as_number */
-    0,                               /* tp_as_sequence */
-    0,                               /* tp_as_mapping */
+    &number_methods,                 /* tp_as_number */
+    &sequence_methods,               /* tp_as_sequence */
+    &mapping_methods,                /* tp_as_mapping */
     0,                               /* tp_hash  */
     0,                               /* tp_call */
     0,                               /* tp_str */
