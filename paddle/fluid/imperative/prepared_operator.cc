@@ -369,7 +369,7 @@ static void BuildDygraphPtenKernelContext(
                          ->mutable_value();
       }
       experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
-      SetAllocationForOutputTenosr(
+      framework::SetAllocationForOutputTenosr(
           tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
