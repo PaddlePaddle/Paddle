@@ -1253,7 +1253,8 @@ void BindImperative(py::module *m_ptr) {
                                       ->GetMutable<framework::LoDTensor>();
                auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
                    tracer->ExpectedPlace());
-               TensorFromVector(list_select_idxs, *dev_ctx, idx_tensor);
+               paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
+                                                   idx_tensor);
 
                imperative::NameVarBaseMap ins = {{"X", {self}},
                                                  {"Index", {select_index}}};

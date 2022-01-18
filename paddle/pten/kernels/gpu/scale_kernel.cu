@@ -55,7 +55,9 @@ void ScaleKernel(const Context& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   out->mutable_data<T>();
-  funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                   T,
+                                                   T>(
       dev_ctx,
       inputs,
       &outputs,

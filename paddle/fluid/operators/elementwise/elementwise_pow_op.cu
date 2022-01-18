@@ -30,8 +30,9 @@ class ElementwisePowKernel<platform::CUDADeviceContext, T>
         ctx.template device_context<platform::CUDADeviceContext>();
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, PowFunctor<T>());
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(cuda_ctx, ins, &outs,
+                                                      axis, PowFunctor<T>());
   }
 };
 

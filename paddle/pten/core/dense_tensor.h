@@ -159,7 +159,9 @@ class DenseTensor : public TensorBase,
   /// \param dims The new dims of the dense tensor.
   /// \param lod The new lod of the dense tensor.
   // void Resize(const DDim& dims);
-  void Resize(const DDim& dims);
+  void ResizeAndAllocate(const DDim& dims);
+
+  DenseTensor& Resize(const DDim& dims);
 
   /// \brief Change the lod information in the metadata.
   /// \param lod The new lod of the dense tensor.
@@ -308,6 +310,18 @@ class DenseTensor : public TensorBase,
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;
   }
+
+  /*! The internal of two tensors share the same memory block. */
+  DenseTensor& ShareDataWith(const DenseTensor& src);
+
+  /*! The internal of two tensors share the same inplace version counter. */
+  DenseTensor& ShareInplaceVersionCounterWith(const DenseTensor& src);
+
+  DenseTensor Slice(int64_t begin_idx, int64_t end_idx) const;
+
+  std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
+
+  std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
 
  protected:
   std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;

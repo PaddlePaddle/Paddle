@@ -219,10 +219,12 @@ class GeluKernel<platform::CUDADeviceContext, T>
         }
       }
 #endif
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
     } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx, ins, &outs, 0, GeluWithoutApproximateFunctor<T>());
     }
   }
@@ -291,10 +293,12 @@ class GeluGradKernel<platform::CUDADeviceContext, T>
         }
       }
 #endif
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx, ins, &outs, 0, GeluWithApproximateGradFunctor<T>());
     } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx, ins, &outs, 0, GeluWithoutApproximateGradFunctor<T>());
     }
   }
