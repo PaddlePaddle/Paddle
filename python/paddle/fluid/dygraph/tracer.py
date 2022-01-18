@@ -89,11 +89,10 @@ class Tracer(core.Tracer):
                 elif arg_type == "list":
                     assert isinstance(arg_to_append, list)
                     arg_list.append(arg_to_append)
-                elif arg_type == "int":
+                else:
+                    assert arg_type == "int"
                     assert isinstance(arg_to_append, int)
                     arg_list.append(arg_to_append)
-                else:
-                    assert False
 
             attrs_list = []
             for k, v in attrs.items():

@@ -1381,7 +1381,6 @@ class OpTest(unittest.TestCase):
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
         if check_eager:
-            assert check_dygraph == True
             return outs, dygraph_outs, eager_dygraph_outs, fetch_list
         elif check_dygraph:
             return outs, dygraph_outs, fetch_list
@@ -1465,9 +1464,14 @@ class OpTest(unittest.TestCase):
 
         places = self._get_places()
         for place in places:
-            res = self.check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph,
-                                               inplace_atol, check_eager)
+            res = self.check_output_with_place(
+                place,
+                atol,
+                no_check_set,
+                equal_nan,
+                check_dygraph,
+                inplace_atol,
+                check_eager=check_eager)
             if check_eager:
                 assert check_dygraph == True
                 outs, dygraph_outs, eager_dygraph_outs, fetch_list = res
@@ -1548,10 +1552,17 @@ class OpTest(unittest.TestCase):
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(
-                place, inputs_to_check, output_names, no_grad_set,
-                numeric_grad_delta, in_place, max_relative_error,
-                user_defined_grads, user_defined_grad_outputs, check_dygraph,
-                None, check_eager)
+                place,
+                inputs_to_check,
+                output_names,
+                no_grad_set,
+                numeric_grad_delta,
+                in_place,
+                max_relative_error,
+                user_defined_grads,
+                user_defined_grad_outputs,
+                check_dygraph,
+                check_eager=check_eager)
 
     def check_grad_with_place(self,
                               place,
