@@ -1087,10 +1087,9 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    if(%s) grad_node->SetGradOutMeta(%s, %d);\n";
+          "    grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_autograd_name,
-          input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
           "    if(%s) grad_node->AddEdges(%s, %d);\n";
