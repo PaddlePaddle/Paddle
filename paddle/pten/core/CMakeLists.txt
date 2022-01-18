@@ -18,4 +18,5 @@ cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
     add_dependencies(dense_tensor mkldnn)
+    add_dependencies(tensor_base mkldnn)
 endif()

@@ -1467,7 +1467,7 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
 }
 template <>
 template <typename T>
-void Blas<pten::CPUCPUContext>::BatchedGEMMWithHead(
+void Blas<pten::CPUContext>::BatchedGEMMWithHead(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int W1, int H1, int W2,
     int H2, T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB, int64_t head_number,
