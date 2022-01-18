@@ -298,18 +298,6 @@ static PyObject* eager_tensor__share_underline_tensor_to(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* set_(EagerTensorObject* self, PyObject* args,
-                      PyObject* kwargs) {
-  EAGER_TRY
-  VLOG(4) << "Value " << self->eager_tensor.name();
-  pybind11::object numpy_value =
-      pybind11::object(pybind11::handle(PyTuple_GET_ITEM(args, 0)), true);
-  InitEagerTensorWithNumpyValue(self, numpy_value, false);
-  Py_INCREF(Py_None);
-  return Py_None;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* eager_tensor__is_shared_underline_tensor_with(
     EagerTensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
@@ -371,6 +359,20 @@ static PyObject* eager_tensor_method_get_underline_tensor(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+// NOTE(wuweilong): Set value and not change self's original place
+static PyObject* eager_tensor_method_set_value(EagerTensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Value " << self->eager_tensor.name();
+  pybind11::object numpy_value =
+      pybind11::object(pybind11::handle(PyTuple_GET_ITEM(args, 0)), true);
+  InitEagerTensorWithNumpyValue(self, numpy_value, false);
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -388,8 +390,6 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"set", (PyCFunction)(void (*)(void))set_, METH_VARARGS | METH_KEYWORDS,
-     NULL},
     {"_share_buffer_to",
      (PyCFunction)(void (*)(void))eager_tensor__share_buffer_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -406,6 +406,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"get_tensor",
      (PyCFunction)(void (*)(void))eager_tensor_method_get_underline_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_set_value", (PyCFunction)(void (*)(void))eager_tensor_method_set_value,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
