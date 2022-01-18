@@ -348,9 +348,10 @@ class TestSparseAdamOp(unittest.TestCase):
                 self.assertLess((actual[i] - np_array[i]), 0.00001)
 
     def test_sparse_adam(self):
-        #for lazy_mode in (True, False):
-        #    self.check_with_place(paddle.XPUPlace(0), lazy_mode)
-        self.check_with_place(paddle.XPUPlace(0), False)
+        xpu_version = core.get_xpu_device_version(0)
+        version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+        if "xpu2" == version_str:
+            self.check_with_place(paddle.XPUPlace(0), False)
 
 
 class TestAdamOpBetaVariable(OpTest):
