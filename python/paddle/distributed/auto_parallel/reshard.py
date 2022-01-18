@@ -518,7 +518,6 @@ def _insert_recv_op(block, idx, tensor, src):
 def _insert_concat_op(block, idx, tensors, axis):
     """Insert concat op into block at the given block."""
     inputs = {'X': tensors}
-    print("concat_op", inputs, flush=True)
     attrs = {}
     attrs['axis'] = axis
     helper = LayerHelper('concat', **locals())
