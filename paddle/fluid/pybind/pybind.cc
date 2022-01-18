@@ -373,7 +373,7 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {
-  return static_cast<int>(paddle::platform::Place(p).which());
+  return static_cast<int>(paddle::platform::Place(p).GetType());
 }
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -2051,26 +2051,11 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("is_mlu_place",
            [](platform::Place &self) { return platform::is_mlu_place(self); })
-      .def("gpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::CUDAPlace, self).device;
-           })
-      .def("xpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::XPUPlace, self).device;
-           })
-      .def("npu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::NPUPlace, self).device;
-           })
-      .def("ipu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::IPUPlace, self).device;
-           })
-      .def("mlu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::MLUPlace, self).device;
-           })
+      .def("gpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("xpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("npu_device_id", [](platform::Place &self) { return self.device; })
+      .def("ipu_device_id", [](platform::Place &self) { return self.device; })
+      .def("mlu_device_id", [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",
@@ -2986,7 +2971,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
-      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce);
+      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce)
+      .value("_NoReduce", BuildStrategy::ReduceStrategy::kNoReduce);
   py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
                                                   "GradientScaleStrategy")
       .value("CoeffNumDevice",

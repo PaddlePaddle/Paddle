@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
+
 #pragma once
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/scope.h"
+OP_DECL(popart_nllloss_v2, aiGraphcoreOpset.nllloss, SIG_ARG(INT32,popart::ReductionType,reduction) OPT_ARG(INT32,ignoreIndex) ARG(BOOL,inputIsLogProbability) ) // NOLINT
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class IPUPassBase : public Pass {
- public:
-  void Init(const std::string& repr, Graph* graph) const;
-  virtual ~IPUPassBase() {}
-
- protected:
-  mutable Graph* graph_;
-  mutable std::string repr_;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+// clang-format on
