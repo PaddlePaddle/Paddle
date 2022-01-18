@@ -54,7 +54,7 @@ void ScaleKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
-  out->mutable_data<T>();
+  out->mutable_data<T>(dev_ctx.GetPlace());
   pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
                                                    T,
                                                    T>(

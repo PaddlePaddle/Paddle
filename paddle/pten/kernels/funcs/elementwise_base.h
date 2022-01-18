@@ -227,7 +227,7 @@ class TransformFunctor {
                    const bool is_xsize_larger = true)
       : x_(x.data<T>()),
         y_(y.data<T>()),
-        z_(z->mutable_data<OutType>()),
+        z_(z->mutable_data<OutType>(ctx.GetPlace())),
         nx_(x.numel()),
         ctx_(ctx),
         func_(func),

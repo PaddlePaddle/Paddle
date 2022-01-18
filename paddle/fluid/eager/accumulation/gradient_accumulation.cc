@@ -216,8 +216,9 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
 #define PADDLE_TENSOR_ADD(cpp_type)                                          \
   if (data_type == paddle::framework::DataTypeTrait<cpp_type>::DataType()) { \
-    TensorAddFunctor<cpp_type> func(numel, src_tensor->data<cpp_type>(),     \
-                                    dst_tensor->mutable_data<cpp_type>());   \
+    TensorAddFunctor<cpp_type> func(                                         \
+        numel, src_tensor->data<cpp_type>(),                                 \
+        dst_tensor->mutable_data<cpp_type>(place));                          \
     paddle::platform::VisitPlace(place, func);                               \
     return;                                                                  \
   }

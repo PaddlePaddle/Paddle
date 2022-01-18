@@ -29,8 +29,8 @@ void Copy(const Context& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst) {
-  auto* src_ptr = src.data();
-  auto* dst_ptr = dst->mutable_data();
+  auto* src_ptr = src->mutable_data(dev_ctx.GetPlace());
+  auto* dst_ptr = dst->mutable_data(dev_ctx.GetPlace());
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
 

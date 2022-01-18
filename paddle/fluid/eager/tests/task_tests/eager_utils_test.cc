@@ -35,7 +35,7 @@ TEST(EagerUtils, AutoGradMeta) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<float>()[0] = 10.0;
+  dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
@@ -43,7 +43,7 @@ TEST(EagerUtils, AutoGradMeta) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  dt1->mutable_data<float>()[0] = 20.0;
+  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
   EagerTensor et1 = EagerTensor(dt1);
 
   std::vector<EagerTensor> ets = {et0, et1};
@@ -112,7 +112,7 @@ egr::EagerTensor CreateTestCPUTensor(T val,
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<T>();
+  auto* dt_ptr = dt->mutable_data<T>(paddle::platform::CPUPlace());
   for (int64_t i = 0; i < dt->numel(); i++) {
     dt_ptr[i] = val;
   }

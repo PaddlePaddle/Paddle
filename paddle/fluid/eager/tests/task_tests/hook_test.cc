@@ -45,8 +45,8 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
           paddle::memory::Alloc(place, bytes_size)),
       std::move(ret_meta));
 
-  float* t_ptr = t_dense->mutable_data<float>();
-  float* ret_ptr = ret_dense->mutable_data<float>();
+  float* t_ptr = t_dense->mutable_data<float>(place);
+  float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
     ret_ptr[i] = t_ptr[i] + 3.0;
   }
