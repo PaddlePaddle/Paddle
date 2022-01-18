@@ -1190,8 +1190,8 @@ class OpTest(unittest.TestCase):
                         with _test_eager_guard():
                             eager_imperative_actual = find_imperative_actual(
                                 sub_out_name, eager_dygraph_outs, place)
-                            eager_imperative_actual_t = np.array(
-                                eager_imperative_actual.value().get_tensor())
+                            eager_imperative_actual_t = eager_imperative_actual.numpy(
+                            )
 
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
@@ -1252,8 +1252,8 @@ class OpTest(unittest.TestCase):
                     with _test_eager_guard():
                         eager_imperative_actual = find_imperative_actual(
                             out_name, eager_dygraph_outs, place)
-                        eager_imperative_actual_t = np.array(
-                            eager_imperative_actual.value().get_tensor())
+                        eager_imperative_actual_t = eager_imperative_actual.numpy(
+                        )
 
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
@@ -1663,12 +1663,9 @@ class OpTest(unittest.TestCase):
                               "Gradient Check On %s" % str(place))
 
         if check_dygraph:
-            dygraph_inputs_to_check = copy(inputs_to_check)
-            dygraph_user_defined_grad_outputs = copy(user_defined_grad_outputs)
-
             dygraph_grad = self._get_dygraph_grad(
-                dygraph_inputs_to_check, place, output_names,
-                dygraph_user_defined_grad_outputs, no_grad_set)
+                inputs_to_check, place, output_names, user_defined_grad_outputs,
+                no_grad_set)
             fp32_grads = []
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
@@ -1681,12 +1678,10 @@ class OpTest(unittest.TestCase):
                                   "Gradient Check On %s" % str(place))
 
         if check_eager:
-            eager_inputs_to_check = copy(inputs_to_check)
-            eager_user_defined_grad_outputs = copy(user_defined_grad_outputs)
             with _test_eager_guard():
                 eager_dygraph_grad = self._get_dygraph_grad(
-                    eager_inputs_to_check, place, output_names,
-                    eager_user_defined_grad_outputs, no_grad_set)
+                    inputs_to_check, place, output_names,
+                    user_defined_grad_outputs, no_grad_set)
                 fp32_grads = []
                 for grad in eager_dygraph_grad:
                     if grad.dtype == np.uint16:
