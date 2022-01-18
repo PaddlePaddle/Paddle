@@ -68,7 +68,7 @@ class Multinomial(distribution.Distribution):
         self.probs = probs / probs.sum(-1, keepdim=True)
         self.total_count = total_count
         self._categorical = categorical.Categorical(
-            logits=_probs_to_logits(probs))
+            logits=self._probs_to_logits(probs))
 
         super(Multinomial, self).__init__(probs.shape[:-1], probs.shape[-1:])
 
@@ -129,23 +129,7 @@ class Multinomial(distribution.Distribution):
         if not isinstance(shape, collections.Iterable):
             raise TypeError('sample shape must be Iterable object.')
         shape = shape if isinstance(shape, tuple) else tuple(shape)
-
-        # transpose (total_count, sample_shape, batch_shape) into
-        # (sample_shape, batch_shape, total_count)
         samples = self._categorical.sample((self.total_count, ) + shape)
-        # permute = list(range(samples.dim()))
-        # permute.append(permute.pop(0))
-        # samples = paddle.transpose(samples, permute)
-
-        # return paddle.put_along_axis(
-        #     arr=paddle.zeros(
-        #         self._extend_shape(shape), dtype=self.probs.dtype),
-        #     indices=samples,
-        #     values=paddle.ones_like(
-        #         samples, dtype=self.probs.dtype),
-        #     axis=-1,
-        #     reduce='add')
-
         return paddle.nn.functional.one_hot(samples,
                                             self.probs.shape[-1]).sum(0)
 
@@ -167,7 +151,7 @@ class Multinomial(distribution.Distribution):
 
 
 def _binomial_logpmf(count, probs, value):
-    logits = _probs_to_logits(probs, is_binary=True)
+    logits = self._probs_to_logits(probs, is_binary=True)
 
     factor_n = paddle.lgamma(count + 1)
     factor_k = paddle.lgamma(value + 1)
@@ -181,11 +165,6 @@ def _binomial_logpmf(count, probs, value):
 
 def _binomial_support(count, dtype):
     return paddle.arange(count + 1, dtype=dtype)
-
-
-def _probs_to_logits(probs, is_binary=False):
-    return (paddle.log(probs) - paddle.log1p(-probs)
-            ) if is_binary else paddle.log(probs)
 
 
 def _clip_by_zero(x):

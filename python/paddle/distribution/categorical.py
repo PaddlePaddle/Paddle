@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -123,7 +123,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: A tensor with prepended dimensions shape.
-        
+
         Examples:
             .. code-block:: python
 
@@ -159,7 +159,8 @@ class Categorical(Distribution):
             sample_shape = shape
             logits = self.logits
 
-        sample_index = multinomial(logits, num_samples, True)
+        sample_index = multinomial(
+            self._logits_to_probs(logits), num_samples, True)
         return nn.reshape(sample_index, sample_shape, name=name)
 
     def kl_divergence(self, other):
@@ -170,7 +171,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: kl-divergence between two Categorical distributions.
-        
+
         Examples:
             .. code-block:: python
 
@@ -200,7 +201,8 @@ class Categorical(Distribution):
         if not in_dygraph_mode():
             check_type(other, 'other', Categorical, 'kl_divergence')
 
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        logits = self.logits - \
+            nn.reduce_max(self.logits, dim=-1, keep_dim=True)
         other_logits = other.logits - nn.reduce_max(
             other.logits, dim=-1, keep_dim=True)
         e_logits = ops.exp(logits)
@@ -221,7 +223,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: Shannon entropy of Categorical distribution. The data type is float32.
-        
+
         Examples:
             .. code-block:: python
 
@@ -241,7 +243,8 @@ class Categorical(Distribution):
 
         """
         name = self.name + '_entropy'
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        logits = self.logits - \
+            nn.reduce_max(self.logits, dim=-1, keep_dim=True)
         e_logits = ops.exp(logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
@@ -266,7 +269,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: probability according to the category index.
-        
+
         Examples:
             .. code-block:: python
 
@@ -332,7 +335,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: Log probability.
-        
+
         Examples:
             .. code-block:: python
 
