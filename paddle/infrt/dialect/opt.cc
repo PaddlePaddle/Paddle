@@ -12,45 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mlir/Pass/PassManager.h>
 #include <mlir/Support/MlirOptMain.h>
 #include <mlir/Transforms/Passes.h>
-
-#include <iostream>
-#include <string>
-
-#include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
-#include "paddle/infrt/dialect/mlir_loader.h"
-#include "paddle/infrt/dialect/pd_test_op_kernel_mapping_pass.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   infrt::registerCinnDialects(registry);
   mlir::registerCanonicalizerPass();
-  // infrt::RegisterOpKernelMappingPass();
   return mlir::failed(
       mlir::MlirOptMain(argc, argv, "infrt mlir pass driver", registry));
-
-  // static llvm::cl::opt<std::string> input_file(
-  //     llvm::cl::Positional,
-  //     llvm::cl::desc("Specify input filename"),
-  //     llvm::cl::init("-"));
-
-  // llvm::cl::ParseCommandLineOptions(argc, argv);
-
-  // mlir::MLIRContext* context = infrt::Global::getMLIRContext();
-  // auto module = infrt::dialect::LoadMlirFile(input_file.c_str(), context);
-
-  // module->dump();
-  // mlir::PassManager pm(context);
-
-  // mlir::OpPassManager& trt_pass_manager = pm.nest<mlir::FuncOp>();
-  // trt_pass_manager.addPass(infrt::CreateOpKernelMappingPass());
-  // if (mlir::failed(pm.run(*module))) {
-  //   std::cout << "\npass failed!\n" << std::endl;
-  //   return 4;
-  // }
-  // module->dump();
-  // return 0;
 }
