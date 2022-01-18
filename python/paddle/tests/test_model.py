@@ -732,6 +732,34 @@ class TestModelFunction(unittest.TestCase):
             custom_ops={paddle.nn.Dropout: customize_dropout},
             print_detail=True)
 
+    def test_dynamic_flops_with_multiple_outputs(self):
+        class MyMnist(paddle.nn.Layer):
+            def __init__(self):
+                super(MyMnist, self).__init__()
+                self.flatten = paddle.nn.Flatten()
+                self.linear_1 = paddle.nn.Linear(784, 512)
+                self.linear_2 = paddle.nn.Linear(512, 10)
+                self.relu = paddle.nn.ReLU()
+                self.dropout = paddle.nn.Dropout(0.2)
+
+            def forward(self, inputs):
+                y = self.flatten(inputs)
+                y = self.linear_1(y)
+                y1 = self.relu(y)
+                y2 = self.dropout(y1)
+                y2 = self.linear_2(y2)
+                return y1, y2
+
+        net = MyMnist()
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 1, 28, 28],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
+
     def test_export_deploy_model(self):
         self.set_seed()
         np.random.seed(201)
