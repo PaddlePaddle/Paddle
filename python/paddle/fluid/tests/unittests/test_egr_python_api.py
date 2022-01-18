@@ -689,7 +689,7 @@ class EagerTensorPropertiesAndMethodsTestCase(unittest.TestCase):
             tensor.persistable = False
             self.assertEqual(tensor.persistable, False)
             self.assertTrue(tensor.place.is_cpu_place())
-            self.assertEqual(tensor._place_str, 'CPUPlace')
+            self.assertEqual(tensor._place_str, 'Place(cpu)')
             self.assertEqual(tensor.stop_gradient, True)
             tensor.stop_gradient = False
             self.assertEqual(tensor.stop_gradient, False)
