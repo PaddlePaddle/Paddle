@@ -60,5 +60,14 @@ void transpose(const Context& ctx,
 }
 }  // namespace pten
 
-PT_REGISTER_KERNEL(
-    transpose, CPU, ALL_LAYOUT, pten::transpose, bool, float, double) {}
+PT_REGISTER_KERNEL(transpose,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::transpose,
+                   bool,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
