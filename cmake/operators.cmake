@@ -301,6 +301,12 @@ function(op_library TARGET)
         find_register(${cc_src} "REGISTER_OP_CPU_KERNEL" op_name)
         if(NOT ${op_name} EQUAL "")
             file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CPU);\n")
+            # why change TARGET here?
+            # when building padle with on_infer, the REGISTER_OPERATOR(*_grad) will be removed before compiling (see details in remove_grad_op_and_kernel.py)
+            # in elementwise_op.cc, it will find REGISTER_OPERATOR(grad_add) and set TARGET to grad_add
+            # and, in the following "mkldnn" part, it will add USE_OP_DEVICE_KERNEL(grad_add, MKLDNN) to pybind.h
+            # however, grad_add has no mkldnn kernel. 
+            set(TARGET ${op_name})  
             set(pybind_flag 1)
         endif()
     endforeach()
