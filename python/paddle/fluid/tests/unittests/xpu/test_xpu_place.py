@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+
 import unittest
 import os
 import paddle
@@ -21,7 +22,6 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.static as static
-
 
 class Test_XPU_Places(unittest.TestCase):
     def assert_places_equal(self, places0, places1):
@@ -45,3 +45,7 @@ class Test_XPU_Places(unittest.TestCase):
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
+
+
+
+
