@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_CUSTOM_KERNEL
 
 #include <iostream>
 #include <string>
@@ -665,3 +666,5 @@ void LoadCustomKernelLib(const std::string& dso_name);
       ::paddle::OpKernelInfo* kernel)
 
 }  // namespace paddle
+
+#endif  // PADDLE_WITH_CUSTOM_KERNEL

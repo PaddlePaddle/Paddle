@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_CUSTOM_KERNEL
 
 #include "paddle/pten/api/ext/op_kernel_info.h"
 
@@ -34,3 +35,5 @@ void RegisterKernelWithMetaInfo(
     const std::vector<OpKernelInfo>& op_kernel_infos);
 }  // namespace framework
 }  // namespace paddle
+
+#endif  // PADDLE_WITH_CUSTOM_KERNEL

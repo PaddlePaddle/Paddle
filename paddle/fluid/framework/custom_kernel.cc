@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_CUSTOM_KERNEL
+
 #include "paddle/fluid/framework/custom_kernel.h"
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/fluid/framework/operator.h"
@@ -182,11 +184,9 @@ static void RunKernelFunc(pten::KernelContext* ctx,
       VLOG(3) << "Mapped Output[" << out_idx
               << "] with range.first: " << range.first;
     } else {
-      std::cout << "5.5.3 ---------------" << std::endl;
       std::vector<paddle::experimental::Tensor*> custom_vec_out;
       auto ctx_tensor_vec =
           ctx->OutputSharedPtrBetween(range.first, range.second);
-      std::cout << "5.5.4 ---------------" << std::endl;
       for (auto& ctx_tensor : ctx_tensor_vec) {
         paddle::experimental::Tensor* custom_t =
             new paddle::experimental::Tensor(ctx_tensor);
@@ -199,10 +199,12 @@ static void RunKernelFunc(pten::KernelContext* ctx,
     }
   }
 
-  // device_ctx:
-  // in pten, kernel function knows XXContext through template param
+  // DeviceContext:
+  // In pten, kernel function knows XXContext through template param
   // from input KernelContext, but here we don't have KernelContext
   // and need mapping to user kernel function with backend from OpKernelInfo
+  // user_kernel_fn will do static_cast according to user kernel function
+  // here, we just set necessary info to dev_ctx(such as stream in NPUContext)
   DeviceContext dev_ctx;
   if (op_kernel_info.GetBackend() == pten::Backend::CPU) {
     // do nothing
@@ -331,3 +333,5 @@ void TryLoadCustomKernel() {
 
 }  // namespace framework
 }  // namespace paddle
+
+#endif  // PADDLE_WITH_CUSTOM_KERNEL
