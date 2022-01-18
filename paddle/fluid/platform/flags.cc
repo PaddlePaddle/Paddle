@@ -146,6 +146,11 @@ PADDLE_DEFINE_EXPORTED_bool(
     "operator. The autotuning algorithm may be non-deterministic. If "
     "true, the algorithm is deterministic.");
 
+PADDLE_DEFINE_EXPORTED_bool(
+    avoid_op_randomness, false,
+    "avoid randomness in some op offen by using single-thread mode, "
+    "default false");
+
 /**
  * CUDNN related FLAG
  * Name: FLAGS_conv_workspace_size_limit

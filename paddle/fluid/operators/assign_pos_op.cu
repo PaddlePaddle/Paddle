@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+DECLARE_bool(avoid_op_randomness);
+
 namespace paddle {
 namespace operators {
 
@@ -78,8 +80,9 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(numel);
     int threads = kNumCUDAThreads;
-    const char* thread1 = std::getenv("FLAGS_assign_pos_1thread");
-    if (thread1 && !strcmp(thread1, "1")) {
+
+    if (FLAGS_avoid_op_randomness) {
+      VLOG(2) << "single thread in assignpos op";
       blocks = 1;
       threads = 1;
     }

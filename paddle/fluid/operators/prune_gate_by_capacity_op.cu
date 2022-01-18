@@ -18,6 +18,8 @@
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DECLARE_bool(avoid_op_randomness);
+
 namespace paddle {
 namespace operators {
 using LoDTensor = framework::LoDTensor;
@@ -65,11 +67,14 @@ class PruneGateByCapacityFunctor {
 
     auto& dev_ctx = context_.template device_context<DeviceContext>();
     auto* expert_count_out_data = expert_count_out_->data<T2>();
-    // framework::Tensor cpu_expert_count;
-    // framework::TensorCopySync(*expert_count_out_, platform::CPUPlace(),
-    // &cpu_expert_count);
+
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
+    if (FLAGS_avoid_op_randomness) {
+      VLOG(2) << "single thread in prune";
+      blocks = 1;
+      threads = 1;
+    }
 
     prune_gate_by_capacity_kernel<T1,
                                   T2><<<blocks, threads, 0, dev_ctx.stream()>>>(

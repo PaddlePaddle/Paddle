@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+DECLARE_bool(avoid_op_randomness);
+
 namespace paddle {
 namespace operators {
 
@@ -50,7 +52,8 @@ __global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
 template <typename T, typename IdT, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
                                   const int64_t N, const int64_t K,
-                                  const int64_t D) {
+                                  const int64_t D, int64_t BlockDimX,
+                                  int64_t BlockDimY, int64_t GridDimX) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
