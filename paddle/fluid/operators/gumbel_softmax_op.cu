@@ -132,8 +132,7 @@ struct GumbleNoiseGenerator<platform::CUDADeviceContext, T> {
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
 
     // generate gumbel noise
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy()) {
       auto seed_offset = gen_cuda->IncrementOffset(1);

@@ -189,9 +189,7 @@ class LazyZerosNPU {
         framework::TensorCopy(*x, place, dev_ctx, out);
       } else if (zero_ptr != dst_ptr) {
         auto size = out->numel() * framework::SizeOfType(out->type());
-        memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place), dst_ptr,
-                     BOOST_GET_CONST(platform::NPUPlace, place), zero_ptr, size,
-                     stream);
+        memory::Copy(place, dst_ptr, place, zero_ptr, size, stream);
       }
     }
   }

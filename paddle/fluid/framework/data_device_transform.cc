@@ -22,7 +22,7 @@ void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
           << " dst_place: " << dst_place;
 
   PADDLE_ENFORCE_NE(
-      in.place().which(), dst_place.which(),
+      in.place().GetType(), dst_place.GetType(),
       platform::errors::Unavailable("Currently, model parallelism is only "
                                     "supported between CPU and CUDA."));
 

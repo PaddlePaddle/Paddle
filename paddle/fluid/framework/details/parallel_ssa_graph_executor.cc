@@ -45,7 +45,7 @@ static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
   for (auto &op : op_handles) {
     auto &dev_ctx = op->DeviceContext();
     auto &p = dev_ctx.begin()->first;
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
+    int dev_id = p.device;
     auto &dev_dummys = graphs[dev_id]->Get<GraphDepVars>(kGraphDepVars);
     graphs[dev_id]->AddNode(graph->RemoveNode(op->Node()).release());
 

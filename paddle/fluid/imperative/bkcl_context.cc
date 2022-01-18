@@ -86,7 +86,7 @@ void BKCLParallelContext::Init() {
   }
   BcastBKCLId(bkcl_ids, 0);
 
-  int xpu_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+  int xpu_id = place_.device;
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init BKCL context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
@@ -111,7 +111,7 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
   }
   BcastBKCLId(bkcl_ids, 0);
 
-  int xpu_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+  int xpu_id = place_.device;
   VLOG(0) << "init BKCL context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
           << " ring id: " << ring_id;

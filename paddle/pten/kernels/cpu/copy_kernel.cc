@@ -53,11 +53,7 @@ void Copy(const Context& dev_ctx,
 
   if (paddle::platform::is_cpu_place(src_place) &&
       paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::CPUPlace, dst_place),
-                         dst_ptr,
-                         BOOST_GET_CONST(paddle::platform::CPUPlace, src_place),
-                         src_ptr,
-                         size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 }
 

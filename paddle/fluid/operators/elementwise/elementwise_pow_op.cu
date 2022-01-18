@@ -16,26 +16,6 @@ namespace ops = paddle::operators;
 namespace paddle {
 namespace operators {
 
-template <typename T, typename Enable = void>
-struct CudaPowFunctor {
-  inline HOSTDEVICE T operator()(const T args[]) const {
-    return std::pow(args[0], args[1]);
-  }
-};
-
-template <typename T>
-struct CudaPowFunctor<
-    T, typename std::enable_if<std::is_integral<T>::value>::type> {
-  // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
-  // it will return a float number like 2.99... , which floor to 2
-  // when cast to int by default and it is wrong.
-  // Use llrint to cast it to the nearest integer, which is 3.
-  inline HOSTDEVICE T operator()(const T args[]) const {
-    return std::llrint(
-        std::pow(static_cast<double>(args[0]), static_cast<double>(args[1])));
-  }
-};
-
 template <typename T>
 class ElementwisePowKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -48,8 +28,8 @@ class ElementwisePowKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
-                                                   T>(
-        cuda_ctx, ins, &outs, axis, CudaPowFunctor<T>());
+                                                   T>(cuda_ctx, ins, &outs,
+                                                      axis, PowFunctor<T>());
   }
 };
 

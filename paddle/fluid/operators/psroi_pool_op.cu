@@ -203,8 +203,7 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
               "input(X) is %d and %d respectively.",
               rois_batch_size, batch_size));
       std::vector<int> rois_num_list(rois_batch_size);
-      memory::Copy(platform::CPUPlace(), rois_num_list.data(),
-                   BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()),
+      memory::Copy(platform::CPUPlace(), rois_num_list.data(), ctx.GetPlace(),
                    rois_num_data, sizeof(int) * rois_batch_size, 0);
       int rois_num_count = 0;
       for (int i = 0; i < rois_batch_size; ++i) {
@@ -295,8 +294,7 @@ class GPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
         auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
         rois_batch_size = rois_num_t->numel();
         std::vector<int> rois_num_list(rois_batch_size);
-        memory::Copy(platform::CPUPlace(), rois_num_list.data(),
-                     BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()),
+        memory::Copy(platform::CPUPlace(), rois_num_list.data(), ctx.GetPlace(),
                      rois_num_t->data<int>(), sizeof(int) * rois_batch_size, 0);
         int start = 0;
         for (int n = 0; n < rois_batch_size; ++n) {
