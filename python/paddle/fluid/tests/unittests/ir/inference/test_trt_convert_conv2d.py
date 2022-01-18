@@ -34,6 +34,12 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                 1] * attrs[0]['groups']:
             return False
 
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if attrs[0]['padding_algorithm'] == 'SAME' and (
+                    attrs[0]['strides'][0] > 1 or attrs[0]['strides'][1] > 1):
+                return False
+
         return True
 
     def sample_program_configs(self):
