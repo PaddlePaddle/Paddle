@@ -21,8 +21,8 @@ struct LoadConfig {
     int table;
     int mode;
 };
+// example
 struct RequestContext {
-  int type; // sparse / dense / graph
   int table_id;
   int num;
   void* keys;
@@ -37,17 +37,17 @@ class PSClient {
   virtual void Initialize() = 0;
   virtual void Start() = 0;  // 启动 push、pull 异步线程等
   // Load model
-  virtual void Load(const LoadConfig& load_config) = 0;
+  virtual void Load(void* context) = 0;
   // save model
-  virtual void Save(const LoadConfig& LoadConfig) = 0;
+  virtual void Save(void* context) = 0;
   // pull sparse/dense
-  virtual void Pull(RequestContext* req_context) = 0;
+  virtual void Pull(void* context) = 0;
 
   // push sparse/dense grads
-  virtual void PushSparse(RequestContext* req_context) = 0;
+  virtual void Push(void* context) = 0;
 
   // shrink sparse 
-  virtual void Delete() = 0；
+  virtual void Delete(void* context) = 0；
   // stop client
   virtual void Stop() = 0;
 }
