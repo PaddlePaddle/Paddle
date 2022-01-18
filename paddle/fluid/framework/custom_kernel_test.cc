@@ -64,7 +64,8 @@ TEST(CustomKernel, custom_kernel_register_and_run) {
               paddle::OpKernelInfoMap::Instance().GetMap().end());
 
   // 2.info check
-  EXPECT_EQ(1, paddle::OpKernelInfoMap::Instance()["dot"].size());
+  EXPECT_EQ(
+      1, static_cast<int>(paddle::OpKernelInfoMap::Instance()["dot"].size()));
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()["dot"][0].GetBackend() ==
               backend);
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()["dot"][0].GetDataLayout() ==
