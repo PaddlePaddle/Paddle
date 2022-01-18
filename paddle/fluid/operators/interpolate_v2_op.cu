@@ -29,19 +29,13 @@ struct FastDivModForInterpolate {
  public:
   FastDivMod channels_div;
   FastDivMod output_w_div;
-  // FastDivMod outimg_w_;
-  // FastDivMod out_size_;
   FastDivMod outimgw_mul_channel_div;
 
   explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
                                                const int output_w,
-                                               /*const int outimg_w,
-                                               const int out_size,*/
                                                const int outimgw_mul_chann)
       : channels_div(FastDivMod(channels)),
         output_w_div(FastDivMod(output_w)),
-        // outimg_w_(FastDivMod(outimg_w)),
-        // out_size_(FastDivMod(out_size)),
         outimgw_mul_channel_div(FastDivMod(outimgw_mul_chann)) {}
 };
 
@@ -71,11 +65,14 @@ __global__ void KeNearestNeighborInterpNCHWFw(
   int out_index = (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
   int out_index_stride = nc_stride * out_img_h * out_img_w;
 
-  while (nc_id < nc) {
-    out[out_index] = in[in_index];
-    in_index += in_index_stride;
-    out_index += out_index_stride;
-    nc_id += nc_stride;
+  // prevent from multiple threads writing
+  if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
+    while (nc_id < nc) {
+      out[out_index] = in[in_index];
+      in_index += in_index_stride;
+      out_index += out_index_stride;
+      nc_id += nc_stride;
+    }
   }
 }
 
@@ -1351,8 +1348,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
           ratio_w, align_corners);
     } else {
       int64_t cw = c * out_w;
-      auto interp_divmods =
-          FastDivModForInterpolate(c, out_chw, /*out_w, out_hw, */ cw);
+      auto interp_divmods = FastDivModForInterpolate(c, out_chw, cw);
       KeNearestNeighborInterpFw<
           T><<<config.block_per_grid, config.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
