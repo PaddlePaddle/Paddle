@@ -8,7 +8,7 @@ include "paddle/infrt/dialect/pd_op_base.td"
 
 
 // This is just for test case.
-def PDKEL_MatmulOp : PD_Op<"matmul_compute"> {
+def PD_KELMatmulOp : PD_Op<"matmul_kernel"> {
   let summary = "matmul kernel op";
   let description = [{}];
 

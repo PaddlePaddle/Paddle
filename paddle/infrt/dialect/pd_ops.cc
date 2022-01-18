@@ -21,16 +21,22 @@
 #include "paddle/infrt/dialect/infrt_base.h"
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_ops.cpp.inc"   // NOLINT
-#include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pd_test_kernels.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/rewrite.hpp.inc"          // NOLINT
 
 namespace mlir {
 namespace pd {
+
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+      ,
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/pd_test_kernels.cpp.inc"  // NOLINT
       >();
 #undef GET_OP_LIST
 }
