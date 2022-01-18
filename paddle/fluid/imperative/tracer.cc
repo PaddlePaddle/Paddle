@@ -182,10 +182,18 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   NameVarBaseMap new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
-    new_ins = AutoCastInputs(type, ins);
+    if (amp_dtype_ == AmpDtype::D1) {
+      new_ins = AutoCastInputs(type, ins);
+    } else if (amp_dtype_ == AmpDtype::D2) {
+      VLOG(5) << "skip " << type;
+    }
   } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
-    new_ins = CastPureFp16Inputs(type, ins);
+    if (amp_dtype_ == AmpDtype::D1) {
+      new_ins = CastPureFp16Inputs(type, ins);
+    } else if (amp_dtype_ == AmpDtype::D2) {
+      new_ins = CastPureBf16Inputs(type, ins);
+    }
   }
 
   try {

@@ -127,7 +127,8 @@ inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
       platform::is_xpu_place(var->Place())) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (var->DataType() == framework::proto::VarType::FP32 ||
-        var->DataType() == framework::proto::VarType::FP16) {
+        var->DataType() == framework::proto::VarType::FP16 ||
+        var->DataType() == framework::proto::VarType::BF16) {
       return true;
     }
   }
@@ -167,6 +168,15 @@ static inline std::shared_ptr<imperative::VarBase> CastToFP16(
 static inline std::shared_ptr<imperative::VarBase> CastToFP32(
     const std::shared_ptr<VarBase>& var) {
   auto dst_type = framework::proto::VarType::FP32;
+  if (NeedCast(var) && (var->DataType() != dst_type)) {
+    return CastToType(var, dst_type);
+  }
+  return var;
+}
+
+static inline std::shared_ptr<imperative::VarBase> CastToBF16(
+    const std::shared_ptr<VarBase>& var) {
+  auto dst_type = framework::proto::VarType::BF16;
   if (NeedCast(var) && (var->DataType() != dst_type)) {
     return CastToType(var, dst_type);
   }
@@ -306,6 +316,45 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
     for (auto& var : pair.second) {
       var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
                                                          : CastToFP16(var));
+    }
+  }
+  return new_ins;
+}
+
+NameVarBaseMap CastPureBf16Inputs(const std::string& op_type,
+                                  const NameVarBaseMap& ins) {
+  NameVarBaseMap new_ins(ins);
+  auto dst_type = framework::proto::VarType::BF16;
+  if (AmpOperators::Instance().GetMutableUnsupportedBf16Ops()->count(op_type) ||
+      AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    dst_type = framework::proto::VarType::FP32;
+  }
+  for (auto& pair : new_ins) {
+    // NOTE: The run_program OP only has FP32 kernel. In dy2stat pure fp16
+    // training, we have correctly cast the inputs of run_program OP before,
+    // so here should avoid casting for run_program OP.
+    if (op_type == "run_program") {
+      continue;
+    }
+
+    if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+         op_type == "sync_batch_norm") &&
+        pair.first != "X") {
+      continue;
+    }
+    if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+      if (pair.first == "LnScale" || pair.first == "LnBias" ||
+          pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+          pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+        continue;
+      }
+    }
+    VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+            << GetDtypeStr(*pair.second.cbegin()) << " to "
+            << framework::DataTypeToString(dst_type);
+    for (auto& var : pair.second) {
+      var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
+                                                         : CastToBF16(var));
     }
   }
   return new_ins;
