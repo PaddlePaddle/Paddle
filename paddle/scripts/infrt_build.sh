@@ -33,7 +33,7 @@ function update_pd_ops() {
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
    cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3`
-   make -j4
+   make -j8
    cd ${PADDLE_ROOT}/build
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
