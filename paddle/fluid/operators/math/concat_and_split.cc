@@ -19,10 +19,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class CPUDeviceContext;
 struct bfloat16;

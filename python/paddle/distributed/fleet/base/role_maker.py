@@ -224,10 +224,6 @@ class Gloo(object):
             self._worker_comm = gloo
         # TODO (sandyhouse): initialize gloo for server and all
 
-        if start_http_server:
-            http_server_d["running"] = False
-            http_server.join()
-
     def _get_rank_nodes(self, role):
         nodes = 0
         rank = -1

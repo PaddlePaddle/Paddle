@@ -267,7 +267,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const auto& tensor = variable.Get<framework::SelectedRows>();
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
       framework::Tensor tmp_tensor;
-      TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
+      paddle::framework::TensorCopySync(
+          tensor.value(), expected_place, &tmp_tensor);
       // TODO(chenweihang): adapt SelectedRows by xiaowei's design
       return MakePtenDenseTensor(tmp_tensor);
     } else {
@@ -310,7 +311,7 @@ void MovesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move storage."));
-  dst->Resize(src->dims());
+  dst->ResizeAndAllocate(src->dims());
   dst->set_type(pten::TransToProtoVarType(src->dtype()));
   auto storage = src->MoveMemoryHolder();
   dst->ResetHolderWithType(storage, pten::TransToProtoVarType(src->dtype()));
@@ -331,7 +332,7 @@ void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move allocation."));
-  dst->Resize(src->dims());
+  dst->ResizeAndAllocate(src->dims());
   dst->ResetHolderWithType(src->Holder(),
                            pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);
@@ -419,7 +420,8 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
             "argument's definition in kernel."));
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
       framework::Tensor tmp_tensor;
-      TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
+      paddle::framework::TensorCopySync(
+          tensor.value(), expected_place, &tmp_tensor);
       // TODO(chenweihang): adapt SelectedRows by xiaowei's design
       ReMakePtenDenseTensorByArgDef(tmp_tensor, arg_def, dst);
     } else {
@@ -464,7 +466,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     auto* tensor = variable->GetMutable<framework::LoDTensor>();
 
     auto dtype = pten::TransToProtoVarType(src->dtype());
-    tensor->Resize(src->dims());
+    tensor->ResizeAndAllocate(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
     if (!tensor->IsInitialized() ||

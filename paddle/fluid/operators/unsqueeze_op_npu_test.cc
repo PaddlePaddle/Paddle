@@ -49,7 +49,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init.push_back(static_cast<T>(0.1));
   }
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({dim0, dim1});
 
   ctx.Wait();
@@ -75,7 +75,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   EXPECT_EQ((uint32_t)tensor_out->dims()[2], uint32_t(10));
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], static_cast<T>(0.1));
   }

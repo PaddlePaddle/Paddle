@@ -47,6 +47,10 @@
 #include "xpu/bkcl.h"
 #endif
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 // Users should add forward declarations here
 namespace paddle {
 
@@ -70,7 +74,6 @@ class BKCLCommunicator;
 namespace framework {
 class LoDRankTable;
 class ScopeBase;
-class Tensor;
 class ReaderHolder;
 class Scope;
 class SelectedRows;
