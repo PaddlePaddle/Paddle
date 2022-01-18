@@ -497,8 +497,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (axis.size() != x_shape.size()) return false;
       int dims = x_shape.size();
-      if (dims != x_shape.size()) return false;
 
       std::vector<int> perm(nvinfer1::Dims::MAX_DIMS);
       for (int i = 0; i < dims; i++) {
