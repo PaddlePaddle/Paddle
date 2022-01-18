@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/full_kernel.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 namespace pten {
 
 template <typename InT, typename OutT = InT>
@@ -88,7 +88,9 @@ void FullLikeKernel(const ContextT& dev_ctx,
   // This function has no input, so the inputs.size() == 0. Use kUnary, but the
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                   T,
+                                                   T>(
       dev_ctx, inputs, &outputs, FullFuctor<T>(value));
 }
 
