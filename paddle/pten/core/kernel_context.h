@@ -119,10 +119,6 @@ class KernelContext {
     return static_cast<TensorType*>(outputs_.at(idx).get());
   }
 
-  std::shared_ptr<TensorBase> MutableSharedOutputAt(size_t idx) {
-    return outputs_.at(idx);
-  }
-
   template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;
@@ -133,8 +129,25 @@ class KernelContext {
     return v;
   }
 
-  std::vector<std::shared_ptr<TensorBase>> MutableSharedOutputBetween(
-      size_t start, size_t end) {
+  std::shared_ptr<TensorBase> InputSharedPtrAt(size_t idx) {
+    return inputs_.at(idx);
+  }
+
+  std::vector<std::shared_ptr<TensorBase>> InputSharedPtrBetween(size_t start,
+                                                                 size_t end) {
+    std::vector<std::shared_ptr<TensorBase>> v;
+    for (size_t i = start; i < end; ++i) {
+      v.emplace_back((inputs_.at(i)));
+    }
+    return v;
+  }
+
+  std::shared_ptr<TensorBase> OutputSharedPtrAt(size_t idx) {
+    return outputs_.at(idx);
+  }
+
+  std::vector<std::shared_ptr<TensorBase>> OutputSharedPtrBetween(size_t start,
+                                                                  size_t end) {
     std::vector<std::shared_ptr<TensorBase>> v;
     for (size_t i = start; i < end; ++i) {
       v.emplace_back((outputs_.at(i)));

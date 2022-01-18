@@ -95,17 +95,14 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   for (size_t in_idx = 0; in_idx < input_size; ++in_idx) {
     const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
     if (range.first + 1 == range.second) {
-      paddle::experimental::Tensor custom_t;
-      auto ctx_tensor = ctx->InputAt<pten::DenseTensor>(range.first);
-      custom_t.set_impl(std::make_unique<pten::DenseTensor>(ctx_tensor));
+      paddle::experimental::Tensor custom_t(ctx->InputSharedPtrAt(range.first));
       custom_ins.push_back(custom_t);
     } else {
       std::vector<paddle::experimental::Tensor> custom_vec_in;
       auto ctx_tensor_vec =
-          ctx->MoveInputsBetween<pten::DenseTensor>(range.first, range.second);
+          ctx->InputSharedPtrBetween(range.first, range.second);
       for (auto& ctx_tensor : ctx_tensor_vec) {
-        paddle::experimental::Tensor custom_t;
-        custom_t.set_impl(std::make_unique<pten::DenseTensor>(ctx_tensor));
+        paddle::experimental::Tensor custom_t(ctx_tensor);
         custom_vec_in.push_back(custom_t);
       }
       custom_vec_ins.push_back(custom_vec_in);
@@ -170,22 +167,23 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   for (size_t out_idx = 0; out_idx < output_size; ++out_idx) {
     const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
     if (range.first + 1 == range.second) {
-      auto ctx_tensor = ctx->MutableSharedOutputAt(range.first);
-      paddle::experimental::Tensor custom_t;
-      custom_t.set_impl(ctx_tensor);
-      custom_outs.push_back(&custom_t);
+      auto ctx_tensor = ctx->OutputSharedPtrAt(range.first);
+      paddle::experimental::Tensor* custom_t =
+          new paddle::experimental::Tensor(ctx_tensor);
+      custom_outs.push_back(custom_t);
     } else {
       std::vector<paddle::experimental::Tensor*> custom_vec_out;
       auto ctx_tensor_vec =
-          ctx->MutableSharedOutputBetween(range.first, range.second);
+          ctx->OutputSharedPtrBetween(range.first, range.second);
       for (auto& ctx_tensor : ctx_tensor_vec) {
-        paddle::experimental::Tensor custom_t;
-        custom_t.set_impl(ctx_tensor);
-        custom_vec_out.push_back(&custom_t);
+        paddle::experimental::Tensor* custom_t =
+            new paddle::experimental::Tensor(ctx_tensor);
+        custom_vec_out.push_back(custom_t);
       }
       custom_vec_outs.push_back(custom_vec_out);
     }
   }
+
   // device_ctx:
   // in pten, kernel function knows XXContext through template param
   // from input KernelContext, but here we don't have KernelContext
@@ -209,6 +207,16 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   user_kernel_fn(dev_ctx, custom_ins, custom_vec_ins, custom_attrs,
                  &custom_outs, &custom_vec_outs);
   VLOG(3) << "[CUSTOM KERNEL] finished call user kernel function";
+
+  // delete newed paddle::Tensor for calling user kernel function
+  for (size_t i = 0; i < custom_outs.size(); ++i) {
+    delete custom_outs[i];
+  }
+  for (size_t i = 0; i < custom_vec_outs.size(); ++i) {
+    for (size_t j = 0; j < custom_vec_outs[i].size(); ++j) {
+      delete custom_vec_outs[i][j];
+    }
+  }
 }
 
 void RegisterKernelWithMetaInfo(
@@ -224,14 +232,14 @@ void RegisterKernelWithMetaInfo(
 
     VLOG(3) << "[CUSTOM KERNEL] registering [" << op_type << "]" << kernel_key;
 
-    // 1.Check wether this kernel is valid for a specific operator
+    // 1.Check whether this kernel is valid for a specific operator
     if (!pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << op_type
                    << " is not ready for custom kernel registering.";
       continue;
     }
 
-    // 2.Check wether kernel_key has been already registed
+    // 2.Check whether kernel_key has been already registed
     if (pten::KernelFactory::Instance().kernels()[op_type].find(kernel_key) !=
         pten::KernelFactory::Instance().kernels()[op_type].end()) {
       LOG(WARNING) << "[CUSTOM KERNEL] skipped: " << kernel_key

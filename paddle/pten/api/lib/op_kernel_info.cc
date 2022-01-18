@@ -10,11 +10,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/api/ext/op_kernel_info.h"
-#include "paddle/fluid/framework/custom_kernel.h"  // todo
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/custom_kernel.h"
 
 namespace paddle {
+
 ////////////////////// Op Kernel Info //////////////////////
+
 OpKernelInfo& OpKernelInfo::SetKernelFn(CustomKernelFunc&& func) {
   kernel_fn_ = std::forward<CustomKernelFunc>(func);
   return *this;
@@ -26,6 +27,7 @@ OpKernelInfo& OpKernelInfo::SetVariadicKernelFn(void* func) {
 }
 
 //////////////// Op Kernel Info Map /////////////////
+
 std::vector<OpKernelInfo>& OpKernelInfoMap::operator[](
     const std::string& name) {
   return map_[name];
@@ -37,6 +39,7 @@ OpKernelInfoMap::GetMap() const {
 }
 
 //////////////// Op Kernel Info Builder /////////////////
+
 OpKernelInfoBuilder::OpKernelInfoBuilder(std::string&& op_name,
                                          pten::Backend backend,
                                          pten::DataLayout data_layout,
@@ -47,7 +50,7 @@ OpKernelInfoBuilder::OpKernelInfoBuilder(std::string&& op_name,
   layout_ = data_layout;
   dtype_ = data_type;
 
-  // 2. check and info build
+  // 2. info parse
   auto& info_vector = OpKernelInfoMap::Instance()[op_name_];
   auto op_kernel_info = OpKernelInfo(op_name_, backend_, layout_, dtype_);
   info_vector.emplace_back(std::move(op_kernel_info));
@@ -78,6 +81,7 @@ OpKernelInfoBuilder& OpKernelInfoBuilder::ArgsDef(CustomKernelArgsDefFn func) {
 }
 
 /////////////////////// Op register API /////////////////////////
+
 // For inference: compile directly with framework
 // Call after PD_REGISTER_KERNEL(...)
 void RegisterAllCustomKernel() {

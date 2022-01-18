@@ -39,12 +39,12 @@ namespace framework {
 class PADDLE_API OpKernelInfoHelper;
 }  // namespace framework
 
-// pten is working on exposing headers, custom kernel depends on them, and
+// Pten is working on exposing headers, custom kernel depends on them, and
 // custom kernels wants outer users to follow pten-kernel-function-style and
 // the macro for registering. So, we have to re-implement some structs or
 // class and functions to ensure user function can be registered to pten
 
-// simple DeviceContext temporarily for stream get in user kernel function
+// Simple DeviceContext temporarily for stream get in user kernel function
 class DeviceContext {
  public:
   DeviceContext() { stream_ = nullptr; }
@@ -57,7 +57,7 @@ class DeviceContext {
 class CPUContext : public DeviceContext {};
 class NPUContext : public DeviceContext {};
 
-// use paddle::Tensor temporarily before DenseTensor and SparseTensor exposed
+// Use paddle::Tensor temporarily before DenseTensor and SparseTensor exposed
 using Tensor = paddle::experimental::Tensor;
 using Scalar = pten::Scalar;
 using ScalarArray = pten::ScalarArray;
@@ -339,7 +339,7 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
             dev_ctx, inputs, vec_inputs, attrs, outputs, vec_outputs);
   }
 
-  // note: Tensor in args is paddle::Tensor but not DenseTensor
+  // NOTE: Tensor in args is paddle::Tensor but not DenseTensor
   static void VariadicCompute(const DeviceContext& dev_ctx, Args... args) {
     return impl_fn(static_cast<DevCtx>(dev_ctx), std::forward<Args>(args)...);
   }
@@ -373,7 +373,7 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(Tensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(Tensor);
 
-  // end: base template
+  // End: base template
   template <typename T>
   struct CustomComputeCallHelper<PtenTypeTag<T>> {
     template <int dev_ctx_idx,
@@ -404,7 +404,7 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
                                       &__VA_ARGS__>::VariadicCompute)
 
 ////////////////////// Op Kernel Info depended structs //////////////////////
-// re-define TensorArgDef and AttributeArgDef temporarily
+// Re-define TensorArgDef and AttributeArgDef temporarily
 // kernel_factory.h is not exposed and incomplete type is not enough
 // TensorArgDef from pten::TensorArgDef in kernel_factory.h
 struct TensorArgDef {
@@ -443,9 +443,9 @@ struct AttributeArgDef {
 
 ////////////////////// Op Kernel Info //////////////////////
 // OpKernelInfo stores all info parsing from user kernel function, including:
-// 0. op_type and kernel key(backend, layout and layout)
+// 0. op_type and kernel key(backend, layout and dtype)
 // 1. unified custom kernel function
-// 2. variadic kernel function
+// 2. variadic kernel function(use paddle::Tensor)
 // 3. args info and user defined change for specific arg
 class PADDLE_API OpKernelInfo {
  public:
@@ -520,10 +520,11 @@ class PADDLE_API OpKernelInfo {
 };
 
 ////////////////////// Op Kernel Args Parser //////////////////////
-// re-define KernelArgsParseFunctor temporarily
+// Define CustomKernelArgsParseFunctor temporarily
 // kernel_registry.h and depended headers are not exposed
 // KernelArgsParseFunctor from pten::KernelArgsParseFunctor in kernel_registry.h
-// and we have to store parsed info into OpKernelInfo
+// and we have to store parsed info into OpKernelInfo before
+// mapping to pten::KernelArgsDef in pten::Kernel
 template <typename Func>
 struct CustomKernelArgsParseFunctor;
 
@@ -598,7 +599,7 @@ class PADDLE_API OpKernelInfoMap {
 };
 
 //////////////// Op Kernel Info Builder /////////////////
-
+// format: PD_PT_ARGS_PARSE(...)
 using CustomKernelArgsParseFn = void (*)(OpKernelInfo* op_kernel_info);
 using CustomKernelArgsDefFn = void (*)(OpKernelInfo* kernel);
 

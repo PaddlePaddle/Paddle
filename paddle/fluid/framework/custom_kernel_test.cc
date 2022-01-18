@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/custom_kernel.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/extension.h"
