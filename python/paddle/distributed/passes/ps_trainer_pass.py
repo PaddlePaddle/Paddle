@@ -458,12 +458,13 @@ class DistributedOpsPass(PassBase):
         return pull_sparse_ops, push_sparse_ops
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        pull_sparse_ops, push_sparse_ops = _get_pull_sparse_ops(program)
+        pull_sparse_ops, push_sparse_ops = self._get_pull_sparse_ops(program)
         send_ctx = get_the_one_send_context(
             context, split_dense_table=context['is_heter_ps_mode'])
-        _pull_sparse_fuse(main_program, pull_sparse_ops, context['use_ps_gpu'],
-                          send_ctx)
-        _push_sparse_fuse(main_program, push_sparse_ops, context['use_ps_gpu'])
+        self._pull_sparse_fuse(main_program, pull_sparse_ops,
+                               context['use_ps_gpu'], send_ctx)
+        self._push_sparse_fuse(main_program, push_sparse_ops,
+                               context['use_ps_gpu'])
 
 
 @register_pass("delete_optimizer_pass")
@@ -515,10 +516,10 @@ class DeleteOptimizesPass(PassBase):
         optimizer_ops = get_optimize_ops(main_program)
         lr_ops = get_lr_ops(main_program)
         optimizer_ops.extend(lr_ops)
-        _delete_optimizer_op_and_vars(main_program, optimizer_ops)
+        self._delete_optimizer_op_and_vars(main_program, optimizer_ops)
 
         if hasattr(context['origin_main_program'], 'lr_sheduler'):
-            _add_lr_var(main_program, context)
+            self._add_lr_var(main_program, context)
 
 
 @register_pass("fake_init_ops_pass")
@@ -559,8 +560,8 @@ class FakeInitOpsPass(PassBase):
             delete_ops(program.global_block(), table_param_init_op)
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        sparse_tables = _get_sparse_table_names(context)
-        _fake_init_sparsetable(startup_program, sparse_tables)
+        sparse_tables = self._get_sparse_table_names(context)
+        self._fake_init_sparsetable(startup_program, sparse_tables)
 
 
 @register_pass("ps_gpu_pass")
