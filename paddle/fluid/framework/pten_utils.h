@@ -72,6 +72,7 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
+// TODO(Wilber): support others device context.
 template <typename T>
 struct ConvertToPtenContext {
   using TYPE = T;
@@ -81,5 +82,6 @@ template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
+
 }  // namespace framework
 }  // namespace paddle

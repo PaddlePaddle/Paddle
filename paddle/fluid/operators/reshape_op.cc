@@ -439,7 +439,7 @@ class ReshapeKernel {
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::ReshapeKernel(reinterpret_cast<const pten::CPUContext &>(dev_ctx),
+      pten::ReshapeKernel(static_cast<const pten::CPUContext &>(dev_ctx),
                           *pt_x.get(), pt_scalar_shape, pt_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -476,9 +476,8 @@ class ReshapeGradKernel {
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::ReshapeGradKernel(
-          reinterpret_cast<const pten::CPUContext &>(dev_ctx), *pt_d_out.get(),
-          pt_d_x.get());
+      pten::ReshapeGradKernel(static_cast<const pten::CPUContext &>(dev_ctx),
+                              *pt_d_out.get(), pt_d_x.get());
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -508,7 +507,7 @@ class ReshapeDoubleGradKernel {
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
       pten::ReshapeDoubleGradKernel(
-          reinterpret_cast<const pten::CPUContext &>(dev_ctx), *pt_dd_x.get(),
+          static_cast<const pten::CPUContext &>(dev_ctx), *pt_dd_x.get(),
           pt_dd_out.get());
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
