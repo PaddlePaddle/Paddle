@@ -76,12 +76,17 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
-  const std::vector<int> paddings =
+  std::vector<int> paddings =
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
         BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+  if (padding_algorithm == "VALID") {
+    for (size_t i = 0; i < paddings.size(); i++) {
+      paddings[i] = 0;
+    }
+  }
 
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
@@ -139,6 +144,8 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+    nv_dilations.d[0] = 1;
+    nv_dilations.d[1] = 1;
   }
   // set dilations
   fset_dilation(layer, nv_dilations);

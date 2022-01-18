@@ -308,7 +308,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
   }
 
   if (!platform::is_cpu_place(place_)) {
-    TensorCopySync(cpu_tensor, place_, tensor);
+    paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
 

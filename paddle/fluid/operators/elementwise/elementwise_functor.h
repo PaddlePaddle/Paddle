@@ -22,6 +22,7 @@ namespace paddle {
 namespace operators {
 
 // Define the binary functors used in elementwise ops.
+// Note: InverseXxxFunctor is needed when calling ElementwiseComputeEx on CPU.
 
 // Add
 template <typename T>

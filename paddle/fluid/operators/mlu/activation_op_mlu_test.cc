@@ -49,7 +49,7 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
   for (int64_t i = 0; i < num * num; ++i) {
     init_x.push_back(static_cast<T>(i - 50));
   }
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({num, num});
 
   auto place = ctx.GetPlace();
@@ -80,7 +80,7 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
 
   // eval value
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
@@ -108,9 +108,9 @@ void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
     init_out.push_back(static_cast<T>(i - 50));
   }
 
-  TensorFromVector(init_dout, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize({num, num});
-  TensorFromVector(init_out, ctx, tensor_out);
+  paddle::framework::TensorFromVector(init_out, ctx, tensor_out);
   tensor_out->Resize({num, num});
 
   auto dx = scope->Var("DX");
@@ -143,7 +143,7 @@ void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
 
   // eval value
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   ctx.Wait();
 

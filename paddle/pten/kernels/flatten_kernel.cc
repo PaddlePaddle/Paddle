@@ -29,7 +29,7 @@ void FlattenKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   auto out_dims = out->dims();
   pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_dims);
+  out->ResizeAndAllocate(out_dims);
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
