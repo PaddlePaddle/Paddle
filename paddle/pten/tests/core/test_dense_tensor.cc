@@ -112,8 +112,6 @@ TEST(dense_tensor, resize) {
   CHECK_EQ(tensor_0.capacity(), 2u);
   tensor_0.ResizeAndAllocate({1, 2, 3});
   CHECK_EQ(tensor_0.capacity(), 6u);
-  tensor_0.mutable_data<int8_t>();
-  CHECK_EQ(tensor_0.capacity(), 6u);
 }
 
 TEST(dense_tensor, shallow_copy) {

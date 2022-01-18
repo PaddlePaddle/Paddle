@@ -585,7 +585,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
   }
 #ifdef PADDLE_WITH_XPU2
   int block_size = 64;
