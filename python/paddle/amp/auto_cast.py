@@ -19,6 +19,7 @@ __all__ = []
 
 
 def auto_cast(enable=True,
+              dtype='float16',
               custom_white_list=None,
               custom_black_list=None,
               level='O1'):
@@ -32,6 +33,7 @@ def auto_cast(enable=True,
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
              fp16 calculation and are considered numerically-safe and performance-critical. These ops 
              will be converted to fp16.
@@ -73,7 +75,7 @@ def auto_cast(enable=True,
             print(d.dtype) # FP16
 
     """
-    return amp_guard(enable, custom_white_list, custom_black_list, level)
+    return amp_guard(enable, dtype, custom_white_list, custom_black_list, level)
 
 
 def decorate(models,

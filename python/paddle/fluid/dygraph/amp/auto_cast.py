@@ -125,6 +125,27 @@ def _in_pure_fp16_guard():
     return tracer and tracer._amp_level == core.AmpLevel.O2
 
 
+def _is_gpu_float16_supported():
+    """
+    Judge whether current gpu support float16 amp.
+    """
+    prop = paddle.device.cuda.get_device_capability()
+    return prop[0] >= 7
+
+
+def _is_gpu_bfloat16_supported():
+    """
+    Judge whether current gpu support bfloat16 amp.
+    """
+    prop = paddle.device.cuda.get_device_capability()
+    cuda_version = paddle.version.cuda()
+    if cuda_version is not None:
+        cuda_maj_decide = int(cuda_version.split('.')[0]) >= 11
+    else:
+        cuda_maj_decide = False
+    return prop[0] >= 8 and cuda_maj_decide
+
+
 @dygraph_only
 def pure_fp16_initialize(models):
     for idx in range(len(models)):
@@ -163,6 +184,7 @@ def check_optimizers(optimizers):
 @signature_safe_contextmanager
 @dygraph_only
 def amp_guard(enable=True,
+              dtype='float16',
               custom_white_list=None,
               custom_black_list=None,
               level='O1'):
@@ -178,6 +200,7 @@ def amp_guard(enable=True,
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
              fp16 calculation and are considered numerically-safe and performance-critical. These ops 
              will be converted to fp16.
@@ -207,29 +230,54 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
+    # check amp_level: O0-O2
+    level = level.upper()
     if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
             "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
         )
 
+    # check amp_dtype: float16 or bfloat16
+    dtype = dtype.lower()
+    if not (dtype in ['float16', 'bfloat16']):
+        raise ValueError("dtype should be 'float16' or 'bfloat16'.")
+
+    # check tracer
     tracer = _dygraph_tracer()
     if not tracer:
         raise ValueError(
             "current_tracer is None, maybe it is not in imperative mode.")
 
+    # check device_type:
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16.
+    # Maybe we will support cpu for bfloat16.
     if enable and not (tracer._expected_place.is_gpu_place() or
                        tracer._expected_place.is_xpu_place()):
         warnings.warn(
             'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
-
+    # For xpu:
+    if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
+        warnings.warn('XPUPlace only support float16 amp.')
+        enable = False
+    # For gpu float16: Compute Capability should >= 7.
+    # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
     if tracer._expected_place.is_gpu_place():
-        prop = paddle.device.cuda.get_device_capability()
-        if prop[0] < 7:
+        if (dtype == 'float16') and not _is_gpu_float16_supported():
+            prop = paddle.device.cuda.get_device_capability()
             warnings.warn(
-                "AMP only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
+                "For float16, amp only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
                 % (paddle.device.cuda.get_device_name(), prop[0], prop[1]))
+            enable = False
+        elif (dtype == 'bfloat16') and not _is_gpu_bfloat16_supported():
+            prop = paddle.device.cuda.get_device_capability()
+            cuda_version = paddle.version.cuda()
+            warnings.warn(
+                "For bfloat16, amp only support NVIDIA GPU with Compute Capability 8.0 or higher and CUDA Version 11.0 or higher, current GPU is: %s, with Compute Capability: %d.%d, current CUDA Version is: %s."
+                % (paddle.device.cuda.get_device_name(), prop[0], prop[1],
+                   cuda_version))
+            enable = False
 
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
