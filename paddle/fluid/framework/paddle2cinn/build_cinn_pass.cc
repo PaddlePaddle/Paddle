@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
@@ -214,6 +215,73 @@ void AddOutputVar(const GraphNodeSet& output_vars, const GraphNodeSet& cluster,
   }
 }
 
+std::unordered_set<std::string> ExtractNoNeedBufferFeeds(
+    const GraphNodeSet& cluster, const GraphNodeSet& cluster_inputs) {
+  // 1. Find op with NoNeedBufferVarsInferer defined and collect its input nodes
+  std::unordered_map<Node*, GraphNodeSet> op_node2no_need_buffer_nodes;
+  for (auto* op_node : cluster) {
+    auto& inferer =
+        OpInfoMap::Instance().Get(op_node->Name()).NoNeedBufferVarsInferer();
+    if (!inferer) {
+      continue;
+    }
+    auto* op_desc = op_node->Op();
+    PADDLE_ENFORCE_NOT_NULL(
+        op_desc, platform::errors::PreconditionNotMet(
+                     "The op desc of node in cluster shouldn't be null."));
+    auto inferred_params =
+        inferer(op_desc->Inputs(), op_desc->Inputs(), op_desc->GetAttrMap());
+    std::unordered_set<std::string> inferred_args;
+    std::for_each(inferred_params.begin(), inferred_params.end(),
+                  [&op_desc, &inferred_args](const std::string& param) {
+                    const auto& args = op_desc->Input(param);
+                    inferred_args.insert(args.begin(), args.end());
+                  });
+    auto& no_need_buffer_nodes = op_node2no_need_buffer_nodes[op_node];
+    for (auto* input_node : op_node->inputs) {
+      if (input_node->Var() && inferred_args.count(input_node->Name())) {
+        VLOG(4) << "Input node(" << input_node->Name() << ") of op("
+                << op_node->Name() << ") is no_need_buffer";
+        no_need_buffer_nodes.insert(input_node);
+      }
+    }
+  }
+
+  // 2. Extract no_need_buffer nodes from cluster_inputs by checking
+  // all of their outputs are op nodes with NoNeedBufferVarsInferer
+  // and they used as no_need_buffer inputs.
+  auto check_all_used_as_no_need_buffer_fn =
+      [&op_node2no_need_buffer_nodes](Node* var_node) -> bool {
+    for (auto* output_node : var_node->outputs) {
+      auto it = op_node2no_need_buffer_nodes.find(output_node);
+      if (it == op_node2no_need_buffer_nodes.end()) {
+        VLOG(4) << "Var node(" << var_node->Name() << ")'s output node("
+                << output_node->Name()
+                << ") doesn't have NoNeedBufferVarsInferer";
+        return false;
+      }
+      if (it->second.count(var_node) == 0) {
+        VLOG(4) << "Var node("
+                << ") is not used as no_need_buffer inputs";
+        return false;
+      }
+    }
+    return true;
+  };
+  std::unordered_set<std::string> result;
+  for (const auto& op2inputs_pair : op_node2no_need_buffer_nodes) {
+    for (auto* input_node : op2inputs_pair.second) {
+      if (cluster_inputs.count(input_node) &&
+          check_all_used_as_no_need_buffer_fn(input_node)) {
+        VLOG(4) << "Input node(" << input_node->Name()
+                << ") is declared as no_need_buffer cluster_inputs";
+        result.insert(input_node->Name());
+      }
+    }
+  }
+  return result;
+}
+
 // Create new subgraph with and op nodes are cluster nodes, and all
 // var node are from internal nodes
 std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
@@ -295,7 +363,12 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
               subgraph.get());
   AddOutputVar(output_vars, cluster, old_op2new_op, old_var2new_var,
                subgraph.get());
-
+  // Store the input variables whose buffer are not needed as
+  // attribute of the graph.
+  auto no_need_buffer_feeds = std::make_unique<std::unordered_set<std::string>>(
+      ExtractNoNeedBufferFeeds(cluster, cluster_inputs));
+  subgraph->Set<std::unordered_set<std::string>>(
+      kNoNeedBufferFeeds, no_need_buffer_feeds.release());
   return subgraph;
 }
 
@@ -374,15 +447,26 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
   // Add the cinn launch op
   framework::OpDesc cinn_op_desc;
   cinn_op_desc.SetType(kCinnLaunchOp);
-  std::vector<std::string> input_names;
 
-  std::for_each(cluster_inputs.begin(), cluster_inputs.end(),
-                [&input_names, &deny_var_set](Node* n) {
-                  if (n->Var() != nullptr && !deny_var_set.count(n->Name())) {
-                    input_names.emplace_back(n->Name());
-                  }
-                });
-  cinn_op_desc.SetInput(operators::kX, input_names);
+  // Divide input variables as two parts:
+  // the ones that data buffer are not needed and remain ones
+  std::vector<std::string> op_kx_inputs, no_need_buffer_inputs;
+  const auto& subgraph =
+      CinnCompiler::GetInstance()->FindGraph(compilation_key);
+  auto& no_need_buffer_feeds =
+      subgraph.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  for (const auto* n : cluster_inputs) {
+    const auto& var_name = n->Name();
+    if (no_need_buffer_feeds.count(var_name)) {
+      no_need_buffer_inputs.emplace_back(var_name);
+    } else {
+      op_kx_inputs.emplace_back(var_name);
+    }
+  }
+
+  cinn_op_desc.SetInput(operators::kX, op_kx_inputs);
+  cinn_op_desc.SetInput(operators::kNoNeedBufferX, no_need_buffer_inputs);
+
   std::vector<std::string> output_names;
   std::for_each(cluster_outputs.begin(), cluster_outputs.end(),
                 [&output_names, &deny_var_set](Node* n) {

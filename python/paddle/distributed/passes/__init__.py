@@ -16,6 +16,8 @@ from .pass_base import new_pass, PassManager, PassContext
 from .fuse_all_reduce import *
 from .auto_parallel_gradient_merge import *
 from .auto_parallel_sharding import *
+from .auto_parallel_amp import *
+from .auto_parallel_recompute import *
 from .cpp_pass import *
 
 __all__ = [

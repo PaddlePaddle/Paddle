@@ -45,9 +45,19 @@ enum MLULogicMethod {
   CNNL_LOGIC_OP_OR = 7,
 };
 
+inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
+
+inline void* GetBasePtr(Tensor* t) { return t->data(); }
+
 template <typename T>
 inline cnnlDataType_t ToCnnlDataType(const T& t) {
   auto type = framework::ToDataType(t);
+  return ToCnnlDataType(type);
+}
+
+template <typename T>
+inline cnnlDataType_t ToCnnlDataType() {
+  auto type = framework::ToDataType(std::type_index(typeid(T)));
   return ToCnnlDataType(type);
 }
 
@@ -89,11 +99,12 @@ NarrowT CheckedNarrowing(const WideT& wide) {
   return narrow;
 }
 
-static cnnlHandle_t GetHandleFromCTX(const ExecutionContext& ctx) {
+inline static cnnlHandle_t GetHandleFromCTX(const ExecutionContext& ctx) {
   return ctx.template device_context<MLUDeviceContext>().cnnl_handle();
 }
 
-static const MLUDeviceContext& GetDevCtxFromCTX(const ExecutionContext& ctx) {
+inline static const MLUDeviceContext& GetDevCtxFromCTX(
+    const ExecutionContext& ctx) {
   return ctx.template device_context<MLUDeviceContext>();
 }
 

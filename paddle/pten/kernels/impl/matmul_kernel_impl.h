@@ -86,7 +86,7 @@ static void IndexIncreaseFromDims(const int ndim,
 }
 
 template <typename Context, typename T>
-void MatMulFunction(const Context& context,
+void MatMulFunction(const Context& dev_ctx,
                     const DenseTensor& X,
                     const DenseTensor& Y,
                     const std::vector<std::int64_t>& x_dims,
@@ -102,7 +102,7 @@ void MatMulFunction(const Context& context,
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  auto blas = paddle::operators::math::GetBlas<Context, T>(context);
+  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();
@@ -117,6 +117,8 @@ void MatMulFunction(const Context& context,
             M,
             N));
     VLOG(3) << "MatMul's case 1";
+    Out->Resize({1});
+    Out->mutable_data<T>();
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -162,7 +164,7 @@ void MatMulFunction(const Context& context,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->Resize(paddle::framework::make_ddim(out_dims));
+    Out->ResizeAndAllocate(paddle::framework::make_ddim(out_dims));
     Out->mutable_data<T>();
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -240,7 +242,7 @@ void MatMulFunction(const Context& context,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->Resize(paddle::framework::make_ddim(out_dims));
+    Out->ResizeAndAllocate(paddle::framework::make_ddim(out_dims));
     Out->mutable_data<T>();
 
     if (trans_x) {
@@ -328,7 +330,7 @@ void MatMulFunction(const Context& context,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->Resize(paddle::framework::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(paddle::framework::make_ddim(out_broadcast_dims));
   Out->mutable_data<T>();
 
   const int batch_dim = ndim - 2;
@@ -471,7 +473,7 @@ void MatMulFunction(const Context& context,
 }
 
 template <typename Context, typename T>
-void MatMulFunction(const Context& context,
+void MatMulFunction(const Context& dev_ctx,
                     const DenseTensor& X,
                     const DenseTensor& Y,
                     DenseTensor* Out,
@@ -481,11 +483,11 @@ void MatMulFunction(const Context& context,
   const std::vector<std::int64_t> x_dims = vectorize(X.dims());
   const std::vector<std::int64_t> y_dims = vectorize(Y.dims());
   MatMulFunction<Context, T>(
-      context, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
+      dev_ctx, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
 }
 
 template <typename T, typename Context>
-void MatmulKernel(const Context& context,
+void MatmulKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   bool transpose_x,
@@ -501,7 +503,7 @@ void MatmulKernel(const Context& context,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(Y) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  MatMulFunction<Context, T>(context, x, y, out, transpose_x, transpose_y);
+  MatMulFunction<Context, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 
 }  // namespace pten

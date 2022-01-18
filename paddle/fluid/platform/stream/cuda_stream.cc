@@ -27,7 +27,7 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;
-  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
+  CUDADeviceGuard guard(place_.device);
   if (priority == Priority::kHigh) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
@@ -53,7 +53,7 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
 }
 
 void CUDAStream::Destroy() {
-  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
+  CUDADeviceGuard guard(place_.device);
   Wait();
   WaitCallback();
   if (stream_ && owned_stream_) {

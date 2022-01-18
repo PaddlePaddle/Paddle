@@ -25,18 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-
-namespace paddle {
-namespace platform {
-class DeviceContext;
-class Place;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
-
-class Tensor;
 
 class SelectedRows {
   /*

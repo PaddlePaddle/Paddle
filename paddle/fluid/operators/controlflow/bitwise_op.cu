@@ -35,8 +35,9 @@ class BinaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
     std::vector<framework::Tensor*> outs = {out};
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, -1, functor);
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(cuda_ctx, ins, &outs, -1,
+                                                      functor);
   }
 };
 
@@ -56,8 +57,8 @@ class UnaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
     std::vector<framework::Tensor*> outs = {out};
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-        cuda_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, T, T>(cuda_ctx, ins, &outs, functor);
   }
 };
 

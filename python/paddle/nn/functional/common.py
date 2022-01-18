@@ -221,7 +221,8 @@ def interpolate(x,
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', 'area' or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic' only support 4-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
@@ -276,9 +277,11 @@ def interpolate(x,
     if resample in ['LINEAR'] and len(x.shape) != 3:
         raise ValueError("'linear' only support 3-D tensor.")
 
-    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(x.shape) != 4:
-        raise ValueError(
-            "'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.")
+    if resample in ['NEAREST'] and len(x.shape) != 4 and len(x.shape) != 5:
+        raise ValueError("'NEAREST' only support 4-D  or 5-D tensor.")
+
+    if resample in ['BILINEAR', 'BICUBIC'] and len(x.shape) != 4:
+        raise ValueError("'bilinear' and 'bicubic' only support 4-D tensor.")
     if resample == 'TRILINEAR' and len(x.shape) != 5:
         raise ValueError("'trilinear'only support 5-D tensor.")
 

@@ -56,3 +56,10 @@ TEST(StringHelper, JoinStrings) {
   result = paddle::string::join_strings(v, " new ");
   EXPECT_EQ(result, "hello new world");
 }
+
+TEST(StringHelper, JoinStringsWithConversion) {
+  std::vector<int> v = {2, 3};
+  auto result =
+      paddle::string::join_strings(v, ",", [](int x) { return x * x; });
+  EXPECT_EQ(result, "4,9");
+}

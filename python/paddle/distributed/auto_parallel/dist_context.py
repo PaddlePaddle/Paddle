@@ -62,6 +62,10 @@ class DistributedContext:
         self._dist_op_context = DistributedOperatorContext()
         self._process_meshes = []
 
+        # Distributed programs
+        self._dist_main_programs = {}
+        self._dist_startup_programs = {}
+
     @property
     def serial_program(self):
         return self._serial_program
@@ -83,6 +87,14 @@ class DistributedContext:
     @property
     def dist_op_context(self):
         return self._dist_op_context
+
+    @property
+    def dist_main_programs(self):
+        return self._dist_main_programs
+
+    @property
+    def dist_startup_programs(self):
+        return self._dist_startup_programs
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(process_mesh, ProcessMesh), \
@@ -154,6 +166,13 @@ class DistributedContext:
             else:
                 return None
 
+    def get_tensor_dist_attr_for_program_with_id(self, tensor_id):
+        dist_tensor = self._dist_tensors_for_program.get(tensor_id, None)
+        if dist_tensor:
+            return dist_tensor.dist_attr
+        else:
+            return None
+
     def set_tensor_dist_attr_for_program(self, serial_tensor, dist_attr):
         dist_tensor = DistributedTensor(serial_tensor, dist_attr)
         self.add_dist_tensor_for_program(dist_tensor)
@@ -179,6 +198,13 @@ class DistributedContext:
                 return dist_op.dist_attr
             else:
                 return None
+
+    def get_op_dist_attr_for_program_with_id(self, op_id):
+        dist_op = self._dist_ops_for_program.get(op_id, None)
+        if dist_op:
+            return dist_op.dist_attr
+        else:
+            return None
 
     def set_op_dist_attr_for_program(self, serial_op, dist_attr):
         dist_op = DistributedOperator(serial_op, dist_attr)
@@ -371,10 +397,14 @@ class DistributedContext:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_program" or k == "_serial_graph":
+            if k == "_serial_program" or k == "_serial_graph" or k == "_dist_main_programs" or k == "_dist_startup_programs":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
+
+        # update dist tensor's dist_context
+        for key in result._dist_tensors_for_program.keys():
+            result._dist_tensors_for_program[key]._dist_context = result
         return result
 
 

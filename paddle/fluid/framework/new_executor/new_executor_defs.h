@@ -84,6 +84,8 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
+  bool IsRunMKLDNNKernel() const override;
+
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override;
@@ -297,8 +299,7 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
 
   // fit for pten kernel
-  pten::Kernel* pt_kernel_{nullptr};                 // not owned
-  pten::KernelContext* pt_kernel_context_{nullptr};  // not onwed
+  pten::Kernel* pt_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
 };
@@ -319,8 +320,6 @@ class Instruction {
   OpKernelComputeFunc KernelFunc() const;
 
   pten::Kernel* PtenKernel() const;
-
-  pten::KernelContext* PtenKernelContext() const;
 
   OpFuncType KernelType() const;
 
