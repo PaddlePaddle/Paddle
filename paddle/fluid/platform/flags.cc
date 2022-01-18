@@ -652,6 +652,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
                             "Disable cudnn in conv2d");
+
+PADDLE_DEFINE_EXPORTED_bool(use_fast_math, false,
+                            "Whether to use fast math GPU functions.");
 #endif
 
 /**
