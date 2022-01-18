@@ -49,7 +49,9 @@ void FullKernel(const ContextT& dev_ctx,
     // the
     // data will not be loaded in the kernel because the number of parameters in
     // the operator is 0
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                     T,
+                                                     T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
 }

@@ -434,6 +434,15 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
+struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 0, false> {
+  __device__ inline void operator()(Functor func,
+                                    InT (*args)[VecSize],
+                                    OutT *result) {
+    kps::ElementwiseFillConst<InT, OutT, VecSize, 1, 1, Functor>(result, func);
+  }
+};
+
+template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
