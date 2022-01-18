@@ -274,5 +274,85 @@ TEST(DEV_API, to_sparse_coo_performance) {
                               alloc);
 }
 
+TEST(DEV_API, sparse_coo_to_dense) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  const auto cuda_alloc =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CUDAPlace());
+
+  const int rows = 3;
+  const int cols = 3;
+  const int non_zero_num = 4;
+  const int sparse_dim = 2;
+  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* cpu = pool.Get(paddle::platform::CPUPlace());
+  auto* dev_ctx_cpu = static_cast<paddle::platform::CPUDeviceContext*>(cpu);
+
+  DDim dense_dims = framework::make_ddim({rows, cols});
+  DenseTensor dense_indices(
+      alloc,
+      DenseTensorMeta(DataType::INT64,
+                      framework::make_ddim({sparse_dim, non_zero_num}),
+                      DataLayout::NCHW));
+  std::vector<int64_t> dense_elements_vec;
+  dense_elements_vec.push_back(non_zero_num);
+  for (int64_t i = sparse_dim; i < dense_dims.size(); i++) {
+    dense_elements_vec.push_back(dense_dims[i]);
+  }
+  DDim dense_elements_dims = framework::make_ddim(dense_elements_vec);
+  DenseTensor dense_elements(
+      alloc,
+      DenseTensorMeta(
+          DataType::FLOAT32, dense_elements_dims, DataLayout::NCHW));
+  DenseTensor d_dense_indices(
+      cuda_alloc,
+      DenseTensorMeta(DataType::INT64, dense_indices.dims(), DataLayout::NCHW));
+  DenseTensor d_dense_elements(
+      cuda_alloc,
+      DenseTensorMeta(
+          DataType::FLOAT32, dense_elements_dims, DataLayout::NCHW));
+
+  memcpy(dense_indices.mutable_data<int64_t>(),
+         indices_data.data(),
+         indices_data.size() * sizeof(int64_t));
+  memcpy(dense_elements.mutable_data<float>(),
+         non_zero_data.data(),
+         non_zero_num * sizeof(float));
+
+  SparseCooTensor coo(dense_indices, dense_elements, dense_dims);
+
+  auto dense_out = SparseCooToDense<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx_cpu)), coo);
+
+  int cmp = memcmp(
+      &dense_data[0][0], dense_out.data<float>(), sizeof(float) * rows * cols);
+  ASSERT_EQ(cmp, 0);
+
+  auto* cuda = pool.Get(paddle::platform::CUDAPlace());
+  auto* dev_ctx_cuda = static_cast<paddle::platform::CUDADeviceContext*>(cuda);
+  pten::Copy(*dev_ctx_cuda, dense_indices, true, &d_dense_indices);
+  pten::Copy(*dev_ctx_cuda, dense_elements, true, &d_dense_elements);
+  SparseCooTensor coo_cuda(d_dense_indices, d_dense_elements, dense_dims);
+  auto dense_out_cuda = SparseCooToDense<float>(
+      *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
+      coo_cuda);
+
+  DenseTensor h_dense_out(alloc,
+                          DenseTensorMeta(dense_out_cuda.dtype(),
+                                          dense_out_cuda.dims(),
+                                          dense_out_cuda.layout()));
+  pten::Copy(*dev_ctx_cuda, dense_out_cuda, true, &h_dense_out);
+  int cmp_cuda = memcmp(&dense_data[0][0],
+                        h_dense_out.data<float>(),
+                        sizeof(float) * rows * cols);
+  ASSERT_EQ(cmp_cuda, 0);
+}
+
 }  // namespace tests
 }  // namespace pten

@@ -221,15 +221,101 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+template <typename ValueT, typename IndicesT>
+__global__ void kernel_sparse_coo_to_dense(const IndicesT* indices,
+                                           const IndicesT* sparse_offsets,
+                                           const ValueT* data,
+                                           ValueT* dense_data,
+                                           const IndicesT non_zero_num,
+                                           const int64_t base_offset,
+                                           const int64_t sparse_dim) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
+    int64_t index = 0;
+    for (int j = 0; j < sparse_dim; j++) {
+      index += indices[j * non_zero_num + i] * sparse_offsets[j];
+    }
+
+    for (int j = 0; j < base_offset; j++) {
+      dense_data[index * base_offset + j] = data[i * base_offset + j];
+    }
+  }
+}
+
 template <typename T, typename Context>
-void SparseCooToDense(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      DenseTensor* out) {}
+void SparseCooToDenseKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            DenseTensor* out) {
+  const auto non_zero_num = x.nnz();
+  const auto dense_dims = x.dims();
+  const auto indices = x.non_zero_indices();
+  const auto values = x.non_zero_elements();
+  const auto indices_dims = indices.dims();
+  int64_t sparse_dim = indices_dims[0];
+  if (indices_dims.size() == 1) {
+    sparse_dim = 1;
+  }
+  const int64_t dense_dim = values.dims().size() - 1;
+
+  const T* x_data = values.data<T>();
+  T* out_data = out->mutable_data<T>();
+  int64_t base_offset = 1;
+  for (int64_t i = 0; i < dense_dim; i++) {
+    base_offset *= dense_dims[sparse_dim + i];
+  }
+  std::vector<int64_t> sparse_offsets(sparse_dim);
+  int64_t offset = 1;
+  for (int i = sparse_dim - 1; i >= 0; i--) {
+    sparse_offsets[i] = offset;
+    offset *= dense_dims[i];
+  }
+
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  auto sparse_offset_meta =
+      pten::DenseTensorMeta(DataType::INT64,
+                            paddle::framework::make_ddim({sparse_dim}),
+                            pten::DataLayout::NCHW);
+  DenseTensor d_sparse_offsets(allocator, sparse_offset_meta);
+  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
+  paddle::memory::Copy(place,
+                       d_sparse_offsets.mutable_data<int64_t>(),
+                       paddle::platform::CPUPlace(),
+                       sparse_offsets.data(),
+                       sparse_dim * sizeof(int64_t),
+                       dev_ctx.stream());
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
+  paddle::platform::GpuLaunchConfig config =
+      paddle::platform::GetGpuLaunchConfig1D(dev_ctx, non_zero_num);
+
+  kernel_sparse_coo_to_dense<T, int64_t><<<config.block_per_grid,
+                                           config.thread_per_block,
+                                           0,
+                                           dev_ctx.stream()>>>(
+      indices.data<int64_t>(),
+      d_sparse_offsets.data<int64_t>(),
+      x_data,
+      out_data,
+      non_zero_num,
+      base_offset,
+      sparse_dim);
+}
+
 }  // namespace pten
 
 PT_REGISTER_CTX_KERNEL(dense_to_sparse_coo,
                        GPU,
                        ALL_LAYOUT,
                        pten::DenseToSparseCooKernel,
+                       float,
+                       double) {}
+
+PT_REGISTER_CTX_KERNEL(sparse_coo_to_dense,
+                       GPU,
+                       ALL_LAYOUT,
+                       pten::SparseCooToDenseKernel,
                        float,
                        double) {}

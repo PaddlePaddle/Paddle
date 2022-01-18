@@ -58,8 +58,16 @@ SparseCooTensor DenseToSparseCoo(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SparseCooToDense(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      DenseTensor* out);
+void SparseCooToDenseKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor SparseCooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensor dense = pten::Empty<T, Context>(dev_ctx, std::move(meta));
+  SparseCooToDenseKernel<T, Context>(dev_ctx, x, &dense);
+  return dense;
+}
 
 }  // namespace pten
