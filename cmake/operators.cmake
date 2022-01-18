@@ -348,41 +348,28 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
 
+    # pybind USE_OP_DEVICE_KERNEL for NPU
     if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
-        file(READ ${ORIGINAL_TARGET}_npu.cc TARGET_NPU_CONTENT)
-        # It is different from the logic above, becareful
-        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\(.*" multi_npu_register "${TARGET_NPU_CONTENT}")
-        # [ \t\r\n]* is used for blank characters
-        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_npu_register "${multi_npu_register}")
-
-        if (one_npu_register STREQUAL "")
-            string(REPLACE "_op" "" NPU_TARGET "${TARGET}")
-        else ()
-            string(REPLACE "REGISTER_OP_NPU_KERNEL(" "" NPU_TARGET "${one_npu_register}")
-            string(REPLACE "," "" NPU_TARGET "${NPU_TARGET}")
-            # [ \t\r\n]+ is used for blank characters.
-            # Here we use '+' instead of '*' since it is a REPLACE operation.
-            string(REGEX REPLACE "[ \t\r\n]+" "" NPU_TARGET "${NPU_TARGET}")
+        foreach(npu_src ${npu_cc_srcs})
+        set(op_name "")
+        find_register(${npu_src} "REGISTER_OP_NPU_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, NPU);\n")
+            set(pybind_flag 1)
         endif()
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${NPU_TARGET}, NPU);\n")
+        endforeach()
     endif()
-    if (WITH_MLU AND ${mlu_cc_srcs_len} GREATER 0)
-        file(READ ${ORIGINAL_TARGET}_mlu.cc TARGET_MLU_CONTENT)
-        # It is different from the logic above, becareful
-        string(REGEX MATCH "REGISTER_OP_MLU_KERNEL\\(.*" multi_mlu_register "${TARGET_MLU_CONTENT}")
-        # [ \t\r\n]* is used for blank characters
-        string(REGEX MATCH "REGISTER_OP_MLU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_mlu_register "${multi_mlu_register}")
 
-        if (one_mlu_register STREQUAL "")
-            string(REPLACE "_op" "" MLU_TARGET "${TARGET}")
-        else ()
-            string(REPLACE "REGISTER_OP_MLU_KERNEL(" "" MLU_TARGET "${one_mlu_register}")
-            string(REPLACE "," "" MLU_TARGET "${MLU_TARGET}")
-            # [ \t\r\n]+ is used for blank characters.
-            # Here we use '+' instead of '*' since it is a REPLACE operation.
-            string(REGEX REPLACE "[ \t\r\n]+" "" MLU_TARGET "${MLU_TARGET}")
+    # pybind USE_OP_DEVICE_KERNEL for MLU
+    if (WITH_MLU AND ${mlu_cc_srcs_len} GREATER 0)
+        foreach(mlu_src ${mlu_cc_srcs})
+        set(op_name "")
+        find_register(${mlu_src} "REGISTER_OP_MLU_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MLU);\n")
+            set(pybind_flag 1)
         endif()
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${MLU_TARGET}, MLU);\n")
+        endforeach()
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for MKLDNN
@@ -403,7 +390,14 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, S8);\n")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, U8);\n")
       else()
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, MKLDNN);\n")
+        foreach(mkldnn_src ${mkldnn_cc_srcs})
+        set(op_name "")
+        find_register(${mkldnn_src} "REGISTER_OP_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
+            set(pybind_flag 1)
+        endif()
+        endforeach()        
       endif()
     endif()
 
