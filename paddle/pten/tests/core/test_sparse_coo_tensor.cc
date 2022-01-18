@@ -25,7 +25,8 @@ TEST(sparse_coo_tensor, construct) {
   auto dense_dims = paddle::framework::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
   std::vector<int64_t> indices_data = {0, 1, 2, 0, 2, 1};
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
   auto indices_dims =
       paddle::framework::make_ddim({2, static_cast<int>(non_zero_data.size())});
   DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
@@ -56,7 +57,8 @@ TEST(sparse_coo_tensor, construct) {
 }
 
 TEST(sparse_coo_tensor, other_function) {
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
   auto dense_dims = paddle::framework::make_ddim({4, 4});
   const int non_zero_num = 2;
   auto indices_dims = paddle::framework::make_ddim({2, non_zero_num});
