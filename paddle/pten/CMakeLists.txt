@@ -29,4 +29,4 @@ get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
 message(STATUS "All standard pten kernels: ${pten_kernels}")
 set(PTEN_DEPS ${PTEN_DEPS} ${pten_kernels})
 
-cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})
+cc_library(pten DEPS ${PTEN_DEPS})

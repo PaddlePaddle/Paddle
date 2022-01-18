@@ -39,7 +39,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
   if (paddle::platform::is_cpu_place(place)) {
     out_grad = cpu_out_grad;
   } else {
-    TensorCopySync(cpu_out_grad, place, &out_grad);
+    paddle::framework::TensorCopySync(cpu_out_grad, place, &out_grad);
   }
 
   // construct in_grad
@@ -73,7 +73,8 @@ void TestSequencePoolingSum(const DeviceContext &context,
   if (paddle::platform::is_cpu_place(place)) {
     cpu_in_grad = in_grad;
   } else {
-    TensorCopySync(in_grad, paddle::platform::CPUPlace(), &cpu_in_grad);
+    paddle::framework::TensorCopySync(in_grad, paddle::platform::CPUPlace(),
+                                      &cpu_in_grad);
     cpu_in_grad.set_lod(in_grad.lod());
   }
 
