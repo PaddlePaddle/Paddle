@@ -28,7 +28,8 @@ TEST(sparse_csr_tensor, construct) {
   std::vector<int64_t> crows_data = {0, 1, 1, 3};
   std::vector<int64_t> cols_data = {1, 0, 2};
 
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto alloc = fancy_allocator.get();
   // create non_zero_crows
   auto crows_dims =
       paddle::framework::make_ddim({static_cast<int>(crows_data.size())});
@@ -70,7 +71,8 @@ TEST(sparse_csr_tensor, construct) {
 }
 
 TEST(sparse_csr_tensor, other_function) {
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto alloc = fancy_allocator.get();
   auto dense_dims = paddle::framework::make_ddim({4, 4});
   auto crows_dims = paddle::framework::make_ddim({dense_dims[0] + 1});
   DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);

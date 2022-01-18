@@ -47,7 +47,6 @@ class SparseCsrTensor : public TensorBase,
   /// \param non_zero_cols The column index of non zero elements in original
   /// dense tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
-  /// \param non_zero_nums The non zero numbers of original dense tensor.
   /// \param dims The dims of original dense tensor.
   SparseCsrTensor(const DenseTensor& non_zero_crows,
                   const DenseTensor& non_zero_cols,
@@ -114,6 +113,18 @@ class SparseCsrTensor : public TensorBase,
   /// \param dense_dims The dims of original dense tensor.
   /// \param non_zero_num The total number of non zero element
   void Resize(const DDim& dense_dims, const int64_t non_zero_num);
+
+  /// \brief set the member of sparse csr tensor.
+  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// original dense tensor.
+  /// \param non_zero_cols The column index of non zero elements in original
+  /// dense tensor.
+  /// \param non_zero_elements The non zero elements of original dense tensor.
+  /// \param dims The dims of original dense tensor.
+  void SetMember(const DenseTensor& non_zero_crows,
+                 const DenseTensor& non_zero_cols,
+                 const DenseTensor& non_zero_elements,
+                 const DDim& dims);
 
   /// \brief Get a mutable data pointer of non_zero_crows.
   /// return a mutable data pointer of non_zero_crows.
