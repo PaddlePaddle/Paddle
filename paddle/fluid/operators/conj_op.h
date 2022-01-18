@@ -34,11 +34,9 @@ class ConjKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace(), size_t(x->numel() * sizeof(T)));
 
     auto& dev_ctx = context.device_context<DeviceContext>();
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::ConjKernel<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    pten::ConjKernel<T>(dev_ctx, *x, out);
   }
 };
 
