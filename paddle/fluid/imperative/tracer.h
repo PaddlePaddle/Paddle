@@ -34,6 +34,8 @@ namespace imperative {
 
 enum class AmpLevel;
 
+enum class AmpDtype;
+
 using GarbageCollectorMap =
     std::map<platform::Place,
              std::unique_ptr<paddle::framework::GarbageCollector>>;
@@ -115,6 +117,13 @@ class Tracer {
 
   AmpLevel GetAmpLevel() const { return amp_level_; }
 
+  void SetAmpDtype(AmpDtype dtype) {
+    VLOG(4) << "set amp_dtype to " << static_cast<unsigned int>(dtype);
+    amp_dtype_ = dtype;
+  }
+
+  AmpDtype GetAmpDtype() const { return amp_dtype_; }
+
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
@@ -127,6 +136,7 @@ class Tracer {
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
   AmpLevel amp_level_{AmpLevel::O0};
+  AmpDtype amp_dtype_{AmpDtype::D0};
 };
 
 // To access static variable current_tracer

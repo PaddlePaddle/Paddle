@@ -32,6 +32,12 @@ enum class AmpLevel {
   O3,      // fp16
 };
 
+enum class AmpDtype {
+  D0 = 0,  // float32
+  D1,      // float16
+  D2,      // bfloat16
+};
+
 class Tracer;
 
 // Singleton implementation with C++ 11

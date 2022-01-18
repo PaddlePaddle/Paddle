@@ -25,6 +25,7 @@ import operator
 import types
 
 AMP_LEVEL = core.AmpLevel
+AMP_DTYPE = core.AmpDtype
 
 __all__ = ['amp_guard', 'amp_decorate']
 
@@ -279,6 +280,11 @@ def amp_guard(enable=True,
                    cuda_version))
             enable = False
 
+    if dtype == 'float16':
+        amp_dtype = AMP_DTYPE.D1
+    elif dtype == 'bfloat16':
+        amp_dtype = AMP_DTYPE.D2
+
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
@@ -298,6 +304,7 @@ def amp_guard(enable=True,
 
     if not enable:
         amp_level = AMP_LEVEL.O0
+        amp_dtype = AMP_DTYPE.D0
 
     if tracer:
         # enable auto_cast
@@ -316,6 +323,10 @@ def amp_guard(enable=True,
         # original_flags = get_flags(AMP_RELATED_FLAGS)
         # set_flags(AMP_RELATED_FLAGS_SETTING)
 
+        # set amp dtype
+        original_amp_dtype = tracer._amp_dtype
+        tracer._amp_dtype = amp_dtype
+
     # restore status
     try:
         yield
@@ -324,6 +335,7 @@ def amp_guard(enable=True,
             tracer._amp_level = original_amp_level
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
+            tracer._amp_dtype = original_amp_dtype
 
 
 class StateDictHook(object):
