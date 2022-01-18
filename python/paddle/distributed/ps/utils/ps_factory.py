@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import paddle
+from .ps_program_builder import *
+from .public import *
 
 __all__ = [
-    "PsProgramBuilder", "GeoPsProgramBuilder", "NotGeoPsProgramBuilder", "",
-    "NotGeoCpuPsProgramBuilder", "NotGeoGpuPsProgramBuilder",
-    "NotGeoHeterPsProgramBuilder", "NotGeoFlPsProgramBuilder"
+    'PsProgramBuilder', 'GeoPsProgramBuilder', 'CpuSyncPsProgramBuilder',
+    'CpuAsyncPsProgramBuilder'
+    'GpuPsProgramBuilder', 'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder'
 ]
 
 
@@ -25,8 +27,14 @@ class PsProgramBuilderFactory(object):
     def __init__(self):
         pass
 
-    def _create_ps_program_builder(self, opt_info=None):
-        if opt_info.mode == DistributedMode.GEO:
-            return globals()["GeoPsProgramBuilder"](opt_info.pass_context)
-        elif opt_info.mode == DistributedMode.SYNC:
-            pass
+    def _create_ps_program_builder(self, context):
+        if context['mode'] == DistributedMode.GEO:
+            return globals()['GeoPsProgramBuilder'](context)
+        elif context['use_ps_gpu']:
+            return globals()['GpuPsProgramBuilder'](context)
+        elif context['is_heter_ps_mode']:
+            return globals()['HeterAsyncPsProgramBuilder'](context)
+        elif context['is_fl_ps_mode'] == DistributedMode.FL:
+            return globals()['FlPsProgramBuilder'](context)
+        else:
+            return globals()['CpuSyncPsProgramBuilder'](context)

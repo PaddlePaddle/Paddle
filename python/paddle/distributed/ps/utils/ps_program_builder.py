@@ -13,122 +13,54 @@
 # limitations under the License.
 
 import paddle
+from .public import *
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.passes import new_pass, PassContext
 
 
 class PsProgramBuilder(object):
     def __init__(self, context):
         self.context = context
+        self.cloned_main = self.context['cloned_main']
+        self.cloned_startup = self.context['cloned_startup']
+
+        self.use_ps_gpu = self.context['use_ps_gpu']
+        self.use_heter_ps = self.context['is_heter_ps_mode']
+        self.is_worker = self.context['is_worker']
+        self.is_heter_worker = self.context['is_heter_worker']
+        self.ps_mode = self.context['ps_mode']
+
+        self.launch_barrier = self.context['launch_barrier']
+        self.launch_barrier_flag = self.context['launch_barrier_flag']
+        self.server_endpoints = self.context[
+            'role_maker']._get_pserver_endpoints()
 
     def _optimize_programs(self):
         pass
 
     def _build_trainer_programs(self):
-        pass_context = self.context
-        _main = self.context['_main']
-        _startup = self.context['_startup']
-
-        use_ps_gpu = self.context['use_ps_gpu']
-        use_heter_ps = self.context['is_heter_ps_mode']
-        is_worker = self.context['is_worker']
-        is_heter_worker = self.context['is_heter_worker']
-        ps_mode = self.context['ps_mode']
-
-        launch_barrier = self.context['launch_barrier']
-        launch_barrier_flag = self.context['launch_barrier_flag']
-        server_endpoints = self.context['role_maker']._get_pserver_endpoints()
-
-        ps_delete_optimizer_pass = new_pass("ps_delete_optimizer_pass",
-                                            pass_context)
-        ps_delete_optimizer_pass.apply([_main], [_startup], pass_context)
-
-        if ps_mode == DistributedMode.GEO:
-            ps_append_send_ops_pass = new_pass("ps_append_send_ops_pass",
-                                               pass_context)
-            ps_append_send_ops_pass.apply([_main], [_startup], pass_context)
-        else:
-            ps_add_lr_decay_table_pass = new_pass("ps_add_lr_decay_table_pass",
-                                                  pass_context)
-            ps_add_lr_decay_table_pass.apply([_main], [], pass_context)
-
-            ps_distributed_ops_pass = new_pass("ps_distributed_ops_pass",
-                                               pass_context)
-            ps_distributed_ops_pass.apply([_main], [], pass_context)
-
-            if not use_ps_gpu:
-                ps_delete_optimizer_pass = new_pass("ps_delete_optimizer_pass",
-                                                    pass_context)
-                ps_delete_optimizer_pass.apply([], [_startup], pass_context)
-
-            ps_fake_init_ops_pass = new_pass("fake_init_ops_pass", pass_context)
-            ps_fake_init_ops_pass.apply([], [_startup], pass_context)
-
-            if use_ps_gpu:
-                ps_gpu_pass = new_pass("ps_gpu_pass", pass_context)
-                ps_gpu_pass.apply([_main], [], pass_context)
-
-                ps_transpile_pass = new_pass("ps_transpile_pass", pass_context)
-                ps_transpile_pass.apply([_main], [_startup], pass_context)
-
-            if use_heter_ps:
-                if is_heter_worker:
-                    ps_split_heter_worker_ops_pass = new_pass(
-                        "split_heter_worker_ops_pass", pass_context)
-                    ps_split_heter_worker_ops_pass.apply([_main], [],
-                                                         pass_context)
-                else:
-                    # for default worker
-                    ps_split_trainer_ops_pass = new_pass(
-                        "ps_split_trainer_ops_pass", pass_context)
-                    ps_split_trainer_ops_pass([_main], [], pass_context)
-
-        if launch_barrier and launch_barrier_flag:
-            wait_server_ready(server_endpoints)  # why need?
-
-        return
+        pass
 
     def _build_pserver_programs(self):
-        main_program = self.context['origin_main_program']
-        optimize_ops = _get_optimize_ops(main_program)
         is_sgd_adam = False
+        ops = get_optimize_ops(self.context['origin_main_program'])
+        if len(ops) == 0:
+            return
+        add_lr_decay_table_pass = new_pass('add_lr_decay_table_pass',
+                                           self.context)
+        add_lr_decay_table_pass.apply([], [], self.context)
         for op in ops:
             if op.type in ["sgd", "adam"]:
                 is_sgd_adam = True
                 break
-
-        ps_mode = self.context['ps_mode']
-        if ps_mode != DistributedMode.GEO and len(optimize_ops) == 0:
+        if is_sgd_adam:
             return
 
-        pass_context = self.context
-        _main = self.context['_main_server']
-        _startup = self.context['_startup_server']
-
-        if ps_mode != DistributedMode.GEO and is_sgd_adam == True:
-            ps_add_lr_decay_table_pass = new_pass("ps_add_lr_decay_table_pass",
-                                                  pass_context)
-            ps_add_lr_decay_table_pass.apply([main_program], [], pass_context)
-            return
-
-        if ps_mode == DistributedMode.GEO:
-            ps_geo_server_pass = new_pass("ps_geo_server_pass", pass_context)
-            ps_geo_server_pass.apply([_main], [_startup], pass_context)
-        else:
-            ps_not_geo_server_pass = new_pass("ps_not_geo_server_pass",
-                                              pass_context)
-            ps_not_geo_server_pass.apply([_main], [_startup], pass_context)
-        return
-
-    def _build_programs():
-        if self.context['is_worker'] or self.context['is_heter_worker']:
+    def _build_programs(self):
+        if self.context['is_worker']:
             self._build_trainer_programs()
-            if use_heter_ps:
-                ps_set_heter_pipeline_opt_pass = new_pass(
-                    "ps_set_heter_pipeline_opt_pass", pass_context)
-                ps_set_heter_pipeline_opt_pass.apply(
-                    [loss.block.program], [startup_program], pass_context)
-            else:
-                loss.block.program = self.context['_main']
-                fluid.framework.switch_startup_program(self.context['_statup'])
+            loss.block.program = self.cloned_main
+            fluid.framework.switch_startup_program(self.cloned_startup)
 
         elif self.context['is_server']:
             self._build_pserver_programs()
@@ -137,9 +69,148 @@ class PsProgramBuilder(object):
                 '_startup_server'])
 
 
-class GeoPsProgramBuilder(PsProgramBuilder):
-    def __init__(self, pass_context):
-        pass
+class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
+    def __init__(self, context):
+        super(GeoPsProgramBuilder, self).__init__(context)
+        if self.ps_mode != DistributedMode.GEO:
+            raise ValueError("ps mode: {} not matched {}",
+                             format(ps_mode, "GeoPsProgramBuilder"))
+
+    def _build_trainer_programs(self):
+        append_send_ops_pass = new_pass("append_send_ops_pass", self.context)
+        append_send_ops_pass.apply([self.cloned_main], [], self.context)
+
+        context['origin_main_program'] = self.cloned_main
+
+        if launch_barrier and launch_barrier_flag:
+            wait_server_ready(server_endpoints)
+
+        return
+
+
+class CpuSyncPsProgramBuilder(PsProgramBuilder):
+    def __init__(self, context):
+        super(CpuSyncPsProgramBuilder, self).__init__(context)
+        if self.ps_mode == DistributedMode.GEO:
+            raise ValueError("ps mode: {} not matched {}",
+                             format(ps_mode, "CpuSyncPsProgramBuilder"))
+
+    def _build_trainer_programs(self):
+        add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
+                                           self.context)
+        add_lr_decay_table_pass.apply([], [], self.context)
+
+        distributed_ops_pass = new_pass("distributed_ops_pass", self.context)
+        distributed_ops_pass.apply([self.cloned_main], [], self.context)
+
+        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
+        delete_optimizer_pass.apply([self.cloned_main], [], self.context)
+
+        append_send_ops_pass = new_pass("append_send_ops_pass", self.context)
+        append_send_ops_pass.apply([self.cloned_main], [], self.context)
+
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
+        fake_init_ops_pass.apply([], [self.cloned_startup], self.context)
+
+        if launch_barrier and launch_barrier_flag:
+            wait_server_ready(server_endpoints)  # why need?
+
+        return
+
+
+class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
+    def __init__(self, context):
+        super(CpuAsyncPsProgramBuilder, self).__init__(context)
+
+
+class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等无关 
+    def __init__(self, context):
+        super(GpuPsProgramBuilder, self).__init__(context)
+
+    def _build_trainer_programs(self):
+        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
+        delete_optimizer_pass.apply([_main], [_startup], self.context)
+
+        add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
+                                           self.context)
+        add_lr_decay_table_pass.apply([_main], [], self.context)
+
+        distributed_ops_pass = new_pass("distributed_ops_pass", self.context)
+        distributed_ops_pass.apply([_main], [], self.context)
+
+        ps_fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
+        ps_fake_init_ops_pass.apply([], [_startup], self.context)
+
+        ps_gpu_pass = new_pass("ps_gpu_pass", self.context)
+        ps_gpu_pass.apply([_main], [], self.context)
+
+        ps_transpile_pass = new_pass("ps_transpile_pass", self.context)
+        ps_transpile_pass.apply([_main], [_startup], self.context)
+
+        if launch_barrier and launch_barrier_flag:
+            wait_server_ready(server_endpoints)  # why need?
+
+        return
+
+
+class HeterAsyncPsProgramBuilder(PsProgramBuilder):
+    def __init__(self, context):
+        super(HeterAsyncPsProgramBuilder, self).__init__(context)
+        if self.use_ps_gpu or self.ps_mode == DistributedMode.GEO or self.context[
+                'is_heter_ps_mode'] == False:
+            raise ValueError("ps mode: {} not matched {}",
+                             format(ps_mode, "HeterAsyncPsProgramBuilder"))
+
+    def _build_trainer_programs(self):
+        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
+        delete_optimizer_pass.apply([_main], [_startup], self.context)
+
+        add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
+                                           self.context)
+        add_lr_decay_table_pass.apply([_main], [], self.context)
+
+        distributed_ops_pass = new_pass("distributed_ops_pass", self.context)
+        distributed_ops_pass.apply([_main], [], self.context)
+
+        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
+        delete_optimizer_pass.apply([], [_startup], self.context)
+
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
+        fake_init_ops_pass.apply([], [_startup], self.context)
+
+        if is_heter_worker:
+            split_heter_worker_ops_pass = new_pass(
+                "split_heter_worker_ops_pass", self.context)
+            split_heter_worker_ops_pass.apply([_main], [], self.context)
+        else:
+            # for default worker
+            split_trainer_ops_pass = new_pass("split_trainer_ops_pass",
+                                              self.context)
+            split_trainer_ops_pass([_main], [], self.context)
+
+        if launch_barrier and launch_barrier_flag:
+            wait_server_ready(server_endpoints)  # why need?
+
+        return
+
+    def _build_programs(self):
+        if self.context['is_worker'] or self.context['is_heter_worker']:
+            self._build_trainer_programs()
+            ps_set_heter_pipeline_opt_pass = new_pass(
+                "set_heter_pipeline_opt_pass", self.context)
+            ps_set_heter_pipeline_opt_pass.apply(
+                [loss.block.program], [startup_program], self.context)
+
+        elif self.context['is_server']:
+            self._build_pserver_programs()
+            loss.block.program = self.context['_main_server']
+            fluid.framework.switch_startup_program(self.context[
+                '_startup_server'])
+
+
+class FlPsProgramBuilder(PsProgramBuilder):
+    def __init__(self, context):
+        super(FlPsProgramBuilder, self).__init__(context)
 
     def _build_trainer_programs(self):
         pass
@@ -147,57 +218,5 @@ class GeoPsProgramBuilder(PsProgramBuilder):
     def _build_pserver_programs(self):
         pass
 
-
-class NotGeoPsProgramBuilder(PsProgramBuilder):
-    def __init__(self, pass_context):
-        pass
-
-    def _build_trainer_programs(self):
-        pass
-
-    def _build_pserver_programs(self):
-        pass
-
-
-class NotGeoCpuPsProgramBuilder(NotGeoPsProgramBuilder):
-    def __init__(self, pass_context):
-        pass
-
-    def _build_trainer_programs(self):
-        pass
-
-    def _build_pserver_programs(self):
-        pass
-
-
-class NotGeoGpuPsProgramBuilder(NotGeoPsProgramBuilder):
-    def __init__(self, pass_context):
-        pass
-
-    def _build_trainer_programs(self):
-        pass
-
-    def _build_pserver_programs(self):
-        pass
-
-
-class NotGeoHeterPsProgramBuilder(NotGeoPsProgramBuilder):
-    def __init__(self, pass_context):
-        pass
-
-    def _build_trainer_programs(self):
-        pass
-
-    def _build_pserver_programs(self):
-        pass
-
-
-class NotGeoFlPsProgramBuilder(NotGeoPsProgramBuilder):
-    def __init__(self, pass_context):
-        pass
-
-    def _build_trainer_programs(self):
-        pass
-
-    def _build_pserver_programs(self):
+    def _build_programs(self):
         pass

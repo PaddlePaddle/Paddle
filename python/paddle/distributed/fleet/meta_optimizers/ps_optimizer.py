@@ -21,8 +21,6 @@ import os
 import platform
 from ..base.private_helper_function import wait_server_ready
 
-__all__ = []
-
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -45,9 +43,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.context['origin_main_program'] = loss.block.program
         self.context['origin_startup_program'] = startup_program
 
-        self.context['_main'] = self.context['origin_main_program'].clone()
-        self.context['_startup'] = self.context['origin_startup_program'].clone(
+        self.context['cloned_main'] = self.context['origin_main_program'].clone(
         )
+        self.context['cloned_startup'] = self.context[
+            'origin_startup_program'].clone()
 
         self.context['strategy'] = get_distributed_strategy(
             self.user_defined_strategy)
@@ -79,13 +78,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.context['launch_barrier_flag'] = int(
             os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
 
-        self.context['origin_merged_variables_pairs'] = []
-        self.context['origin_merged_dense_pairs'] = []
-        self.context['origin_merged_sparse_pairs'] = []
-
         # server 
         self.context['_main_server'] = fluid.Program()
         self.context['_startup_server'] = fluid.Program()
+        self.context['tensor_table'] = {}
 
     def _is_graph_out(self):
         return False
