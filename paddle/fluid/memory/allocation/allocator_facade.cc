@@ -840,6 +840,28 @@ void* AllocatorFacade::GetBasePtr(
   return m_->GetBasePtr(allocation);
 }
 
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place, const gpuStream_t& stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
+      FLAGS_use_system_allocator == false) {
+#ifdef PADDLE_WITH_CUDA
+    if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+      return m_->GetAllocator(place,
+                              /* A non-zero num to choose allocator_ */ 1);
+    }
+#endif
+    return m_->GetAllocator(place, stream, /*create_if_not_found=*/true);
+  }
+#endif
+  return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+}
+
+const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
+    const platform::Place& place) {
+  return m_->GetAllocator(place, /* zero size */ 0);
+}
+
 std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size) {
   return std::shared_ptr<pten::Allocation>(Alloc(place, size));

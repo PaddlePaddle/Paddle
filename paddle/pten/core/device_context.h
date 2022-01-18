@@ -19,10 +19,54 @@ limitations under the License. */
 // TODO(wilber): Do we need to use place in pten kernel?
 #include "paddle/pten/common/place.h"
 
+#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/allocator.h"
 
 namespace pten {
 class TensorBase;
+
+class DeviceContextImpl {
+ public:
+  DeviceContextImpl() = default;
+  ~DeviceContextImpl() = default;
+
+  void SetDeviceAllocator(const Allocator* allocator);
+
+  void SetHostAllocator(const Allocator* allocator);
+
+  void SetZeroAllocator(const Allocator* allocator);
+
+  const Allocator* GetDeviceAllocator() const;
+
+  const Allocator* GetHostAllocator() const;
+
+  const Allocator* GetZeroAllocator() const;
+
+  void* Alloc(TensorBase* tensor,
+              DataType dtype = DataType::UNDEFINED,
+              size_t requested_size = 0) const;
+
+  template <typename T>
+  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
+    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    return static_cast<T*>(Alloc(tensor, dtype, requested_size));
+  }
+
+  void* HostAlloc(TensorBase* tensor,
+                  DataType dtype = DataType::UNDEFINED,
+                  size_t requested_size = 0) const;
+
+  template <typename T>
+  T* HostAlloc(pten::TensorBase* tensor, size_t requested_size = 0) const {
+    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
+  }
+
+ private:
+  const Allocator* device_allocator_{nullptr};
+  const Allocator* host_allocator_{nullptr};
+  const Allocator* zero_allocator_{nullptr};
+};
 
 /**
  * DeviceContext provides device-related interfaces.
@@ -31,6 +75,8 @@ class TensorBase;
  * DeviceContext.
  */
 class DeviceContext {
+  using DataType = paddle::experimental::DataType;
+
  public:
   /**
    * @brief Default construct.
@@ -53,42 +99,65 @@ class DeviceContext {
   virtual ~DeviceContext();
 
   /**
-   * @brief Set the deveice-releated Allocator object.
+   * @brief Set the device-related Allocator object.
    *
    * @param allocator
    */
-  void SetDeviceAllocator(Allocator*);
-
-  /**
-   * @brief Get the const deveice-releated Allocator object.
-   *
-   * @return Allocator
-   */
-  const Allocator& GetDeviceAllocator() const;
-
-  /**
-   * @brief Allocate device memory for tensor.
-   */
-  void DeviceAlloc(pten::TensorBase*);
+  virtual void SetDeviceAllocator(const Allocator*);
 
   /**
    * @brief Set the host Allocator object.
    *
    * @param allocator
    */
-  void SetHostAllocator(Allocator*);
+  virtual void SetHostAllocator(const Allocator*);
 
   /**
-   * @brief Get the const host Allocator object.
+  * @brief Set the zero-size Allocator object.
+  *
+  * @param allocator
+  */
+  virtual void SetZeroAllocator(const Allocator*);
+
+  /**
+   * @brief Get the const Allocator object.
    *
    * @return Allocator
    */
-  const Allocator& GetHostAllocator() const;
+  virtual const Allocator* GetDeviceAllocator() const;
+
+  /**
+   * @brief Get the const device-related Allocator object.
+   *
+   * @return Allocator
+   */
+  virtual const Allocator* GetHostAllocator() const;
+
+  virtual const Allocator* GetZeroAllocator() const;
+
+  /**
+   * @brief Allocate device memory for tensor.
+   */
+  virtual void* Alloc(TensorBase*,
+                      DataType dtype = DataType::UNDEFINED,
+                      size_t requested_size = 0) const;
+
+  template <typename T>
+  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
+    return impl_->Alloc<T>(tensor, requested_size);
+  }
 
   /**
    * @brief Allocate host memory for tensor.
    */
-  void HostAlloc(pten::TensorBase*);
+  virtual void* HostAlloc(TensorBase* tensor,
+                          DataType dtype = DataType::UNDEFINED,
+                          size_t requested_size = 0) const;
+
+  template <typename T>
+  T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const {
+    return impl_->HostAlloc<T>(tensor, requested_size);
+  }
 
   // TODO(wilber): Just for the convenience of migrating the code, it will be
   // modified or removed later.
@@ -98,8 +167,9 @@ class DeviceContext {
   virtual void Wait() const {}
 
  private:
-  struct Impl;
-  std::unique_ptr<Impl> impl_;
+  void ResetTensorInfo(pten::TensorBase*, DataType) const;
+
+  std::unique_ptr<DeviceContextImpl> impl_;
 };
 
 }  // namespace pten

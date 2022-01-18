@@ -119,7 +119,7 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
   shuffled_input->ResizeAndAllocate(shuffled_dims);
-  shuffled_input->mutable_data<OutT>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<OutT>(shuffled_input);
 
   pten::math::TransposeNormal<DeviceContext, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
@@ -158,7 +158,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  output->mutable_data<OutT>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<OutT>(output);
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor

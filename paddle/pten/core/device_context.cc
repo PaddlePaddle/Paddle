@@ -13,45 +13,82 @@
 // limitations under the License.
 
 #include "paddle/pten/core/device_context.h"
-#include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
+using DataType = paddle::experimental::DataType;
 
-struct DeviceContext::Impl {
-  Impl() = default;
-  ~Impl() = default;
+void DeviceContextImpl::SetDeviceAllocator(const Allocator* allocator) {
+  PADDLE_ENFORCE_NOT_NULL(
+      allocator,
+      pten::errors::InvalidArgument(
+          "Required allocator shall not be nullptr, but received nullptr."));
+  device_allocator_ = allocator;
+}
 
-  void SetDeviceAllocator(Allocator* allocator) {
-    device_allocator_ = allocator;
+void DeviceContextImpl::SetHostAllocator(const Allocator* allocator) {
+  PADDLE_ENFORCE_NOT_NULL(
+      allocator,
+      pten::errors::InvalidArgument(
+          "Required allocator shall not be nullptr, but received nullptr."));
+  host_allocator_ = allocator;
+}
+
+void DeviceContextImpl::SetZeroAllocator(const Allocator* allocator) {
+  PADDLE_ENFORCE_NOT_NULL(
+      allocator,
+      pten::errors::InvalidArgument(
+          "Required allocator shall not be nullptr, but received nullptr."));
+  zero_allocator_ = allocator;
+}
+
+const Allocator* DeviceContextImpl::GetDeviceAllocator() const {
+  return device_allocator_;
+}
+
+const Allocator* DeviceContextImpl::GetHostAllocator() const {
+  return host_allocator_;
+}
+
+const Allocator* DeviceContextImpl::GetZeroAllocator() const {
+  return zero_allocator_;
+}
+
+const Allocator* DeviceContext::GetZeroAllocator() const {
+  return impl_->GetZeroAllocator();
+}
+
+void* DeviceContextImpl::Alloc(TensorBase* tensor,
+                               DataType dtype,
+                               size_t requested_size) const {
+  if (dtype == DataType::UNDEFINED) {
+    dtype = tensor->dtype();
   }
+  auto* allocator = tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
+  return tensor->AllocateFrom(
+      const_cast<Allocator*>(allocator), dtype, requested_size);
+}
 
-  void SetHostAllocator(Allocator* allocator) { host_allocator_ = allocator; }
-
-  const Allocator& GetDeviceAllocator() const {
-    PD_CHECK(device_allocator_ != nullptr, "the device_allocator is nullptr.");
-    return *device_allocator_;
+void* DeviceContextImpl::HostAlloc(TensorBase* tensor,
+                                   DataType dtype,
+                                   size_t requested_size) const {
+  if (dtype == DataType::UNDEFINED) {
+    dtype = tensor->dtype();
   }
+  auto* allocator = tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
+  return tensor->AllocateFrom(
+      const_cast<Allocator*>(allocator), dtype, requested_size);
+}
 
-  const Allocator& GetHostAllocator() const {
-    PD_CHECK(host_allocator_ != nullptr, "the host_allocator is nullptr.");
-    return *host_allocator_;
-  }
-
-  // TODO(Wilber): Add impl. It seems that tensorbase not have interface to
-  // communicate with allocator.
-  void HostAlloc(TensorBase* tensor) {}
-  void DeviceAlloc(TensorBase* tensor) {}
-
-  Allocator* device_allocator_{nullptr};
-  Allocator* host_allocator_{nullptr};
-};
-
-DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
+DeviceContext::DeviceContext() {
+  impl_ = std::make_unique<DeviceContextImpl>();
+}
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
-  impl_->SetDeviceAllocator(
-      const_cast<Allocator*>(&other.GetDeviceAllocator()));
-  impl_->SetHostAllocator(const_cast<Allocator*>(&other.GetHostAllocator()));
+  impl_->SetHostAllocator(other.GetHostAllocator());
+  impl_->SetDeviceAllocator(other.GetDeviceAllocator());
+  impl_->SetZeroAllocator(other.GetZeroAllocator());
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -60,26 +97,56 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
 
 DeviceContext::~DeviceContext() = default;
 
-void DeviceContext::SetHostAllocator(Allocator* allocator) {
-  impl_->SetHostAllocator(allocator);
-}
-
-void DeviceContext::SetDeviceAllocator(Allocator* allocator) {
+void DeviceContext::SetDeviceAllocator(const Allocator* allocator) {
   impl_->SetDeviceAllocator(allocator);
 }
 
-const Allocator& DeviceContext::GetHostAllocator() const {
-  return impl_->GetHostAllocator();
-}
-
-const Allocator& DeviceContext::GetDeviceAllocator() const {
+const Allocator* DeviceContext::GetDeviceAllocator() const {
   return impl_->GetDeviceAllocator();
 }
 
-void DeviceContext::HostAlloc(TensorBase* tensor) { impl_->HostAlloc(tensor); }
+void DeviceContext::SetHostAllocator(const Allocator* allocator) {
+  impl_->SetHostAllocator(allocator);
+}
 
-void DeviceContext::DeviceAlloc(TensorBase* tensor) {
-  impl_->DeviceAlloc(tensor);
+void DeviceContext::SetZeroAllocator(const Allocator* allocator) {
+  impl_->SetZeroAllocator(allocator);
+}
+
+const Allocator* DeviceContext::GetHostAllocator() const {
+  return impl_->GetHostAllocator();
+}
+
+void DeviceContext::ResetTensorInfo(pten::TensorBase* tensor,
+                                    DataType dtype) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      pten::errors::InvalidArgument(
+          "Required tensor shall not be nullptr, but received nullptr."));
+  // Clear holder_ in case of allocating memory in new place.
+  if (tensor->initialized() & tensor->place() != GetPlace()) {
+    if (pten::DenseTensor::classof(tensor)) {
+      auto* dense_tensor = static_cast<DenseTensor*>(tensor);
+      dense_tensor->ResetHolder(nullptr);
+    }
+  } else {
+    PADDLE_THROW(
+        pten::errors::Unimplemented("Only support DenseTensor currently."));
+  }
+}
+
+void* DeviceContext::Alloc(TensorBase* tensor,
+                           DataType dtype,
+                           size_t requested_size) const {
+  ResetTensorInfo(tensor, dtype);
+  return impl_->Alloc(tensor, dtype, requested_size);
+}
+
+void* DeviceContext::HostAlloc(TensorBase* tensor,
+                               DataType dtype,
+                               size_t requested_size) const {
+  ResetTensorInfo(tensor, dtype);
+  return impl_->HostAlloc(tensor, dtype, requested_size);
 }
 
 }  // namespace pten
