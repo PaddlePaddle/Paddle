@@ -78,7 +78,6 @@ void MultiplyKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
@@ -143,8 +142,14 @@ PT_REGISTER_KERNEL(multiply,
                    complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(
-    mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
+PT_REGISTER_KERNEL(mean,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::MeanKernel,
+                   float,
+                   double,
+                   bool,
+                   paddle::platform::float16) {}
 PT_REGISTER_KERNEL(sum,
                    GPU,
                    ALL_LAYOUT,
@@ -152,7 +157,7 @@ PT_REGISTER_KERNEL(sum,
                    bool,
                    float,
                    double,
-                   float16,
+                   paddle::platform::float16,
                    int,
                    int64_t,
                    complex64,
@@ -167,7 +172,7 @@ PT_REGISTER_KERNEL(add,
                    double,
                    int,
                    int64_t,
-                   float16,
+                   paddle::platform::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract,
@@ -178,7 +183,7 @@ PT_REGISTER_KERNEL(subtract,
                    double,
                    int,
                    int64_t,
-                   float16,
+                   paddle::platform::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(divide,
@@ -189,7 +194,7 @@ PT_REGISTER_KERNEL(divide,
                    double,
                    int,
                    int64_t,
-                   float16,
+                   paddle::platform::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(multiply,
@@ -201,7 +206,7 @@ PT_REGISTER_KERNEL(multiply,
                    int,
                    int64_t,
                    bool,
-                   float16,
+                   paddle::platform::float16,
                    complex64,
                    complex128) {}
 #endif
