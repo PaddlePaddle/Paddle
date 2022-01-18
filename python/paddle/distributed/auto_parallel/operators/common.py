@@ -131,9 +131,6 @@ class DistributedOperatorImpl(abc.ABC):
     def backward(dist_ctx, *grad_outputs, **kwargs):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
-    def is_auto_compatible(self, dist_op):
-        raise NotImplementedError("Please Implement this method in Subclass.")
-
     def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
