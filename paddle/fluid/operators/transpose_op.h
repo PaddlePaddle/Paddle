@@ -77,9 +77,8 @@ class TransposeKernel : public framework::OpKernel<T> {
     }
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
-    int ndims = axis.size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, *x_tensor, out_tensor, axis);
+    pten::transpose<T>(dev_ctx, *x_tensor, axis, out_tensor);
   }
 };
 
