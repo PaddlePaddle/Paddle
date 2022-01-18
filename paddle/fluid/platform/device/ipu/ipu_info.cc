@@ -10,23 +10,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_device.h"
 
 namespace paddle {
 namespace platform {
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedIPUDevices() {
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
-  return ipu_backend->GetDeviceIds();
+  return platform::ipu::GetDeviceIds();
 }
 
 //! Get the total number of IPU devices in system.
-int GetIPUDeviceCount() {
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
-  return ipu_backend->GetNumDevices();
-}
+int GetIPUDeviceCount() { return platform::ipu::GetNumDevices(); }
+
 }  // namespace platform
 }  // namespace paddle

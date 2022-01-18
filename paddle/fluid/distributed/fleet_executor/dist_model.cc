@@ -145,8 +145,8 @@ bool DistModel::LoadParameters() {
   return true;
 }
 
-void DistModel::Run(const std::vector<framework::Tensor> &input_data,
-                    std::vector<framework::Tensor> *output_data) {
+void DistModel::Run(const std::vector<paddle::framework::Tensor> &input_data,
+                    std::vector<paddle::framework::Tensor> *output_data) {
   /* TODO(fleet exe dev): implement this funct */
 }
 

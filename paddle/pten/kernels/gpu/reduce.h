@@ -45,7 +45,7 @@ namespace cub = hipcub;
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/gpu/elementwise.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -326,7 +326,7 @@ struct ReduceConfig {
                      const paddle::platform::Place& place,
                      pten::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(paddle::framework::make_ddim(
+      tmp->ResizeAndAllocate(paddle::framework::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
       output_data = tmp->mutable_data<Ty>();
     } else {
@@ -1095,7 +1095,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
-    pten::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
+    funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
         *dev_ctx, inputs, &outputs, transform);
     return;
   }
