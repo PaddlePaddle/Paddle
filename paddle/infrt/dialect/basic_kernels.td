@@ -27,7 +27,7 @@ def CallOp : INFRT_Op<"call"> {
   let results = (outs Variadic<AnyType>);
 
   let extraClassDeclaration = [{
-      StringRef getCallee() { return callee(); }
+      mlir::StringRef getCallee() { return callee(); }
       mlir::FunctionType getCalleeType();
     }];
 }
@@ -57,9 +57,8 @@ def ReturnOp : INFRT_Op<"return", [Terminator]> {
 
   let arguments = (ins Variadic<AnyType>:$operands);
 
-  let builders = [OpBuilder<
-                  "OpBuilder &b, OperationState &result",
-                  [{ build(b, result, llvm::None); }]>];
+  let builders = [OpBuilder<(ins),
+                  [{ build($_builder, $_state, llvm::None); }]>];
 }
 
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {

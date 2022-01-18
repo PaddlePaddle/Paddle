@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -25,7 +26,6 @@ namespace paddle {
 namespace framework {
 class ProgramDesc;
 class Scope;
-class Tensor;
 }
 
 namespace distributed {
@@ -45,8 +45,8 @@ class DistModel {
  public:
   explicit DistModel(const DistModelConfig& config) : config_(config) {}
   bool Init();
-  void Run(const std::vector<framework::Tensor>& input_data,
-           std::vector<framework::Tensor>* output_data);
+  void Run(const std::vector<paddle::framework::Tensor>& input_data,
+           std::vector<paddle::framework::Tensor>* output_data);
   ~DistModel() = default;
 
  private:

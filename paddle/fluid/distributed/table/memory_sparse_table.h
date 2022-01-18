@@ -36,6 +36,7 @@ namespace distributed {
 
 class MemorySparseTable : public SparseTable {
  public:
+  typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
   MemorySparseTable() {}
   virtual ~MemorySparseTable() {}
 
@@ -59,6 +60,9 @@ class MemorySparseTable : public SparseTable {
   int32_t save_local_fs(const std::string& path, const std::string& param,
                         const std::string& prefix);
 
+  int64_t local_size();
+  int64_t local_mf_size();
+
   virtual std::pair<int64_t, int64_t> print_table_stat();
   virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
 
@@ -80,12 +84,12 @@ class MemorySparseTable : public SparseTable {
                                size_t num);
 
  protected:
-  const int task_pool_size_ = 24;
-  size_t avg_local_shard_num_;
-  size_t real_local_shard_num_;
-  size_t sparse_table_shard_num_;
-  std::vector<std::shared_ptr<::ThreadPool>> shards_task_pool_;
-  std::vector<std::shared_ptr<SparseTableShard>> shard_values_;
+  const int _task_pool_size = 24;
+  size_t _avg_local_shard_num;
+  size_t _real_local_shard_num;
+  size_t _sparse_table_shard_num;
+  std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
+  std::unique_ptr<shard_type[]> _local_shards;
 };
 
 }  // namespace distributed

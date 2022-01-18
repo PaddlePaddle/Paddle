@@ -16,7 +16,7 @@ def PD_Dialect : Dialect {
     This dialect contains the PaddlePaddle operators.
   }];
 
-  let cppNamespace = "::mlir::pd";
+  let cppNamespace = "mlir::pd";
 }
 
 class PD_Op<string mnemonic, list<OpTrait> traits = []> :

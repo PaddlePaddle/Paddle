@@ -34,7 +34,7 @@ namespace allocation {
 
 class StreamSafeCUDAAllocation : public Allocation {
  public:
-  StreamSafeCUDAAllocation(AllocationPtr underlying_allocation,
+  StreamSafeCUDAAllocation(DecoratedAllocationPtr underlying_allocation,
                            gpuStream_t owning_stream);
   void RecordStream(const gpuStream_t &stream);
   bool CanBeFreed();
@@ -42,7 +42,7 @@ class StreamSafeCUDAAllocation : public Allocation {
   const gpuStream_t &GetOwningStream() const;
 
  private:
-  AllocationPtr underlying_allocation_;
+  DecoratedAllocationPtr underlying_allocation_;
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
@@ -57,15 +57,15 @@ class StreamSafeCUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation *allocation) override;
+  pten::Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(pten::Allocation *allocation) override;
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsWithRelease();
 
-  static std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator *>>
+  static std::map<platform::Place, std::vector<StreamSafeCUDAAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 
