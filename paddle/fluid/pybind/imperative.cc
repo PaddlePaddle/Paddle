@@ -1909,10 +1909,10 @@ void BindImperative(py::module *m_ptr) {
                  reinterpret_cast<void *>(data_ptr), 0);
 
              // Reset the memory with device pointer
-             std::shared_ptr<memory::allocation::Allocation> holder(
-                 new memory::allocation::Allocation(
+             std::shared_ptr<memory::allocation::Allocation> holder =
+                 std::make_shared<memory::allocation::Allocation>(
                      cuda_device_pointer, need_allocate_size,
-                     platform::CUDAPlace(device_id)));
+                     platform::CUDAPlace(device_id));
              self_tensor->ResetHolderWithType(holder, self_tensor->type());
            },
            py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
