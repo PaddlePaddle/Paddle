@@ -59,8 +59,9 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-      ctx, pt_inputs, &pt_outputs, func);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor,
+                                                   NumOuts>(ctx, pt_inputs,
+                                                            &pt_outputs, func);
 }
 
 }  // namespace operators
