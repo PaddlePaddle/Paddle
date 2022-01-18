@@ -45,7 +45,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VADD(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VADD(x.numel(), x.data<T>(), y.data<T>(), z->data<T>());
   }
 };
 
@@ -58,7 +58,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    z->mutable_data<T>();
+    z->mutable_data<T>(dev_ctx.GetPlace());
     auto eigen_x = pten::EigenVector<T>::Flatten(x);
     auto eigen_y = pten::EigenVector<T>::Flatten(y);
     auto eigen_z = pten::EigenVector<T>::Flatten(*z);
@@ -86,7 +86,7 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VSUB(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VSUB(x.numel(), x.data<T>(), y.data<T>(), z->data<T>());
   }
 };
 
@@ -141,7 +141,7 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VDIV(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VDIV(x.numel(), x.data<T>(), y.data<T>(), z->data<T>());
   }
 };
 
@@ -164,7 +164,7 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VMUL(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VMUL(x.numel(), x.data<T>(), y.data<T>(), z->data<T>());
   }
 };
 
@@ -280,7 +280,7 @@ void CommonForwardBroadcastCPU(const DenseTensor& x,
   PADDLE_ENFORCE_NOT_NULL(y_data,
                           paddle::platform::errors::InvalidArgument(
                               "The input Y should not be empty."));
-  OutType* out_data = z->mutable_data<OutType>();
+  OutType* out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   const int out_size = std::accumulate(
       out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
@@ -361,7 +361,7 @@ void ElementwiseCompute(const CPUContext& dev_ctx,
                         int axis,
                         Functor func,
                         DenseTensor* z) {
-  z->mutable_data<OutType>();
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;

@@ -46,7 +46,7 @@ TEST(AutogradMeta, MemberFunction) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   grad_t->set_impl(dt);

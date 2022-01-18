@@ -35,7 +35,8 @@ paddle::experimental::Tensor CreateInputTensor() {
       pten::DenseTensorMeta(pten::DataType::INT64,
                             framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<int64_t>();
+  auto* dense_x_data =
+      dense_x->mutable_data<int64_t>(paddle::platform::CPUPlace());
 
   for (int64_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i;

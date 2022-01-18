@@ -36,13 +36,15 @@ TEST(DEV_API, dot) {
                                             framework::make_ddim({3, 3}),
                                             pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   DenseTensor dense_y(alloc.get(),
                       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                             framework::make_ddim({3, 3}),
                                             pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     dense_x_data[i] = 1.0;

@@ -43,7 +43,7 @@ void Copy(const Context& dev_ctx,
           << dst_place;
 
   dst->Resize(src.dims());
-  auto* dst_ptr = dst->mutable_data();
+  auto* dst_ptr = dst->mutable_data(dev_ctx.GetPlace());
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
