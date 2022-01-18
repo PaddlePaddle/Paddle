@@ -20,6 +20,7 @@ import numpy as np
 from ..framework import Block, Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
+from paddle.fluid import core
 from sys import version_info
 
 
@@ -466,3 +467,120 @@ def get_inputs_outputs_in_block(block):
                     inner_outputs.add(out_var_name)
 
     return inner_inputs, inner_outputs
+
+
+def rename_op_name_recurrsive(op, old_name, new_name, method):
+    """
+    NOTE(xiongkun): This function is a intermediate layer to rename input or output of a op.
+    -> Why we need this wrapper ? 
+    -> Because if / while / cond is complicate, if we change the output of if, we need change 
+    both ops in sub-block. This wrapper will do this for us. so use rename op wrapper please.
+    """
+    assert method in ["_rename_output", "_rename_input"]
+    if old_name == new_name: return
+    getattr(op, method)(old_name, new_name)
+    if op.type() not in ["if", "while"]:
+        return
+    if op.type() == "if":
+        # set the attr also
+        import pdb
+        pdb.set_trace()
+        new_out = op.attr("skip_eager_deletion_vars")
+        new_out = [name if name != old_name else new_name for name in new_out]
+        op._set_attr("skip_eager_deletion_vars", new_out)
+        op._set_attr("true_outs", new_out)
+        op._set_attr("false_outs", new_out)
+    # change the sub block: input and output
+    sub_block_attr = ['sub_block', 'true_block', 'false_block']
+    for attr_name in sub_block_attr:
+        if not op.has_attr(attr_name): continue
+
+        sub_block_id = op._block_attr_id(attr_name)
+        for sub_op in sub_block.ops:
+            rename_op_name_recurrsive(sub_op, old_name, new_name,
+                                      "_rename_output")
+            rename_op_name_recurrsive(sub_op, old_name, new_name,
+                                      "_rename_input")
+            # TODO(xiongkun) add attribute rename.
+
+
+def rename_sub_block_output_recursively(sub_block,
+                                        origin_outputs_name,
+                                        if_outputs_name,
+                                        remove_var=True):
+    """ 
+    this function delete the origin_output and rename all origin_output to if_output.name
+    """
+    """
+    must recursively: 
+        if --> true0 -> if -> true1
+                           -> false1
+           --> false0 -> if  -> true2
+                             -> false2
+        if we don't recursively rename, the true1 output will reset to true0 variable. eg: generate_var_0
+        when we rename true0, generate_var_0 in true0 may be renamed to generate_var_1 in block 0.
+        so we can't find generate_var_0 any more which is used in true1.
+
+        we rename the variable recursively
+    """
+    assert len(origin_outputs_name) == len(
+        if_outputs_name
+    ), "the length of if_outputs and origin_outputs must be the same"
+    iter_list = ["true_block", "true_outs"], ["false_block", "false_outs"]
+    for op in sub_block.ops:
+        for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
+            if old_name == new_name: continue
+            op._rename_output(old_name, new_name)
+            op._rename_input(old_name, new_name)
+
+            if remove_var and sub_block.has_var(old_name):
+                sub_block._remove_var(old_name)
+
+        sub_block.program._sync_with_cpp()
+        if op.type == "if":
+            for item in iter_list:
+                rename_sub_block_output_recursively(
+                    sub_block.program.block(op._block_attr_id(item[0])),
+                    op.attr(item[1]), op.output("Out"), True)
+                op._set_attr(item[1], op.output("Out"))
+        elif op.type == "while":  # we should rename in all subblock. because they may refer the old name.
+            rename_sub_block_output_recursively(
+                sub_block.program.block(op._block_attr_id('sub_block')),
+                origin_outputs_name, if_outputs_name, False)
+
+
+def sync_rename_for_if_op(block):
+    """ 
+    NOTE(xiongkun) _append_backward_ops_ will rename inputs and outputs of ops. this will
+    make if op unconsistent. for example, if(output=param_x@GRAD) -> 
+    if(output=param_x@GRAD@RENAME@1), but this rename don't change the sub block: 
+    the output of true_block is also param_x@GRAD. 
+
+    this function renames the sub block according to output and true_outputs.
+    true_outputs can be regards as the original output.
+
+    If any output or inputs in the block is renamed, we should call this to adjust IfOp. 
+    This is a cost for speed.
+    """
+
+    for op in block.ops:
+        if op.type == 'if':
+            if_outputs = op.output("Out")
+            original_outputs = [
+                name1
+                for name1, name2 in zip(op.attr('true_outs'), if_outputs)
+                if name2 != core.empty_var_name()
+            ]  # true_outs is the same with false_outs
+            if_outputs = [
+                name for name in if_outputs if name != core.empty_var_name()
+            ]
+            rename_sub_block_output_recursively(
+                block.program.block(op._block_attr_id("true_block")),
+                original_outputs, if_outputs)
+            rename_sub_block_output_recursively(
+                block.program.block(op._block_attr_id("false_block")),
+                original_outputs, if_outputs)
+            op._set_attr("skip_eager_deletion_vars", if_outputs)
+            op._set_attr("true_outs", if_outputs)
+            op._set_attr("false_outs", if_outputs)
+    block.program._sync_with_cpp()

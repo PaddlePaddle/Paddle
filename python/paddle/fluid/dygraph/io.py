@@ -30,6 +30,7 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.layers.utils import sync_rename_for_if_op
 
 __all__ = ['TranslatedLayer']
 
@@ -869,7 +870,9 @@ def _run_static_graph(input, program_holder, trace_program):
     # append blocks from 'trace_program'
     _append_block(main_program, trace_program, program_holder, input,
                   dict_rename_var_old_new)
+
     main_program._sync_with_cpp()
+    sync_rename_for_if_op(main_program.block(0))
     outs = _get_output_from_program(main_program, program_holder,
                                     dict_rename_var_old_new)
     if len(outs) == 1:
@@ -959,15 +962,17 @@ def _append_block(dest_program,
                                                            src_block)
 
     dest_program._sync_with_cpp()
+    sub_block_attrs = ['sub_block', 'true_block', 'false_block']
     for op in append_ops:
-        if op.has_attr('sub_block'):
-            sub = op.attr('sub_block')
-            if isinstance(sub, framework.core.BlockDesc):
-                origin_id = sub.id
-            if isinstance(sub, framework.Block):
-                origin_id = sub.idx
-            op._set_attr('sub_block',
-                         dest_program.block(offset_block_idx + origin_id))
+        for sub_block_attr in sub_block_attrs:
+            if op.has_attr(sub_block_attr):
+                sub = op.attr(sub_block_attr)
+                if isinstance(sub, framework.core.BlockDesc):
+                    origin_id = sub.id
+                if isinstance(sub, framework.Block):
+                    origin_id = sub.idx
+                op._set_attr(sub_block_attr,
+                             dest_program.block(offset_block_idx + origin_id))
     dest_program._sync_with_cpp()
     dest_program.current_block_idx = origin_block_idx
 

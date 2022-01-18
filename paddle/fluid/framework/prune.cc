@@ -70,34 +70,42 @@ bool HasFalseTarget(const proto::OpDesc& op_desc) {
   return op_desc.has_is_target() && !op_desc.is_target();
 }
 
-int GetSubBlockIndex(const proto::OpDesc& op_desc) {
-  // The block index >= 0, so -1 is used to indicate "NotFound".
+std::vector<int> GetSubBlockIndex(const proto::OpDesc& op_desc) {
+  // The size() if returned vector == 0, which means `Not Found`
+  // Assume: blocks can't be the same.
+  std::vector<int> block_ids;
   for (auto& attr : op_desc.attrs()) {
     if (attr.type() == proto::AttrType::BLOCK) {
       PADDLE_ENFORCE_EQ(attr.has_block_idx(), true,
                         platform::errors::NotFound(
                             "Attribute sub_block is not found in operator %s",
                             op_desc.type()));
-      return attr.block_idx();
+      block_ids.push_back(attr.block_idx());
     }
   }
-  return -1;
+  return block_ids;
 }
 
-void SetSubBlockIndex(proto::OpDesc* op_desc, int sub_idx) {
+void SetSubBlockIndex(proto::OpDesc* op_desc, int idx, int sub_idx) {
+  // Set idx-th block attr to new_block_idx
+  int cur_idx = 0;
   for (auto& attr : *op_desc->mutable_attrs()) {
     if (attr.type() == proto::AttrType::BLOCK) {
       PADDLE_ENFORCE_EQ(attr.has_block_idx(), true,
                         platform::errors::NotFound(
                             "Attribute sub_block is not found in operator %s",
                             op_desc->type()));
-      attr.set_block_idx(sub_idx);
+      if (cur_idx == idx) {
+        attr.set_block_idx(sub_idx);
+        return;
+      }
+      cur_idx += 1;
     }
   }
 }
 
 bool HasSubBlock(const proto::OpDesc& op_desc) {
-  return GetSubBlockIndex(op_desc) > 0;
+  return GetSubBlockIndex(op_desc).size() > 0;
 }
 
 int GetOpRole(const proto::OpDesc& op_desc) {
@@ -301,11 +309,15 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
             }
           }
         }
-        // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
+        // GetSubBlockIndex(*op) is the indices of the sub_block in the input
+        // desc
         // output_block_id is the idx of the current block in the output desc
-        prune_impl(input, output, GetSubBlockIndex(*op), output_block_id,
-                   &sub_block_dependent_vars, feed_var_names,
-                   pruned_origin_block_id_map);
+
+        for (auto idx : GetSubBlockIndex(*op)) {
+          prune_impl(input, output, idx, output_block_id,
+                     &sub_block_dependent_vars, feed_var_names,
+                     pruned_origin_block_id_map);
+        }
       }
     }
   }
@@ -360,14 +372,17 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
     for (auto op_iter = ops->rbegin(); op_iter != ops->rend(); ++op_iter) {
       auto& op_desc = *op_iter;
       if (HasSubBlock(op_desc)) {
-        int origin_sub_idx = GetSubBlockIndex(op_desc);
-        auto sub_idx =
-            FindMapByValue(pruned_origin_block_id_map, origin_sub_idx);
-        PADDLE_ENFORCE_NE(sub_idx, -1,
-                          platform::errors::NotFound(
-                              "The origin sub block id should be found in "
-                              "pruned_progin_block_id_map"));
-        SetSubBlockIndex(&op_desc, sub_idx);
+        int idx = 0;
+        for (auto origin_sub_idx : GetSubBlockIndex(op_desc)) {
+          auto sub_idx =
+              FindMapByValue(pruned_origin_block_id_map, origin_sub_idx);
+          PADDLE_ENFORCE_NE(sub_idx, -1,
+                            platform::errors::NotFound(
+                                "The origin sub block id should be found in "
+                                "pruned_progin_block_id_map"));
+          SetSubBlockIndex(&op_desc, idx, sub_idx);
+          idx += 1;
+        }
       }
     }
   }
@@ -502,14 +517,17 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
       auto& op_desc = *op_iter;
       if (HasSubBlock(op_desc)) {
-        int origin_sub_idx = GetSubBlockIndex(op_desc);
-        auto sub_idx =
-            FindMapByValue(pruned_progin_block_id_map, origin_sub_idx);
-        PADDLE_ENFORCE_NE(sub_idx, -1,
-                          platform::errors::NotFound(
-                              "The origin sub block id is not found in "
-                              "pruned_progin_block_id_map"));
-        SetSubBlockIndex(&op_desc, sub_idx);
+        int idx = 0;
+        for (auto origin_sub_idx : GetSubBlockIndex(op_desc)) {
+          auto sub_idx =
+              FindMapByValue(pruned_progin_block_id_map, origin_sub_idx);
+          PADDLE_ENFORCE_NE(sub_idx, -1,
+                            platform::errors::NotFound(
+                                "The origin sub block id is not found in "
+                                "pruned_progin_block_id_map"));
+          SetSubBlockIndex(&op_desc, idx, sub_idx);
+          idx += 1;
+        }
       }
     }
   }

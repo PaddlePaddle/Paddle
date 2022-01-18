@@ -22,7 +22,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, flatten
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, flatten, rename_sub_block_output_recursively
 import numpy
 import warnings
 import six
@@ -2411,7 +2411,9 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
                 name_set = set()
                 output = map_structure(
                     partial(_create_new_var_if_needed, block), output)
-                output_names = [i.name for i in flatten([output])]
+                output_names = [
+                    i.name for i in flatten([output]) if i is not None
+                ]
                 assert len(output_names) == len(
                     set(output_names)
                 ), "The output of true_fn/false_fn have duplicated name. some error happened."
@@ -2484,51 +2486,6 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
 
     # TODO(Aurelius84): Considering the inplace case.
     """
-
-    def _rename_sub_block_output_recursively(sub_block,
-                                             origin_outputs_name,
-                                             if_outputs_name,
-                                             remove_var=True):
-        """ 
-        this function delete the origin_output and rename all origin_output to if_output.name
-        """
-        """
-        must recursively: 
-            if --> true0 -> if -> true1
-                               -> false1
-               --> false0 -> if  -> true2
-                                 -> false2
-            if we don't recursively rename, the true1 output will reset to true0 variable. eg: generate_var_0
-            when we rename true0, generate_var_0 in true0 may be renamed to generate_var_1 in block 0.
-            so we can't find generate_var_0 any more which is used in true1.
-
-            we rename the variable recursively
-        """
-        assert len(origin_outputs_name) == len(
-            if_outputs_name
-        ), "the length of if_outputs and origin_outputs must be the same"
-        iter_list = ["true_block", "true_outs"], ["false_block", "false_outs"]
-        for op in sub_block.ops:
-            for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
-                if old_name == new_name: continue
-
-                op._rename_output(old_name, new_name)
-                op._rename_input(old_name, new_name)
-
-            if remove_var and sub_block.has_var(old_name):
-                sub_block._remove_var(old_name)
-
-            if op.type == "if":
-                for item in iter_list:
-                    _rename_sub_block_output_recursively(
-                        sub_block.program.block(op._block_attr_id(item[0])),
-                        op.attr(item[1]), op.output("Out"), True)
-                    op._set_attr(item[1], op.output("Out"))
-            elif op.type == "while":  # we should rename in all subblock. because they may refer the old name.
-                _rename_sub_block_output_recursively(
-                    sub_block.program.block(op._block_attr_id('sub_block')),
-                    origin_outputs_name, if_outputs_name, False)
-
     parent_block = true_block.program.block(true_block.parent_idx)
 
     def _get_in_out_var_names(branch_block):
@@ -2635,10 +2592,10 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
     false_out_names = [var.name for var in flatten([false_output])]
     output_names = [var.name for var in flatten([output_vars])]
 
-    _rename_sub_block_output_recursively(true_block, true_out_names,
-                                         output_names)
-    _rename_sub_block_output_recursively(false_block, false_out_names,
-                                         output_names)
+    rename_sub_block_output_recursively(true_block, true_out_names,
+                                        output_names)
+    rename_sub_block_output_recursively(false_block, false_out_names,
+                                        output_names)
 
     # NOTE(xiongkun) if the inputs contains LoDTensorArray, we put it in the IfOp output, else the op dependence will cause error.
     tensor_array_output_vars = [
