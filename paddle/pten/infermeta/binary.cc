@@ -14,7 +14,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 
 namespace pten {
 

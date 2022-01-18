@@ -22,6 +22,7 @@ namespace pten {
 namespace funcs {
 
 // Define the binary functors used in elementwise ops.
+// Note: InverseXxxFunctor is needed when calling ElementwiseComputeEx on CPU.
 
 // Add
 template <typename T>
@@ -48,9 +49,21 @@ template <typename T>
 struct MultiplyFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
 };
+template <>
+struct MultiplyFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
+    return a && b;
+  }
+};
 template <typename T>
 struct InverseMultiplyFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return b * a; }
+};
+template <>
+struct InverseMultiplyFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
+    return b && a;
+  }
 };
 
 // Divide
