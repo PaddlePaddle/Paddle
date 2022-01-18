@@ -27,7 +27,15 @@ namespace operators {
   struct func_name {                                             \
     using ELEM_TYPE = InT;                                       \
     HOSTDEVICE OutT operator()(const InT a, const InT b) const { \
+<<<<<<< HEAD
       return static_cast<OutT>(a op b);                          \
+=======
+      if (std::is_same<OutT, bool>::value) {                     \
+        return a op b;                                           \
+      } else {                                                   \
+        return static_cast<OutT>(a op b);                        \
+      }                                                          \
+>>>>>>> unify compare functor
     }                                                            \
   };
 
@@ -35,6 +43,7 @@ COMPARE_FUNCTOR(LessThanFunctor, <)
 COMPARE_FUNCTOR(LessEqualFunctor, <=)
 COMPARE_FUNCTOR(GreaterThanFunctor, >)
 COMPARE_FUNCTOR(GreaterEqualFunctor, >=)
+<<<<<<< HEAD
 #undef COMPARE_FUNCTOR
 
 template <typename InT, typename OutT = bool>
@@ -47,10 +56,36 @@ struct EqualFunctor {
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
       return static_cast<OutT>(a == b);
+=======
+COMPARE_FUNCTOR(NotEqualFunctor, !=)
+#undef COMPARE_FUNCTOR
+
+template <typename T, typename OutT = bool>
+struct EqualFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE OutT operator()(const T a, const T b) const {
+    if (std::is_same<OutT, bool>::value) {
+      if (std::is_floating_point<T>::value) {
+        // This branch will be optimized while compiling if T is integer. It is
+        // safe to cast a and b to double.
+        return fabs(static_cast<double>(a - b)) < 1e-8;
+      } else {
+        return (a == b);
+      }
+    } else {
+      if (std::is_floating_point<T>::value) {
+        // This branch will be optimized while compiling if T is integer. It is
+        // safe to cast a and b to double.
+        return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
+      } else {
+        return static_cast<OutT>(a == b);
+      }
+>>>>>>> unify compare functor
     }
   }
 };
 
+<<<<<<< HEAD
 template <typename InT, typename OutT = bool>
 struct NotEqualFunctor {
   using ELEM_TYPE = InT;
@@ -59,6 +94,8 @@ struct NotEqualFunctor {
   }
 };
 
+=======
+>>>>>>> unify compare functor
 template <typename DeviceContext, typename Functor, typename InverseFunctor>
 class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
