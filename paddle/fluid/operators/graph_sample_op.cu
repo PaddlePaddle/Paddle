@@ -143,7 +143,7 @@ template <typename T>
 void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                       const T* dst_count, thrust::device_vector<T>* inputs,
                       thrust::device_vector<T>* outputs,
-                      thrust::device_vector<T>* output_counts, T k) {
+                      thrust::device_vector<T>* output_counts, int k) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
 
