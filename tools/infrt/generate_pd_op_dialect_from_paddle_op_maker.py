@@ -200,7 +200,8 @@ def convert_op_proto_into_mlir(op_descs):
                         elif (attr_mlir_converter[op_proto[ATTRS][attr][TYPE]]
                               in ['StrAttr', 'StrArrayAttr']):
                             default_value = default_value.replace('\'', '\\\"')
-                            if attr_mlir_converter[op_proto[ATTRS][attr][TYPE]] == "StrAttr":
+                            if attr_mlir_converter[op_proto[ATTRS][attr][
+                                    TYPE]] == "StrAttr":
                                 default_value = '\\\"' + default_value + '\\\"'
                         attr_list = " DefaultValuedAttr<" + attr_mlir_converter[
                             op_proto[ATTRS][attr]
