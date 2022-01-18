@@ -28,25 +28,32 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <class bidiiter>
-bidiiter sample_unique(bidiiter begin, bidiiter end, int num_samples) {
-  size_t left = std::distance(begin, end);
+void sample_unique(bidiiter src_begin, bidiiter src_end, bidiiter eid_begin,
+                   bidiiter eid_end, int num_samples) {
+  size_t left = std::distance(src_begin, src_end);
+  unsigned int seed = left;
   for (int i = 0; i < num_samples; i++) {
-    bidiiter r = begin;
-    std::advance(r, rand() % left);
-    std::swap(*begin, *r);
-    ++begin;
+    bidiiter r1 = src_begin, r2 = eid_begin;
+    int random_step = rand_r(&seed) % left;
+    std::advance(r1, random_step);
+    std::advance(r2, random_step);
+    std::swap(*src_begin, *r1);
+    std::swap(*eid_begin, *r2);
+    ++src_begin;
+    ++eid_begin;
     --left;
   }
-  return begin;
 }
 
 template <typename T>
-void sample_neighbors(const T* src, const T* dst_count, std::vector<T>* inputs,
-                      std::vector<T>* outputs, std::vector<T>* output_counts,
-                      int k) {
+void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
+                      std::vector<T>* inputs, std::vector<T>* outputs,
+                      std::vector<T>* output_counts,
+                      std::vector<T>* outputs_eids, int k) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
   outputs->resize(k * bs);
+  outputs_eids->resize(k * bs);
 
   size_t total_neighbors = 0;
   for (size_t i = 0; i < bs; i++) {
@@ -57,17 +64,25 @@ void sample_neighbors(const T* src, const T* dst_count, std::vector<T>* inputs,
     if (k < cap) {
       std::vector<T> cut_src(cap);
       std::copy(src + begin, src + end, cut_src.begin());
-      sample_unique(cut_src.begin(), cut_src.end(), k);
+      std::vector<T> cut_eids(cap);
+      std::copy(src_eids + begin, src_eids + end, cut_eids.begin());
+      sample_unique(cut_src.begin(), cut_src.end(), cut_eids.begin(),
+                    cut_eids.end(), k);
       std::copy(cut_src.begin(), cut_src.begin() + k,
                 outputs->data() + total_neighbors);
+      std::copy(cut_eids.begin(), cut_eids.begin() + k,
+                outputs_eids->data() + total_neighbors);
       cap = k;
     } else {
       std::copy(src + begin, src + end, outputs->data() + total_neighbors);
+      std::copy(src_eids + begin, src_eids + end,
+                outputs_eids->data() + total_neighbors);
     }
     total_neighbors += cap;
     *(output_counts->data() + i) = cap;
   }
   outputs->resize(total_neighbors);
+  outputs_eids->resize(total_neighbors);
 
   std::vector<T> unique_outputs(outputs->size());
   std::sort(inputs->begin(), inputs->end());
@@ -88,11 +103,13 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get inputs.
     auto* src = ctx.Input<Tensor>("Src");
+    auto* src_eids = ctx.Input<Tensor>("Src_Eids");
     auto* dst_count = ctx.Input<Tensor>("Dst_Count");
     auto* vertices = ctx.Input<Tensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
 
     const T* src_data = src->data<T>();
+    const T* src_eids_data = src_eids->data<T>();
     const T* dst_count_data = dst_count->data<T>();
     const T* p_vertices = vertices->data<T>();
     const size_t bs = vertices->dims()[0];
@@ -101,11 +118,13 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
     std::vector<T> inputs(bs);
     std::vector<T> outputs;
     std::vector<T> output_counts;
+    std::vector<T> outputs_eids;
     std::copy(p_vertices, p_vertices + bs, inputs.begin());
     std::vector<std::vector<T>> dst_vec;
     dst_vec.push_back(inputs);
     std::vector<std::vector<T>> outputs_vec;
     std::vector<std::vector<T>> output_counts_vec;
+    std::vector<std::vector<T>> outputs_eids_vec;
 
     const size_t num_layers = sample_sizes.size();
     for (size_t i = 0; i < num_layers; i++) {
@@ -115,10 +134,12 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
       if (i > 0) {
         dst_vec.push_back(inputs);
       }
-      sample_neighbors<T>(src_data, dst_count_data, &inputs, &outputs,
-                          &output_counts, sample_sizes[i]);
+      sample_neighbors<T>(src_data, dst_count_data, src_eids_data, &inputs,
+                          &outputs, &output_counts, &outputs_eids,
+                          sample_sizes[i]);
       outputs_vec.push_back(outputs);
       output_counts_vec.push_back(output_counts);
+      outputs_eids_vec.push_back(outputs_eids);
     }
 
     // 3. Concat intermediate sample results
@@ -130,9 +151,11 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
     std::vector<T> unique_dst_merge(unique_dst_size);
     std::vector<T> src_merge(src_size);
     std::vector<T> dst_sample_counts_merge(unique_dst_size);
+    std::vector<T> eids_merge(src_size);
     auto unique_dst_merge_ptr = unique_dst_merge.begin();
     auto src_merge_ptr = src_merge.begin();
     auto dst_sample_counts_merge_ptr = dst_sample_counts_merge.begin();
+    auto eids_merge_ptr = eids_merge.begin();
     for (size_t i = 0; i < num_layers; i++) {
       if (i == 0) {
         unique_dst_merge_ptr = std::copy(dst_vec[i].begin(), dst_vec[i].end(),
@@ -142,6 +165,9 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
         dst_sample_counts_merge_ptr =
             std::copy(output_counts_vec[i].begin(), output_counts_vec[i].end(),
                       dst_sample_counts_merge.begin());
+        eids_merge_ptr =
+            std::copy(outputs_eids_vec[i].begin(), outputs_eids_vec[i].end(),
+                      eids_merge.begin());
       } else {
         unique_dst_merge_ptr = std::copy(dst_vec[i].begin(), dst_vec[i].end(),
                                          unique_dst_merge_ptr);
@@ -150,6 +176,8 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
         dst_sample_counts_merge_ptr =
             std::copy(output_counts_vec[i].begin(), output_counts_vec[i].end(),
                       dst_sample_counts_merge_ptr);
+        eids_merge_ptr = std::copy(outputs_eids_vec[i].begin(),
+                                   outputs_eids_vec[i].end(), eids_merge_ptr);
       }
     }
 
@@ -189,20 +217,25 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
     auto* sample_index = ctx.Output<Tensor>("Sample_index");
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
+    auto* out_eids = ctx.Output<Tensor>("Out_Eids");
     sample_index->Resize({static_cast<int>(unique_nodes.size())});
     out_src->Resize({static_cast<int>(src_merge.size())});
     out_dst->Resize({static_cast<int>(src_merge.size())});
+    out_eids->Resize({static_cast<int>(src_merge.size())});
     T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
     T* p_out_src = out_src->mutable_data<T>(ctx.GetPlace());
     T* p_out_dst = out_dst->mutable_data<T>(ctx.GetPlace());
+    T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
     const size_t& sample_bytes = unique_nodes.size() * sizeof(T);
     memset(p_sample_index, 0, sample_bytes);
     std::copy(unique_nodes.begin(), unique_nodes.end(), p_sample_index);
     const size_t& memset_bytes = src_merge.size() * sizeof(T);
     memset(p_out_src, 0, memset_bytes);
     memset(p_out_dst, 0, memset_bytes);
+    memset(p_out_eids, 0, memset_bytes);
     std::copy(src_merge.begin(), src_merge.end(), p_out_src);
     std::copy(dst_merge.begin(), dst_merge.end(), p_out_dst);
+    std::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
   }
 };
 
