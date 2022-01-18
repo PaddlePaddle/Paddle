@@ -199,10 +199,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
-  z->mutable_data<OutType>(ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
     std::vector<const framework::Tensor *> ins = {x, y};
@@ -216,6 +212,11 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
 #endif
     return;
   }
+
+  z->mutable_data<OutType>(ctx.GetPlace());
+  auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+  auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
 
   const auto &dev_ctx =
       ctx.template device_context<platform::CPUDeviceContext>();

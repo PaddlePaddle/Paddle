@@ -14,9 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mod_op.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
 namespace paddle {
 namespace operators {
 
@@ -37,6 +34,9 @@ class ElementwiseModKernel<platform::CUDADeviceContext, T>
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mod, ops::ElementwiseModKernel<plat::CUDADeviceContext, int>,
