@@ -112,12 +112,13 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   }
 }
 
-template <typename DeviceContext, template <typename T> typename CompareFunctor,
+template <typename DeviceContext,
+          template <typename InT, typename OutT> typename CompareFunctor,
           typename T>
 struct GetMask {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
                   const Tensor& rhs, Tensor* mask) {
-    SameDimsBinaryOP<int64_t, CompareFunctor<int64_t>, T>(lhs, rhs, mask);
+    SameDimsBinaryOP<int64_t, CompareFunctor<int64_t, T>, T>(lhs, rhs, mask);
   }
 };
 

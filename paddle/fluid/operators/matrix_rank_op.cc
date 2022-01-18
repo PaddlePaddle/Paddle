@@ -219,18 +219,20 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
     tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
     Tensor compare_result;
-    compare_result.mutable_data<int>(detail::NewAxisDim(dim_out, k),
-                                     context.GetPlace());
+    compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
+                                         context.GetPlace());
 
     int axis = -1;
     if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CPUDeviceContext, T,
-                           int>(context, &eigenvalue_tensor, &tol_tensor, axis,
-                                GreaterThanFunctor<T>(), &compare_result);
+      ElementwiseComputeEx<GreaterThanFunctor<T, int64_t>,
+                           platform::CPUDeviceContext, T, int>(
+          context, &eigenvalue_tensor, &tol_tensor, axis,
+          GreaterThanFunctor<T, int64_t>(), &compare_result);
     } else {
-      ElementwiseComputeEx<LessThanFunctor<T>, platform::CPUDeviceContext, T,
-                           int>(context, &eigenvalue_tensor, &tol_tensor, axis,
-                                LessThanFunctor<T>(), &compare_result);
+      ElementwiseComputeEx<LessThanFunctor<T, int64_t>,
+                           platform::CPUDeviceContext, T, int>(
+          context, &eigenvalue_tensor, &tol_tensor, axis,
+          LessThanFunctor<T, int64_t>(), &compare_result);
     }
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext,

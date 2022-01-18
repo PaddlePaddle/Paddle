@@ -22,49 +22,40 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct LessThanFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T a, const T b) const { return a < b; }
-};
+#define COMPARE_FUNCTOR(func_name, op)                           \
+  template <typename InT, typename OutT = bool>                  \
+  struct func_name {                                             \
+    using ELEM_TYPE = InT;                                       \
+    HOSTDEVICE OutT operator()(const InT a, const InT b) const { \
+      return static_cast<OutT>(a op b);                          \
+    }                                                            \
+  };
 
-template <typename T>
-struct LessEqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T a, const T b) const { return a <= b; }
-};
+COMPARE_FUNCTOR(LessThanFunctor, <)
+COMPARE_FUNCTOR(LessEqualFunctor, <=)
+COMPARE_FUNCTOR(GreaterThanFunctor, >)
+COMPARE_FUNCTOR(GreaterEqualFunctor, >=)
+#undef COMPARE_FUNCTOR
 
-template <typename T>
-struct GreaterThanFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T a, const T b) const { return a > b; }
-};
-
-template <typename T>
-struct GreaterEqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T a, const T b) const { return a >= b; }
-};
-
-template <typename T>
+template <typename InT, typename OutT = bool>
 struct EqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T a, const T b) const {
-    if (std::is_floating_point<T>::value) {
+  using ELEM_TYPE = InT;
+  HOSTDEVICE OutT operator()(const InT a, const InT b) const {
+    if (std::is_floating_point<InT>::value) {
       // This branch will be optimized while compiling if T is integer. It is
       // safe to cast a and b to double.
-      return fabs(static_cast<double>(a - b)) < 1e-8;
+      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
-      return (a == b);
+      return static_cast<OutT>(a == b);
     }
   }
 };
 
-template <typename T>
+template <typename InT, typename OutT = bool>
 struct NotEqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T a, const T b) const {
-    return !EqualFunctor<T>()(a, b);
+  using ELEM_TYPE = InT;
+  HOSTDEVICE bool operator()(const InT a, const InT b) const {
+    return !EqualFunctor<InT, OutT>()(a, b);
   }
 };
 
