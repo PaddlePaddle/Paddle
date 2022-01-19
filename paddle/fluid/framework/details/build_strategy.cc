@@ -177,8 +177,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #endif
 
-// TODO(Ming Huang): Temp test, official release should be 11060.
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11040)
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
     AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
                         "fuse_gemm_epilogue_pass");
 #endif
@@ -510,7 +509,6 @@ USE_PASS(mkldnn_placement_pass);
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif
-// TODO(Ming Huang): Temp test, official release should be 11060.
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11040)
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
 USE_PASS(fuse_gemm_epilogue_pass);
 #endif
