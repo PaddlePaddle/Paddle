@@ -24,14 +24,14 @@ struct CudaAbsFunctor;
 
 template <typename T>
 struct CudaAbsFunctor<T, math::Complex<T, math::Real<T>>> {
-  __device__ __forceinline__ math::Real<T> operator()(const T& x) const {
+  __device__ __forceinline__ math::Real<T> operator()(const T x) const {
     return abs(x);
   }
 };
 
 template <typename T>
 struct CudaAbsFunctor<T, math::NoComplex<T, math::Real<T>>> {
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
 };
@@ -50,9 +50,9 @@ class AbsKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaAbsFunctor<T>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T,
-                                        math::Real<T>>(dev_ctx, ins, &outs,
-                                                       functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, T, math::Real<T>>(dev_ctx, ins, &outs,
+                                                   functor);
   }
 };
 

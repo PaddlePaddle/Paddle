@@ -41,9 +41,8 @@ class XPUGaussianRandomKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()), data,
-                 platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
-                 size * sizeof(T));
+    memory::Copy(context.GetPlace(), data, platform::CPUPlace(),
+                 reinterpret_cast<void*>(data_cpu.get()), size * sizeof(T));
   }
 };
 

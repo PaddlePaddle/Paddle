@@ -11,7 +11,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_op.h"
 #include <memory>
 #include <string>
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
 
@@ -55,17 +55,11 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
         int r = xpu::constant(dev_ctx.x_context(),
                               reinterpret_cast<XPUTyp*>(y_data), y->numel(),
                               XPUTyp(0));
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(constant) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant ");
         r = xpu::constant(dev_ctx.x_context(),
                           reinterpret_cast<XPUTyp*>(mask_data), mask->numel(),
                           XPUTyp(0));
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(constant) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant ");
         return;
       }
       int r = xpu::dropout(dev_ctx.x_context(),
@@ -73,26 +67,20 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
                            reinterpret_cast<XPUTyp*>(y->data<T>()),
                            reinterpret_cast<XPUTyp*>(mask_data), seed,
                            mask->numel(), is_upscale, dropout_prob);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU API(dropout) return wrong "
-                                            "value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout ");
     } else {
       float scale =
           (is_upscale) ? (1.0) : (static_cast<float>(1.0f - dropout_prob));
       int r = xpu::scale(
           dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(x_data),
           reinterpret_cast<XPUTyp*>(y_data), x->numel(), false, scale, 0.0f);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU API(scale) return wrong "
-                                            "value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale ");
     }
   }
 };
 template <typename DeviceContext, typename T>
 class DropoutGradXPUKernel : public framework::OpKernel<T> {
-  using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -108,31 +96,43 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("dropout_implementation");
     float dropout_prob = context.Attr<float>("dropout_prob");
     const T* mask_data = mask->data<T>();
-    framework::Tensor mask_new;
-    if (dropout_implementation == "upscale_in_train") {
-      mask_new = context.AllocateTmpTensor<T, platform::XPUDeviceContext>(
-          mask->dims(), dev_ctx);
+
+    if (dropout_implementation != "upscale_in_train") {
+      int r = xpu::mul(dev_ctx.x_context(),
+                       reinterpret_cast<const XPUType*>(grad_y->data<T>()),
+                       reinterpret_cast<const XPUType*>(mask_data),
+                       reinterpret_cast<XPUType*>(grad_x->data<T>()),
+                       grad_y->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul ");
+      return;
+    }
+
+    paddle::platform::XPUVersion version = dev_ctx.xpu_version();
+    if (version == paddle::platform::XPUVersion::XPU1) {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* mask_new = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
       float scale =
           (dropout_prob == 1.0f) ? (1.0f) : (1.0f / (1.0f - dropout_prob));
       int r = xpu::scale(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUTyp*>(mask->data<T>()),
-                         reinterpret_cast<XPUTyp*>(mask_new.data<T>()),
-                         mask->numel(), false, scale, 0.0f);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU API(scale) return wrong "
-                                            "value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
-      mask_data = mask_new.data<T>();
+                         reinterpret_cast<const XPUType*>(mask->data<T>()),
+                         reinterpret_cast<XPUType*>(mask_new), mask->numel(),
+                         false, scale, 0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale ");
+      r = xpu::mul(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(grad_y->data<T>()),
+                   reinterpret_cast<const XPUType*>(mask_new),
+                   reinterpret_cast<XPUType*>(grad_x->data<T>()),
+                   grad_y->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul ");
+    } else {
+      int r =
+          xpu::dropout_grad(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(mask->data<T>()),
+                            reinterpret_cast<const XPUType*>(grad_y->data<T>()),
+                            reinterpret_cast<XPUType*>(grad_x->data<T>()),
+                            dropout_prob, grad_y->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_grad ");
     }
-
-    int r = xpu::mul(
-        dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(grad_y->data<T>()),
-        reinterpret_cast<const XPUTyp*>(mask_data),
-        reinterpret_cast<XPUTyp*>(grad_x->data<T>()), grad_y->numel());
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External("XPU API(mul) return wrong "
-                                                 "value[%d %s]",
-                                                 r, XPUAPIErrorMsg[r]));
   }
 };
 }  // namespace operators

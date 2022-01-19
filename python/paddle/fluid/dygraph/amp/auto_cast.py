@@ -145,6 +145,10 @@ def check_models(models):
             raise RuntimeError(
                 "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".
                 format(type(model)))
+        if isinstance(model, paddle.DataParallel):
+            raise RuntimeError(
+                "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
+            )
 
 
 def check_optimizers(optimizers):

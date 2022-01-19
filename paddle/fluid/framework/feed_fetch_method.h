@@ -20,10 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/string_array.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Scope;
 
 void SetFeedVariable(Scope* scope, const LoDTensor& input,

@@ -15,7 +15,7 @@
 from ..dist_attribute import OperatorDistributedAttribute
 
 _g_distributed_operator_impl_registries = {}
-BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale'}
+BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 class DistributedOperatorImplContainer:
@@ -118,6 +118,8 @@ def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
 
 
 def is_parameter_related(varname, block):
+    if ".subprog_" in varname:
+        varname = varname[:varname.index(".subprog_")]
     if ".cast_fp" in varname:
         varname = varname[:varname.index(".cast_fp")]
     assert block.has_var(varname)

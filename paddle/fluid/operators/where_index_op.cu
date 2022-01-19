@@ -128,14 +128,12 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     for (int i = rank - 2; i >= 0; i--) {
       h_stride_array[i] = h_stride_array[i + 1] * dims[i + 1];
     }
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 d_stride_array, platform::CPUPlace(), h_stride_array,
-                 rank * sizeof(int64_t), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(), d_stride_array, platform::CPUPlace(),
+                 h_stride_array, rank * sizeof(int64_t), dev_ctx.stream());
 
     // get total ture number and set output size
     // the last element of cub::InclusiveSum is the total number
-    memory::Copy(platform::CPUPlace(), h_total_true_num,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+    memory::Copy(platform::CPUPlace(), h_total_true_num, dev_ctx.GetPlace(),
                  d_true_num_array + numel - 1, sizeof(int64_t),
                  dev_ctx.stream());
     dev_ctx.Wait();

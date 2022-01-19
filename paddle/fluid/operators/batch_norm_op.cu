@@ -382,7 +382,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
         Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        paddle::framework::TensorCopySync(*mom_tensor, platform::CPUPlace(),
+                                          &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 

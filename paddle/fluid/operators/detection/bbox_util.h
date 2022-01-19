@@ -144,8 +144,8 @@ void MaxIoU(const framework::Tensor& iou, framework::Tensor* max_iou) {
 
 static void AppendProposals(framework::Tensor* dst, int64_t offset,
                             const framework::Tensor& src) {
-  auto* out_data = dst->data<void>();
-  auto* to_add_data = src.data<void>();
+  auto* out_data = dst->data();
+  auto* to_add_data = src.data();
   size_t size_of_t = framework::SizeOfType(src.type());
   offset *= size_of_t;
   std::memcpy(

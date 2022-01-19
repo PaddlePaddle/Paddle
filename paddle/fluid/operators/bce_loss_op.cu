@@ -28,8 +28,8 @@ template <typename T>
 struct BCELossGradFunctor {
   T one = static_cast<T>(1.0f);
   T eps = static_cast<T>(1e-12);
-  __device__ __forceinline__ T operator()(const T& x, const T& label,
-                                          const T& dout) const {
+  __device__ __forceinline__ T operator()(const T x, const T label,
+                                          const T dout) const {
     T term1 = max((one - x) * x, eps);
     return (dout * (x - label) / term1);
   }
@@ -91,8 +91,8 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor*> outs = {dx};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto functor = BCELossGradFunctor<T>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kTernary, T, T>(dev_ctx, ins, &outs, functor);
   }
 };
 

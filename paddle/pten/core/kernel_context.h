@@ -62,6 +62,8 @@ class KernelContext {
 
   void EmplaceBackOutputWithoutSetRange(std::shared_ptr<TensorBase> output);
 
+  void SetOutputWithoutSetRange(int index, std::shared_ptr<TensorBase> output);
+
   void EmplaceBackOutputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> outputs);
 
@@ -78,6 +80,14 @@ class KernelContext {
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
+  }
+
+  template <typename TensorType>
+  paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
+    const auto& input = inputs_.at(idx);
+    return input ? paddle::optional<const TensorType&>{static_cast<
+                       const TensorType&>(*input)}
+                 : paddle::optional<const TensorType&>{paddle::none};
   }
 
   std::shared_ptr<TensorBase>& MutableInputPtrAt(size_t idx) {
