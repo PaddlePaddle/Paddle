@@ -506,7 +506,7 @@ class ImperativeQuantizeOutputs(object):
             main_program=infer_program.clone(),
             model_filename=model_filename,
             params_filename=params_filename,
-            clip_extra=True)
+            clip_extra=False)
 
         if is_dynamic_mode:
             paddle.disable_static()

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,14 +13,57 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/common/place.h"
-#include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace experimental {
+#include <sstream>
+#include <string>
 
-std::string Place::DebugString() const {
-  return device_.DebugString() + ", is_pinned: " + std::to_string(is_pinned_);
+#include "paddle/pten/api/ext/exception.h"
+
+namespace pten {
+
+const char *AllocationTypeStr(AllocationType type) {
+  switch (type) {
+    case AllocationType::UNDEFINED:
+      return "undefined";
+    case AllocationType::CPU:
+      return "cpu";
+    case AllocationType::GPU:
+      return "gpu";
+    case AllocationType::GPUPINNED:
+      return "gpu_pinned";
+    case AllocationType::XPU:
+      return "xpu";
+    case AllocationType::NPU:
+      return "npu";
+    case AllocationType::NPUPINNED:
+      return "npu_pinned";
+    case AllocationType::IPU:
+      return "ipu";
+    case AllocationType::MLU:
+      return "mlu";
+    default:
+      PD_THROW("Invalid pten device type.");
+      return {};
+  }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+std::string Place::DebugString() const {
+  std::ostringstream os;
+  os << "Place(";
+  os << AllocationTypeStr(alloc_type_);
+  if (alloc_type_ == AllocationType::GPUPINNED ||
+      alloc_type_ == AllocationType::NPUPINNED ||
+      alloc_type_ == AllocationType::CPU) {
+    os << ")";
+  } else {
+    os << ":" << std::to_string(device) << ")";
+  }
+  return os.str();
+}
+
+std::ostream &operator<<(std::ostream &os, const Place &p) {
+  os << p.DebugString();
+  return os;
+}
+
+}  // namespace pten

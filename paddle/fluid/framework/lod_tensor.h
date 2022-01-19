@@ -28,9 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
 namespace platform {
 class DeviceContext;
 }  // namespace platform
@@ -38,6 +35,16 @@ class DeviceContext;
 
 namespace paddle {
 namespace framework {
+
+using LoDTensor = pten::DenseTensor;
+
+// Split Tensor and copy to each place specified in places.
+std::vector<LoDTensor> SplitLoDTensor(
+    const LoDTensor& src, const std::vector<platform::Place> places);
+
+void MergeLoDTensor(LoDTensor* target,
+                    const std::vector<const LoDTensor*>& lod_tensors,
+                    platform::Place dst_place);
 
 /*
  * LoD is short for Level of Details.
@@ -55,9 +62,6 @@ namespace framework {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
-
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 std::string LoDToString(const LoD& lod);
 
@@ -101,72 +105,6 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *     tensor_height>0.
  */
 bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
-
-/*
- * LoDTensor (Level of details Tensor)
- * see https://en.wikipedia.org/wiki/Level_of_details for reference.
- */
-class LoDTensor : public Tensor {
- public:
-  LoDTensor() : Tensor() {}
-
-  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
-
-  void set_lod(const LoD& lod) { lod_ = lod; }
-
-  const LoD& lod() const { return lod_; }
-
-  LoD* mutable_lod() { return &lod_; }
-
-  /*
-   * Get the start offset and end offset of an  element from LoD.
-   */
-  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE_LT(
-        level, NumLevels(),
-        platform::errors::InvalidArgument(
-            "The input level of LoD is invalid, it should be less than LoD "
-            "size. The input level is %zu, the LoD size is %zu.",
-            level, NumLevels()));
-    PADDLE_ENFORCE_LT(elem, NumElements(level),
-                      platform::errors::InvalidArgument(
-                          "The input element of LoD is invalid, it should be "
-                          "less than the number of elements in its level."
-                          "The input element is %zu, the number of elements in "
-                          "its level is %zu.",
-                          elem, NumElements(level)));
-    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
-  }
-
-  /*
-   * Number of LoDTensor's levels, each level has units of data, for example,
-   * in the sentence's view, article, paragraph, sentence are 3 levels.
-   */
-  size_t NumLevels() const { return lod_.size(); }
-  /*
-   * Number of elements in a level.
-   */
-  size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE_LT(
-        level, NumLevels(),
-        platform::errors::InvalidArgument(
-            "The input level of LoD is invalid, it should be less than LoD "
-            "size. The input level is %zu, the LoD size is %zu.",
-            level, NumLevels()));
-    // the last offset is the end of last element
-    return (lod_)[level].size() - 1;
-  }
-
-  // Split LoDTensor and copy to each place specified in places.
-  std::vector<LoDTensor> SplitLoDTensor(
-      const std::vector<platform::Place> places) const;
-
-  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
-                      platform::Place place);
-
- private:
-  LoD lod_;
-};
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`

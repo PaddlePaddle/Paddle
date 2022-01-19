@@ -23,14 +23,10 @@ add_subdirectory(ops)
 add_subdirectory(tests)
 
 # make an unity target for compile deps
-set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context)
-set(PTEN_DEPS ${PTEN_DEPS} math_cpu linalg_cpu manipulation_cpu conj_kernel_cpu scale_kernel_cpu full_kernel_cpu)
-set(PTEN_DEPS ${PTEN_DEPS} nary unary binary)
-if(WITH_GPU OR WITH_ROCM)
-  set(PTEN_DEPS ${PTEN_DEPS} math_cuda linalg_cuda manipulation_cuda conj_kernel_cuda scale_kernel_cuda full_kernel_cuda)
-endif()
-if(WITH_XPU)
-  set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu)
-endif()
+set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context arg_map_context infermeta)
+get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
+# keep this message for debug, remove it later if needless
+message(STATUS "All standard pten kernels: ${pten_kernels}")
+set(PTEN_DEPS ${PTEN_DEPS} ${pten_kernels})
 
-cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})
+cc_library(pten DEPS ${PTEN_DEPS})

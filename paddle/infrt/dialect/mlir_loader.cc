@@ -16,8 +16,8 @@
 
 #include <llvm/Support/SourceMgr.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Diagnostics.h>
-#include <mlir/IR/Function.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Parser.h>
 #include <unordered_map>
@@ -30,13 +30,18 @@
 #include "paddle/infrt/dialect/diagnostic_utils.h"
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
                                      const std::string& mlir_source) {
-  context->allowUnregisteredDialects();
-  RegisterCinnDialects(context->getDialectRegistry());
-  context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
+  // context->allowUnregisteredDialects();
+  mlir::DialectRegistry registry;
+  registerCinnDialects(registry);
+  context->appendDialectRegistry(registry);
+  // Currenetly, We only used the CinnDialect and mlir::BuiltinDialect is
+  // enough。Don't need StandardOpsDialect.
+  // context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
 
   mlir::ScopedDiagnosticHandler scope_handler(
       context, [](mlir::Diagnostic& diag) {
@@ -54,10 +59,10 @@ mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
 
 mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
                                    mlir::MLIRContext* context) {
-  context->allowUnregisteredDialects();
-  RegisterCinnDialects(context->getDialectRegistry());
-  context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
-
+  // context->allowUnregisteredDialects();
+  mlir::DialectRegistry registry;
+  registerCinnDialects(registry);
+  context->appendDialectRegistry(registry);
   mlir::ScopedDiagnosticHandler scope_handler(
       context, [](mlir::Diagnostic& diag) {
         if (diag.getSeverity() != mlir::DiagnosticSeverity::Error)
@@ -69,4 +74,5 @@ mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
   return mlir::parseSourceFile(std::string(file_name), context);
 }
 
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt

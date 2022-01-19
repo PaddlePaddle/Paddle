@@ -61,6 +61,8 @@ function init() {
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
 
+    export FLAGS_use_curand=True
+
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
     # branch must not be `${BRANCH}` which is usually develop.
@@ -236,6 +238,7 @@ function cmake_base() {
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -283,6 +286,7 @@ EOF
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -575,7 +579,7 @@ EOF
         export http_proxy=
         export https_proxy=
         set -x
-
+        
         set +ex
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
