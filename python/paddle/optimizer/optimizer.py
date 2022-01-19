@@ -764,11 +764,6 @@ class Optimizer(object):
                             self._append_optimize_op(target_block,
                                                      param_grad_dict)
             else:
-                params_grads_device_map = parameters_and_grads[
-                    'params'] if isinstance(parameters_and_grads,
-                                            dict) else parameters_and_grads
-                self._update_param_device_map(params_grads_device_map,
-                                              target_block)
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue
