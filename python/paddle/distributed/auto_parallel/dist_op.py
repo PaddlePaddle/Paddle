@@ -99,6 +99,8 @@ class DistributedOperator:
             self._dist_attr.impl_type = "default"
         if self._dist_attr.impl_idx is None:
             self._dist_attr.impl_idx = -2
+        if self._dist_attr.is_recompute is None:
+            self._dist_attr.is_recompute = False
 
     def _filter_dist_attr(self, dist_attr):
         if dist_attr is None:

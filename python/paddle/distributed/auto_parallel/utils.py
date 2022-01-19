@@ -1005,8 +1005,8 @@ def set_grad_var_shape(program, dist_context):
             assert op_dist_attr is not None
 
             for var_name in op.output_arg_names:
-
-                assert "@GRAD" in var_name
+                if "@GRAD" not in var_name:
+                    continue
                 forward_var_name = var_name[:var_name.find("@GRAD")]
                 if op.type in [
                         "c_allreduce_sum", "c_identity", "scale", "cast"
@@ -1074,11 +1074,6 @@ def is_forward_op(op):
 def is_backward_op(op):
     return OP_ROLE_KEY in op.attr_names and \
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
-
-
-def is_recompute_op(op):
-    return OP_ROLE_KEY in op.attr_names and \
-            int(op.all_attrs()[OP_ROLE_KEY]) == 9
 
 
 def is_loss_op(op):
