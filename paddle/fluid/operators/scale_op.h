@@ -30,7 +30,8 @@ static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place()) ||
       platform::is_npu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<T>();
   }
   return tensor_data[0];

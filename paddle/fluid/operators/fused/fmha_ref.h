@@ -119,7 +119,8 @@ class FMHARef {
       ins.emplace_back(src_mask_tensor);
       outs.emplace_back(src_mask_out_tensor);
       int elewise_add_axis = -1;
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
 
       SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,

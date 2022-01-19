@@ -19,10 +19,12 @@ limitations under the License. */
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/float16.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class CPUDeviceContext;
 }  // namespace platform
