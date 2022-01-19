@@ -14,6 +14,6 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_fleet_with_asp_amp MODULES test_fleet_with_asp_amp ENVS ${dist_ENVS})
 endif()
 
-if(WITH_DISTRIBUTE and NOT WIN32 and NOT APPLE)
+if((WITH_DISTRIBUTE) AND (NOT WIN32) AND (NOT APPLE))
     py_test_modules(test_fleet_with_asp_sharding MODULES test_fleet_with_asp_sharding ENVS ${dist_ENVS})
 endif()
