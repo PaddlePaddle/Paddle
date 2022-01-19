@@ -232,7 +232,7 @@ def generate_backward_api(backward_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/api/include/backward.h"
+    include_header_file = "paddle/pten/api/include/backward_api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
