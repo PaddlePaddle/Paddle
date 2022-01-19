@@ -1886,7 +1886,12 @@ void OperatorWithKernel::BuildPtenKernelContext(
         tensor_in = &(var->Get<framework::LoDTensor>());
       } else if (var->template IsType<framework::SelectedRows>()) {
         tensor_in = &(var->Get<framework::SelectedRows>().value());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
       }
+
       pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -1907,6 +1912,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
       } else if (var->template IsType<framework::SelectedRows>()) {
         tensor_out = var->template GetMutable<framework::SelectedRows>()
                          ->mutable_value();
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported output `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
       }
 
       experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));

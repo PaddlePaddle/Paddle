@@ -367,7 +367,12 @@ static void BuildDygraphPtenKernelContext(
       } else if (var->template IsType<framework::SelectedRows>()) {
         tensor_out = var->template GetMutable<framework::SelectedRows>()
                          ->mutable_value();
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported output `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
       }
+
       experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
           tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));

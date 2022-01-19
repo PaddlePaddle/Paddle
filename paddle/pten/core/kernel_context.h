@@ -104,16 +104,6 @@ class KernelContext {
   void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
   template <typename TensorType>
-  void SetInputAtWithoutSetRange(size_t idx, const TensorType* tensor) {
-    inputs_[idx] = tensor;
-  }
-
-  template <typename TensorType>
-  void SetOutputAtWithoutSetRange(size_t idx, TensorType* tensor) {
-    outputs_[idx] = tensor;
-  }
-
-  template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx));
   }
