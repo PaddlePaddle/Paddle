@@ -68,17 +68,17 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape, matmul_op_desc))
       return;
 
-    OpDesc gemm_epilogue_op_desc(matmul_op->Op()->Block());
+    OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     std::string activation = "none";
-    gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
-    gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
-    gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
-    gemm_epilogue_op_desc.SetInput("bias", {ele_bias->Name()});
-    gemm_epilogue_op_desc.SetOutput("out", {ele_out->Name()});
-    gemm_epilogue_op_desc.SetAttr("activation", activation);
-    gemm_epilogue_op_desc.SetAttr("op_role",
-                                  matmul_op_desc->GetAttr("op_role"));
-    auto gemm_epilogue_node = g->CreateOpNode(&gemm_epilogue_op_desc);
+    fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
+    fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("bias", {ele_bias->Name()});
+    fused_gemm_epilogue_op_desc.SetOutput("out", {ele_out->Name()});
+    fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
+    fused_gemm_epilogue_op_desc.SetAttr("op_role",
+                                        matmul_op_desc->GetAttr("op_role"));
+    auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
     IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
     IR_NODE_LINK_TO(matmul_w, gemm_epilogue_node);
@@ -153,17 +153,17 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
           act_out->Var()->Name());
     }
 
-    OpDesc gemm_epilogue_op_desc(matmul_op->Op()->Block());
+    OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     std::string act_name = "none";
-    gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
-    gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
-    gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
-    gemm_epilogue_op_desc.SetInput("bias", {ele_bias->Name()});
-    gemm_epilogue_op_desc.SetOutput("out", {act_out->Name()});
-    gemm_epilogue_op_desc.SetAttr("activation", activation);
-    gemm_epilogue_op_desc.SetAttr("op_role",
-                                  matmul_op_desc->GetAttr("op_role"));
-    auto gemm_epilogue_node = g->CreateOpNode(&gemm_epilogue_op_desc);
+    fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
+    fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("bias", {ele_bias->Name()});
+    fused_gemm_epilogue_op_desc.SetOutput("out", {act_out->Name()});
+    fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
+    fused_gemm_epilogue_op_desc.SetAttr("op_role",
+                                        matmul_op_desc->GetAttr("op_role"));
+    auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
     IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
     IR_NODE_LINK_TO(matmul_w, gemm_epilogue_node);

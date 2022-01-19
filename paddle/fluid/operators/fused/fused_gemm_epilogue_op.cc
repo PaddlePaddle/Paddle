@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/gemm_epilogue_op.h"
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 
 namespace paddle {
 namespace operators {
@@ -128,7 +128,7 @@ class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("trans_x", "").SetDefault(false);
     AddAttr<bool>("trans_y", "").SetDefault(false);
 
-    AddAttr<std::string>("activation", "").SetDefault("relu");
+    AddAttr<std::string>("activation", "{noen, relu, gelu}").SetDefault("none");
     AddAttr<std::string>("auxiliary_key", "").SetDefault("");
 
     AddComment(R"DOC(FusedGemmEpilogue OP)DOC");

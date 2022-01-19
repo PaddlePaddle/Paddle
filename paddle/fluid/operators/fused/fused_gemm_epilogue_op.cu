@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/gemm_epilogue_op.h"
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
 

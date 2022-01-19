@@ -20,7 +20,7 @@ register_operators(EXCLUDES
     fused_transformer_op
     fused_feedforward_op
     resnet_unit_op
-    gemm_epilogue_op)
+    fused_gemm_epilogue_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -97,7 +97,7 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 
     if (CUDA_VERSION GREATER_EQUAL 11.4)
-        op_library(gemm_epilogue_op)
+        op_library(fused_gemm_epilogue_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_gemm_epilogue);\n")
     endif()
 endif()
