@@ -24,11 +24,13 @@ namespace ir {
 
 void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
   std::unordered_set<std::string> act_types = {"relu"};
-  graph = FuseLinearAct(graph, act_types);
+  graph = FuseLinearActFwd(graph, act_types, false);
+  graph = FuseLinearActFwd(graph, act_types, true);
 }
 
-ir::Graph *FuseGemmEpiloguePass::FuseLinearAct(
-    ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
+ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
+    ir::Graph *graph, const std::unordered_set<std::string> &act_types,
+    bool is_training) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("gemm_epilogue", graph);
@@ -40,7 +42,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearAct(
                 ->assert_is_op_input("matmul_v2", "X");
   patterns::LinearAct linear_act_pattern(gpd.mutable_pattern(), "linear_act");
 
-  linear_act_pattern(x, act_types);
+  linear_act_pattern(x, act_types, is_training);
 
   int found_linear_act_count = 0;
 
@@ -77,6 +79,17 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearAct(
     if (BOOST_GET_CONST(bool, matmul_op_desc->GetAttr("trans_x")) ||
         BOOST_GET_CONST(bool, matmul_op_desc->GetAttr("trans_y")))
       return;
+
+    // Only need to check weight.shape[1] for auxiliary pointer
+    // and mark it the act op is fused for backward epilogue fusion.
+    // That because cuBlasLt epilogue's restriction.
+    if (is_training) {
+      auto activation = act_op->Op()->Type();
+      int divisor_of_n = activation == "relu" ? 128 : 8;
+      if (matmul_w_shape[1] % divisor_of_n) return;
+      EpiloguePassActivationCache::Instance().InsertFusedActivation(
+          act_out->Var()->Name());
+    }
 
     OpDesc gemm_epilogue_op_desc(matmul_op->Op()->Block());
     gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");

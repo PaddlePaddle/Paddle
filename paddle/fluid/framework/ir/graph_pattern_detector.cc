@@ -1528,7 +1528,7 @@ PDNode *patterns::ElewiseAddAct::operator()(
 
 PDNode *patterns::LinearAct::operator()(
     paddle::framework::ir::PDNode *linear_x_var,
-    std::unordered_set<std::string> act_types) {
+    std::unordered_set<std::string> act_types, bool with_grad_link = false) {
   auto *matmul_w_var =
       pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
 
@@ -1558,6 +1558,13 @@ PDNode *patterns::LinearAct::operator()(
   matmul->LinksFrom({linear_x_var, matmul_w_var}).LinksTo({matmul_out_var});
   ele_add->LinksFrom({matmul_out_var, ele_bias_var}).LinksTo({ele_out_var});
   act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
+
+  if (with_grad_link) {
+    matmul_out_var->assert_is_op_input("elementwise_add_grad", "X");
+    auto *elementwise_add_grad_op = pattern->NewNode("elementwise_add_grad")
+                                        ->assert_is_op("elementwise_add_grad");
+    elementwise_add_grad_op->LinksFrom({matmul_out_var});
+  }
 
   return act_out_var;
 }

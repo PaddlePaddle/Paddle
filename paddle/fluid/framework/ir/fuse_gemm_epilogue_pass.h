@@ -14,6 +14,7 @@
 // limitations under the License.
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <unordered_set>
 
@@ -32,6 +33,34 @@ namespace ir {
 class Graph;
 class Node;
 
+class EpiloguePassActivationCache {
+ public:
+  static EpiloguePassActivationCache &Instance() {
+    static EpiloguePassActivationCache instance;
+    return instance;
+  }
+
+  EpiloguePassActivationCache(EpiloguePassActivationCache const &) = delete;
+  void operator=(EpiloguePassActivationCache const &) = delete;
+
+  bool HasFusedActivation(std::string key) {
+    return fused_activation_keys.count(key);
+  }
+
+  void InsertFusedActivation(std::string key) {
+    if (!HasFusedActivation(key)) {
+      mtx.lock();
+      fused_activation_keys.insert(key);
+      mtx.unlock();
+    }
+  }
+
+ private:
+  EpiloguePassActivationCache() {}
+  std::unordered_set<std::string> fused_activation_keys;
+  std::mutex mtx;
+};
+
 class FuseGemmEpiloguePass : public FusePassBase {
  public:
   virtual ~FuseGemmEpiloguePass() {}
@@ -39,8 +68,9 @@ class FuseGemmEpiloguePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  ir::Graph *FuseLinearAct(
-      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseLinearActFwd(ir::Graph *graph,
+                              const std::unordered_set<std::string> &act_types,
+                              bool is_training) const;
 };
 
 }  // namespace ir
