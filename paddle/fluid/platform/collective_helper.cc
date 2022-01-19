@@ -32,9 +32,7 @@ class NCCLCommImpl : public NCCLComm {
   void set_rank(int rank) { rank_ = rank; }
   int rank() const override { return rank_; }
 
-  int device_id() const override {
-    return BOOST_GET_CONST(CUDAPlace, dev_ctx_->GetPlace()).device;
-  }
+  int device_id() const override { return dev_ctx_->GetPlace().device; }
 
   void set_comm(ncclComm_t comm) { comm_ = comm; }
   ncclComm_t comm() const override { return comm_; }
@@ -246,9 +244,7 @@ class BKCLCommImpl : public BKCLComm {
   void set_rank(int rank) { rank_ = rank; }
   int rank() const override { return rank_; }
 
-  int device_id() const override {
-    return BOOST_GET_CONST(XPUPlace, dev_ctx_->GetPlace()).device;
-  }
+  int device_id() const override { return dev_ctx_->GetPlace().device; }
 
   void set_comm(BKCLContext_t comm) { comm_ = comm; }
   BKCLContext_t comm() const override { return comm_; }

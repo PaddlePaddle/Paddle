@@ -16,19 +16,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/function_traits.h"
 
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/gpu/elementwise.h"
 
 namespace paddle {
 namespace operators {
-
-namespace kps = paddle::operators::kernel_primitives;
 
 using ElementwiseType = pten::ElementwiseType;
 
@@ -60,8 +54,9 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-      ctx, pt_inputs, &pt_outputs, func);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor,
+                                                   NumOuts>(ctx, pt_inputs,
+                                                            &pt_outputs, func);
 }
 
 }  // namespace operators

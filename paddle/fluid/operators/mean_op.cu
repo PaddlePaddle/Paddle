@@ -53,7 +53,7 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
     auto stream = context.cuda_device_context().stream();
 
     if (rank == 0) {  // scalar
-      auto gpu_place = BOOST_GET(platform::CUDAPlace, place);
+      auto gpu_place = place;
       memory::Copy(gpu_place, out_data, gpu_place, in_data, numel * sizeof(T),
                    stream);
       return;

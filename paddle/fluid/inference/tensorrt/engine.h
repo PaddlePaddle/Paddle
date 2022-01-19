@@ -36,12 +36,6 @@ limitations under the License. */
 #include "paddle/utils/any.h"
 
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -128,7 +122,19 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       dims.d[0] = shape[1];
       return dims;
     }
-    return nvinfer1::Dims3(shape[1], 1, 1);
+    // static shape doesn't support 1D op so far.
+    PADDLE_ENFORCE_NE(shape.size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "The input [%s] shape of trt subgraph is %s."
+                          "it's not supported by trt so far",
+                          input, ShapeStr(shape)));
+
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size() - 1;
+    for (size_t i = 1; i < shape.size(); i++) {
+      dims.d[i - 1] = shape[i];
+    }
+    return dims;
   } else {
     if (shape.size() == 4UL) {
       return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
@@ -407,6 +413,9 @@ class TensorRTEngine {
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
+  void SetWithInterleaved(bool with_interleaved) {
+    with_interleaved_ = with_interleaved;
+  }
 
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
@@ -480,6 +489,7 @@ class TensorRTEngine {
 
   bool use_oss() { return use_oss_; }
   bool with_ernie() { return with_ernie_; }
+  bool with_interleaved() { return with_interleaved_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
   AnalysisConfig::Precision precision() { return precision_; }
@@ -612,6 +622,7 @@ class TensorRTEngine {
   bool use_dla_{false};
   int dla_core_{0};
   bool with_ernie_{false};
+  bool with_interleaved_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
