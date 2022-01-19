@@ -200,7 +200,6 @@ def source_include(header_file_path):
 #include "paddle/pten/api/lib/tensor_adapt.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/api/include/api.h"
 #include "paddle/pten/infermeta/grad_infermeta.h"
 """
