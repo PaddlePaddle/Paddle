@@ -32,7 +32,6 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
@@ -41,6 +40,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/array.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
@@ -118,7 +118,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
 
 // convert dims from vector to array
 template <typename T, size_t ElementCount, typename VectorLikeType>
-static inline paddle::framework::Array<T, ElementCount> VectorToArray(
+static inline pten::framework::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
   PADDLE_ENFORCE_LE(vec.size(),
                     ElementCount,
@@ -128,7 +128,7 @@ static inline paddle::framework::Array<T, ElementCount> VectorToArray(
                         vec.size(),
                         ElementCount));
   size_t n = static_cast<size_t>(vec.size());
-  paddle::framework::Array<T, ElementCount> ret;
+  pten::framework::Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) {
     ret[i] = vec[i];
   }
@@ -202,9 +202,9 @@ struct IndexCalculator {
   }
 
   int dim;
-  paddle::framework::Array<int, kMaxRank> dims;
-  paddle::framework::Array<int, kMaxRank> strides;
-  paddle::framework::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
+  pten::framework::Array<int, kMaxRank> dims;
+  pten::framework::Array<int, kMaxRank> strides;
+  pten::framework::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
 };
 
 template <bool ReduceLastDim = false>
