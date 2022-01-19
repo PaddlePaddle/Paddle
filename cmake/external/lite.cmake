@@ -67,6 +67,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_X86=OFF
                            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON
                            -DLITE_WITH_PROFILE=OFF
+                           -DLITE_WITH_EXCEPTION=ON
                            -DARM_TARGET_OS=armlinux
                            -DWITH_LITE=ON
                            -DWITH_PYTHON=OFF
@@ -110,6 +111,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DWITH_MKLDNN=OFF
                            -DLITE_WITH_X86=ON
                            -DLITE_WITH_PROFILE=OFF
+                           -DLITE_WITH_EXCEPTION=ON
                            -DWITH_LITE=OFF
                            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF
                            -DWITH_PYTHON=OFF
