@@ -344,8 +344,19 @@ function(op_library TARGET)
     endif()
 
 
-    if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
+    if (WITH_XPU AND ${xpu_cc_srcs_len} GREATER 0)
+    if(${ORIGINAL_TARGET} STREQUAL "activation_op")
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, XPU);\n")
+    else()
+        foreach(xpu_src ${xpu_cc_srcs})
+        set(op_name "")
+        find_register(${xpu_src} "REGISTER_OP_XPU_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, XPU);\n")
+            set(pybind_flag 1)
+        endif()
+        endforeach()
+    endif()
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for NPU
