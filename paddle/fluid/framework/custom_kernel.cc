@@ -271,16 +271,15 @@ void RegisterKernelWithMetaInfo(
             op_type));
 
     // 2.Check whether kernel_key has been already registed
-    if (pten::KernelFactory::Instance().kernels()[op_type].find(kernel_key) !=
-        pten::KernelFactory::Instance().kernels()[op_type].end()) {
-      LOG(WARNING)
-          << "[CUSTOM KERNEL] The operator <" << op_type << ">'s kernel "
-          << kernel_key << " has been already existed in Paddle, "
-          << "please contribute PR if need to optimize the kernel code. "
-          << "Custom kernel do NOT support to replace existing kernel in "
-             "Paddle.";
-      continue;
-    }
+    PADDLE_ENFORCE_EQ(
+        pten::KernelFactory::Instance().kernels()[op_type].find(kernel_key),
+        pten::KernelFactory::Instance().kernels()[op_type].end(),
+        platform::errors::InvalidArgument(
+            "[CUSTOM KERNEL] The operator <%s>'s kernel: %s has been "
+            "already existed in Paddle, please contribute PR if need "
+            "to optimize the kernel code. Custom kernel do NOT support "
+            "to replace existing kernel in Paddle.",
+            op_type, kernel_key));
 
     // pten::KernelFn
     pten::KernelFn kernel_fn = [kernel_info](pten::KernelContext* ctx) {

@@ -34,8 +34,13 @@ limitations under the License. */
 /**
  * Custom Kernel Info Define.
  *
- * Used to maintain custom kernel core information.
+ * Used to maintain custom kernel core information before registering.
+ * Pten is working on exposing headers, custom kernel depends on them, and
+ * we prefer outer users following pten-kernel-function-style and registering
+ * macro. So, we have to re-implement some structs or class and functions to
+ * make sure users' custom kernel functions can be registered to pten
  *
+ * TODO(Aganlengzi): We should upgrade following pten
  */
 
 namespace paddle {
@@ -43,12 +48,8 @@ namespace framework {
 class PADDLE_API OpKernelInfoHelper;
 }  // namespace framework
 
-// Pten is working on exposing headers, custom kernel depends on them, and
-// custom kernels wants outer users to follow pten-kernel-function-style and
-// the macro for registering. So, we have to re-implement some structs or
-// class and functions to ensure user function can be registered to pten
-
-// Simple DeviceContext temporarily for stream get in user kernel function
+// TODO(Aganlengzi): Simple DeviceContext temporarily for stream get in user
+// kernel function
 class DeviceContext {
  public:
   DeviceContext() { stream_ = nullptr; }
@@ -59,16 +60,16 @@ class DeviceContext {
   void* stream_;
 };
 class CPUContext : public DeviceContext {};
-class NPUContext : public DeviceContext {};
 
-// Use paddle::Tensor temporarily before DenseTensor and SparseTensor exposed
+// TODO(Aganlengzi): Use paddle::Tensor before DenseTensor and SparseTensor
+// exposed
 using Tensor = paddle::experimental::Tensor;
 using Scalar = pten::Scalar;
 using ScalarArray = pten::ScalarArray;
 
 // Record custom kernel core information
 // we can not use pten::KernelFn directly for lacking of header exposing
-// and also, we need unify user function for both pten and fluid now
+// but we need unify users' custom kernel function for registering
 using CustomKernelFunc =
     void (*)(const DeviceContext& dev_ctx,
              const std::vector<Tensor>& inputs,
@@ -354,7 +355,6 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
 
   /* DeviceContext Helpers */
   PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(CPUContext);
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(NPUContext);
 
   /* Input Helpers */
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(Tensor);
@@ -408,12 +408,11 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
                                       &__VA_ARGS__>::VariadicCompute)
 
 ////////////////////// Op Kernel Info depended structs //////////////////////
-// Re-define TensorArgDef and AttributeArgDef temporarily
-// kernel_factory.h is not exposed and incomplete type is not enough
+// TODO(Aganlengzi): Re-define TensorArgDef and AttributeArgDef temporarily
+// because kernel_factory.h is not exposed and incomplete type is not enough.
 // TensorArgDef from pten::TensorArgDef in kernel_factory.h
-// The difference is custom_kernel need extra `is_vector' to mapping or
-// It can not deal with case: vector with only one element, because
-// we can not correctly map to a single Tensor or vecotr<Tensor>
+// The difference is custom_kernel needs extra `is_vector' to ensure we can
+// deal with case: vector with only one element.
 struct TensorArgDef {
   pten::Backend backend;
   pten::DataLayout layout;
@@ -534,10 +533,9 @@ class PADDLE_API OpKernelInfo {
 };
 
 ////////////////////// Op Kernel Args Parser //////////////////////
-// Define CustomKernelArgsParseFunctor temporarily
-// kernel_registry.h and depended headers are not exposed
-// KernelArgsParseFunctor from pten::KernelArgsParseFunctor in kernel_registry.h
-// and we have to store parsed info into OpKernelInfo before
+// Define CustomKernelArgsParseFunctor
+// KernelArgsParseFunctor is in kernel_registry.h
+// We have to store parsed info into OpKernelInfo before
 // mapping to pten::KernelArgsDef in pten::Kernel
 template <typename Func>
 struct CustomKernelArgsParseFunctor;
@@ -562,8 +560,6 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))) {
-        // do nothing, skip context arg now
-      } else if (arg_type == std::type_index(typeid(const NPUContext&))) {
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const Tensor&))) {
         op_kernel_info->AppendInput(backend, default_tensor_layout, dtype);
