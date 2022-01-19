@@ -45,8 +45,7 @@ namespace cub = hipcub;
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/funcs/elementwise_base.h"
-
+#include "paddle/pten/kernels/gpu/elementwise.h"
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
