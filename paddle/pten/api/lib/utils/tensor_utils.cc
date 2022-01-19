@@ -459,7 +459,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     auto* tensor = variable->GetMutable<framework::LoDTensor>();
 
     auto dtype = pten::TransToProtoVarType(src->dtype());
-    tensor->ResizeAndAllocate(src->dims());
+    tensor->Resize(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
     if (!tensor->IsInitialized() ||
