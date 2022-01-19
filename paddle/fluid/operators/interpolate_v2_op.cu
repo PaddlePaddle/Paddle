@@ -29,27 +29,25 @@ struct FastDivModForInterpolate {
  public:
   FastDivMod channels_div;
   FastDivMod output_w_div;
-  FastDivMod outimgw_mul_channel_div;
+  FastDivMod output_wc_div;
 
   explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
                                                const int output_w,
-                                               const int outimgw_mul_chann)
+                                               const int outout_wc)
       : channels_div(FastDivMod(channels)),
         output_w_div(FastDivMod(output_w)),
-        outimgw_mul_channel_div(FastDivMod(outimgw_mul_chann)) {}
+        output_wc_div(FastDivMod(outout_wc)) {}
 };
 
 template <typename T>
 __global__ void KeNearestNeighborInterpNCHWFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t num_batchs, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t num_channels, const float ratio_h,
-    const float ratio_w, const bool align_corners) {
+    const T* in, const size_t in_img_h, const size_t in_img_w, T* out,
+    const size_t out_img_h, const size_t out_img_w, const size_t nc,
+    const float ratio_h, const float ratio_w, const bool align_corners) {
   int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
   int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
   int nc_id = threadIdx.z + blockIdx.z * blockDim.z;
   int nc_stride = blockDim.z * gridDim.z;
-  int nc = num_batchs * num_channels;
 
   // nearest_sampling by multiple read in_addr and write to out_addr
   int in_img_idx = (align_corners)
@@ -66,11 +64,13 @@ __global__ void KeNearestNeighborInterpNCHWFw(
   int out_index_stride = nc_stride * out_img_h * out_img_w;
 
   // prevent from multiple threads writing
-  while (nc_id < nc && out_img_idx < out_img_w && out_img_idy < out_img_h) {
-    out[out_index] = in[in_index];
-    in_index += in_index_stride;
-    out_index += out_index_stride;
-    nc_id += nc_stride;
+  if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
+    while (nc_id < nc) {
+      out[out_index] = in[in_index];
+      in_index += in_index_stride;
+      out_index += out_index_stride;
+      nc_id += nc_stride;
+    }
   }
 }
 
@@ -93,7 +93,7 @@ __global__ void KeNearestNeighborInterpFw(
     int out_id_w = out_id_divmod.val[1];
 
     int channel_id = divmods.channels_div.Divmod(tid).val[1];
-    auto outimg_id_divmod = divmods.outimgw_mul_channel_div.Divmod(out_id_w);
+    auto outimg_id_divmod = divmods.output_wc_div.Divmod(out_id_w);
     int out_img_idy = outimg_id_divmod.val[0];
     int out_img_idx =
         divmods.channels_div.Divmod(outimg_id_divmod.val[1]).val[0];
@@ -1337,12 +1337,13 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   if ("nearest" == interp_method) {
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
+      int nc = n * c;
       platform::GpuLaunchConfig config_3d = platform::GetCpuLaunchConfig3D(
-          ctx.cuda_device_context(), n * c, out_h, out_w);
+          ctx.cuda_device_context(), nc, out_h, out_w);
       KeNearestNeighborInterpNCHWFw<
           T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
-          input_data, in_h, in_w, n, output_data, out_h, out_w, c, ratio_h,
+          input_data, in_h, in_w, output_data, out_h, out_w, nc, ratio_h,
           ratio_w, align_corners);
     } else {
       int64_t cw = c * out_w;
