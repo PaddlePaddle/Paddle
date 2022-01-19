@@ -591,7 +591,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
-  auto numel = outs[0]->numel();
+  auto numel = (*outs)[0]->numel();
   paddle::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
       ins_data;
   paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
