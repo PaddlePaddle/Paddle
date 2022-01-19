@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/distributed/service/communicator.h"
 
 namespace paddle {
 namespace operators {
@@ -51,10 +52,12 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
-    auto fleet = distributed::FleetWrapper::GetInstance();
+    // auto fleet = distributed::FleetWrapper::GetInstance();
+    auto* communicator = (distributed::AsyncCommunicator*)distributed::Communicator::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
+      
+      communicator->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),
                                     context.GetPlace(), !is_test, &inputs,
                                     &outputs);
@@ -93,7 +96,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
+      communicator->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),
                                     cpu_place, !is_test, &tmp_input_vec,
                                     &tmp_output_vec);
