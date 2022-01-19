@@ -21,6 +21,7 @@ namespace pten {
 // the key is sorted by key's alphabet
 const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"elementwise_add", "add"},
+    {"elementwise_add_grad", "add_grad"},
     {"elementwise_div", "divide"},
     {"elementwise_mul", "muliply"},
     {"elementwise_sub", "subtract"},
