@@ -36,7 +36,7 @@ void CheckScaleResult(experimental::Tensor* out) {
   ASSERT_EQ(out->layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out->initialized(), true);
   for (int64_t i = 0; i < out->numel(); ++i) {
-    ASSERT_EQ(out->data<float>()[i], 3.0);
+    ASSERT_EQ(out->mutable_data<float>()[i], 3.0);
   }
 }
 

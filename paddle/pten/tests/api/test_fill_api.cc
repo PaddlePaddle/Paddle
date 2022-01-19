@@ -189,7 +189,7 @@ TEST(API, full2) {
       pten::DenseTensorMeta(pten::DataType::INT32,
                             framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
-  dense_scalar->mutable_data<float>(paddle::platform::CPUPlace())[0] = 2;
+  dense_scalar->mutable_data<int>(paddle::platform::CPUPlace())[0] = 2;
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);
   paddle::experimental::Tensor shape_scalar2(dense_scalar);

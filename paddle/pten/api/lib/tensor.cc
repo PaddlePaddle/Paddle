@@ -177,7 +177,11 @@ T *Tensor::mutable_data(const PlaceType &place) {
       true,
       platform::errors::Unimplemented("Modification of tensor place through "
                                       "mutable_data is not supported now"));
-  return mutable_data<T>();
+  if (is_dense_tensor()) {
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        inner_place);
+  }
+  return nullptr;
 }
 
 template PADDLE_API float *Tensor::mutable_data<float>(const PlaceType &place);

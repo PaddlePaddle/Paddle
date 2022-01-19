@@ -56,18 +56,14 @@ class Storage : public intrusive_ref_counter<Storage> {
                  : nullptr;
   }
 
-  const std::shared_ptr<paddle::memory::Allocation> data_shared() const {
+  const std::shared_ptr<paddle::memory::Allocation>& data_shared() const {
     return data_;
   }
 
   virtual void set_data_shared(
-      const std::shared_ptr<paddle::memory::Allocation>& holder) {
-    data_ = holder;
-  }
+      const std::shared_ptr<paddle::memory::Allocation>& holder) = 0;
 
-  std::shared_ptr<paddle::memory::Allocation> move_data_shared() {
-    return std::move(data_);
-  }
+  virtual std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() = 0;
 
   virtual void ReallocShared(size_t n) {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -122,6 +118,18 @@ class TensorStorage : public Storage {
   }
 
   bool OwnsMemory() const noexcept override { return true; }
+
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    CHECK(holder);
+    data_ = holder;
+    size_ = holder->size();
+  }
+
+  std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    return std::move(data_);
+  }
 
  private:
   Allocator* alloc_;

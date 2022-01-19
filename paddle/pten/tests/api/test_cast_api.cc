@@ -80,7 +80,7 @@ TEST(Tensor, cast) {
   ASSERT_EQ(y.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(y.initialized(), true);
   for (int64_t i = 0; i < y.numel(); ++i) {
-    ASSERT_EQ(y.data<int>()[i], 1);
+    ASSERT_EQ(y.mutable_data<int>()[i], 1);
   }
 }
 
