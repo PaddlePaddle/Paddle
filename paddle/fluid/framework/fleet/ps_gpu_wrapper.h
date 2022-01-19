@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -47,6 +48,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
 class PSGPUWrapper {
  public:
@@ -104,8 +108,6 @@ class PSGPUWrapper {
     running_ = false;
     VLOG(3) << "begin stop pre_build_threads_";
     pre_build_threads_.join();
-    VLOG(3) << "begin stop build_threads_";
-    build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
@@ -261,6 +263,44 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
   }
 
+  void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
+    slot_offset_vector_ = slot_offset_vector;
+  }
+
+  void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
+    slot_mf_dim_vector_ = slot_mf_dim_vector;
+    assert(slot_mf_dim_vector_.size() == slot_vector_.size());
+    for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
+      slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
+    }
+
+    std::unordered_set<int> dims_set;
+    for (auto& it : slot_dim_map_) {
+      dims_set.insert(it.second);
+    }
+    size_t num_of_dim = dims_set.size();
+    index_dim_vec_.resize(num_of_dim);
+    index_dim_vec_.assign(dims_set.begin(), dims_set.end());
+    std::sort(index_dim_vec_.begin(), index_dim_vec_.end());
+    std::unordered_map<int, int> dim_index_map;
+    for (size_t i = 0; i < num_of_dim; i++) {
+      dim_index_map[index_dim_vec_[i]] = i;
+    }
+    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
+    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
+    max_mf_dim_ = index_dim_vec_.back();
+    multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
+    resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
+    slot_index_vec_.resize(slot_mf_dim_vector_.size());
+    for (size_t i = 0; i < slot_index_vec_.size(); i++) {
+      slot_index_vec_[i] = dim_index_map[slot_mf_dim_vector_[i]];
+    }
+    val_type_size_ =
+        TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
+    grad_type_size_ =
+        TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+  }
+
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
  private:
@@ -274,6 +314,15 @@ class PSGPUWrapper {
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
+  std::vector<int> slot_offset_vector_;
+  std::vector<int> slot_mf_dim_vector_;
+  std::unordered_map<int, int> slot_dim_map_;
+  std::vector<int> slot_index_vec_;
+  std::vector<int> index_dim_vec_;
+  int multi_mf_dim_{0};
+  int max_mf_dim_{0};
+  size_t val_type_size_{0};
+  size_t grad_type_size_{0};
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
@@ -284,12 +333,18 @@ class PSGPUWrapper {
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
   std::vector<std::vector<robin_hood::unordered_set<uint64_t>>> thread_keys_;
+  std::vector<std::vector<std::vector<robin_hood::unordered_set<uint64_t>>>>
+      thread_dim_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;
   int year_;
   int month_;
   int day_;
+
+  std::vector<MemoryPool*> mem_pools_;
+  std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
+                                           // pools of totol dims number
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
@@ -305,7 +360,6 @@ class PSGPUWrapper {
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
-  std::thread build_threads_;
   bool running_ = false;
 
  protected:

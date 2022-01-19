@@ -218,7 +218,7 @@ class Optimizer(object):
             self._param_groups = self._parameter_list
 
         # NOTE: Multi Tensor: Pass in all parameters and gradients to the op kernel of the Optimizer at one time for updating for dygraph mode.
-        # Optimizer support list: [ paddle.optimizer.Momentum ].
+        # Optimizer support list: [ paddle.optimizer.Momentum, paddle.optimizer.Adam].
         self._use_multi_tensor = None
         self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
@@ -684,8 +684,10 @@ class Optimizer(object):
 
         self._create_global_learning_rate()
 
-        # NOTE: Multi Tensor support [ Momentum ] for dygraph mode
-        if self._use_multi_tensor and self.__class__.__name__ in ['Momentum']:
+        # NOTE: Multi Tensor support [ Momentum, Adam ] for dygraph mode
+        if self._use_multi_tensor and self.__class__.__name__ in [
+                'Momentum', 'Adam'
+        ]:
             if len(self._param_dict['FP32_LODTensor']) == 0 and len(
                     self._param_dict['FP16_LODTensor']) == 0:
                 if isinstance(parameters_and_grads, list):
@@ -720,6 +722,13 @@ class Optimizer(object):
                         self._append_optimize_multi_tensor_op(
                             target_block, parameters_and_grads)
         else:
+            if not framework.in_dygraph_mode():
+                params_grads_device_map = parameters_and_grads[
+                    'params'] if isinstance(parameters_and_grads,
+                                            dict) else parameters_and_grads
+                self._update_param_device_map(params_grads_device_map,
+                                              target_block)
+
             if isinstance(parameters_and_grads, list):
                 self._create_accumulators(target_block, [
                     p[0] for p in parameters_and_grads if not p[0].stop_gradient
@@ -755,11 +764,6 @@ class Optimizer(object):
                             self._append_optimize_op(target_block,
                                                      param_grad_dict)
             else:
-                params_grads_device_map = parameters_and_grads[
-                    'params'] if isinstance(parameters_and_grads,
-                                            dict) else parameters_and_grads
-                self._update_param_device_map(params_grads_device_map,
-                                              target_block)
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue

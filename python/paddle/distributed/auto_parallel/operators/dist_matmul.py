@@ -18,13 +18,14 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from .common import set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
+from .common import set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
@@ -35,9 +36,10 @@ from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
 
-def copy_op_with_new_input_output(block, src_op, **kwargs):
+def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
     dist_op_desc = block.desc.append_op()
     dist_op_desc.copy_from(src_op.desc)
+    set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
     for input_name in src_op.desc.input_names():
         assert input_name in kwargs
         dist_op_desc.set_input(input_name, kwargs[input_name])
@@ -184,7 +186,9 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     Out_grad = main_block.var(kwargs['Out@GRAD'][0])
     Y_grad = main_block.var(kwargs['Y@GRAD'][0])
 
-    assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
+    assert not is_parameter_related(
+        X_var.name, main_block
+    ), "left operand(X) [{}] of dist matmul should not be parameter".format(
         X_var.name)
 
     Y_var_dim_mapping = dist_attr.get_input_dims_mapping(Y_var.name)
@@ -200,7 +204,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             Y_var_partitioned = True
             break
 
-    if Y_var.is_parameter and Y_var_partitioned:
+    if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
 
         if Y_var_dim_mapping[0] >= 0:
             # row parallel: c_identity + matmul
@@ -251,7 +255,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             new_kwargs = copy.deepcopy(kwargs)
             new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
             matmul_op_desc = copy_op_with_new_input_output(
-                main_block, backward_op, **new_kwargs)
+                ctx, main_block, backward_op, **new_kwargs)
         else:
             # col parallel: matmul + allreduce
             assert Y_var_dim_mapping[0] < 0
@@ -279,7 +283,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 new_kwargs['X@GRAD'] = [intermediate_var_0.name]
 
             matmul_op_desc = copy_op_with_new_input_output(
-                main_block, backward_op, **new_kwargs)
+                ctx, main_block, backward_op, **new_kwargs)
 
             # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad
             if has_x_grad:
@@ -302,8 +306,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                                   X_grad_dist_attr, ctx)
     else:
         # replicate
-        matmul_op_desc = copy_op_with_new_input_output(main_block, backward_op,
-                                                       **kwargs)
+        matmul_op_desc = copy_op_with_new_input_output(ctx, main_block,
+                                                       backward_op, **kwargs)
 
     main_block._sync_with_cpp()
 
@@ -322,7 +326,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         dp_degree = len(group_ranks)
         dp_group = new_process_group(group_ranks)
 
-    if need_gradient_allreduce and Y_var.is_parameter:
+    if need_gradient_allreduce and is_parameter_related(Y_var.name, main_block):
         Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
         allreduce_op = main_block.append_op(
             type='c_allreduce_sum',
@@ -444,6 +448,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             y_dims_mapping), "now just support x dims > y dims"
         if len(y_dims_mapping) != 2:
             return False
+
         if len(x_dims_mapping) == len(y_dims_mapping) and len(
                 x_dims_mapping) == 4:
             if x_dims_mapping[:2] != y_dims_mapping[:2]:
@@ -675,7 +680,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -963,7 +968,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -1378,7 +1383,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -1661,7 +1666,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 

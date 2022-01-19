@@ -15,6 +15,7 @@
 from ..dist_attribute import OperatorDistributedAttribute
 
 _g_distributed_operator_impl_registries = {}
+BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 class DistributedOperatorImplContainer:
@@ -114,6 +115,16 @@ def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
         best_compatible_impl, idx = None, -1
 
     return best_compatible_impl, idx
+
+
+def is_parameter_related(varname, block):
+    if ".subprog_" in varname:
+        varname = varname[:varname.index(".subprog_")]
+    if ".cast_fp" in varname:
+        varname = varname[:varname.index(".cast_fp")]
+    assert block.has_var(varname)
+    var = block.var(varname)
+    return var.is_parameter
 
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):

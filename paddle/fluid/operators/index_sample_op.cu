@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/index_sample_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {

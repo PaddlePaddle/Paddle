@@ -16,7 +16,7 @@ from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
+from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -26,7 +26,7 @@ from ..utils import compute_compatible_and_update_dim_mapping
 from ..dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid.framework import Program, Parameter, Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
@@ -283,34 +283,35 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # param initialization sync
-        assert Weight_var.name not in dist_op_context.already_init_sync_vars
-        dist_op_context.already_init_sync_vars.add(Weight_var.name)
-        param = startup_block.var(Weight_var.name)
-        param_dist_attr = ctx.get_tensor_dist_attr_for_program(param)
-        process_mesh = param_dist_attr.process_mesh
-        dim_mapping = param_dist_attr.dims_mapping
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
+            assert Weight_var.name not in dist_op_context.already_init_sync_vars
+            dist_op_context.already_init_sync_vars.add(Weight_var.name)
+            param = startup_block.var(Weight_var.name)
+            param_dist_attr = ctx.get_tensor_dist_attr_for_program(param)
+            process_mesh = param_dist_attr.process_mesh
+            dim_mapping = param_dist_attr.dims_mapping
 
-        # NOTE all not splited axis should be presented in mesh
-        for axis, size in enumerate(process_mesh.topology):
-            if size <= 1 or axis in dim_mapping:
-                pass
-            else:
-                group_ranks = _get_comm_group(process_mesh.processes,
-                                              process_mesh.topology, axis,
-                                              rank_id)
-                sync_group = new_process_group(group_ranks)
+            # NOTE all not splited axis should be presented in mesh
+            for axis, size in enumerate(process_mesh.topology):
+                if size <= 1 or axis in dim_mapping:
+                    pass
+                else:
+                    group_ranks = _get_comm_group(process_mesh.processes,
+                                                  process_mesh.topology, axis,
+                                                  rank_id)
+                    sync_group = new_process_group(group_ranks)
 
-                startup_block.append_op(
-                    type='c_broadcast',
-                    inputs={'X': param},
-                    outputs={'Out': param},
-                    attrs={
-                        'ring_id': sync_group.id,
-                        'root': 0,
-                        'use_calc_stream': True,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-        startup_block._sync_with_cpp()
+                    startup_block.append_op(
+                        type='c_broadcast',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={
+                            'ring_id': sync_group.id,
+                            'root': 0,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Forward
+                        })
+            startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

@@ -21,6 +21,7 @@ namespace framework {
 namespace paddle2cinn {
 
 constexpr char kCinnLaunchOp[] = "cinn_launch";
+constexpr char kNoNeedBufferFeeds[] = "no_need_buffer_feeds";
 
 // A pass named BuildCinnPass, the function of this pass is:
 //

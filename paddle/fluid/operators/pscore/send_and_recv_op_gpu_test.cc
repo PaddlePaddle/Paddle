@@ -97,8 +97,7 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   float* temp_ptr = temp_vec.data();
 
   memory::Copy(
-      BOOST_GET_CONST(platform::CUDAPlace, place),
-      reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
+      place, reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
       reinterpret_cast<void*>(temp_ptr),
       micro_id_var->numel() * framework::SizeOfType(micro_id_var->type()),
       stream);
@@ -109,8 +108,7 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> x_vec;
   for (int64_t i = 0; i < rows_numel; ++i) x_vec.push_back(1.0);
   float* x_vec_ptr = x_vec.data();
-  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place),
-               reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
+  memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
                x_var->numel() * framework::SizeOfType(x_var->type()), stream);
 

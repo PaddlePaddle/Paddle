@@ -95,7 +95,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
   for (size_t i = 0; i < num_elements; i++) {
     *(temp_data + i) = random(0., 1.);
   }
-  TensorCopySync(temp_tensor, place, tensor);
+  paddle::framework::TensorCopySync(temp_tensor, place, tensor);
 }
 
 void CreateTensor(framework::Scope* scope, const std::string& name,

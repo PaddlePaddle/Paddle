@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "mlir/IR/MLIRContext.h"
+#include <mlir/IR/MLIRContext.h>
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 
 namespace infrt {
