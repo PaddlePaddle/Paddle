@@ -38,17 +38,16 @@ void FullKernel(const ContextT& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+  // out->Resize(paddle::framework::make_ddim(shape.GetData()));
   int numel = out->numel();
+  out->mutable_data<T>();
   if (numel > 0) {
     // in transformer model the numel of outpout will be zero.
     std::vector<const DenseTensor*> inputs = {};
     std::vector<DenseTensor*> outputs = {out};
-    out->mutable_data<T>();
     // This function has no input, so the inputs.size() == 0. Use kUnary, but
-    // the
-    // data will not be loaded in the kernel because the number of parameters in
-    // the operator is 0
+    // the data will not be loaded in the kernel because the number of
+    // parameters in the operator is 0
     pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
                                                      T,
                                                      T>(
@@ -90,10 +89,13 @@ void FullLikeKernel(const ContextT& dev_ctx,
   // This function has no input, so the inputs.size() == 0. Use kUnary, but the
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                   T,
-                                                   T>(
-      dev_ctx, inputs, &outputs, FullFuctor<T>(value));
+  int numel = out->numel();
+  if (numel > 0) {
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                     T,
+                                                     T>(
+        dev_ctx, inputs, &outputs, FullFuctor<T>(value));
+  }
 }
 
 }  // namespace pten
