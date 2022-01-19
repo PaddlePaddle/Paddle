@@ -132,7 +132,7 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   return it->second.get().get();
 }
 
-template <typename DevCtx, typename PlaceType>
+template <typename DevCtx>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         map_ptr,
@@ -158,19 +158,14 @@ DeviceContextPool::DeviceContextPool(
   }
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
-      platform::CPUPlace place;
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_,
-                                                          place);
+      EmplaceDeviceContext<MKLDNNDeviceContext>(&device_contexts_, p);
 #else
-      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<CPUDeviceContext>(&device_contexts_, p);
 #endif
     } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::CUDAPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_,
-                                                         place);
+      EmplaceDeviceContext<CUDADeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("CUDAPlace is not supported. Please "
@@ -178,9 +173,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::CUDAPinnedPlace place;
-      EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
-          &device_contexts_, place);
+      EmplaceDeviceContext<CUDAPinnedDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
@@ -188,9 +181,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
-      platform::XPUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<XPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
@@ -198,9 +189,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_mlu_place(p)) {
 #ifdef PADDLE_WITH_MLU
-      platform::MLUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<MLUDeviceContext, MLUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<MLUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("MLUPlace is not supported. Please "
@@ -208,9 +197,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_ipu_place(p)) {
 #ifdef PADDLE_WITH_IPU
-      platform::IPUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<IPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("IPUPlace is not supported. Please "
@@ -218,9 +205,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::NPUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<NPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported. Please "
@@ -228,9 +213,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_pinned_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::NPUPinnedPlace place;
-      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
-          &device_contexts_, place);
+      EmplaceDeviceContext<NPUPinnedDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "
