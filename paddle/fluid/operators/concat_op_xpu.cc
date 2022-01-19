@@ -71,7 +71,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
       if (lod_size) {
         auto* out_lod = out->mutable_lod();
         for (size_t i = 1; i < ins.size(); ++i) {
-          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
+          auto in_lod = pten::ConvertToLengthBasedLoD(ins[i]->lod());
           pten::AppendLoD(out_lod, in_lod);
         }
       }
