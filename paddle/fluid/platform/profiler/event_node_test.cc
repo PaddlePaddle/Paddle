@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/profiler/event_node.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/profiler/output_logger.h"
+
+#include "paddle/fluid/platform/profiler/chrometracing_logger.h"
+#include "paddle/fluid/platform/profiler/event_node.h"
+
 using paddle::platform::ChromeTracingLogger;
 using paddle::platform::NodeTrees;
 using paddle::platform::HostTraceEventNode;
