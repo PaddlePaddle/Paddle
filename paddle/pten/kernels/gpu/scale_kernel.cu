@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/float16.h"
 
 namespace pten {
 

@@ -16,6 +16,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/float16.h"
 
 namespace paddle {
 namespace framework {
@@ -23,8 +25,6 @@ class Tensor;
 }  // namespace framework
 namespace platform {
 class CPUDeviceContext;
-struct bfloat16;
-struct float16;
 }  // namespace platform
 }  // namespace paddle
 

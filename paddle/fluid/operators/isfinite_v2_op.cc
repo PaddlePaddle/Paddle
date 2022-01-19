@@ -32,11 +32,7 @@ namespace operators {
 template <typename DeviceContext, typename T, typename Functor>
 class OverflowKernel;
 }  // namespace operators
-namespace platform {
-class CPUDeviceContext;
-struct float16;
-}  // namespace platform
-}  // namespace paddle
+namespace platform {}  // namespace paddle
 
 namespace plat = paddle::platform;
 
