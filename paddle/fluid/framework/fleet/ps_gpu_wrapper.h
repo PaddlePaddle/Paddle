@@ -108,8 +108,8 @@ class PSGPUWrapper {
     running_ = false;
     VLOG(3) << "begin stop pre_build_threads_";
     pre_build_threads_.join();
-    VLOG(3) << "begin stop build_threads_";
-    build_threads_.join();
+    // VLOG(3) << "begin stop build_threads_";
+    // build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
