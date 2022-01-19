@@ -250,7 +250,8 @@ class PlanSpace:
                                 op, dist_op.dist_attr, vars
                         ) and PlanFilter.check_dims_mapping_for_special_op(
                                 op, dist_op.dist_attr, vars):
-                            dist_op.dist_attr.impl_idx = -1
+                            dist_op.dist_attr.impl_type = "elementwise"
+                            dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
                 else:
@@ -266,7 +267,8 @@ class PlanSpace:
                                 op, dist_op.dist_attr, vars
                         ) and PlanFilter.check_dims_mapping_for_special_op(
                                 op, dist_op.dist_attr, vars):
-                            dist_op.dist_attr.impl_idx = -2
+                            dist_op.dist_attr.impl_type = "default"
+                            dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
 
@@ -276,6 +278,7 @@ class PlanSpace:
                 if impl.is_auto_compatible(dist_op):
                     if PlanFilter.check_dims_mapping_for_op(
                             op, dist_op.dist_attr, vars):
+                        dist_op.dist_attr.impl_type = dist_op.serial_op.type
                         dist_op.dist_attr.impl_idx = idx
                         op_valid_dist_attrs.append(dist_op.dist_attr)
 
@@ -290,7 +293,8 @@ class PlanSpace:
             for var_name in op.output_arg_names:
                 op_dist_attr.set_output_dims_mapping(
                     vars[var_name], [-1 for i in vars[var_name].shape])
-            dist_op.dist_attr.impl_idx = -1
+            dist_op.dist_attr.impl_type = "default"
+            dist_op.dist_attr.impl_idx = 0
             op_valid_dist_attrs.append(dist_op.dist_attr)
 
         return op_valid_dist_attrs
