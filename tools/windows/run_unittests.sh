@@ -150,6 +150,12 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_se_resnet$|\
 ^disable_wincpu_test$"
 
+# these unittest cost time greater than 200 seconds, diabled temporarily, Maybe moved to the night
+disable_wincpu_longtime_test="^test_parallel_executor_seresnext_base_cpu$|\
+^test_parallel_executor_seresnext_with_reduce_cpu$|\
+^test_parallel_executor_seresnext_with_fuse_all_reduce_cpu$|\
+^test_tensordot$"
+
 # these unittest that cost long time, diabled temporarily, Maybe moved to the night
 long_time_test="^test_gru_op$|\
 ^decorator_test$|\
@@ -234,8 +240,10 @@ function collect_failed_tests() {
 }
 
 function run_unittest_cpu() {
+    test_case=$1
+    parallel_job=$2
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -E "$disable_ut_quickly|$disable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wincpu_test|$disable_wincpu_longtime_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile) &
     wait;
 }
 
@@ -363,7 +371,17 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     run_unittest_gpu $two_parallel_job 2
     run_unittest_gpu $non_parallel_job
 else
-    run_unittest_cpu
+    ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
+    cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
+    tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
+    two_parallel_job=$(echo $output | cut -d ";" -f 3)
+    non_parallel_job=$(echo $output | cut -d ";" -f 4)
+
+    run_unittest_cpu $cpu_parallel_job 32
+    run_unittest_cpu $tetrad_parallel_job 28
+    run_unittest_cpu $two_parallel_job 24
+    run_unittest_cpu $non_parallel_job 20
 fi
 collect_failed_tests
 set -e
