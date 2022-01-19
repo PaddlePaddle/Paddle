@@ -411,30 +411,23 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
 // Re-define TensorArgDef and AttributeArgDef temporarily
 // kernel_factory.h is not exposed and incomplete type is not enough
 // TensorArgDef from pten::TensorArgDef in kernel_factory.h
+// The difference is custom_kernel need extra `is_vector' to mapping or
+// It can not deal with case: vector with only one element, because
+// we can not correctly map to a single Tensor or vecotr<Tensor>
 struct TensorArgDef {
   pten::Backend backend;
   pten::DataLayout layout;
   pten::DataType dtype;
+  bool is_vector{false};
 
   TensorArgDef(pten::Backend in_backend,
                pten::DataLayout in_layout,
-               pten::DataType in_dtype)
-      : backend(in_backend), layout(in_layout), dtype(in_dtype) {}
-
-  TensorArgDef& SetBackend(pten::Backend in_backend) {
-    backend = in_backend;
-    return *this;
-  }
-
-  TensorArgDef& SetDataLayout(pten::DataLayout in_layout) {
-    layout = in_layout;
-    return *this;
-  }
-
-  TensorArgDef& SetDataType(pten::DataType in_dtype) {
-    dtype = in_dtype;
-    return *this;
-  }
+               pten::DataType in_dtype,
+               bool is_vector = false)
+      : backend(in_backend),
+        layout(in_layout),
+        dtype(in_dtype),
+        is_vector(is_vector) {}
 };
 
 // AttributeArgDef from pten::AttributeArgDef in kernel_factory.h
@@ -470,14 +463,16 @@ class PADDLE_API OpKernelInfo {
   // for Args parsing and storing
   void AppendInput(pten::Backend backend,
                    pten::DataLayout layout,
-                   pten::DataType dtype) {
-    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
+                   pten::DataType dtype,
+                   bool is_vector = false) {
+    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype, is_vector));
   }
 
   void AppendOutput(pten::Backend backend,
                     pten::DataLayout layout,
-                    pten::DataType dtype) {
-    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
+                    pten::DataType dtype,
+                    bool is_vector = false) {
+    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype, is_vector));
   }
 
   void AppendAttribute(std::type_index type_index) {
@@ -559,11 +554,13 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
         op_kernel_info->AppendInput(backend, default_tensor_layout, dtype);
       } else if (arg_type ==
                  std::type_index(typeid(const std::vector<Tensor>&))) {
-        op_kernel_info->AppendInput(backend, default_tensor_layout, dtype);
+        op_kernel_info->AppendInput(
+            backend, default_tensor_layout, dtype, true);
       } else if (arg_type == std::type_index(typeid(Tensor*))) {
         op_kernel_info->AppendOutput(backend, default_tensor_layout, dtype);
       } else if (arg_type == std::type_index(typeid(std::vector<Tensor*>))) {
-        op_kernel_info->AppendOutput(backend, default_tensor_layout, dtype);
+        op_kernel_info->AppendOutput(
+            backend, default_tensor_layout, dtype, true);
       } else {
         op_kernel_info->AppendAttribute(arg_type);
       }

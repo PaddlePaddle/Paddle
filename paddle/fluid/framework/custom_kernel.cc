@@ -82,22 +82,50 @@ static void RunKernelFunc(pten::KernelContext* ctx,
                           const OpKernelInfo& op_kernel_info) {
   VLOG(3) << "[CUSTOM KERNEL] RunKernelFunc begin...";
 
+  // input and output size is not params' num
+  // but actual Tensors' size
   size_t input_size = ctx->InputsSize();
   size_t output_size = ctx->OutputsSize();
   size_t attr_size = ctx->AttrsSize();
 
-  VLOG(3) << "[CUSTOM KERNEL] InputSize: " << input_size
-          << " AttrsSize: " << attr_size << " OutputSize: " << output_size;
+  // parameters' num of unified user kernel function
+  auto& input_defs = op_kernel_info.input_defs();
+  auto& output_defs = op_kernel_info.output_defs();
+  auto& attribute_defs = op_kernel_info.attribute_defs();
+
+  PADDLE_ENFORCE_GE(input_size, input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of ctx inputs size (%d) must be larger than "
+                        "the size of kernel input_defs (%d).",
+                        input_size, input_defs.size()));
+
+  PADDLE_ENFORCE_GE(output_size, output_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of ctx outputs size (%d) must be larger than "
+                        "the size of kernel output_defs (%d).",
+                        output_size, output_defs.size()));
+
+  PADDLE_ENFORCE_EQ(attr_size, attribute_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of ctx attribute size (%d) must be equal to "
+                        "to the size of kernel attribute_defs (%d).",
+                        attr_size, attribute_defs.size()));
+
+  VLOG(3) << "[CUSTOM KERNEL] InputSize: " << input_defs.size()
+          << " AttrsSize: " << attribute_defs.size()
+          << " OutputSize: " << output_defs.size();
+
   // Inputs mapping
   std::vector<paddle::experimental::Tensor> custom_ins;
   std::vector<std::vector<paddle::experimental::Tensor>> custom_vec_ins;
-  for (size_t in_idx = 0; in_idx < input_size; ++in_idx) {
+  for (size_t in_idx = 0; in_idx < input_defs.size(); ++in_idx) {
     VLOG(3) << "Mapping Input[" << in_idx << "]";
     const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-    if (range.first + 1 == range.second) {
+    // is_vector tells if this Input is Tensor or std::vector<Tensor>
+    if (!input_defs.at(in_idx).is_vector) {
       paddle::experimental::Tensor custom_t(ctx->InputSharedPtrAt(range.first));
       custom_ins.push_back(custom_t);
-      VLOG(3) << "Mapped Input[" << in_idx
+      VLOG(3) << "Mapped Tensor Input[" << in_idx
               << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor> custom_vec_in;
@@ -108,7 +136,7 @@ static void RunKernelFunc(pten::KernelContext* ctx,
         custom_vec_in.push_back(custom_t);
       }
       custom_vec_ins.push_back(custom_vec_in);
-      VLOG(3) << "Mapped Input[" << in_idx
+      VLOG(3) << "Mapped std::vector<Tensor> Input[" << in_idx
               << "] with range.first: " << range.first
               << ", and rang.second: " << range.second;
     }
@@ -116,8 +144,7 @@ static void RunKernelFunc(pten::KernelContext* ctx,
 
   // Attributes mapping
   std::vector<paddle::any> custom_attrs;
-  auto attribute_defs = op_kernel_info.attribute_defs();
-  for (size_t attr_idx = 0; attr_idx < attr_size; ++attr_idx) {
+  for (size_t attr_idx = 0; attr_idx < attribute_defs.size(); ++attr_idx) {
     VLOG(3) << "Mapping Attribute[" << attr_idx << "]";
     if (attribute_defs[attr_idx].type_index == std::type_index(typeid(bool))) {
       bool arg = ctx->AttrAt<bool>(attr_idx);
@@ -173,15 +200,16 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   // Outputs mapping
   std::vector<paddle::experimental::Tensor*> custom_outs;
   std::vector<std::vector<paddle::experimental::Tensor*>> custom_vec_outs;
-  for (size_t out_idx = 0; out_idx < output_size; ++out_idx) {
+  for (size_t out_idx = 0; out_idx < output_defs.size(); ++out_idx) {
     VLOG(3) << "Mapping Output[" << out_idx << "]";
     const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
-    if (range.first + 1 == range.second) {
+    // is_vector tells if this Output is Tensor or std::vector<Tensor>
+    if (!output_defs.at(out_idx).is_vector) {
       auto ctx_tensor = ctx->OutputSharedPtrAt(range.first);
       paddle::experimental::Tensor* custom_t =
           new paddle::experimental::Tensor(ctx_tensor);
       custom_outs.push_back(custom_t);
-      VLOG(3) << "Mapped Output[" << out_idx
+      VLOG(3) << "Mapped Tensor Output[" << out_idx
               << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor*> custom_vec_out;
@@ -193,7 +221,7 @@ static void RunKernelFunc(pten::KernelContext* ctx,
         custom_vec_out.push_back(custom_t);
       }
       custom_vec_outs.push_back(custom_vec_out);
-      VLOG(3) << "Mapped Output[" << out_idx
+      VLOG(3) << "Mapped std::vector<Tensor> Output[" << out_idx
               << "] with range.first: " << range.first
               << ", and rang.second: " << range.second;
     }
@@ -203,8 +231,9 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   // In pten, kernel function knows XXContext through template param
   // from input KernelContext, but here we don't have KernelContext
   // and need mapping to user kernel function with backend from OpKernelInfo
-  // user_kernel_fn will do static_cast according to user kernel function
-  // here, we just set necessary info to dev_ctx(such as stream in NPUContext)
+  // user_kernel_fn will do static_cast according to user kernel function.
+  // we just set necessary info to dev_ctx(such as stream in NPUContext) before
+  // pten::DeviceContext is exposed to outer
   DeviceContext dev_ctx;
   if (op_kernel_info.GetBackend() == pten::Backend::CPU) {
     // do nothing
