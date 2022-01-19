@@ -235,7 +235,7 @@ def amp_guard(enable=True,
     level = level.upper()
     if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
-            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
         )
 
     # check amp_dtype: float16 or bfloat16

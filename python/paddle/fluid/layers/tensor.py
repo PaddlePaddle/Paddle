@@ -230,7 +230,7 @@ def cast(x, dtype):
         x(Tensor): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
-            bool, float16, float32, float64, int8, int32, int64, uint8.
+            bool, float16, float32, float64, int8, int32, int64, uint8, bfloat16.
 
     Returns:
         Tensor: A Tensor with the same shape as input's.
@@ -245,6 +245,8 @@ def cast(x, dtype):
     """
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
+            if dtype == 'bfloat16':
+                dtype = 'uint16'
             dtype = convert_np_dtype_to_dtype_(dtype)
         out = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
