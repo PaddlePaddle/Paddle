@@ -22,18 +22,30 @@ import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 
 
+def gelu(x):
+    y_ref = 0.5 * x * (
+        1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+    return y_ref.astype(x.dtype)
+
+
+def relu(x):
+    mask = x > 0
+    return x * mask
+
+
 def get_output(X, Y, bias, act='relu'):
     out = np.dot(X, Y) + bias
-    if (act == 'relu'):
-        mask = out > 0
-        return out * mask
+    if act == 'relu':
+        return relu(out)
+    elif act == 'gelu':
+        return gelu(out)
     else:
         return out
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -63,7 +75,7 @@ class TestFuseGemmEpilogueOpMMFP16(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMFP32(TestFuseGemmEpilogueOpMMFP16):
+class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -72,7 +84,7 @@ class TestFuseGemmEpilogueOpMMFP32(TestFuseGemmEpilogueOpMMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMFP64(TestFuseGemmEpilogueOpMMFP16):
+class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -80,7 +92,7 @@ class TestFuseGemmEpilogueOpMMFP64(TestFuseGemmEpilogueOpMMFP16):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -111,7 +123,7 @@ class TestFuseGemmEpilogueOpMTMFP16(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMFP32(TestFuseGemmEpilogueOpMTMFP16):
+class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -120,7 +132,7 @@ class TestFuseGemmEpilogueOpMTMFP32(TestFuseGemmEpilogueOpMTMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMFP64(TestFuseGemmEpilogueOpMTMFP16):
+class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -128,7 +140,7 @@ class TestFuseGemmEpilogueOpMTMFP64(TestFuseGemmEpilogueOpMTMFP16):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMTFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -159,7 +171,7 @@ class TestFuseGemmEpilogueOpMMTFP16(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMTFP32(TestFuseGemmEpilogueOpMMTFP16):
+class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -168,7 +180,7 @@ class TestFuseGemmEpilogueOpMMTFP32(TestFuseGemmEpilogueOpMMTFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMTFP64(TestFuseGemmEpilogueOpMMTFP16):
+class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -176,7 +188,7 @@ class TestFuseGemmEpilogueOpMMTFP64(TestFuseGemmEpilogueOpMMTFP16):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMTFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -207,7 +219,7 @@ class TestFuseGemmEpilogueOpMTMTFP16(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMTFP32(TestFuseGemmEpilogueOpMTMTFP16):
+class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -216,7 +228,7 @@ class TestFuseGemmEpilogueOpMTMTFP32(TestFuseGemmEpilogueOpMTMTFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMTFP64(TestFuseGemmEpilogueOpMTMTFP16):
+class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -224,7 +236,7 @@ class TestFuseGemmEpilogueOpMTMTFP64(TestFuseGemmEpilogueOpMTMTFP16):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMFP16MultiDimX(OpTest):
+class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -255,8 +267,8 @@ class TestFuseGemmEpilogueOpMMFP16MultiDimX(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMFP32MultiDimX(
-        TestFuseGemmEpilogueOpMMFP16MultiDimX):
+class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
+        TestFuseGemmEpilogueOpReluMMFP16MultiDimX):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -265,8 +277,8 @@ class TestFuseGemmEpilogueOpMMFP32MultiDimX(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMMFP64MultiDimX(
-        TestFuseGemmEpilogueOpMMFP16MultiDimX):
+class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
+        TestFuseGemmEpilogueOpReluMMFP16MultiDimX):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -274,7 +286,7 @@ class TestFuseGemmEpilogueOpMMFP64MultiDimX(
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMFP16MultiDimX(OpTest):
+class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -306,8 +318,8 @@ class TestFuseGemmEpilogueOpMTMFP16MultiDimX(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMFP32MultiDimX(
-        TestFuseGemmEpilogueOpMTMFP16MultiDimX):
+class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
+        TestFuseGemmEpilogueOpReluMTMFP16MultiDimX):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -316,8 +328,165 @@ class TestFuseGemmEpilogueOpMTMFP32MultiDimX(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpMTMFP64MultiDimX(
-        TestFuseGemmEpilogueOpMTMFP16MultiDimX):
+class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
+        TestFuseGemmEpilogueOpReluMTMFP16MultiDimX):
+    def init_dtype_type(self):
+        self.dtype = np.double
+        self.atol = 1e-6
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP16WithAux(OpTest):
+    def setUp(self):
+        self.op_type = "fused_gemm_epilogue"
+        self.place = core.CUDAPlace(0)
+        self.init_dtype_type()
+
+        self.inputs = {
+            'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+            'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+        }
+
+        self.attrs = {"auxiliary_key": "Relu-" + str(id(type(self)))}
+
+        self.outputs = {
+            'out': get_output(self.inputs['X'], self.inputs['Y'],
+                              self.inputs['bias'])
+        }
+
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.atol = 1e-3
+
+    def test_check_output(self):
+        if self.dtype == np.float16 and not core.is_float16_supported(
+                self.place):
+            return
+        self.check_output_with_place(self.place, atol=self.atol)
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP32WithAux(
+        TestFuseGemmEpilogueOpReluMMFP16WithAux):
+    def init_dtype_type(self):
+        self.dtype = np.single
+        self.atol = 1e-6
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP64WithAux(
+        TestFuseGemmEpilogueOpReluMMFP16WithAux):
+    def init_dtype_type(self):
+        self.dtype = np.double
+        self.atol = 1e-6
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
+    def setUp(self):
+        self.op_type = "fused_gemm_epilogue"
+        self.place = core.CUDAPlace(0)
+        self.init_dtype_type()
+
+        self.inputs = {
+            'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+            'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+        }
+
+        self.attrs = {"activation": 'gelu'}
+
+        self.outputs = {
+            'out': get_output(self.inputs['X'], self.inputs['Y'],
+                              self.inputs['bias'], 'gelu')
+        }
+
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.atol = 1e-3
+
+    def test_check_output(self):
+        if self.dtype == np.float16 and not core.is_float16_supported(
+                self.place):
+            return
+        self.check_output_with_place(self.place, atol=self.atol)
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
+    def init_dtype_type(self):
+        self.dtype = np.single
+        self.atol = 1e-6
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
+    def init_dtype_type(self):
+        self.dtype = np.double
+        self.atol = 1e-6
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpGeluMMFP16WithAux(OpTest):
+    def setUp(self):
+        self.op_type = "fused_gemm_epilogue"
+        self.place = core.CUDAPlace(0)
+        self.init_dtype_type()
+
+        self.inputs = {
+            'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+            'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+        }
+
+        self.attrs = {
+            "activation": 'gelu',
+            "auxiliary_key": "Gelu-" + str(id(type(self)))
+        }
+
+        self.outputs = {
+            'out': get_output(self.inputs['X'], self.inputs['Y'],
+                              self.inputs['bias'], 'gelu')
+        }
+
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.atol = 1e-3
+
+    def test_check_output(self):
+        if self.dtype == np.float16 and not core.is_float16_supported(
+                self.place):
+            return
+        self.check_output_with_place(self.place, atol=self.atol)
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP32WithAux(
+        TestFuseGemmEpilogueOpGeluMMFP16WithAux):
+    def init_dtype_type(self):
+        self.dtype = np.single
+        self.atol = 1e-6
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueOpReluMMFP64WithAux(
+        TestFuseGemmEpilogueOpGeluMMFP16WithAux):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6

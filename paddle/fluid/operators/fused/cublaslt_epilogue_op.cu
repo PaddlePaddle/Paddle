@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/fused/cublaslt_epilogue_op.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -34,11 +35,13 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     const Tensor* bias = ctx.Input<Tensor>("bias");
 
     Tensor* out = ctx.Output<Tensor>("out");
-    Tensor* auxiliary = ctx.Output<Tensor>("auxiliary");
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
-    bool enable_auxiliary = auxiliary == nullptr ? false : true;
+
+    std::string activation = ctx.Attr<std::string>("activation");
+    std::string auxiliary_key = ctx.Attr<std::string>("auxiliary_key");
+    bool enable_auxiliary = auxiliary_key.size() <= 0 ? false : true;
 
     out->mutable_data<T>(ctx.GetPlace());
     auto* out_data = out->data<T>();
@@ -75,9 +78,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy,
             sizeof(transy)));
-    cublasLtEpilogue_t epiloque_func = enable_auxiliary
-                                           ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
-                                           : CUBLASLT_EPILOGUE_RELU_BIAS;
+
+    cublasLtEpilogue_t epiloque_func =
+        get_epilogue_type_(activation, enable_auxiliary);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE, &epiloque_func,
@@ -88,8 +91,17 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
             operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &bias_data,
             sizeof(bias_data)));
     if (enable_auxiliary) {
-      auxiliary->mutable_data<bool>(ctx.GetPlace());
-      auto* aux_data = auxiliary->data<bool>();
+      if (EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary ==
+          nullptr) {
+        size_t unit_size = activation == "relu" ? 2 : sizeof(T);
+        size_t auxiliary_size =
+            static_cast<size_t>(framework::product(out->dims())) * unit_size;
+        EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary =
+            memory::Alloc(dev_ctx, auxiliary_size);
+      }
+
+      auto* aux_data =
+          EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
               operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
@@ -138,6 +150,26 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         lt_handle, operation_desc, alpha, y->data<T>(), y_desc, x->data<T>(),
         x_desc, beta, out_data, out_desc, out_data, out_desc, algo,
         workspace->ptr(), workspace_size, stream));
+  }
+
+ private:
+  static cublasLtEpilogue_t get_epilogue_type_(std::string activation,
+                                               bool enable_auxiliary) {
+    if (activation == "relu") {
+      return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
+                              : CUBLASLT_EPILOGUE_RELU_BIAS;
+    } else if (activation == "gelu") {
+      return enable_auxiliary ? CUBLASLT_EPILOGUE_GELU_AUX_BIAS
+                              : CUBLASLT_EPILOGUE_GELU_BIAS;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          true, false,
+          platform::errors::InvalidArgument(
+              "The activation attribute of fused_gemm_epilogue op should be"
+              " one of {\"relu\", \"gelu\"}. But received %s."
+              "But received X[-1] = [%d], Y[0] = [%d].",
+              activation));
+    }
   }
 };
 

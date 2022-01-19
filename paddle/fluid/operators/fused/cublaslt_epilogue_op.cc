@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/fused/cublaslt_epilogue_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -81,6 +82,20 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
             "But received X[-1] = [%d], Y[0] = [%d].",
             K_from_x, K_from_y));
 
+    auto activation = ctx->Attrs().Get<std::string>("activation");
+    auto auxiliary_key = ctx->Attrs().Get<std::string>("auxiliary_key");
+    // cublasLt's restriction for auxiliary.
+    if (auxiliary_key.size() > 0) {
+      int min_size_of_n = activation == "relu" ? 128 : 8;
+      int N_size = trans_y ? y_dims[0] : y_dims[1];
+      PADDLE_ENFORCE_EQ(N_size % min_size_of_n, 0,
+                        platform::errors::InvalidArgument(
+                            "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
+                            "should be multiple of %d when auxiliary_key given "
+                            "and activation=%s, but got N = %d.",
+                            min_size_of_n, activation, N_size));
+    }
+
     std::vector<int64_t> out_dims;
     out_dims.reserve(static_cast<size_t>(x_dims.size()));
     if (trans_x) {
@@ -95,9 +110,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
       out_dims.push_back(y_dims[1]);
 
     ctx->SetOutputDim("out", framework::make_ddim(out_dims));
-    if (ctx->HasOutput("auxiliary")) {
-      ctx->SetOutputDim("out", framework::make_ddim(out_dims));
-    }
   }
 };
 
@@ -109,14 +121,12 @@ class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("bias", "The input tensor bias of Out = (X * Y) + bias.");
 
     AddOutput("out", "The output tensor X of Out = (X * Y) + bias.");
-    AddOutput("auxiliary",
-              "The Output tensor of auxiliary data."
-              "For ReLU, it should be bits in `out` shape, "
-              "and For GeLU should be <T> in `out` shape.")
-        .AsDispensable();
 
     AddAttr<bool>("trans_x", "").SetDefault(false);
     AddAttr<bool>("trans_y", "").SetDefault(false);
+
+    AddAttr<std::string>("activation", "").SetDefault("relu");
+    AddAttr<std::string>("auxiliary_key", "").SetDefault("");
 
     AddComment(R"DOC(FusedGemmEpilogue OP)DOC");
   }
