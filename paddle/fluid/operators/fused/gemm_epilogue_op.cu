@@ -88,7 +88,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &bias_data,
             sizeof(bias_data)));
-    if (enable_auxiliary) {
+    if (enable_auxiliary && activation != "none") {
       if (EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary ==
           nullptr) {
         size_t unit_size = activation == "relu" ? 2 : sizeof(T);
@@ -159,13 +159,15 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     } else if (activation == "gelu") {
       return enable_auxiliary ? CUBLASLT_EPILOGUE_GELU_AUX_BIAS
                               : CUBLASLT_EPILOGUE_GELU_BIAS;
+    } else if (activation == "none") {
+      return CUBLASLT_EPILOGUE_BIAS;
     } else {
       PADDLE_ENFORCE_EQ(
           true, false,
           platform::errors::InvalidArgument(
               "The activation attribute of fused_gemm_epilogue op should be"
-              " one of {\"relu\", \"gelu\"}. But received %s."
-              "But received X[-1] = [%d], Y[0] = [%d].",
+              " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
+              "But received activation=%s.",
               activation));
     }
   }
@@ -174,6 +176,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+#if CUDA_VERSION >= 11060
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue,
@@ -181,3 +184,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext,
                                  paddle::platform::float16>);
+#endif
