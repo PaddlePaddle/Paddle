@@ -805,6 +805,10 @@ if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
 
+if (WITH_IPU)
+    add_subdirectory(ipu)
+endif()
+
 if (WITH_MLU)
     add_subdirectory(mlu)
 endif()
