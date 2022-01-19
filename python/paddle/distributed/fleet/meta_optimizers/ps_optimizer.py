@@ -198,8 +198,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         if dist_strategy.a_sync_configs["k_steps"] >= 0:
             return
         dist_strategy.a_sync = True
-        is_geo = self._can_apply_geo(dist_strategy,
-                                     context["origin_main_program"])
+        is_geo = self._can_apply_geo(context["origin_main_program"])
         dist_strategy.a_sync_configs["k_steps"] = 800 if is_geo else 0
 
     def _disable_strategy(self, dist_strategy):
