@@ -175,9 +175,17 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
 
-  if (kernels_iter == all_op_kernels.end() ||
-      kernels_iter->second.find(expected_kernel_key) ==
-          kernels_iter->second.end()) {
+  if ((kernels_iter == all_op_kernels.end() ||
+       kernels_iter->second.find(expected_kernel_key) ==
+           kernels_iter->second.end())
+#ifdef PADDLE_WITH_XPU
+      ||
+      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+          !paddle::platform::is_xpu_support_op(op.Type(),
+                                               expected_kernel_key) ||
+      paddle::platform::is_in_xpu_black_list(op.Type())
+#endif
+          ) {
     if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);

@@ -1176,7 +1176,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       auto kernels_iter = all_op_kernels.find(type_);
       if (kernels_iter == all_op_kernels.end() ||
           kernels_iter->second.find(*kernel_type_.get()) ==
-              kernels_iter->second.end()) {
+              kernels_iter->second.end()
+#ifdef PADDLE_WITH_XPU
+      || paddle::platform::is_xpu_place((kernel_type_->place_) &&  // NOLINT
+        !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) // NOLINT
+      || paddle::platform::is_in_xpu_black_list(type_)
+#endif
+        ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
