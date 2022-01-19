@@ -68,9 +68,15 @@ class FuseGemmEpiloguePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
+  ir::Graph *FuseLinearFwd(ir::Graph *graph, bool is_training) const;
   ir::Graph *FuseLinearActFwd(ir::Graph *graph,
                               const std::unordered_set<std::string> &act_types,
                               bool is_training) const;
+
+ private:
+  bool IsGemmFromLinear_(std::vector<int64_t> x_shape,
+                         std::vector<int64_t> w_shape,
+                         OpDesc *matmul_v2_op) const;
 };
 
 }  // namespace ir

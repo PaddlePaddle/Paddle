@@ -1548,16 +1548,8 @@ PDNode *patterns::LinearAct::operator()(
   auto *ele_out_var = pattern->NewNode(elewise_add_out_repr())
                           ->assert_is_op_output("elementwise_add", "Out");
 
-  ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
-
-  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
-
-  auto *act_out_var =
-      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
-
   matmul->LinksFrom({linear_x_var, matmul_w_var}).LinksTo({matmul_out_var});
   ele_add->LinksFrom({matmul_out_var, ele_bias_var}).LinksTo({ele_out_var});
-  act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
 
   if (with_grad_link) {
     matmul_out_var->assert_is_op_input("elementwise_add_grad", "X");
@@ -1566,7 +1558,19 @@ PDNode *patterns::LinearAct::operator()(
     elementwise_add_grad_op->LinksFrom({matmul_out_var});
   }
 
-  return act_out_var;
+  if (act_types.size() > 0) {
+    ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
+
+    auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+
+    auto *act_out_var = pattern->NewNode(act_out_repr())
+                            ->assert_is_ops_output(act_types, "Out");
+
+    act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
+    return act_out_var;
+  } else {
+    return ele_out_var;
+  }
 }
 
 // conv_type: conv2d, conv3d, conv2d_transpose

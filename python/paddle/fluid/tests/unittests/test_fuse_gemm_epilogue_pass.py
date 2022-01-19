@@ -139,10 +139,14 @@ class TestFuseGemmEpilogueFWDFP32(unittest.TestCase):
         self.assertTrue(
             compare(self.reference, result, self.atol, self.rtol),
             "[{}] outputs are miss-matched.".format(type(self).__name__))
-
         self.assertTrue(
-            verify_node_count(program._graph, "fused_gemm_epilogue", 1))
-        self.assertTrue(verify_node_count(program._graph, "matmul_v2", 3))
+            verify_node_count(program._graph, "fused_gemm_epilogue", 2),
+            "[{}] The number of fused_gemm_epilogue is miss-matched.".format(
+                type(self).__name__))
+        self.assertTrue(
+            verify_node_count(program._graph, "matmul_v2", 2),
+            "[{}] The number of matmul_v2 is miss-matched.".format(
+                type(self).__name__))
 
     def _pre_test_hooks(self):
         self.atol = 1e-4

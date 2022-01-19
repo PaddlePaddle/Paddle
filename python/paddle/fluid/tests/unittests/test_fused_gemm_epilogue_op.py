@@ -33,7 +33,7 @@ def relu(x):
     return x * mask
 
 
-def get_output(X, Y, bias, act='relu'):
+def get_output(X, Y, bias, act):
     out = np.dot(X, Y) + bias
     if act == 'relu':
         return relu(out)
@@ -58,8 +58,9 @@ class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
         }
         self.outputs = {
             'out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['bias'])
+                              self.inputs['bias'], 'relu')
         }
+        self.attrs = {"activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -105,9 +106,9 @@ class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
         }
         self.outputs = {
             'out': get_output(self.inputs['X'].T, self.inputs['Y'],
-                              self.inputs['bias'])
+                              self.inputs['bias'], 'relu')
         }
-        self.attrs = {'trans_x': True}
+        self.attrs = {'trans_x': True, "activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -153,9 +154,9 @@ class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
         }
         self.outputs = {
             'out': get_output(self.inputs['X'], self.inputs['Y'].T,
-                              self.inputs['bias'])
+                              self.inputs['bias'], 'relu')
         }
-        self.attrs = {'trans_y': True}
+        self.attrs = {'trans_y': True, "activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -201,9 +202,9 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
         }
         self.outputs = {
             'out': get_output(self.inputs['X'].T, self.inputs['Y'].T,
-                              self.inputs['bias'])
+                              self.inputs['bias'], 'relu')
         }
-        self.attrs = {'trans_x': True, 'trans_y': True}
+        self.attrs = {'trans_x': True, 'trans_y': True, "activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -248,10 +249,11 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
             'bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'].reshape((-1, 4)),
-                              self.inputs['Y'], self.inputs['bias']).reshape(
-                                  (2, 2, 8, 128))
+            'out': get_output(self.inputs['X'].reshape(
+                (-1, 4)), self.inputs['Y'], self.inputs['bias'],
+                              'relu').reshape((2, 2, 8, 128))
         }
+        self.attrs = {"activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -298,11 +300,11 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
             'bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'].reshape((4, -1)).T,
-                              self.inputs['Y'], self.inputs['bias']).reshape(
-                                  (2, 2, 8, 128))
+            'out': get_output(self.inputs['X'].reshape(
+                (4, -1)).T, self.inputs['Y'], self.inputs['bias'],
+                              'relu').reshape((2, 2, 8, 128))
         }
-        self.attrs = {'trans_x': True}
+        self.attrs = {'trans_x': True, "activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -349,11 +351,14 @@ class TestFuseGemmEpilogueOpReluMMFP16WithAux(OpTest):
             'bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
 
-        self.attrs = {"auxiliary_key": "Relu-" + str(id(type(self)))}
+        self.attrs = {
+            "auxiliary_key": "Relu-" + str(id(type(self))),
+            "activation": 'relu'
+        }
 
         self.outputs = {
             'out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['bias'])
+                              self.inputs['bias'], 'relu')
         }
 
     def init_dtype_type(self):
