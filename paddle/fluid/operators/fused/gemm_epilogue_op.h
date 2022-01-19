@@ -18,6 +18,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
