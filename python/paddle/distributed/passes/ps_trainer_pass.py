@@ -726,7 +726,7 @@ class SplitHeterWorkerOpsPass(PassBase):
 
     def _create_heter_program(self, program, context, heter_program,
                               program_block_ops_list, heter_ops,
-                              block_var_detail, current_device, stage_id):
+                              block_var_detail):
         # This function mainly includes the following contents:
         # 1. For every heter block:
         #     a) copy heter device op from origin program
@@ -886,7 +886,7 @@ class SplitTrainerOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_trainer_program(program, origin_program, context,
+    def _create_trainer_program(self, program, origin_program, context,
                                 program_block_ops_list, block_var_detail):
         # This function mainly includes the following contents:
         # 1. For every heter block in origin program

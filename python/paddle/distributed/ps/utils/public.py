@@ -80,7 +80,7 @@ def get_optimize_ops(_program):
     return opt_ops
 
 
-def get_dist_env(self):
+def get_dist_env():
     trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
     trainer_endpoints = ''
     current_endpoint = ''
