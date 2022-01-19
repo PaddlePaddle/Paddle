@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/arg_map_utils.h"
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
