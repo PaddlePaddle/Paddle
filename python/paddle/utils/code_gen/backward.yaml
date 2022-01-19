@@ -1,7 +1,7 @@
 - grad_api : matmul_grad
   forward : matmul (const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y) -> Tensor(out)
   args : (const Tensor& x, const Tensor& y, const Tensor& out_grad, bool transpose_x=false, bool transpose_y=false)
-  output : std::tuple<Tensor, Tensor> // dx, dy
+  output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : MatmulGradInferMeta
   kernel : 
@@ -10,7 +10,7 @@
 - grad_api : scale_grad
   forward : scale (const Tensor& x, const Scalar& scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (const Tensor& out_grad, const Scalar& scale, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor // dx
+  output : Tensor(x_grad)
   invoke : scale(out_grad, scale, bias, bias_after_scale)
 
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.

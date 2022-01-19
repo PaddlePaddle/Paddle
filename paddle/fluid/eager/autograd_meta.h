@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-
 namespace egr {
 
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
@@ -75,9 +75,20 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   ~AutogradMeta() override = default;
 
-  const egr::EagerTensor& Grad() const { return grad_; }
+  const egr::EagerTensor& Grad() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_.get(),
+        paddle::platform::errors::InvalidArgument(
+            "Should Not get NULL from Grad pointer, since "
+            "we should have default EagerTensor once we init AutoGradMeta. "
+            "if you got this error may indicates framework error in "
+            "PaddlePaddle"));
+    return *(grad_.get());
+  }
 
-  egr::EagerTensor* MutableGrad() { return &grad_; }
+  egr::EagerTensor* MutableGrad() { return grad_.get(); }
+
+  std::weak_ptr<egr::EagerTensor> WeakGrad() { return grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -120,14 +131,19 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
+  bool RetainGrads() { return retain_grads_; }
+
+  void SetRetainGrads(bool value) { retain_grads_ = value; }
+
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  egr::EagerTensor grad_;
+  std::shared_ptr<egr::EagerTensor> grad_{std::make_shared<egr::EagerTensor>(
+      egr::Controller::Instance().GenerateUniqueName("@grad"))};
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy
   // to be traced.
-  std::shared_ptr<GradNodeBase> grad_node_;
+  std::shared_ptr<GradNodeBase> grad_node_ = nullptr;
 
   /**
    * Why we need slot id here?
@@ -148,6 +164,8 @@ class AutogradMeta : public AbstractAutogradMeta {
   int stop_gradient_{-1};
 
   bool persistable_{false};
+
+  bool retain_grads_{false};
 
   // TODO(jiabin) :Support Quantum here and add cache mechanism as
   // VarCache defined in VarBase

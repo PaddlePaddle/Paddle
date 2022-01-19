@@ -46,12 +46,17 @@ class LoDTensor;
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
 DECLARE_bool(run_pten_kernel);
+DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
 namespace framework {
@@ -227,6 +232,16 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
       platform::SetNPUDeviceId(dev_id);
+#endif
+    } else if (platform::is_mlu_place(place)) {
+#ifndef PADDLE_WITH_MLU
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with MLU support.",
+          place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::MLUPlace, place).device;
+      platform::SetMLUDeviceId(dev_id);
 #endif
     }
 
@@ -1075,7 +1090,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
-  this->InferShape(&infer_shape_ctx);
+  this->Info().infer_shape_(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
@@ -1163,6 +1178,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
+    // TODO(chenweihang): replace this after removing `this->IsMKLDNNType()`
+    // in some mkldnn infershape functions, such conv2d infershape
     this->InferShape(&infer_shape_ctx);
   }
 
@@ -1270,7 +1287,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
       new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
-  VLOG(6) << KernelSignatureToString(*pt_kernel_signature_.get());
+  VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
@@ -1332,6 +1349,16 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (kernel_iter == kernels.end() &&
       is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (kernel_iter == kernels.end() &&
+      is_mlu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing MLU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -1766,6 +1793,9 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
 
 void OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
+  if (pt_kernel_context_ == nullptr) {
+    pt_kernel_context_.reset(new pten::KernelContext());
+  }
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
@@ -1850,16 +1880,32 @@ void OperatorWithKernel::BuildPtenKernelContext(
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (current_vector_size > start_idx + offset) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            outs_vector[offset], out_def,
+        auto* buffer_tensor =
             pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
-                                                                   offset));
+                                                                   offset);
+        if (buffer_tensor) {
+          experimental::ReMakePtenDenseTensorFromVar(outs_vector[offset],
+                                                     out_def, buffer_tensor);
+        }
       } else {
         pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
             experimental::MakePtenTensorBaseFromVar(outs_vector[offset],
                                                     out_def));
       }
     }
+
+    // Deal with the case that some outputs are NULL when run the kernel.
+    // For example : the outputs of matmul_grad are dx and dy,
+    // sometimes dx or dy may be NULL.
+    if (outs_vector.empty()) {
+      if (current_vector_size > start_idx) {
+        pt_kernel_context_->SetOutputWithoutSetRange(start_idx, {nullptr});
+      } else {
+        pt_kernel_context_->EmplaceBackOutputWithoutSetRange({nullptr});
+      }
+      end_idx = start_idx + 1;
+    }
+
     pt_kernel_context_->AssignOutputRange(std::make_pair(start_idx, end_idx),
                                           i);
   }
@@ -1972,7 +2018,9 @@ void OperatorWithKernel::WriteBackToOutputs(RuntimeContext* ctx) const {
             range_pair.first, range_pair.second);
 
     for (size_t j = 0; j < pten_outs.size(); ++j) {
-      experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
+      if (pten_outs[j]) {
+        experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
+      }
     }
   }
 }

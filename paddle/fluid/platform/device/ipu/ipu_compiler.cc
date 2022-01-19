@@ -271,7 +271,7 @@ void Compiler::LowerWeights(const framework::ir::Graph* graph,
             shape.push_back(tensor.dims().at(i));
           }
           popart::TensorInfo tensor_info(dtype, shape);
-          popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
+          popart::ConstVoidData const_data{tensor.data(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
           tensors_.emplace(var_name, result);

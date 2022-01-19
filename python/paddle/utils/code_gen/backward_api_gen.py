@@ -60,14 +60,32 @@ class BackwardAPI:
         return api, forward_args['inputs'], forward_args['attrs'], outputs
 
     def parse_backward_output(self, output_config):
-        temp_list = output_config.split('//')
-        return_comment = None
-        if len(temp_list) == 2:
-            return_comment = temp_list[1].strip()
-        output_type = temp_list[0].strip()
-        output_num = temp_list[0].count('Tensor')
+        def parse_output_item(output_item):
+            result = re.search(
+                r"(?P<out_type>[a-zA-Z0-9_<>]+)\s*\((?P<name>\w+)\)",
+                output_item)
+            out_type = result.group('out_type')
+            assert out_type in ['Tensor', 'std::vector<Tensor>'], \
+                f"{self.grad_api} : Output type error: the output type only support Tensor and std::vector<Tensor>, \
+                  but now is {out_type}."
 
-        return output_type, output_num, return_comment
+            return out_type, result.group('name')
+
+        temp_list = output_config.split(',')
+
+        if len(temp_list) == 1:
+            out_type, out_name = parse_output_item(temp_list[0])
+            return out_type, 1, out_name
+        else:
+            out_type_list = []
+            out_name_list = []
+            for output_item in temp_list:
+                out_type, out_name = parse_output_item(output_item)
+                out_type_list.append(out_type)
+                out_name_list.append(out_name)
+
+            return "std::tuple<" + ",".join(out_type_list) + ">", len(
+                temp_list), ", ".join(out_name_list)
 
     def parse_and_check_args(self, forward_config, args_config, output_config):
         # parse the forward and backward config
@@ -119,6 +137,7 @@ class BackwardAPI:
             outputs_args, output_create = gen_utils.gene_output(
                 self.output_type)
             return f"""
+// {self.return_comment}
 {self.output_type} {self.grad_api}({self.args["args_define"]}) {{
 {gen_utils.gene_kernel_select(self.grad_api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
@@ -135,9 +154,25 @@ class BackwardAPI:
 """
 
         else:
+            inveke_func_name = self.invoke.split('(')[0].strip()
+            if inveke_func_name in self.args['attrs']['names']:
+                # Adjust the param whose name is same with api invoked.
+                pattern = '\W' + inveke_func_name + '[^A-Za-z0-9_(]'
+
+                def adjust_name(matched):
+                    matched_str = matched.group()
+                    return matched_str[0:-1] + '_val' + matched_str[-1]
+
+                invoke_code = re.sub(pattern, adjust_name, self.invoke)
+                params_code = re.sub(pattern, adjust_name,
+                                     self.args["args_define"])
+            else:
+                invoke_code = self.invoke
+                params_code = self.args["args_define"]
             return f"""
-{self.output_type} {self.grad_api}({self.args["args_define"]}) {{
-  return {self.invoke};
+// {self.return_comment}
+{self.output_type} {self.grad_api}({params_code}) {{
+  return {invoke_code};
 }}
 """
 
@@ -161,14 +196,13 @@ def source_include(header_file_path):
 
 #include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
-#include "paddle/pten/api/lib/kernel_declare.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/tensor_adapt.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/api/include/api.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/grad_infermeta.h"
 """
 
 
@@ -225,12 +259,12 @@ def main():
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
-        default='paddle/pten/api/include/backward.h')
+        default='paddle/pten/api/include/backward_api.h')
 
     parser.add_argument(
         '--backward_source_path',
         help='output of generated backward source code file',
-        default='paddle/pten/api/lib/backward.cc')
+        default='paddle/pten/api/lib/backward_api.cc')
 
     options = parser.parse_args()
 

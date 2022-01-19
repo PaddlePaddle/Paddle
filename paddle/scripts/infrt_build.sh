@@ -65,13 +65,12 @@ function infrt_gen_and_build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
-    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
+    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
 
-    make -j ${parallel_number} infrt infrtopt infrt-exec;build_error=$?
-    make -j ${parallel_number} infrt_lib_dist;build_error=$?
+    make -j ${parallel_number} infrt infrtopt infrt-exec test_infrt_exec trt-exec infrt_lib_dist;build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -113,6 +112,12 @@ function main() {
         infrt_gen_and_build ${parallel_number}
         test_infrt
         ;;
+      build_only)
+        infrt_gen_and_build ${parallel_number}
+        ;;
+      test_only)
+        test_infrt
+        ;;
       *)
         print_usage
         exit 1
@@ -124,9 +129,9 @@ function main() {
         cat ${PADDLE_ROOT}/build/infrt_summary.txt
         echo "========================================================"
       fi
-      echo "paddle_build script finished as expected"
+      echo "paddle_build script finished as expected!"
 }
 
 main $@
 
-rm -rf tmp_dir
+rm -rf $tmp_dir

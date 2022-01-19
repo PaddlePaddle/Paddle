@@ -40,7 +40,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "TransferLayout");
 
     auto dst_layout = ctx->Attrs().Get<int>("dst_layout");
-    auto low_bound = static_cast<int>(framework::DataLayout::kNHWC);
+    auto low_bound = static_cast<int>(framework::DataLayout::kAnyLayout);
     auto upper_bound = static_cast<int>(framework::DataLayout::kMKLDNN);
     PADDLE_ENFORCE_GE(
         dst_layout, low_bound,
@@ -106,7 +106,7 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) The input Tensor");
     AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
     AddAttr<int>("dst_layout",
-                 "kNHWC = 0, kNCHW = 1, kAnyLayout = 2, kMKLDNN = 3");
+                 "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3");
     AddComment(R"DOC(
     TransferLayout Operator)DOC");
   }
