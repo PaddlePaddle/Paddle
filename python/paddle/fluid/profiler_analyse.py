@@ -108,6 +108,130 @@ def _parse_string(value):
         return value.encode("utf-8") if isinstance(value, unicode) else value
 
 
+class NsightRunnerForModelAnalyse(object):
+    """
+    Use Nsight System tool to analyse performance of Model.
+    """
+
+    def run(self, cmd, args):
+        """
+        Run program/script.
+        """
+        stdout, exit_code = self._nsys_cmd_for_model_analyse(cmd, args)
+        if exit_code == 0:
+            parse_status, scheduling_time_dict = self._parse_logs(
+                stdout.split("\n"), args)
+            if parse_status:
+                self._print_scheduling_time(scheduling_time_dict)
+                return
+        print("Running Error:\n {}".format(stdout))
+
+    def _nsys_cmd_for_model_analyse(self, cmd, args):
+        return _run_command(
+            "nsys profile -t cuda,nvtx --stats true -o {}.qdrep --capture-range=cudaProfilerApi --stop-on-range-end=true --force-overwrite {} {}".
+            format(args.output, args.force_overwrite, cmd))
+
+    def _parse_gpu_time(self, line):
+        infos = line.strip().split()
+        percent = float(infos[0].replace("%", "")) * 0.01
+        gpu_time = float(infos[1].replace(",", "")) * 1E-6
+        return gpu_time / percent
+
+    def _parse_logs(self, logs, args):
+        kernel_line_from = None
+        kernel_line_to = None
+        memcpy_line_from = None
+        memcpy_line_to = None
+        nvtx_line_from = None
+        total_step_time = 0.0
+        step_count = 0
+        num_step = args.profile_end_step - args.profile_start_step
+
+        scheduling_time_dict = {}
+
+        for i in range(len(logs)):
+            line = _parse_string(logs[i])
+            if "CUDA Kernel Statistics:" in line:
+                kernel_line_from = i
+                for j in range(i + 2, len(logs)):
+                    if logs[j] == "":
+                        kernel_line_to = j
+                        break
+            if "CUDA Memory Operation Statistics (by time):" in line:
+                memcpy_line_from = i
+                for j in range(i + 2, len(logs)):
+                    if logs[j] == "":
+                        memcpy_line_to = j
+                        break
+            if "NVTX Push-Pop Range Statistics:" in line:
+                nvtx_line_from = i
+                break
+
+        parse_status = False
+        kernel_gpu_time = 0.0
+        if kernel_line_from is not None and kernel_line_to is not None:
+            kernel_gpu_time = self._parse_gpu_time(logs[kernel_line_from + 4])
+
+        memcpy_gpu_time = 0.0
+        if memcpy_line_from is not None and memcpy_line_to is not None:
+            memcpy_gpu_time = self._parse_gpu_time(logs[memcpy_line_from + 4])
+
+        total_gpu_time = kernel_gpu_time + memcpy_gpu_time
+        scheduling_time_dict['cuda_avg_time'] = total_gpu_time / num_step
+        scheduling_time_dict[
+            'cuda_kernel_avg_time'] = kernel_gpu_time / num_step
+        scheduling_time_dict[
+            'cuda_memory_avg_time'] = memcpy_gpu_time / num_step
+
+        # get step_time
+        for i in range(nvtx_line_from, len(logs)):
+            line = _parse_string(logs[i])
+            infos = line.strip().split()
+            if not infos:
+                continue
+            nvtx_range_type = infos[-1]
+
+            # step time
+            if nvtx_range_type.isdigit() and int(
+                    nvtx_range_type) > args.profile_start_step and int(
+                        nvtx_range_type) < args.profile_end_step:
+                step_count += 1
+                step_time = float(infos[1].replace(",", ""))
+                total_step_time += step_time
+
+        if step_count:
+            scheduling_time_dict[
+                'step_time'] = total_step_time / step_count * 1E-6
+            scheduling_time_dict['blank_time'] = scheduling_time_dict[
+                'step_time'] - scheduling_time_dict['cuda_avg_time']
+            scheduling_time_dict['percentage_of_blanks'] = scheduling_time_dict[
+                'blank_time'] * 100 / scheduling_time_dict['step_time']
+        else:
+            scheduling_time_dict['step_time'] = None
+            scheduling_time_dict['blank_time'] = None
+            scheduling_time_dict['percentage_of_blanks'] = None
+        parse_status = True
+
+        return parse_status, scheduling_time_dict
+
+    def _print_scheduling_time(self, time_dict):
+        print('\n')
+        print('{:*^55}'.format('Dygraph Scheduling Profiling Report'))
+        print('Time unit: ms\n')
+
+        print('{:-^55}'.format(''))
+        print('{:40}'.format('cuda kernel time in a step'),
+              time_dict['cuda_kernel_avg_time'])
+        print('{:40}'.format('cuda memcpy time in a step'),
+              time_dict['cuda_memory_avg_time'])
+        print('{:40}'.format('average time on cuda side in a step'),
+              time_dict['cuda_avg_time'])
+        print('{:40}'.format('average time in a step'), time_dict['step_time'])
+        print('{:40}'.format('blank time in a step'), time_dict['blank_time'])
+        print('{:40}'.format('percentage of blank time (%)'),
+              time_dict['percentage_of_blanks'])
+
+
 class NsightRunnerForOpAnalyse(object):
     """
     Use Nsight System tool to analyse performance of OP.
@@ -326,17 +450,17 @@ def dygraph_analyse():
      report generated by the profile tool.
     """
     args = _parse_args()
+    if not args.profile_start_step:
+        raise ValueError(
+            "profile_start_step must be set manually and is the same as the profile step set in the script."
+        )
+    if not args.profile_end_step:
+        raise ValueError(
+            "profile_end_step must be set manually and is the same as the profile step set in the script."
+        )
     if args.mode == 'model':
         _analyse_model(args)
     elif args.mode == 'op':
-        if not args.profile_start_step:
-            raise ValueError(
-                "profile_start_step must be set manually and is the same as the profile step set in the script."
-            )
-        if not args.profile_end_step:
-            raise ValueError(
-                "profile_end_step must be set manually and is the same as the profile step set in the script."
-            )
         if args.profile_end_step - args.profile_start_step < 4:
             raise ValueError(
                 "profile_end_step must be 4 greater than profile_start_step.")
