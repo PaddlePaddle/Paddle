@@ -15,6 +15,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_KERNEL
 
 #include "paddle/fluid/framework/custom_kernel.h"
+#include <dirent.h>
+#include <regex>
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -31,17 +33,6 @@ namespace paddle {
 namespace framework {
 
 namespace detail {
-
-// dynamic lib open
-static inline void* DynOpen(const std::string& dso_name) {
-  void* dso_handle = nullptr;
-  int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
-  dso_handle = dlopen(dso_name.c_str(), dynload_flags);
-  PADDLE_ENFORCE_NOT_NULL(
-      dso_handle,
-      platform::errors::InvalidArgument("Fail to open library: %s", dso_name));
-  return dso_handle;
-}
 
 // dynamic lib load func
 template <typename T>
@@ -323,41 +314,65 @@ void RegisterKernelWithMetaInfoMap(
   }
 }
 
-// load custom kernel from dso_name
-void LoadOpKernelInfoAndRegister(const std::string& dso_name) {
-  VLOG(3) << "[CUSTOM KERNEL] load custom_kernel lib: " << dso_name;
+void LoadCustomKernelLib(const std::string& dso_lib_path) {
+  void* dso_handle = nullptr;
+  int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
+  dso_handle = dlopen(dso_lib_path.c_str(), dynload_flags);
 
-  void* handle = detail::DynOpen(dso_name);
+  // MUST valid dso_lib_path
+  PADDLE_ENFORCE_NOT_NULL(
+      dso_handle, platform::errors::InvalidArgument("Fail to open library: %s",
+                                                    dso_lib_path));
 
   typedef OpKernelInfoMap& get_op_kernel_info_map_t();
-  auto* get_op_kernel_info_map = detail::DynLoad<get_op_kernel_info_map_t>(
-      handle, "PD_GetOpKernelInfoMap");
+  auto* func = reinterpret_cast<get_op_kernel_info_map_t*>(
+      dlsym(dso_handle, "PD_GetOpKernelInfoMap"));
 
-  // If symbol PD_GetOpKernelInfoMap is not in lib, we ignore this lib
-  if (get_op_kernel_info_map != nullptr) {
-    auto& op_kernel_info_map = get_op_kernel_info_map();
-    RegisterKernelWithMetaInfoMap(op_kernel_info_map);
+  if (func == nullptr) {
+    LOG(INFO) << "Skipped lib [" << dso_lib_path << "]: fail to find "
+              << "PD_GetOpKernelInfoMap symbol in this lib.";
+    return;
   }
+  auto& op_kernel_info_map = func();
+  RegisterKernelWithMetaInfoMap(op_kernel_info_map);
+  LOG(INFO) << "Successed in loading custom kernels in lib: " << dso_lib_path;
 }
 
-// Try loading custom kernel from PADDLE_PLUGIN_ROOT
-// PADDLE_CUSTOM_KERNEL is an abstract path of custom kernel library, such
-// as '/path/to/libmy_custom_kernel.so', default value is ''
-// TODO(SJC): common loading with pluggable device
-void TryLoadCustomKernel() {
-  const char* env_dso_ptr = std::getenv("PADDLE_PLUGIN_ROOT");
-  if (env_dso_ptr == nullptr) {
-    VLOG(3) << "[CUSTOM KERNEL] PADDLE_PLUGIN_ROOT is not set";
-    return;
-  }
-  std::string dso_name(env_dso_ptr);
-  if (dso_name.empty()) {
-    VLOG(3) << "[CUSTOM KERNEL] PADDLE_PLUGIN_ROOT is empty";
-    return;
-  }
-  VLOG(3) << "[CUSTOM KERNEL] PADDLE_PLUGIN_ROOT=" << dso_name;
+// List all libs with given path
+std::vector<std::string> ListAllLib(const std::string& libs_path) {
+  DIR* dir = nullptr;
+  dir = opendir(libs_path.c_str());
 
-  LoadOpKernelInfoAndRegister(dso_name);
+  // MUST valid libs_path
+  PADDLE_ENFORCE_NOT_NULL(dir, platform::errors::InvalidArgument(
+                                   "Fail to open path: %s", libs_path));
+
+  dirent* ptr = nullptr;
+  std::vector<std::string> libs;
+  std::regex express(".*\\.so");
+  std::match_results<std::string::iterator> results;
+  while ((ptr = readdir(dir)) != nullptr) {
+    std::string filename(ptr->d_name);
+    if (std::regex_match(filename.begin(), filename.end(), results, express)) {
+      libs.push_back(libs_path + '/' + filename);
+      LOG(INFO) << "Found lib [" << filename << "]";
+    } else {
+      VLOG(3) << "Skipped file [" << filename << "] without .so postfix";
+    }
+  }
+  closedir(dir);
+  return libs;
+}
+
+// Load custom kernels with given path
+void LoadCustomKernel(const std::string& libs_path) {
+  VLOG(3) << "Try loading custom libs from: [" << libs_path << "]";
+  std::vector<std::string> libs = ListAllLib(libs_path);
+  for (auto& lib_path : libs) {
+    LoadCustomKernelLib(lib_path);
+  }
+  LOG(INFO) << "Finished in LoadCustomKernel with libs_path: [" << libs_path
+            << "]";
 }
 
 }  // namespace framework

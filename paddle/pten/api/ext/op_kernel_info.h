@@ -428,6 +428,21 @@ struct TensorArgDef {
         layout(in_layout),
         dtype(in_dtype),
         is_vector(is_vector) {}
+
+  TensorArgDef& SetBackend(pten::Backend in_backend) {
+    backend = in_backend;
+    return *this;
+  }
+
+  TensorArgDef& SetDataLayout(pten::DataLayout in_layout) {
+    layout = in_layout;
+    return *this;
+  }
+
+  TensorArgDef& SetDataType(pten::DataType in_dtype) {
+    dtype = in_dtype;
+    return *this;
+  }
 };
 
 // AttributeArgDef from pten::AttributeArgDef in kernel_factory.h

@@ -20,8 +20,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// Try loading custom kernel from fixed path
-void TryLoadCustomKernel();
+// Load custom kernel lib from giwen path
+void LoadCustomKernel(const std::string& libs_path);
+
+void LoadCustomKernelLib(const std::string& dso_lib_path);
 
 // Load custom kernel api: register kernel after user compiled
 void LoadOpKernelInfoAndRegister(const std::string& dso_name);
