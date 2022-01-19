@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/transpose_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +39,7 @@ class TransposeGPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     const auto& dev_ctx = context.template device_context<DeviceContext>();
-    pten::transpose<T>(dev_ctx, *x_tensor, axis, out_tensor);
+    // pten::transpose<T>(dev_ctx, *x_tensor, axis, out_tensor);
   }
 };
 template <typename DeviceContext, typename T>
