@@ -15,6 +15,8 @@
 #include <glog/logging.h>
 
 #include "paddle/fluid/distributed/fleet_executor/dist_model.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -69,6 +71,9 @@ bool DistModel::Init() {
     scope_.reset(config_.scope);
   }
   if (!CommInit()) {
+    return false;
+  }
+  if (!PrepareFleetExe()) {
     return false;
   }
   return true;
@@ -295,6 +300,30 @@ bool DistModel::LoadParameters() {
   VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
           << " vars.";
 
+  return true;
+}
+
+bool DistModel::PrepareFleetExe() {
+  task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
+  if (config_.local_rank - config_.mp_degree >= 0) {
+    task_node_->AddUpstreamTask(config_.local_rank - config_.mp_degree);
+  }
+  if (config_.local_rank + config_.mp_degree < config_.nranks) {
+    task_node_->AddDownstreamTask(config_.local_rank + config_.mp_degree);
+  }
+  task_node_->Init();
+  executor_desc_ = FleetExecutorDesc();
+  executor_desc_.set_cur_rank(config_.local_rank);
+  std::unordered_map<int64_t, int64_t> id_to_rank;
+  for (int i = 0; i < config_.nranks; ++i) {
+    RankInfo *rank_info = executor_desc_.add_cluster_info();
+    rank_info->set_rank(i);
+    rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    id_to_rank.insert({i, i});
+  }
+  fleet_exe.reset(new FleetExecutor(executor_desc_));
+  fleet_exe->Init("inference", *(program_.get()), scope_.get(), place_, 1,
+                  {task_node_.get()}, id_to_rank);
   return true;
 }
 

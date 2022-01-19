@@ -32,6 +32,9 @@ class BlockDesc;
 
 namespace distributed {
 
+class TaskNode;
+class FleetExecutor;
+
 struct DistModelConfig {
   std::string model_dir{};
   framework::ProgramDesc* program_desc{nullptr};
@@ -66,12 +69,15 @@ class DistModel {
   bool LoadParameters();
   bool PreparePlace();
   bool CommInit();
+  bool PrepareFleetExe();
   void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
                     const std::vector<std::string>& peer_endpoints,
                     framework::BlockDesc* block, int ring_id);
 
   DistModelConfig config_;
   FleetExecutorDesc executor_desc_;
+  std::shared_ptr<FleetExecutor> fleet_exe;
+  std::shared_ptr<TaskNode> task_node_;
   std::shared_ptr<framework::Scope> scope_;
   paddle::platform::Place place_;
   std::shared_ptr<framework::ProgramDesc> program_;
