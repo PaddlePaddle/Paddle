@@ -6,7 +6,7 @@
 # - CNNL_VERSION 1.8.3-1
 #
 # Download two packages from FTP (need to connect cambricon AE to get FTP url)
-# - cntoolkit_2.6.5-1.ubuntu18.04_amd64.run
+# - cntoolkit_2.6.5-1.ubuntu18.04_amd64.deb
 # - cnnl_1.8.3-1.ubuntu18.04_amd64.deb
 # copy them to current directory first, then run build commands
 #
