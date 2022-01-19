@@ -1070,6 +1070,8 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
+  y->mutable_data<Ty>(x.place());
+
   auto x_dim = paddle::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
