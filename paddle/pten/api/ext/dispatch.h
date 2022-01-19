@@ -273,15 +273,9 @@ namespace paddle {
       PD_PRIVATE_CASE_TYPE(                                                   \
           NAME, ::pten::DataType::INT16, int16_t, __VA_ARGS__)                \
       PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::pten::DataType::UINT16, uint16_t, __VA_ARGS__)              \
-      PD_PRIVATE_CASE_TYPE(                                                   \
           NAME, ::pten::DataType::INT32, int32_t, __VA_ARGS__)                \
       PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::pten::DataType::UINT32, uint32_t, __VA_ARGS__)              \
-      PD_PRIVATE_CASE_TYPE(                                                   \
           NAME, ::pten::DataType::INT64, int64_t, __VA_ARGS__)                \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::pten::DataType::UINT64, uint64_t, __VA_ARGS__)              \
       PD_PRIVATE_CASE_TYPE(NAME,                                              \
                            ::pten::DataType::BFLOAT16,                        \
                            paddle::experimental::bfloat16,                    \

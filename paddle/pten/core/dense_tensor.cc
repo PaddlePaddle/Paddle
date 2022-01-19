@@ -387,7 +387,8 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, requested_size));
+  return reinterpret_cast<T*>(mutable_data(
+      place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
@@ -413,11 +414,8 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int16_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint16_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint32_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16)
