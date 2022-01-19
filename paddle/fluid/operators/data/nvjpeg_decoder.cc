@@ -33,7 +33,7 @@ NvjpegDecoder::NvjpegDecoder(std::string mode, int dev_id)
   // pinned_allocator_.pinned_malloc = &cudaMallocHost;
   // pinned_allocator_.pinned_free = &cudaFreeHost;
   PADDLE_ENFORCE_NVJPEG_SUCCESS(
-      platform::dynload::nvjpegCreateEx(NVJPEG_BACKEND_DEFAULT, &device_allocator_,
+      platform::dynload::nvjpegCreateEx(NVJPEG_BACKEND_HYBRID, &device_allocator_,
                            &pinned_allocator_, 0, &handle_));
   for (size_t i = 0; i < nvjpeg_streams_.size(); i++) {
     PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamCreate(handle_, &nvjpeg_streams_[i]));

@@ -25,22 +25,6 @@ class BatchDecodeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DecodeJpeg");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DecodeJpeg");
-
-    // auto mode = ctx->Attrs().Get<std::string>("mode");
-    // std::vector<int> out_dims;
-    //
-    // if (mode == "unchanged") {
-    //   out_dims = {-1, -1, -1};
-    // } else if (mode == "gray") {
-    //   out_dims = {1, -1, -1};
-    // } else if (mode == "rgb") {
-    //   out_dims = {3, -1, -1};
-    // } else {
-    //   PADDLE_THROW(platform::errors::Fatal(
-    //       "The provided mode is not supported for JPEG files on GPU: ", mode));
-    // }
-    //
-    // ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
   }
 
  protected:

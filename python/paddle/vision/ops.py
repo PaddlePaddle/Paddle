@@ -867,6 +867,53 @@ def read_file(filename, name=None):
     return out
 
 
+def file_label_loader(data_root, indices, name=None):
+    """
+    Reads a batch of data, outputs the bytes contents of a file
+    as a uint8 Tensor with one dimension.
+
+    Args:
+        data_root (str): root directory of data
+        indices (list of int): batch indices of samples
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    """
+    from paddle.vision.datasets import DatasetFolder
+    data_folder = DatasetFolder(data_root)
+    samples = [s[0] for s in data_folder.samples]
+    targets = [s[1] for s in data_folder.samples]
+
+    if in_dygraph_mode():
+        return _C_ops.file_label_loader(indices, 'files', samples, 'labels', targets)
+
+    inputs = {"Indices": indices}
+    attrs = {
+        'files': samples,
+        'labels': targets,
+    }
+
+    helper = LayerHelper("file_label_loader", **locals())
+    image = helper.create_variable(
+        name=unique_name.generate("file_label_loader"),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype='uint8')
+    
+    label = helper.create_variable(
+        name=unique_name.generate("file_label_loader"),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype='int')
+
+    helper.append_op(
+        type="file_label_loader",
+        inputs=inputs,
+        attrs=attrs,
+        outputs={"Image": image,
+                 "Label": label})
+
+    return image, label
+
+
 def file_label_reader(file_root, batch_size, name=None):
     """
     Reads and outputs the bytes contents of a file as a uint8 Tensor

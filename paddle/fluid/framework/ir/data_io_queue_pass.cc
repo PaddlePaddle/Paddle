@@ -27,6 +27,7 @@ class Graph;
 std::set<std::string> output_queue_holder_ops = {
   "file_label_reader",
   "map",
+  "data_reader",
 };
 
 std::set<std::string> input_array_ops = {

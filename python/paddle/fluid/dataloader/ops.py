@@ -30,7 +30,7 @@ def _to_list(l):
     return [l]
 
 
-class MapGuard(object):
+class _ProgramGuard(object):
     def __init__(self, main_program):
         if not isinstance(main_program, Program):
             raise TypeError("MapGuard should init with a Program")
@@ -67,7 +67,7 @@ def map(map_func, inputs):
 
     # build map block
     main_program = helper.main_program
-    with MapGuard(main_program):
+    with _ProgramGuard(main_program):
         program_id = _hash_with_id(main_program, map_func)
         map_block = main_program.current_block()
 
@@ -107,6 +107,60 @@ def map(map_func, inputs):
     helper.append_op(
         type="map",
         inputs={"In": inputs},
+        outputs={"Out": outputs},
+        attrs=attrs)
+
+    return outputs
+
+
+def data_reader(reader_func,
+                batch_size=1,
+                num_samples=1,
+                shuffle=False,
+                drop_last=False):
+    assert not in_dygraph_mode(), \
+            "paddle.io.data_reader can only be used in static mode"
+    helper = LayerHelper("data_reader", **locals())
+
+    # build reader block
+    main_program = helper.main_program
+    with _ProgramGuard(main_program):
+        program_id = _hash_with_id(main_program, reader_func)
+        reader_block = main_program.current_block()
+
+        indices_var = reader_block.create_var(
+                        name=unique_name.generate("data_reader_sub"),
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        dtype="uint8",
+                        persistable=False)
+        program_outputs = reader_func(indices_var)
+        program_outputs = _to_list(program_outputs)
+    
+        indices_var_name = indices_var.name
+        output_var_names = [v.name for v in program_outputs]
+
+    outputs = \
+        [helper.create_variable(
+            name=unique_name.generate("map"),
+            type=outp.desc.type(),
+            persistable=True) for outp in program_outputs]
+
+    attrs = {
+        "reader_id": reader_id,
+        "reader_block": reader_block,
+        "indices_var_name": indices_var_name,
+        "output_var_names": output_var_names,
+        "batch_size": batch_size,
+        "num_samples": num_samples,
+        "shuffle": shuffle,
+        "drop_last": drop_last,
+        "rank": paddle.distributed.get_rank(),
+        "world_size": paddle.distributed.get_world_size()
+    }
+
+    helper.append_op(
+        type="data_reader",
+        inputs={},
         outputs={"Out": outputs},
         attrs=attrs)
 

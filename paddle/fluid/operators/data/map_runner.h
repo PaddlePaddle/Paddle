@@ -24,7 +24,6 @@ namespace operators {
 
 using BlockDesc = framework::BlockDesc;
 using Scope = framework::Scope;
-using ParallelExecutor = framework::ParallelExecutor;
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
