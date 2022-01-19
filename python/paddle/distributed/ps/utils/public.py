@@ -98,6 +98,13 @@ def get_dist_env():
     }
 
 
+def get_ps_endpoint(role_maker):
+    try:
+        return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
+    except Exception:
+        return role_maker.get_pserver_endpoints()[get_role_id(role_maker)]
+
+
 def get_heter_worker_endpoint(role_maker):
     try:
         return role_maker._get_heter_worker_endpoint()
@@ -153,6 +160,18 @@ def is_distributed_sparse_op(op):
 
 def get_sparse_tablename(op):
     return op.input("W")[0]
+
+
+def is_sparse_op(op):
+    if op.type in SPARSE_OP_LIST and op.attr('is_sparse') is True and op.attr(
+            'is_distributed') is False:
+        return True
+
+    if op.type == "distributed_lookup_table" and op.attr(
+            'is_distributed') is False:
+        return True
+
+    return False
 
 
 def get_sparse_tablenames(program, is_distributed):
@@ -867,3 +886,66 @@ def insert_communicate_op(orign_program,
         })
 
     return entrance_var
+
+
+def get_the_one_recv_context(context,
+                             is_dense=True,
+                             split_dense_table=False,
+                             use_origin_program=False):
+    recv_id_maps = {}
+    grad_name_to_param_name = {}
+    if is_dense:
+        send_ctx = get_the_one_send_context(
+            context,
+            split_dense_table=split_dense_table,
+            use_origin_program=use_origin_program)
+        for idx, (name, ctx) in enumerate(send_ctx.items()):
+            if ctx.is_sparse():
+                continue
+            if ctx.is_tensor_table():
+                continue
+
+            origin_grad_varnames = ctx.origin_varnames()
+
+            param_names = []
+            for grad_varname in origin_grad_varnames:
+                param_name = grad_name_to_param_name[grad_varname]
+                param_names.append(param_name)
+            recv_id_maps[ctx.table_id()] = param_names
+    else:
+        send_ctx = get_the_one_send_context(
+            context,
+            split_dense_table=False,
+            use_origin_program=False,
+            ep_list=None)
+        for idx, (name, ctx) in enumerate(send_ctx.items()):
+            if not ctx.is_sparse():
+                continue
+
+            origin_grad_varnames = ctx.origin_varnames()
+
+            param_names = []
+            for grad_varname in origin_grad_varnames:
+                param_name = grad_name_to_param_name[grad_varname]
+                param_names.append(param_name)
+            recv_id_maps[ctx.table_id()] = param_names
+    return recv_id_maps
+
+
+def _get_varname_parts(varname):
+    # returns origin, blockid, trainerid
+    orig_var_name = ""
+    trainer_part = ""
+    block_part = ""
+    trainer_idx = varname.find(".trainer_")
+    if trainer_idx >= 0:
+        trainer_part = varname[trainer_idx + 1:]
+    else:
+        trainer_idx = len(varname)
+    block_index = varname.find(".block")
+    if block_index >= 0:
+        block_part = varname[block_index + 1:trainer_idx]
+    else:
+        block_index = len(varname)
+    orig_var_name = varname[0:min(block_index, trainer_idx)]
+    return orig_var_name, block_part, trainer_part
