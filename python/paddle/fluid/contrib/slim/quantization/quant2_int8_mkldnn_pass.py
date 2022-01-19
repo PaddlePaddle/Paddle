@@ -656,15 +656,15 @@ class Quant2Int8MkldnnPass(object):
         return 'NHWC' if self._is_conv_quantized(graph) else 'NCHW'
 
     def _quantize_fp32_graph(self, graph):
-        graph = self._apply_pass(
-            graph, 'cpu_quantize_placement_pass',
-            ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
-            [self._ops_to_quantize, self._find_avg_pooling_ids(graph)])
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph,
                                  'reshape_transpose_matmul_mkldnn_fuse_pass')
         graph = self._apply_pass(graph,
                                  'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
+        graph = self._apply_pass(
+            graph, 'cpu_quantize_placement_pass',
+            ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
+            [self._ops_to_quantize, self._find_avg_pooling_ids(graph)])
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales, self._get_data_layout(graph)])
