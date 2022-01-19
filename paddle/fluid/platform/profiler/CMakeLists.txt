@@ -1,1 +1,5 @@
 cc_library(host_event_recorder SRCS host_event_recorder.cc DEPS os_info)
+cc_library(event_node SRCS event_node.cc)
+cc_library(event_python SRCS event_python.cc DEPS event_node)
+cc_library(chrometracing_logger SRCS chrometracing_logger.cc DEPS event_node)
+cc_test(test_event_node SRCS event_node_test.cc DEPS event_node chrometracing_logger)

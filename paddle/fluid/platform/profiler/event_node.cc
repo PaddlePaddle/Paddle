@@ -211,7 +211,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
 }
 
 std::map<uint64_t, std::vector<HostTraceEventNode*>> NodeTrees::Traverse(
-    bool bfs) {
+    bool bfs) const {
   // traverse the tree, provide two methods: bfs(breadth first search) or
   // dfs(depth first search)
   std::map<uint64_t, std::vector<HostTraceEventNode*>> thread2host_event_nodes;

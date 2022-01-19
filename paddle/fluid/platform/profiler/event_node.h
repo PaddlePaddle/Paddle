@@ -193,7 +193,7 @@ class NodeTrees {
   std::map<uint64_t, HostTraceEventNode*> GetNodeTrees() {
     return thread_event_trees_map_;
   }
-  std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(bool bfs);
+  std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(bool bfs) const;
 
  private:
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map_;
