@@ -382,6 +382,10 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::FP32, XPUPlace())})},
 
       // AddMore
+      {"sequence_conv",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sequence_conv_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
