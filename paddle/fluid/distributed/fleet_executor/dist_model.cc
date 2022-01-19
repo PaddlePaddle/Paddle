@@ -336,7 +336,7 @@ bool DistModel::PrepareFeedAndFetch() {
     if (op->Type() == "feed") {
       VLOG(3) << "feed op with feed var: " << op->Output("Out")[0];
       int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
-      if (feeds_.size() <= static_cast<int64_t>(idx)) {
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
@@ -345,7 +345,7 @@ bool DistModel::PrepareFeedAndFetch() {
     } else if (op->Type() == "fetch") {
       VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
       int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
-      if (fetches_.size() <= static_cast<int64_t>(idx)) {
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
       fetches_[idx] = op;
