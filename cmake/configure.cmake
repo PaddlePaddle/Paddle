@@ -31,10 +31,12 @@ endif(NOT WITH_PROFILER)
 if(WITH_AVX AND AVX_FOUND)
     set(SIMD_FLAG ${AVX_FLAG})
     add_definitions(-DPADDLE_WITH_AVX)
-elseif(SSE3_FOUND)
-    if(NOT WIN32)
-        set(SIMD_FLAG ${SSE3_FLAG})
-    endif()
+elseif(SSE3_FOUND AND NOT WIN32)
+    set(SIMD_FLAG ${SSE3_FLAG})
+endif()
+
+if (SSE3_FOUND)
+    # TODO: Runtime detection should be used here.
     add_definitions(-DPADDLE_WITH_SSE3)
 endif()
 
@@ -100,6 +102,11 @@ endif()
 if(WITH_IPU)
     message(STATUS "Compile with IPU!")
     add_definitions(-DPADDLE_WITH_IPU)
+endif()
+
+if(WITH_MLU)
+    message(STATUS "Compile with MLU!")
+    add_definitions(-DPADDLE_WITH_MLU)
 endif()
 
 if(WITH_GPU)

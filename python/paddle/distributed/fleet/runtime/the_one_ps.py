@@ -56,53 +56,77 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
     embedding_dim = 0
     for var in o_main_program.list_vars():
         if var.name == varname:
-            print("var:", var)
-            print("var.shape:", var.shape)
             embedding_dim = var.shape[1]
-            print("sparse dim:", embedding_dim)
             break
 
-    accessor.accessor_class = "CtrCommonAccessor"
-    accessor.fea_dim = embedding_dim + 2
-    accessor.embedx_dim = embedding_dim - 1
-    accessor.embedx_threshold = 0
+    if not accessor.HasField("accessor_class"):
+        accessor.accessor_class = "CtrCommonAccessor"
+    if not accessor.HasField("fea_dim"):
+        accessor.fea_dim = embedding_dim + 2
+    if not accessor.HasField("embedx_dim"):
+        accessor.embedx_dim = embedding_dim - 1
+    if not accessor.HasField("embedx_threshold"):
+        accessor.embedx_threshold = 0
 
     ctr_accessor_param = accessor.ctr_accessor_param
-    ctr_accessor_param.nonclk_coeff = 0.1
-    ctr_accessor_param.click_coeff = 1.0
-    ctr_accessor_param.base_threshold = 0
-    ctr_accessor_param.delta_threshold = 0
-    ctr_accessor_param.delta_keep_days = 16
-    ctr_accessor_param.show_click_decay_rate = 1
-    ctr_accessor_param.delete_threshold = 0
-    ctr_accessor_param.delete_after_unseen_days = 30
-    ctr_accessor_param.ssd_unseenday_threshold = 1
+    if not ctr_accessor_param.HasField("nonclk_coeff"):
+        ctr_accessor_param.nonclk_coeff = 0.1
+    if not ctr_accessor_param.HasField("click_coeff"):
+        ctr_accessor_param.click_coeff = 1.0
+    if not ctr_accessor_param.HasField("base_threshold"):
+        ctr_accessor_param.base_threshold = 0
+    if not ctr_accessor_param.HasField("delta_threshold"):
+        ctr_accessor_param.delta_threshold = 0
+    if not ctr_accessor_param.HasField("delta_keep_days"):
+        ctr_accessor_param.delta_keep_days = 16
+    if not ctr_accessor_param.HasField("show_click_decay_rate"):
+        ctr_accessor_param.show_click_decay_rate = 1
+    if not ctr_accessor_param.HasField("delete_threshold"):
+        ctr_accessor_param.delete_threshold = 0
+    if not ctr_accessor_param.HasField("delete_after_unseen_days"):
+        ctr_accessor_param.delete_after_unseen_days = 30
+    if not ctr_accessor_param.HasField("ssd_unseenday_threshold"):
+        ctr_accessor_param.ssd_unseenday_threshold = 1
 
-    embed_sgd_param = accessor.embed_sgd_param
-    embed_sgd_param.name = "SparseAdaGradSGDRule"
-    embed_sgd_param.adagrad.learning_rate = 0.05
-    embed_sgd_param.adagrad.initial_g2sum = 3.0
-    embed_sgd_param.adagrad.initial_range = 0.0001
-    embed_sgd_param.adagrad.weight_bounds.append(-10.0)
-    embed_sgd_param.adagrad.weight_bounds.append(10.0)
-
-    embedx_sgd_param = accessor.embedx_sgd_param
-    embedx_sgd_param.name = "SparseAdaGradSGDRule"
-    embedx_sgd_param.adagrad.learning_rate = 0.05
-    embedx_sgd_param.adagrad.initial_g2sum = 3.0
-    embedx_sgd_param.adagrad.initial_range = 0.0001
-    embedx_sgd_param.adagrad.weight_bounds.append(-10.0)
-    embedx_sgd_param.adagrad.weight_bounds.append(10.0)
+    for sgd_param in [accessor.embed_sgd_param, accessor.embedx_sgd_param]:
+        if not sgd_param.HasField("name"):
+            sgd_param.name = "SparseAdaGradSGDRule"
+        if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
+            if not sgd_param.adagrad.HasField("learning_rate"):
+                sgd_param.adagrad.learning_rate = 0.05
+            if not sgd_param.adagrad.HasField("initial_g2sum"):
+                sgd_param.adagrad.initial_g2sum = 3.0
+            if not sgd_param.adagrad.HasField("initial_range"):
+                sgd_param.adagrad.initial_range = 0.0001
+            if len(sgd_param.adagrad.weight_bounds) == 0:
+                sgd_param.adagrad.weight_bounds.extend([-10.0, 10.0])
+        if sgd_param.name == "SparseNaiveSGDRule":
+            if not sgd_param.naive.HasField("learning_rate"):
+                sgd_param.naive.learning_rate = 0.05
+            if not sgd_param.naive.HasField("initial_range"):
+                sgd_param.naive.initial_range = 0.0001
+            if len(sgd_param.naive.weight_bounds) == 0:
+                sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
+        if sgd_param.name == "SparseAdamSGDRule":
+            if not sgd_param.adam.HasField("learning_rate"):
+                sgd_param.adam.learning_rate = 0.001
+            if not sgd_param.adam.HasField("initial_range"):
+                sgd_param.adam.initial_range = 0.0001
+            if not sgd_param.adam.HasField("beta1_decay_rate"):
+                sgd_param.adam.beta1_decay_rate = 0.9
+            if not sgd_param.adam.HasField("beta2_decay_rate"):
+                sgd_param.adam.beta2_decay_rate = 0.999
+            if not sgd_param.adam.HasField("ada_epsilon"):
+                sgd_param.adam.ada_epsilon = 1e-08
+            if len(sgd_param.adam.weight_bounds) == 0:
+                sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
 
 def check_embedding_dim(accessor, varname, o_main_program):
     embedding_dim = 0
     for var in o_main_program.list_vars():
         if var.name == varname:
-            print("var:", var)
-            print("var.shape:", var.shape)
             embedding_dim = var.shape[1]
-            print("sparse dim:", embedding_dim)
             break
     fea_dim = accessor.fea_dim
     if fea_dim != embedding_dim + 2:
@@ -147,6 +171,8 @@ class CommonAccessor:
         self.dims = []
         self.trainer_num = 0
         self.sync = "false"
+        self.table_num = None
+        self.table_dim = None
         self.initializers = []
         self.opt_input_map = {}
         self.opt_attr_map = {}
@@ -232,7 +258,7 @@ class CommonAccessor:
                 break
         return attr_str
 
-    def parse_by_optimizer(self, grad_name, is_sparse, total_dims,
+    def parse_by_optimizer(self, grad_name, is_sparse, size, single_dim,
                            compiled_strategy, adam_d2sum):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
         param_name = compiled_strategy.grad_name_to_param_name[grad_name]
@@ -257,6 +283,8 @@ class CommonAccessor:
         initializers = []
 
         self.trainer_num = compiled_strategy.get_trainers()
+        self.table_num = size
+        self.table_dim = single_dim
 
         if oop.type != 'adam' and adam_d2sum == True:
             print('optimization algorithm is not adam, set adam_d2sum False')
@@ -270,7 +298,7 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["naive_adagrad"]
             attr_varnames = self.opt_attr_map["naive_adagrad"]
             self.accessor_class = "sgd"
-        elif adam_d2sum:
+        elif adam_d2sum and not is_sparse:
             param_varnames = self.opt_input_map["adam_d2sum"]
             attr_varnames = self.opt_attr_map["adam_d2sum"]
             self.accessor_class = "adam_d2sum"
@@ -285,10 +313,9 @@ class CommonAccessor:
                 #for dims
                 if shape is None:
                     if is_sparse:
-                        shape = total_dims
+                        shape = single_dim
                     else:
-                        shape = self.get_shard(total_dims, pserver_num,
-                                               pserver_id)
+                        shape = self.get_shard(size, pserver_num, pserver_id)
                 dims.append(shape)
 
                 #for initializers
@@ -327,9 +354,9 @@ class CommonAccessor:
 
                     if shape is None:
                         if is_sparse:
-                            shape = total_dims
+                            shape = single_dim
                         else:
-                            shape = self.get_shard(total_dims, pserver_num,
+                            shape = self.get_shard(size, pserver_num,
                                                    pserver_id)
                     dims.append(shape)
 
@@ -358,6 +385,10 @@ class CommonAccessor:
             attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
+        if self.table_num:
+            attrs += "table_num: {} ".format(self.table_num)
+        if self.table_dim:
+            attrs += "table_dim: {} ".format(self.table_dim)
 
         for param in self.params:
             attrs += "params: \"{}\" ".format(param)
@@ -427,10 +458,7 @@ class Table:
             accessor_str = accessor_str.format(
                 conv_indent(indent), self.accessor_proto, conv_indent(indent))
             attrs += accessor_str + "\n"
-            return table_str.format(
-                conv_indent(indent), attrs, conv_indent(indent))
-
-        if self.accessor is not None:
+        elif self.accessor is not None:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
 
@@ -917,19 +945,14 @@ class TheOnePSRuntime(RuntimeBase):
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        import copy
-                        table_proto = copy.deepcopy(self.context[
-                            "user_defined_strategy"].sparse_table_configs)
-                        print('table proto:', table_proto)
-                        print('table_class:', table_proto.table_class)
-                        print('shard_num:', table_proto.shard_num)
-                        print('table_proto.accessor:', table_proto.accessor)
-                        print('accessor.IsInitialized',
-                              table_proto.accessor.IsInitialized())
-                        print('accessor.ByteSize',
-                              table_proto.accessor.ByteSize())
-                        if table_proto.table_class:
-                            print('table_proto.table_class is true')
+                        all_table_proto = self.context[
+                            "user_defined_strategy"].sparse_table_configs
+                        table_proto = all_table_proto.add()
+                        for proto in all_table_proto:
+                            if proto.table_name == common.table_name:
+                                table_proto = proto
+                                break
+                        if table_proto.HasField("table_class"):
                             table.table_class = table_proto.table_class
                         else:
                             table.table_class = parse_table_class(
@@ -939,8 +962,7 @@ class TheOnePSRuntime(RuntimeBase):
                             warnings.warn(
                                 "The PS mode must use MemorySparseTable.")
 
-                        if table_proto.shard_num:
-                            print('table_proto.shard_num is true')
+                        if table_proto.HasField("shard_num"):
                             table.shard_num = table_proto.shard_num
                         else:
                             table.shard_num = 1000
@@ -949,22 +971,18 @@ class TheOnePSRuntime(RuntimeBase):
                             )
 
                         if table_proto.accessor.ByteSize() == 0:
-                            print('table_proto.accessor is false')
-                            get_default_accessor_proto(table_proto.accessor,
-                                                       common.table_name,
-                                                       self.origin_main_program)
                             warnings.warn(
                                 "The accessor of sparse table is not set, use default value."
                             )
+                        get_default_accessor_proto(table_proto.accessor,
+                                                   common.table_name,
+                                                   self.origin_main_program)
                         check_embedding_dim(table_proto.accessor,
                                             common.table_name,
                                             self.origin_main_program)
-                        print('accessor.ByteSize',
-                              table_proto.accessor.ByteSize())
                         from google.protobuf import text_format
                         table.accessor_proto = text_format.MessageToString(
                             table_proto.accessor)
-                        print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -974,8 +992,9 @@ class TheOnePSRuntime(RuntimeBase):
                 adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
                                           ctx.is_sparse(),
-                                          ctx.sections()[1] if ctx.is_sparse()
-                                          else ctx.sections()[0],
+                                          ctx.sections()[0],
+                                          ctx.sections()[1]
+                                          if ctx.is_sparse() else 1,
                                           self.compiled_strategy, adam_d2sum)
 
                 if ctx.is_sparse():
@@ -1128,17 +1147,25 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
+    def _get_inference_model_path(self, dirname):
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
+        return model_path
+
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
         distributed_varnames = get_sparse_tablenames(
             self.compiled_strategy.origin_main_program, True)
         values = []
+        model_path = self._get_inference_model_path(dirname)
         for id, names in context.items():
             if names[0] not in distributed_varnames:
                 # only save sparse param to local
                 try:
-                    self._worker.recv_and_save_model(id, dirname)
+                    self._worker.recv_and_save_model(id, model_path)
                 except:
                     pass
             # save sparse & distributed param on server
@@ -1263,10 +1290,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         infer_program._copy_dist_param_info_from(program)
 
-        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
-            model_path = "./dnn_plugin"
-        else:
-            model_path = os.path.join(dirname, "dnn_plugin")
+        model_path = self._get_inference_model_path(dirname)
         model_basename = "__model__"
         model_basename = os.path.join(model_path, model_basename)
         paddle.save(infer_program, model_basename)
@@ -1275,10 +1299,8 @@ class TheOnePSRuntime(RuntimeBase):
             is_dense=False,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
-        print("the one ps sparses:", sparses)
         sparse_names = self._save_sparse_params(executor, dirname, sparses,
                                                 main_program, mode)
-        print("the one ps sparse names:", sparse_names)
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
@@ -1293,7 +1315,7 @@ class TheOnePSRuntime(RuntimeBase):
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),
                 infer_program.list_vars()))
-        print("remain_vars:", [var.name for var in remaining_vars])
+
         for var in remaining_vars:
             tensor = var.get_value()
             paddle.save(

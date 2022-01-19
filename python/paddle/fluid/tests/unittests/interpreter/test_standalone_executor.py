@@ -32,17 +32,15 @@ class LinearTestCase(unittest.TestCase):
         self.place.set_place(place)
 
     def build_program(self):
-        a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
-        b = paddle.ones([2, 2]) * 2
-        t = paddle.static.nn.fc(a, 2)
-        c = t + b
-
-        main_program = paddle.fluid.default_main_program()
-        startup_program = paddle.fluid.default_startup_program()
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
+            b = paddle.ones([2, 2]) * 2
+            t = paddle.static.nn.fc(a, 2)
+            c = t + b
 
         return startup_program, main_program, c
-
-        return standaloneexecutor, c
 
     def test_interp_base(self):
         startup_program, main_program, c = self.build_program()
@@ -130,6 +128,10 @@ class MultiStreamModelTestCase(unittest.TestCase):
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])
 
+        res_sequential = self.run_new_executor_sequential()
+        for gt, out in zip(ground_truths, res_sequential):
+            self.assertEqual(gt[0], out[0])
+
     def run_raw_executor(self):
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
@@ -157,6 +159,12 @@ class MultiStreamModelTestCase(unittest.TestCase):
             outs.append(
                 np.array(inter_core.run({}, fetch_list)._move_to_list()[0]))
         return outs
+
+    def run_new_executor_sequential(self):
+        os.environ['FLAGS_new_executor_sequential_run'] = '1'
+        res = self.run_new_executor()
+        del os.environ['FLAGS_new_executor_sequential_run']
+        return res
 
 
 class SwitchExecutorInterfaceTestCase(MultiStreamModelTestCase):

@@ -72,24 +72,32 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
     const int cur_block_nnz =
         layout_rowptr[cur_block_row + 1] - layout_rowptr[cur_block_row];
 
-    T srcdata[(BlockSize * BlockNnzMax + WarpSize - 1) / WarpSize];
-    T attndata[(BlockSize * BlockNnzMax + WarpSize - 1) / WarpSize];
-
-    // read kp mask
-    T cur_kp_mask = (kp_mask == nullptr) ? 0 : kp_mask[cur_row];
+    T srcdata[(BlockSize * BlockNnzMax + WarpSize - 1) / WarpSize] = {0};
+    T attndata[(BlockSize * BlockNnzMax + WarpSize - 1) / WarpSize] = {0};
 
     // read tensor data, attn mask
     const int iter = (cur_block_nnz + WarpSize - 1) / WarpSize;
     const T* srcptr = src + layout_rowptr[cur_block_row];
-    T* attnptr = nullptr;
-    if (attn_mask != nullptr) {
-      const T* attnptr = attn_mask + cur_block_row * num_rows;
-    }
+
+    const T* attnptr = (attn_mask == nullptr)
+                           ? nullptr
+                           : (attn_mask + cur_block_row * num_rows);
+    // the coloumn start index in current row
     const int* colindex = layout_colindex + layout_rowptr[cur_block_row];
     for (int j = 0; j < iter; j++) {
       int cur_block_col = j * WarpSize + threadIdx.x;
       int cur_reg_index = j;
       if (cur_block_col < cur_block_nnz) {
+        // read kp mask
+        T cur_kp_mask;
+        if ((kp_mask != nullptr) &&
+            std::abs(kp_mask[colindex[cur_block_col]]) <
+                std::numeric_limits<T>::epsilon()) {
+          cur_kp_mask = -std::numeric_limits<T>::infinity();
+        } else {
+          cur_kp_mask = 0;
+        }
+        // do mask operation
         if ((attnptr != nullptr) &&
             std::abs(attnptr[colindex[cur_block_col]]) <
                 std::numeric_limits<T>::epsilon()) {
@@ -197,21 +205,61 @@ template <typename DeviceContext, typename T>
 void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
                           const Tensor* offset, const Tensor* columns,
                           Tensor* input, Tensor* output, const int blocksize,
-                          const int num_rows, const int num_cols) {
+                          const int num_rows, const int num_cols,
+                          const Tensor* key_padding_mask,
+                          const Tensor* attn_mask) {
   const int* offset_data = offset->data<int>();
   const int* columns_data = columns->data<int>();
   T* input_data = input->data<T>();
   T* output_data = output->data<T>();
+  // Add mask
+  const T* key_padding_mask_data =
+      (key_padding_mask != nullptr) ? key_padding_mask->data<T>() : nullptr;
+  const T* attn_mask_data =
+      (attn_mask != nullptr) ? attn_mask->data<T>() : nullptr;
 
   const int block_size = 1;
   dim3 blocks(32, 4, 1);
   int grid = (num_rows * block_size + 3) / 4;
   T scaling = static_cast<T>(1.0) / sqrt(static_cast<T>(num_cols));
 
-  const int block_nnz_max = 256;
-  BlockSparseSoftmaxForward<T, block_size, block_nnz_max><<<grid, blocks>>>(
-      output_data, input_data, scaling, nullptr, nullptr, offset_data,
-      columns_data, num_rows);
+  if (num_cols <= 4) {
+    BlockSparseSoftmaxForward<T, block_size, 4><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 4 && num_cols <= 8) {
+    BlockSparseSoftmaxForward<T, block_size, 8><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 8 && num_cols <= 16) {
+    BlockSparseSoftmaxForward<T, block_size, 16><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 16 && num_cols <= 32) {
+    BlockSparseSoftmaxForward<T, block_size, 32><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 32 && num_cols <= 64) {
+    BlockSparseSoftmaxForward<T, block_size, 64><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 64 && num_cols <= 128) {
+    BlockSparseSoftmaxForward<T, block_size, 128><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 128 && num_cols <= 256) {
+    BlockSparseSoftmaxForward<T, block_size, 256><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else if (num_cols > 256 && num_cols <= 512) {
+    BlockSparseSoftmaxForward<T, block_size, 512><<<grid, blocks>>>(
+        output_data, input_data, scaling, key_padding_mask_data, attn_mask_data,
+        offset_data, columns_data, num_rows);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The head_dim of query in sparse_attention op should less or equal "
+        "512"));
+  }
 }
 
 template <typename DeviceContext, typename T>
@@ -231,10 +279,43 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
   int grid = (num_rows * block_size + 3) / 4;
   T scaling = static_cast<T>(1.0) / sqrt(static_cast<T>(num_cols));
 
-  const int block_nnz_max = 256;
-  BlockSparseSoftmaxBackward<T, block_size, block_nnz_max><<<grid, blocks>>>(
-      dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-      num_rows);
+  if (num_cols <= 4) {
+    BlockSparseSoftmaxBackward<T, block_size, 4><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 4 && num_cols <= 8) {
+    BlockSparseSoftmaxBackward<T, block_size, 8><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 8 && num_cols <= 16) {
+    BlockSparseSoftmaxBackward<T, block_size, 16><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 16 && num_cols <= 32) {
+    BlockSparseSoftmaxBackward<T, block_size, 32><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 32 && num_cols <= 64) {
+    BlockSparseSoftmaxBackward<T, block_size, 64><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 64 && num_cols <= 128) {
+    BlockSparseSoftmaxBackward<T, block_size, 128><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 128 && num_cols <= 256) {
+    BlockSparseSoftmaxBackward<T, block_size, 256><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else if (num_cols > 256 && num_cols <= 512) {
+    BlockSparseSoftmaxBackward<T, block_size, 512><<<grid, blocks>>>(
+        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+        num_rows);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The head_dim of query in sparse_attention op should less or equal "
+        "512"));
+  }
 }
 
 using VarType = framework::proto::VarType;
@@ -408,6 +489,12 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     sparse_dot_sdd_ptr->mutable_data<T>(ctx.GetPlace());
     auto softmax_ptr = ctx.Output<Tensor>("Softmax");
     softmax_ptr->mutable_data<T>(ctx.GetPlace());
+    // add Mask
+    auto* key_padding_mask = ctx.HasInput("KeyPaddingMask")
+                                 ? ctx.Input<Tensor>("KeyPaddingMask")
+                                 : nullptr;
+    auto* attn_mask =
+        ctx.HasInput("AttnMask") ? ctx.Input<Tensor>("AttnMask") : nullptr;
 
     auto output = *output_ptr;
     auto result_sdd = *sparse_dot_sdd_ptr;
@@ -435,9 +522,25 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
                                &offset_lists[i], &columns_lists[i],
                                &result_sdd_lists[i], M, N, false, true);
 
-      SparseSoftmaxForward<DeviceContext, T>(
-          dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
-          &result_softmax_lists[i], 1, M, N);
+      if (key_padding_mask != nullptr && attn_mask != nullptr) {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N,
+            key_padding_mask + (i / num_heads) * M, attn_mask);
+      } else if (key_padding_mask != nullptr && attn_mask == nullptr) {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N,
+            key_padding_mask + (i / num_heads) * M, nullptr);
+      } else if (key_padding_mask == nullptr && attn_mask != nullptr) {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N, nullptr, attn_mask);
+      } else {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N, nullptr, nullptr);
+      }
 
       DotDsd<DeviceContext, T>(dev_ctx, &offset_lists[i], &columns_lists[i],
                                &result_softmax_lists[i], &value_lists[i],

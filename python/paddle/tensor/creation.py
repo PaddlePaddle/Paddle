@@ -27,11 +27,12 @@ from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..fluid.framework import in_eager_mode
+from ..fluid.framework import _in_eager_mode
 
 __all__ = []
 
@@ -116,12 +117,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             ) != _current_expected_place()._get_device_id():
         place = _current_expected_place()
 
-    if in_eager_mode():
-        if dtype is None:
-            dtype = paddle.get_default_dtype()
-        return core.eager.to_tensor(data,
-                                    convert_dtype(dtype), place, stop_gradient)
-
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
@@ -171,12 +166,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    return paddle.Tensor(
-        value=data,
-        place=place,
-        persistable=False,
-        zero_copy=False,
-        stop_gradient=stop_gradient)
+    # TOOD(jiabin): Support kwargs in eager tensor constructor
+    if _in_eager_mode() and isinstance(data, np.ndarray):
+        return core.eager.EagerTensor(data, place, False, False, None,
+                                      stop_gradient)
+    else:
+        return paddle.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=False,
+            stop_gradient=stop_gradient)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
@@ -1157,8 +1157,7 @@ def empty_like(x, dtype=None, name=None):
 
 def assign(x, output=None):
     """
- 
- 
+
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
@@ -1189,6 +1188,36 @@ def assign(x, output=None):
     check_type(x, 'x', (Variable, np.ndarray, list, tuple, float, int, bool),
                'assign')
     return tensor.assign(x, output)
+
+
+def clone(x, name=None):
+    """
+    Returns a copy of input Tensor. It will always have a Tensor copy. 
+    
+    In addition, This function is derivable, so gradients will flow back from the output to input.
+
+    Parameters:
+        x (Tensor): The input Tensor.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns: A Tensor copied from ``input`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones([2])
+            x.stop_gradient = False
+            clone_x = paddle.clone(x)
+
+            y = clone_x**3
+            y.backward()
+            print(clone_x.grad)          # [3]
+            print(x.grad)                # [3]
+    """
+    return x.clone()
 
 
 #NOTE(zhiqiu): not public 
@@ -1250,3 +1279,46 @@ def _memcpy(input, place=None, output=None):
         outputs={'Out': [output]},
         attrs=attrs)
     return output
+
+
+def complex(real, imag, name=None):
+    """Return a compelx tensor given the real and image component.
+
+    Args:
+        real (Tensor): The real component. The data type should be 'float32' or 'float64'.
+        imag (Tensor): The image component. The data type should be the same as ``real``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
+
+    **Note**:
+        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
+            y = paddle.arange(3, dtype=paddle.float32)
+            z = paddle.complex(x, y)
+            print(z.numpy())
+
+            # [[0.+0.j 0.+1.j 0.+2.j]
+            #  [1.+0.j 1.+1.j 1.+2.j]]
+    """
+    if in_dygraph_mode():
+        return paddle._C_ops.complex(real, imag)
+
+    check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
+    check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
+
+    op_type = "complex"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": real, "Y": imag}
+    out = helper.create_variable_for_type_inference(
+        dtype=_real_to_complex_dtype(real.dtype))
+    outputs = {"Out": out}
+    attrs = {}
+    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out

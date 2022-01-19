@@ -12,18 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
-
-// only can include the headers in paddle/top/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -91,7 +80,8 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
       }
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dx, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
   // dy
@@ -106,7 +96,8 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dy, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
 }
@@ -137,10 +128,10 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x->numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
-    dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
     dim3 grid_size =
-        dim3(((size + vec_size - 1) / vec_size + ELEMENTWISE_BLOCK_SIZE - 1) /
-                 ELEMENTWISE_BLOCK_SIZE,
+        dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
+                 PREDEFINED_BLOCK_SIZE,
              1);
     SimpleElemwiseAddGradCUDAKernel<
         T><<<grid_size, block_size, 0,

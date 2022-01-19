@@ -57,7 +57,7 @@ struct EigenTensor {
   }
 
   static Type From(Tensor& tensor) {  // NOLINT
-    return From(tensor, tensor.dims_);
+    return From(tensor, tensor.dims());
   }  // NOLINT
 
   static ConstType From(const Tensor& tensor, DDim dims) {
@@ -65,7 +65,7 @@ struct EigenTensor {
   }
 
   static ConstType From(const Tensor& tensor) {
-    return From(tensor, tensor.dims_);
+    return From(tensor, tensor.dims());
   }
 };
 
@@ -74,7 +74,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
   static typename EigenMatrix::Type Reshape(Tensor& tensor,  // NOLINT
                                             int num_col_dims) {
-    int rank = tensor.dims_.size();
+    int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank), true,
                       platform::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
@@ -86,7 +86,7 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
 
   static typename EigenMatrix::ConstType Reshape(const Tensor& tensor,
                                                  int num_col_dims) {
-    int rank = tensor.dims_.size();
+    int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank), true,
                       platform::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
@@ -102,12 +102,12 @@ template <typename T, int MajorType = Eigen::RowMajor,
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten reshapes a Tensor into an EigenVector.
   static typename EigenVector::Type Flatten(Tensor& tensor) {  // NOLINT
-    return EigenVector::From(tensor, {product(tensor.dims_)});
+    return EigenVector::From(tensor, {product(tensor.dims())});
   }
 
   static typename EigenVector::ConstType Flatten(
       const Tensor& tensor) {  // NOLINT
-    return EigenVector::From(tensor, {product(tensor.dims_)});
+    return EigenVector::From(tensor, {product(tensor.dims())});
   }
 };
 

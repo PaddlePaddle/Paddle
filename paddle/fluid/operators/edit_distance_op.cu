@@ -135,8 +135,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         if (normalized) {
           distance = distance / n;
         }
-        memory::Copy(BOOST_GET_CONST(Place, ctx.GetPlace()), out + num,
-                     platform::CPUPlace(), &distance, sizeof(T), stream);
+        memory::Copy(ctx.GetPlace(), out + num, platform::CPUPlace(), &distance,
+                     sizeof(T), stream);
       } else {
         framework::Tensor dist_t;
         dist_t.Resize({m + 1, n + 1});

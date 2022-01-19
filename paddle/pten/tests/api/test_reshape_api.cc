@@ -21,12 +21,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(ManipulationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(ManipulationCUDA);
-#endif
-
 namespace paddle {
 namespace tests {
 
@@ -36,10 +30,10 @@ using DDim = paddle::framework::DDim;
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, reshape) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));

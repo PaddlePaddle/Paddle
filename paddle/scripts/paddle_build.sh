@@ -61,6 +61,8 @@ function init() {
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
 
+    export FLAGS_use_curand=True
+
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
     # branch must not be `${BRANCH}` which is usually develop.
@@ -216,6 +218,7 @@ function cmake_base() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_INFRT=${WITH_INFRT:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
@@ -235,6 +238,7 @@ function cmake_base() {
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -262,6 +266,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_INFRT=${WITH_INFRT:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
@@ -281,6 +286,7 @@ EOF
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -324,7 +330,7 @@ function check_style() {
     clang-format --version
 
     commit_files=on
-    for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
+    for file_name in `git diff --numstat ${BRANCH} |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
@@ -573,7 +579,7 @@ EOF
         export http_proxy=
         export https_proxy=
         set -x
-
+        
         set +ex
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
@@ -603,7 +609,7 @@ EOF
         tmpfile=$tmp_dir/$tmpfile_rand
         set +ex
         ut_startTime_s=`date +%s`
-        get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label="(NIGHTLY_LABEL)"
         else
@@ -1078,7 +1084,7 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-        disable_ut_quickly=''
+        disable_ut_quickly='disable_ut'
     fi
 }
 
@@ -1227,7 +1233,7 @@ set +x
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
 
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
@@ -1717,7 +1723,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
-        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1751,7 +1757,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V)        # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1812,7 +1818,7 @@ EOF
 
 set +x
         test_cases=$(ctest -N -V) # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -2242,7 +2248,7 @@ EOF
     demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_ROOT_DIR:-/usr}
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     demo_ci_endTime_s=`date +%s`

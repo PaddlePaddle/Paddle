@@ -43,12 +43,11 @@ class API:
             if 'data_type' not in self.kernel or len(self.kernel[
                     'data_type']) == 0:
                 self.kernel['data_type'] = None
-            if 'param' not in self.kernel or len(self.kernel['param']) == 0:
+            if 'param' not in self.kernel:
                 self.kernel['param'] = None
 
             self.infer_meta = api_item_yaml['infer_meta']
-            if 'param' not in self.infer_meta or len(self.infer_meta[
-                    'param']) == 0:
+            if 'param' not in self.infer_meta:
                 self.infer_meta['param'] = None
 
     def parse_args(self, args_str):
@@ -111,7 +110,7 @@ class API:
 
     def gene_api_declaration(self):
         return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
+PADDLE_API {self.output} {self.api}({self.args['args_declare']});
 """
 
     def gene_kernel_select(self, input_names, attrs, kernel):
@@ -263,67 +262,64 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
   auto out_meta = pten::{infer_meta['func']}({param_code});
 """
 
-    def gene_kernel_context(self, input_names, attrs, infer_meta, kernel_param):
+    def get_kernel_args(self, input_names, attrs, kernel_param):
+        input_tensor_code = ""
+        for input_name in input_names:
+            # set input code
+            input_tensor_code = input_tensor_code + f"""
+  auto {self.prefix_tensor_name}{input_name} = std::dynamic_pointer_cast<pten::DenseTensor>({input_name}.impl());"""
+
         attr_names = attrs['names']
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        input_code_str = ""
-        attr_code_str = ""
+        kernel_args = "*dev_ctx, "
         for param in kernel_param:
             if param in input_names:
-                # set input for kernel_context
-                input_code_str = input_code_str + f"""
-  auto {self.prefix_tensor_name}{param} = std::dynamic_pointer_cast<pten::DenseTensor>({param}.impl());
-  kernel_context.EmplaceBackInput({self.prefix_tensor_name}{param});"""
-
+                kernel_args = kernel_args + "*" + self.prefix_tensor_name + param + ", "
             elif param in attr_names:
                 # set attr for kernel_context
                 if 'ScalarArray' in attrs['attr_info'][param][0]:
                     param = 'pten::ScalarArray(' + param + ')'
                 elif 'Scalar' in attrs['attr_info'][param][0]:
                     param = 'pten::Scalar(' + param + ')'
-                attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({param});"""
-
+                kernel_args = kernel_args + param + ", "
             elif isinstance(param, bool):
-                attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({str(param).lower()});"""
-
+                kernel_args = kernel_args + str(param).lower() + ", "
             else:
-                attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({param});"""
-
-        return f"""
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-  auto kernel_context = pten::KernelContext(dev_ctx);
-{input_code_str}
-{attr_code_str}
-{self.gene_infer_meta(input_names, attr_names, infer_meta)}
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_backend));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
-  kernel_context.EmplaceBackOutput(dense_out);
-
-  Tensor out;
-  out.set_impl(dense_out);"""
+                kernel_args = kernel_args + str(param) + ", "
+        return input_tensor_code, kernel_args[:-2]
 
     def gene_api_code(self):
         if self.is_base_api:
+            input_tensors, kernel_args = self.get_kernel_args(
+                self.args['inputs']['names'], self.args['attrs'],
+                self.kernel['param'])
             return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-{self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs'], self.infer_meta, self.kernel['param'])}
 
-  kernel(&kernel_context);
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{input_tensors}
+{self.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            pten::TransToFluidPlace(kernel_backend)),
+        std::move(out_meta));
+
+  Tensor out;
+  out.set_impl(dense_out);
+
+  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.api}_kernel>();
+  (*kernel_fn)({kernel_args}, dense_out.get());
+
   return out;
 }}
 """
 
         else:
             return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
   return {self.invoke};
 }}
 """
@@ -344,28 +340,16 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
+#include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infermeta.h"
-"""
-
-
-def module_declare():
-    return """
-PT_DECLARE_MODULE(CreationCPU);
-PT_DECLARE_MODULE(LinalgCPU);
-PT_DECLARE_MODULE(ManipulationCPU);
-PT_DECLARE_MODULE(MathCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-PT_DECLARE_MODULE(LinalgCUDA);
-PT_DECLARE_MODULE(ManipulationCUDA);
-PT_DECLARE_MODULE(MathCUDA);
-#endif
+#include "paddle/pten/infermeta/binary.h"
+#include "paddle/pten/infermeta/multiary.h"
+#include "paddle/pten/infermeta/nullary.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/declarations.h"
 """
 
 
@@ -405,7 +389,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     include_header_file = "paddle/pten/api/include/api.h"
     source_file.write(source_include(include_header_file))
-    source_file.write(module_declare())
     source_file.write(namespace[0])
 
     for api in apis:

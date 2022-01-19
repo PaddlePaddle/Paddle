@@ -16,6 +16,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
+from paddle import _C_ops
 
 
 def graph_send_recv(x, src_index, dst_index, pool_type="sum", name=None):
@@ -82,8 +83,8 @@ def graph_send_recv(x, src_index, dst_index, pool_type="sum", name=None):
             % pool_type)
 
     if in_dygraph_mode():
-        out, tmp = core.ops.graph_send_recv(x, src_index, dst_index,
-                                            'pool_type', pool_type.upper())
+        out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index, 'pool_type',
+                                          pool_type.upper())
         return out
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),

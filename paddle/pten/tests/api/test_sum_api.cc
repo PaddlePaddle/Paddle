@@ -30,10 +30,10 @@ using DDim = paddle::framework::DDim;
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, sum) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
@@ -50,7 +50,7 @@ TEST(API, sum) {
   std::vector<int64_t> axis = {0, 1};
 
   // 2. test API
-  auto out = paddle::experimental::sum(x, axis, false);
+  auto out = paddle::experimental::sum(x, axis, DataType::UNDEFINED, false);
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
   ASSERT_EQ(out.dims()[0], 1);

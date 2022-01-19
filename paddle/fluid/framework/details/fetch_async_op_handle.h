@@ -22,14 +22,18 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 
 namespace ir {
 class Node;
 }  // namespace ir
 }  // namespace framework
+
 namespace platform {
 class DeviceContext;
 }  // namespace platform

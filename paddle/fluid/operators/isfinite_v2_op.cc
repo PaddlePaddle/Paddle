@@ -34,7 +34,6 @@ class OverflowKernel;
 }  // namespace operators
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 struct float16;
 }  // namespace platform
 }  // namespace paddle

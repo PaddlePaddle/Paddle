@@ -44,6 +44,7 @@ from .common import AlphaDropout  # noqa: F401
 from .common import Upsample  # noqa: F401
 from .common import UpsamplingBilinear2D  # noqa: F401
 from .common import UpsamplingNearest2D  # noqa: F401
+from .common import Fold
 from .pooling import AvgPool1D  # noqa: F401
 from .pooling import AvgPool2D  # noqa: F401
 from .pooling import AvgPool3D  # noqa: F401
@@ -56,7 +57,9 @@ from .pooling import AdaptiveAvgPool3D  # noqa: F401
 from .pooling import AdaptiveMaxPool1D  # noqa: F401
 from .pooling import AdaptiveMaxPool2D  # noqa: F401
 from .pooling import AdaptiveMaxPool3D  # noqa: F401
+from .pooling import MaxUnPool1D  # noqa: F401
 from .pooling import MaxUnPool2D  # noqa: F401
+from .pooling import MaxUnPool3D  # noqa: F401
 from .conv import Conv1D  # noqa: F401
 from .conv import Conv2D  # noqa: F401
 from .conv import Conv3D  # noqa: F401
@@ -73,6 +76,7 @@ from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401
 from .loss import CTCLoss  # noqa: F401
 from .loss import SmoothL1Loss  # noqa: F401
+from .loss import HingeEmbeddingLoss  # noqa: F401
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401
