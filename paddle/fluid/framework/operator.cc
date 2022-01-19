@@ -1819,21 +1819,25 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
-      VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
-              << tensor_in->place() << " to " << expected_place;
+      // TODO(zyfncg): Now there is no kernel which need to transform input
+      // data, so we commented out following code temporarily,
+      // and it will be used in the future.
 
-      if (!new_scope) {
-        new_scope = &scope.NewScope();
-      }
+      // VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
+      //         << tensor_in->place() << " to " << expected_place;
 
-      // Create new var with the same name in transfer scopes
-      auto* trans_var = new_scope->Var(input_names[i]);
-      ins_vector[i] = trans_var;
+      // if (!new_scope) {
+      //   new_scope = &scope.NewScope();
+      // }
 
-      // Do transfer
-      Tensor out;
-      framework::TensorCopySync(*tensor_in, expected_place, &out);
-      SetTensorToVariable(*var, out, trans_var);
+      // // Create new var with the same name in transfer scopes
+      // auto* trans_var = new_scope->Var(input_names[i]);
+      // ins_vector[i] = trans_var;
+
+      // // Do transfer
+      // Tensor out;
+      // framework::TensorCopySync(*tensor_in, expected_place, &out);
+      // SetTensorToVariable(*var, out, trans_var);
     }
   }
 
@@ -1884,13 +1888,11 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto* var = ins_vector[offset];
       if (var->IsType<framework::LoDTensor>()) {
         tensor_in = &(var->Get<framework::LoDTensor>());
-      } else if (var->template IsType<framework::SelectedRows>()) {
-        tensor_in = &(var->Get<framework::SelectedRows>().value());
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }
+      }  // TODO(zyfncg): Add support for SelectedRows
 
       pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
@@ -1909,14 +1911,11 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto* var = outs_vector[offset];
       if (var->template IsType<framework::LoDTensor>()) {
         tensor_out = var->template GetMutable<framework::LoDTensor>();
-      } else if (var->template IsType<framework::SelectedRows>()) {
-        tensor_out = var->template GetMutable<framework::SelectedRows>()
-                         ->mutable_value();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }
+      }  // TODO(zyfncg): Add support for SelectedRows
 
       experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
       SetAllocationForOutputTenosr(

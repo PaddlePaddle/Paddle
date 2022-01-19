@@ -284,14 +284,18 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
           continue;
         }
 
-        VLOG(3) << "Pten Transform Variable " << var_base->Name() << " from "
-                << tensor_in->place() << " to " << expected_place;
+        // TODO(zyfncg): Now there is no kernel which need to transform input
+        // data, so we commented out following code temporarily,
+        // and it will be used in the future.
 
-        framework::Tensor tmp_tensor;
-        framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
+        // VLOG(3) << "Pten Transform Variable " << var_base->Name() << " from "
+        //         << tensor_in->place() << " to " << expected_place;
 
-        SetTensorToVariable(var_base->Var(), tmp_tensor,
-                            var_base->MutableVar());
+        // framework::Tensor tmp_tensor;
+        // framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
+
+        // SetTensorToVariable(var_base->Var(), tmp_tensor,
+        //                     var_base->MutableVar());
       }
     }
   }
@@ -364,14 +368,11 @@ static void BuildDygraphPtenKernelContext(
       framework::Tensor* tensor_out = nullptr;
       if (var->template IsType<framework::LoDTensor>()) {
         tensor_out = var->template GetMutable<framework::LoDTensor>();
-      } else if (var->template IsType<framework::SelectedRows>()) {
-        tensor_out = var->template GetMutable<framework::SelectedRows>()
-                         ->mutable_value();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }
+      }  // TODO(zyfncg): Add support for SelectedRows
 
       experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
