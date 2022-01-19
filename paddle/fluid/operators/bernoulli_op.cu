@@ -57,8 +57,7 @@ class BernoulliOpKernel<platform::CUDADeviceContext, T>
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
     int64_t size = x->numel();
 
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int device_id = ctx.GetPlace().GetDeviceId();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     auto seed_offset = gen_cuda->IncrementOffset(1);
     int64_t gen_offset = size * seed_offset.second;

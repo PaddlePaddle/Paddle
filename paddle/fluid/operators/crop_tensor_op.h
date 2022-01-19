@@ -42,7 +42,7 @@ inline std::vector<int> get_new_data(
             tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
 
       vec_new_data.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
@@ -111,7 +111,8 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
     auto* shape_data = shape_tensor->data<int>();
     framework::Tensor cpu_shape_tensor;
     if (platform::is_gpu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                        &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
     res = std::vector<int>(shape_data, shape_data + shape_tensor->numel());

@@ -100,7 +100,7 @@ void CopyInputDataToPlace(const framework::Scope& scope,
   for (const auto& var_name : scope.LocalVarNames()) {
     const auto& src_tensor = scope.GetVar(var_name)->Get<LoDTensor>();
     auto* dst_tensor = dst_scope->Var(var_name)->GetMutable<LoDTensor>();
-    TensorCopySync(src_tensor, dst_place, dst_tensor);
+    paddle::framework::TensorCopySync(src_tensor, dst_place, dst_tensor);
   }
 }
 
@@ -135,10 +135,12 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
     elementwise_add_op->Run(scope, run_place);
 
     LoDTensor test_out, expected_out;
-    TensorCopySync(scope.Var(test_out_name)->Get<LoDTensor>(),
-                   platform::CPUPlace(), &test_out);
-    TensorCopySync(scope.Var(expected_out_name)->Get<LoDTensor>(),
-                   platform::CPUPlace(), &expected_out);
+    paddle::framework::TensorCopySync(
+        scope.Var(test_out_name)->Get<LoDTensor>(), platform::CPUPlace(),
+        &test_out);
+    paddle::framework::TensorCopySync(
+        scope.Var(expected_out_name)->Get<LoDTensor>(), platform::CPUPlace(),
+        &expected_out);
 
     ASSERT_TRUE(test_out.IsInitialized());
     ASSERT_TRUE(expected_out.IsInitialized());
