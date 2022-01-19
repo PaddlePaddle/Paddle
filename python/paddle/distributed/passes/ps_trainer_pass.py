@@ -121,8 +121,7 @@ class DistributedOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _push_sparse_fuse(self, _program, push_sparse_ops, use_ps_gpu,
-                          send_ctx):
+    def _push_sparse_fuse(self, _program, push_sparse_ops, use_ps_gpu):
         if use_ps_gpu:
             return
         if len(push_sparse_ops) == 0:
@@ -220,7 +219,8 @@ class DistributedOpsPass(PassBase):
                     "size": emb_size[param]
                 })
 
-    def _pull_sparse_fuse(self, _program, pull_sparse_ops, use_ps_gpu):
+    def _pull_sparse_fuse(self, _program, pull_sparse_ops, use_ps_gpu,
+                          send_ctx):
         def dag_check_up_and_reorder(program, inputs, outputs):
             global_block = program.global_block()
             min_output_index = len(global_block.ops)
@@ -493,7 +493,7 @@ class DeleteOptimizesPass(PassBase):
             if _program.global_block().has_var(var):
                 _program.global_block()._remove_var(var)
 
-    def _add_lr_var(main_program, context):
+    def _add_lr_var(self, main_program, context):
         # Todo: hard code for pe
         lr_var = context['origin_main_program'].global_block().vars[
             "learning_rate_0"]
@@ -526,7 +526,7 @@ class FakeInitOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _get_sparse_table_names():
+    def _get_sparse_table_names(self, context):
         dist_varnames = get_sparse_tablenames(context['origin_program'], True)
         sparse_varnames = get_sparse_tablenames(context['origin_program'],
                                                 False)
