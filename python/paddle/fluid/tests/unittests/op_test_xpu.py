@@ -78,7 +78,8 @@ class XPUOpTest(OpTest):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
-                                inplace_atol=None):
+                                inplace_atol=None,
+                                check_eager=False):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         #xpu not support float64
         if self.dtype == np.float64:
@@ -105,7 +106,8 @@ class XPUOpTest(OpTest):
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
                               check_dygraph=True,
-                              numeric_place=None):
+                              numeric_place=None,
+                              check_eager=False):
         if place == None:
             place = paddle.XPUPlace(0)
 
