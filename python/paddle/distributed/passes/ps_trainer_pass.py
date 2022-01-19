@@ -37,14 +37,6 @@ DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 DEFAULT_DEVICE = 'cpu'
 
-__all__ = [
-    'append_send_ops_pass', 'ps_gpu_pass', 'ps_transpile_pass',
-    'delete_optimizer_pass'
-    'distributed_ops_pass', 'split_heter_worker_ops_pass',
-    'split_trainer_ops_pass', 'delete_extra_optimizer_pass',
-    'fake_init_ops_pass'
-]
-
 
 @register_pass("append_send_ops_pass")
 class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
@@ -57,7 +49,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
     def _check_conflict(self, other_pass):
         return True
 
-    def _append_send_op(program, union_vars, queue, is_sparse, table_id):
+    def _append_send_op(self, program, union_vars, queue, is_sparse, table_id):
         if queue == STEP_COUNTER:
             send_input_vars = []
         else:
@@ -84,7 +76,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
         return dummy_output
 
-    def _append_barrier_op(program, dummys):
+    def _append_barrier_op(self, program, dummys):
         program.global_block().append_op(
             type="send_barrier",
             inputs={"X": dummys},
@@ -129,7 +121,8 @@ class DistributedOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _push_sparse_fuse(_program, push_sparse_ops, use_ps_gpu, send_ctx):
+    def _push_sparse_fuse(self, _program, push_sparse_ops, use_ps_gpu,
+                          send_ctx):
         if use_ps_gpu:
             return
         if len(push_sparse_ops) == 0:
@@ -227,7 +220,7 @@ class DistributedOpsPass(PassBase):
                     "size": emb_size[param]
                 })
 
-    def _pull_sparse_fuse(_program, pull_sparse_ops, use_ps_gpu):
+    def _pull_sparse_fuse(self, _program, pull_sparse_ops, use_ps_gpu):
         def dag_check_up_and_reorder(program, inputs, outputs):
             global_block = program.global_block()
             min_output_index = len(global_block.ops)
@@ -428,7 +421,7 @@ class DistributedOpsPass(PassBase):
                             "op_device": op_device
                         })
 
-    def _get_pull_sparse_ops(_program):
+    def _get_pull_sparse_ops(self, _program):
         pull_sparse_ops = {}
         pull_sparse_ids = {}
         push_sparse_ops = {}
@@ -478,7 +471,7 @@ class DeleteOptimizesPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _delete_optimizer_op_and_vars(_program, optimize_ops):
+    def _delete_optimizer_op_and_vars(self, _program, optimize_ops):
         optimize_vars = []
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
@@ -539,7 +532,7 @@ class FakeInitOpsPass(PassBase):
                                                 False)
         return list(set(dist_varnames + sparse_varnames))
 
-    def _fake_init_sparsetable(program, sparse_table_names):
+    def _fake_init_sparsetable(self, program, sparse_table_names):
         # delete table init op
         for table_name in sparse_table_names:
             table_var = program.global_block().vars[table_name]

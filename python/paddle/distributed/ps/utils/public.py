@@ -25,7 +25,6 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
 from paddle.fluid.transpiler.details.program_utils import delete_ops

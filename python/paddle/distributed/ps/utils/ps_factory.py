@@ -18,8 +18,8 @@ from .public import *
 
 __all__ = [
     'PsProgramBuilder', 'GeoPsProgramBuilder', 'CpuSyncPsProgramBuilder',
-    'CpuAsyncPsProgramBuilder'
-    'GpuPsProgramBuilder', 'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder'
+    'CpuAsyncPsProgramBuilder', 'GpuPsProgramBuilder',
+    'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder'
 ]
 
 
