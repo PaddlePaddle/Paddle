@@ -70,6 +70,9 @@ bool DistModel::Init() {
     program_.reset(config_.program_desc);
     scope_.reset(config_.scope);
   }
+  if (!PrepareFeedAndFetch()) {
+    return false;
+  }
   if (!CommInit()) {
     return false;
   }
@@ -311,6 +314,7 @@ bool DistModel::PrepareFleetExe() {
   if (config_.local_rank + config_.mp_degree < config_.nranks) {
     task_node_->AddDownstreamTask(config_.local_rank + config_.mp_degree);
   }
+  task_node_->SetType("Compute");
   task_node_->Init();
   executor_desc_ = FleetExecutorDesc();
   executor_desc_.set_cur_rank(config_.local_rank);
@@ -324,6 +328,30 @@ bool DistModel::PrepareFleetExe() {
   fleet_exe.reset(new FleetExecutor(executor_desc_));
   fleet_exe->Init("inference", *(program_.get()), scope_.get(), place_, 1,
                   {task_node_.get()}, id_to_rank);
+  return true;
+}
+
+bool DistModel::PrepareFeedAndFetch() {
+  for (auto *op : program_->Block(0).AllOps()) {
+    if (op->Type() == "feed") {
+      VLOG(3) << "feed op with feed var: " << op->Output("Out")[0];
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
+        feeds_.resize(idx + 1);
+      }
+      feeds_[idx] = op;
+      feed_names_[op->Output("Out")[0]] = idx;
+      idx_to_feeds_[idx] = op->Output("Out")[0];
+    } else if (op->Type() == "fetch") {
+      VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
+      }
+      fetches_[idx] = op;
+      id_to_fetches_[idx] = op->Input("X")[0];
+    }
+  }
   return true;
 }
 
