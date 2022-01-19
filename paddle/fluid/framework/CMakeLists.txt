@@ -102,7 +102,7 @@ else()
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim mixed_vector place tensor framework_proto version)
 
-cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
+cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_utils lod_tensor memory)
 
 if(WITH_GPU)
   nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)

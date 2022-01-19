@@ -14,7 +14,6 @@
 
 #include "paddle/pten/kernels/concat_kernel.h"
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
@@ -22,6 +21,7 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/core/lod_utils.h"
 #include "paddle/pten/kernels/funcs/concat_funcs.h"
 #include "paddle/pten/kernels/gpu/concat_and_split.h"
 
@@ -70,8 +70,8 @@ void ConcatKernel(const Context& dev_ctx,
     if (lod_size) {
       auto* out_lod = out->mutable_lod();
       for (size_t i = 1; i < x.size(); ++i) {
-        auto in_lod = paddle::framework::ConvertToLengthBasedLoD(x[i].lod());
-        paddle::framework::AppendLoD(out_lod, in_lod);
+        auto in_lod = pten::ConvertToLengthBasedLoD(x[i].lod());
+        pten::AppendLoD(out_lod, in_lod);
       }
     }
   }

@@ -296,9 +296,11 @@ void ConcatImpl(const Context& context,
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
   paddle::memory::AllocationPtr data_alloc, col_alloc;
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
   data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                      in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
   col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                     inputs_col_num * sizeof(int));
   inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
@@ -449,9 +451,11 @@ void SplitImpl(const Context& context,
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
   paddle::memory::AllocationPtr data_alloc, cols_alloc;
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
   data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                      o_num * sizeof(T*));
   outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
   cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                      (outputs_cols_num) * sizeof(int64_t));
   outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
@@ -479,6 +483,7 @@ void SplitImpl(const Context& context,
   paddle::memory::allocation::AllocationPtr tmp_dev_outs_data;
   T** dev_out_gpu_data = nullptr;
   if (!has_same_shape || o_num < 2 || o_num > 4) {
+    // TODO(chentianyu03): try to find a method to remove the Alloc function
     tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
         outputs_data, o_num);
@@ -525,6 +530,7 @@ void SplitImpl(const Context& context,
     }
   } else {
     auto tmp_dev_ins_col_data =
+        // TODO(chentianyu03): try to find a method to remove the Alloc function
         paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
         outputs_cols, outputs_cols_num);
