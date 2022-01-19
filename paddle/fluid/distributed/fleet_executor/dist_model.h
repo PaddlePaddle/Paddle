@@ -69,11 +69,17 @@ class DistModel {
   bool LoadParameters();
   bool PreparePlace();
   bool CommInit();
+  bool PrepareFeedAndFetch();
   bool PrepareFleetExe();
   void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
                     const std::vector<std::string>& peer_endpoints,
                     framework::BlockDesc* block, int ring_id);
 
+  std::vector<framework::OpDesc*> feeds_;
+  std::map<std::string, int64_t> feed_names_;
+  std::map<int64_t, std::string> idx_to_feeds_;
+  std::vector<framework::OpDesc*> fetches_;
+  std::map<int64_t, std::string> id_to_fetches_;
   DistModelConfig config_;
   FleetExecutorDesc executor_desc_;
   std::shared_ptr<FleetExecutor> fleet_exe;
