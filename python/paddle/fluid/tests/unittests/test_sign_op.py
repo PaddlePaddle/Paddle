@@ -56,14 +56,14 @@ class TestSignOpError(unittest.TestCase):
 
 
 class TestSignAPI(unittest.TestCase):
-    # def test_dygraph(self):
-    #     with fluid.dygraph.guard():
-    #         np_x = np.array([-1., 0., -0., 1.2, 1.5], dtype='float64')
-    #         x = paddle.to_tensor(np_x)
-    #         z = paddle.sign(x)
-    #         np_z = z.numpy()
-    #         z_expected = np.sign(np_x)
-    #         self.assertEqual((np_z == z_expected).all(), True)
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([-1., 0., -0., 1.2, 1.5], dtype='float64')
+            x = paddle.to_tensor(np_x)
+            z = paddle.sign(x)
+            np_z = z.numpy()
+            z_expected = np.sign(np_x)
+            self.assertEqual((np_z == z_expected).all(), True)
 
     def test_static(self):
         with program_guard(Program(), Program()):
