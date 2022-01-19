@@ -30,8 +30,6 @@ class TensorBase;
  * All kernels must access the interfaces provided by the backend through
  * DeviceContext.
  */
-// TODO(wilber): After context (cpu, gpu) is added, the name will be changed to
-// DeviceContext
 class DeviceContext {
  public:
   /**
