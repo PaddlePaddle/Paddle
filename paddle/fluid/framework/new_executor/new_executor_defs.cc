@@ -74,6 +74,10 @@ bool InterpretercoreInferShapeContext::HasOutput(
   return out[0] != nullptr;
 }
 
+bool InterpretercoreInferShapeContext::HasAttr(const std::string& name) const {
+  return op_.HasAttr(name);
+}
+
 bool InterpretercoreInferShapeContext::HasInputs(
     const std::string& name) const {
   const auto& ins = ctx_.inputs;

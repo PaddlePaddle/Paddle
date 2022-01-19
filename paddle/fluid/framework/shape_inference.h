@@ -61,6 +61,7 @@ class InferShapeContext {
   virtual ~InferShapeContext() = default;
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
+  virtual bool HasAttr(const std::string &name) const = 0;
 
   virtual std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const = 0;

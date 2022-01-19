@@ -27,9 +27,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
+
+paddle::any GetAttributeValue(const Attribute& attr);
 
 template <typename T>
 struct ExtractAttribute {
@@ -232,6 +235,22 @@ class AttrReader {
     ExtractAttribute<T> extract_attr(name);
     T* attr_value = extract_attr(attr);
     return *attr_value;
+  }
+
+  inline const Attribute& GetAttr(const std::string& name) const {
+    auto it = attrs_.find(name);
+    bool found = it != attrs_.end();
+    if (!found) {
+      if (default_attrs_ != nullptr) {
+        it = default_attrs_->find(name);
+        found = it != default_attrs_->end();
+      }
+    }
+    PADDLE_ENFORCE_EQ(found, true,
+                      platform::errors::NotFound(
+                          "Attribute (%s) should be in AttributeMap.", name));
+
+    return it->second;
   }
 
  private:

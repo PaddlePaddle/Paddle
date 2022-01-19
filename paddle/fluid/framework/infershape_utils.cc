@@ -41,8 +41,12 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool HasAttr(const std::string& name) const override {
-    // TODO(chenweihang): impl this method later
-    return false;
+    return ctx_.HasAttr(name);
+  }
+
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.Attrs().GetAttr(name);
+    return GetAttributeValue(attr);
   }
 
   size_t InputSize(const std::string& name) const override {

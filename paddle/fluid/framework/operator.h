@@ -458,6 +458,11 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasAttr(name);
   }
 
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.GetAttr(name);
+    return GetAttributeValue(attr);
+  }
+
   size_t InputSize(const std::string& name) const override {
     return ctx_.InputSize(name);
   }
