@@ -59,8 +59,8 @@ class PsProgramBuilder(object):
     def _build_programs(self):
         if self.context['is_worker']:
             self._build_trainer_programs()
-            loss.block.program = self.cloned_main
             fluid.framework.switch_startup_program(self.cloned_startup)
+            loss.block.program = self.cloned_main
 
         elif self.context['is_server']:
             self._build_pserver_programs()
@@ -109,11 +109,20 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
         append_send_ops_pass = new_pass("append_send_ops_pass", self.context)
         append_send_ops_pass.apply([self.cloned_main], [], self.context)
 
+        delete_extra_optimizer_pass = new_pass("delete_extra_optimizer_pass",
+                                               self.context)
+        delete_extra_optimizer_pass.apply(
+            [self.context['origin_main_program']], [self.cloned_startup],
+            self.context)
+
         fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
         fake_init_ops_pass.apply([], [self.cloned_startup], self.context)
 
+        self.context['origin_main_program'] = self.cloned_main
+        self.context['origin_startup_program'] = self.cloned_startup
+
         if launch_barrier and launch_barrier_flag:
-            wait_server_ready(server_endpoints)  # why need?
+            wait_server_ready(server_endpoints)
 
         return
 
@@ -123,32 +132,32 @@ class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
         super(CpuAsyncPsProgramBuilder, self).__init__(context)
 
 
-class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等无关 
+class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等模式无关 
     def __init__(self, context):
         super(GpuPsProgramBuilder, self).__init__(context)
 
     def _build_trainer_programs(self):
-        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
-        delete_optimizer_pass.apply([_main], [_startup], self.context)
-
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.context)
-        add_lr_decay_table_pass.apply([_main], [], self.context)
+        add_lr_decay_table_pass.apply([], [], self.context)
 
         distributed_ops_pass = new_pass("distributed_ops_pass", self.context)
-        distributed_ops_pass.apply([_main], [], self.context)
+        distributed_ops_pass.apply([self.cloned_main], [], self.context)
 
-        ps_fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
-        ps_fake_init_ops_pass.apply([], [_startup], self.context)
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
+        fake_init_ops_pass.apply([], [self.cloned_startup], self.context)
 
         ps_gpu_pass = new_pass("ps_gpu_pass", self.context)
-        ps_gpu_pass.apply([_main], [], self.context)
+        ps_gpu_pass.apply([self.cloned_main], [], self.context)
 
         ps_transpile_pass = new_pass("ps_transpile_pass", self.context)
         ps_transpile_pass.apply([_main], [_startup], self.context)
 
+        self.context['origin_main_program'] = self.cloned_main
+        self.context['origin_startup_program'] = self.cloned_startup
+
         if launch_barrier and launch_barrier_flag:
-            wait_server_ready(server_endpoints)  # why need?
+            wait_server_ready(server_endpoints)
 
         return
 
@@ -162,34 +171,45 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
                              format(ps_mode, "HeterAsyncPsProgramBuilder"))
 
     def _build_trainer_programs(self):
-        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
-        delete_optimizer_pass.apply([_main], [_startup], self.context)
-
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.context)
-        add_lr_decay_table_pass.apply([_main], [], self.context)
+        add_lr_decay_table_pass.apply([], [], self.context)
 
         distributed_ops_pass = new_pass("distributed_ops_pass", self.context)
-        distributed_ops_pass.apply([_main], [], self.context)
+        distributed_ops_pass.apply([self.cloned_main], [], self.context)
 
         delete_optimizer_pass = new_pass("delete_optimizer_pass", self.context)
         delete_optimizer_pass.apply([], [_startup], self.context)
 
-        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
-        fake_init_ops_pass.apply([], [_startup], self.context)
+        append_send_ops_pass = new_pass("append_send_ops_pass", self.context)
+        append_send_ops_pass.apply([self.cloned_main], [], self.context)
 
-        if is_heter_worker:
+        delete_extra_optimizer_pass = new_pass("delete_extra_optimizer_pass",
+                                               self.context)
+        delete_extra_optimizer_pass.apply(
+            [self.context['origin_main_program']], [self.cloned_startup],
+            self.context)
+
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.context)
+        fake_init_ops_pass.apply([], [self.cloned_startup], self.context)
+
+        if self.is_heter_worker:
             split_heter_worker_ops_pass = new_pass(
                 "split_heter_worker_ops_pass", self.context)
-            split_heter_worker_ops_pass.apply([_main], [], self.context)
+            split_heter_worker_ops_pass.apply([self.cloned_main], [],
+                                              self.context)
         else:
-            # for default worker
             split_trainer_ops_pass = new_pass("split_trainer_ops_pass",
                                               self.context)
-            split_trainer_ops_pass([_main], [], self.context)
+            split_trainer_ops_pass([self.cloned_main], [], self.context)
+
+        set_heter_pipeline_opt_pass = new_pass('set_heter_pipeline_opt_pass',
+                                               self.context)
+        set_heter_pipeline_opt_pass.apply([self.cloned_main],
+                                          [self.cloned_startup], context)
 
         if launch_barrier and launch_barrier_flag:
-            wait_server_ready(server_endpoints)  # why need?
+            wait_server_ready(server_endpoints)
 
         return
 

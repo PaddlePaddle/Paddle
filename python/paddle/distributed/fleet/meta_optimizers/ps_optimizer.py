@@ -48,14 +48,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.context['cloned_startup'] = self.context[
             'origin_startup_program'].clone()
 
+        self.context['user_defined_strategy'] = self.user_defined_strategy
         self.context['strategy'] = get_distributed_strategy(
             self.user_defined_strategy)
         self.context['trainer'] = self.context[
             'strategy'].get_trainer_runtime_config()
         self.context['ps_mode'] = self.context['trainer'].mode
-        self.context[
-            'num_microbatches'] = self.user_defined_strategy.pipeline_configs[
-                'accumulate_steps']
 
         self.context['role_maker'] = self.role_maker
         self.context[
