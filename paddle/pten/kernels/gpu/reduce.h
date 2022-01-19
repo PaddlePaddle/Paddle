@@ -162,7 +162,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
 
 }  // namespace details
 
-constexpr int kMaxRank = paddle::framework::DDim::kMaxRank;
+constexpr int kMaxRank = pten::framework::DDim::kMaxRank;
 
 enum ReduceType {
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
@@ -326,7 +326,7 @@ struct ReduceConfig {
                      const paddle::platform::Place& place,
                      pten::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->ResizeAndAllocate(paddle::framework::make_ddim(
+      tmp->ResizeAndAllocate(pten::framework::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
       output_data = tmp->mutable_data<Ty>();
     } else {
@@ -1029,7 +1029,7 @@ static
   pten::DenseTensor tmp = pten::DenseTensor(
       pten::make_intrusive<paddle::experimental::SharedStorage>(place),
       pten::DenseTensorMeta(pten::DataType::UINT8,
-                            paddle::framework::make_ddim(
+                            pten::framework::make_ddim(
                                 {static_cast<int64_t>(temp_storage_bytes)})));
 
   auto* temp_storage = tmp.mutable_data<uint8_t>();
@@ -1073,7 +1073,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   // Allocate memory
   y->mutable_data<Ty>();
 
-  auto x_dim = paddle::framework::vectorize<int>(x.dims());
+  auto x_dim = pten::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
   int numel = x.numel();
