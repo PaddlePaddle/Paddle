@@ -12,54 +12,52 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/errors.h"
+#include "paddle/pten/core/errors.h"
 
 #include <stdexcept>
 
-namespace paddle {
-namespace platform {
-
-typedef ::paddle::platform::error::Code Code;
+namespace pten {
+typedef ::pten::proto::Code Code;
 
 std::string error_name(Code code) {
   switch (code) {
-    case paddle::platform::error::LEGACY:
+    case Code::LEGACY:
       return "Error";
       break;
-    case paddle::platform::error::INVALID_ARGUMENT:
+    case Code::INVALID_ARGUMENT:
       return "InvalidArgumentError";
       break;
-    case paddle::platform::error::NOT_FOUND:
+    case Code::NOT_FOUND:
       return "NotFoundError";
       break;
-    case paddle::platform::error::OUT_OF_RANGE:
+    case Code::OUT_OF_RANGE:
       return "OutOfRangeError";
       break;
-    case paddle::platform::error::ALREADY_EXISTS:
+    case Code::ALREADY_EXISTS:
       return "AlreadyExistsError";
       break;
-    case paddle::platform::error::RESOURCE_EXHAUSTED:
+    case Code::RESOURCE_EXHAUSTED:
       return "ResourceExhaustedError";
       break;
-    case paddle::platform::error::PRECONDITION_NOT_MET:
+    case Code::PRECONDITION_NOT_MET:
       return "PreconditionNotMetError";
       break;
-    case paddle::platform::error::PERMISSION_DENIED:
+    case Code::PERMISSION_DENIED:
       return "PermissionDeniedError";
       break;
-    case paddle::platform::error::EXECUTION_TIMEOUT:
+    case Code::EXECUTION_TIMEOUT:
       return "ExecutionTimeoutError";
       break;
-    case paddle::platform::error::UNIMPLEMENTED:
+    case Code::UNIMPLEMENTED:
       return "UnimplementedError";
       break;
-    case paddle::platform::error::UNAVAILABLE:
+    case Code::UNAVAILABLE:
       return "UnavailableError";
       break;
-    case paddle::platform::error::FATAL:
+    case Code::FATAL:
       return "FatalError";
       break;
-    case paddle::platform::error::EXTERNAL:
+    case Code::EXTERNAL:
       return "ExternalError";
       break;
     default:
@@ -74,6 +72,4 @@ std::string ErrorSummary::to_string() const {
   result += error_message();
   return result;
 }
-
-}  // namespace platform
-}  // namespace paddle
+}  // namespace pten

@@ -17,9 +17,21 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/pten/core/string/split.h"
-namespace paddle {
+namespace pten {
 namespace string {
-using namespace ::pten::string;  // NOLINT
+
+static inline std::vector<std::string> Split(std::string const& original,
+                                             char separator) {
+  std::vector<std::string> results;
+  std::string token;
+  std::istringstream is(original);
+  while (std::getline(is, token, separator)) {
+    if (!token.empty()) {
+      results.push_back(token);
+    }
+  }
+  return results;
 }
-}
+
+}  // namespace string
+}  // namespace pten

@@ -14,7 +14,7 @@ limitations under the License. */
 
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
-package paddle.platform.error;
+package pten.proto;
 
 enum Code {
   // Legacy error.

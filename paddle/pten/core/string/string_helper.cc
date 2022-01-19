@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/string/string_helper.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -21,7 +21,7 @@
 
 #include "glog/logging.h"
 
-namespace paddle {
+namespace pten {
 namespace string {
 
 // remove leading and tailing spaces
@@ -84,4 +84,4 @@ char* LineFileReader::getdelim(FILE* f, char delim) {
 }
 
 }  // end namespace string
-}  // end namespace paddle
+}  // end namespace pten

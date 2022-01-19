@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/string/piece.h"
+#include "paddle/pten/core/string/piece.h"
 
 #include <string.h>
 #include <algorithm>
@@ -23,7 +23,7 @@
     if (!b) return 1;          \
   } while (0)
 
-namespace paddle {
+namespace pten {
 namespace string {
 
 Piece::Piece() : data_(NULL), size_(0) {}
@@ -76,9 +76,11 @@ bool HasPrefix(Piece s, Piece x) {
 }
 
 bool HasSuffix(Piece s, Piece x) {
-  return !x.len() ? true : ((s.len() >= x.len()) &&
-                            (memcmp(s.data() + (s.len() - x.len()), x.data(),
-                                    x.len()) == 0));
+  return !x.len()
+             ? true
+             : ((s.len() >= x.len()) &&
+                (memcmp(s.data() + (s.len() - x.len()), x.data(), x.len()) ==
+                 0));
 }
 
 Piece SkipPrefix(Piece s, size_t n) {
@@ -141,4 +143,4 @@ std::ostream& operator<<(std::ostream& o, Piece piece) {
 }
 
 }  // namespace string
-}  // namespace paddle
+}  // namespace pten

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/pten/core/arg_map_context.h"
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -34,7 +34,7 @@ const ArgumentMappingFn& OpArgumentMappingFnMap::Get(
   PADDLE_ENFORCE_NE(
       it,
       fn_map_.end(),
-      paddle::platform::errors::NotFound(
+      ::pten::errors::NotFound(
           "Operator `%s`'s argument mapping funciton is not registered.",
           op_type));
   return it->second;

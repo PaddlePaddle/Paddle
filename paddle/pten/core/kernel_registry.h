@@ -25,7 +25,7 @@
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/kernel_utils.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 

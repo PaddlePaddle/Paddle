@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/string/string_helper.h"
 
 #include <string>
 
@@ -24,18 +24,18 @@ TEST(StringHelper, EndsWith) {
   std::string test2("helloworld");
   std::string test3("hello world hello world");
 
-  EXPECT_TRUE(paddle::string::ends_with(input, test1));
-  EXPECT_TRUE(paddle::string::ends_with(input, input));
+  EXPECT_TRUE(pten::string::ends_with(input, test1));
+  EXPECT_TRUE(pten::string::ends_with(input, input));
 
-  EXPECT_FALSE(paddle::string::ends_with(input, test2));
-  EXPECT_FALSE(paddle::string::ends_with(input, test3));
+  EXPECT_FALSE(pten::string::ends_with(input, test2));
+  EXPECT_FALSE(pten::string::ends_with(input, test3));
 }
 
 TEST(StringHelper, FormatStringAppend) {
   std::string str("hello");
   char fmt[] = "%d";
 
-  paddle::string::format_string_append(str, fmt, 10);
+  pten::string::format_string_append(str, fmt, 10);
   EXPECT_EQ(str, "hello10");
 }
 
@@ -44,22 +44,21 @@ TEST(StringHelper, JoinStrings) {
   v.push_back("hello");
   v.push_back("world");
 
-  std::string result = paddle::string::join_strings(v, ' ');
+  std::string result = pten::string::join_strings(v, ' ');
   EXPECT_EQ(result, "hello world");
 
-  result = paddle::string::join_strings(v, '\n');
+  result = pten::string::join_strings(v, '\n');
   EXPECT_EQ(result, "hello\nworld");
 
-  result = paddle::string::join_strings(v, ',');
+  result = pten::string::join_strings(v, ',');
   EXPECT_EQ(result, "hello,world");
 
-  result = paddle::string::join_strings(v, " new ");
+  result = pten::string::join_strings(v, " new ");
   EXPECT_EQ(result, "hello new world");
 }
 
 TEST(StringHelper, JoinStringsWithConversion) {
   std::vector<int> v = {2, 3};
-  auto result =
-      paddle::string::join_strings(v, ",", [](int x) { return x * x; });
+  auto result = pten::string::join_strings(v, ",", [](int x) { return x * x; });
   EXPECT_EQ(result, "4,9");
 }
