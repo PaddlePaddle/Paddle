@@ -341,8 +341,9 @@ class StaticAnalysisVisitor(object):
             # like `self.x: float = 2.1`.
             ret_type = {NodeVarType.type_from_annotation(node.annotation)}
             # if annotation and value(Constant) are diffent type, we use value type
-            if node.value and self.node_to_wrapper_map[
-                    node.value].node_var_type != {NodeVarType.UNKNOWN}:
+            if (node.value and
+                    not self.node_to_wrapper_map[node.value].node_var_type &
+                {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
                 ret_type = self.node_to_wrapper_map[node.value].node_var_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
