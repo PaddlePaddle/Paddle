@@ -23,6 +23,7 @@ namespace platform {
 class DeviceTraceEventNode;       // forward declaration
 class HostTraceEventNode;         // forward declaration
 class CudaRuntimeTraceEventNode;  // forward declaration
+class NodeTrees;                  // forward declaration
 
 class BaseLogger {
  public:
@@ -31,30 +32,8 @@ class BaseLogger {
   virtual void LogDeviceTraceEventNode(const DeviceTraceEventNode&) {}
   virtual void LogHostTraceEventNode(const HostTraceEventNode&) {}
   virtual void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) {}
+  virtual void LogNodeTrees(const NodeTrees&) {}
   virtual void LogMetaInfo() {}
-};
-
-class ChromeTracingLogger : public BaseLogger {
- public:
-  explicit ChromeTracingLogger(const std::string& filename);
-  explicit ChromeTracingLogger(const char* filename);
-  ~ChromeTracingLogger();
-  std::string filename() { return filename_; }
-  void LogDeviceTraceEventNode(const DeviceTraceEventNode&) override;
-  void LogHostTraceEventNode(const HostTraceEventNode&) override;
-  void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
-  // void LogMetaInfo();
-
- private:
-  void OpenFile();
-  void HandleTypeKernel(const DeviceTraceEventNode&);
-  void HandleTypeMemset(const DeviceTraceEventNode&);
-  void HandleTypeMemcpy(const DeviceTraceEventNode&);
-  void StartLog();
-  void EndLog();
-  std::string filename_;
-  std::ofstream output_file_stream_;
-  static const char* categary_name_[];
 };
 
 }  // namespace platform

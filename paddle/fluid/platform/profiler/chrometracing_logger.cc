@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/output_logger.h"
 
 namespace paddle {
 namespace platform {
@@ -85,6 +85,30 @@ ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr) {
 ChromeTracingLogger::~ChromeTracingLogger() {
   EndLog();
   output_file_stream_.close();
+}
+
+void ChromeTracingLogger::LogNodeTrees(const NodeTrees& node_trees) {
+  // log all nodes except root node, root node is a helper node.
+  const std::map<uint64_t, std::vector<HostTraceEventNode*>>
+      thread2host_event_nodes = node_trees.Traverse(true);
+  for (auto it = thread2host_event_nodes.begin();
+       it != thread2host_event_nodes.end(); ++it) {
+    for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
+         ++hostnode) {  // skip root node
+      (*hostnode)->LogMe(this);
+      for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
+           runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
+           ++runtimenode) {
+        (*runtimenode)->LogMe(this);
+        for (auto devicenode =
+                 (*runtimenode)->GetDeviceTraceEventNodes().begin();
+             devicenode != (*runtimenode)->GetDeviceTraceEventNodes().end();
+             ++devicenode) {
+          (*devicenode)->LogMe(this);
+        }
+      }
+    }
+  }
 }
 
 void ChromeTracingLogger::LogHostTraceEventNode(

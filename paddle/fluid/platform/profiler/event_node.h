@@ -21,8 +21,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/event_record.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -162,19 +162,26 @@ class NodeTrees {
   NodeTrees(const std::list<HostTraceEvent>& host_events,
             const std::list<RuntimeTraceEvent>& runtime_events,
             const std::list<DeviceTraceEvent>& device_events) {
+    std::vector<HostTraceEventNode*> host_event_nodes;
+    std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes;
+    std::vector<DeviceTraceEventNode*> device_event_nodes;
     // encapsulate event into nodes
     for (auto it = host_events.begin(); it != host_events.end(); ++it) {
-      host_event_nodes_.push_back(new HostTraceEventNode(*it));
+      host_event_nodes.push_back(new HostTraceEventNode(*it));
     }
     for (auto it = runtime_events.begin(); it != runtime_events.end(); ++it) {
-      runtime_event_nodes_.push_back(new CudaRuntimeTraceEventNode(*it));
+      runtime_event_nodes.push_back(new CudaRuntimeTraceEventNode(*it));
     }
     for (auto it = device_events.begin(); it != device_events.end(); ++it) {
-      device_event_nodes_.push_back(new DeviceTraceEventNode(*it));
+      device_event_nodes.push_back(new DeviceTraceEventNode(*it));
     }
     // build tree
-    BuildTrees();
+    BuildTrees(host_event_nodes, runtime_event_nodes, device_event_nodes);
   }
+
+  explicit NodeTrees(
+      const std::map<uint64_t, HostTraceEventNode*>& thread_event_trees_map)
+      : thread_event_trees_map_(thread_event_trees_map) {}
 
   // destructor
   ~NodeTrees();
@@ -190,10 +197,9 @@ class NodeTrees {
 
  private:
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map_;
-  std::vector<HostTraceEventNode*> host_event_nodes_;
-  std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes_;
-  std::vector<DeviceTraceEventNode*> device_event_nodes_;
-  void BuildTrees();
+  void BuildTrees(const std::vector<HostTraceEventNode*>&,
+                  std::vector<CudaRuntimeTraceEventNode*>&,
+                  const std::vector<DeviceTraceEventNode*>&);
   HostTraceEventNode* BuildTreeRelationship(
       std::vector<HostTraceEventNode*> host_event_nodes,
       std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes);

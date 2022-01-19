@@ -17,7 +17,6 @@ limitations under the License. */
 #include <map>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/event_record.h"
 
 namespace paddle {
 namespace platform {
@@ -77,7 +76,7 @@ class ProfilerResult {
  private:
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map;
   NodeTrees* tree_;
-  HostPythonNode* _copyTree(HostTraceEventNode* node);
+  HostPythonNode* CopyTree(HostTraceEventNode* node);
 };
 
 }  // namespace platform

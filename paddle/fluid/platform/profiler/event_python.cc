@@ -30,7 +30,7 @@ HostPythonNode::~HostPythonNode() {
   }
 }
 
-HostPythonNode* ProfilerResult::_copyTree(HostTraceEventNode* node) {
+HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* node) {
   // Copy and transfer EventNode in NodeTree to PythonNode
   if (node == nullptr) {
     return nullptr;
@@ -45,7 +45,7 @@ HostPythonNode* ProfilerResult::_copyTree(HostTraceEventNode* node) {
   host_python_node->thread_id = node->thread_id();
   for (auto it = node->GetChildren().begin(); it != node->GetChildren().end();
        ++it) {
-    host_python_node->children_node_ptrs.push_back(_copyTree(*it));
+    host_python_node->children_node_ptrs.push_back(CopyTree(*it));
   }
   // copy its CudaRuntimeTraceEventNode
   for (auto runtimenode = node->GetRuntimeTraceEventNodes().begin();
@@ -80,7 +80,7 @@ ProfilerResult::ProfilerResult(NodeTrees* tree) : tree_(tree) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
-      thread_event_trees_map[it->first] = _copyTree(it->second);
+      thread_event_trees_map[it->first] = CopyTree(it->second);
     }
   }
 }

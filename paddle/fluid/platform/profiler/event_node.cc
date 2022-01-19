@@ -46,7 +46,10 @@ NodeTrees::~NodeTrees() {
   }
 }
 
-void NodeTrees::BuildTrees() {
+void NodeTrees::BuildTrees(
+    const std::vector<HostTraceEventNode*>& host_event_nodes,
+    std::vector<CudaRuntimeTraceEventNode*>& runtime_event_nodes,
+    const std::vector<DeviceTraceEventNode*>& device_event_nodes) {
   // seperate Host Event Nodes into different threads
   std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes;  // used to store HostTraceEventNodes per thread
@@ -58,20 +61,19 @@ void NodeTrees::BuildTrees() {
       correlation_id2runtime_event_node;  // used to store the relation between
                                           // correlation id and runtime node
   // construct thread2host_event_nodes
-  for (auto it = host_event_nodes_.begin(); it != host_event_nodes_.end();
-       ++it) {
+  for (auto it = host_event_nodes.begin(); it != host_event_nodes.end(); ++it) {
     thread2host_event_nodes[(*it)->thread_id()].push_back(*it);
   }
   // construct thread2runtime_event_nodes and
   // correlation_id2runtime_event_node
-  for (auto it = runtime_event_nodes_.begin(); it != runtime_event_nodes_.end();
+  for (auto it = runtime_event_nodes.begin(); it != runtime_event_nodes.end();
        ++it) {
     thread2runtime_event_nodes[(*it)->thread_id()].push_back(*it);
     correlation_id2runtime_event_node[(*it)->correlation_id()] = *it;
   }
   // associate CudaRuntimeTraceEventNode and DeviceTraceEventNode
   // construct correlation_id2device_event_nodes
-  for (auto it = device_event_nodes_.begin(); it != device_event_nodes_.end();
+  for (auto it = device_event_nodes.begin(); it != device_event_nodes.end();
        ++it) {
     auto dst_iter =
         correlation_id2runtime_event_node.find((*it)->correlation_id());
@@ -131,7 +133,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
   auto node_stack = std::vector<HostTraceEventNode*>();
   // root node, top level
   auto root_node = new HostTraceEventNode(
-      HostTraceEvent(std::string("root node"), TracerEventType::Operator,
+      HostTraceEvent(std::string("root node"), TracerEventType::UserDefined,
                      LLONG_MIN, LLONG_MAX, 0, 0));
   // push root node into node_stack
   node_stack.push_back(root_node);
@@ -252,29 +254,7 @@ std::map<uint64_t, std::vector<HostTraceEventNode*>> NodeTrees::Traverse(
   return thread2host_event_nodes;
 }
 
-void NodeTrees::LogMe(BaseLogger* logger) {
-  // log all nodes except root node, root node is a helper node.
-  const std::map<uint64_t, std::vector<HostTraceEventNode*>>
-      thread2host_event_nodes = Traverse(true);
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end(); ++it) {
-    for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
-         ++hostnode) {  // skip root node
-      (*hostnode)->LogMe(logger);
-      for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
-           runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
-           ++runtimenode) {
-        (*runtimenode)->LogMe(logger);
-        for (auto devicenode =
-                 (*runtimenode)->GetDeviceTraceEventNodes().begin();
-             devicenode != (*runtimenode)->GetDeviceTraceEventNodes().end();
-             ++devicenode) {
-          (*devicenode)->LogMe(logger);
-        }
-      }
-    }
-  }
-}
+void NodeTrees::LogMe(BaseLogger* logger) { logger->LogNodeTrees(*this); }
 
 void NodeTrees::HandleTrees(
     std::function<void(HostTraceEventNode*)> host_event_node_handle,
