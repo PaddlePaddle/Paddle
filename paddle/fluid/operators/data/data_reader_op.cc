@@ -34,13 +34,13 @@ class DataReaderOp : public framework::OperatorBase {
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "DataReaderOp");
   }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
-  }
-
+//  protected:
+//   framework::OpKernelType GetExpectedKernelType(
+//       const framework::ExecutionContext& ctx) const {
+//     return framework::OpKernelType(framework::proto::VarType::FP32,
+//                                    ctx.GetPlace());
+//   }
+//
  private:
   void RunImpl(const framework::Scope& scope,
       const platform::Place& dev_place) const override {
@@ -70,6 +70,18 @@ class DataReaderOp : public framework::OperatorBase {
         output_var_names, output_queues, batch_size, num_samples,
         shuffle, drop_last, rank, world_size);
   }
+};
+
+class DataReaderInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
+  }
+};
+
+class DataReaderInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {}
 };
 
 class DataReaderOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -113,7 +125,6 @@ namespace ops = paddle::operators::data;
 
 REGISTER_OPERATOR(
     data_reader, ops::DataReaderOp, ops::DataReaderOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
+    ops::DataReaderInferShape, ops::DataReaderInferVarType)
 
 REGISTER_OP_CPU_KERNEL(data_reader, ops::DataReaderCPUKernel<uint8_t>)

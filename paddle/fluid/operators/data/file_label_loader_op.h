@@ -227,13 +227,13 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     auto labels = ctx.Attr<std::vector<int>>("labels");
 
     auto batch_size = indices->dims()[0];
-    const int* indices_data = indices->data<int>();
+    const int64_t* indices_data = indices->data<int64_t>();
 
     image_arr->reserve(batch_size);
     std::vector<int> label_vec;
     label_vec.reserve(batch_size);
-    for (int i = 0; i < batch_size; i++) {
-      int index = indices_data[i];
+    for (int64_t i = 0; i < batch_size; i++) {
+      int64_t index = indices_data[i];
       std::ifstream input(files[index].c_str(),
                           std::ios::in | std::ios::binary | std::ios::ate);
       std::streamsize file_size = input.tellg();

@@ -914,7 +914,10 @@ def file_label_loader(data_root, indices, name=None):
     return image, label
 
 
-def file_label_reader(file_root, batch_size, name=None):
+def file_label_reader(file_root,
+                      batch_size=1,
+                      shuffle=False,
+                      drop_last=False):
     """
     Reads and outputs the bytes contents of a file as a uint8 Tensor
     with one dimension.
@@ -942,42 +945,45 @@ def file_label_reader(file_root, batch_size, name=None):
     samples = [s[0] for s in data_folder.samples]
     targets = [s[1] for s in data_folder.samples]
 
-    import time
-    unq_reader_id = int(round(time.time()* 1000*1000))
-
-
     if in_dygraph_mode():
-        return _C_ops.file_label_reader('root_dir', file_root, 'batch_size',
-                                        batch_size, 'files', samples, 'labels',
-                                        targets, 'reader_id', unq_reader_id)
+        return _C_ops.file_label_loader(list(arange(batch_size)), "files",
+                                        samples, "labels", labels)
 
-    inputs = dict()
-    attrs = {
-        'root_dir': file_root,
-        'batch_size': batch_size,
-        'files': samples,
-        'labels': targets,
-        'reader_id': unq_reader_id,
-    }
+    def _reader(indices):
+        return file_label_loader(file_root, indices)
 
-    helper = LayerHelper("file_label_reader", **locals())
-    out = helper.create_variable(
-        name=unique_name.generate("file_label_reader"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype='uint8')
-    
-    label = helper.create_variable(
-        name=unique_name.generate("file_label_reader"),
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        dtype='int')
-
-    helper.append_op(
-        type="file_label_reader",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out,
-                 "Label": label
-                 })
+    return paddle.io.data_reader(_reader,
+                                 batch_size=batch_size,
+                                 num_samples=len(samples),
+                                 shuffle=shuffle,
+                                 drop_last=drop_last)
+    # inputs = dict()
+    # attrs = {
+    #     'root_dir': file_root,
+    #     'batch_size': batch_size,
+    #     'files': samples,
+    #     'labels': targets,
+    #     'reader_id': unq_reader_id,
+    # }
+    #
+    # helper = LayerHelper("file_label_reader", **locals())
+    # out = helper.create_variable(
+    #     name=unique_name.generate("file_label_reader"),
+    #     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    #     dtype='uint8')
+    #
+    # label = helper.create_variable(
+    #     name=unique_name.generate("file_label_reader"),
+    #     type=core.VarDesc.VarType.LOD_TENSOR,
+    #     dtype='int')
+    #
+    # helper.append_op(
+    #     type="file_label_reader",
+    #     inputs=inputs,
+    #     attrs=attrs,
+    #     outputs={"Out": out,
+    #              "Label": label
+    #              })
 
     return out, label
 

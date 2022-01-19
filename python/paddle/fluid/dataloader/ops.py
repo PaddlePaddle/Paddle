@@ -21,7 +21,7 @@ from ...fluid.layers.utils import _hash_with_id
 from ...common_ops_import import *
 
 
-__all__ = ["map"]
+__all__ = ["map", "data_reader"]
 
 
 def _to_list(l):
@@ -125,13 +125,13 @@ def data_reader(reader_func,
     # build reader block
     main_program = helper.main_program
     with _ProgramGuard(main_program):
-        program_id = _hash_with_id(main_program, reader_func)
+        reader_id= _hash_with_id(main_program, reader_func)
         reader_block = main_program.current_block()
 
         indices_var = reader_block.create_var(
                         name=unique_name.generate("data_reader_sub"),
                         type=core.VarDesc.VarType.LOD_TENSOR,
-                        dtype="uint8",
+                        dtype="int64",
                         persistable=False)
         program_outputs = reader_func(indices_var)
         program_outputs = _to_list(program_outputs)
@@ -141,7 +141,7 @@ def data_reader(reader_func,
 
     outputs = \
         [helper.create_variable(
-            name=unique_name.generate("map"),
+            name=unique_name.generate("data_reader"),
             type=outp.desc.type(),
             persistable=True) for outp in program_outputs]
 

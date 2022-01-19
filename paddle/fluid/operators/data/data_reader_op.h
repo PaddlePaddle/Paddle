@@ -123,8 +123,17 @@ class DataReader {
       while (running_.load()) {
         std::vector<int64_t> indices;
         sampler_.GetNextIndices(&indices);
+        LOG(ERROR) << "DataReaderOp thread got indices " << indices.size();
         // shutdown reader if indices drained
-        if (indices.size() == 0) ShutDown();
+        if (indices.size() == 0) {
+          for(auto& queue: output_queues_) {
+            while (queue->Size()) sleep(0.5);
+            queue->Close();
+          }
+
+          running_.store(false);
+          return;
+        }
 
         ShareIndicesIntoScope(&scope_, indices);
 
@@ -158,6 +167,7 @@ class DataReader {
             output_queues_[i]->Push(t_arr);
           }
         }
+        LOG(ERROR) << "ReaderThread output";
       }
       scope->DeleteScope(&scope_);
     });
@@ -175,12 +185,11 @@ class DataReader {
 
   void ShareIndicesIntoScope(Scope* scope,
                              std::vector<int64_t> indices) {
-    // get indices variable from scope
     auto* var = scope->Var(indices_var_name_);
 
     auto* indices_tensor = var->GetMutable<LoDTensor>();
-    indices_tensor->Resize(framework::make_ddim({batch_size_}));
-    auto* indices_data = indices_tensor->mutable_data<int64_t>(place_);
+    indices_tensor->Resize(framework::make_ddim({static_cast<int64_t>(indices.size())}));
+    auto* indices_data = indices_tensor->mutable_data<int64_t>(platform::CPUPlace());
     
     for (size_t i = 0; i < indices.size(); i++) {
       indices_data[i] = indices[i];
@@ -272,13 +281,13 @@ static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capa
     if (var->IsInitialized()) {
       PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
           platform::errors::InvalidArgument(
-            "Output Variables of MapOp should hold "
+            "Output Variables of DataLoaderOp should hold "
             "LoDTensorBlockingQueueHolder type"));
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
       if (queue == nullptr) {
         auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
         holder->InitOnce(capacity);
-        LOG(ERROR) << "MapOpKernel init queue" << holder->GetQueue();
+        LOG(ERROR) << "DataLoaderOpKernel init queue" << holder->GetQueue();
       }
     } else {
       VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
