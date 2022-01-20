@@ -63,7 +63,8 @@ class Quant2Int8MkldnnPass(object):
         self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
             [-1])
         self._scale_immutable_ops = [
-            'transpose2', 'reshape2', 'pool2d', 'slice'
+            'transpose2', 'reshape2', 'pool2d', 'slice', 'nearest_interp',
+            'nearest_interp_v2'
         ]
         self._scale_ops = ['scale']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
@@ -425,6 +426,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_hard_swish_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',
                                  ['use_gpu', 'use_fc_padding'], [False, False])
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')

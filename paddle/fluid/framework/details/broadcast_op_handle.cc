@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -83,8 +84,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   } else if (platform::is_gpu_place(in_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     VarHandle *out_handle = nullptr;
-    int root_id =
-        BOOST_GET_CONST(platform::CUDAPlace, in_tensor.place()).device;
+    int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;
 
     int type = platform::ToNCCLDataType(in_tensor.type());
@@ -94,14 +94,13 @@ void BroadcastOpHandle::BroadcastOneVar(
       Variable *out_var = var_scopes.at(out_var_handle->scope_idx())
                               ->FindVar(out_var_handle->name());
 
-      int dst_id =
-          BOOST_GET_CONST(platform::CUDAPlace, out_var_handle->place()).device;
+      int dst_id = out_var_handle->place().device;
 
       auto &nccl_ctx = nccl_ctxs_->at(dst_id);
 
       void *send_recv_buffer = nullptr;
       if (root_id == dst_id) {
-        send_recv_buffer = const_cast<void *>(in_tensor.data<void>());
+        send_recv_buffer = const_cast<void *>(in_tensor.data());
         out_handle = out_var_handle;
       } else {
         send_recv_buffer = VariableVisitor::GetMutableTensor(out_var)
@@ -145,7 +144,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   } else {
 #if defined(PADDLE_WITH_XPU_BKCL)
     VarHandle *out_handle = nullptr;
-    int root_id = BOOST_GET_CONST(platform::XPUPlace, in_tensor.place()).device;
+    int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;
 
     int type = platform::ToBKCLDataType(in_tensor.type());
@@ -155,14 +154,13 @@ void BroadcastOpHandle::BroadcastOneVar(
       Variable *out_var = var_scopes.at(out_var_handle->scope_idx())
                               ->FindVar(out_var_handle->name());
 
-      int dst_id =
-          BOOST_GET_CONST(platform::XPUPlace, out_var_handle->place()).device;
+      int dst_id = out_var_handle->place().device;
 
       auto &bkcl_ctx = bkcl_ctxs_->at(dst_id);
 
       void *send_recv_buffer = nullptr;
       if (root_id == dst_id) {
-        send_recv_buffer = const_cast<void *>(in_tensor.data<void>());
+        send_recv_buffer = const_cast<void *>(in_tensor.data());
         out_handle = out_var_handle;
       } else {
         send_recv_buffer = VariableVisitor::GetMutableTensor(out_var)
@@ -232,7 +230,7 @@ void BroadcastOpHandle::InitOutputValue(
     PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::NotFound(
                                          "Variable %s is not found in scopes.",
                                          out_var_handle->name()));
-    if (is_gpu_place(in_tensor.place())) {
+    if (platform::is_gpu_place(in_tensor.place())) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
                         platform::errors::PreconditionNotMet(
                             "Places of input and output must be all on GPU."));

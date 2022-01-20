@@ -81,7 +81,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
 
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
-    TensorCopy(*x, context.GetPlace(), &x_tmp);
+    paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
@@ -178,8 +178,7 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
         U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
         info, gesvdj_params));
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -220,8 +219,7 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
         info, gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -259,8 +257,7 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
         lwork, info, params));
 
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -297,8 +294,7 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
         handle, jobz, uplo, n, A + stride_A * i, lda, W + n * i, workspace_ptr,
         lwork, info, params));
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,

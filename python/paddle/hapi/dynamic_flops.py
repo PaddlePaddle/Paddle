@@ -181,7 +181,10 @@ def count_parameters(m, x, y):
 
 def count_io_info(m, x, y):
     m.register_buffer('input_shape', paddle.to_tensor(x[0].shape))
-    m.register_buffer('output_shape', paddle.to_tensor(y.shape))
+    if isinstance(y, (list, tuple)):
+        m.register_buffer('output_shape', paddle.to_tensor(y[0].shape))
+    else:
+        m.register_buffer('output_shape', paddle.to_tensor(y.shape))
 
 
 register_hooks = {
@@ -258,8 +261,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
-        if set(['total_ops', 'total_params', 'input_shape',
-                'output_shape']).issubset(set(list(m._buffers.keys()))):
+        if {'total_ops', 'total_params', 'input_shape',
+                'output_shape'}.issubset(set(list(m._buffers.keys()))):
             total_ops += m.total_ops
             total_params += m.total_params
 
@@ -274,8 +277,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for n, m in model.named_sublayers():
         if len(list(m.children())) > 0:
             continue
-        if set(['total_ops', 'total_params', 'input_shape',
-                'output_shape']).issubset(set(list(m._buffers.keys()))):
+        if {'total_ops', 'total_params', 'input_shape',
+                'output_shape'}.issubset(set(list(m._buffers.keys()))):
             table.add_row([
                 m.full_name(), list(m.input_shape.numpy()),
                 list(m.output_shape.numpy()), int(m.total_params),

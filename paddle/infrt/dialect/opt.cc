@@ -12,34 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
-#include <llvm/Support/CommandLine.h>
-#include <mlir/Dialect/Affine/IR/AffineOps.h>
-#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
-#include <mlir/IR/AsmState.h>
-#include <mlir/IR/Dialect.h>
-#include <mlir/InitAllDialects.h>
-#include <mlir/InitAllPasses.h>
-#include <mlir/Pass/Pass.h>
-#include <mlir/Pass/PassManager.h>
-#include <mlir/Support/FileUtilities.h>
 #include <mlir/Support/MlirOptMain.h>
 #include <mlir/Transforms/Passes.h>
-
-#include <iostream>
-
-#include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
-#include "paddle/infrt/dialect/mlir_loader.h"
 
 int main(int argc, char **argv) {
-  mlir::MLIRContext *context = infrt::Global::getMLIRContext();
-
-  auto &registry = context->getDialectRegistry();
-  infrt::RegisterCinnDialects(registry);
-
+  mlir::DialectRegistry registry;
+  infrt::registerCinnDialects(registry);
   mlir::registerCanonicalizerPass();
-
   return mlir::failed(
-      mlir::MlirOptMain(argc, argv, "INFRT mlir pass driver", registry));
+      mlir::MlirOptMain(argc, argv, "infrt mlir pass driver", registry));
 }
