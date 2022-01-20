@@ -282,7 +282,8 @@ XPUDeviceContext::~XPUDeviceContext() {}
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   platform::XPUDeviceGuard guard(place.device);
 
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: " << place_.device;
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
+                          << static_cast<int>(place_.device);
 
   context_ = xpu::create_context();
   const int MAX_XPU_NUM = 16;
@@ -522,7 +523,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   driver_version_ = GetGPUDriverVersion(place_.device);
   runtime_version_ = GetGPURuntimeVersion(place_.device);
 
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
+                          << static_cast<int>(place_.device)
                           << ", GPU Compute Capability: "
                           << compute_capability_ / 10 << "."
                           << compute_capability_ % 10
@@ -535,12 +537,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   size_t version_major, version_minor, version_patch;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
       &version_major, &version_minor, &version_patch));
-  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                           << ", MIOpen Version: " << version_major << "."
                           << version_minor << "." << version_patch;
 #else
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
-  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
                           << (cudnn_dso_ver % 1000) / 100 << ".";
 #endif
@@ -556,7 +558,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 #endif
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place_.device
+          << "WARNING: device: " << static_cast<int>(place_.device)
           << ". The installed Paddle is compiled with CUDA "
           << compile_cuda_version / 10 << "." << compile_cuda_version % 10
           << ", but CUDA runtime version in your machine is "
