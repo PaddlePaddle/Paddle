@@ -54,5 +54,8 @@ class KernelArgsNameMaker {
 
 void IntiDefaultKernelSignatureMap();
 
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place);
+
 }  // namespace framework
 }  // namespace paddle

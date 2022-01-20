@@ -96,17 +96,17 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
     auto& in = op_proto_->inputs()[i];
     auto& in_name = in.name();
     if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(3) << "Parse PtenKernel input: skip extra & quant input - "
+      VLOG(6) << "Parse PtenKernel input: skip extra & quant input - "
               << in_name;
       continue;
     }
     // If contains dispensable input, we should override the
     // GetExpectedPtenKernelArgs method self
     if (in.has_dispensable() && in.dispensable()) {
-      VLOG(3) << "Parse PtenKernel input: skip dispensable input - " << in_name;
+      VLOG(6) << "Parse PtenKernel input: skip dispensable input - " << in_name;
       continue;
     }
-    VLOG(3) << "Parse PtenKernel input: " << in_name;
+    VLOG(6) << "Parse PtenKernel input: " << in_name;
     input_names_.emplace_back(in_name);
   }
   return input_names_;
@@ -118,7 +118,7 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
     // TODO(chenweihang): outputs also need skip some cases
-    VLOG(3) << "Parse PtenKernel output: " << out_name;
+    VLOG(6) << "Parse PtenKernel output: " << out_name;
     output_names_.emplace_back(out_name);
   }
   return output_names_;
@@ -132,17 +132,17 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
     if (attr_name == "use_mkldnn" || attr_name == "op_role" ||
         attr_name == "op_role_var" || attr_name == "op_namescope" ||
         attr_name == "op_callstack" || attr_name == "op_device") {
-      VLOG(3) << "Parse PtenKernel attribute: skip needless attr - "
+      VLOG(6) << "Parse PtenKernel attribute: skip needless attr - "
               << attr_name;
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
-      VLOG(3) << "Parse PtenKernel attribute: skip extra & quant attr - "
+      VLOG(6) << "Parse PtenKernel attribute: skip extra & quant attr - "
               << attr_name;
       continue;
     }
-    VLOG(3) << "Parse PtenKernel attribute: " << attr_name;
+    VLOG(6) << "Parse PtenKernel attribute: " << attr_name;
     attr_names_.emplace_back(attr_name);
   }
 
@@ -171,6 +171,23 @@ void IntiDefaultKernelSignatureMap() {
       }
     }
   });
+
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place) {
+  if (!tensor->IsInitialized() || !(tensor->place() == place)) {
+    int dtype_size = tensor->dtype() == DataType::UNDEFINED
+                         ? 0
+                         : experimental::SizeOf(tensor->dtype());
+    int64_t numels = product(tensor->dims());
+    numels = numels < 0 ? 0 : numels;
+    auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
+    auto& deleter = tmp_allocation_ptr.get_deleter();
+    auto* allocation_ptr = tmp_allocation_ptr.release();
+    auto shared_allocation =
+        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+
+    tensor->ResetHolder(shared_allocation);
+  }
 }
 
 }  // namespace framework

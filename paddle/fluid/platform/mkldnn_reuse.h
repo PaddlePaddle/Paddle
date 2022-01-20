@@ -377,6 +377,14 @@ class MKLDNNHandlerT {
     if (bwd_pd_ == nullptr) {
       return false;
     } else {
+      if (std::is_same<TBackward_params, mkldnn_dummy_primitive>::value ==
+          false) {
+        const std::string key_bw_w_pd = key_ + "@bwd_w_pd";
+        bwd_w_pd_ =
+            std::static_pointer_cast<typename TBackward_params::primitive_desc>(
+                dev_ctx_.GetBlob(key_bw_w_pd));
+      }
+
       // When BWD is cached then still we need to Get FWD PD
       const std::string key_fpd = key_ + "@fwd_pd";
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(

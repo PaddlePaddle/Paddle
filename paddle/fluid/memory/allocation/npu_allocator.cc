@@ -24,7 +24,7 @@ namespace allocation {
 bool NPUAllocator::IsAllocThreadSafe() const { return true; }
 void NPUAllocator::FreeImpl(pten::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      BOOST_GET_CONST(platform::NPUPlace, allocation->place()), place_,
+      allocation->place(), place_,
       platform::errors::PermissionDenied(
           "NPU memory is freed in incorrect device. This may be a bug"));
   platform::RecordedNPUFree(allocation->ptr(), allocation->size(),

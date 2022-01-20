@@ -485,14 +485,8 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
 };
 
 template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -599,16 +593,22 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to pten lib */
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
-  void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
+  /**
+   * Transfer data place for pten kernel
+   * Is this really needed?
+   */
+  Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
+                         const KernelSignature& pt_kernel_signature,
+                         RuntimeContext* ctx) const;
 
-  void WriteBackToOutputs(RuntimeContext* ctx) const;
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx,
+                              pten::KernelContext* pt_kernel_context) const;
+
+  void WriteBackToOutputs(RuntimeContext* ctx,
+                          pten::KernelContext* pt_kernel_context) const;
 
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
-
-  pten::KernelContext* PtenKernelContext() const {
-    return pt_kernel_context_.get();
-  }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
@@ -668,9 +668,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
-  // In order to reduce the compatibility phase
-  // performance overhead, temporarily cache KernelContext
-  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

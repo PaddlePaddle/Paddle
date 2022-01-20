@@ -85,7 +85,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
     int index = 0;
     int lod_size;
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    auto place = dev_ctx.GetPlace();
 
     auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
@@ -93,7 +93,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       auto score_in = score_ins[i];
       if (multi_rois_num.size() > 0) {
         framework::Tensor temp;
-        TensorCopySync(*multi_rois_num[i], platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*multi_rois_num[i],
+                                          platform::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
         lod_size = multi_rois_num[i]->numel();
         for (size_t n = 0; n < lod_size; ++n) {
