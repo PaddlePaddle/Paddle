@@ -17,32 +17,36 @@ from paddle.fluid import core
 from distutils.sysconfig import get_python_lib
 from distutils.core import setup, Extension
 
+# cc flags
 paddle_extra_compile_args = [
     '-std=c++14', '-shared', '-fPIC', '-DPADDLE_WITH_CUSTOM_KERNEL=ON'
 ]
 if core.is_compiled_with_npu():
     paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']
+
 print(paddle_extra_compile_args)
 
+# include path
 site_packages_path = get_python_lib()
 paddle_custom_kernel_include = [
     os.path.join(site_packages_path, 'paddle', 'include'),
 ]
+# libs path
 paddle_custom_kernel_library_dir = [
     os.path.join(site_packages_path, 'paddle', 'fluid'),
 ]
-extra_cc_args = ['-DPADDLE_WITH_CUSTOM_KERNEL=ON']
+# libs
+libs = [':core_avx.so']
+if not core.has_avx_core and core.has_noavx_core:
+    lib = [':core_noavx.so']
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',
     sources=['custom_kernel_dot.cc'],
     include_dirs=paddle_custom_kernel_include,
     library_dirs=paddle_custom_kernel_library_dir,
-    libraries=[':core_avx.so'],
-    extra_compile_args=[
-        '-std=c++14', '-shared', '-fPIC', '-DPADDLE_WITH_CUSTOM_KERNEL=ON',
-        '-D_GLIBCXX_USE_CXX11_ABI=0'
-    ])
+    libraries=libs,
+    extra_compile_args=paddle_extra_compile_args)
 
 setup(
     name='custom_kernel_dot',

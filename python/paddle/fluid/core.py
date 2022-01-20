@@ -371,7 +371,7 @@ if load_noavx:
         raise e
 
 
-def set_paddle_custom_runtime_lib_path(lib_path):
+def set_paddle_custom_device_lib_path(lib_path):
     if os.environ.get('CUSTOM_DEVICE_ROOT'):
         return
     if os.path.exists(lib_path):
@@ -391,14 +391,14 @@ def set_paddle_lib_path():
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
-            set_paddle_custom_runtime_lib_path(
+            set_paddle_custom_device_lib_path(
                 os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins']))
             return
     if hasattr(site, 'USER_SITE'):
         lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
-            set_paddle_custom_runtime_lib_path(
+            set_paddle_custom_device_lib_path(
                 os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins']))
 
 
