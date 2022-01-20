@@ -32,13 +32,13 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  PADDLE_ENFORCE_EQ(x.dims,
-                    out->dims,
+  PADDLE_ENFORCE_EQ(x.dims(),
+                    out->dims(),
                     paddle::platform::errors::InvalidArgument(
                         "In and out should have the same dim,"
                         " expected %s, but got %s.",
-                        x.dims.to_str().c_str(),
-                        out->dims.to_str().c_str()));
+                        x.dims().to_str().c_str(),
+                        out->dims().to_str().c_str()));
   int r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(in->data<T>()),
                      reinterpret_cast<XPUType*>(out->data<T>()),
@@ -49,7 +49,7 @@ void ScaleKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      platform::errors::External(
+      paddle::platform::errors::External(
           "XPU scale kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
 }
 
