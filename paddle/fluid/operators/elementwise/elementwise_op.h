@@ -109,10 +109,15 @@ class ElementwiseOp : public framework::OperatorWithKernel {
            framework::DataLayout::kNHWC);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
-        if (x_dims.size() > y_dims.size())
-          std::rotate(x_dims.begin() + 1, x_dims.begin() + 2, x_dims.end());
-        else
-          std::rotate(y_dims.begin() + 1, y_dims.begin() + 2, y_dims.end());
+        bool x_over_y = (x_dims.size() > y_dims.size());
+        auto vdims = x_over_y ? framework::vectorize<int>(x_dims)
+                              : framework::vectorize<int>(y_dims);
+        std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
+        if (x_over_y) {
+          x_dims = framework::make_ddim(vdims);
+        } else {
+          y_dims = framework::make_ddim(vdims);
+        }
       }
 
       GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
