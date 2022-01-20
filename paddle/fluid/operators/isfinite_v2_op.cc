@@ -34,7 +34,7 @@ class OverflowKernel;
 }  // namespace operators
 namespace platform {
 class CPUDeviceContext;
-} // namespace platform
+}  // namespace platform
 }  // namespace paddle
 
 namespace plat = paddle::platform;
