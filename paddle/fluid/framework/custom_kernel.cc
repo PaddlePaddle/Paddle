@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/custom_kernel.h"
 #include <dirent.h>
+#include <algorithm>
 #include <regex>
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/fluid/framework/operator.h"
@@ -114,19 +115,22 @@ static void RunKernelFunc(pten::KernelContext* ctx,
     const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
     // is_vector tells if this Input is Tensor or std::vector<Tensor>
     if (!input_defs.at(in_idx).is_vector) {
-      paddle::experimental::Tensor custom_t(ctx->InputSharedPtrAt(range.first));
-      custom_ins.push_back(custom_t);
+      paddle::experimental::Tensor custom_t;
+      auto& ctx_tensor = ctx->InputAt<pten::DenseTensor>(range.first);
+      custom_t.set_impl(std::make_shared<pten::DenseTensor>(ctx_tensor));
+      custom_ins.emplace_back(custom_t);
       VLOG(3) << "Mapped Tensor Input[" << in_idx
               << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor> custom_vec_in;
       auto ctx_tensor_vec =
-          ctx->InputSharedPtrBetween(range.first, range.second);
+          ctx->MoveInputsBetween<pten::DenseTensor>(range.first, range.second);
       for (auto& ctx_tensor : ctx_tensor_vec) {
-        paddle::experimental::Tensor custom_t(ctx_tensor);
-        custom_vec_in.push_back(custom_t);
+        paddle::experimental::Tensor custom_t;
+        custom_t.set_impl(std::make_shared<pten::DenseTensor>(ctx_tensor));
+        custom_vec_in.emplace_back(custom_t);
       }
-      custom_vec_ins.push_back(custom_vec_in);
+      custom_vec_ins.emplace_back(custom_vec_in);
       VLOG(3) << "Mapped std::vector<Tensor> Input[" << in_idx
               << "] with range.first: " << range.first
               << ", and rang.second: " << range.second;
@@ -139,48 +143,48 @@ static void RunKernelFunc(pten::KernelContext* ctx,
     VLOG(3) << "Mapping Attribute[" << attr_idx << "]";
     if (attribute_defs[attr_idx].type_index == std::type_index(typeid(bool))) {
       bool arg = ctx->AttrAt<bool>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(int))) {
       int arg = ctx->AttrAt<int>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(float))) {
       float arg = ctx->AttrAt<float>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(double))) {
       double arg = ctx->AttrAt<double>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(int64_t))) {
       int64_t arg = ctx->AttrAt<int64_t>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(paddle::platform::float16))) {
       paddle::platform::float16 arg =
           ctx->AttrAt<paddle::platform::float16>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(DataType))) {
       DataType arg = ctx->AttrAt<DataType>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(Scalar))) {
       Scalar arg = ctx->AttrAt<Scalar>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(std::vector<int64_t>))) {
       std::vector<int64_t> arg = ctx->AttrAt<std::vector<int64_t>>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(ScalarArray))) {
       ScalarArray arg = ctx->AttrAt<ScalarArray>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(std::vector<int>))) {
       std::vector<int> arg = ctx->AttrAt<std::vector<int>>(attr_idx);
-      custom_attrs.push_back(arg);
+      custom_attrs.emplace_back(arg);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported attribute attribute_defs[%d].type_index", attr_idx));
@@ -191,27 +195,38 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   // Outputs mapping
   std::vector<paddle::experimental::Tensor*> custom_outs;
   std::vector<std::vector<paddle::experimental::Tensor*>> custom_vec_outs;
+  std::vector<std::shared_ptr<pten::DenseTensor>> custom_outs_ptr;
+  std::vector<std::vector<std::shared_ptr<pten::DenseTensor>>>
+      custom_vec_outs_ptr;
+
   for (size_t out_idx = 0; out_idx < output_defs.size(); ++out_idx) {
     VLOG(3) << "Mapping Output[" << out_idx << "]";
     const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
+
     // is_vector tells if this Output is Tensor or std::vector<Tensor>
     if (!output_defs.at(out_idx).is_vector) {
-      auto ctx_tensor = ctx->OutputSharedPtrAt(range.first);
-      paddle::experimental::Tensor* custom_t =
-          new paddle::experimental::Tensor(ctx_tensor);
-      custom_outs.push_back(custom_t);
+      auto* ctx_tensor = ctx->MutableOutputAt<pten::DenseTensor>(range.first);
+      auto* custom_t = new paddle::experimental::Tensor();
+      auto custom_t_ptr = std::make_shared<pten::DenseTensor>(*ctx_tensor);
+      custom_t->set_impl(custom_t_ptr);
+      custom_outs.emplace_back(custom_t);
+      custom_outs_ptr.emplace_back(custom_t_ptr);
       VLOG(3) << "Mapped Tensor Output[" << out_idx
               << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor*> custom_vec_out;
-      auto ctx_tensor_vec =
-          ctx->OutputSharedPtrBetween(range.first, range.second);
-      for (auto& ctx_tensor : ctx_tensor_vec) {
-        paddle::experimental::Tensor* custom_t =
-            new paddle::experimental::Tensor(ctx_tensor);
-        custom_vec_out.push_back(custom_t);
+      std::vector<std::shared_ptr<pten::DenseTensor>> custom_vec_out_ptr;
+      auto ctx_tensor_vec = ctx->MutableOutputBetween<pten::DenseTensor>(
+          range.first, range.second);
+      for (auto ctx_tensor : ctx_tensor_vec) {
+        auto* custom_t = new paddle::experimental::Tensor();
+        auto custom_t_ptr = std::make_shared<pten::DenseTensor>(*ctx_tensor);
+        custom_t->set_impl(custom_t_ptr);
+        custom_vec_out.emplace_back(custom_t);
+        custom_vec_out_ptr.emplace_back(custom_t_ptr);
       }
-      custom_vec_outs.push_back(custom_vec_out);
+      custom_vec_outs.emplace_back(custom_vec_out);
+      custom_vec_outs_ptr.emplace_back(custom_vec_out_ptr);
       VLOG(3) << "Mapped std::vector<Tensor> Output[" << out_idx
               << "] with range.first: " << range.first
               << ", and rang.second: " << range.second;
@@ -238,6 +253,42 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   user_kernel_fn(dev_ctx, custom_ins, custom_vec_ins, custom_attrs,
                  &custom_outs, &custom_vec_outs);
   VLOG(3) << "[CUSTOM KERNEL] finished call user kernel function";
+
+  // NOTE: Here we have to mapping back the output tensors, before
+  // user_kernel_fn call
+  // we get raw ptr form KernelContext, but user_kernel_fn do changes to
+  // the Copy-Conxtructed DenseTensor ptr thoungh they share the same storage.
+  // So, we mapping back Tensor infos with stored shared_ptrs.
+  std::reverse(custom_outs_ptr.begin(), custom_outs_ptr.end());
+  for (auto& custom_vec_out_ptr : custom_vec_outs_ptr) {
+    std::reverse(custom_vec_out_ptr.begin(), custom_vec_out_ptr.end());
+  }
+  std::reverse(custom_vec_outs_ptr.begin(), custom_vec_outs_ptr.end());
+  for (size_t out_idx = 0; out_idx < output_defs.size(); ++out_idx) {
+    VLOG(3) << "Mapping Back Output[" << out_idx << "]";
+    const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
+
+    // is_vector tells if this Output is Tensor or std::vector<Tensor>
+    if (!output_defs.at(out_idx).is_vector) {
+      auto* ctx_tensor = ctx->MutableOutputAt<pten::DenseTensor>(range.first);
+      *ctx_tensor = *(custom_outs_ptr.back().get());
+      custom_outs_ptr.pop_back();
+      VLOG(3) << "Mapped Back Tensor Output[" << out_idx
+              << "] with range.first: " << range.first;
+    } else {
+      auto ctx_tensor_vec = ctx->MutableOutputBetween<pten::DenseTensor>(
+          range.first, range.second);
+      auto custom_vec_ptr_out = custom_vec_outs_ptr.back();
+      for (auto ctx_tensor : ctx_tensor_vec) {
+        *ctx_tensor = *(custom_vec_ptr_out.back().get());
+        custom_vec_ptr_out.pop_back();
+      }
+      custom_vec_outs_ptr.pop_back();
+      VLOG(3) << "Mapped Back std::vector<Tensor> Output[" << out_idx
+              << "] with range.first: " << range.first
+              << ", and rang.second: " << range.second;
+    }
+  }
 
   // delete newed paddle::Tensor for calling user kernel function
   for (size_t i = 0; i < custom_outs.size(); ++i) {
@@ -354,7 +405,7 @@ std::vector<std::string> ListAllLib(const std::string& libs_path) {
   while ((ptr = readdir(dir)) != nullptr) {
     std::string filename(ptr->d_name);
     if (std::regex_match(filename.begin(), filename.end(), results, express)) {
-      libs.push_back(libs_path + '/' + filename);
+      libs.emplace_back(libs_path + '/' + filename);
       LOG(INFO) << "Found lib [" << filename << "]";
     } else {
       VLOG(3) << "Skipped file [" << filename << "] without .so postfix";

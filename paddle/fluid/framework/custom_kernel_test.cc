@@ -148,15 +148,15 @@ TEST(CustomKernel, custom_kernel_dot) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
   auto kernel_context = pten::KernelContext(dev_ctx);
-  kernel_context.EmplaceBackInput(dense_x);  // idx:0, index:[0,1)
-  kernel_context.EmplaceBackInput(dense_y);  // idx:1, index:[1,2)
+  kernel_context.EmplaceBackInput(dense_x.get());  // idx:0, index:[0,1)
+  kernel_context.EmplaceBackInput(dense_y.get());  // idx:1, index:[1,2)
 
   // fake_input_vec: idx:2, index:[2,4)
   size_t fake_input_vec_idx = 2;
   size_t fake_input_vec_index_start = 2;
   size_t fake_input_vec_index_end = 4;
-  kernel_context.EmplaceBackInputWithoutSetRange(dense_x);
-  kernel_context.EmplaceBackInputWithoutSetRange(dense_y);
+  kernel_context.EmplaceBackInputWithoutSetRange(dense_x.get());
+  kernel_context.EmplaceBackInputWithoutSetRange(dense_y.get());
   kernel_context.AssignInputRange(
       std::make_pair(fake_input_vec_index_start, fake_input_vec_index_end),
       fake_input_vec_idx);
@@ -193,14 +193,14 @@ TEST(CustomKernel, custom_kernel_dot) {
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(backend)),
       std::move(out_meta));
-  kernel_context.EmplaceBackOutput(dense_out);  // idx:0 index:[0,1)
+  kernel_context.EmplaceBackOutput(dense_out.get());  // idx:0 index:[0,1)
 
   // fake_input_vec: idx:1, index:[1,3)
   size_t fake_out_vec_idx = 1;
   size_t fake_out_vec_index_start = 1;
-  size_t fake_out_vec_index_end = 2;
-  kernel_context.EmplaceBackOutputWithoutSetRange(dense_out);
-  // kernel_context.EmplaceBackOutputWithoutSetRange(dense_out);
+  size_t fake_out_vec_index_end = 3;
+  kernel_context.EmplaceBackOutputWithoutSetRange(dense_out.get());
+  kernel_context.EmplaceBackOutputWithoutSetRange(dense_out.get());
   kernel_context.AssignOutputRange(
       std::make_pair(fake_out_vec_index_start, fake_out_vec_index_end),
       fake_out_vec_idx);
