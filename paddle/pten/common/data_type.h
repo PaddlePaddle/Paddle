@@ -73,6 +73,7 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::COMPLEX128:
       return 16;
     case DataType::UNDEFINED:
+      return 0;
     case DataType::NUM_DATA_TYPES:
       PD_THROW("Data type `",
                static_cast<int>(data_type),
