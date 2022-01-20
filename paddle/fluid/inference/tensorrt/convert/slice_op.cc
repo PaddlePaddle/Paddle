@@ -72,7 +72,8 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss() && engine_->with_ernie()) {
+      if (engine_->use_oss() && engine_->with_ernie() &&
+          input_dims.nbDims == 4) {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         if (engine_->with_interleaved()) {
           auto* shuffler_slice = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);

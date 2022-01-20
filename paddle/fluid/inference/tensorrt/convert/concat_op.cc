@@ -47,6 +47,11 @@ class ConcatOpConverter : public OpConverter {
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
                                        itensors.size());
+    if (axis == -1) {
+      axis = (engine_->GetITensor(op_desc.Input("X").front())->getDimensions())
+                 .nbDims -
+             1;
+    }
     if (!engine_->with_dynamic_shape()) {
       axis = axis - 1;  // Remove batch dim
     }
