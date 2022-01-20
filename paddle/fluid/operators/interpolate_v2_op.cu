@@ -23,6 +23,61 @@ namespace operators {
 
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
+using FastDivMod = platform::FastDivMod;
+
+struct FastDivModForInterpolate {
+ public:
+  FastDivMod channels_div;
+  FastDivMod output_w_div;
+  FastDivMod outimg_w_div;
+  FastDivMod out_size_div;
+  FastDivMod out_wc_div;
+
+  explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
+                                               const int output_w,
+                                               const int outimg_w,
+                                               const int out_size,
+                                               const int out_wc) {
+    channels_div = FastDivMod(channels);
+    output_w_div = FastDivMod(output_w);
+    outimg_w_div = FastDivMod(outimg_w);
+    out_size_div = FastDivMod(out_size);
+    out_wc_div = FastDivMod(out_wc);
+  }
+};
+
+static inline int GetLastPow2(int n) {
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  return std::max(1, n - (n >> 1));
+}
+
+inline platform::GpuLaunchConfig GetCpuLaunchConfig3D(
+    const platform::CUDADeviceContext& context, int num_img, int height,
+    int width) {
+  const int kThreadsPerBlock = 256;
+  int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
+  int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
+
+  int block_x = std::min(GetLastPow2(width), max_threads);
+  int block_y = std::min(GetLastPow2(height), max_threads / block_x);
+  int block_z = std::min(num_img, max_threads / block_x / block_y);
+
+  dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
+  int grid_x = platform::DivUp(width, block_x);
+  int grid_y = platform::DivUp(height, block_y);
+  int grid_z = std::min<int>(max_grid_dim.z, DivUp(num_img, block_z * 4));
+
+  const int capability = context.GetComputeCapability();
+  platform::GpuLaunchConfig config;
+  config.compute_capability = capability;
+  config.thread_per_block = dim3(block_x, block_y, block_z);
+  config.block_per_grid = dim3(grid_x, grid_y, grid_z);
+  return config;
+}
 
 template <typename T>
 __global__ void KeNearestNeighborInterpFw(
@@ -161,28 +216,6 @@ __global__ void KeNearestNeighborInterpNCHWBw(
     }
   }
 }
-
-using FastDivMod = platform::FastDivMod;
-struct FastDivModForInterpolate {
- public:
-  FastDivMod channels_div;
-  FastDivMod output_w_div;
-  FastDivMod outimg_w_div;
-  FastDivMod out_size_div;
-  FastDivMod out_wc_div;
-
-  explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
-                                               const int output_w,
-                                               const int outimg_w,
-                                               const int out_size,
-                                               const int out_wc) {
-    channels_div = FastDivMod(channels);
-    output_w_div = FastDivMod(output_w);
-    outimg_w_div = FastDivMod(outimg_w);
-    out_size_div = FastDivMod(out_size);
-    out_wc_div = FastDivMod(out_wc);
-  }
-};
 
 template <typename T>
 __global__ void KeNearestNeighborInterpBw(
