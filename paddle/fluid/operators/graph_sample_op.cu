@@ -148,7 +148,8 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                       thrust::device_vector<T>* inputs,
                       thrust::device_vector<T>* outputs,
                       thrust::device_vector<T>* output_counts,
-                      thrust::device_vector<T>* outputs_eids, int k) {
+                      thrust::device_vector<T>* outputs_eids, int k,
+                      bool last_layer) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
 
@@ -189,18 +190,21 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                        thrust::raw_pointer_cast(output_idxs.data()));
 
   // 5. Get inputs = outputs - inputs:
-  thrust::device_vector<T> unique_outputs(outputs->size());
-  thrust::sort(inputs->begin(), inputs->end());
-  thrust::device_vector<T> outputs_sort(outputs->size());
-  thrust::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
-  thrust::sort(outputs_sort.begin(), outputs_sort.end());
-  auto unique_outputs_end = thrust::set_difference(
-      outputs_sort.begin(), outputs_sort.end(), inputs->begin(), inputs->end(),
-      unique_outputs.begin());
-  unique_outputs_end =
-      thrust::unique(unique_outputs.begin(), unique_outputs_end);
-  inputs->resize(thrust::distance(unique_outputs.begin(), unique_outputs_end));
-  thrust::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
+  if (!last_layer) {
+    thrust::device_vector<T> unique_outputs(outputs->size());
+    thrust::sort(inputs->begin(), inputs->end());
+    thrust::device_vector<T> outputs_sort(outputs->size());
+    thrust::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
+    thrust::sort(outputs_sort.begin(), outputs_sort.end());
+    auto unique_outputs_end = thrust::set_difference(
+        outputs_sort.begin(), outputs_sort.end(), inputs->begin(),
+        inputs->end(), unique_outputs.begin());
+    unique_outputs_end =
+        thrust::unique(unique_outputs.begin(), unique_outputs_end);
+    inputs->resize(
+        thrust::distance(unique_outputs.begin(), unique_outputs_end));
+    thrust::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
+  }
 }
 
 template <typename T>
@@ -311,25 +315,29 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     inputs.resize(bs);
     thrust::copy(p_vertices, p_vertices + bs, inputs.begin());
     std::vector<thrust::device_vector<T>> dst_vec;
-    dst_vec.push_back(inputs);
+    dst_vec.emplace_back(inputs);
     std::vector<thrust::device_vector<T>> outputs_vec;
     std::vector<thrust::device_vector<T>> output_counts_vec;
     std::vector<thrust::device_vector<T>> outputs_eids_vec;
 
     const size_t num_layers = sample_sizes.size();
+    bool last_layer = false;
     for (int i = 0; i < num_layers; i++) {
+      if (i == num_layers - 1) {
+        last_layer = true;
+      }
       if (inputs.size() == 0) {
         break;
       }
       if (i > 0) {
-        dst_vec.push_back(inputs);
+        dst_vec.emplace_back(inputs);
       }
       sample_neighbors<T>(ctx, src_data, dst_count_data, src_eids_data, &inputs,
                           &outputs, &output_counts, &outputs_eids,
-                          sample_sizes[i]);
-      outputs_vec.push_back(outputs);
-      output_counts_vec.push_back(output_counts);
-      outputs_eids_vec.push_back(outputs_eids);
+                          sample_sizes[i], last_layer);
+      outputs_vec.emplace_back(outputs);
+      output_counts_vec.emplace_back(output_counts);
+      outputs_eids_vec.emplace_back(outputs_eids);
     }
 
     // 3. Concat intermediate sample results

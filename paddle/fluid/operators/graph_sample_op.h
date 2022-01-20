@@ -49,7 +49,7 @@ template <typename T>
 void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
                       std::vector<T>* inputs, std::vector<T>* outputs,
                       std::vector<T>* output_counts,
-                      std::vector<T>* outputs_eids, int k) {
+                      std::vector<T>* outputs_eids, int k, bool last_layer) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
   outputs->resize(k * bs);
@@ -84,17 +84,20 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
   outputs->resize(total_neighbors);
   outputs_eids->resize(total_neighbors);
 
-  std::vector<T> unique_outputs(outputs->size());
-  std::sort(inputs->begin(), inputs->end());
-  std::vector<T> outputs_sort(outputs->size());
-  std::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
-  std::sort(outputs_sort.begin(), outputs_sort.end());
-  auto unique_outputs_end = std::set_difference(
-      outputs_sort.begin(), outputs_sort.end(), inputs->begin(), inputs->end(),
-      unique_outputs.begin());
-  unique_outputs_end = std::unique(unique_outputs.begin(), unique_outputs_end);
-  inputs->resize(std::distance(unique_outputs.begin(), unique_outputs_end));
-  std::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
+  if (!last_layer) {
+    std::vector<T> unique_outputs(outputs->size());
+    std::sort(inputs->begin(), inputs->end());
+    std::vector<T> outputs_sort(outputs->size());
+    std::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
+    std::sort(outputs_sort.begin(), outputs_sort.end());
+    auto unique_outputs_end = std::set_difference(
+        outputs_sort.begin(), outputs_sort.end(), inputs->begin(),
+        inputs->end(), unique_outputs.begin());
+    unique_outputs_end =
+        std::unique(unique_outputs.begin(), unique_outputs_end);
+    inputs->resize(std::distance(unique_outputs.begin(), unique_outputs_end));
+    std::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
+  }
 }
 
 template <typename DeviceContext, typename T>
@@ -121,25 +124,29 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
     std::vector<T> outputs_eids;
     std::copy(p_vertices, p_vertices + bs, inputs.begin());
     std::vector<std::vector<T>> dst_vec;
-    dst_vec.push_back(inputs);
+    dst_vec.emplace_back(inputs);
     std::vector<std::vector<T>> outputs_vec;
     std::vector<std::vector<T>> output_counts_vec;
     std::vector<std::vector<T>> outputs_eids_vec;
 
     const size_t num_layers = sample_sizes.size();
+    bool last_layer = false;
     for (size_t i = 0; i < num_layers; i++) {
+      if (i == num_layers - 1) {
+        last_layer = true;
+      }
       if (inputs.size() == 0) {
         break;
       }
       if (i > 0) {
-        dst_vec.push_back(inputs);
+        dst_vec.emplace_back(inputs);
       }
       sample_neighbors<T>(src_data, dst_count_data, src_eids_data, &inputs,
                           &outputs, &output_counts, &outputs_eids,
-                          sample_sizes[i]);
-      outputs_vec.push_back(outputs);
-      output_counts_vec.push_back(output_counts);
-      outputs_eids_vec.push_back(outputs_eids);
+                          sample_sizes[i], last_layer);
+      outputs_vec.emplace_back(outputs);
+      output_counts_vec.emplace_back(output_counts);
+      outputs_eids_vec.emplace_back(outputs_eids);
     }
 
     // 3. Concat intermediate sample results
@@ -193,13 +200,13 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
     size_t reindex_id = 0;
     for (size_t i = 0; i < unique_dst_merge.size(); i++) {
       T node = unique_dst_merge[i];
-      unique_nodes.push_back(node);
+      unique_nodes.emplace_back(node);
       node_map[node] = reindex_id++;
     }
     for (size_t i = 0; i < src_merge.size(); i++) {
       T node = src_merge[i];
       if (node_map.find(node) == node_map.end()) {
-        unique_nodes.push_back(node);
+        unique_nodes.emplace_back(node);
         node_map[node] = reindex_id++;
       }
       src_merge[i] = node_map[node];
