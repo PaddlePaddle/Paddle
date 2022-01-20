@@ -28,8 +28,6 @@ from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
-            SyncStrategy, GeoStrategy
 
 __all__ = []
 
@@ -614,24 +612,19 @@ class TheOnePSRuntime(RuntimeBase):
         self.context[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
         self.is_heter_ps_mode = self.context['is_heter_ps_mode']
-        self.context['strategy'] = get_distributed_strategy(self.context[
-            "valid_strategy"])
-        self.context['trainer'] = self.context[
-            'strategy'].get_trainer_runtime_config()
+        self.context['trainer'] = TrainerRuntimeConfig(context[
+            'valid_strategy'])
         self.context['ps_mode'] = self.context['trainer'].mode
-        self.context['use_ps_gpu'] = self.context['strategy'].use_ps_gpu
-        self.context['is_sync'] = self.context[
-            'strategy'].get_trainer_runtime_config()
+        self.context['use_ps_gpu'] = context['valid_strategy'].use_ps_gpu
+        self.is_sync = True if self.context[
+            'ps_mode'] == DistributedMode.SYNC else False
         self.context['grad_name_to_param_name'] = {}
 
     def _init_worker(self):
-        is_sync = self.context['is_sync']
-        worker = self._get_fleet_proto(is_server=False, is_sync=is_sync)
-        server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
+        worker = self._get_fleet_proto(is_server=False, is_sync=self.is_sync)
+        server = self._get_fleet_proto(is_server=True, is_sync=self.is_sync)
 
-        dist_strategy = self.context["valid_strategy"]
-        use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
-        if use_ps_gpu:
+        if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
                 main_program._fleet_opt = {}
@@ -692,7 +685,7 @@ class TheOnePSRuntime(RuntimeBase):
                 kwargs["barrier_table_id"] = table.id
                 break
 
-        if isinstance(self.context['strategy'], SyncStrategy):
+        if self.context['ps_mode'] == DistributedMode.SYNC:
             sync_kwargs = sync_strategy_envs()
             kwargs.update(sync_kwargs)
 
@@ -1007,11 +1000,10 @@ class TheOnePSRuntime(RuntimeBase):
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         role_id = get_role_id(self.role_maker)
         endpoints = get_ps_endpoints(self.role_maker)
-        is_sync = self.context['is_sync']
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
-        server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
+        server = self._get_fleet_proto(is_server=True, is_sync=self.is_sync)
         proto_txt = str(server)
         fs_client = fsClient(self.context["user_defined_strategy"]
                              .fs_client_param)
@@ -1059,10 +1051,6 @@ class TheOnePSRuntime(RuntimeBase):
 
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
-            # path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-            #                     "{}.block{}.txt".format(var_name, pserver_id))
-            # meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-            #                     "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(dirname, "0", table_id)
 
     def _run_server(self):

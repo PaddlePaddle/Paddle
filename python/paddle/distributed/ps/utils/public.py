@@ -54,6 +54,41 @@ class DistributedMode:
     FL = 4
 
 
+class TrainerRuntimeConfig(object):
+    def __init__(self, valid_strategy):
+
+        k_steps = valid_strategy.a_sync_configs["k_steps"]
+        if not valid_strategy.a_sync and k_steps == 0:
+            self.mode = DistributedMode.SYNC
+
+        if valid_strategy.a_sync and k_steps == 0:
+            self.mode = DistributedMode.ASYNC
+
+        if valid_strategy.a_sync and k_steps > 0:
+            self.mode = DistributedMode.GEO
+
+        self.mode = None
+        num_threads = os.getenv("CPU_NUM", "1")
+
+        self.runtime_configs = {}
+        self.runtime_configs['communicator_max_merge_var_num'] = os.getenv(
+            "FLAGS_communicator_max_merge_var_num", num_threads)
+        self.runtime_configs['communicator_send_queue_size'] = os.getenv(
+            "FLAGS_communicator_send_queue_size", num_threads)
+        self.runtime_configs[
+            'communicator_independent_recv_thread'] = os.getenv(
+                "FLAGS_communicator_independent_recv_thread", "1")
+        self.runtime_configs[
+            'communicator_min_send_grad_num_before_recv'] = os.getenv(
+                "FLAGS_communicator_min_send_grad_num_before_recv", num_threads)
+        self.runtime_configs['communicator_thread_pool_size'] = os.getenv(
+            "FLAGS_communicator_thread_pool_size", "5")
+        self.runtime_configs['communicator_send_wait_times'] = os.getenv(
+            "FLAGS_communicator_send_wait_times", "5")
+        self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
+            "FLAGS_communicator_is_sgd_optimizer", "1")
+
+
 def get_lr_ops(program):
     lr_ops = []
     for index, op in enumerate(program.global_block().ops):
@@ -125,25 +160,6 @@ def get_previous_stage_trainers(role_maker):
         return role_maker_get_previous_trainers()
     except Exception:
         return role_maker.get_previous_trainers()
-
-
-def get_distributed_strategy(dist_strategy):
-    k_steps = dist_strategy.a_sync_configs["k_steps"]
-    strategy = None
-
-    if not dist_strategy.a_sync and k_steps == 0:
-        strategy = StrategyFactory.create_sync_strategy()
-
-    if dist_strategy.a_sync and k_steps == 0:
-        strategy = StrategyFactory.create_async_strategy()
-
-    if dist_strategy.a_sync and k_steps > 0:
-        strategy = StrategyFactory.create_geo_strategy(k_steps)
-
-    if not strategy:
-        raise ValueError("k_steps must be invalid value, please check")
-
-    return strategy
 
 
 def is_distributed_sparse_op(op):

@@ -19,6 +19,7 @@ import subprocess
 import re
 import os
 import platform
+from .public import *
 from ..base.private_helper_function import wait_server_ready
 
 
@@ -43,16 +44,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.context['origin_main_program'] = loss.block.program
         self.context['origin_startup_program'] = startup_program
 
-        self.context['cloned_main'] = self.context['origin_main_program'].clone(
-        )
-        self.context['cloned_startup'] = self.context[
-            'origin_startup_program'].clone()
+        self.context['cloned_main'] = loss.block.program.clone()
+        self.context['cloned_startup'] = startup_program.clone()
 
         self.context['user_defined_strategy'] = self.user_defined_strategy
-        self.context['strategy'] = get_distributed_strategy(
+        self.context['trainer'] = TrainerRuntimeConfig(
             self.user_defined_strategy)
-        self.context['trainer'] = self.context[
-            'strategy'].get_trainer_runtime_config()
         self.context['ps_mode'] = self.context['trainer'].mode
 
         self.context['role_maker'] = self.role_maker
