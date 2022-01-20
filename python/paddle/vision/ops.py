@@ -901,7 +901,7 @@ def file_label_loader(data_root, indices, name=None):
     
     label = helper.create_variable(
         name=unique_name.generate("file_label_loader"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        type=core.VarDesc.VarType.LOD_TENSOR,
         dtype='int')
 
     helper.append_op(

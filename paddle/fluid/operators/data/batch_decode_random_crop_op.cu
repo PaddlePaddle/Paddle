@@ -31,7 +31,6 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_threads = ctx.Attr<int>("num_threads");
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads;
     auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     // multi-phrase decode thread pool
@@ -43,6 +42,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
 
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
+    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads << ", batch_size: " << inputs->size();
 
     auto* out = ctx.OutputVar("Out");
     auto dev = platform::CUDAPlace(local_rank);

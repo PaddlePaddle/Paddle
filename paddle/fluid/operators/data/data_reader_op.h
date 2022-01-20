@@ -123,7 +123,6 @@ class DataReader {
       while (running_.load()) {
         std::vector<int64_t> indices;
         sampler_.GetNextIndices(&indices);
-        LOG(ERROR) << "DataReaderOp thread got indices " << indices.size();
         // shutdown reader if indices drained
         if (indices.size() == 0) {
           for(auto& queue: output_queues_) {
@@ -140,8 +139,7 @@ class DataReader {
         try {
           executor.Run(*reader_block_->Program(), &scope_,
                        static_cast<int>(reader_block_->ID()),
-                       false, true, std::vector<std::string>(),
-                       false, true);
+                       false, true, {}, false, true);
         } catch (...) {
           break;
         }
@@ -167,7 +165,6 @@ class DataReader {
             output_queues_[i]->Push(t_arr);
           }
         }
-        LOG(ERROR) << "ReaderThread output";
       }
       scope->DeleteScope(&scope_);
     });

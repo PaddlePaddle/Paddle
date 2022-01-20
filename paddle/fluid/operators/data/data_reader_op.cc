@@ -66,7 +66,7 @@ class DataReaderOp : public framework::OperatorBase {
 
     auto output_queues = GetQueueVecFromVariableVec(output_vars);
     ReaderManager::Instance()->StartDataReader(
-        reader_id, reader_block, &scope, dev_place, indices_var_name,
+        reader_id, reader_block, &scope, platform::CPUPlace(), indices_var_name,
         output_var_names, output_queues, batch_size, num_samples,
         shuffle, drop_last, rank, world_size);
   }

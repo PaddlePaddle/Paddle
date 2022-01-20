@@ -221,7 +221,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     LOG(ERROR) << "FileLabelLoaderOp RunImpl start";
     auto* indices = ctx.Input<LoDTensor>("Indices");
     auto* image_arr = ctx.Output<LoDTensorArray>("Image");
-    auto* label_arr = ctx.Output<LoDTensorArray>("Label");
+    auto* label_tensor = ctx.Output<LoDTensor>("Label");
 
     auto files = ctx.Attr<std::vector<std::string>>("files");
     auto labels = ctx.Attr<std::vector<int>>("labels");
@@ -229,9 +229,11 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     auto batch_size = indices->dims()[0];
     const int64_t* indices_data = indices->data<int64_t>();
 
+    image_arr->clear();
     image_arr->reserve(batch_size);
-    std::vector<int> label_vec;
-    label_vec.reserve(batch_size);
+    label_tensor->Resize(
+        framework::make_ddim({static_cast<int64_t>(batch_size)}));
+    auto* label_data = label_tensor->mutable_data<int>(platform::CPUPlace());
     for (int64_t i = 0; i < batch_size; i++) {
       int64_t index = indices_data[i];
       std::ifstream input(files[index].c_str(),
@@ -249,17 +251,9 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
       input.read(reinterpret_cast<char*>(data), file_size);
 
       image_arr->emplace_back(image);
-      label_vec.emplace_back(labels[index]);
+      label_data[i] = labels[index];
     }
 
-    framework::LoDTensor label_tensor;
-    label_tensor.Resize(
-        framework::make_ddim({static_cast<int64_t>(label_vec.size())}));
-    auto* label_data = label_tensor.mutable_data<int>(platform::CPUPlace());
-    for (int i = 0; i < batch_size; i++) label_data[i] = label_vec[i];
-
-    label_arr->reserve(1);
-    label_arr->emplace_back(label_tensor);
     LOG(ERROR) << "FileLabelLoaderOp RunImpl finish";
 
     // auto out_queue = out->Get<LoDTensorBlockingQueueHolder>().GetQueue();
