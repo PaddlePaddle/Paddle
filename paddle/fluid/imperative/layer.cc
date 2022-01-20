@@ -409,6 +409,8 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
 }
 
+pten::KernelContext OpBase::pt_kernel_context_;
+
 void OpBase::SetType(const std::string& type) {
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
 }
