@@ -67,9 +67,11 @@ class TransferLayoutFunctor {
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
-        platform::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
-        paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            in_layout);
+        if (lin == DataLayout::kNHWC) {
+          platform::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .set_cur_paddle_data_layout(in_layout);
+        }
         out_tensor.set_layout(DataLayout::kMKLDNN);
         out_tensor.set_format(out_format);
       } else {
