@@ -94,8 +94,9 @@ class MeshgridKernel : public framework::OpKernel<T> {
       view_shape[i] = shape[i];
 
       framework::Tensor reshape_ins_tensor;
-      TensorCopy(*ins[i], context.GetPlace(), context.device_context(),
-                 &reshape_ins_tensor);
+      paddle::framework::TensorCopy(*ins[i], context.GetPlace(),
+                                    context.device_context(),
+                                    &reshape_ins_tensor);
       framework::DDim out_dims_reshape = framework::make_ddim(view_shape);
       reshape_ins_tensor.Resize(out_dims_reshape);
       framework::DDim out_dims = framework::make_ddim(shape);

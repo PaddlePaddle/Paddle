@@ -28,7 +28,7 @@ void FlattenGradKernel(const Context& dev_ctx,
   auto x_dims =
       paddle::framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
   pten::Copy(dev_ctx, out_grad, false, x_grad);
-  x_grad->Resize(x_dims);
+  x_grad->ResizeAndAllocate(x_dims);
 }
 
 }  // namespace pten
