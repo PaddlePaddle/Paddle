@@ -126,7 +126,9 @@ if(NOT WIN32)
   cc_test(mmap_allocator_test SRCS mmap_allocator_test.cc DEPS mmap_allocator allocator)
 endif(NOT WIN32)
 
-if(WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")       
+cc_library(cuda_ipc_allocator SRCS cuda_ipc_allocator.cc DEPS allocator)
+
+if(WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
   nv_test(base_ptr_test SRCS base_ptr_test.cu DEPS malloc gpu_info)
   set_tests_properties(base_ptr_test PROPERTIES 
                        ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;
