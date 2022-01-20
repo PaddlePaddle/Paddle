@@ -37,13 +37,12 @@ struct FastDivModForInterpolate {
                                                const int output_w,
                                                const int outimg_w,
                                                const int out_size,
-                                               const int out_wc) {
-    channels_div = FastDivMod(channels);
-    output_w_div = FastDivMod(output_w);
-    outimg_w_div = FastDivMod(outimg_w);
-    out_size_div = FastDivMod(out_size);
-    out_wc_div = FastDivMod(out_wc);
-  }
+                                               const int out_wc)
+      : channels_div(FastDivMod(channels)),
+        output_w_div(FastDivMod(output_w)),
+        outimg_w_div(FastDivMod(outimg_w)),
+        out_size_div(FastDivMod(out_size)),
+        out_wc_div(FastDivMod(out_wc)) {}
 };
 
 static inline int GetLastPow2(int n) {
@@ -1838,8 +1837,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
       int nc = n * c;
-      platform::GpuLaunchConfig config_3d = platform::GetCpuLaunchConfig3D(
-          ctx.cuda_device_context(), nc, out_h, out_w);
+      platform::GpuLaunchConfig config_3d =
+          GetCpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
       KeNearestNeighborInterpNCHWBw<
           T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
