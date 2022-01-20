@@ -22,35 +22,48 @@ namespace pten {
 namespace funcs {
 
 // Define the binary functors used in elementwise ops.
+// Note: InverseXxxFunctor is needed when calling ElementwiseComputeEx on CPU.
 
 // Add
 template <typename T>
 struct AddFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a + b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a + b; }
 };
 template <typename T>
 struct InverseAddFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b + a; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return b + a; }
 };
 
 // Subtract
 template <typename T>
 struct SubtractFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a - b; }
 };
 template <typename T>
 struct InverseSubtractFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b - a; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return b - a; }
 };
 
 // Multiply
 template <typename T>
 struct MultiplyFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
+};
+template <>
+struct MultiplyFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
+    return a && b;
+  }
 };
 template <typename T>
 struct InverseMultiplyFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b * a; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return b * a; }
+};
+template <>
+struct InverseMultiplyFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
+    return b && a;
+  }
 };
 
 // Divide
@@ -60,14 +73,14 @@ struct InverseMultiplyFunctor {
 
 template <typename T, typename Enable = void>
 struct DivideFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
 };
 
 template <typename T>
 struct DivideFunctor<
     T,
     typename std::enable_if<std::is_integral<T>::value>::type> {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     // For int32/int64, need to check whether the divison is zero.
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     return a / b;
@@ -76,7 +89,7 @@ struct DivideFunctor<
 
 template <typename T, typename Enable = void>
 struct InverseDivideFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return b / a; }
 };
 
 }  // namespace funcs

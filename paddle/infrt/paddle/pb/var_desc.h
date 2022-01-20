@@ -23,7 +23,9 @@
 #include "paddle/infrt/paddle/cpp/desc_api.h"
 #include "paddle/infrt/paddle/framework.pb.h"
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 namespace framework_proto = ::paddle::framework::proto;
 
 // convert between std::vector and protobuf repeated.
@@ -121,4 +123,6 @@ class VarDesc : public cpp::VarDescAPI {
   framework_proto::VarDesc *desc_;
 };
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

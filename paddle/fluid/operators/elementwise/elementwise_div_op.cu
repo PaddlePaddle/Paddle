@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -32,20 +31,10 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
   const auto& dev_ctx = ctx.template device_context<DeviceContext>();
   const auto place = ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, out, y};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
                                                 dx, DivGradXFunctor<T>());

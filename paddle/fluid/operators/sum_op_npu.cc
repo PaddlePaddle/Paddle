@@ -38,7 +38,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
 
       int n = static_cast<int>(x.size());
       if (n == 1) {
-        TensorCopy(*x[0], place, out);
+        paddle::framework::TensorCopy(*x[0], place, out);
         return;
       }
 

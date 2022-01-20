@@ -17,11 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class LoDTensor;
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class MKLDNNDeviceContext;
 }  // namespace platform
@@ -494,6 +495,11 @@ class FCPrimitiveFactory {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
       post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_logistic,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "mish") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_mish,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
       constexpr float alpha = 0.0f;

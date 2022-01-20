@@ -43,10 +43,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class ProgramDesc;
 class Scope;
-class Tensor;
 }  // namespace framework
 namespace platform {
 class DeviceContext;

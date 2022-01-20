@@ -63,7 +63,7 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
     *(temp_data + i) = random(0., 1.);
   }
 
-  TensorCopySync(temp_tensor, place, tensor);
+  paddle::framework::TensorCopySync(temp_tensor, place, tensor);
 }
 
 /*

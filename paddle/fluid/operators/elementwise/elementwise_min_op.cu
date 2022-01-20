@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -25,14 +24,41 @@ class ElementwiseMinKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
-    const auto& cuda_ctx =
+    const auto& dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, MinFunctor<T>());
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(dev_ctx, ins, &outs, axis,
+                                                      MinFunctor<T>());
   }
 };
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+ElementwiseMinGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  const auto& dev_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  const auto place = ctx.GetPlace();
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
+        dev_ctx, place, axis, ins, dout, dx, dy, MinGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+        dev_ctx, place, axis, ins, dout, dx, MinGradXFunctor<T>());
+  } else if (dx == nullptr && dy != nullptr) {
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+        dev_ctx, place, axis, ins, dout, dy, MinGradYFunctor<T>());
+  }
+}
 
 }  // namespace operators
 }  // namespace paddle
