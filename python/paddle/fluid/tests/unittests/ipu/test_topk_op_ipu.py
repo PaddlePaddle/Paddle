@@ -102,12 +102,11 @@ class TestTopKOp(IPUOpTest):
 
             if run_ipu:
                 feed_list = self.feed_list
-                ipu_config = paddle.static.IpuConfig()
-                paddle.static.IpuGraphConfig(
-                    ipu_config, is_training=self.is_training)
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(is_training=self.is_training)
                 program = compiler.IPUCompiledProgram(
                     main_prog,
-                    ipu_config=ipu_config).compile(feed_list, fetch_list)
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
