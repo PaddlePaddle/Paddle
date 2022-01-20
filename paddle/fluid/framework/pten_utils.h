@@ -88,5 +88,8 @@ struct ConvertToPtenContext<platform::XPUDeviceContext> {
   using TYPE = pten::XPUContext;
 };
 
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place);
+
 }  // namespace framework
 }  // namespace paddle
