@@ -31,6 +31,8 @@ class TestInferenceApi(unittest.TestCase):
         self.assertEqual(dist_tensor32.data.length(), 40)
         self.assertEqual(dist_tensor32.name, '32_tensor')
         dist_tensor32.data.reset(tensor32)
+        self.assertEqual(dist_tensor32.as_ndarray().ravel().tolist(),
+                         tensor32.ravel().tolist())
 
         tensor64 = np.random.randint(10, 20, size=[20, 2]).astype('int64')
         dist_tensor64 = DistModelTensor(tensor64, '64_tensor')
@@ -41,6 +43,8 @@ class TestInferenceApi(unittest.TestCase):
         self.assertEqual(dist_tensor64.data.length(), 40)
         self.assertEqual(dist_tensor64.name, '64_tensor')
         dist_tensor64.data.reset(tensor64)
+        self.assertEqual(dist_tensor64.as_ndarray().ravel().tolist(),
+                         tensor32.ravel().tolist())
 
         tensor_float = np.random.randn(20, 2).astype('float32')
         dist_tensor_float = DistModelTensor(tensor_float, 'float_tensor')
@@ -52,6 +56,8 @@ class TestInferenceApi(unittest.TestCase):
         self.assertEqual(dist_tensor_float.data.length(), 40)
         self.assertEqual(dist_tensor_float.name, 'float_tensor')
         dist_tensor_float.data.reset(tensor_float)
+        self.assertEqual(dist_tensor_float.as_ndarray().ravel().tolist(),
+                         tensor32.ravel().tolist())
 
 
 if __name__ == '__main__':

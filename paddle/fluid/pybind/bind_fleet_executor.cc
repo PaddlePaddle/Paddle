@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <string>
 #include <vector>
@@ -44,7 +45,7 @@ template <typename T>
 DistModelDataBuf DistModelDataBufCreate(
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   // accept numpy array directly
-  DistModelDataBuf buf(data.sizet() * sizeof(T));
+  DistModelDataBuf buf(data.size() * sizeof(T));
   std::copy_n(static_cast<const T*>(data.data()), data.size(),
               static_cast<T*>(buf.data()));
   return buf;
@@ -56,19 +57,19 @@ void DistModelDataBufReset(
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {  // NOLINT
   // reset the data with numpy array directly
   buf.Resize(data.size() * sizeof(T));
-  std::copy_n(static_cast<const T*>(data.data()), data.sizer(),
+  std::copy_n(static_cast<const T*>(data.data()), data.size(),
               static_cast<T*>(buf.data()));
 }
 
 template <typename T>
 DistModelTensor DistModelTensorCreate(
     py::array_t<T, py::array::c_style | py::array::forcecast> data,
-    const std::string name, const std::vector<std::vecotr<size_t>>& lod,
+    const std::string name, const std::vector<std::vector<size_t>>& lod,
     bool copy) {
   DistModelTensor tensor;
 
   if (copy) {
-    DistModelDataBufBuf buf(data.size() * sizeof(T));
+    DistModelDataBuf buf(data.size() * sizeof(T));
     std::copy_n(static_cast<const T*>(data.data()), data.size(),
                 static_cast<T*>(buf.data()));
     tensor.data = data;
@@ -77,13 +78,45 @@ DistModelTensor DistModelTensorCreate(
         DistModelDataBuf(data.mutable_data(), data.size() * sizeof(T));
   }
 
-  tensor.dtype = paddle::distributed::DistModelDataType<T>();
+  tensor.dtype = paddle::distributed::DistModelGetDtype<T>();
   tensor.name = name;
   tesnor.lod = lod;
   tensor.shape.resize(data.ndim());
   std::copy_n(data.shape(), data.ndim(), tensor.shape.begin());
 
   return tensor;
+}
+
+py::dtype DistModelTensorGetData(DistModelDataType dtype) {
+  py::dtype dt;
+  switch (dtype) {
+    case DistModelDataType::INT32:
+      dt = py::dtype::of<int32_t>();
+      break;
+    case DistModelDataType::INT64:
+      dt = py::dtype::of<int64_t>();
+      break;
+    case DistModelDataType::FLOAT32:
+      dt = py::dtype::of<float>();
+      break;
+    case DistModelDataType::INT8:
+      dt = py::dtype::of<int8_t>();
+      break;
+    case DistModelDataType::FLOAT16:
+      dt = py::dtype::of<paddle::platform::float16>();
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64, INT8, "
+          "FLOAT16 and FLOAT32."));
+  }
+
+  return dt;
+}
+
+py::array DistModelTensorGetData(DistModelTensor& tensor) {  // NOLINT
+  py::dtype dt = DistModelTypeToNumpyDType(tensor.dtype);
+  return py::array(std::move(dt), {tensor.shape}, tensor.data.data());
 }
 
 void BindFleetExecutor(py::module* m) {
@@ -196,7 +229,8 @@ void BindFleetExecutor(py::module* m) {
   py::enum_<DistModelDataType>(*m, "DistModelDataType")
       .value("FLOAT32", DistModelDataType::FLOAT32)
       .value("INT64", DistModelDataType::INT64)
-      .value("INT32", DistModelDataType::INT32);
+      .value("INT32", DistModelDataType::INT32)
+      .def("as_ndarray", &DistModelTensorGetData);
 }
 }  // namespace pybind
 }  // namespace paddle
