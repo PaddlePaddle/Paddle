@@ -14,14 +14,15 @@
 
 import unittest
 import paddle
-paddle.enable_static()
 import numpy as np
 from paddle.fluid.core import DistModelTensor
 from paddle.fluid.core import DistModelDataType
 
+paddle.enable_static()
 
-class TestInferenceApi(unittest.TestCase):
-    def test_inference_api(self):
+
+class TestDistModelTensor(unittest.TestCase):
+    def test_dist_model_tensor(self):
         tensor32 = np.random.randint(10, 20, size=[20, 2]).astype('int32')
         dist_tensor32 = DistModelTensor(tensor32, '32_tensor')
         dtype32 = dist_tensor32.dtype
