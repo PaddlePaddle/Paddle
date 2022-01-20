@@ -34,9 +34,13 @@ class DistModelDataBuf {
   ~DistModelDataBuf() { Free(); }
   DistModelDataBuf() = default;
 
+  DistModelDataBuf& operator=(const DistModelDataBuf& other);
+  DistModelDataBuf& operator=(DistModelDataBuf&& other);
+  DistModelDataBuf(DistModelDataBuf&& other);
+  DistModelDataBuf(const DistModelDataBuf& other);
+
  private:
-  // TODO(fleet exe dev): support copy and assign later
-  DISABLE_COPY_AND_ASSIGN(DistModelDataBuf);
+  void Resize(size_t length);
   void Free();
   void* data_{nullptr};
   size_t length_{0};

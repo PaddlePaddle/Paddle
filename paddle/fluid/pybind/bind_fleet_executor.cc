@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include <pybind11/stl.h>
+#include <string>
+#include <vector>
 #include "paddle/fluid/distributed/fleet_executor/dist_model.h"
+#include "paddle/fluid/distributed/fleet_executor/dist_model_tensor_wrapper.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
@@ -31,6 +34,8 @@ using paddle::distributed::FleetExecutor;
 using paddle::distributed::TaskNode;
 using paddle::distributed::DistModelConfig;
 using paddle::distributed::DistModel;
+using paddle::distributed::DistModelDataBuf;
+using paddle::distributed::DistModelTensor;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 
@@ -78,6 +83,14 @@ void BindFleetExecutor(py::module* m) {
       .def(py::init<const DistModelConfig&>())
       .def("init", &DistModel::Init)
       .def("run", &DistModel::Run, py::call_guard<py::gil_scoped_release>());
+
+  py::class_<DistModelDataBuf>(*m, "DistModelDataBuf")
+      .def(py::init<size_t>())
+      .def(py::init([](std::vector<float>& data) {
+        auto buf = DistModelDataBuf(data.size() * sizeof(float));
+        std::memcpy(buf.data(), static_cast<void*>(data.data()), buf.length());
+        return buf;
+      }))
 }
 }  // namespace pybind
 }  // namespace paddle
