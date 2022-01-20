@@ -15,17 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/math.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(MathCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(MathCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -33,10 +30,10 @@ using DDim = paddle::framework::DDim;
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, mean) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
@@ -49,9 +46,10 @@ TEST(API, mean) {
   }
 
   paddle::experimental::Tensor x(dense_x);
+  std::vector<int64_t> axis = {0, 1};
 
   // 2. test API
-  auto out = paddle::experimental::mean(x);
+  auto out = paddle::experimental::mean(x, axis, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
@@ -67,3 +65,6 @@ TEST(API, mean) {
   auto actual_result = dense_out->data<float>()[0];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
+
+}  // namespace tests
+}  // namespace paddle

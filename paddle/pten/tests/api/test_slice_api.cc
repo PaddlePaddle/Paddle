@@ -15,17 +15,11 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/creation.h"
+#include "paddle/pten/api/include/api.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
-
-namespace pten {
+namespace paddle {
 namespace tests {
 
 TEST(Tensor, slice) {
@@ -47,4 +41,4 @@ TEST(Tensor, slice) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle

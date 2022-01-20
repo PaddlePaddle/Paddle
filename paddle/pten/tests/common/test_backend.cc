@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/backend.h"
 
+namespace pten {
+namespace tests {
+
 TEST(Backend, OStream) {
   std::ostringstream oss;
   oss << pten::Backend::UNDEFINED;
@@ -26,8 +29,8 @@ TEST(Backend, OStream) {
   oss << pten::Backend::CPU;
   EXPECT_EQ(oss.str(), "CPU");
   oss.str("");
-  oss << pten::Backend::CUDA;
-  EXPECT_EQ(oss.str(), "CUDA");
+  oss << pten::Backend::GPU;
+  EXPECT_EQ(oss.str(), "GPU");
   oss.str("");
   oss << pten::Backend::XPU;
   EXPECT_EQ(oss.str(), "XPU");
@@ -48,3 +51,6 @@ TEST(Backend, OStream) {
     EXPECT_TRUE(ex_msg.find("Invalid enum backend type") != std::string::npos);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

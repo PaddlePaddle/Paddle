@@ -77,10 +77,9 @@ static void StridedSliceOutDims(
       end_index = end_index + 1;
     }
 
-    bool zero_dim_condition =
-        ((stride_index < 0 && (start_index <= end_index)) ||
-         (stride_index > 0 && (start_index >= end_index)));
-    PADDLE_ENFORCE_EQ(zero_dim_condition, false,
+    bool neg_dim_condition = ((stride_index < 0 && (start_index < end_index)) ||
+                              (stride_index > 0 && (start_index > end_index)));
+    PADDLE_ENFORCE_EQ(neg_dim_condition, false,
                       platform::errors::InvalidArgument(
                           "The start index and end index are invalid for their "
                           "corresponding stride."));
@@ -377,7 +376,8 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         auto* out_tensor = &out_array->at(out_offset);
 
         out_tensor->set_lod(in_tensor.lod());
-        TensorCopy(in_tensor, context.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                      out_tensor);
       }
 
     } else {
@@ -609,7 +609,8 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
                   in_offset));
 
           d_out_tensor->set_lod(in_tensor.lod());
-          TensorCopy(in_tensor, context.GetPlace(), d_out_tensor);
+          paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                        d_out_tensor);
 
         } else {
           d_out_tensor->Resize(dim);

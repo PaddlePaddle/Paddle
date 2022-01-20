@@ -25,17 +25,16 @@ limitations under the License. */
 #endif
 
 // new pten apis
-#include "paddle/pten/api/include/creation.h"
-#include "paddle/pten/api/include/linalg.h"
-#include "paddle/pten/api/include/manipulation.h"
-#include "paddle/pten/api/include/math.h"
+#include "paddle/pten/api/include/api.h"
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/api/include/utils.h"
 
 // pten common headers
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 
 // original custom op headers
 #include "paddle/pten/api/ext/dispatch.h"
@@ -43,11 +42,4 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/ext/place.h"
-
-// api symbols declare, remove in the future
-#include "paddle/pten/api/include/registry.h"
-
-PT_DECLARE_API(Creation);
-PT_DECLARE_API(Linalg);
-PT_DECLARE_API(Manipulation);
-PT_DECLARE_API(Math);
+#include "paddle/pten/api/ext/tensor_compat.h"

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/crop_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,8 @@ class CropNPUKernel : public framework::OpKernel<T> {
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
       auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
-      TensorToVector(*offsets_tensor, ctx.device_context(), &offset_list);
+      paddle::framework::TensorToVector(*offsets_tensor, ctx.device_context(),
+                                        &offset_list);
       if (offset_list.empty()) {
         offset_list.resize(x->dims().size(), 0);
       }

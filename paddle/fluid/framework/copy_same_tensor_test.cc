@@ -68,7 +68,7 @@ static bool CopySameTensorTestMain(const DDim &dims,
     if (sync_copy) {
       TensorCopySync(src_tensor, dst_place, &src_tensor);
     } else {
-      TensorCopy(src_tensor, dst_place, &src_tensor);
+      paddle::framework::TensorCopy(src_tensor, dst_place, &src_tensor);
       platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
     }
@@ -77,8 +77,8 @@ static bool CopySameTensorTestMain(const DDim &dims,
     TensorCopySync(src_tensor, platform::CPUPlace(), &dst_cpu_tensor);
   }
 
-  const void *ground_truth_ptr = src_cpu_tensor.data<void>();
-  const void *result_ptr = dst_cpu_tensor.data<void>();
+  const void *ground_truth_ptr = src_cpu_tensor.data();
+  const void *result_ptr = dst_cpu_tensor.data();
   size_t byte_num = product(dims) * sizeof(T);
   return std::memcmp(ground_truth_ptr, result_ptr, byte_num) == 0;
 }

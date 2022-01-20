@@ -17,11 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class LoDTensor;
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class MKLDNNDeviceContext;
 }  // namespace platform
@@ -38,16 +39,16 @@ using framework::ExecutionContext;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
-using mkldnn::memory;
-using mkldnn::inner_product_forward;
-using mkldnn::primitive;
-using mkldnn::stream;
-using mkldnn::prop_kind;
+using dnnl::memory;
+using dnnl::inner_product_forward;
+using dnnl::primitive;
+using dnnl::stream;
+using dnnl::prop_kind;
 
 template <typename T_in, typename T_w, typename T_out>
 class FCPrimitiveFactory {
  public:
-  explicit FCPrimitiveFactory(const mkldnn::engine& engine) : engine_(engine) {}
+  explicit FCPrimitiveFactory(const dnnl::engine& engine) : engine_(engine) {}
 
   void ExecuteFcPrimitive(const LoDTensor* input, const Tensor* weights,
                           const Tensor* bias, LoDTensor* output,
@@ -89,8 +90,7 @@ class FCPrimitiveFactory {
     // descriptor has been divided into separate cases, based on the number
     // of input dimensions.
     size_t input_dim_num = input->dims().size();
-    paddle::optional<mkldnn::inner_product_forward::primitive_desc>
-        fc_prim_desc;
+    paddle::optional<dnnl::inner_product_forward::primitive_desc> fc_prim_desc;
     memory::desc usr_weights_desc = {};
     switch (input_dim_num) {
       case 2:
@@ -140,14 +140,14 @@ class FCPrimitiveFactory {
   void Execute() {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (bias_) {
-      fc_->execute(astream, {{MKLDNN_ARG_SRC, *input_},
-                             {MKLDNN_ARG_WEIGHTS, *weights_},
-                             {MKLDNN_ARG_BIAS, *bias_},
-                             {MKLDNN_ARG_DST, *output_}});
+      fc_->execute(astream, {{DNNL_ARG_SRC, *input_},
+                             {DNNL_ARG_WEIGHTS, *weights_},
+                             {DNNL_ARG_BIAS, *bias_},
+                             {DNNL_ARG_DST, *output_}});
     } else {
-      fc_->execute(astream, {{MKLDNN_ARG_SRC, *input_},
-                             {MKLDNN_ARG_WEIGHTS, *weights_},
-                             {MKLDNN_ARG_DST, *output_}});
+      fc_->execute(astream, {{DNNL_ARG_SRC, *input_},
+                             {DNNL_ARG_WEIGHTS, *weights_},
+                             {DNNL_ARG_DST, *output_}});
     }
     astream.wait();
   }
@@ -192,7 +192,7 @@ class FCPrimitiveFactory {
     }
   }
 
-  mkldnn::inner_product_forward::primitive_desc Create2DFcPrimDescriptor(
+  dnnl::inner_product_forward::primitive_desc Create2DFcPrimDescriptor(
       const LoDTensor* input, const Tensor* weights, const Tensor* bias,
       LoDTensor* output, const ExecutionContext& ctx) {
     auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
@@ -213,7 +213,7 @@ class FCPrimitiveFactory {
 
   memory::desc Create2DUserWeightsDesc() { return weights_->get_desc(); }
 
-  mkldnn::inner_product_forward::primitive_desc Create3DFcPrimDescriptor(
+  dnnl::inner_product_forward::primitive_desc Create3DFcPrimDescriptor(
       const LoDTensor* input, const Tensor* weights, const Tensor* bias,
       LoDTensor* output, const ExecutionContext& ctx) {
     auto input_dims = framework::vectorize(input->dims());
@@ -244,7 +244,7 @@ class FCPrimitiveFactory {
     return CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oiw);
   }
 
-  mkldnn::inner_product_forward::primitive_desc Create4DFcPrimDescriptor(
+  dnnl::inner_product_forward::primitive_desc Create4DFcPrimDescriptor(
       const LoDTensor* input, const Tensor* weights, const Tensor* bias,
       LoDTensor* output, const ExecutionContext& ctx) {
     auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
@@ -274,13 +274,13 @@ class FCPrimitiveFactory {
   }
 
   // Convert data from one data format to another
-  std::shared_ptr<mkldnn::memory> Reorder(const memory::desc& src_desc,
-                                          const memory::desc& dst_desc,
-                                          void* src_data) {
+  std::shared_ptr<dnnl::memory> Reorder(const memory::desc& src_desc,
+                                        const memory::desc& dst_desc,
+                                        void* src_data) {
     auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = std::make_shared<memory>(dst_desc, engine_);
 
-    auto reorder = mkldnn::reorder(src_mem, *dst_mem);
+    auto reorder = dnnl::reorder(src_mem, *dst_mem);
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     {
@@ -295,11 +295,11 @@ class FCPrimitiveFactory {
 
   // Convert data from one data format to another and rescale it.
   // If the desired data type is (un)signed int8, quantization occurs here.
-  std::shared_ptr<mkldnn::memory> ReorderWithScale(
+  std::shared_ptr<dnnl::memory> ReorderWithScale(
       const std::shared_ptr<memory> src_mem, const memory::desc& dst_md,
       const std::vector<float>& scale_data) {
-    auto dst_mem = std::make_shared<mkldnn::memory>(dst_md, engine_);
-    mkldnn::primitive_attr attributes;
+    auto dst_mem = std::make_shared<dnnl::memory>(dst_md, engine_);
+    dnnl::primitive_attr attributes;
     // According to MKL-DNN's documentation mask determines along which
     // dimensions should the scale be applied.
     // 0 - Single scale applied to whole tensor
@@ -308,14 +308,14 @@ class FCPrimitiveFactory {
     //     becuase we perform per-output-channel quantization
     int mask = CreateMask(0, scale_data.size() > 1);
     attributes.set_output_scales(mask, scale_data);
-    auto reorder = mkldnn::reorder(*src_mem, *dst_mem, attributes);
+    auto reorder = dnnl::reorder(*src_mem, *dst_mem, attributes);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
       reorder.execute(astream,
-                      {{MKLDNN_ARG_FROM, *src_mem}, {MKLDNN_ARG_TO, *dst_mem}});
+                      {{DNNL_ARG_FROM, *src_mem}, {DNNL_ARG_TO, *dst_mem}});
       astream.wait();
     }
 
@@ -323,43 +323,43 @@ class FCPrimitiveFactory {
   }
 
   template <typename T>
-  static mkldnn::memory::desc CreateMemDescriptor(
+  static dnnl::memory::desc CreateMemDescriptor(
       const std::vector<int64_t>& dims, MKLDNNMemoryFormat format) {
     return platform::MKLDNNMemDesc(dims, platform::MKLDNNGetDataType<T>(),
                                    format);
   }
 
   template <typename T>
-  static mkldnn::memory::desc CreateMemDescriptor(const Tensor* tensor,
-                                                  MKLDNNMemoryFormat format) {
+  static dnnl::memory::desc CreateMemDescriptor(const Tensor* tensor,
+                                                MKLDNNMemoryFormat format) {
     auto dims = framework::vectorize(tensor->dims());
     return CreateMemDescriptor<T>(dims, format);
   }
 
   template <typename T>
-  mkldnn::memory CreateMemory(const mkldnn::memory::desc& desc,
-                              const Tensor* tensor) {
+  dnnl::memory CreateMemory(const dnnl::memory::desc& desc,
+                            const Tensor* tensor) {
     return CreateMemory(desc, platform::to_void_cast<T>(tensor->data<T>()));
   }
 
-  mkldnn::memory CreateMemory(const mkldnn::memory::desc& desc, void* data) {
+  dnnl::memory CreateMemory(const dnnl::memory::desc& desc, void* data) {
     return memory(desc, engine_, data);
   }
 
   template <typename T>
-  std::shared_ptr<mkldnn::memory> CreateMemoryToBeCached(
-      const mkldnn::memory::desc& desc, const Tensor* tensor) {
+  std::shared_ptr<dnnl::memory> CreateMemoryToBeCached(
+      const dnnl::memory::desc& desc, const Tensor* tensor) {
     return CreateMemoryToBeCached(desc,
                                   platform::to_void_cast<T>(tensor->data<T>()));
   }
 
-  std::shared_ptr<mkldnn::memory> CreateMemoryToBeCached(
-      const mkldnn::memory::desc& desc, void* data) {
+  std::shared_ptr<dnnl::memory> CreateMemoryToBeCached(
+      const dnnl::memory::desc& desc, void* data) {
     return std::make_shared<memory>(desc, engine_, data);
   }
 
   // Create weights memory and transform to default MKL-DNN format
-  std::shared_ptr<mkldnn::memory> CreateWeightsMemory(const Tensor* weights) {
+  std::shared_ptr<dnnl::memory> CreateWeightsMemory(const Tensor* weights) {
     auto dims = framework::vectorize(weights->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::io);
@@ -404,26 +404,36 @@ class FCPrimitiveFactory {
   // scaled with its own scales, this data needs to be divided by
   // those scales to normalise them back to what their floating-point range
   // was. Then we multiply them by desired output scale we want on the output.
-  std::vector<float> ComputeOutputShiftScale(const ExecutionContext& ctx) {
+  std::tuple<std::vector<float>, float> ComputeOutputShiftScale(
+      const ExecutionContext& ctx) {
     auto scale_in_data = ctx.Attr<float>("Scale_in");
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+
     // If the output will be in floats, we don't multiply by scale_out.
-    auto scale_out_data = ctx.Attr<bool>("force_fp32_output")
-                              ? 1.0f
-                              : ctx.Attr<float>("Scale_out");
+    float activation_scale = 1.0f;
+    float inner_scale = 1.0f;
+    if (!ctx.Attr<bool>("force_fp32_output")) {
+      // if has activation use it's scale, otherwise use inner scale.
+      if (!ctx.Attr<std::string>("activation_type").empty()) {
+        activation_scale = ctx.Attr<float>("Scale_out");
+      } else {
+        inner_scale = ctx.Attr<float>("Scale_out");
+      }
+    }
+
     const size_t weight_scales_num = scale_weights_data.size();
     std::vector<float> output_shift_scale(weight_scales_num);
 
 #pragma omp parallel for
     for (size_t i = 0; i < weight_scales_num; i++) {
       if (scale_weights_data[i] == 0.0)
-        output_shift_scale[i] = scale_out_data;
+        output_shift_scale[i] = inner_scale;
       else
         output_shift_scale[i] =
-            scale_out_data / (scale_in_data * scale_weights_data[i]);
+            inner_scale / (scale_in_data * scale_weights_data[i]);
     }
 
-    return output_shift_scale;
+    return make_tuple(output_shift_scale, activation_scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -446,68 +456,67 @@ class FCPrimitiveFactory {
   }
 
   // Fuse relu into FC with activation type attribute has been set to 'relu'
-  mkldnn::primitive_attr CreatePostOps(const ExecutionContext& ctx) {
-    mkldnn::primitive_attr attributes;
-    mkldnn::post_ops post_operations;
+  dnnl::primitive_attr CreatePostOps(const ExecutionContext& ctx) {
+    dnnl::primitive_attr attributes;
+    dnnl::post_ops post_operations;
 
-    auto output_shift_scale = ComputeOutputShiftScale(ctx);
+    std::vector<float> output_shift_scale;
+    float scale;
+    std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
     int mask = CreateMask(1, output_shift_scale.size() > 1);
     attributes.set_output_scales(mask, output_shift_scale);
 
     if (ctx.Attr<std::string>("activation_type") == "relu") {
-      constexpr float scale = 1.0f;
       constexpr float negative_slope = 0.0f;
       constexpr float placeholder = 1.0f;  // beta
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
-      constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu,
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
-      constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, mkldnn::algorithm::eltwise_gelu_tanh, alpha, beta);
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_tanh,
+                                     alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
-      constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu_erf,
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_erf,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
-      constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_tanh,
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_tanh,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
-      constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_logistic,
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_logistic,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "mish") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_mish,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
-      constexpr float scale = 1.0f;
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, mkldnn::algorithm::eltwise_hardswish, alpha, beta);
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_hardswish,
+                                     alpha, beta);
     }
 
     attributes.set_post_ops(post_operations);
     return attributes;
   }
 
-  mkldnn::inner_product_forward::primitive_desc CreateFcPrimDesc(
-      const mkldnn::memory::desc& input_desc,
-      const mkldnn::memory::desc& weights_desc,
-      const mkldnn::memory::desc& bias_desc,
-      const mkldnn::memory::desc& dst_desc,
-      const mkldnn::primitive_attr& attrs) {
+  dnnl::inner_product_forward::primitive_desc CreateFcPrimDesc(
+      const dnnl::memory::desc& input_desc,
+      const dnnl::memory::desc& weights_desc,
+      const dnnl::memory::desc& bias_desc, const dnnl::memory::desc& dst_desc,
+      const dnnl::primitive_attr& attrs) {
     auto fc_desc =
         inner_product_forward::desc(prop_kind::forward_scoring, input_desc,
                                     weights_desc, bias_desc, dst_desc);
@@ -517,8 +526,8 @@ class FCPrimitiveFactory {
 
   // Create output memory based on output tensor and inner_product
   // primitive descriptor format chosen for output
-  mkldnn::memory CreateDstMemory(
-      const mkldnn::inner_product_forward::primitive_desc& fc_prim_desc,
+  dnnl::memory CreateDstMemory(
+      const dnnl::inner_product_forward::primitive_desc& fc_prim_desc,
       const ExecutionContext& ctx, Tensor* output) {
     auto dst_desc = fc_prim_desc.dst_desc();
     auto buffer_size = dst_desc.get_size();
@@ -545,7 +554,7 @@ class FCPrimitiveFactory {
   }
 
  private:
-  const mkldnn::engine& engine_;
+  const dnnl::engine& engine_;
   paddle::optional<memory> input_;
   paddle::optional<memory> output_;
   std::shared_ptr<memory> bias_;

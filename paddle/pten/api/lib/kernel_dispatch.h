@@ -20,31 +20,23 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/backend_set.h"
+#include "paddle/pten/api/lib/data_type_set.h"
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
-// TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
+// TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace experimental {
-
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
 
 namespace detail {
 BackendSet GetTensorBackendSet(const Tensor& t);
 std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(
-    pten::Backend backend);
+pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend);
 
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
@@ -88,6 +80,9 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
+  // this dtype_set is used for cache multi-inputs dtype and used for
+  // data_promote
+  DataTypeSet dtype_set{DataType::UNDEFINED};
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
@@ -96,6 +91,11 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // TODO(chenweihang): selecte multi layout and dtype
     key_set.layout = x.layout();
     key_set.dtype = x.type();
+    dtype_set = dtype_set | DataTypeSet(x.dtype());
+    auto promote_result = PromoteTypes(dtype_set);
+    if (promote_result != DataType::UNDEFINED) {
+      key_set.dtype = promote_result;
+    }
   }
 
   void operator()(const std::vector<Tensor>& x) {
@@ -119,6 +119,26 @@ template <typename... Args>
 KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
 }
+
+DataType ParseDataType(DataType dtype);
+DataType ParseDataType(const Tensor& tensor);
+DataType ParseDataType(const std::vector<Tensor>& tensors);
+DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
+
+Backend ParseBackend(Backend backend);
+Backend ParseBackend(const Tensor& tensor);
+template <typename T, typename... Args>
+Backend ParseBackend(T t, Args... args) {
+  auto backend_set =
+      BackendSet(ParseBackend(t)) | BackendSet(ParseBackend(args...));
+  return static_cast<Backend>(64 -
+                              detail::CountLeadingZeros(backend_set.bitset()));
+}
+Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor);
+
+DataLayout ParseLayout(DataLayout layout);
+DataLayout ParseLayout(const Tensor& tensor);
+DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
 }  // namespace experimental
 }  // namespace paddle

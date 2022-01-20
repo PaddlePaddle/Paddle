@@ -34,7 +34,7 @@
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/cinn_launch_op.h"
+#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -293,3 +293,6 @@ TEST(CinnCompilerTest, Compile) {
 
 USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
+USE_OP(mul);
+USE_OP(relu);
+USE_OP(elementwise_add);

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/common/place.h"
 
 namespace paddle {
 namespace operators {
@@ -48,7 +49,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     return;
   }
 
-  bool cpu_place = context.GetPlace().type() == typeid(platform::CPUPlace);
+  bool cpu_place = context.GetPlace().GetType() == pten::AllocationType::CPU;
   if (cpu_place) {
     auto dims = input->dims();
     auto* segment_ids = segment->data<IndexT>();
@@ -72,11 +73,11 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     const IndexT* segment_ids = segment->data<IndexT>();
 
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
                   hipMemcpyDeviceToHost));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
                    cudaMemcpyDeviceToHost));
 #endif

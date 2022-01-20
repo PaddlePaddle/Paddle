@@ -43,6 +43,10 @@ function match_cu_file_directory {
   do
     [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
   done
+  for sub_dir in "" "/gpu" "/hybird"
+  do
+    [ "${cu_file_dir}" == "paddle/pten/kernels${sub_dir}" ] && return 0
+  done
   return 1
 }
 
@@ -50,7 +54,7 @@ function match_cu_file_directory {
 function load_CHANGE_OP_FILES_by_header_file {
   LOG "[INFO] run function load_CHANGE_OP_FILES_by_header_file"
   local change_file
-  for change_file in $(grep -rl "${1}" paddle/fluid/operators)
+  for change_file in $(grep -rl "${1}" paddle/fluid/operators paddle/pten/kernels/)
   do
     if [[ "$change_file" =~ "_op.cu" ]]
     then
@@ -73,10 +77,10 @@ function load_CHANGE_OP_FILES {
   LOG "[INFO] run function load_CHANGE_OP_FILES"
   local sub_dir change_file
   # TODO(Avin0323): Need to filter the files added by the new OP.
-  for change_file in $(git diff --name-only origin/develop)
+  for change_file in $(git diff --name-only develop)
   do
     # match directory limit
-    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
+    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/pten/kernels/" ]]  || continue
     # match file name limit
     if [[ "$change_file" =~ "_op.cu" ]]
     then
@@ -92,7 +96,6 @@ function load_CHANGE_OP_FILES {
     fi
   done
   [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
-  echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt && \
   exit 0
 }
 
@@ -178,7 +181,7 @@ function run_op_benchmark_test {
     LOG "[INFO] Uninstall Paddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install Paddle ..."
-    pip install build_whl/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
@@ -221,7 +224,7 @@ function check_op_benchmark_result {
     fi
     # check current result and update the file to benchmark test
     python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
-        --develop_logs_dir $(pwd)/logs-develop \
+        --develop_logs_dir $(pwd)/logs-dev_whl \
         --pr_logs_dir $(pwd)/logs-test_pr \
         --api_info_file ${api_info_file}
     check_status_code=$?
@@ -237,14 +240,15 @@ function check_CHANGE_OP_MAP {
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
-      exit_code=8
-      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      # Disable the check of missing op benchmark script temporarily.
+      # exit_code=8
+      LOG "[WARNING] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
     LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
-    exit $exit_code
+    exit ${exit_code}
   fi
 }
 
@@ -295,7 +299,6 @@ if [ -n "${approval_line}" ]; then
     exit 0
   fi
 fi
-set -x
 
 case $1 in
   run_op_benchmark)

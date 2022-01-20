@@ -698,13 +698,13 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             continue
 
         # complete the annotation of grad op (xxx_grad op or sum op)
-        # xxx_grad op will have a corresponding forward op in gradopidx2opidx
+        # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
         grad_op = ops[idx]
-        if grad_op.desc.id() in dist_op_context.gradopidx2opidx:
+        if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
             # TODO support the case where one forward op corresponding to multiple xxx_grad op
             forward_op = _get_op_by_id(
                 ops[:first_backward_op_idx],
-                dist_op_context.gradopidx2opidx[grad_op.desc.id()])
+                dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
             assert forward_op is not None
 
             # op dist attr
@@ -715,6 +715,27 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             grad_op_dist_attr.process_mesh = forward_op_process_mesh
 
             # var 
+            for input_name in grad_op.input_arg_names:
+                input_var = vars[input_name]
+                ref_dims_mapping = None
+                if "@GRAD" in input_name:
+                    forward_name = _get_forward_varname_from_grad_varname(
+                        input_name)
+                    ref_dims_mapping = forward_op_dist_attr.get_output_dims_mapping(
+                        forward_name)
+                else:
+                    if forward_op_dist_attr.get_input_dims_mapping(input_name):
+                        ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(
+                            input_name)
+                    else:
+                        ref_dims_mapping = forward_op_dist_attr.get_output_dims_mapping(
+                            input_name)
+
+                assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(
+                    input_var.name)
+                grad_op_dist_attr.set_input_dims_mapping(input_name,
+                                                         ref_dims_mapping)
+
             for output_name in grad_op.desc.output_names():
                 assert len(grad_op.desc.output(output_name)) in [0, 1]
                 if _is_grad_var_name(output_name):
@@ -726,45 +747,29 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
                     ]
                     input_name = "X"
                 assert input_name in forward_op.desc.input_names(
-                ), "var [{}] in op [{}]'s output but coulf not find [{}] in its forward op".format(
+                ), "var [{}] in op [{}]'s output but could not find [{}] in its forward op".format(
                     output_name, grad_op.type, input_name)
                 if len(grad_op.desc.output(output_name)) == 1:
-                    assert len(forward_op.desc.input(input_name)) == 1
-                    input_var = vars[forward_op.desc.input(input_name)[0]]
-                    input_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        input_var)
-                    assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
-                        input_var.name)
-                    ref_dims_mapping = input_var_dist_attr.dims_mapping
-
                     # tensor dist attr
                     output_var = vars[grad_op.desc.output(output_name)[0]]
+                    forward_name = _get_forward_varname_from_grad_varname(
+                        output_var.name)
+                    ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(
+                        forward_name)
+
                     output_var_dist_attr = TensorDistributedAttribute()
                     output_var_dist_attr.dims_mapping = ref_dims_mapping
                     output_var_dist_attr.process_mesh = forward_op_process_mesh
                     dist_context.set_tensor_dist_attr_for_program(
                         output_var, output_var_dist_attr)
 
-                    # op dist attr
                     grad_op_dist_attr.set_output_dims_mapping(output_var.name,
                                                               ref_dims_mapping)
-
-            for input_name in grad_op.input_arg_names:
-                input_var = vars[input_name]
-                input_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    input_var)
-                assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
-                    input_var.name)
-                ref_dims_mapping = input_var_dist_attr.dims_mapping
-                assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(
-                    input_var.name)
-                grad_op_dist_attr.set_input_dims_mapping(input_name,
-                                                         ref_dims_mapping)
 
             dist_context.set_op_dist_attr_for_program(grad_op,
                                                       grad_op_dist_attr)
 
-        # only sum op for merge mutiple version grad has no a corresponding mapping in gradopidx2opidx
+        # only sum op for merge mutiple version grad has no a corresponding mapping in grad_op_id_to_op_id
         else:
             assert grad_op.type == "sum", "got unexpect op [{}]".format(
                 str(grad_op.type))
@@ -817,6 +822,28 @@ def complete_update_annotation(auto_parallel_main_prog, dist_context):
         # TODO to add attribute for moment var
         op = ops[idx]
         if int(op.attr('op_role')) == int(OpRole.Optimize):
+            if op.type == "clip_by_norm":
+
+                param_grad = vars[op.input("X")[0]]
+                param_grad_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    param_grad)
+                assert param_grad_dist_attr is not None
+                ref_process_mesh = param_grad_dist_attr.process_mesh
+                ref_dims_mapping = param_grad_dist_attr.dims_mapping
+
+                out = vars[op.output("Out")[0]]
+                out_dist_attr = TensorDistributedAttribute()
+                out_dist_attr.process_mesh = ref_process_mesh
+                out_dist_attr.dims_mapping = ref_dims_mapping
+                dist_context.set_tensor_dist_attr_for_program(out,
+                                                              out_dist_attr)
+
+                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr.process_mesh = ref_process_mesh
+                op_dist_attr.set_input_dist_attr(param_grad.name,
+                                                 param_grad_dist_attr)
+                op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
+                dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
 
             if "Grad" in op.input_names and "Param" in ops[idx].input_names:
                 assert len(op.input(
@@ -828,13 +855,7 @@ def complete_update_annotation(auto_parallel_main_prog, dist_context):
 
                 param_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     param)
-                grad_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    grad_var)
-
                 assert param_dist_attr is not None
-                assert grad_dist_attr is not None
-                assert param_dist_attr.dims_mapping == grad_dist_attr.dims_mapping
-
                 ref_process_mesh = dist_context.get_tensor_dist_attr_for_program(
                     param).process_mesh
                 assert ref_process_mesh is not None

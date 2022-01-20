@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
 namespace paddle {
 namespace operators {

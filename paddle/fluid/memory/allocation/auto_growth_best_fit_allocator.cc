@@ -45,7 +45,8 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
-Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
+pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
+    size_t unaligned_size) {
   size_t size = AlignedSize(unaligned_size, alignment_);
   VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
 
@@ -78,11 +79,13 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
     size_t realloc_size = std::max(size, chunk_size_);
 
     try {
-      chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
+      chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
+          underlying_allocator_->Allocate(realloc_size)));
     } catch (BadAlloc &ex) {
       if (FLAGS_free_when_no_cache_hit) throw ex;
       FreeIdleChunks();
-      chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
+      chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
+          underlying_allocator_->Allocate(realloc_size)));
     }
 
     auto *chunk = &(*chunks_.rbegin());
@@ -100,11 +103,13 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
   }
+  VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
   return new BlockAllocation(block_it);
 }
 
-void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
-  VLOG(10) << "Free " << allocation->size() << " bytes";
+void AutoGrowthBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
+  VLOG(10) << "Free " << allocation->size()
+           << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;

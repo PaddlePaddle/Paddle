@@ -16,6 +16,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -24,6 +25,8 @@ namespace framework {
 namespace ir {
 
 ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
+  op_name_ = "matmul";
+
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()
@@ -55,7 +58,7 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .IsType<std::vector<int>>()
       .End();
 
-  AddOpCompat(OpCompat("matmul"))
+  AddOpCompat(OpCompat(op_name_))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -82,17 +85,17 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
   patterns::ReshapeTransposeMatmulPattern rtm_pattern(gpd.mutable_pattern(),
                                                       name_scope_);
 
-  rtm_pattern(with_reshape_xshape, with_transpose_xshape);
+  rtm_pattern(op_name_, with_reshape_xshape, with_transpose_xshape);
 
   int found_reshape_transpose_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Op compatible check in "
-                      "reshape_transpose_matmul_mkldnn_fuse_pass failed.";
+      LOG(WARNING) << "Op compatible check in reshape_transpose_" << op_name_
+                   << "_mkldnn_fuse_pass failed.";
       return;
     }
-    VLOG(4) << "handle ReshapeTransposeMatmulMkldnn fuse";
+    VLOG(4) << "handle reshape_transpose_" << op_name_ << " fuse";
     GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, rtm_pattern);
@@ -131,8 +134,8 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     } else if (matmul_desc->Inputs().at("Y").at(0) == input_var_name) {
       UpdateMatmul("Y");
     } else {
-      throw platform::errors::InvalidArgument(
-          "Unexpected input to MatMul encountered.");
+      throw platform::errors::InvalidArgument("Unexpected input to " +
+                                              op_name_ + " encountered.");
     }
 
     std::unordered_set<const ir::Node *> nodes_to_remove{
@@ -151,7 +154,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     std::stringstream msg_ss;
     msg_ss << "---    Fused " << found_reshape_transpose_matmul_count
-           << " ReshapeTransposeMatmulMkldnn patterns";
+           << " ReshapeTransposeMatmul patterns for " << op_name_ << " Op";
     if (with_reshape_xshape) msg_ss << " with reshape's xshape";
     if (with_transpose_xshape) msg_ss << " with transpose's xshape";
     string::PrettyLogDetail(msg_ss.str().c_str());
@@ -176,3 +179,8 @@ void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(reshape_transpose_matmul_mkldnn_fuse_pass,
               paddle::framework::ir::ReshapeTransposeMatmulMkldnnFusePass);
+
+REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "matmul", 1));

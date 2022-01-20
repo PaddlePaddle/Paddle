@@ -34,7 +34,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace f = paddle::framework;
@@ -119,7 +119,7 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> init(num * num, 1.0 * atoi(getenv("DEST_RANK")));
   int rank_id = atoi(getenv("RANK_ID"));
   VLOG(3) << "rank id:" << rank_id;
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num, num});
   ctx.Wait();
   auto place = ctx.GetPlace();

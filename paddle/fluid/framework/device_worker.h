@@ -43,10 +43,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class ProgramDesc;
 class Scope;
-class Tensor;
 }  // namespace framework
 namespace platform {
 class DeviceContext;
@@ -54,7 +52,7 @@ class DeviceContext;
 }  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {

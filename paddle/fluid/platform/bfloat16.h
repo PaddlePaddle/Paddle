@@ -155,14 +155,24 @@ struct PADDLE_ALIGN(2) bfloat16 {
 
   // Conversion opertors
   HOSTDEVICE inline explicit operator float() const {
+#ifdef PADDLE_WITH_HIP
+    uint32_t res = 0;
+    // We should be using memcpy in order to respect the strict aliasing rule
+    // but it fails in the HIP environment.
+    uint16_t temp = x;
+    uint16_t* temp_ptr = reinterpret_cast<uint16_t*>(&temp);
+    res = *temp_ptr;
+    return res;
+#else
 #ifdef PADDLE_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
 #else
     float val = 0.f;
     uint16_t temp = x;
-    memcpy(reinterpret_cast<char*>(&val) + 2, reinterpret_cast<char*>(&temp),
-           2);
+    std::memcpy(reinterpret_cast<char*>(&val) + 2,
+                reinterpret_cast<char*>(&temp), 2);
     return val;
+#endif
 #endif
   }
 
