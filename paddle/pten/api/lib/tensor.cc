@@ -49,10 +49,10 @@ limitations under the License. */
  */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/enforce.h"
 
 namespace paddle {

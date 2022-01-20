@@ -16,9 +16,12 @@
 
 #include "paddle/fluid/framework/selected_rows.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle

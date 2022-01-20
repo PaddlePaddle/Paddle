@@ -73,7 +73,8 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       float keep_prob = 1. - dropout_prob;
       if (seed_tensor) {
         std::vector<int> seed_data;
-        TensorToVector(*seed_tensor, ctx.device_context(), &seed_data);
+        paddle::framework::TensorToVector(*seed_tensor, ctx.device_context(),
+                                          &seed_data);
         seed = seed_data[0];
       } else {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;

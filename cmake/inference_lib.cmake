@@ -228,13 +228,7 @@ copy(inference_lib_dist
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*.h
-              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/bfloat16.h
-              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
-              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
-              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
-              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
-              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/)
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
