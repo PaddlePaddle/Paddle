@@ -1495,14 +1495,26 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+
       // The batch size dimension cannot be reduced if it's not dynamic shape.
       if (!with_dynamic_shape) {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        const auto input_shape = x_var_desc->GetShape();
+        std::cout << "paddle shape: " << input_shape.size() << std::endl;
         for (auto x : dim) {
-          if (!x) return false;
+          if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
+
       } else {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
@@ -1510,7 +1522,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       if (desc.HasAttr("out_dtype")) {
         int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
-        if (out_dtype != -1) {
+        if (!with_dynamic_shape && (out_dtype == 2)) {
           return false;
         }
       }

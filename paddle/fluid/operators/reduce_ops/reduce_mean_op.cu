@@ -22,4 +22,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ReduceCudaKernel<paddle::platform::float16, kps::AddFunctor,
                           kps::DivideFunctor>,
     ops::ReduceCudaKernel<float, kps::AddFunctor, kps::DivideFunctor>,
-    ops::ReduceCudaKernel<double, kps::AddFunctor, kps::DivideFunctor>);
+    ops::ReduceCudaKernel<double, kps::AddFunctor, kps::DivideFunctor>,
+    ops::ReduceCudaKernel<int, kps::AddFunctor, kps::DivideFunctor>,
+    ops::ReduceCudaKernel<int64_t, kps::AddFunctor, kps::DivideFunctor>);
