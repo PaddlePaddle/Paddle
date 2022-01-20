@@ -193,7 +193,7 @@ class RecordedGpuMallocHelper {
     auto result = hipMalloc(ptr, size);
 #else
     CUDAGraphCaptureModeGuard capture_mode_guard;
-    auto result = cudaMalloc(ptr, size);
+    auto result = cudaMallocManaged(ptr, size);
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
