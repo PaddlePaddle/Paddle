@@ -16,7 +16,7 @@
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
 namespace pten {
 
