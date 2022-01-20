@@ -454,7 +454,6 @@ def profiler_analyse():
     
     Usage:
         .. code-block:: bash
-            :name: code-block-bash1
 
             python -m paddle.fluid.profiler_analyse [-h] [--tool {nsys}] [--mode {model,op}]
                                         [--profile_start_step PROFILE_START_STEP]
@@ -545,7 +544,7 @@ def profiler_analyse():
             percentage of blank time (%)             97.11172056840526
 
 
-    Examples 2 (model mode):
+    Examples 2 (op mode):
         .. code-block:: bash
 
             python -m paddle.fluid.profiler_analyse --mode op --profile_start_step 10 --profile_end_step 110 test_matmul.py
