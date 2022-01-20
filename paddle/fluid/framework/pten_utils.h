@@ -72,6 +72,9 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place);
+
 // TODO(Wilber): support others device context.
 template <typename T>
 struct ConvertToPtenContext {
@@ -82,6 +85,6 @@ template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
-
+  
 }  // namespace framework
 }  // namespace paddle

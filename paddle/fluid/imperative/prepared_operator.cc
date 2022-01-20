@@ -264,6 +264,49 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
+void PreparePtenData(const pten::Kernel& pt_kernel,
+                     const framework::KernelSignature& pt_kernel_signature,
+                     const NameVarMap<VarType>& ins) {
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& input_defs = pt_kernel.args_def().input_defs();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ins.at(input_names[i]);
+
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      auto var_base = ins_vector[offset];
+      const auto* tensor_in = GetTensorFromVar(var_base->Var());
+      if (tensor_in && tensor_in->IsInitialized()) {
+        auto expected_place = pten::TransToFluidPlace(in_def.backend);
+        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+          continue;
+        }
+
+        // TODO(zyfncg): Now there is no kernel which need to transform input
+        // data, so we commented out following code temporarily,
+        // and it will be used in the future.
+
+        // VLOG(3) << "Pten Transform Variable " << var_base->Name() << " from "
+        //         << tensor_in->place() << " to " << expected_place;
+
+        // framework::Tensor tmp_tensor;
+        // framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
+
+        // SetTensorToVariable(var_base->Var(), tmp_tensor,
+        //                     var_base->MutableVar());
+      }
+    }
+  }
+}
+
+template <typename VarType>
 static void BuildDygraphPtenKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
@@ -299,23 +342,19 @@ static void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const auto& variable = ins_vector[offset]->Var();
-      kernel_ctx->EmplaceBackInputWithoutSetRange(
-          paddle::experimental::MakePtenTensorBaseFromVar(variable, in_def));
+      const auto* tensor_in = GetTensorFromVar(ins_vector[offset]->Var());
+      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& out_def = output_defs.at(i);
-
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
 
     auto iter = outs.find(output_names[i]);
@@ -330,9 +369,21 @@ static void BuildDygraphPtenKernelContext(
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      kernel_ctx->EmplaceBackOutputWithoutSetRange(
-          paddle::experimental::MakePtenTensorBaseFromVar(
-              outs_vector[offset]->MutableVar(), out_def));
+      auto* var = outs_vector[offset]->MutableVar();
+      framework::Tensor* tensor_out = nullptr;
+      if (var->template IsType<framework::LoDTensor>()) {
+        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported output `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }  // TODO(zyfncg): Add support for SelectedRows
+
+      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      framework::SetAllocationForOutputTenosr(
+          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -436,29 +487,6 @@ static void BuildDygraphPtenKernelContext(
 }
 
 template <typename VarType>
-static void WriteBackToOutputs(
-    const framework::KernelSignature& pt_kernel_signature,
-    const NameVarMap<VarType>& outs, pten::KernelContext* kernel_ctx) {
-  auto& output_names = std::get<2>(pt_kernel_signature.args);
-
-  for (size_t i = 0; i < output_names.size(); ++i) {
-    auto iter = outs.find(output_names[i]);
-    if (iter != outs.end()) {
-      auto& outs_vector = iter->second;
-
-      auto& range_pair = kernel_ctx->OutputRangeAt(i);
-      auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
-          range_pair.first, range_pair.second);
-
-      for (size_t j = 0; j < pten_outs.size(); ++j) {
-        experimental::MakeVariableFromPtenTensor(pten_outs[j],
-                                                 outs_vector[j]->MutableVar());
-      }
-    }
-  }
-}
-
-template <typename VarType>
 static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
     const framework::OpKernelType& kernel_type,
@@ -519,6 +547,8 @@ static void PreparedOpRunPtImpl(
       &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
+  PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
+
   pten::KernelContext pt_kernel_context;
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                          outs, attrs, default_attrs, dev_ctx,
@@ -533,8 +563,6 @@ static void PreparedOpRunPtImpl(
     VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
 #endif
   }
-
-  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, &pt_kernel_context);
 
   // TODO(chenweihang): add debug flags later
   if (framework::IsComplexType(kernel_type.data_type_)) {
