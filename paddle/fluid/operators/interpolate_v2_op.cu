@@ -69,7 +69,8 @@ inline platform::GpuLaunchConfig GetCpuLaunchConfig3D(
   dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
   int grid_x = platform::DivUp(width, block_x);
   int grid_y = platform::DivUp(height, block_y);
-  int grid_z = std::min<int>(max_grid_dim.z, DivUp(num_img, block_z * 4));
+  int grid_z =
+      std::min<int>(max_grid_dim.z, platform::DivUp(num_img, block_z * 4));
 
   const int capability = context.GetComputeCapability();
   platform::GpuLaunchConfig config;
