@@ -1490,8 +1490,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the " << op_type
                 << " does not have attr (keep_dim or dim or "
                    "reduce_all)";
-        std::cout << "attr " << desc.HasAttr("keep_dim") << " "
-                  << desc.HasAttr("dim") << " " << desc.HasAttr("reduce_all");
         return false;
       }
 
@@ -1510,7 +1508,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         std::vector<int32_t> dim =
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
         const auto input_shape = x_var_desc->GetShape();
-        std::cout << "paddle shape: " << input_shape.size() << std::endl;
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
