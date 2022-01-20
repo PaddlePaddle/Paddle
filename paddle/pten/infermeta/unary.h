@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/tensor_meta.h"
 
@@ -58,4 +59,8 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
                                 bool keep_dim,
                                 DataType dtype = DataType::UNDEFINED);
+
+std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
+                                            const ScalarArray& num_or_sections,
+                                            const Scalar& axis);
 }  // namespace pten
