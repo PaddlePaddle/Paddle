@@ -285,8 +285,9 @@ static void PreparedOpRunPtImpl(
   static_cast<const paddle::framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  PreparePtenData<VarType>(pt_kernel, pt_kernel_signature,
-                           static_cast<paddle::imperative::NameTensorMap>(ins));
+  PreparePtenData<EagerTensor>(
+      pt_kernel, pt_kernel_signature,
+      static_cast<paddle::imperative::NameTensorMap>(ins));
 
   pten::KernelContext pt_kernel_context;
   paddle::imperative::BuildDygraphPtenKernelContext<EagerTensor>(
@@ -296,9 +297,6 @@ static void PreparedOpRunPtImpl(
       default_attrs, dev_ctx, &pt_kernel_context);
 
   pt_kernel(&pt_kernel_context);
-
-  paddle::imperative::WriteBackToOutputs<EagerTensor>(pt_kernel_signature, outs,
-                                                      &pt_kernel_context);
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later

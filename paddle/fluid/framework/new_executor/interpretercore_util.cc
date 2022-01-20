@@ -437,8 +437,6 @@ void build_op_func_list(const platform::Place& place,
         op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
 
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
-        op_with_kernel->WriteBackToOutputs(&runtime_context,
-                                           &pt_kernel_context);
       } else {
         auto kernels_iter = all_op_kernels.find(op->Type());
         PADDLE_ENFORCE_NE(
