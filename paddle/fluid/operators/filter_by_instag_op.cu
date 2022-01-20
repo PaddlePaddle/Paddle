@@ -58,6 +58,7 @@ __global__ void filter_copy_fuse_kernel(
     size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
     const T* x1_data, int x1_embed_size, int x1_lods_filled, int x2_lods_filled,
     float* loss_weight_data, int fill_value) {
+  
   // N is instance num
   // one threads for ins_per_thread(4) instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -98,8 +99,9 @@ __global__ void filter_copy_fuse_kernel(
   cg::thread_block b = cg::this_thread_block();
   cg::thread_block_tile<WARP_SIZE> g = cg::tiled_partition<WARP_SIZE>(b);
 
-  int flag_data[2];
-  int prefix_sum_data[2];
+  int flag_data[5];
+  int prefix_sum_data[5];
+  
   int gid = idx / WARP_SIZE;
 
   __shared__ int shr[MAX_WARP_NUM];
@@ -107,6 +109,7 @@ __global__ void filter_copy_fuse_kernel(
   __shared__ int shr3[MAX_WARP_NUM];
 
   for (int p = ins_start; p < ins_end; p++) {
+
     int ins_tag_start = x2_lods_data[p];
     int ins_tag_end = x2_lods_data[p + 1];
 
@@ -114,30 +117,49 @@ __global__ void filter_copy_fuse_kernel(
 
     // filter logic
     int i = ins_tag_start;
+
     for (; i < ins_tag_end; i++) {
+
       int64_t ins_tag = x2_data[i];
+
       int j = 0;
+
       for (; j < filter_tag_size; j++) {
         if (x3_data[j] == ins_tag) break;
       }
+
       // if ins_tag in filter tag
       if (j < filter_tag_size) {
         flag_data[p - ins_start] = 1;
         break;
       }
     }
+
   }
 
-  for (int p = ins_start; p < ins_end; p++) {
-    if (p == ins_start) {
-      prefix_sum_data[p - ins_start] = 0;
-    } else {
-      prefix_sum_data[p - ins_start] =
-          flag_data[p - ins_start] * (x1_lods_data[p] - x1_lods_data[p - 1]);
-    }
-  }
+  //if (gid == 1 && g.thread_rank() == 0) {
+  //  *debug_value = idx;
+  //}
 
   // prefix
+  for (int p = ins_start; p < ins_end; p++) {
+
+    int previous = -1;
+
+    if (p == ins_start) {
+      //prefix_sum_data[p - ins_start] = flag_data[p - ins_start] * ();
+      previous = 0;
+
+    } else {
+    
+      previous = prefix_sum_data[p - ins_start - 1];
+    
+    }
+    
+    prefix_sum_data[p - ins_start] = previous + 
+          flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
+  }
+
   int local_addr = prefix_sum_data[ins_end - 1 - ins_start];
   int sum_addr = local_addr;
 
@@ -156,8 +178,10 @@ __global__ void filter_copy_fuse_kernel(
   }
   int sum_out_lods = local_out_lods;
 
+
+  
   // warp reduce
-  for (int i = 1; i < 32; i++) {
+  for (int i = 1; i < 32; i *= 2) {
     sum_addr += g.shfl_up(sum_addr, i);
     sum_flag += g.shfl_up(sum_flag, i);
     sum_out_lods += g.shfl_up(sum_out_lods, i);
@@ -169,6 +193,9 @@ __global__ void filter_copy_fuse_kernel(
     shr3[gid] = sum_out_lods;
   }
 
+
+
+
   b.sync();
 
   // communicate between warp
@@ -177,7 +204,7 @@ __global__ void filter_copy_fuse_kernel(
   int sum_flag2 = shr2[g.thread_rank()];
   int sum_out_lods2 = shr3[g.thread_rank()];
 
-  for (int i = 1; i < 32; i++) {
+  for (int i = 1; i < 32; i *= 2) {
     sum_addr2 += g.shfl_up(sum_addr2, i);
     sum_flag2 += g.shfl_up(sum_flag2, i);
     sum_out_lods2 += g.shfl_up(sum_out_lods2, i);
@@ -192,8 +219,19 @@ __global__ void filter_copy_fuse_kernel(
   int p_out_lods = sum_out_lods3 - shr3[gid] + sum_out_lods - local_out_lods;
 
   for (int p = ins_start; p < ins_end; p++) {
+    
     prefix_sum_data[p - ins_start] += p_addr;
+
   }
+
+  if (gid == 0 && g.thread_rank() == 31) {
+
+    *out_idx_data = sum_out_lods2 + 1;
+    map_lods_data[sum_out_lods2] = sum_out_lods2;
+
+  }
+
+  int sum_out_lods4 = g.shfl(sum_out_lods2 + 1, 31);
 
   // __syncthreads() only sync threads within block
   // so we let one thread process multi idx
@@ -218,16 +256,20 @@ __global__ void filter_copy_fuse_kernel(
   int out_lods_idx = p_flag + 1;
 
   for (int p = ins_start; p < ins_end; p++) {
+  
     if (flag_data[p - ins_start] == 1) {
+
       size_t batch_len = x1_lods_data[p + 1] - x1_lods_data[p];
       int t = out_lods_idx - 1;
       out_lods_data[t] = p_out_lods;
+
       map_data[t * 3] = (int64_t)out_lods_data[t];
       map_data[t * 3 + 1] = x1_lods_data[p];
       map_lods_data[t] = t;
 
       out_lods_data[out_lods_idx] =
           out_lods_data[t] + (x1_lods_data[p + 1] - x1_lods_data[p]);
+
       map_data[t * 3 + 2] = out_lods_data[t + 1] - out_lods_data[t];
 
       out_lods_idx++;
@@ -262,8 +304,8 @@ __global__ void filter_copy_fuse_kernel(
   // =========== to be optimized =====================================
 
   // fill loss_weight_data
-  if (*out_idx_data > 1) {
-    int out_data_num = *out_idx_data - 1;
+  if (sum_out_lods4 > 1) {
+    int out_data_num = sum_out_lods4 - 1;
     int out_start = ins_start;
     if (out_start < out_data_num) {
       int out_end = ins_end > out_data_num ? out_data_num : ins_end;
@@ -282,18 +324,16 @@ __global__ void filter_copy_fuse_kernel(
     // copy logic
     if (flag_data[p - ins_start] == 1) {
       auto output_start_idx = prefix_sum_data[p - ins_start];
-
       T* dst = out_data + output_start_idx * x1_embed_size;
-
       const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
-      const T* src_end = x1_data + (x1_lods_data[p + 1]) * x1_embed_size;
-
+      const T* src_end = x1_data + x1_lods_data[p + 1] * x1_embed_size;
       // optimized
       for (const T *j = src_start; j != src_end; dst++, j++) {
         *dst = *j;
       }
     }
   }
+
 }
 
 /*
@@ -564,11 +604,13 @@ template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    
     // platform::Timer timeline_;
     // timeline_.Start();
 
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    
     gpuStream_t current_stream = context.cuda_device_context().stream();
     int max_thread_num_per_block =
         context.cuda_device_context().GetMaxThreadsPerBlock();
@@ -617,9 +659,11 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     size_t* x2_lods_data = x2_lods.CUDAMutableData(gpu_place);
     const size_t x2_lods_size = x2_lods.size() - 1;
+    
     // Vector, in GPU
     int x1_lods_filled = 0;
     Vector<size_t> x1_lods;
+
     if (!is_x1_lod) {
       // move to cuda
       x1_lods.resize(x1->dims()[0] + 1);
@@ -772,11 +816,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     //    out_lods_data, mmap_aux_data, out_idx_data, x1_data, x1_embed_size);
 
     float fill_value = 1.0;
-
-    filter_copy_fuse_kernel<<<grid_dim, block_dim,
-                              out_first * sizeof(int) +
-                                  x2_lods_size*(sizeof(int) + sizeof(int)),
-                              current_stream>>>(
+    
+    Vector<int> debug_value_vec(1,0);
+    int* debug_value_data = debug_value_vec.CUDAMutableData(gpu_place);
+    
+    
+    filter_copy_fuse_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
         x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
         x3_data, x3->numel(), out_data, map_data, map_lods_data, out_lods_data,
         out_idx_data, x1_data, x1_embed_size, x1_lods_filled, x2_lods_filled,
@@ -796,7 +841,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // timeline_.Pause();
     // std::cout << "kernel phase cost time: " << timeline_.ElapsedSec() <<
     // std::endl;
-
+    // std::cout << "debug for instag: " << out_idx[0] << " " << debug_value_vec[0] << std::endl;
     // timeline_.Start();
     // out_lods resize
     out_lods.resize(out_idx[0]);
