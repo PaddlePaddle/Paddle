@@ -81,5 +81,8 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place);
+
 }  // namespace framework
 }  // namespace paddle

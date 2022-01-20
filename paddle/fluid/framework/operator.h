@@ -603,6 +603,14 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to pten lib */
   pten::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
 
+  /**
+   * Transfer data place for pten kernel
+   * Is this really needed?
+   */
+  Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
+                         const KernelSignature& pt_kernel_signature,
+                         RuntimeContext* ctx) const;
+
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx,
                               pten::KernelContext* pt_kernel_context) const;
