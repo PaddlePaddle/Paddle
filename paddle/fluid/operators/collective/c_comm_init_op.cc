@@ -61,9 +61,10 @@ class CCommInitOp : public framework::OperatorBase {
         "PaddlePaddle should be compiled with GPU or XPU."));
 #endif
 
-    PADDLE_ENFORCE_EQ(is_gpu_place(place) || is_xpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "CCommInitOp can run on gpu or xpu place only."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(place) || platform::is_xpu_place(place), true,
+        platform::errors::PreconditionNotMet(
+            "CCommInitOp can run on gpu or xpu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
@@ -85,7 +86,7 @@ class CCommInitOp : public framework::OperatorBase {
             rid));
 #endif
 
-    int device_id = BOOST_GET_CONST(Place, place).device;
+    int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }

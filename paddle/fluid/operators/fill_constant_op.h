@@ -81,7 +81,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       auto tmp_place = value_tensor->place();
       if (platform::is_gpu_place(tmp_place) ||
           platform::is_xpu_place(tmp_place)) {
-        TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
+        paddle::framework::TensorCopySync(*value_tensor, platform::CPUPlace(),
+                                          &cpu_tensor);
         tensor_data = cpu_tensor.data<T>();
       }
       value = tensor_data[0];

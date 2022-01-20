@@ -30,10 +30,11 @@ class SliceOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
+    auto output_name = op_desc.Output("Out")[0];
 
+    float out_scale = 1;
     if (op_desc.HasAttr("out_threshold")) {
-      float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       engine_->SetTensorDynamicRange(input, out_scale);
     }
 
@@ -71,12 +72,22 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
       if (engine_->use_oss() && engine_->with_ernie()) {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
-        // plugin_inputs.emplace_back(trans_layer->getOutput(0));
-        plugin_inputs.emplace_back(input);
-
+        if (engine_->with_interleaved()) {
+          auto* shuffler_slice = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+          nvinfer1::Permutation transpose_embed{2, 1, 0, 3};
+          shuffler_slice->setSecondTranspose(transpose_embed);
+          engine_->SetTensorDynamicRange(shuffler_slice->getOutput(0),
+                                         out_scale);
+          shuffler_slice->setName(
+              ("SpecialSlice_interleaved: Shuffle: (Output: " + output_name +
+               ")")
+                  .c_str());
+          plugin_inputs.emplace_back(shuffler_slice->getOutput(0));
+        } else {
+          plugin_inputs.emplace_back(input);
+        }
         std::string pos_name;
         if (engine_->Has("ernie_pos_name")) {
           pos_name = engine_->Get<std::string>("ernie_pos_name");
@@ -99,11 +110,6 @@ class SliceOpConverter : public OpConverter {
             new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
         layer = engine_->AddDynamicPlugin(&input, 1, plugin);
       }
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
@@ -111,8 +117,6 @@ class SliceOpConverter : public OpConverter {
           new plugin::SlicePlugin(starts, ends, axes, with_fp16);
       layer = engine_->AddPlugin(&input, 1, plugin);
     }
-
-    auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
   }
 };

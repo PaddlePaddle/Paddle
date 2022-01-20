@@ -57,7 +57,9 @@ from .pooling import AdaptiveAvgPool3D  # noqa: F401
 from .pooling import AdaptiveMaxPool1D  # noqa: F401
 from .pooling import AdaptiveMaxPool2D  # noqa: F401
 from .pooling import AdaptiveMaxPool3D  # noqa: F401
+from .pooling import MaxUnPool1D  # noqa: F401
 from .pooling import MaxUnPool2D  # noqa: F401
+from .pooling import MaxUnPool3D  # noqa: F401
 from .conv import Conv1D  # noqa: F401
 from .conv import Conv2D  # noqa: F401
 from .conv import Conv3D  # noqa: F401

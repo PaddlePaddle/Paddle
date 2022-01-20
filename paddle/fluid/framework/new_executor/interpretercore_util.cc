@@ -355,7 +355,7 @@ void build_op_func_list(const platform::Place& place,
         // TODO(Aurelius84): In case of control flow ops, they are NOT
         // inheritted
         // from OperatorWithKernel.
-        op_with_kernel->InferShape(&infer_shape_ctx);
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
 
       auto kernels_iter = all_op_kernels.find(op->Type());
@@ -425,13 +425,14 @@ void build_op_func_list(const platform::Place& place,
       }
 
       if (run_pten_kernel) {
-        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx);
+        pten::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx,
+                                               &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
-        op_func_node.pt_kernel_context_ = op_with_kernel->PtenKernelContext();
 
-        (*op_func_node.pt_kernel_)(op_func_node.pt_kernel_context_);
-        op_with_kernel->WriteBackToOutputs(&runtime_context);
-        op_func_node.pt_kernel_context_->ClearData();
+        (*op_func_node.pt_kernel_)(&pt_kernel_context);
+        op_with_kernel->WriteBackToOutputs(&runtime_context,
+                                           &pt_kernel_context);
       } else {
         op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
         op_func_node.kernel_func_(exec_ctx);

@@ -17,8 +17,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
 std::vector<int> GetSelectedIPUDevices();
 int GetIPUDeviceCount();
+
 }  // namespace platform
 }  // namespace paddle
 #endif

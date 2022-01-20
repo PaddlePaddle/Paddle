@@ -22,19 +22,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define BITWISE_BINARY_FUNCTOR(func, expr, bool_expr)                          \
-  template <typename T>                                                        \
-  struct Bitwise##func##Functor {                                              \
-    using ELEM_TYPE = T;                                                       \
-    HOSTDEVICE T operator()(const T& a, const T& b) const { return a expr b; } \
-  };                                                                           \
-                                                                               \
-  template <>                                                                  \
-  struct Bitwise##func##Functor<bool> {                                        \
-    using ELEM_TYPE = bool;                                                    \
-    HOSTDEVICE bool operator()(const bool& a, const bool& b) const {           \
-      return a bool_expr b;                                                    \
-    }                                                                          \
+#define BITWISE_BINARY_FUNCTOR(func, expr, bool_expr)                        \
+  template <typename T>                                                      \
+  struct Bitwise##func##Functor {                                            \
+    using ELEM_TYPE = T;                                                     \
+    HOSTDEVICE T operator()(const T a, const T b) const { return a expr b; } \
+  };                                                                         \
+                                                                             \
+  template <>                                                                \
+  struct Bitwise##func##Functor<bool> {                                      \
+    using ELEM_TYPE = bool;                                                  \
+    HOSTDEVICE bool operator()(const bool a, const bool b) const {           \
+      return a bool_expr b;                                                  \
+    }                                                                        \
   };
 
 BITWISE_BINARY_FUNCTOR(And, &, &&)
@@ -45,13 +45,13 @@ BITWISE_BINARY_FUNCTOR(Xor, ^, !=)
 template <typename T>
 struct BitwiseNotFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE T operator()(const T& a) const { return ~a; }
+  HOSTDEVICE T operator()(const T a) const { return ~a; }
 };
 
 template <>
 struct BitwiseNotFunctor<bool> {
   using ELEM_TYPE = bool;
-  HOSTDEVICE bool operator()(const bool& a) const { return !a; }
+  HOSTDEVICE bool operator()(const bool a) const { return !a; }
 };
 
 template <typename DeviceContext, typename Functor>

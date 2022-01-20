@@ -17,9 +17,9 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
@@ -30,7 +30,7 @@ namespace pten {
 
 template <typename InT, typename OutT>
 struct CastFuctor {
-  __device__ __forceinline__ OutT operator()(const InT& x) const {
+  __device__ __forceinline__ OutT operator()(const InT x) const {
     return static_cast<OutT>(x);
   }
 };
@@ -44,7 +44,9 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   out->mutable_data<OutT>();
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                   InT,
+                                                   OutT>(
       dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
 }
 
@@ -60,24 +62,24 @@ void CastKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)     \
-  PT_REGISTER_CTX_KERNEL(cast,                              \
-                         GPU,                               \
-                         ALL_LAYOUT,                        \
-                         pten::CastKernel,                  \
-                         float,                             \
-                         double,                            \
-                         int,                               \
-                         int64_t,                           \
-                         int16_t,                           \
-                         bool,                              \
-                         uint8_t,                           \
-                         paddle::platform::float16,         \
-                         paddle::platform::complex<float>,  \
-                         paddle::platform::complex<double>, \
-                         ##__VA_ARGS__) {                   \
-    kernel->OutputAt(0).SetDataType(                        \
-        paddle::experimental::DataType::UNDEFINED);         \
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
+  PT_REGISTER_KERNEL(cast,                              \
+                     GPU,                               \
+                     ALL_LAYOUT,                        \
+                     pten::CastKernel,                  \
+                     float,                             \
+                     double,                            \
+                     int,                               \
+                     int64_t,                           \
+                     int16_t,                           \
+                     bool,                              \
+                     uint8_t,                           \
+                     paddle::platform::float16,         \
+                     paddle::platform::complex<float>,  \
+                     paddle::platform::complex<double>, \
+                     ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                    \
+        paddle::experimental::DataType::UNDEFINED);     \
   }
 
 #if !defined(PADDLE_WITH_HIP)

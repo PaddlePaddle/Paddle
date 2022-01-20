@@ -39,7 +39,7 @@ inline std::vector<int> get_new_shape(
                           tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
       vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -55,12 +55,14 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
   auto* new_data = new_data_tensor->data<T>();
   framework::Tensor cpu_starts_tensor;
   if (platform::is_gpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                                      &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                                      &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
@@ -114,6 +116,39 @@ static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
             output_t(i, j, k, l) = input_t(i, j, in_k, in_l);
           } else {
             output_t(i, k, l, j) = input_t(i, in_k, in_l, j);
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+static void NearestNeighbor3DInterpolate(
+    const Tensor& input, Tensor* output, const float ratio_d,
+    const float ratio_h, const float ratio_w, const int n, const int c,
+    const int out_d, const int out_h, const int out_w, const bool align_corners,
+    const DataLayout& data_layout) {
+  auto input_t = EigenTensor<T, 5>::From(input);
+  auto output_t = EigenTensor<T, 5>::From(*output);
+  for (int d = 0; d < out_d; d++) {  // loop for images
+    int in_d = (align_corners) ? static_cast<int>(ratio_d * d + 0.5)
+                               : static_cast<int>(ratio_d * d);
+    for (int k = 0; k < out_h; k++) {
+      int in_k = (align_corners) ? static_cast<int>(ratio_h * k + 0.5)
+                                 : static_cast<int>(ratio_h * k);
+
+      for (int l = 0; l < out_w; l++) {
+        int in_l = (align_corners) ? static_cast<int>(ratio_w * l + 0.5)
+                                   : static_cast<int>(ratio_w * l);
+
+        for (int i = 0; i < n; i++) {    // loop for batches
+          for (int j = 0; j < c; j++) {  // loop for channels
+            if (data_layout == DataLayout::kNCHW) {
+              output_t(i, j, d, k, l) = input_t(i, j, in_d, in_k, in_l);
+            } else {  // NDHWC
+              output_t(i, d, k, l, j) = input_t(i, in_d, in_k, in_l, j);
+            }
           }
         }
       }
@@ -577,6 +612,42 @@ static void NearestNeighborInterpolateGrad(
             input_grad_t(i, j, in_k, in_l) += output_grad_t(i, j, k, l);
           } else {
             input_grad_t(i, in_k, in_l, j) += output_grad_t(i, k, l, j);
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+static void NearestNeighbor3DInterpolateGrad(
+    const Tensor& output_grad, Tensor* input_grad, const float ratio_d,
+    const float ratio_h, const float ratio_w, const int n, const int c,
+    const int out_d, const int out_h, const int out_w, const bool align_corners,
+    const DataLayout data_layout) {
+  auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
+  auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
+
+  for (int d = 0; d < out_d; d++) {
+    int in_d = (align_corners) ? static_cast<int>(ratio_d * d + 0.5)
+                               : static_cast<int>(ratio_d * d);
+    for (int k = 0; k < out_h; k++) {  // loop for images
+      int in_k = (align_corners) ? static_cast<int>(ratio_h * k + 0.5)
+                                 : static_cast<int>(ratio_h * k);
+
+      for (int l = 0; l < out_w; l++) {
+        int in_l = (align_corners) ? static_cast<int>(ratio_w * l + 0.5)
+                                   : static_cast<int>(ratio_w * l);
+
+        for (int i = 0; i < n; i++) {    // loop for batches
+          for (int j = 0; j < c; j++) {  // loop for channels
+            if (data_layout == DataLayout::kNCHW) {
+              input_grad_t(i, j, in_d, in_k, in_l) +=
+                  output_grad_t(i, j, d, k, l);
+            } else {
+              input_grad_t(i, in_d, in_k, in_l, j) +=
+                  output_grad_t(i, d, k, l, j);
+            }
           }
         }
       }
@@ -1137,6 +1208,10 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
     TrilinearInterpolation<T>(input, output, ratio_d, ratio_h, ratio_w, in_d,
                               in_h, in_w, n, c, out_d, out_h, out_w,
                               align_corners, align_mode, data_layout);
+  } else if ("nearest" == interp_method) {
+    NearestNeighbor3DInterpolate<T>(input, output, ratio_d, ratio_h, ratio_w, n,
+                                    c, out_d, out_h, out_w, align_corners,
+                                    data_layout);
   }
 }
 
@@ -1489,6 +1564,10 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
     TrilinearInterpolationGrad<T>(
         output_grad, input_grad, ratio_d, ratio_h, ratio_w, in_d, in_h, in_w, n,
         c, out_d, out_h, out_w, align_corners, align_mode, data_layout);
+  } else if ("nearest" == interp_method) {
+    NearestNeighbor3DInterpolateGrad<T>(output_grad, input_grad, ratio_d,
+                                        ratio_h, ratio_w, n, c, out_d, out_h,
+                                        out_w, align_corners, data_layout);
   }
 }
 

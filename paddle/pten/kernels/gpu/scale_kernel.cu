@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace pten {
@@ -34,7 +34,7 @@ struct ScaleFunctor {
     bias_after_scale = is_bias_after_sacle;
   }
 
-  __device__ __forceinline__ InT operator()(const InT& x) const {
+  __device__ __forceinline__ InT operator()(const InT x) const {
     if (bias_after_scale) {
       return scale * x + bias;
     } else {
@@ -43,19 +43,21 @@ struct ScaleFunctor {
   }
 };
 
-template <typename T, typename ContextT>
-void Scale(const ContextT& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
+template <typename T, typename Context>
+void ScaleKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 DenseTensor* out) {
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   out->mutable_data<T>();
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                   T,
+                                                   T>(
       dev_ctx,
       inputs,
       &outputs,
@@ -64,15 +66,15 @@ void Scale(const ContextT& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(scale,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::Scale,
-                       float,
-                       double,
-                       paddle::platform::float16,
-                       uint8_t,
-                       int8_t,
-                       int16_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(scale,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::ScaleKernel,
+                   float,
+                   double,
+                   paddle::platform::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}

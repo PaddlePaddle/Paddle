@@ -359,8 +359,9 @@ class Upsample(Layer):
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic'  only support 4-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
         ValueError: size length should be 2 for input 4-D tensor.

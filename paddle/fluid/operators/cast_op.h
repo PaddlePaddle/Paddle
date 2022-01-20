@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/transform.h"
 
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 
 namespace paddle {
@@ -64,14 +63,11 @@ class CastOpKernel : public framework::OpKernel<InT> {
     out->mutable_data(dev_ctx.GetPlace(),
                       static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
-
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
     // call new kernel
-    pten::CastKernel<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_out.get());
+    pten::CastKernel<InT>(dev_ctx, *in, pt_out_dtype, out);
   }
 };
 

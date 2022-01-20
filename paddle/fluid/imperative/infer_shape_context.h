@@ -32,16 +32,17 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   using DDim = framework::DDim;
 
  public:
-  DygraphInferShapeContext(const NameVarMap<VarType>* in,
-                           const NameVarMap<VarType>* out,
-                           const framework::AttributeMap* attr,
-                           const framework::AttributeMap* default_attr,
-                           const std::string op_type)
+  DygraphInferShapeContext(
+      const NameVarMap<VarType>* in, const NameVarMap<VarType>* out,
+      const framework::AttributeMap* attr,
+      const framework::AttributeMap* default_attr, const std::string op_type,
+      const framework::OpKernelType* op_kernel_type = nullptr)
       : var_base_map_in_(in),
         var_base_map_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
-        op_type_(op_type) {}
+        op_type_(op_type),
+        op_kernel_type_(op_kernel_type) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -213,6 +214,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   bool IsRuntime() const override { return true; }
+
+  bool IsRunMKLDNNKernel() const override {
+    return (op_kernel_type_ &&
+            (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
+  }
 
   // TODO(paddle-dev): Can this be template?
   std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
@@ -399,6 +405,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* attrs_;
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
+  const framework::OpKernelType* op_kernel_type_;
 };
 
 }  // namespace imperative

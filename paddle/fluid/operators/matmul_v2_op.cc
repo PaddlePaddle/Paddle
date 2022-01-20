@@ -389,6 +389,14 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
                                      tensor.place(), tensor.layout());
     }
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "matmul_grad", {"X", "Y", framework::GradVarName("Out")},
+        {"trans_x", "trans_y"},
+        {framework::GradVarName("X"), framework::GradVarName("Y")});
+  }
 };
 
 template <typename T>
@@ -430,6 +438,13 @@ class MatMulV2OpDoubleGrad : public framework::OperatorWithKernel {
         (context->HasInput("DDY") || context->HasInput("DDX"))) {
       context->ShareDim("DOut", "DDOut");
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "matmul_double_grad", {"X", "Y", "DOut", "DDX", "DDY"},
+        {"trans_x", "trans_y"}, {"DX", "DY", "DDOut"});
   }
 };
 
@@ -499,6 +514,15 @@ class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
     if (context->HasOutput("D_DDY_out")) {
       context->ShareDim("Y", "D_DDY_out");
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "matmul_triple_grad",
+        {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
+        {"trans_x", "trans_y"},
+        {"D_X_out", "D_Y_out", "D_DOut_out", "D_DDX_out", "D_DDY_out"});
   }
 };
 
