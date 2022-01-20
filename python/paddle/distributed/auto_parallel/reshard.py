@@ -294,23 +294,26 @@ def _need_reshard(dist_tensor, dist_op, op_input=True):
         op_process_mesh = op_dist_attr.process_mesh
         if all(
                 map(lambda x: x is not None, [
-                    tensor_dims_mapping, tensor_process_mesh, op_input_dims_mapping,
-                    op_process_mesh
+                    tensor_dims_mapping, tensor_process_mesh,
+                    op_input_dims_mapping, op_process_mesh
                 ])):
             if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
                 is_reshard = True
     else:
-        op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(tensor_name)
+        op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            tensor_name)
         op_process_mesh = op_dist_attr.process_mesh
         if all(
                 map(lambda x: x is not None, [
-                    tensor_dims_mapping, tensor_process_mesh, op_output_dims_mapping,
-                    op_process_mesh
+                    tensor_dims_mapping, tensor_process_mesh,
+                    op_output_dims_mapping, op_process_mesh
                 ])):
             if tensor_process_mesh != op_process_mesh:
                 is_reshard = True
             if tensor_dims_mapping != op_output_dims_mapping:
-                raise ValueError("It is not supported that tensor dims mapping is different from op output dims mapping.")
+                raise ValueError(
+                    "It is not supported that tensor dims mapping is different from op output dims mapping."
+                )
     return is_reshard
 
 
@@ -1016,7 +1019,7 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
         else:
             idx += 1
 
-    #insert send and recv op if output process mesh is different from tensor process mesh
+    # insert send and recv op if output process mesh is different from tensor process mesh
     idx = 0
     skip_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
     while idx < len(block.ops):
@@ -1029,12 +1032,14 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
                 dist_tensor = dist_context.get_dist_tensor_for_program(var)
                 if dist_tensor is not None and _need_reshard(dist_tensor,
                                                              dist_op, False):
-                    for index, item in enumerate(dist_op.dist_attr.process_mesh.processes):
-                        recv_rank = dist_tensor.dist_attr.process_mesh.processes[index]
+                    for index, item in enumerate(
+                            dist_op.dist_attr.process_mesh.processes):
+                        recv_rank = dist_tensor.dist_attr.process_mesh.processes[
+                            index]
                         if rank_id == item:
-                            _insert_send_op(block, idx+1, var, recv_rank)
+                            _insert_send_op(block, idx + 1, var, recv_rank)
                         if rank_id == recv_rank:
-                            _insert_recv_op(block, idx+1, var, item)
+                            _insert_recv_op(block, idx + 1, var, item)
                     cur_op_count = len(block.ops)
                     idx_offset = idx_offset + cur_op_count - pre_op_count
                     pre_op_count = cur_op_count

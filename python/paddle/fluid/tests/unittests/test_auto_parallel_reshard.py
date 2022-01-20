@@ -143,7 +143,11 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-def get_dist_prog(train_program, startup_program, dist_context, rank_id, change_process_mesh=False):
+def get_dist_prog(train_program,
+                  startup_program,
+                  dist_context,
+                  rank_id,
+                  change_process_mesh=False):
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
@@ -159,11 +163,9 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id, change_
 
     if change_process_mesh:
         global PP_MESH_1
-        print("******** the raw gelu_0.tmp_0 process_mesh********")
-        print(dist_context.get_tensor_dist_attr_for_program(train_program.global_block().vars["gelu_0.tmp_0"]))
-        dist_context.get_tensor_dist_attr_for_program(train_program.global_block().vars["gelu_0.tmp_0"]).process_mesh = PP_MESH_1
-        print("******** the changed gelu_0.tmp_0  process_mesh********")
-        print(dist_context.get_tensor_dist_attr_for_program(train_program.global_block().vars["gelu_0.tmp_0"]))
+        dist_context.get_tensor_dist_attr_for_program(
+            train_program.global_block().vars[
+                "gelu_0.tmp_0"]).process_mesh = PP_MESH_1
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -333,8 +335,6 @@ class TestMLPReshard(unittest.TestCase):
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
-
-        # parameter initialization of every rank should be different in the pipeline scene
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
 
     def test_mlp_dp(self):
