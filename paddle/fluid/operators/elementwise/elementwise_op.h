@@ -101,9 +101,28 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
+      // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
+      // is model is NHWC.
+      bool should_rotate =
+          this->IsMKLDNNType() &&
+          (MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+           framework::DataLayout::kNHWC);
+      if (should_rotate) {
+        // Pick bigger shape and rotate this one
+        if (x_dims.size() > y_dims.size())
+          std::rotate(x_dims.begin() + 1, x_dims.begin() + 2, x_dims.end());
+        else
+          std::rotate(y_dims.begin() + 1, y_dims.begin() + 2, y_dims.end());
+      }
+
       GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
+      // Now rotate shape back if needed (NHWC -> NCHW)
+      if (should_rotate) {
+        std::rotate(out_dims_array.begin() + 1, out_dims_array.end() - 1,
+                    out_dims_array.end());
+      }
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
       // to do
       ctx->ShareLoD("X", /*->*/ "Out");
