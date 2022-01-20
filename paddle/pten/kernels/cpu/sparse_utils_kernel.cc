@@ -153,16 +153,16 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(dense_to_sparse_coo,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::DenseToSparseCooKernel,
-                       float,
-                       double) {}
+PT_REGISTER_KERNEL(dense_to_sparse_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::DenseToSparseCooKernel,
+                   float,
+                   double) {}
 
-PT_REGISTER_CTX_KERNEL(sparse_coo_to_dense,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::SparseCooToDenseKernel,
-                       float,
-                       double) {}
+PT_REGISTER_KERNEL(sparse_coo_to_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SparseCooToDenseKernel,
+                   float,
+                   double) {}

@@ -44,11 +44,11 @@ inline void CheckResult(
     const auto* dev_ctx_cuda =
         static_cast<const paddle::platform::CUDADeviceContext*>(dev_ctx);
     DenseTensor indices(
-        alloc,
+        alloc.get(),
         DenseTensorMeta(
             DataType::INT64, real_indices.dims(), real_indices.layout()));
 
-    DenseTensor elements(alloc,
+    DenseTensor elements(alloc.get(),
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
@@ -83,12 +83,12 @@ TEST(DEV_API, to_sparse_coo) {
           paddle::platform::CUDAPlace());
 
   DenseTensor dense_x(
-      alloc,
+      alloc.get(),
       DenseTensorMeta(
           DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
 
   DenseTensor d_dense_x(
-      cuda_alloc,
+      cuda_alloc.get(),
       DenseTensorMeta(
           DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
 
@@ -143,12 +143,12 @@ TEST(DEV_API, to_sparse_coo_hybird) {
           paddle::platform::CUDAPlace());
 
   DenseTensor dense_x(
-      alloc,
+      alloc.get(),
       DenseTensorMeta(
           DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
 
   DenseTensor d_dense_x(
-      cuda_alloc,
+      cuda_alloc.get(),
       DenseTensorMeta(
           DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
 
@@ -203,12 +203,12 @@ TEST(DEV_API, to_sparse_coo_performance) {
 
   const int rows = 4096;
   const int cols = 4096;
-  DenseTensor dense_x(alloc,
+  DenseTensor dense_x(alloc.get(),
                       DenseTensorMeta(DataType::FLOAT32,
                                       framework::make_ddim({rows, cols}),
                                       DataLayout::NCHW));
 
-  DenseTensor d_dense_x(cuda_alloc,
+  DenseTensor d_dense_x(cuda_alloc.get(),
                         DenseTensorMeta(DataType::FLOAT32,
                                         framework::make_ddim({rows, cols}),
                                         DataLayout::NCHW));
@@ -255,12 +255,6 @@ TEST(DEV_API, to_sparse_coo_performance) {
       *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
       d_dense_x,
       sparse_dim);
-  for (int i = 0; i < 100; i++) {
-    DenseToSparseCoo<float>(
-        *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
-        d_dense_x,
-        sparse_dim);
-  }
   std::vector<int64_t> indices_data(non_zero_num * 2);
   memcpy(&indices_data[0], &rows_data[0], non_zero_num * sizeof(int64_t));
   memcpy(&indices_data[non_zero_num],
@@ -296,7 +290,7 @@ TEST(DEV_API, sparse_coo_to_dense) {
 
   DDim dense_dims = framework::make_ddim({rows, cols});
   DenseTensor dense_indices(
-      alloc,
+      alloc.get(),
       DenseTensorMeta(DataType::INT64,
                       framework::make_ddim({sparse_dim, non_zero_num}),
                       DataLayout::NCHW));
@@ -307,14 +301,14 @@ TEST(DEV_API, sparse_coo_to_dense) {
   }
   DDim dense_elements_dims = framework::make_ddim(dense_elements_vec);
   DenseTensor dense_elements(
-      alloc,
+      alloc.get(),
       DenseTensorMeta(
           DataType::FLOAT32, dense_elements_dims, DataLayout::NCHW));
   DenseTensor d_dense_indices(
-      cuda_alloc,
+      cuda_alloc.get(),
       DenseTensorMeta(DataType::INT64, dense_indices.dims(), DataLayout::NCHW));
   DenseTensor d_dense_elements(
-      cuda_alloc,
+      cuda_alloc.get(),
       DenseTensorMeta(
           DataType::FLOAT32, dense_elements_dims, DataLayout::NCHW));
 
@@ -343,7 +337,7 @@ TEST(DEV_API, sparse_coo_to_dense) {
       *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
       coo_cuda);
 
-  DenseTensor h_dense_out(alloc,
+  DenseTensor h_dense_out(alloc.get(),
                           DenseTensorMeta(dense_out_cuda.dtype(),
                                           dense_out_cuda.dims(),
                                           dense_out_cuda.layout()));

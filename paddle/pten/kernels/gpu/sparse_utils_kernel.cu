@@ -128,19 +128,62 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
   const int rows = dims_2d[0];
   const int cols = dims_2d[1];
+  if (x_dims.size() == 2 && sparse_dim == 2) {
+#if CUDA_VERSION >= 11020
+    auto sparse =
+        paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
+                                           T>(dev_ctx);
+    auto nnz_dims = paddle::framework::make_ddim({rows + 1});
+    DenseTensorMeta nnz_meta(DataType::INT32, nnz_dims, DataLayout::NCHW);
+    DenseTensor nnz_tensor =
+        pten::Empty<int, Context>(dev_ctx, std::move(nnz_meta));
+    int* nnz_ptr = nnz_tensor.mutable_data<int>();
+    sparse.nnz(rows, cols, x_data, nnz_ptr, nnz_ptr + 1);
+    int non_zero_num = 0;
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         &non_zero_num,
+                         paddle::platform::CUDAPlace(),
+                         nnz_ptr,
+                         sizeof(int),
+                         dev_ctx.stream());
+    dev_ctx.Wait();
 
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
+    const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
+    DenseTensorMeta indices_meta(
+        DataType::INT64,
+        paddle::framework::make_ddim(
+            {sparse_dim, static_cast<int64_t>(non_zero_num)}),
+        DataLayout::NCHW);
+    DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
+    pten::DenseTensor indices(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            dev_ctx.GetPlace()),
+        std::move(indices_meta));
+    pten::DenseTensor values(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            dev_ctx.GetPlace()),
+        std::move(values_meta));
+
+    int64_t* rows_ptr = indices.mutable_data<int64_t>();
+    int64_t* cols_ptr = rows_ptr + non_zero_num;
+    T* values_ptr = values.mutable_data<T>();
+    sparse.DenseToSparseCoo(rows, cols, x_data, rows_ptr, cols_ptr, values_ptr);
+    out->SetMember(indices, values, x_dims, true);
+    return;
+#endif
+  }
+
   auto nums_meta = pten::DenseTensorMeta(DataType::INT32,
                                          paddle::framework::make_ddim({1}),
                                          pten::DataLayout::NCHW);
-  DenseTensor nums(allocator, nums_meta);
+  DenseTensor nums = pten::Empty<T, Context>(dev_ctx, std::move(nums_meta));
   auto x_dims_meta = pten::DenseTensorMeta(
       DataType::INT64,
       paddle::framework::make_ddim({static_cast<int64_t>(x_dims.size())}),
       pten::DataLayout::NCHW);
-  DenseTensor d_x_dims(allocator, x_dims_meta);
+  // DenseTensor d_x_dims(allocator, x_dims_meta);
+  DenseTensor d_x_dims =
+      pten::Empty<T, Context>(dev_ctx, std::move(x_dims_meta));
 
   // 1. get numbers of non zero elements
   int* nums_ptr = nums.mutable_data<int>();
@@ -155,16 +198,16 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   // 2. copy non_zero_num to host, copy x_dims to device
   int non_zero_num = 0;
-  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
+  // const auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace,
+  // dev_ctx.GetPlace());
   paddle::memory::Copy(paddle::platform::CPUPlace(),
                        &non_zero_num,
-                       place,
+                       paddle::platform::CUDAPlace(),
                        nums_ptr,
                        sizeof(int),
                        dev_ctx.stream());
-  dev_ctx.Wait();
 
-  paddle::memory::Copy(place,
+  paddle::memory::Copy(paddle::platform::CUDAPlace(),
                        d_x_dims.mutable_data<int64_t>(),
                        paddle::platform::CPUPlace(),
                        x_dims.Get(),
@@ -270,16 +313,19 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
     offset *= dense_dims[i];
   }
 
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
+  // const auto allocator =
+  //    std::make_shared<paddle::experimental::DefaultAllocator>(
+  //        dev_ctx.GetPlace());
   auto sparse_offset_meta =
       pten::DenseTensorMeta(DataType::INT64,
                             paddle::framework::make_ddim({sparse_dim}),
                             pten::DataLayout::NCHW);
-  DenseTensor d_sparse_offsets(allocator, sparse_offset_meta);
-  auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
-  paddle::memory::Copy(place,
+  // DenseTensor d_sparse_offsets(allocator, sparse_offset_meta);
+  DenseTensor d_sparse_offsets =
+      pten::Empty<T, Context>(dev_ctx, std::move(sparse_offset_meta));
+  // auto place = BOOST_GET_CONST(paddle::platform::CUDAPlace,
+  // dev_ctx.GetPlace());
+  paddle::memory::Copy(paddle::platform::CUDAPlace(),
                        d_sparse_offsets.mutable_data<int64_t>(),
                        paddle::platform::CPUPlace(),
                        sparse_offsets.data(),
@@ -306,16 +352,16 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(dense_to_sparse_coo,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::DenseToSparseCooKernel,
-                       float,
-                       double) {}
+PT_REGISTER_KERNEL(dense_to_sparse_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DenseToSparseCooKernel,
+                   float,
+                   double) {}
 
-PT_REGISTER_CTX_KERNEL(sparse_coo_to_dense,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::SparseCooToDenseKernel,
-                       float,
-                       double) {}
+PT_REGISTER_KERNEL(sparse_coo_to_dense,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::SparseCooToDenseKernel,
+                   float,
+                   double) {}
