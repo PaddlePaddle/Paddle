@@ -129,7 +129,7 @@ class PlanFilter:
                         if item != -1:
                             return False
 
-            return True
+        return True
 
 
 class PlanSpace:
