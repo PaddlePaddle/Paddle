@@ -192,17 +192,17 @@ class DistributedContext:
         else:
             return None
 
-    def set_tensor_dist_attr_for_graph(self, serial_tensor_node, dist_attr):
-        assert serial_tensor_node.is_var() and \
-            serial_tensor_node.var() is not None
-        serial_tensor_id = serial_tensor_node.node.original_desc_id()
-        dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id, None)
-        assert dist_tensor is not None, \
-            "The distributed tensor of the program has not been added to this context."
-        serial_tensor_node_id = serial_tensor_node.id()
-        new_dist_tensor = DistributedTensor(dist_tensor.serial_tensor,
-                                            dist_attr)
-        self._dist_tensors_for_graph[serial_tensor_node_id] = new_dist_tensor
+    # def set_tensor_dist_attr_for_graph(self, serial_tensor_node, dist_attr):
+    #     assert serial_tensor_node.is_var() and \
+    #         serial_tensor_node.var() is not None
+    #     serial_tensor_id = serial_tensor_node.node.original_desc_id()
+    #     dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id, None)
+    #     assert dist_tensor is not None, \
+    #         "The distributed tensor of the program has not been added to this context."
+    #     serial_tensor_node_id = serial_tensor_node.id()
+    #     new_dist_tensor = DistributedTensor(dist_tensor.serial_tensor,
+    #                                         dist_attr)
+    #     self._dist_tensors_for_graph[serial_tensor_node_id] = new_dist_tensor
 
     def get_op_dist_attr_for_program(self, serial_op):
         serial_op_id = serial_op.desc.id()
@@ -236,34 +236,34 @@ class DistributedContext:
         else:
             return None
 
-    def set_op_dist_attr_for_graph(self, serial_op_node, dist_attr):
-        assert serial_op_node.is_op() and \
-            serial_op_node.op() is not None
-        serial_op_id = serial_op_node.node.original_desc_id()
-        dist_op = self._dist_ops_for_program.get(serial_op_id, None)
-        assert dist_op is not None, \
-            "The distributed operator of the program has not been added to this context."
-        serial_op_node_id = serial_op_node.id()
-        new_dist_op = DistributedOperator(dist_op.serial_op, dist_attr)
-        self._dist_ops_for_graph[serial_op_node_id] = new_dist_op
+    # def set_op_dist_attr_for_graph(self, serial_op_node, dist_attr):
+    #     assert serial_op_node.is_op() and \
+    #         serial_op_node.op() is not None
+    #     serial_op_id = serial_op_node.node.original_desc_id()
+    #     dist_op = self._dist_ops_for_program.get(serial_op_id, None)
+    #     assert dist_op is not None, \
+    #         "The distributed operator of the program has not been added to this context."
+    #     serial_op_node_id = serial_op_node.id()
+    #     new_dist_op = DistributedOperator(dist_op.serial_op, dist_attr)
+    #     self._dist_ops_for_graph[serial_op_node_id] = new_dist_op
 
-    def get_dist_attr_for_graph(self, serial_node):
-        if serial_node.is_var() and serial_node.var() is not None:
-            serial_tensor_node_id = serial_node.id()
-            dist_tensor = self._dist_tensors_for_graph.get(
-                serial_tensor_node_id, None)
-            if dist_tensor:
-                return dist_tensor.dist_attr
-            else:
-                return None
-        if serial_node.is_op() and serial_node.op() is not None:
-            serial_op_node_id = serial_node.id()
-            dist_op = self._dist_ops_for_graph.get(serial_op_node_id, None)
-            if dist_op:
-                return dist_op.dist_attr
-            else:
-                return None
-        return None
+    # def get_dist_attr_for_graph(self, serial_node):
+    #     if serial_node.is_var() and serial_node.var() is not None:
+    #         serial_tensor_node_id = serial_node.id()
+    #         dist_tensor = self._dist_tensors_for_graph.get(
+    #             serial_tensor_node_id, None)
+    #         if dist_tensor:
+    #             return dist_tensor.dist_attr
+    #         else:
+    #             return None
+    #     if serial_node.is_op() and serial_node.op() is not None:
+    #         serial_op_node_id = serial_node.id()
+    #         dist_op = self._dist_ops_for_graph.get(serial_op_node_id, None)
+    #         if dist_op:
+    #             return dist_op.dist_attr
+    #         else:
+    #             return None
+    #     return None
 
     def init_dist_attr_for_program(self):
         assert self._serial_program, \
