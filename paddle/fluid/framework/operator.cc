@@ -1947,6 +1947,14 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
+              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(int64_t))) {
+          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
+              &BOOST_GET_CONST(int64_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "
@@ -1978,6 +1986,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::string))) {
           pt_kernel_context->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          pt_kernel_context->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "

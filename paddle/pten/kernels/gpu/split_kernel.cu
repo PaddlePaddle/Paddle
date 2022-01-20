@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/pten/kernels/cpu/concat_and_split.h"
+#include "paddle/pten/kernels/gpu/concat_and_split.h"
 namespace pten {
 
 template <typename T, typename Context>
@@ -46,7 +46,7 @@ void SplitKernel(const Context& dev_ctx,
 }  // namespace pten
 
 PT_REGISTER_KERNEL(split,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    pten::SplitKernel,
                    float,

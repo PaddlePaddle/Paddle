@@ -396,6 +396,14 @@ static void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int64_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
@@ -433,6 +441,10 @@ static void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::string))) {
           kernel_ctx->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "
