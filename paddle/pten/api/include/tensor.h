@@ -34,6 +34,11 @@ using gpuStream_t = hipStream_t;
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/common/place.h"
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace pten {
 class TensorBase;
@@ -43,12 +48,9 @@ namespace paddle {
 namespace framework {
 class DDim;
 }
-namespace platform {
-class Place;
-}
+
 namespace experimental {
 
-class Tensor;
 class CompatiblePTenTensorUtils;
 
 class AbstractAutogradMeta {
@@ -204,6 +206,14 @@ class PADDLE_API Tensor final {
    */
   DataLayout layout() const;
 
+  /**
+   * @brief Determine whether tensor is DenseTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dense_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
@@ -221,7 +231,7 @@ class PADDLE_API Tensor final {
    *
    * @return paddle::platform::Place
    */
-  paddle::platform::Place inner_place() const;
+  pten::Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -296,7 +306,7 @@ class PADDLE_API Tensor final {
    *                 The index number begins from begin_idx + 1.
    * @return Tensor
    */
-  Tensor slice(const int64_t begin_idx, const int64_t end_idx) const;
+  Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
   /**
    * @brief Return the implemention of current Tensor.
@@ -464,7 +474,7 @@ class PADDLE_API Tensor final {
    * unified to Tensor, but Tensor itself is heterogeneous.
    *
    * Tensor can generally be represented by void* and size_t, place.
-   * This is suitable for most scenarios including CPU, CUDA, HIP, CPU, etc.,
+   * This is suitable for most scenarios including CPU, GPU, HIP, CPU, etc.,
    * but there are a few cases where this definition cannot be described,
    * such as the Tensor representation in third-party lib such as Metal,
    * OpenCL, etc., as well as some special Tensor implementations, including

@@ -15,11 +15,21 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/flatten_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
+#endif
 
 namespace pten {
 namespace tests {
@@ -29,10 +39,10 @@ using DDim = paddle::framework::DDim;
 
 TEST(DEV_API, flatten) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   pten::DenseTensor dense_x(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));

@@ -16,7 +16,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -28,21 +28,20 @@ namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 // TODO(YuanRisheng): This TEST file need to be refactored after 'copy' realized
-// in
-// 'paddle/api',
+// in 'paddle/api'
 TEST(DEV_API, copy) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_src = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data = dense_src->mutable_data<float>();
 
   auto dense_dst = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));

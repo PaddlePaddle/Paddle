@@ -18,7 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -47,12 +47,13 @@ class StartInterceptor : public Interceptor {
 };
 
 TEST(ComputeInterceptor, Compute) {
-  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
-  Carrier& carrier = FleetExecutor::GetCarrier();
+  std::string carrier_id = "0";
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}});
 
-  auto msg_bus = std::make_shared<MessageBus>();
-  msg_bus->Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "");
-  carrier.SetMsgBus(msg_bus);
+  MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
@@ -66,11 +67,9 @@ TEST(ComputeInterceptor, Compute) {
   node_c->AddUpstreamTask(1);
 
   Interceptor* a =
-      carrier.SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
-  carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
-
-  carrier.SetCreatingFlag(false);
+      carrier->SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
+  carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+  carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
 
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
@@ -79,8 +78,8 @@ TEST(ComputeInterceptor, Compute) {
   a->Send(1, msg);
   a->Send(1, msg);
 
-  carrier.Wait();
-  carrier.Release();
+  carrier->Wait();
+  carrier->Release();
 }
 
 }  // namespace distributed

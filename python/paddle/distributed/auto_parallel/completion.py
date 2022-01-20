@@ -353,30 +353,18 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
                                                         compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
-        op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
-            op_desc.type(), dist_op, fwd=True)
-        if op_dist_impl is not None:
-            dim_changed = op_dist_impl.update_dims_mapping(dist_op)
-            if dim_changed:
-                changed = True
-            # This statement will be replaced by a good way
-            if op_dist_impl.is_compatible(dist_op):
-                op_dist_attr.impl_type = op_desc.type()
-                op_dist_attr.impl_idx = op_dist_impl_idx
-        elif is_elementwise_like_op(op_desc.type()):
-            dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
-                dist_context, op_node)
-            if dim_changed:
-                changed = True
-            op_dist_attr.impl_type = "element-wise"
-            op_dist_attr.impl_idx = -1
-        else:
-            dim_changed = update_op_dims_mapping_by_default_dist_impl(
-                dist_context, op_node)
-            if dim_changed:
-                changed = True
-            op_dist_attr.impl_type = "default"
-            op_dist_attr.impl_idx = -2
+        op_dist_impl = find_best_compatible_distributed_operator_impl(
+            dist_op, fwd=True)
+        assert op_dist_impl is not None, "Cannot find the dist op implementation."
+        dim_changed = op_dist_impl.update_dims_mapping(dist_op)
+        if dim_changed:
+            changed = True
+        if op_dist_impl.is_auto_compatible(dist_op):
+            if op_dist_impl.type == "elementwise":
+                op_dist_attr.impl_type = "default"
+            else:
+                op_dist_attr.impl_type = op_dist_impl.type
+            op_dist_attr.impl_idx = op_dist_impl.idx
     else:
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
@@ -399,30 +387,18 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
                         tensor_desc.name(), compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
-        op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
-            op_desc.type(), dist_op, fwd=False)
-        if op_dist_impl is not None:
-            dim_changed = op_dist_impl.update_dims_mapping(dist_op)
-            if dim_changed:
-                changed = True
-            # This statement will be replaced by a good way
-            if op_dist_impl.is_compatible(dist_op):
-                op_dist_attr.impl_type = op_desc.type()
-                op_dist_attr.impl_idx = op_dist_impl_idx
-        elif is_elementwise_like_op(op_desc.type()):
-            dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
-                dist_context, op_node)
-            if dim_changed:
-                changed = True
-            op_dist_attr.impl_type = "element-wise"
-            op_dist_attr.impl_idx = -1
-        else:
-            dim_changed = update_op_dims_mapping_by_default_dist_impl(
-                dist_context, op_node)
-            if dim_changed:
-                changed = True
-            op_dist_attr.impl_type = "default"
-            op_dist_attr.impl_idx = -2
+        op_dist_impl = find_best_compatible_distributed_operator_impl(
+            dist_op, fwd=False)
+        assert op_dist_impl is not None, "Cannot find the dist op implementation."
+        dim_changed = op_dist_impl.update_dims_mapping(dist_op)
+        if dim_changed:
+            changed = True
+        if op_dist_impl.is_auto_compatible(dist_op):
+            if op_dist_impl.type == "elementwise":
+                op_dist_attr.impl_type = "default"
+            else:
+                op_dist_attr.impl_type = op_dist_impl.type
+            op_dist_attr.impl_idx = op_dist_impl.idx
     return changed
 
 
@@ -698,13 +674,13 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             continue
 
         # complete the annotation of grad op (xxx_grad op or sum op)
-        # xxx_grad op will have a corresponding forward op in gradopidx2opidx
+        # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
         grad_op = ops[idx]
-        if grad_op.desc.id() in dist_op_context.gradopidx2opidx:
+        if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
             # TODO support the case where one forward op corresponding to multiple xxx_grad op
             forward_op = _get_op_by_id(
                 ops[:first_backward_op_idx],
-                dist_op_context.gradopidx2opidx[grad_op.desc.id()])
+                dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
             assert forward_op is not None
 
             # op dist attr
@@ -769,7 +745,7 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             dist_context.set_op_dist_attr_for_program(grad_op,
                                                       grad_op_dist_attr)
 
-        # only sum op for merge mutiple version grad has no a corresponding mapping in gradopidx2opidx
+        # only sum op for merge mutiple version grad has no a corresponding mapping in grad_op_id_to_op_id
         else:
             assert grad_op.type == "sum", "got unexpect op [{}]".format(
                 str(grad_op.type))
@@ -822,6 +798,28 @@ def complete_update_annotation(auto_parallel_main_prog, dist_context):
         # TODO to add attribute for moment var
         op = ops[idx]
         if int(op.attr('op_role')) == int(OpRole.Optimize):
+            if op.type == "clip_by_norm":
+
+                param_grad = vars[op.input("X")[0]]
+                param_grad_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    param_grad)
+                assert param_grad_dist_attr is not None
+                ref_process_mesh = param_grad_dist_attr.process_mesh
+                ref_dims_mapping = param_grad_dist_attr.dims_mapping
+
+                out = vars[op.output("Out")[0]]
+                out_dist_attr = TensorDistributedAttribute()
+                out_dist_attr.process_mesh = ref_process_mesh
+                out_dist_attr.dims_mapping = ref_dims_mapping
+                dist_context.set_tensor_dist_attr_for_program(out,
+                                                              out_dist_attr)
+
+                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr.process_mesh = ref_process_mesh
+                op_dist_attr.set_input_dist_attr(param_grad.name,
+                                                 param_grad_dist_attr)
+                op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
+                dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
 
             if "Grad" in op.input_names and "Param" in ops[idx].input_names:
                 assert len(op.input(

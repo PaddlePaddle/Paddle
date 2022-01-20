@@ -300,6 +300,10 @@ class Communicator {
   virtual void BarrierWithTable(uint32_t barrier_type) {
     auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
     rets.wait();
+    int status = rets.get();
+    PADDLE_ENFORCE_EQ(status, 0,
+                      platform::errors::InvalidArgument(
+                          "The ret status must be 0 when barrier with table"));
   }
 
   virtual void CreateC2CConnection(int pserver_timeout_ms,
@@ -449,6 +453,18 @@ class AsyncCommunicator : public Communicator {
 
   void PushDensePostProcessing();
 
+  void PullSparseToTensorSync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, bool is_training,
+      std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
+      std::vector<framework::LoDTensor *> *outputs);      // NOLINT
+
+  void PushSparseFromTensorAsync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
+      const framework::LoDTensor *shows, const framework::LoDTensor *clicks,
+      std::vector<framework::LoDTensor *> *outputs);
+
  protected:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
@@ -463,6 +479,7 @@ class AsyncCommunicator : public Communicator {
   bool need_global_step_ = false;
   bool independent_recv_ = true;
   int parallel_task_nums_ = 0;
+  int32_t sleep_seconds_before_fail_exit_;
 
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};

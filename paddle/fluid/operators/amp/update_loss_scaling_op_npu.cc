@@ -50,7 +50,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     runner_p2.Run(stream);
 
     std::vector<int> bad_out_data;
-    TensorToVector(*bad_out_tensor, ctx, &bad_out_data);
+    paddle::framework::TensorToVector(*bad_out_tensor, ctx, &bad_out_data);
     if (bad_out_data[0] >= decr_every_n_nan_or_inf) {
       const auto& runner_p3 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
                                           {*updated_loss_scaling_tensor},
@@ -61,7 +61,8 @@ void Update(const platform::NPUDeviceContext& ctx,
       runner_p3.Run(stream);
 
       std::vector<T> new_loss_scaling;
-      TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
+      paddle::framework::TensorToVector(*updated_loss_scaling_tensor, ctx,
+                                        &new_loss_scaling);
       float min_value = 1.0;
       if (FLAGS_min_loss_scaling > 1) {
         min_value = static_cast<float>(FLAGS_min_loss_scaling);
@@ -98,7 +99,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     runner_p2.Run(stream);
 
     std::vector<int> good_out_data;
-    TensorToVector(*good_out_tensor, ctx, &good_out_data);
+    paddle::framework::TensorToVector(*good_out_tensor, ctx, &good_out_data);
 
     if (good_out_data[0] >= incr_every_n_steps) {
       const auto& runner_p3 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
@@ -109,7 +110,8 @@ void Update(const platform::NPUDeviceContext& ctx,
       runner_p3.Run(stream);
 
       std::vector<T> new_loss_scaling;
-      TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
+      paddle::framework::TensorToVector(*updated_loss_scaling_tensor, ctx,
+                                        &new_loss_scaling);
       if (!std::isfinite(new_loss_scaling[0])) {
         // updated_loss_scaling_data = pre_loss_scaling_data
         const auto& runner_p4 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
@@ -176,7 +178,7 @@ class LazyZerosNPU {
           NpuOpRunner("ZerosLike", {*zero_tensor}, {*zero_tensor});
       runner_zeros.Run(stream);
       zero_tensor->check_memory_size();
-      zero_ptr = zero_tensor->data<void>();
+      zero_ptr = zero_tensor->data();
     }
 
     for (size_t i = 0; i < xs.size(); ++i) {
@@ -187,9 +189,7 @@ class LazyZerosNPU {
         framework::TensorCopy(*x, place, dev_ctx, out);
       } else if (zero_ptr != dst_ptr) {
         auto size = out->numel() * framework::SizeOfType(out->type());
-        memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place), dst_ptr,
-                     BOOST_GET_CONST(platform::NPUPlace, place), zero_ptr, size,
-                     stream);
+        memory::Copy(place, dst_ptr, place, zero_ptr, size, stream);
       }
     }
   }
@@ -211,7 +211,8 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
                           "FoundInfinite must has only one element."));
 
     std::vector<bool> found_inf_vec;
-    TensorToVector(*found_inf, ctx.device_context(), &found_inf_vec);
+    paddle::framework::TensorToVector(*found_inf, ctx.device_context(),
+                                      &found_inf_vec);
 
     LazyZerosNPU<T>{}(dev_ctx, found_inf_vec, xs, outs);
     const bool stop_update = ctx.Attr<bool>("stop_update");

@@ -253,6 +253,9 @@ load_noavx = False
 
 if avx_supported():
     try:
+        from . import core_avx
+        core_avx.LoDTensor = core_avx.Tensor
+
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
         from .core_avx import __unittest_throw_exception__
@@ -268,6 +271,7 @@ if avx_supported():
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _switch_tracer
+        from .core_avx import _set_eager_tracer
         from .core_avx import _disable_eager_mode
         from .core_avx import _enable_eager_mode
         from .core_avx import _in_eager_mode
@@ -309,6 +313,9 @@ else:
 
 if load_noavx:
     try:
+        from . import core_noavx
+        core_noavx.LoDTensor = core_noavx.Tensor
+
         from .core_noavx import *
         from .core_noavx import __doc__, __file__, __name__, __package__
         from .core_noavx import __unittest_throw_exception__
@@ -324,6 +331,7 @@ if load_noavx:
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _switch_tracer
+        from .core_noavx import _set_eager_tracer
         from .core_noavx import _disable_eager_mode
         from .core_noavx import _enable_eager_mode
         from .core_noavx import _in_eager_mode

@@ -56,8 +56,17 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   // Because there exists the case that new parameter variables are not added to
   // the program in the analysis pass.
   bool reserve_cpu_weights = false;
-  if (argument->tensorrt_allow_build_at_runtime_valid() &&
-      argument->tensorrt_allow_build_at_runtime()) {
+  bool with_dynamic_shape = false;
+  if (argument->Has("max_input_shape") && argument->Has("min_input_shape") &&
+      argument->Has("optim_input_shape")) {
+    with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
+                          argument->min_input_shape().size() > 0 &&
+                          argument->optim_input_shape().size() > 0);
+  }
+  with_dynamic_shape =
+      with_dynamic_shape || (argument->Has("tensorrt_tuned_dynamic_shape") &&
+                             argument->tensorrt_tuned_dynamic_shape());
+  if (with_dynamic_shape) {
     reserve_cpu_weights = true;
   }
   for (auto &var_name : all_vars) {
@@ -81,12 +90,12 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       temp_tensor.mutable_data<float>(cpu_place);
 
       // Copy the parameter data to a tmp tensor.
-      TensorCopySync(*t, cpu_place, &temp_tensor);
+      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
       // Reallocation the space on GPU
       t->clear();
 
       // Copy parameter data to newly allocated GPU space.
-      TensorCopySync(temp_tensor, place, t);
+      paddle::framework::TensorCopySync(temp_tensor, place, t);
     }
   }
 }

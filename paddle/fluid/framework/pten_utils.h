@@ -22,16 +22,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
+#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace framework {
+
+using KernelSignature = pten::KernelSignature;
 
 /* Kernel Key translate */
 
@@ -41,24 +43,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
     const OpKernelType& kernel_type);
 
 /* Kernel Args parse */
-
-struct KernelSignature {
-  std::string name;
-  KernelArgsTuple args;
-
-  KernelSignature() = default;
-  KernelSignature(std::string&& kernel_name,
-                  paddle::SmallVector<std::string>&& inputs,
-                  paddle::SmallVector<std::string>&& attrs,
-                  paddle::SmallVector<std::string>&& outputs)
-      : name(std::move(kernel_name)),
-        args(std::make_tuple(inputs, attrs, outputs)) {}
-  KernelSignature(const std::string& kernel_name,
-                  const paddle::SmallVector<std::string>& inputs,
-                  const paddle::SmallVector<std::string>& attrs,
-                  const paddle::SmallVector<std::string>& outputs)
-      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
-};
 
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
@@ -88,7 +72,8 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
-std::string KernelSignatureToString(const KernelSignature& signature);
+void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+                                  const platform::Place& place);
 
 }  // namespace framework
 }  // namespace paddle
