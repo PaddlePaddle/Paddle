@@ -21,8 +21,6 @@
 namespace paddle {
 namespace framework {
 
-class Tensor;
-
 class DLPackTensor {
  public:
   using LaneType = decltype(::DLTensor::dtype.lanes);  // uint16_t

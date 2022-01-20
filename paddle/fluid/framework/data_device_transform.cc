@@ -28,8 +28,9 @@ void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
 
   // NOTE(zhiqiu): Special case for CPU->NPU, avoid stream sync.
   if (platform::is_cpu_place(in.place()) && platform::is_npu_place(dst_place)) {
-    TensorCopy(in, dst_place,
-               *platform::DeviceContextPool::Instance().Get(dst_place), out);
+    paddle::framework::TensorCopy(
+        in, dst_place, *platform::DeviceContextPool::Instance().Get(dst_place),
+        out);
     return;
   }
 

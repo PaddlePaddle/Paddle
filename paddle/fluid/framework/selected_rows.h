@@ -30,8 +30,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class Tensor;
-
 class SelectedRows {
   /*
    * @brief We can use the SelectedRows structure to reproduce a sparse table.

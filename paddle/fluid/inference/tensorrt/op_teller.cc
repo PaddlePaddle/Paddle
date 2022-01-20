@@ -271,36 +271,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      if (desc.HasAttr("padding_algorithm")) {
-        auto padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-        if (padding_algorithm == "VALID") {
-          return false;
-        }
-        if (padding_algorithm == "SAME") {
-          if (desc.HasAttr("dilations")) {
-            const std::vector<int> dilations =
-                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
-            if (dilations[0] != 1 || dilations[1] != 1) {
-              VLOG(3) << "In Same mode, Dilations must be (1, 1) for "
-                         "tensorRT, but given ("
-                      << dilations[0] << ", " << dilations[1] << ")";
-              return false;
-            }
-          }
-        }
-      }
-
-      if (use_no_calib_int8) {
-        if (desc.HasAttr("padding_algorithm")) {
-          auto padding_algorithm =
-              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-          if (padding_algorithm == "SAME") {
-            return false;
-          }
-        }
-      }
-
       if (desc.HasAttr("enable_int8")) {
         if (op_type == "conv2d" || op_type == "conv2d_fusion") {
           if (!desc.HasAttr("Input_scale")) {
@@ -487,7 +457,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (axis[0] == 0 && axis.size() == 2) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -499,7 +468,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (axis.size() != x_shape.size()) return false;
       int dims = x_shape.size();
+
       std::vector<int> perm(nvinfer1::Dims::MAX_DIMS);
       for (int i = 0; i < dims; i++) {
         perm[i] = axis[i];
@@ -518,6 +489,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!is_valid_permutation(dims, perm)) {
         VLOG(3) << "Invalid permutation dimensions for trt transpose op "
                    "converter: duplicate or out of bound.";
+        return false;
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {

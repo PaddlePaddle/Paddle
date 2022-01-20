@@ -31,7 +31,7 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  const auto& dst_place = dst->place();
+  auto dst_place = dst->place();
 
   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -42,7 +42,7 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
-  dst->Resize(src.dims());
+  dst->ResizeAndAllocate(src.dims());
   auto* dst_ptr = dst->mutable_data();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -51,6 +51,7 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
+
   CHECK(dst->layout() == src.layout());
 
   auto size = src.numel() *
@@ -208,6 +209,9 @@ void Copy(const Context& dev_ctx,
             "Context place dose not match the source and destination place."));
       }
     }
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Place type error. Please check the place of src and dst Tensor."));
   }
 }
 

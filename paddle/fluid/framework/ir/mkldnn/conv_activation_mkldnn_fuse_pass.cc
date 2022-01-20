@@ -230,7 +230,15 @@ Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
       .IsType<float>()
       .End();
 }
-
+Conv2DMishFusePass::Conv2DMishFusePass() {
+  AddOpCompat(OpCompat("mish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
 Conv2DHardSigmoidFusePass::Conv2DHardSigmoidFusePass() {
   AddOpCompat(OpCompat("hard_sigmoid"))
       .AddInput("X")
@@ -310,6 +318,14 @@ REGISTER_PASS_CAPABILITY(conv_hard_swish_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .EQ("hard_swish", 0));
+
+REGISTER_PASS(conv_mish_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DMishFusePass);
+REGISTER_PASS_CAPABILITY(conv_mish_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("mish", 1));
 
 REGISTER_PASS(conv_hard_sigmoid_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DHardSigmoidFusePass);

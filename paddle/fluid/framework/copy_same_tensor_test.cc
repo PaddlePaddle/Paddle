@@ -68,7 +68,7 @@ static bool CopySameTensorTestMain(const DDim &dims,
     if (sync_copy) {
       TensorCopySync(src_tensor, dst_place, &src_tensor);
     } else {
-      TensorCopy(src_tensor, dst_place, &src_tensor);
+      paddle::framework::TensorCopy(src_tensor, dst_place, &src_tensor);
       platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
     }

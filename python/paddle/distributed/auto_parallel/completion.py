@@ -208,28 +208,16 @@ class Completer:
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impl = find_best_compatible_distributed_operator_impl(
                 dist_op, fwd=True)
-            # print("fwd op dist impl0", op_node.id(), op_desc.type(), op_dist_impl)
-            # print("fwd op dist impl0", op_node.id(), op_desc.type(), op_dist_impl.type,
-            #       op_dist_impl.idx, "op dist_attr", op_dist_attr.impl_type,
-            #       op_dist_attr.impl_idx)
             assert op_dist_impl is not None, "Cannot find the dist op implementation."
             dim_changed = op_dist_impl.update_dims_mapping(dist_op)
             if dim_changed:
                 changed = True
             if op_dist_impl.is_auto_compatible(dist_op):
-                # print("fwd op dist impl1", op_node.id(), op_desc.type(), op_dist_impl)
-                # print("fwd op dist impl1", op_node.id(), op_desc.type(), op_dist_impl.type,
-                #       op_dist_impl.idx, "op dist_attr", op_dist_attr.impl_type,
-                #       op_dist_attr.impl_idx)
                 if op_dist_impl.type == "elementwise":
                     op_dist_attr.impl_type = "default"
                 else:
                     op_dist_attr.impl_type = op_dist_impl.type
                 op_dist_attr.impl_idx = op_dist_impl.idx
-            # print("fwd op dist impl2", op_node.id(), op_desc.type(), op_dist_impl)
-            # print("fwd op dist impl2", op_node.id(), op_desc.type(), op_dist_impl.type,
-            #       op_dist_impl.idx, "op dist_attr", op_dist_attr.impl_type,
-            #       op_dist_attr.impl_idx)
         else:
             for tensor_node in op_node.outputs:
                 if tensor_node.var() is not None:
@@ -255,25 +243,16 @@ class Completer:
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impl = find_best_compatible_distributed_operator_impl(
                 dist_op, fwd=False)
-            # print("bwd op dist impl0", op_node.id(), op_desc.type(), op_dist_impl.type,
-            #       op_dist_impl.idx, "op dist_attr", op_dist_attr.impl_type,
-            #       op_dist_attr.impl_idx)
             assert op_dist_impl is not None, "Cannot find the dist op implementation."
             dim_changed = op_dist_impl.update_dims_mapping(dist_op)
             if dim_changed:
                 changed = True
             if op_dist_impl.is_auto_compatible(dist_op):
-                # print("bwd op dist impl1", op_node.id(), op_desc.type(), op_dist_impl.type,
-                #       op_dist_impl.idx, "op dist_attr", op_dist_attr.impl_type,
-                #       op_dist_attr.impl_idx)
                 if op_dist_impl.type == "elementwise":
                     op_dist_attr.impl_type = "default"
                 else:
                     op_dist_attr.impl_type = op_dist_impl.type
                 op_dist_attr.impl_idx = op_dist_impl.idx
-            # print("bwd op dist impl2", op_node.id(), op_desc.type(), op_dist_impl.type,
-            #       op_dist_impl.idx, "op dist_attr", op_dist_attr.impl_type,
-            #       op_dist_attr.impl_idx)
         return changed
 
     def _update_process_mesh(self):
