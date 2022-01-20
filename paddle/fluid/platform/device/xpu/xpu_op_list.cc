@@ -24,7 +24,7 @@ namespace platform {
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
   auto& ops = get_kl1_ops();
   auto v = get_xpu_version(type.place_.device);
-  if (v == XPU2) {
+  if (v == pten::backends::xpu::XPUVersion::XPU2) {
     ops = get_kl2_ops();
   }
 

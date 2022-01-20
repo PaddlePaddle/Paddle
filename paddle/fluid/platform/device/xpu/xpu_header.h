@@ -15,42 +15,5 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_XPU
-#include <map>
-#include <string>
-#include <unordered_map>
-
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
-
-#include "xpu/runtime.h"
-#include "xpu/runtime_ex.h"
-#include "xpu/xdnn.h"
-
-namespace xpu = baidu::xpu::api;
-
-static std::map<int, std::string> XPUAPIErrorMsg = {
-    {xpu::Error_t::SUCCESS, "xpu api success"},
-    {xpu::Error_t::INVALID_PARAM, "xpu api invalid param"},
-    {xpu::Error_t::RUNTIME_ERROR, "xpu api runtime error"},
-    {xpu::Error_t::NO_ENOUGH_WORKSPACE, "xpu api no enough workspace"}};
-
-template <typename T>
-class XPUTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class XPUTypeTrait<paddle::platform::float16> {
- public:
-  using Type = float16;
-};
-
-template <>
-class XPUTypeTrait<paddle::platform::bfloat16> {
- public:
-  using Type = bfloat16;
-};
-
+#include "paddle/pten/backends/xpu/xpu_header.h"
 #endif

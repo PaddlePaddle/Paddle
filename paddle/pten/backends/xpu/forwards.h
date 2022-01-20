@@ -21,8 +21,6 @@ namespace xpu {
 namespace api {
 
 struct Context;
-
-// struct BKCLContext_t;
 typedef void* BKCLContext_t;
 
 }  // namespace api

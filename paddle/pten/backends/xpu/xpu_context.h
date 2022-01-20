@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
+// #ifdef PADDLE_WITH_XPU
 
 #include <memory>
 #include "paddle/pten/backends/xpu/forwards.h"
@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/pten/core/device_context.h"
 
 // TODO(wilber): remove all fluid headers
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/pten/backends/xpu/xpu_header.h"
+#include "paddle/pten/backends/xpu/xpu_info.h"
 
 namespace xpu = baidu::xpu::api;
 
@@ -38,6 +38,8 @@ class XPUContext : public DeviceContext {
   // NOTE: DeviceContext hold resources. Used in training scenarios.
   XPUContext();
 
+  explicit XPUContext(const XPUPlace&);
+
   // NOTE: Share the same underlying resources, please ensure that resources are
   // not released.
   XPUContext(const XPUContext&);
@@ -48,23 +50,30 @@ class XPUContext : public DeviceContext {
 
   Place GetPlace() const override;
 
-  paddle::platform::XPUVersion xpu_version() const;
+  backends::xpu::XPUVersion xpu_version() const;
 
   xpu::Context* x_context() const;
 
   // Return bkcl context.
-  BKCLContext_t bkcl_context() const;
+  xpu::BKCLContext_t bkcl_context() const;
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
 
  public:
   // NOTE: External users manage resources. Used in inference scenarios.
-  explicit XPUContext(const XPUResource&);
+  explicit XPUContext(const XPUContextResource&);
 
   void set_x_context(xpu::Context*);
 
-  void set_bkcl_context(BKCLContext_t context);
+  void set_bkcl_context(xpu::BKCLContext_t context);
+
+  // TODO(wilber): add
+  // void SetHostAllocator(Allocator*);
+
+  // const Allocator& GetHostAllocator() const;
+
+  // void HostAlloc(TensorBase*);
 
  private:
   struct XPUImpl;
@@ -73,4 +82,4 @@ class XPUContext : public DeviceContext {
 
 }  // namespace pten
 
-#endif  // PADDLE_WITH_XPU
+// #endif  // PADDLE_WITH_XPU
