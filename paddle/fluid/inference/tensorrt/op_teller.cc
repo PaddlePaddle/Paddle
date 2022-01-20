@@ -1490,8 +1490,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the " << op_type
                 << " does not have attr (keep_dim or dim or "
                    "reduce_all)";
-        std::cout << "attr " << desc.HasAttr("keep_dim") << " "
-                  << desc.HasAttr("dim") << " " << desc.HasAttr("reduce_all");
         return false;
       }
 
@@ -1510,7 +1508,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto input_shape = x_var_desc->GetShape();
-        std::cout << "paddle shape: " << input_shape.size() << std::endl;
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
@@ -1522,7 +1519,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       if (desc.HasAttr("out_dtype")) {
         int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
-        if (!with_dynamic_shape && (out_dtype == 2)) {
+        if (!with_dynamic_shape &&
+            (static_cast<framework::proto::VarType::Type>(out_dtype) ==
+             framework::proto::VarType::INT32)) {
           return false;
         }
       }
