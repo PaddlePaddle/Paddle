@@ -15,13 +15,13 @@
 #pragma once
 
 #include <ThreadPool.h>
-#include <functional>
+//#include <functional>
 #include <future>  // NOLINT
 #include <memory>
-#include <string>
-#include <unordered_map>
+//#include <string>
+//#include <unordered_map>
 #include <unordered_set>
-#include <utility>
+//#include <utility>
 #include <vector>
 
 namespace paddle {

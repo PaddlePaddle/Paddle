@@ -25,6 +25,7 @@
 #include "paddle/fluid/distributed/table/ssd_sparse_table.h"
 #endif
 #include "paddle/fluid/distributed/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/table/memory_sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
 #include "paddle/fluid/distributed/table/tensor_table.h"
@@ -43,6 +44,7 @@ REGISTER_PSCORE_CLASS(Table, TensorTable);
 REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
 REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseTable);
+REGISTER_PSCORE_CLASS(Table, MemorySparseGeoTable);
 REGISTER_PSCORE_CLASS(ValueAccessor, CommMergeAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, CtrCommonAccessor);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);

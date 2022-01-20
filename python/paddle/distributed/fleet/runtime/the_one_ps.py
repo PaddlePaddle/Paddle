@@ -943,7 +943,7 @@ class TheOnePSRuntime(RuntimeBase):
                         ctx.origin_varnames()[0]]
 
                     if self.compiled_strategy.is_geo_mode():
-                        table.table_class = "SparseGeoTable"
+                        table.table_class = "MemorySparseGeoTable"
                     else:
                         all_table_proto = self.context[
                             "user_defined_strategy"].sparse_table_configs
