@@ -16,8 +16,8 @@
 #include <thread>  // NOLINT
 #include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
-#include "paddle/fluid/distributed/table/depends/sparse_utils.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
 

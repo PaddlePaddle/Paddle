@@ -17,7 +17,7 @@
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/service/ps_local_client.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 
 namespace paddle {
 namespace distributed {

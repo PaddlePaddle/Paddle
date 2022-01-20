@@ -21,7 +21,7 @@ limitations under the License. */
 #include "common_value.h"  // NOLINT
 #endif
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
+#include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
 #endif
 #include "paddle/fluid/framework/rw_lock.h"
 #include "thrust/pair.h"

@@ -22,8 +22,8 @@
 #include <vector>
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/service/server.h"
-#include "paddle/fluid/distributed/table/common_graph_table.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/common_graph_table.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 namespace paddle {
 namespace distributed {
 class GraphBrpcServer : public PSServer {

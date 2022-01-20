@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 
 namespace paddle {
 namespace distributed {

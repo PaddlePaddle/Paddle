@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/ps_local_client.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 
 //#define pslib_debug_dense_compress
 

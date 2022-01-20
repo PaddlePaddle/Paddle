@@ -16,7 +16,7 @@
 #include <thread>  // NOLINT
 #include "butil/endpoint.h"
 #include "iomanip"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {
