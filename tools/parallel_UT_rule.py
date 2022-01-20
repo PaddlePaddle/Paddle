@@ -3503,7 +3503,6 @@ if platform.system() == 'Windows' and paddle.version.cuda() == 'False':
         'test_multi_out_jit',
     ]
     TWO_PARALLEL_JOB = [
-        'test_model',
         'test_eager_deletion_gru_net',
         'test_seqpool_concat_fuse_pass',
         'test_egr_performance_benchmark_fluid_cpu',
@@ -3591,7 +3590,6 @@ if platform.system() == 'Windows' and paddle.version.cuda() == 'False':
         'test_imperative_out_scale',
         'strided_memcpy_test',
         'test_analyzer_rnn2',
-        'test_analyzer_ernie_large',
         'test_analyzer_text_classification',
         'test_analyzer_transformer_profile',
         'test_analyzer_ocr',
@@ -4024,7 +4022,6 @@ if platform.system() == 'Windows' and paddle.version.cuda() == 'False':
         'test_correlation',
         'test_moving_average_abs_max_scale_op',
         'test_graph',
-        'test_mul_lstm_fuse_pass',
         'test_imperative_mnist',
         'selected_rows_test',
         'test_analyzer_resnet50',
