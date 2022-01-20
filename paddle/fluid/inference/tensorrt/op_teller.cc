@@ -1519,8 +1519,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       auto dtype = x_var_desc->GetDataType();
-      if (dtype !=
-          framework::proto::VarType::INT32 && dtype != framework::proto::VarType::FP32) {
+      if (dtype != framework::proto::VarType::INT32 &&
+          dtype != framework::proto::VarType::FP32) {
         VLOG(3) << "reduce op input data type must be int32 or float32";
         return false;
       }
