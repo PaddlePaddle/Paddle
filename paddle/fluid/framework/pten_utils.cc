@@ -166,11 +166,12 @@ void IntiDefaultKernelSignatureMap() {
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
-        pten::DefaultKernelSignatureMap::Instance().Insert(op_type,
-            std::move(maker.GetKernelSignature());
+        pten::DefaultKernelSignatureMap::Instance().Insert(
+            op_type, std::move(maker.GetKernelSignature()));
       }
     }
   });
+}
 
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
                                   const platform::Place& place) {
