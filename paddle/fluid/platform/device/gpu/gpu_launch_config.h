@@ -44,6 +44,15 @@ namespace platform {
 
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 
+static inline int GetLastPow2(int n) {
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  return std::max(1, n - (n >> 1));
+}
+
 /* https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
    for round integer value into next highest power of 2. */
 static inline int RoundToPowerOfTwo(int n) {
@@ -166,7 +175,29 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
 }
 
 // TODO(wangchaochaohu): 3D will add later
+inline GpuLaunchConfig GetCpuLaunchConfig3D(
+    const platform::CUDADeviceContext& context, int num_img, int height,
+    int width) {
+  const int kThreadsPerBlock = 256;
+  int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
+  int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
 
+  int block_x = std::min(GetLastPow2(width), max_threads);
+  int block_y = std::min(GetLastPow2(height), max_threads / block_x);
+  int block_z = std::min(num_img, max_threads / block_x / block_y);
+
+  dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
+  int grid_x = std::min<int>(max_grid_dim.x, DivUp(width, block_x));
+  int grid_y = std::min<int>(max_grid_dim.y, DivUp(height, block_y));
+  int grid_z = std::min<int>(max_grid_dim.z, DivUp(num_img, block_z));
+
+  const int capability = context.GetComputeCapability();
+  GpuLaunchConfig config;
+  config.compute_capability = capability;
+  config.thread_per_block = dim3(block_x, block_y, block_z);
+  config.block_per_grid = dim3(grid_x, grid_y, grid_z);
+  return config;
+}
 }  // namespace platform
 }  // namespace paddle
 
