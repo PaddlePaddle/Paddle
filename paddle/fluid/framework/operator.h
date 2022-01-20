@@ -608,7 +608,7 @@ class OperatorWithKernel : public OperatorBase {
    * Is this really needed?
    */
   Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
-                         const KernelSignature& pt_kernel_signature,
+                         const pten::KernelSignature& pt_kernel_signature,
                          RuntimeContext* ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,

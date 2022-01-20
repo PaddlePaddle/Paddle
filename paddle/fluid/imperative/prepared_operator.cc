@@ -275,49 +275,6 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
-void PreparePtenData(const pten::Kernel& pt_kernel,
-                     const framework::KernelSignature& pt_kernel_signature,
-                     const NameVarMap<VarType>& ins) {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& input_defs = pt_kernel.args_def().input_defs();
-
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of inputs_args names (%d) must be equal to "
-                        "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
-
-  for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& in_def = input_defs.at(i);
-    auto& ins_vector = ins.at(input_names[i]);
-
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      auto var_base = ins_vector[offset];
-      const auto* tensor_in = GetTensorFromVar(var_base->Var());
-      if (tensor_in && tensor_in->IsInitialized()) {
-        auto expected_place = pten::TransToFluidPlace(in_def.backend);
-        if (platform::is_same_place(tensor_in->place(), expected_place)) {
-          continue;
-        }
-
-        // TODO(zyfncg): Now there is no kernel which need to transform input
-        // data, so we commented out following code temporarily,
-        // and it will be used in the future.
-
-        // VLOG(3) << "Pten Transform Variable " << var_base->Name() << " from "
-        //         << tensor_in->place() << " to " << expected_place;
-
-        // framework::Tensor tmp_tensor;
-        // framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
-
-        // SetTensorToVariable(var_base->Var(), tmp_tensor,
-        //                     var_base->MutableVar());
-      }
-    }
-  }
-}
-
-template <typename VarType>
 static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
     const framework::OpKernelType& kernel_type,
@@ -376,6 +333,7 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& default_attrs) {
   DygraphInferShapeContext<VarType> infer_shape_ctx(
       &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
+
   op.Info().infer_shape_(&infer_shape_ctx);
 
   PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
