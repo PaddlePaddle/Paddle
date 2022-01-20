@@ -183,7 +183,7 @@ def get_dist_prog(train_program,
     partitioned_optimize_ops = parallelizer._apply_optimize(
         auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
 
-    return auto_parallel_main_prog, auto_parallel_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads
 
 
 def check_backward_dist_attr(dist_context, dist_main_prog, op_need_check):
@@ -277,7 +277,7 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 0
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, 0)
 
         op_need_check = None
@@ -306,7 +306,7 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 1
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
@@ -349,7 +349,7 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 0
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
                 dist_params_grads)
