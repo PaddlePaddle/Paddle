@@ -418,18 +418,14 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
           continue;
         }
 
-        // TODO(zyfncg): Now there is no kernel which need to transform input
-        // data, so we commented out following code temporarily,
-        // and it will be used in the future.
+        VLOG(3) << "Pten Transform Variable " << input_names[i] << " from "
+                << tensor_in->place() << " to " << expected_place;
 
-        // VLOG(3) << "Pten Transform Variable " << var_base->Name() << " from "
-        //         << tensor_in->place() << " to " << expected_place;
+        framework::Tensor tmp_tensor;
+        framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
-        // framework::Tensor tmp_tensor;
-        // framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
-
-        // SetTensorToVariable(var_base->Var(), tmp_tensor,
-        //                     var_base->MutableVar());
+        SetTensorToVariable(var_base->Var(), tmp_tensor,
+                            var_base->MutableVar());
       }
     }
   }

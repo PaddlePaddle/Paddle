@@ -1871,25 +1871,21 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
-      // TODO(zyfncg): Now there is no kernel which need to transform input
-      // data, so we commented out following code temporarily,
-      // and it will be used in the future.
+      VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
+              << tensor_in->place() << " to " << expected_place;
 
-      // VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
-      //         << tensor_in->place() << " to " << expected_place;
+      if (!new_scope) {
+        new_scope = &scope.NewScope();
+      }
 
-      // if (!new_scope) {
-      //   new_scope = &scope.NewScope();
-      // }
+      // Create new var with the same name in transfer scopes
+      auto* trans_var = new_scope->Var(input_names[i]);
+      ins_vector[i] = trans_var;
 
-      // // Create new var with the same name in transfer scopes
-      // auto* trans_var = new_scope->Var(input_names[i]);
-      // ins_vector[i] = trans_var;
-
-      // // Do transfer
-      // Tensor out;
-      // framework::TensorCopySync(*tensor_in, expected_place, &out);
-      // SetTensorToVariable(*var, out, trans_var);
+      // Do transfer
+      Tensor out;
+      framework::TensorCopySync(*tensor_in, expected_place, &out);
+      SetTensorToVariable(*var, out, trans_var);
     }
   }
 
