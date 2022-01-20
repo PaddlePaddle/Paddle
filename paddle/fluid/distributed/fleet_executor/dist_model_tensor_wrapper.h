@@ -22,6 +22,24 @@ namespace distributed {
 
 enum DistModelDataType { FLOAT16, FLOAT32, INT64, INT32, INT8 };
 
+template <typename T>
+constexpr DistModelDataType DistModelGetDtype();
+
+template <>
+constexpr DistModelDataType DistModelGetDtype<int32_t>() {
+  return DistModelDataType::INT32;
+}
+
+template <>
+constexpr DistModelDataType DistModelGetDtype<int64_t>() {
+  return DistModelDataType::INT64;
+}
+
+template <>
+constexpr DistModelDataType DistModelGetDtype<float>() {
+  return DistModelDataType::FLOAT32;
+}
+
 class DistModelDataBuf {
  public:
   explicit DistModelDataBuf(size_t length)
@@ -33,6 +51,7 @@ class DistModelDataBuf {
   void* data() const { return data_; }
   ~DistModelDataBuf() { Free(); }
   DistModelDataBuf() = default;
+  void Resize(size_t length);
 
   DistModelDataBuf& operator=(const DistModelDataBuf& other);
   DistModelDataBuf& operator=(DistModelDataBuf&& other);
@@ -40,7 +59,6 @@ class DistModelDataBuf {
   DistModelDataBuf(const DistModelDataBuf& other);
 
  private:
-  void Resize(size_t length);
   void Free();
   void* data_{nullptr};
   size_t length_{0};
@@ -51,7 +69,7 @@ struct DistModelTensor {
   std::string name;
   std::vector<int> shape;
   DistModelDataBuf data;
-  DistModelDataType type;
+  DistModelDataType dtype;
   std::vector<std::vector<size_t>> lod;
 };
 
