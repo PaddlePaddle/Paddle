@@ -112,7 +112,24 @@ class PlanFilter:
             if variance_dims_mapping[0] != x_dims_mapping[0]:
                 return False
 
-        return True
+        if op.type == "elementwise_add" or op.type == 'layer_norm' or op.type == "softmax_with_cross_entropy":
+            for name in op.input_arg_names:
+                for item in op_dist_attr.get_input_dims_mapping(name):
+                    if item != -1:
+                        return False
+            for name in op.output_arg_names:
+                for item in op_dist_attr.get_output_dims_mapping(name):
+                    if item != -1:
+                        return False
+
+        if op.type == "lookup_table_v2":
+            for name in op.input_arg_names:
+                if name == 'pos_embeddings':
+                    for item in op_dist_attr.get_input_dims_mapping(name):
+                        if item != -1:
+                            return False
+
+            return True
 
 
 class PlanSpace:
@@ -216,7 +233,7 @@ class PlanSpace:
         # compose dims mapping
         composed_dims_mapping_list = list(
             product(
-                *[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+                * [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
         for composed_dims_mapping in composed_dims_mapping_list:
             op_dist_attr = OperatorDistributedAttribute()
             op_dist_attr.process_mesh = process_mesh
