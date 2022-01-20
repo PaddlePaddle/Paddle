@@ -105,7 +105,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // is model is NHWC.
       bool should_rotate =
           this->IsMKLDNNType() &&
-          (MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+          (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
            framework::DataLayout::kNHWC);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
