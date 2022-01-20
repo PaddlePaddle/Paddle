@@ -614,7 +614,8 @@ class TheOnePSRuntime(RuntimeBase):
         self.context[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
         self.is_heter_ps_mode = self.context['is_heter_ps_mode']
-        self.context['strategy'] = get_distributed_strategy()
+        self.context['strategy'] = get_distributed_strategy(self.context[
+            "valid_strategy"])
         self.context['trainer'] = self.context[
             'strategy'].get_trainer_runtime_config()
         self.context['ps_mode'] = self.context['trainer'].mode
