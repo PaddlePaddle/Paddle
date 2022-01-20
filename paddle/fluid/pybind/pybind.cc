@@ -170,6 +170,7 @@ PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
+PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -2420,7 +2421,7 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
+  py::class_<LoDTensorArray> pylodtensorarray(m, "LoDTensorArray", R"DOC(
     LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
@@ -2429,7 +2430,10 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle.fluid as fluid
 
           arr = fluid.LoDTensorArray()
-)DOC")
+)DOC");
+  g_framework_lodtensorarray_pytype =
+      reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
+  pylodtensorarray
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
@@ -3575,17 +3579,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy);
 
-  py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
-      .def(py::init())
+  py::class_<platform::ipu::IpuStrategy> ipu_strategy(m, "IpuStrategy");
+  ipu_strategy.def(py::init())
       .def_property(
           "num_ipus",
           [](const platform::ipu::IpuStrategy &self) { return self.num_ipus; },
           [](platform::ipu::IpuStrategy &self, int num_ipus) {
             self.num_ipus = num_ipus;
-          },
-          R"DOC(
-            Int type, set the number ipu we need. Default 1.
-          )DOC")
+          })
       .def_property(
           "accumulationFactor",
           [](const platform::ipu::IpuStrategy &self) {
@@ -3593,31 +3594,21 @@ All parameter, weight, gradient are variables in Paddle.
           },
           [](platform::ipu::IpuStrategy &self, int accumulationFactor) {
             self.popart_options_.accumulationFactor = accumulationFactor;
-          },
-          R"DOC(
-            Specify the number of micro-batches to accumulate before
-            applying the varUpdate. Default 1.
-          )DOC")
+          })
       .def_property("batches_per_step",
                     [](const platform::ipu::IpuStrategy &self) {
                       return self.batches_per_step;
                     },
                     [](platform::ipu::IpuStrategy &self, int batches_per_step) {
                       self.batches_per_step = batches_per_step;
-                    },
-                    R"DOC(
-            Int type, set batches_per_step. Default 1.
-          )DOC")
+                    })
       .def_property("is_training",
                     [](const platform::ipu::IpuStrategy &self) {
                       return self.is_training;
                     },
                     [](platform::ipu::IpuStrategy &self, bool is_training) {
                       self.is_training = is_training;
-                    },
-                    R"DOC(
-            Bool type, True for training, False inference. Default True.
-          )DOC")
+                    })
       .def_property(
           "enable_pipelining",
           [](const platform::ipu::IpuStrategy &self) {
@@ -3625,10 +3616,7 @@ All parameter, weight, gradient are variables in Paddle.
           },
           [](platform::ipu::IpuStrategy &self, bool enable_pipelining) {
             self.popart_options_.enablePipelining = enable_pipelining;
-          },
-          R"DOC(
-            Bool type, True enable pipeline, otherwise disable. Default False.
-          )DOC")
+          })
       .def_property(
           "enable_manual_shard",
           [](const platform::ipu::IpuStrategy &self) {
@@ -3643,40 +3631,28 @@ All parameter, weight, gradient are variables in Paddle.
               self.popart_options_.virtualGraphMode =
                   platform::ipu::VirtualGraphMode::Off;
             }
-          },
-          R"DOC(
-            Bool type, True enable model sharding, otherwise disable. Default "
-            "False.
-          )DOC")
+          })
       .def_property("need_avg_shard",
                     [](const platform::ipu::IpuStrategy &self) {
                       return self.need_avg_shard;
                     },
                     [](platform::ipu::IpuStrategy &self, bool need_avg_shard) {
                       self.need_avg_shard = need_avg_shard;
-                    },
-                    R"DOC(
-            Bool type, True enable avg shard, otherwise disable. Default False.
-          )DOC")
+                    })
       .def_property("batch_size",
                     [](const platform::ipu::IpuStrategy &self) {
                       return self.batch_size;
                     },
                     [](platform::ipu::IpuStrategy &self, int batch_size) {
                       self.batch_size = batch_size;
-                    },
-                    R"DOC(
-            Int type, used to make batch size fixed. Default 1.
-          )DOC")
+                    })
       .def_property("enable_fp16",
                     [](const platform::ipu::IpuStrategy &self) {
                       return self.enable_fp16;
                     },
                     [](platform::ipu::IpuStrategy &self, bool enable_fp16) {
                       self.enable_fp16 = enable_fp16;
-                    },
-                    R"DOC(
-            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC");
+                    });
 #endif
 
   BindFleetWrapper(&m);

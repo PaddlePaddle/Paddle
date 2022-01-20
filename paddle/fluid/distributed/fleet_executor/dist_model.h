@@ -23,22 +23,33 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+
 namespace framework {
 class ProgramDesc;
 class Scope;
+class BlockDesc;
 }
 
 namespace distributed {
 
+class TaskNode;
+class FleetExecutor;
+
 struct DistModelConfig {
   std::string model_dir{};
+  framework::ProgramDesc* program_desc{nullptr};
+  framework::Scope* scope{nullptr};
+  std::string place{};
+  int64_t device_id{0};
   std::vector<std::string> trainer_endpoints{};
   std::string current_endpoint{};
   int64_t nranks{1};
   int64_t local_rank{0};
-  int64_t device_id{0};
   int64_t mp_degree{1};
   int64_t pp_degree{1};
+  int64_t mp_ring_id{-1};
+  int64_t pp_upstream_ring_id{-1};
+  int64_t pp_downstream_ring_id{-1};
 };
 
 class DistModel {
@@ -56,12 +67,25 @@ class DistModel {
   bool PrepareProgram();
   bool LoadProgram();
   bool LoadParameters();
+  bool PreparePlace();
   bool CommInit();
+  bool PrepareFeedAndFetch();
+  bool PrepareFleetExe();
+  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+                    const std::vector<std::string>& peer_endpoints,
+                    framework::BlockDesc* block, int ring_id);
 
+  std::vector<framework::OpDesc*> feeds_;
+  std::map<std::string, int64_t> feed_names_;
+  std::map<int64_t, std::string> idx_to_feeds_;
+  std::vector<framework::OpDesc*> fetches_;
+  std::map<int64_t, std::string> id_to_fetches_;
   DistModelConfig config_;
   FleetExecutorDesc executor_desc_;
-  platform::Place place_;
+  std::shared_ptr<FleetExecutor> fleet_exe;
+  std::shared_ptr<TaskNode> task_node_;
   std::shared_ptr<framework::Scope> scope_;
+  paddle::platform::Place place_;
   std::shared_ptr<framework::ProgramDesc> program_;
 };
 
