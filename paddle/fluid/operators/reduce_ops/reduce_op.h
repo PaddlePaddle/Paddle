@@ -252,15 +252,12 @@ class ReduceKernel : public framework::OpKernel<T> {
         dev_ctx.GetPlace(),
         static_cast<framework::proto::VarType::Type>(cast_out_dtype));
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
-
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
     pten::Reduce<DeviceContext, T, Functor>(
-        dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
-        pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
+        dev_ctx, *input, reduce_all, tmp_dims, keep_dim,
+        pten::TransToPtenDataType(cast_out_dtype), output);
   }
 };
 template <typename DeviceContext, typename OutT, typename Functor>
@@ -711,16 +708,13 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
           static_cast<framework::proto::VarType::Type>(input->type()));
     }
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
     std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
 
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), reduce_all,
-                                           dims_int64, false, pt_out_dtype,
-                                           pt_out.get());
+    pten::Reduce<T, ReduceOp, TransformOp>(
+        dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
   }
 };
 #endif

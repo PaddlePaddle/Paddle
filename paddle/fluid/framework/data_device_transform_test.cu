@@ -75,12 +75,9 @@ class TestKernel : public OpKernel<float> {
     output->Resize(input->dims());
     output->mutable_data<T>(ctx.GetPlace());
 
-    auto pt_input = paddle::experimental::MakePtenDenseTensor(*input);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
-
     pten::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
-        *pt_input, *pt_input, pt_out.get(),
-        ctx.template device_context<DeviceContext>(), AddFunctor<T>());
+        *input, *input, output, ctx.template device_context<DeviceContext>(),
+        AddFunctor<T>());
     functor.Run();
   }
 };
