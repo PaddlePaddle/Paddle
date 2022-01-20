@@ -56,9 +56,9 @@ void RegisterPtenKernels(host_context::KernelRegistry* registry) {
                    float /*should be CPUContext, use float temporarily*/>));
   registry->AddKernel(
       "pd_cpu.add.int32",
-      INFRT_KERNEL(pten::AddKernel<
-                   int,
-                   int /*should be CPUContext, use int temporarily*/>));
+      INFRT_KERNEL(
+          pten::AddKernel<int,
+                          int /*should be CPUContext, use int temporarily*/>));
 }
 
 }  // namespace kernel
