@@ -20,7 +20,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-// Add comment to test ci.
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
     const T* __restrict__ dout, int size, int vec_size, T* dx, T* dy) {
