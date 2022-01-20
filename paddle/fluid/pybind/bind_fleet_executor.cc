@@ -72,7 +72,7 @@ DistModelTensor DistModelTensorCreate(
     DistModelDataBuf buf(data.size() * sizeof(T));
     std::copy_n(static_cast<const T*>(data.data()), data.size(),
                 static_cast<T*>(buf.data()));
-    tensor.data = data;
+    tensor.data = std::move(buf);
   } else {
     tensor.data =
         DistModelDataBuf(data.mutable_data(), data.size() * sizeof(T));
@@ -80,14 +80,14 @@ DistModelTensor DistModelTensorCreate(
 
   tensor.dtype = paddle::distributed::DistModelGetDtype<T>();
   tensor.name = name;
-  tesnor.lod = lod;
+  tensor.lod = lod;
   tensor.shape.resize(data.ndim());
   std::copy_n(data.shape(), data.ndim(), tensor.shape.begin());
 
   return tensor;
 }
 
-py::dtype DistModelTensorGetData(DistModelDataType dtype) {
+py::dtype DistModelTypeToNumpyDType(DistModelDataType dtype) {
   py::dtype dt;
   switch (dtype) {
     case DistModelDataType::INT32:
