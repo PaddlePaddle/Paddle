@@ -321,12 +321,6 @@ copy(fluid_lib_dist
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
         )
 
-#set(module "string")
-#copy(fluid_lib_dist
-        #SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
-        #DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
-        #)
-
 set(module "imperative")
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/jit/*.h 
