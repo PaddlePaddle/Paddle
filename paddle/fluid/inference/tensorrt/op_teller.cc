@@ -1504,11 +1504,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       // The batch size dimension cannot be reduced if it's not dynamic shape.
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       if (!with_dynamic_shape) {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto input_shape = x_var_desc->GetShape();
         std::cout << "paddle shape: " << input_shape.size() << std::endl;
         for (auto x : dim) {
@@ -1520,11 +1520,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
-      if (desc.HasAttr("out_dtype")) {
-        int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
-        if (!with_dynamic_shape && (out_dtype == 2)) {
-          return false;
-        }
+
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype !=
+          framework::proto::VarType::INT32 && dtype != framework::proto::VarType::FP32) {
+        VLOG(3) << "reduce op input data type must be int32 or float32";
+        return false;
+      }
+
+      // int32 not support if it's not dynamic shape.
+      if (!with_dynamic_shape && (dtype == framework::proto::VarType::INT32)) {
+        return false;
       }
     }
 #if IS_TRT_VERSION_GE(7000)
