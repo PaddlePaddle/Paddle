@@ -822,6 +822,28 @@ def complete_update_annotation(auto_parallel_main_prog, dist_context):
         # TODO to add attribute for moment var
         op = ops[idx]
         if int(op.attr('op_role')) == int(OpRole.Optimize):
+            if op.type == "clip_by_norm":
+
+                param_grad = vars[op.input("X")[0]]
+                param_grad_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    param_grad)
+                assert param_grad_dist_attr is not None
+                ref_process_mesh = param_grad_dist_attr.process_mesh
+                ref_dims_mapping = param_grad_dist_attr.dims_mapping
+
+                out = vars[op.output("Out")[0]]
+                out_dist_attr = TensorDistributedAttribute()
+                out_dist_attr.process_mesh = ref_process_mesh
+                out_dist_attr.dims_mapping = ref_dims_mapping
+                dist_context.set_tensor_dist_attr_for_program(out,
+                                                              out_dist_attr)
+
+                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr.process_mesh = ref_process_mesh
+                op_dist_attr.set_input_dist_attr(param_grad.name,
+                                                 param_grad_dist_attr)
+                op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
+                dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
 
             if "Grad" in op.input_names and "Param" in ops[idx].input_names:
                 assert len(op.input(
