@@ -42,6 +42,18 @@ PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager_tensor_properties_get_type(EagerTensorObject* self,
+                                           void* closure) {
+  EAGER_SYNC_TRY
+  if (self->eager_tensor.is_dense_tensor()) {
+    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
+  } else {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 int eager_tensor_properties_set_name(EagerTensorObject* self, PyObject* value,
                                      void* closure) {
   EAGER_SYNC_TRY
@@ -74,8 +86,13 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
     return ToPyObject(*accumulation_grad_node->Grad());
   } else {
     VLOG(6) << "Get grad for tensor: " << self->eager_tensor.name();
-    auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    return ToPyObject(meta->Grad());
+    auto meta = egr::EagerUtils::nullable_autograd_meta(self->eager_tensor);
+    if (meta) {
+      return ToPyObject(meta->Grad());
+    } else {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -184,6 +201,8 @@ struct PyGetSetDef variable_properties[] = {
     {"_place_str", (getter)eager_tensor_properties_get_place_str, nullptr,
      nullptr, nullptr},
     {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
+     nullptr},
+    {"type", (getter)eager_tensor_properties_get_type, nullptr, nullptr,
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 

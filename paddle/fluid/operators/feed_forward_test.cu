@@ -409,9 +409,9 @@ class TestFeedForward {
   void CheckOut(const T diff, bool is_relative_atol = false) {
     std::vector<T> out(size_output_);
     std::vector<T> bias_out(size_output_);
-    TensorToVector(out_, *ctx_, &out);
+    paddle::framework::TensorToVector(out_, *ctx_, &out);
     if (has_bias_) {
-      TensorToVector(bias_out_, *ctx_, &bias_out);
+      paddle::framework::TensorToVector(bias_out_, *ctx_, &bias_out);
     }
     ctx_->Wait();
 
@@ -437,7 +437,7 @@ class TestFeedForward {
   // check backward correctness between baseline and results of feedforward.
   void CheckGrad(const T diff, bool is_relative_atol = false) {
     std::vector<T> h_dinput(size_src_);
-    TensorToVector(dinput_, *ctx_, &h_dinput);
+    paddle::framework::TensorToVector(dinput_, *ctx_, &h_dinput);
     for (int i = 0; i < size_src_; i++) {
       if (is_relative_atol) {
         EXPECT_LT(
@@ -448,7 +448,7 @@ class TestFeedForward {
       }
     }
     std::vector<T> h_dweight(size_weight_);
-    TensorToVector(dweight_, *ctx_, &h_dweight);
+    paddle::framework::TensorToVector(dweight_, *ctx_, &h_dweight);
     for (int i = 0; i < size_weight_; i++) {
       if (is_relative_atol) {
         EXPECT_LT(std::abs((h_dweight[i] - base_dweight_vec_[i]) /
@@ -460,7 +460,7 @@ class TestFeedForward {
     }
     if (has_bias_) {
       std::vector<T> h_dbias(size_bias_);
-      TensorToVector(dbias_, *ctx_, &h_dbias);
+      paddle::framework::TensorToVector(dbias_, *ctx_, &h_dbias);
       for (int i = 0; i < size_bias_; i++) {
         if (is_relative_atol) {
           EXPECT_LT(

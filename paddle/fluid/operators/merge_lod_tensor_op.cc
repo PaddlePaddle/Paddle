@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 }  // namespace framework

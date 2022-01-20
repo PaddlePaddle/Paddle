@@ -183,8 +183,6 @@ class OpBase {
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
-  static pten::KernelContext* GetKernelContext() { return &pt_kernel_context_; }
-
   bool HasVoidFunctionPostHook() const {
     return !void_function_post_hooks_.empty();
   }

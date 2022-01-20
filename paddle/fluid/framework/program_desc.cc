@@ -101,25 +101,20 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
   PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
                     platform::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
-  VLOG(1) << 3333;
   InitFromProto();
 }
 
 void ProgramDesc::InitFromProto() {
-  VLOG(1) << 4444;
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
-  VLOG(1) << 5555;
   for (auto &block : blocks_) {
     for (auto *op : block->AllOps()) {
       for (const auto &attr : op->Proto()->attrs()) {
         if (attr.type() == proto::AttrType::BLOCK) {
-          VLOG(1) << 6666;
           size_t blk_idx = attr.block_idx();
           op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
         } else if (attr.type() == proto::AttrType::BLOCKS) {
-          VLOG(1) << 7777;
           auto blks_idx = attr.blocks_idx();
           std::vector<BlockDesc *> block_descs;
           for (int blk_idx : blks_idx) {

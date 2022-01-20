@@ -36,8 +36,9 @@ TEST(EagerTensor, Constructor) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
   auto* dt_ptr = dt->mutable_data<float>();
   dt_ptr[0] = 5.0f;
@@ -65,8 +66,9 @@ TEST(EagerTensor, MemberFunction) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
   auto* dt_ptr = dt->mutable_data<float>();
   dt_ptr[0] = 5.0f;
