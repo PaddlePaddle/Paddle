@@ -14,11 +14,11 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/distributed/service/communicator.h"
 
 namespace paddle {
 namespace operators {
@@ -40,13 +40,14 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     // auto fleet = distributed::FleetWrapper::GetInstance();
-    auto* communicator = (distributed::AsyncCommunicator*)distributed::Communicator::GetInstance();
+    auto *communicator = (distributed::AsyncCommunicator *)
+        distributed::Communicator::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      communicator->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
-                                       static_cast<uint64_t>(padding_idx),
-                                       context.GetPlace(), &inputs, shows, clks,
-                                       &outputs);
+      communicator->PushSparseFromTensorAsync(
+          static_cast<uint64_t>(table_id), emb_dim,
+          static_cast<uint64_t>(padding_idx), context.GetPlace(), &inputs,
+          shows, clks, &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -78,12 +79,10 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       framework::Variable *tmp_clicks_var = tmp_scope->Var("Clicks");
       framework::LoDTensor *tmp_clicks_tensor =
           tmp_clicks_var->GetMutable<framework::LoDTensor>();
-      framework::TensorCopy(*shows,
-                              cpu_place, context.device_context(),
-                              tmp_shows_tensor);
-      framework::TensorCopy(*clks,
-                              cpu_place, context.device_context(),
-                              tmp_clicks_tensor);
+      framework::TensorCopy(*shows, cpu_place, context.device_context(),
+                            tmp_shows_tensor);
+      framework::TensorCopy(*clks, cpu_place, context.device_context(),
+                            tmp_clicks_tensor);
 
       // create temp output
       for (size_t idx = 0; idx < output_var_size; ++idx) {
@@ -95,10 +94,10 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      communicator->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
-                                       static_cast<uint64_t>(padding_idx),
-                                       context.GetPlace(), &tmp_input_vec, tmp_shows_tensor, tmp_clicks_tensor,
-                                       &tmp_output_vec);
+      communicator->PushSparseFromTensorAsync(
+          static_cast<uint64_t>(table_id), emb_dim,
+          static_cast<uint64_t>(padding_idx), context.GetPlace(),
+          &tmp_input_vec, tmp_shows_tensor, tmp_clicks_tensor, &tmp_output_vec);
 
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {

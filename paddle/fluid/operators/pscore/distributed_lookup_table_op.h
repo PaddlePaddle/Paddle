@@ -14,11 +14,11 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/distributed/service/communicator.h"
 
 namespace paddle {
 namespace operators {
@@ -53,14 +53,14 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     // auto fleet = distributed::FleetWrapper::GetInstance();
-    auto* communicator = (distributed::AsyncCommunicator*)distributed::Communicator::GetInstance();
+    auto *communicator = (distributed::AsyncCommunicator *)
+        distributed::Communicator::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      
-      communicator->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
-                                    static_cast<uint64_t>(padding_idx),
-                                    context.GetPlace(), !is_test, &inputs,
-                                    &outputs);
+      communicator->PullSparseToTensorSync(
+          static_cast<uint64_t>(table_id), emb_dim,
+          static_cast<uint64_t>(padding_idx), context.GetPlace(), !is_test,
+          &inputs, &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -96,10 +96,10 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      communicator->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
-                                    static_cast<uint64_t>(padding_idx),
-                                    cpu_place, !is_test, &tmp_input_vec,
-                                    &tmp_output_vec);
+      communicator->PullSparseToTensorSync(
+          static_cast<uint64_t>(table_id), emb_dim,
+          static_cast<uint64_t>(padding_idx), cpu_place, !is_test,
+          &tmp_input_vec, &tmp_output_vec);
 
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {

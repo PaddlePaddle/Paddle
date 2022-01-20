@@ -453,18 +453,17 @@ class AsyncCommunicator : public Communicator {
 
   void PushDensePostProcessing();
 
-  void PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
-                              uint64_t padding_id, platform::Place place,
-                              bool is_training,
-                              std::vector<const framework::LoDTensor*>* inputs,  // NOLINT
-                              std::vector<framework::LoDTensor*>* outputs);      // NOLINT
-  
-  void PushSparseFromTensorAsync(const uint64_t table_id, int fea_dim,
-                                 uint64_t padding_id, platform::Place place,
-                                 std::vector<const framework::LoDTensor*>* inputs,
-                                 const framework::LoDTensor* shows,
-                                 const framework::LoDTensor* clicks,
-                                 std::vector<framework::LoDTensor*>* outputs);
+  void PullSparseToTensorSync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, bool is_training,
+      std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
+      std::vector<framework::LoDTensor *> *outputs);      // NOLINT
+
+  void PushSparseFromTensorAsync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
+      const framework::LoDTensor *shows, const framework::LoDTensor *clicks,
+      std::vector<framework::LoDTensor *> *outputs);
 
  protected:
   std::unordered_map<std::string,

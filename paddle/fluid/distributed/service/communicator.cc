@@ -578,24 +578,22 @@ void AsyncCommunicator::MainThread() {
   VLOG(1) << "communicator stopped, send thread exit";
 }
 
-void AsyncCommunicator::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
-                                          uint64_t padding_id,
-                                          platform::Place place,
-                                          bool is_training,
-                                          std::vector<const LoDTensor*>* inputs,
-                                          std::vector<LoDTensor*>* outputs) {
+void AsyncCommunicator::PullSparseToTensorSync(
+    const uint64_t table_id, int fea_dim, uint64_t padding_id,
+    platform::Place place, bool is_training,
+    std::vector<const LoDTensor *> *inputs, std::vector<LoDTensor *> *outputs) {
   std::vector<uint64_t> fea_keys;
-  std::vector<float*> pull_result_ptr;
+  std::vector<float *> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor* output = nullptr;
-  float* output_data = nullptr;
+  framework::LoDTensor *output = nullptr;
+  float *output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
-    const int64_t* ids = tensor->data<int64_t>();
+    const framework::LoDTensor *tensor = inputs->at(index);
+    const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
       if (!output || output_len == size_t(output->numel())) {
@@ -618,9 +616,9 @@ void AsyncCommunicator::PullSparseToTensorSync(const uint64_t table_id, int fea_
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
-  auto status = _worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(),
-      is_training);
+  auto status =
+      _worker_ptr->pull_sparse(pull_result_ptr.data(), table_id,
+                               fea_keys.data(), fea_keys.size(), is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -631,12 +629,12 @@ void AsyncCommunicator::PullSparseToTensorSync(const uint64_t table_id, int fea_
 
 void AsyncCommunicator::PushSparseFromTensorAsync(
     const uint64_t table_id, int fea_dim, uint64_t padding_id,
-    platform::Place place, std::vector<const framework::LoDTensor*>* inputs,
-    const framework::LoDTensor* shows, const framework::LoDTensor* clks,
-    std::vector<framework::LoDTensor*>* outputs) {
+    platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
+    const framework::LoDTensor *shows, const framework::LoDTensor *clks,
+    std::vector<framework::LoDTensor *> *outputs) {
   int batch_size = -1;
   bool batch_size_consist = true;
-  for (auto* input : *inputs) {
+  for (auto *input : *inputs) {
     int cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
@@ -669,12 +667,12 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
   // const long int* clk_tensor = clks->data<int64_t>();
-  const int64_t* show_tensor = shows->data<int64_t>();
-  const int64_t* clk_tensor = clks->data<int64_t>();
+  const int64_t *show_tensor = shows->data<int64_t>();
+  const int64_t *clk_tensor = clks->data<int64_t>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor* g_tensor = outputs->at(index);
-    float* g = g_tensor->data<float>();
+    framework::LoDTensor *g_tensor = outputs->at(index);
+    float *g = g_tensor->data<float>();
     // no cvm
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
                                // scale_sparse_gradient_with_batch_size_
@@ -684,8 +682,8 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
       g_mat.rightCols(fea_dim) *= batch_size;
     }
 
-    const framework::LoDTensor* tensor = inputs->at(index);
-    const int64_t* ids = tensor->data<int64_t>();
+    const framework::LoDTensor *tensor = inputs->at(index);
+    const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     output_len = 0;
 
@@ -707,7 +705,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
           push_values.back()[2] =
               (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-          float* data = push_values.back().data() + 3;
+          float *data = push_values.back().data() + 3;
 
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -730,7 +728,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
         push_values.back()[2] =
             (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-        float* data = push_values.back().data() + 3;
+        float *data = push_values.back().data() + 3;
 
         memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -740,7 +738,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     CHECK(output_len == g_tensor->numel());
   }
 
-  std::vector<float*> push_g_vec(input_idx, nullptr);
+  std::vector<float *> push_g_vec(input_idx, nullptr);
 
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
@@ -750,9 +748,9 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
       this->Check(table_id), true,
       platform::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
-  auto status = _worker_ptr->push_sparse(
-      table_id, push_keys.data(), (const float**)push_g_vec.data(),
-      push_keys.size());
+  auto status = _worker_ptr->push_sparse(table_id, push_keys.data(),
+                                         (const float **)push_g_vec.data(),
+                                         push_keys.size());
 }
 
 void HalfAsyncCommunicator::MainThread() {
