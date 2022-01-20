@@ -343,5 +343,53 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         return fwd_op_num
 
 
+class Net(paddle.nn.Layer):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.fc1 = paddle.nn.Linear(10, 10)
+        self.fc2 = paddle.nn.Linear(10, 1)
+
+    def forward(self, x):
+        out = self.fc1(x)
+        out.stop_gradient = True
+        out = self.fc2(out)
+        return out
+
+
+class TestParametersWithStopGradient(unittest.TestCase):
+    def setUp(self):
+        self.seed = 2021
+        self.iter = 5
+
+    def train(self, to_static):
+        # prepare env
+        paddle.seed(self.seed)
+
+        net = Net()
+        if to_static:
+            net = paddle.jit.to_static(net)
+        sgd = paddle.optimizer.SGD(0.01, parameters=net.parameters())
+
+        for i in range(self.iter):
+            x = paddle.rand([4, 10])
+            out = net(x)
+            loss = paddle.mean(out)
+
+            loss.backward()
+            sgd.minimize(loss)
+            net.clear_gradients()
+
+        return loss
+
+    def test_stop_gradient(self):
+        paddle.disable_static()
+
+        dy_loss = self.train(to_static=False)
+        st_loss = self.train(to_static=True)
+        self.assertEqual(dy_loss[0], st_loss[0])
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

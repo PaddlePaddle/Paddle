@@ -21,6 +21,7 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import numpy
 
 
 def calculate_momentum_by_numpy(param,
@@ -138,50 +139,70 @@ class TestMomentumOp2(OpTest):
                  "core is not compiled with CUDA")
 class TestLarsMomentumOpWithMP(OpTest):
     def setUp(self):
+        self.config()
         self.op_type = "lars_momentum"
-
-        master_param = np.random.random((123, 321)).astype("float32")
-        param = master_param.astype("float16")
-        grad = np.random.random((123, 321)).astype("float16")
-        velocity = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.001]).astype("float32")
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
         rescale_grad = 1.0
 
+        params = []
+        grads = []
+        velocitys = []
+        learning_rates = []
+        master_params = []
+        param_outs = []
+        velocity_outs = []
+        master_param_outs = []
+        for i in range(self.params_num):
+            master_param = np.random.random((123, 321)).astype("float32")
+            param = master_param.astype("float16")
+            grad = np.random.random((123, 321)).astype("float16")
+            velocity = np.zeros((123, 321)).astype("float32")
+            learning_rate = np.array([0.001]).astype("float32")
+
+            fp32_grad = grad.astype("float32")
+            pnorm = np.sqrt(np.square(master_param).sum())
+            gnorm = np.sqrt(np.square(fp32_grad).sum())
+            local_lr = learning_rate * lars_coeff * pnorm / (
+                gnorm + lars_weight_decay * pnorm)
+            fp32_grad = fp32_grad * rescale_grad
+            velocity_out = mu * velocity + local_lr * (
+                fp32_grad + lars_weight_decay * master_param)
+            p_new = master_param - velocity_out
+            param_out = p_new.astype("float16")
+            master_param_out = p_new
+
+            params.append(("SubParam_" + str(i), param))
+            grads.append(("SubGrad_" + str(i), grad))
+            velocitys.append(("SubVelocity_" + str(i), velocity))
+            learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
+            velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
+            param_outs.append(("SubParam_out_" + str(i), param_out))
+            master_params.append(("SubMasterParam_" + str(i), master_param))
+            master_param_outs.append(
+                ("SubMasterParamOut_" + str(i), master_param_out))
+
         self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Velocity': velocity,
-            'LearningRate': learning_rate,
-            'MasterParam': master_param,
+            'Param': params,
+            'Grad': grads,
+            'Velocity': velocitys,
+            'LearningRate': learning_rates,
+            'MasterParam': master_params,
         }
 
         self.attrs = {
             'mu': mu,
             'lars_coeff': lars_coeff,
-            'lars_weight_decay': lars_weight_decay,
+            'lars_weight_decay': [lars_weight_decay],
             'multi_precision': True,
             'rescale_grad': rescale_grad
         }
 
-        fp32_grad = grad.astype("float32")
-        pnorm = np.sqrt(np.square(master_param).sum())
-        gnorm = np.sqrt(np.square(fp32_grad).sum())
-        local_lr = learning_rate * lars_coeff * pnorm / (
-            gnorm + lars_weight_decay * pnorm)
-        fp32_grad = fp32_grad * rescale_grad
-        velocity_out = mu * velocity + local_lr * (fp32_grad + lars_weight_decay
-                                                   * master_param)
-        p_new = master_param - velocity_out
-        param_out = p_new.astype("float16")
-        master_param_out = p_new
-
         self.outputs = {
-            'ParamOut': param_out,
-            'VelocityOut': velocity_out,
-            'MasterParamOut': master_param_out
+            'ParamOut': param_outs,
+            'VelocityOut': velocity_outs,
+            'MasterParamOut': master_param_outs
         }
 
     def test_check_output(self):
@@ -191,45 +212,64 @@ class TestLarsMomentumOpWithMP(OpTest):
             if core.is_float16_supported(place):
                 self.check_output_with_place(place)
 
+    def config(self):
+        self.params_num = 1
+
 
 class TestLarsMomentumOp(OpTest):
     def setUp(self):
+        self.config()
         self.op_type = "lars_momentum"
-
-        param = np.random.random((123, 321)).astype("float32")
-        grad = np.random.random((123, 321)).astype("float32")
-        velocity = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.001]).astype("float32")
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
 
+        params = []
+        grads = []
+        velocitys = []
+        param_outs = []
+        velocity_outs = []
+        learning_rates = []
+        for i in range(self.params_num):
+            param = np.random.random((123, 321)).astype("float32")
+            grad = np.random.random((123, 321)).astype("float32")
+            velocity = np.zeros((123, 321)).astype("float32")
+            learning_rate = np.array([0.001]).astype("float32")
+            pnorm = np.sqrt(np.square(param).sum())
+            gnorm = np.sqrt(np.square(grad).sum())
+            local_lr = learning_rate * lars_coeff * pnorm / (
+                gnorm + lars_weight_decay * param)
+            velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay
+                                                       * param)
+            param_out = param - velocity_out
+
+            params.append(("SubParam_" + str(i), param))
+            grads.append(("SubGrad_" + str(i), grad))
+            velocitys.append(("SubVelocity_" + str(i), velocity))
+            learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
+            velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
+            param_outs.append(("SubParam_out_" + str(i), param_out))
+
         self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Velocity': velocity,
-            'LearningRate': learning_rate
+            'Param': params,
+            'Grad': grads,
+            'Velocity': velocitys,
+            'LearningRate': learning_rates
         }
 
         self.attrs = {
             'mu': mu,
             'lars_coeff': lars_coeff,
-            'lars_weight_decay': lars_weight_decay
+            'lars_weight_decay': [lars_weight_decay]
         }
-
-        pnorm = np.sqrt(np.square(param).sum())
-        gnorm = np.sqrt(np.square(grad).sum())
-        local_lr = learning_rate * lars_coeff * pnorm / (
-            gnorm + lars_weight_decay * param)
-        velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay *
-                                                   param)
-        param_out = param - velocity_out
-
-        self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
+        self.outputs = {'ParamOut': param_outs, 'VelocityOut': velocity_outs}
 
     def test_check_output(self):
         paddle.enable_static()
         self.check_output()
+
+    def config(self):
+        self.params_num = 1
 
 
 class TestSparseMomentumOp(unittest.TestCase):
@@ -764,6 +804,190 @@ class TestMomentumV2Group(TestMomentumV2):
         out.backward()
         adam.step()
         adam.clear_gradients()
+
+
+class TestMultiTensorMomentumDygraph(unittest.TestCase):
+    def _momentum_optimize_dygraph(self,
+                                   place,
+                                   use_param_attr=False,
+                                   use_param_group=False,
+                                   use_amp=False,
+                                   use_multi_tensor=False):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+        input = paddle.randn((5, 5))
+        weight_attr = paddle.ParamAttr(
+            learning_rate=0.5,
+            regularizer=paddle.regularizer.L2Decay(1.0),
+            trainable=True)
+        if use_param_attr:
+            model = paddle.nn.Linear(5, 5, weight_attr)
+        else:
+            model = paddle.nn.Linear(5, 5)
+        if not use_param_group:
+            optimizer = paddle.optimizer.Momentum(
+                parameters=model.parameters(),
+                use_multi_tensor=use_multi_tensor,
+                multi_precision=use_amp)
+        else:
+            optimizer = paddle.optimizer.Momentum(
+                parameters=[{
+                    'params': model.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                    'momentum': 0.99
+                }],
+                use_multi_tensor=use_multi_tensor,
+                multi_precision=use_amp)
+        for idx in range(5):
+            if place == 'gpu' and use_amp == True:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            if place == 'gpu' and use_amp == True:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grad(set_to_zero=False)
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                # This can be any optimizer supported by dygraph.
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad(set_to_zero=False)
+        return output, model.parameters()
+
+    def _get_places(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def _check_with_place_amp(self, place, use_amp):
+        output1, params1 = self._momentum_optimize_dygraph(
+            place=place, use_amp=use_amp, use_multi_tensor=True)
+        output2, params2 = self._momentum_optimize_dygraph(
+            place=place, use_amp=use_amp, use_multi_tensor=False)
+        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        for idx in range(len(params1)):
+            self.assertEqual(
+                np.allclose(
+                    params1[idx], params2[idx], rtol=1e-05), True)
+
+    def _check_with_param_arrt(self, place, use_amp):
+        output1, params1 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_attr=True,
+            use_multi_tensor=True)
+        output2, params2 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_attr=True,
+            use_multi_tensor=False)
+        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        for idx in range(len(params1)):
+            self.assertEqual(
+                np.allclose(
+                    params1[idx], params2[idx], rtol=1e-05), True)
+
+    def _check_with_param_group(self, place, use_amp):
+        output1, params1 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_group=True,
+            use_multi_tensor=True)
+        output2, params2 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_group=True,
+            use_multi_tensor=False)
+        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        for idx in range(len(params1)):
+            self.assertEqual(
+                np.allclose(
+                    params1[idx], params2[idx], rtol=1e-05), True)
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._check_with_place_amp(place, use_amp)
+                self._check_with_param_arrt(place, use_amp)
+                self._check_with_param_group(place, use_amp)
+
+
+class TestMultiTensorMomentumStatic(unittest.TestCase):
+    def _momentum_optimize_static(self,
+                                  place,
+                                  use_amp=False,
+                                  use_multi_tensor=False):
+        paddle.enable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+        if place == 'cpu':
+            use_amp = False
+        exe = paddle.static.Executor(place=place)
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.Momentum(
+            multi_precision=use_amp, use_multi_tensor=use_multi_tensor)
+        if use_amp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False)
+        with paddle.static.program_guard(train_program, startup_program):
+            if use_amp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16')
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32')
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.fluid.layers.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+        if use_amp:
+            optimizer.amp_init(place=place, scope=paddle.static.global_scope())
+            x = numpy.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = numpy.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            loss_data, = exe.run(train_program,
+                                 feed={"X": x},
+                                 fetch_list=[loss.name])
+            out.append(loss_data)
+        return out
+
+    def _get_places(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def _check_with_place_amp(self, place, use_amp):
+        output1 = self._momentum_optimize_static(
+            place=place, use_amp=use_amp, use_multi_tensor=True)
+        output2 = self._momentum_optimize_static(
+            place=place, use_amp=use_amp, use_multi_tensor=False)
+        for idx in range(len(output1)):
+            self.assertEqual(
+                np.allclose(
+                    output1[idx], output2[idx], rtol=1e-05), True)
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._check_with_place_amp(place, use_amp)
 
 
 if __name__ == "__main__":

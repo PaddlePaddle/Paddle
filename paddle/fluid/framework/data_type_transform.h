@@ -25,12 +25,14 @@ namespace paddle {
 namespace framework {
 
 class OpKernelType;
-class Tensor;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type, const Tensor& in,
+                   Tensor* out);
+void TransDataType(const Tensor& in,
+                   const paddle::framework::proto::VarType::Type& type,
                    Tensor* out);
 
 /**

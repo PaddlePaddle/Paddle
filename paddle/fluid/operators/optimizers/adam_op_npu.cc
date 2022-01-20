@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/optimizers/adam_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -66,8 +66,8 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -84,11 +84,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
           *mom2, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), mom2_out);
       framework::TensorCopy(
-          *beta1_pow, ctx.GetPlace(),
+          *beta1_pow, beta1_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta1_pow_out);
       framework::TensorCopy(
-          *beta2_pow, ctx.GetPlace(),
+          *beta2_pow, beta2_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta2_pow_out);
       return;
@@ -239,8 +239,8 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     VLOG(3) << "Skip update" << skip_update;

@@ -70,7 +70,7 @@ class VocabParallelEmbedding(Layer):
                 dtype=self._dtype,
                 is_bias=False)
 
-        self.weight.is_distributed = True
+        self.weight.is_distributed = True if self.is_mp else False
 
     def forward(self, x):
         if self.is_mp:
@@ -135,7 +135,7 @@ class ColumnParallelLinear(Layer):
                 dtype=self._dtype,
                 is_bias=False)
 
-        self.weight.is_distributed = True
+        self.weight.is_distributed = True if self.is_mp else False
 
         if has_bias:
             # initialize bias to zero like Megatron
@@ -144,7 +144,7 @@ class ColumnParallelLinear(Layer):
                 attr=paddle.nn.initializer.Constant(value=0.0),
                 dtype=self._dtype,
                 is_bias=True)
-            self.bias.is_distributed = True
+            self.bias.is_distributed = True if self.is_mp else False
         else:
             self.bias = None
 
@@ -212,7 +212,7 @@ class RowParallelLinear(Layer):
                 dtype=self._dtype,
                 is_bias=False)
 
-        self.weight.is_distributed = True
+        self.weight.is_distributed = True if self.is_mp else False
 
         if has_bias:
             self.bias = self.create_parameter(

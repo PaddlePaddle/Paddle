@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -146,6 +146,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(elementwise_add, ops::ElementwiseAddNPUKernel<float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ElementwiseAddNPUKernel<int64_t>,
+#endif
                        ops::ElementwiseAddNPUKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(elementwise_add_grad,

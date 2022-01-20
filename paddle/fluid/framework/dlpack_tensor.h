@@ -21,8 +21,6 @@
 namespace paddle {
 namespace framework {
 
-class Tensor;
-
 class DLPackTensor {
  public:
   using LaneType = decltype(::DLTensor::dtype.lanes);  // uint16_t
@@ -36,7 +34,7 @@ class DLPackTensor {
 
   inline operator ::DLTensor&() { return t_; }
 
-  ::DLManagedTensor* ToCudfCompatibleDLManagedTensor();
+  ::DLManagedTensor* ToDLManagedTensor();
 
  private:
   ::DLTensor t_;

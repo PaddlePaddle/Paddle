@@ -145,6 +145,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   void Set(const std::string &name, const py::object &value) const {
+    VLOG(4) << "set " << name << " to " << value;
     SetterMethod(name)(value);
   }
 

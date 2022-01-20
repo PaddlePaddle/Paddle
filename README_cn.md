@@ -19,7 +19,7 @@
 
 ## 安装
 
-### PaddlePaddle最新版本: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
+### PaddlePaddle最新版本: [v2.2](https://github.com/PaddlePaddle/Paddle/tree/release/2.2)
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -82,7 +82,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 ## 交流与反馈
 
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
-- QQ群: 793866180 (PaddlePaddle)
+- QQ群: 441226485 (PaddlePaddle)
 - [论坛](https://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
     
 ## 课程

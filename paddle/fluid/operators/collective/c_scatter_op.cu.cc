@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -66,7 +66,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor temp;
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
     if (root_id == comm->rank()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root_id, comm->comm(), stream));
 
@@ -74,7 +74,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<framework::Tensor*>(&temp));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
     }
 

@@ -125,7 +125,15 @@ void BindGraph(py::module *m) {
            return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard)
       .def("origin_program_desc", &Graph::OriginProgram,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("sub_graph_size", &Graph::SubGraphsSize)
+      .def("get_sub_graph", [](Graph &self, int i) {
+        /* Here we use a lambda function as an empty deleter to avoid the double
+        free of smart pointer.
+        Otherwise, this shared pointer will be free both in python and
+        cpp scope, which will lead a core dumped. */
+        return std::shared_ptr<Graph>(self.GetSubGraph(i), [](Graph *) {});
+      });
 }
 
 void BindNode(py::module *m) {
@@ -135,6 +143,7 @@ void BindNode(py::module *m) {
       .def("var", &Node::Var, return_value_policy::reference)
       .def("op", &Node::Op, return_value_policy::reference)
       .def("id", &Node::id)
+      .def("original_desc_id", &Node::OriginalDescId)
       .def("is_op", &Node::IsOp)
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)
@@ -184,6 +193,13 @@ void BindNode(py::module *m) {
   py::enum_<Node::Type>(node, "Type")
       .value("Operation", Node::Type::kOperation)
       .value("Variable", Node::Type::kVariable)
+      .export_values();
+
+  py::enum_<Node::Dep>(node, "Dep")
+      .value("Same", Node::Dep::kSame)
+      .value("Before", Node::Dep::kBefore)
+      .value("After", Node::Dep::kAfter)
+      .value("NoDep", Node::Dep::kNoDep)
       .export_values();
 }
 

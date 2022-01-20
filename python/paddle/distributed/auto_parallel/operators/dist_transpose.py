@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperator
+from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
-from .common import register_distributed_operator
+from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
@@ -24,33 +24,62 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 
 
-class DistributedTranspose2(DistributedOperator):
+class DistributedTranspose2(DistributedOperatorImplContainer):
     def __init__(self, name):
         super(DistributedTranspose2, self).__init__()
         self._name = name
 
 
-register_distributed_operator("transpose2", DistributedTranspose2("transpose2"))
+register_distributed_operator_impl_container(
+    "transpose2", DistributedTranspose2("transpose2"))
 
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedTranspose2Impl, self).__init__()
         self._name = name
+        self._forward_implemented = False
+        self._backward_implemented = False
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
+    def is_input_compatible(self, dist_op):
         return True
 
-    def is_input_compatible(self, op_dist_attr):
+    def is_output_compatible(self, dist_op):
         return True
 
-    def is_output_compatible(self, op_dist_attr):
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        perm = op_desc.attr('axis')
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        new_dims_mapping = [-1 for i in range(len(x_dims_mapping))]
+        for i in range(len(x_dims_mapping)):
+            new_dims_mapping[i] = x_dims_mapping[perm[i]]
+
+        if len(x_dims_mapping) != len(out_dims_mapping):
+            return False
+
+        if new_dims_mapping != out_dims_mapping:
+            return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
+            return False
+
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        op_desc = op_dist_attr.get_owner_op().desc
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]
@@ -81,6 +110,10 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
         return changed
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        pass
 
 
 register_distributed_operator_impl(

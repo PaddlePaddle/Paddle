@@ -31,11 +31,18 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
+    for (size_t i = 0; i < ins.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          ins[i]->numel(), 0,
+          platform::errors::OutOfRange(
+              "indexing will be out of bounds with size 0 for the %d-th input.",
+              i));
+    }
+
     auto rows = ins[0]->dims()[0];
     auto cols = ins[0]->numel() / rows;
     auto index = ids->data<int32_t>();
-    platform::CPUPlace place =
-        BOOST_GET_CONST(platform::CPUPlace, ctx.GetPlace());
+    platform::CPUPlace place = ctx.GetPlace();
     for (auto i = 0; i < rows; i++) {
       int32_t k = index[i];
       PADDLE_ENFORCE_GE(k, 0, platform::errors::PreconditionNotMet(
@@ -75,8 +82,7 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
     auto rows = d_ins[idx]->dims()[0];
     auto cols = d_ins[idx]->numel() / rows;
     auto* index = ids->data<int32_t>();
-    platform::CPUPlace place =
-        BOOST_GET_CONST(platform::CPUPlace, ctx.GetPlace());
+    platform::CPUPlace place = ctx.GetPlace();
     for (auto i = 0; i < rows; i++) {
       size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {

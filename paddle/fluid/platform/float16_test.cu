@@ -48,8 +48,8 @@ limitations under the License. */
     in1 = reinterpret_cast<half *>(malloc(size));                             \
     in2 = reinterpret_cast<half *>(malloc(size));                             \
     out = reinterpret_cast<half *>(malloc(size));                             \
-    in1[0] = half(float16(v_in1));                                            \
-    in2[0] = half(float16(v_in2));                                            \
+    in1[0] = float16(v_in1).to_half();                                        \
+    in2[0] = float16(v_in2).to_half();                                        \
     hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);                       \
     hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);                       \
     hipLaunchKernelGGL(op_type, dim3(1), dim3(1), 0, 0, d_in1, d_in2, d_out); \
@@ -73,8 +73,8 @@ limitations under the License. */
     hipMalloc(reinterpret_cast<void **>(&d_in2), size);                \
     in1 = reinterpret_cast<half *>(malloc(size));                      \
     in2 = reinterpret_cast<half *>(malloc(size));                      \
-    in1[0] = half(float16(v_in1));                                     \
-    in2[0] = half(float16(v_in2));                                     \
+    in1[0] = float16(v_in1).to_half();                                 \
+    in2[0] = float16(v_in2).to_half();                                 \
     hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);                \
     hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);                \
     hipLaunchKernelGGL(op_type, dim3(1), dim3(1), 0, 0, d_in1, d_in2); \
@@ -99,8 +99,8 @@ limitations under the License. */
     in1 = reinterpret_cast<half *>(malloc(size));                             \
     in2 = reinterpret_cast<half *>(malloc(size));                             \
     out = reinterpret_cast<bool *>(malloc(1));                                \
-    in1[0] = half(float16(v_in1));                                            \
-    in2[0] = half(float16(v_in2));                                            \
+    in1[0] = float16(v_in1).to_half();                                        \
+    in2[0] = float16(v_in2).to_half();                                        \
     hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);                       \
     hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);                       \
     hipLaunchKernelGGL(op_type, dim3(1), dim3(1), 0, 0, d_in1, d_in2, d_out); \
@@ -126,8 +126,8 @@ limitations under the License. */
     in1 = reinterpret_cast<half *>(malloc(size));             \
     in2 = reinterpret_cast<half *>(malloc(size));             \
     out = reinterpret_cast<half *>(malloc(size));             \
-    in1[0] = half(float16(v_in1));                            \
-    in2[0] = half(float16(v_in2));                            \
+    in1[0] = float16(v_in1).to_half();                        \
+    in2[0] = float16(v_in2).to_half();                        \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
     op_type<<<1, 1>>>(d_in1, d_in2, d_out);                   \
@@ -151,8 +151,8 @@ limitations under the License. */
     cudaMalloc(reinterpret_cast<void **>(&d_in2), size);      \
     in1 = reinterpret_cast<half *>(malloc(size));             \
     in2 = reinterpret_cast<half *>(malloc(size));             \
-    in1[0] = half(float16(v_in1));                            \
-    in2[0] = half(float16(v_in2));                            \
+    in1[0] = float16(v_in1).to_half();                        \
+    in2[0] = float16(v_in2).to_half();                        \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
     op_type<<<1, 1>>>(d_in1, d_in2);                          \
@@ -177,8 +177,8 @@ limitations under the License. */
     in1 = reinterpret_cast<half *>(malloc(size));            \
     in2 = reinterpret_cast<half *>(malloc(size));            \
     out = reinterpret_cast<bool *>(malloc(1));               \
-    in1[0] = half(float16(v_in1));                           \
-    in2[0] = half(float16(v_in2));                           \
+    in1[0] = float16(v_in1).to_half();                       \
+    in2[0] = float16(v_in2).to_half();                       \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);    \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);    \
     op_type<<<1, 1>>>(d_in1, d_in2, d_out);                  \
@@ -221,7 +221,7 @@ void TestNeg(float v_in, float v_out) {
   cudaMalloc(reinterpret_cast<void **>(&d_in), size);
 #endif
   in = reinterpret_cast<half *>(malloc(size));
-  in[0] = half(float16(v_in));
+  in[0] = float16(v_in).to_half();
 #ifdef PADDLE_WITH_HIP
   hipMemcpy(d_in, in, size, hipMemcpyHostToDevice);
 #else
@@ -299,17 +299,17 @@ TEST(float16, comparision_on_gpu) {
 
 TEST(float16, conversion_on_gpu) {
   // Explicit conversion to and from cuda half
-  EXPECT_EQ(float16(half(float16(1.0f))).x, 0x3c00);
-  EXPECT_EQ(float16(half(float16(0.5f))).x, 0x3800);
-  EXPECT_EQ(float16(half(float16(0.33333f))).x, 0x3555);
-  EXPECT_EQ(float16(half(float16(0.0f))).x, 0x0000);
-  EXPECT_EQ(float16(half(float16(-0.0f))).x, 0x8000);
-  EXPECT_EQ(float16(half(float16(65504.0f))).x, 0x7bff);
-  EXPECT_EQ(float16(half(float16(65536.0f))).x, 0x7c00);
+  EXPECT_EQ(float16(float16(1.0f).to_half()).x, 0x3c00);
+  EXPECT_EQ(float16(float16(0.5f).to_half()).x, 0x3800);
+  EXPECT_EQ(float16(float16(0.33333f).to_half()).x, 0x3555);
+  EXPECT_EQ(float16(float16(0.0f).to_half()).x, 0x0000);
+  EXPECT_EQ(float16(float16(-0.0f).to_half()).x, 0x8000);
+  EXPECT_EQ(float16(float16(65504.0f).to_half()).x, 0x7bff);
+  EXPECT_EQ(float16(float16(65536.0f).to_half()).x, 0x7c00);
 
   // Assignment operator
   float16 v_assign;
-  v_assign = half(float16(1.0f));
+  v_assign = float16(1.0f).to_half();
   EXPECT_EQ(v_assign.x, 0x3c00);
 }
 

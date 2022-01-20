@@ -27,21 +27,21 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;
-  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
+  CUDADeviceGuard guard(place_.device);
   if (priority == Priority::kHigh) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), -1));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), -1));
 #endif
   } else if (priority == Priority::kNormal) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), 0));
 #endif
   }
@@ -53,14 +53,14 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
 }
 
 void CUDAStream::Destroy() {
-  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
+  CUDADeviceGuard guard(place_.device);
   Wait();
   WaitCallback();
-  if (stream_) {
+  if (stream_ && owned_stream_) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
 #endif
   }
   stream_ = nullptr;
@@ -89,7 +89,21 @@ void CUDAStream::Wait() const {
 #endif
 #endif  // PADDLE_WITH_HIP
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+  PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
+}
+
+// Note: Can only be used under thread_local semantics.
+void CUDAStream::SetStream(gpuStream_t stream) {
+  if (owned_stream_ && stream_) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
+#endif
+  }
+  owned_stream_ = false;
+  stream_ = stream;
+  callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
 }
 
 CUDAStream* get_current_stream(int deviceId) {

@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -286,9 +287,10 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
       tmp_dev_ins_data = memory::Alloc(context, in_num * sizeof(T*));
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   tmp_dev_ins_data->ptr(), platform::CPUPlace(),
-                   static_cast<void*>(inputs_data), in_num * sizeof(T*),
+      auto* restored =
+          platform::RestoreHostMemIfCapturingCUDAGraph(inputs_data, in_num);
+      memory::Copy(context.GetPlace(), tmp_dev_ins_data->ptr(),
+                   platform::CPUPlace(), restored, in_num * sizeof(T*),
                    context.stream());
       dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
     }
@@ -313,9 +315,11 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     } else {
       auto tmp_dev_ins_col_data =
           memory::Alloc(context, inputs_col_num * sizeof(int64_t));
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
-                   static_cast<void*>(inputs_col),
+
+      auto* restored = platform::RestoreHostMemIfCapturingCUDAGraph(
+          inputs_col, inputs_col_num);
+      memory::Copy(context.GetPlace(), tmp_dev_ins_col_data->ptr(),
+                   platform::CPUPlace(), restored,
                    inputs_col_num * sizeof(int64_t), context.stream());
       int64_t* dev_ins_col_data =
           static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
@@ -332,9 +336,8 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     auto* data_alloc_released = data_alloc.release();
     auto* col_alloc_released = col_alloc.release();
     context.AddStreamCallback([data_alloc_released, col_alloc_released] {
-      memory::allocation::AllocationDeleter deleter;
-      deleter(data_alloc_released);
-      deleter(col_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(data_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(col_alloc_released);
     });
 #endif
   }
@@ -415,9 +418,10 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       tmp_dev_outs_data = memory::Alloc(context, o_num * sizeof(T*));
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   tmp_dev_outs_data->ptr(), platform::CPUPlace(),
-                   reinterpret_cast<void*>(outputs_data), o_num * sizeof(T*),
+      auto* restored =
+          platform::RestoreHostMemIfCapturingCUDAGraph(outputs_data, o_num);
+      memory::Copy(context.GetPlace(), tmp_dev_outs_data->ptr(),
+                   platform::CPUPlace(), restored, o_num * sizeof(T*),
                    context.stream());
       dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
     }
@@ -442,9 +446,10 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     } else {
       auto tmp_dev_ins_col_data =
           memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
-                   reinterpret_cast<void*>(outputs_cols),
+      auto* restored = platform::RestoreHostMemIfCapturingCUDAGraph(
+          outputs_cols, outputs_cols_num);
+      memory::Copy(context.GetPlace(), tmp_dev_ins_col_data->ptr(),
+                   platform::CPUPlace(), restored,
                    outputs_cols_num * sizeof(int64_t), context.stream());
       int64_t* dev_outs_col_data =
           reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
@@ -460,9 +465,8 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     auto* data_alloc_released = data_alloc.release();
     auto* cols_alloc_released = cols_alloc.release();
     context.AddStreamCallback([data_alloc_released, cols_alloc_released] {
-      memory::allocation::AllocationDeleter deleter;
-      deleter(data_alloc_released);
-      deleter(cols_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(data_alloc_released);
+      memory::allocation::Allocator::AllocationDeleter(cols_alloc_released);
     });
 #endif
   }

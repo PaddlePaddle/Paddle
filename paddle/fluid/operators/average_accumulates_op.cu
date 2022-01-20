@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/average_accumulates_op.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -25,8 +25,7 @@ void GetAccumulators<paddle::platform::CUDADeviceContext>(
   auto* in_num_accumulates = ctx.Input<Tensor>("in_num_accumulates");
   auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
   auto stream = ctx.cuda_device_context().stream();
-  auto cuda_place =
-      BOOST_GET_CONST(platform::CUDAPlace, in_old_num_accumulates->place());
+  auto cuda_place = in_old_num_accumulates->place();
   memory::Copy(platform::CPUPlace(), old_num_accumulates_, cuda_place,
                in_old_num_accumulates->data<int64_t>(), sizeof(int64_t),
                stream);
@@ -44,8 +43,7 @@ void SetAccumulators<paddle::platform::CUDADeviceContext>(
   auto* out_old_num_accumulates = ctx.Output<Tensor>("out_old_num_accumulates");
   auto* out_num_accumulates = ctx.Output<Tensor>("out_num_accumulates");
   auto* out_num_updates = ctx.Output<Tensor>("out_num_updates");
-  auto cuda_place =
-      BOOST_GET_CONST(platform::CUDAPlace, out_old_num_accumulates->place());
+  auto cuda_place = out_old_num_accumulates->place();
 
   memory::Copy(cuda_place, out_old_num_accumulates->data<int64_t>(),
                platform::CPUPlace(), &old_num_accumulates_, sizeof(int64_t),

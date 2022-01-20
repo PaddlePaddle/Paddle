@@ -73,7 +73,23 @@ static nvinfer1::IPluginRegistry* GetPluginRegistry() {
 static int GetInferLibVersion() {
   return static_cast<int>(dy::getInferLibVersion());
 }
+#else
+static int GetInferLibVersion() { return 0; }
 #endif
+
+static std::tuple<int, int, int> GetTrtRuntimeVersion() {
+  int ver = GetInferLibVersion();
+  int major = ver / 1000;
+  ver -= major * 1000;
+  int minor = ver / 100;
+  int patch = ver - minor * 100;
+  return std::tuple<int, int, int>{major, minor, patch};
+}
+
+static std::tuple<int, int, int> GetTrtCompileVersion() {
+  return std::tuple<int, int, int>{NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR,
+                                   NV_TENSORRT_PATCH};
+}
 
 // A logger for create TensorRT infer builder.
 class NaiveLogger : public nvinfer1::ILogger {

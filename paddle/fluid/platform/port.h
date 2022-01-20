@@ -30,13 +30,16 @@
 #include <sys/time.h>
 #include <algorithm>  // std::accumulate
 #else
+#ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 // solve static linking error in windows
 // https://github.com/google/glog/issues/301
 #define GOOGLE_GLOG_DLL_DECL
 #include <io.h>  // _popen, _pclose
 #include <stdio.h>
 #include <windows.h>
+#include <winsock.h>
 #include <numeric>  // std::accumulate in msvc
 #ifndef S_ISDIR     // windows port for sys/stat.h
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)

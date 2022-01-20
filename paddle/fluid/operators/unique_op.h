@@ -403,7 +403,10 @@ class UniqueKernel : public framework::OpKernel<T> {
     bool return_index = context.Attr<bool>("return_index");
     bool return_inverse = context.Attr<bool>("return_inverse");
     bool return_counts = context.Attr<bool>("return_counts");
-
+    if (x->numel() == 0) {
+      out->mutable_data<T>(context.GetPlace());
+      return;
+    }
     if (axis_vec.empty()) {
       framework::VisitDataTypeTiny(
           data_type,

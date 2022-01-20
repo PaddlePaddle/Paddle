@@ -222,6 +222,47 @@ class TestAmpScaler(unittest.TestCase):
                 np.allclose(outs_with_scaler[1][i][0].numpy(),
                             outs_no_scaler[1][i][0].numpy()), True)
 
+    def test_step(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+
+        def run_simple_conv(inp_np, use_scaler=True):
+            paddle.seed(10)
+            paddle.framework.random._manual_program_seed(10)
+            with fluid.dygraph.guard():
+                model = SimpleConv(
+                    num_channels=3,
+                    num_filters=64,
+                    filter_size=7,
+                    stride=2,
+                    act='relu')
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                 parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = fluid.dygraph.to_variable(inp_np)
+
+                out = model(data)
+                loss = fluid.layers.mean(out)
+                if use_scaler:
+                    print('use scaler')
+                    scaled_loss = scaler.scale(loss)
+                    scaled_loss.backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    print('use no scaler')
+                    loss.backward()
+                    optimizer.step()
+            return optimizer._parameter_list
+
+        outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
+        outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
+
+        for i in range(len(outs_with_scaler)):
+            # check each parameter
+            self.assertEqual(
+                np.allclose(outs_with_scaler[i].numpy(),
+                            outs_no_scaler[i].numpy()), True)
+
     def test_nan_inf(self):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
         inp_np[0][1][2][3] = np.nan
@@ -251,6 +292,52 @@ class TestAmpScaler(unittest.TestCase):
                 # param not update when tensor contains nan or inf
                 self.assertTrue(
                     np.array_equal(param.numpy(), params_init[param.name]))
+
+    def test_step_update_exception(self):
+        def func1():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.unscale_(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func1)
+
+        def func2():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func2)
+
+        def func3():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.step(optimizer)
+
+        self.assertRaises(RuntimeError, func3)
 
     def test_get_and_set(self):
         with fluid.dygraph.guard():
@@ -437,38 +524,37 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
-    def test_input_formate_exception(self):
-        def test_model_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                opt = paddle.optimizer.SGD(parameters=model.parameters())
-                paddle.amp.decorate(models=None, optimizers=opt, level='O2')
-
-        self.assertRaises(TypeError, test_model_error)
-
-        def test_optimizer_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                paddle.amp.decorate(models=model, optimizers=None, level='O2')
-
-        self.assertRaises(TypeError, test_optimizer_error)
-
     def test_input_type_exception(self):
-        def test_error_model_optimizer():
+        def test_error_model():
             class MyModel(object):
                 def __init__(self):
                     print("A fake Model")
 
+            model = MyModel()
+            with fluid.dygraph.guard():
+                paddle.amp.decorate(models=model, optimizers=None, level='O2')
+
+        self.assertRaises(TypeError, test_error_model)
+
+        def test_error_distributed_model():
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.DataParallel(model)
+            with fluid.dygraph.guard():
+                model = paddle.amp.decorate(models=model, level='O2')
+
+        self.assertRaises(RuntimeError, test_error_distributed_model)
+
+        def test_error_optimizer():
             class MyOptimizer(object):
                 def __init__(self):
                     print("A fake Optimizer")
 
-            model = MyModel()
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
             opt = MyOptimizer()
             with fluid.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
 
-        self.assertRaises(TypeError, test_error_model_optimizer)
+        self.assertRaises(TypeError, test_error_optimizer)
 
     def test_set_master_weight(self):
         model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
@@ -476,32 +562,75 @@ class TestAmpDecorator(unittest.TestCase):
             learning_rate=0.0001,
             parameters=model1.parameters(),
             multi_precision=True)
-        model1, opt1 = paddle.amp.decorate(
-            models=model1, optimizers=opt1, level='O2', master_weight=None)
-        self.assertEqual(opt1._multi_precision, True)
 
         model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt2 = paddle.optimizer.Adam(
             learning_rate=0.0001,
             parameters=model2.parameters(),
             multi_precision=False)
-        model2, opt2 = paddle.amp.decorate(
-            models=model2, optimizers=opt2, level='O2', master_weight=None)
+
+        model1, opt1 = paddle.amp.decorate(
+            models=model1, optimizers=opt1, level='O2', master_weight=None)
+        self.assertEqual(opt1._multi_precision, True)
+
+        models, opt2 = paddle.amp.decorate(
+            models=[model1, model2],
+            optimizers=opt2,
+            level='O2',
+            master_weight=None)
         self.assertEqual(opt2._multi_precision, True)
 
         model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt3 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model3.parameters())
-        model3, opt3 = paddle.amp.decorate(
-            models=model3, optimizers=opt3, level='O2', master_weight=True)
-        self.assertEqual(opt3._multi_precision, True)
 
         model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt4 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model4.parameters())
-        model4, opt4 = paddle.amp.decorate(
-            models=model4, optimizers=opt4, level='O2', master_weight=False)
-        self.assertEqual(opt4._multi_precision, False)
+
+        model3, opts = paddle.amp.decorate(
+            models=model3,
+            optimizers=[opt3, opt4],
+            level='O2',
+            master_weight=True)
+        self.assertEqual(opts[0]._multi_precision, True)
+        self.assertEqual(opts[1]._multi_precision, True)
+
+        models = [model3, model4]
+        optimizers = [opt3, opt4]
+        models, optimizers = paddle.amp.decorate(
+            models=models,
+            optimizers=optimizers,
+            level='O2',
+            master_weight=False)
+        self.assertEqual(optimizers[0]._multi_precision, False)
+        self.assertEqual(optimizers[1]._multi_precision, False)
+
+    def test_skip_BatchNorm_Layer_norm(self):
+        model = paddle.nn.LayerNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm1D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm2D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm3D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
@@ -806,8 +935,7 @@ class TestResnet2(unittest.TestCase):
             train_reader = train_loader
 
         if enable_amp and (level == 'O2'):
-            resnet, optimizer = paddle.amp.decorate(
-                models=resnet, optimizers=optimizer, level='O2')
+            resnet = paddle.amp.decorate(models=resnet, level='O2')
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
@@ -838,8 +966,9 @@ class TestResnet2(unittest.TestCase):
 
             scaled_loss = scaler.scale(avg_loss)
             scaled_loss.backward()
-
+            scaler.unscale_(optimizer)
             scaler.step(optimizer)
+            scaler.update()
 
             dy_grad_value = {}
             for param in resnet.parameters():

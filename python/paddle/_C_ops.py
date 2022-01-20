@@ -19,3 +19,21 @@ __all__ = []
 for name in dir(core.ops):
     globals()[name] = getattr(core.ops, name)
     __all__.append(name)
+
+
+def switch_to_core_ops():
+    for name in dir(core.eager.ops):
+        del globals()[name]
+        __all__.remove(name)
+    for name in dir(core.ops):
+        globals()[name] = getattr(core.ops, name)
+        __all__.append(name)
+
+
+def switch_to_eager_ops():
+    for name in dir(core.ops):
+        del globals()[name]
+        __all__.remove(name)
+    for name in dir(core.eager.ops):
+        globals()[name] = getattr(core.eager.ops, name)
+        __all__.append(name)

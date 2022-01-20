@@ -434,6 +434,17 @@ struct CBlas<platform::complex<float>> {
                                    a_, lda, b_, ldb, &beta, c_, ldc);
   }
 
+  static void TRSM(CBLAS_LAYOUT layout, CBLAS_SIDE side, CBLAS_UPLO uplo,
+                   CBLAS_TRANSPOSE trans_a, CBLAS_DIAG diag, int M, int N,
+                   paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, int lda,
+                   paddle::platform::complex<float> *B, int ldb) {
+    const void *a_ = (const void *)(A);
+    void *b_ = static_cast<void *>(B);
+    platform::dynload::cblas_ctrsm(layout, side, uplo, trans_a, diag, M, N,
+                                   &alpha, a_, lda, b_, ldb);
+  }
+
   template <typename... ARGS>
   static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
                          CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
@@ -562,6 +573,17 @@ struct CBlas<platform::complex<double>> {
                                    a_, lda, b_, ldb, &beta, c_, ldc);
   }
 
+  static void TRSM(CBLAS_LAYOUT layout, CBLAS_SIDE side, CBLAS_UPLO uplo,
+                   CBLAS_TRANSPOSE trans_a, CBLAS_DIAG diag, int M, int N,
+                   paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, int lda,
+                   paddle::platform::complex<double> *B, int ldb) {
+    const void *a_ = (const void *)(A);
+    void *b_ = static_cast<void *>(B);
+    platform::dynload::cblas_ztrsm(layout, side, uplo, trans_a, diag, M, N,
+                                   &alpha, a_, lda, b_, ldb);
+  }
+
   template <typename... ARGS>
   static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
                          CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
@@ -682,6 +704,15 @@ struct CBlas<platform::complex<float>> {
     cblas_cgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
                 C, ldc);
   }
+
+  static void TRSM(const CBLAS_LAYOUT layout, const CBLAS_SIDE side,
+                   const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA,
+                   const CBLAS_DIAG diag, const int M, const int N,
+                   const paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, const int lda,
+                   paddle::platform::complex<double> *B, const int ldb) {
+    cblas_ctrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
+  }
 };
 
 template <>
@@ -719,6 +750,15 @@ struct CBlas<platform::complex<double>> {
                    paddle::platform::complex<double> *C, const int ldc) {
     cblas_zgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
                 C, ldc);
+  }
+
+  static void TRSM(const CBLAS_LAYOUT layout, const CBLAS_SIDE side,
+                   const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA,
+                   const CBLAS_DIAG diag, const int M, const int N,
+                   const paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, const int lda,
+                   paddle::platform::complex<double> *B, const int ldb) {
+    cblas_ztrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
 };
 
@@ -1209,6 +1249,15 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                                  const framework::Tensor &mat_b,
                                  const MatDescriptor &dim_b, T alpha,
                                  framework::Tensor *mat_out, T beta) const {
+  MatMul(mat_a.data<T>(), dim_a, mat_b.data<T>(), dim_b, alpha,
+         mat_out->data<T>(), beta);
+}
+
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(const T *mat_a, const MatDescriptor &dim_a,
+                                 const T *mat_b, const MatDescriptor &dim_b,
+                                 T alpha, T *mat_out, T beta) const {
   PADDLE_ENFORCE_EQ(
       dim_a.width_, dim_b.height_,
       platform::errors::InvalidArgument(
@@ -1221,8 +1270,7 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
     this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                           dim_a.width_, alpha, mat_a.data<T>(),
-                           mat_b.data<T>(), beta, mat_out->data<T>());
+                           dim_a.width_, alpha, mat_a, mat_b, beta, mat_out);
   } else {
     PADDLE_ENFORCE_EQ(
         dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
@@ -1233,8 +1281,8 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
                   dim_a.batch_size_, dim_b.batch_size_));
     this->template BatchedGEMM<T>(
-        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
-        mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha, mat_a,
+        mat_b, beta, mat_out,
         dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
         dim_a.stride_, dim_b.stride_);
   }

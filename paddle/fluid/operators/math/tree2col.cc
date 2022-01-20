@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 namespace math {
-using Tensor = framework::Tensor;
 std::vector<TreeNode> Tree2ColUtil::construct_patch(
     size_t root, int max_depth, const std::vector<std::vector<int>> &tr) {
   std::stack<TreeNode, std::deque<TreeNode>> stack;
@@ -51,7 +50,7 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
   return patch;
 }
 
-void Tree2ColUtil::construct_tree(const paddle::Tensor &EdgeSet,
+void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
   auto edge_set_dims = EdgeSet.dims();
@@ -91,7 +90,7 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
                   framework::Tensor *patch, int max_depth) {
     std::vector<std::vector<int>> tr;
     auto feature_dims = node_features.dims();
-    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
+    auto cpu_place = context.GetPlace();
     math::SetConstant<platform::CPUDeviceContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
@@ -144,7 +143,7 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto output_dims = out_grad.dims();
-    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
+    auto cpu_place = context.GetPlace();
     math::SetConstant<platform::CPUDeviceContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);

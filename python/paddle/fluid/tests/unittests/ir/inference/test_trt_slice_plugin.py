@@ -86,5 +86,19 @@ class SlicePluginTRTTestFp16(SlicePluginTRTTest):
         self.enable_trt = True
 
 
+class StaticSlicePluginTRTTestFp16(SlicePluginTRTTest):
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False)
+        self.enable_trt = True
+
+
+class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+        self.enable_trt = True
+
+
 if __name__ == "__main__":
     unittest.main()

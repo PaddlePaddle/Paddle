@@ -46,8 +46,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto expand_times_t = expand_times->GetMutable<f::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
-  TensorFromVector(std::vector<int>({1, 10, 1}), ctx, expand_times_t);
+  paddle::framework::TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
+  paddle::framework::TensorFromVector(std::vector<int>({1, 10, 1}), ctx,
+                                      expand_times_t);
 
   in_t->Resize(f::make_ddim({3, 1, 7}));
   expand_times_t->Resize(f::make_ddim({3}));

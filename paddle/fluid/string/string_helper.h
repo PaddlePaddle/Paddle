@@ -26,9 +26,25 @@
 namespace paddle {
 namespace string {
 
-inline size_t count_spaces(const char* s);
+inline size_t count_spaces(const char* s) {
+  size_t count = 0;
 
-inline size_t count_nonspaces(const char* s);
+  while (*s != 0 && isspace(*s++)) {
+    count++;
+  }
+
+  return count;
+}
+
+inline size_t count_nonspaces(const char* s) {
+  size_t count = 0;
+
+  while (*s != 0 && !isspace(*s++)) {
+    count++;
+  }
+
+  return count;
+}
 
 template <class... ARGS>
 void format_string_append(std::string& str, const char* fmt,  // NOLINT
@@ -53,7 +69,7 @@ template <class... ARGS>
 std::string format_string(const char* fmt, ARGS&&... args) {
   std::string str;
   format_string_append(str, fmt, args...);
-  return std::move(str);
+  return str;
 }
 
 template <class... ARGS>
@@ -67,7 +83,19 @@ std::string trim_spaces(const std::string& str);
 // erase all spaces in str
 std::string erase_spaces(const std::string& str);
 
-int str_to_float(const char* str, float* v);
+inline int str_to_float(const char* str, float* v) {
+  const char* head = str;
+  char* cursor = NULL;
+  int index = 0;
+  while (*(head += count_spaces(head)) != 0) {
+    v[index++] = std::strtof(head, &cursor);
+    if (head == cursor) {
+      break;
+    }
+    head = cursor;
+  }
+  return index;
+}
 
 // checks whether the test string is a suffix of the input string.
 bool ends_with(std::string const& input, std::string const& test);
@@ -163,6 +191,22 @@ std::string join_strings(const Container& strs, const std::string& delim) {
   }
 
   return str;
+}
+
+template <class Container, class DelimT, class ConvertFunc>
+std::string join_strings(const Container& strs, DelimT&& delim,
+                         ConvertFunc&& func) {
+  std::stringstream ss;
+  size_t i = 0;
+  for (const auto& elem : strs) {
+    if (i > 0) {
+      ss << delim;
+    }
+    ss << func(elem);
+    ++i;
+  }
+
+  return ss.str();
 }
 
 // A helper class for reading lines from file. A line buffer is maintained. It

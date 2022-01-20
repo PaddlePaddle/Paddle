@@ -23,7 +23,8 @@ import functools
 import paddle
 import operator
 import types
-import paddle.fluid as fluid
+
+AMP_LEVEL = core.AmpLevel
 
 __all__ = ['amp_guard', 'amp_decorate']
 
@@ -69,8 +70,10 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_BLACK_LIST = {' '}
-PURE_FP16_WHITE_LIST = {'lookup_table', 'lookup_table_v2'}
+PURE_FP16_WHITE_LIST = {' '}
+PURE_FP16_BLACK_LIST = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -109,7 +112,7 @@ def _in_amp_guard():
     """
     tracer = _dygraph_tracer()
     if tracer:
-        if tracer._amp_level == 1:
+        if tracer._amp_level == core.AmpLevel.O1:
             return True
         else:
             return False
@@ -117,57 +120,23 @@ def _in_amp_guard():
         return False
 
 
-@dygraph_only
-def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
-    if not enable_pure_fp16:
-        return models, optimizers
+def _in_pure_fp16_guard():
+    tracer = _dygraph_tracer()
+    return tracer and tracer._amp_level == core.AmpLevel.O2
 
+
+@dygraph_only
+def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
-            if len(layer._sub_layers) is 0:
-
-                if (layer._dtype is 'float16') or isinstance(layer, (
-                        paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
-                    continue
-                layer.to(dtype='float16')
-
-    for idx_opt in range(len(optimizers)):
-        # update _param_groups
-        if getattr(optimizers[idx_opt], '_param_groups', None) and isinstance(
-                optimizers[idx_opt]._param_groups[0], dict):
-            for param_group in optimizers[idx_opt]._param_groups:
-                for i, param in enumerate(param_group['params']):
-                    for idx_model in range(len(models)):
-                        for layer in models[idx_model].sublayers(
-                                include_self=True):
-                            if id(param) in layer._parameters_transform_map:
-                                param_group['params'][
-                                    i] = layer._parameters_transform_map[id(
-                                        param)][0]
-            for param_group in optimizers[idx_opt]._parameter_list:
-                params = param_group['params']
-                for i, param in enumerate(params):
-                    for idx_model in range(len(models)):
-                        for layer in models[idx_model].sublayers(
-                                include_self=True):
-                            if id(param) in layer._parameters_transform_map:
-                                params[i] = layer._parameters_transform_map[id(
-                                    param)][0]
-        # update _parameter_list
-        else:
-            for i, param in enumerate(optimizers[idx_opt]._parameter_list):
-                for idx_model in range(len(models)):
-                    for layer in models[idx_model].sublayers(include_self=True):
-                        if id(param) in layer._parameters_transform_map:
-                            optimizers[idx_opt]._parameter_list[
-                                i] = layer._parameters_transform_map[id(param)][
-                                    0]
-                            if hasattr(optimizers[idx_opt], '_param_groups'):
-                                optimizers[idx_opt]._param_groups[
-                                    i] = layer._parameters_transform_map[id(
-                                        param)][0]
-    return models, optimizers
+            if (layer._dtype is 'float16') or isinstance(
+                    layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
+                            paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
+                            paddle.nn.LayerNorm)):
+                continue
+            layer._to_impl(dtype='float16', include_sublayers=False)
+    return models
 
 
 def check_models(models):
@@ -176,6 +145,10 @@ def check_models(models):
             raise RuntimeError(
                 "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".
                 format(type(model)))
+        if isinstance(model, paddle.DataParallel):
+            raise RuntimeError(
+                "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
+            )
 
 
 def check_optimizers(optimizers):
@@ -220,23 +193,23 @@ def amp_guard(enable=True,
      .. code-block:: python
 
         import numpy as np
-        import paddle.fluid as fluid
+        import paddle
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with fluid.dygraph.guard():
-            conv2d = fluid.dygraph.Conv2D(3, 2, 3)
-            data = fluid.dygraph.to_variable(data)
-            with fluid.dygraph.amp_guard():
+        with paddle.fluid.dygraph.guard():
+            conv2d = paddle.fluid.dygraph.Conv2D(3, 2, 3)
+            data = paddle.fluid.dygraph.to_variable(data)
+            with paddle.fluid.dygraph.amp_guard():
                 conv = conv2d(data)
                 print(conv.dtype) # FP16
-            with fluid.dygraph.amp_guard(enable=False):
+            with paddle.fluid.dygraph.amp_guard(enable=False):
                 conv = conv2d(data)
                 print(conv.dtype) # FP32
 
     """
-    if not (level in ['O1', 'O2']):
+    if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
-            "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
         )
 
     tracer = _dygraph_tracer()
@@ -251,21 +224,32 @@ def amp_guard(enable=True,
             % tracer._expected_place)
         enable = False
 
+    if tracer._expected_place.is_gpu_place():
+        prop = paddle.device.cuda.get_device_capability()
+        if prop[0] < 7:
+            warnings.warn(
+                "AMP only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
+                % (paddle.device.cuda.get_device_name(), prop[0], prop[1]))
+
     if level == 'O1':
-        amp_level = 1
+        amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
-    else:
-        amp_level = 2
+    elif level == 'O2':
+        amp_level = AMP_LEVEL.O2
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
+    elif level == 'O0':
+        amp_level = AMP_LEVEL.O0
+        _white_list = WHITE_LIST
+        _black_list = BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
                                                 custom_black_list, level)
 
     if not enable:
-        amp_level = 0
+        amp_level = AMP_LEVEL.O0
 
     if tracer:
         # enable auto_cast
@@ -301,7 +285,7 @@ class StateDictHook(object):
     def __call__(self, state_dict):
         for key in state_dict:
             param = state_dict[key]
-            with fluid.dygraph.guard():
+            with paddle.fluid.dygraph.guard():
                 param_applied = paddle.cast(param, self._save_dtype)
                 param_applied.name = param.name
                 state_dict[key] = param_applied
@@ -335,16 +319,15 @@ def amp_decorate(models,
         # required: gpu
         # Demo1: single model and optimizer:
         import paddle
-        import paddle.fluid as fluid
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimzier = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+        with paddle.fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = model(data)
             print(output.dtype) # FP16
 
@@ -353,15 +336,28 @@ def amp_decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+        with paddle.fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = models[0](data)
             output2 = models[1](data)
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
+        
+        # required: gpu
+        # Demo3: optimizers is None:
+        model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimizer3 = paddle.optimizer.Adam(parameters=model2.parameters())
+
+        model = paddle.fluid.dygraph.amp_decorate(models=model3, level='O2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with paddle.fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            output = model(data)
+            print(output.dtype) # FP16
     """
     if not (level in ['O1', 'O2']):
         raise ValueError(
@@ -369,7 +365,10 @@ def amp_decorate(models,
         )
 
     if level == 'O1':
-        return models, optimizers
+        if optimizers is None:
+            return models
+        else:
+            return models, optimizers
 
     models_is_list = False
     if isinstance(models, paddle.nn.Layer):
@@ -383,30 +382,30 @@ def amp_decorate(models,
         raise TypeError(
             "models must be either a single model or a list of models.")
 
-    optimizers_is_list = False
-    if isinstance(optimizers, (paddle.optimizer.Optimizer,
-                               paddle.fluid.optimizer.Optimizer)):
+    models = pure_fp16_initialize(models=models)
+
+    if optimizers is not None:
+        # check optimizers
         optimizers_is_list = False
-        optimizers = [optimizers]
-        check_optimizers(optimizers)
-    elif isinstance(optimizers, list):
-        check_optimizers(optimizers)
-        optimizers_is_list = True
-    else:
-        raise TypeError(
-            "optimizers must be either a single optimizer or a list of optimizers."
-        )
-
-    models, optimizers = pure_fp16_initialize(
-        enable_pure_fp16=True, models=models, optimizers=optimizers)
-
-    # supprot master_weight    
-    for idx_opt in range(len(optimizers)):
-        if hasattr(optimizers[idx_opt], '_multi_precision'):
-            if master_weight is False:
-                optimizers[idx_opt]._multi_precision = False
-            else:
-                optimizers[idx_opt]._multi_precision = True
+        if isinstance(optimizers, (paddle.optimizer.Optimizer,
+                                   paddle.fluid.optimizer.Optimizer)):
+            optimizers_is_list = False
+            optimizers = [optimizers]
+            check_optimizers(optimizers)
+        elif isinstance(optimizers, list):
+            check_optimizers(optimizers)
+            optimizers_is_list = True
+        else:
+            raise TypeError(
+                "optimizers must be either a single optimizer or a list of optimizers."
+            )
+        # supprot master_weight    
+        for idx_opt in range(len(optimizers)):
+            if hasattr(optimizers[idx_opt], '_multi_precision'):
+                if master_weight is False:
+                    optimizers[idx_opt]._multi_precision = False
+                else:
+                    optimizers[idx_opt]._multi_precision = True
 
     if save_dtype is not None:
         if not (save_dtype in ['float16', 'float32', 'float64']):
@@ -418,12 +417,18 @@ def amp_decorate(models,
                 layer.register_state_dict_hook(StateDictHook(save_dtype))
 
     if models_is_list:
-        if optimizers_is_list:
-            return models, optimizers
+        if optimizers is not None:
+            if optimizers_is_list:
+                return models, optimizers
+            else:
+                return models, optimizers[0]
         else:
-            return models, optimizers[0]
+            return models
     else:
-        if optimizers_is_list:
-            return models[0], optimizers
+        if optimizers is not None:
+            if optimizers_is_list:
+                return models[0], optimizers
+            else:
+                return models[0], optimizers[0]
         else:
-            return models[0], optimizers[0]
+            return models[0]

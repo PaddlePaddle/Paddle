@@ -57,20 +57,19 @@ class BernoulliOpKernel<platform::CUDADeviceContext, T>
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
     int64_t size = x->numel();
 
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int device_id = ctx.GetPlace().GetDeviceId();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     auto seed_offset = gen_cuda->IncrementOffset(1);
-    int gen_offset = size * seed_offset.second;
+    int64_t gen_offset = size * seed_offset.second;
     platform::Transform<platform::CUDADeviceContext> trans;
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
     auto* context =
         static_cast<const platform::CUDADeviceContext*>(&ctx.device_context());
 
     trans(*context, index_sequence_begin, index_sequence_begin + size, in_data,
           out_data,
-          BernoulliCudaFunctor<T>(static_cast<unsigned int>(seed_offset.first),
-                                  static_cast<unsigned int>(gen_offset)));
+          BernoulliCudaFunctor<T>(static_cast<int64_t>(seed_offset.first),
+                                  static_cast<int64_t>(gen_offset)));
   }
 };
 

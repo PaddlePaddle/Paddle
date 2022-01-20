@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/string_array.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -75,38 +77,57 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           out_vars[i], platform::errors::InvalidArgument(
                            "The variable %s to be loaded cannot be found.",
                            out_var_names[i]));
-
-      auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
-
       // Error checking
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(*buffer), true,
           platform::errors::Unavailable(
               "An error occurred while loading model parameters. "
               "Please check whether the model file is complete or damaged."));
+      if (out_vars[i]->IsType<framework::Vocab>()) {
+        auto *tensor = out_vars[i]->GetMutable<framework::Vocab>();
+        tensor->clear();
+        std::unordered_map<std::string, std::int32_t> data;
+        framework::StringMapFromStream(*buffer, &data);
+        for (auto it = data.begin(); it != data.end(); ++it) {
+          std::string tmp;
+          framework::NFD(it->first, &tmp);
+          if (tmp.empty()) {
+            VLOG(0) << "The string " << it->first
+                    << " was converted to unicode failedly! "
+                    << "Then dropped to load it.";
+            continue;
+          }
+          std::wstring token;
+          bool status = framework::ConvertStrToWstr(tmp, &token);
+          if (!status) continue;
+          tensor->emplace(token, it->second);
+        }
+      } else {
+        auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 
-      // Get data from fin to tensor
-      DeserializeFromStream(*buffer, tensor, dev_ctx);
+        // Get data from fin to tensor
+        paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
-      auto in_dtype = tensor->type();
-      auto out_dtype =
-          load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+        auto in_dtype = tensor->type();
+        auto out_dtype =
+            load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
-      if (in_dtype != out_dtype) {
-        // convert to float16 tensor
-        auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-        auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-        framework::LoDTensor fp16_tensor;
-        // copy LoD info to the new tensor
-        fp16_tensor.set_lod(tensor->lod());
-        framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
-                                 &fp16_tensor);
+        if (in_dtype != out_dtype) {
+          // convert to float16 tensor
+          auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+          auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+          framework::LoDTensor fp16_tensor;
+          // copy LoD info to the new tensor
+          fp16_tensor.set_lod(tensor->lod());
+          framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
+                                   &fp16_tensor);
 
-        // reset output tensor
-        out_vars[i]->Clear();
-        tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
-        tensor->set_lod(fp16_tensor.lod());
-        tensor->ShareDataWith(fp16_tensor);
+          // reset output tensor
+          out_vars[i]->Clear();
+          tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
+          tensor->set_lod(fp16_tensor.lod());
+          tensor->ShareDataWith(fp16_tensor);
+        }
       }
     }
     buffer->peek();

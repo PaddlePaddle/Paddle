@@ -18,15 +18,14 @@ limitations under the License. */
 #include <vector>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
-#include "paddle/fluid/platform/miopen_helper.h"
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -69,7 +68,7 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
       nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num, 0,
       sizeof(T) * 8, ctx.stream());
   // Allocate temporary storage
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  auto place = ctx.GetPlace();
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
@@ -275,7 +274,7 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  auto place = ctx.GetPlace();
   auto mask_ptr = memory::Alloc(ctx, boxes_num * col_blocks * sizeof(uint64_t));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 

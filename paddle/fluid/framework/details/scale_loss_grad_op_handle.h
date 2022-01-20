@@ -46,6 +46,12 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  platform::Place GetPlace() const { return place_; }
+
+  void RunOnVar(Variable *var, bool record_event = false);
+
+  std::string LossGradName() const;
+
  protected:
   void RunImpl() override;
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
@@ -130,7 +133,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("affine_channel"))
@@ -148,7 +151,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -197,19 +200,30 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     GET_CONV_BN_NODES(conv_ac_pattern);
 
-    // Create eltwise_y (conv bias) variable
-    VarDesc eltwise_y_in_desc(
-        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
-    eltwise_y_in_desc.SetPersistable(true);
-    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
-    auto* eltwise_y_in_tensor =
-        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_affine_channel_fuse_pass is enabled, "
+                                 "it's wrong if data_format of conv is not "
+                                 "NCHW.";
+    }
 
-    // Get affine_channel bias
+    // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
         scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
 
+    // Create eltwise_y (conv bias) variable
+    VarDesc eltwise_y_in_desc(
+        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+    // Set shape && datatype manually
+    eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetDataType(ac_bias_tensor->type());
+    eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());
+    eltwise_y_in_desc.SetPersistable(true);
+
     // Initialize eltwise_y
+    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
+    auto* eltwise_y_in_tensor =
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
     std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
                 eltwise_y_in_tensor->numel(), 0.0f);
@@ -278,7 +292,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("affine_channel"))
       .AddInput("X")
@@ -295,7 +309,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
@@ -343,6 +357,12 @@ void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle ConvBN fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_eltwiseadd_affine_channel_fuse_pass is "
+                                 "enabled, it's wrong if data_format of conv "
+                                 "is not NCHW.";
+    }
     // OPERATORS
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_ac_pattern);
     // BIAS inputs

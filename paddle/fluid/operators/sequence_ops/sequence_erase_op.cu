@@ -15,7 +15,7 @@ limitations under the License. */
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include "paddle/fluid/operators/sequence_ops/sequence_erase_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

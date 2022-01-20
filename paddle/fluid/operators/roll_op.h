@@ -16,6 +16,8 @@
 #include <memory>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -85,10 +87,21 @@ class RollKernel : public framework::OpKernel<T> {
     auto& input = input_var->Get<LoDTensor>();
     auto* output = output_var->GetMutable<LoDTensor>();
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
+    if (context.HasInput("ShiftsTensor")) {
+      const auto* shifts_tensor =
+          context.Input<framework::Tensor>("ShiftsTensor");
+      PADDLE_ENFORCE_EQ(
+          shifts_tensor->dims().size(), 1,
+          platform::errors::InvalidArgument(
+              "The rank of ShiftsTensor is expected to be 1, got %s",
+              shifts_tensor->dims().size()));
+      shifts = GetDataFromTensor<int64_t>(shifts_tensor);
+    }
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     std::vector<T> out_vec;
-    TensorToVector(input, context.device_context(), &out_vec);
+    paddle::framework::TensorToVector(input, context.device_context(),
+                                      &out_vec);
 
     size_t nums = shifts.size();
     DDim input_dim = input.dims();
@@ -123,10 +136,16 @@ class RollGradKernel : public framework::OpKernel<T> {
     auto& input = input_var->Get<LoDTensor>();
     auto* output = output_var->GetMutable<LoDTensor>();
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
+    if (context.HasInput("ShiftsTensor")) {
+      const auto* shifts_tensor =
+          context.Input<framework::Tensor>("ShiftsTensor");
+      shifts = GetDataFromTensor<int64_t>(shifts_tensor);
+    }
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     std::vector<T> out_vec;
-    TensorToVector(input, context.device_context(), &out_vec);
+    paddle::framework::TensorToVector(input, context.device_context(),
+                                      &out_vec);
 
     size_t nums = shifts.size();
     DDim input_dim = input.dims();

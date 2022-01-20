@@ -17,11 +17,13 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace framework {
@@ -33,8 +35,8 @@ class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
-using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
+using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
