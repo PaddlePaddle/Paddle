@@ -622,7 +622,9 @@ class Executor(object):
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
             If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
-            is the index of the GPUs.
+            is the index of the GPUs. Note: users only pass one Place or None to initialize
+            Executor when using multiple-cards. Other APIs will override the cards. See
+            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/01_paddle2.0_introduction/update_cn.html#danjiduokaqidong>`_ 
 
     Returns:
         Executor
