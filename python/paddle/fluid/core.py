@@ -372,6 +372,8 @@ if load_noavx:
 
 
 def set_paddle_custom_runtime_lib_path(lib_path):
+    if os.environ.get('CUSTOM_DEVICE_ROOT'):
+        return
     if os.path.exists(lib_path):
         # set CUSTOM_DEVICE_ROOT default path
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.normpath(

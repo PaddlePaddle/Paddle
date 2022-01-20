@@ -320,8 +320,9 @@ void LoadCustomKernelLib(const std::string& dso_lib_path) {
 
   // MUST valid dso_lib_path
   PADDLE_ENFORCE_NOT_NULL(
-      dso_handle, platform::errors::InvalidArgument("Fail to open library: %s",
-                                                    dso_lib_path));
+      dso_handle,
+      platform::errors::InvalidArgument(
+          "Fail to open library: %s with error: %s", dso_lib_path, dlerror));
 
   typedef OpKernelInfoMap& get_op_kernel_info_map_t();
   auto* func = reinterpret_cast<get_op_kernel_info_map_t*>(
