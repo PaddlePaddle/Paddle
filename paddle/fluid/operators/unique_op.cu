@@ -119,8 +119,10 @@ void IndexSelect(const framework::ExecutionContext& context,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  TensorToVector(input, context.device_context(), &input_vec);
-  TensorToVector(index, context.device_context(), &index_vec);
+  paddle::framework::TensorToVector(input, context.device_context(),
+                                    &input_vec);
+  paddle::framework::TensorToVector(index, context.device_context(),
+                                    &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
