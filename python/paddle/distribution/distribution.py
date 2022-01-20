@@ -103,7 +103,13 @@ class Distribution(object):
         raise NotImplementedError
 
     def probs(self, value):
-        """Probability density/mass function."""
+        """Probability density/mass function.
+        
+        .. note:: 
+        
+            This method will be deprecated in the future, please use `prob` 
+            instead.
+        """
         raise NotImplementedError
 
     def _extend_shape(self, sample_shape):

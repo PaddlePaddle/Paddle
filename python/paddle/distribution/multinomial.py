@@ -32,27 +32,39 @@ class Multinomial(distribution.Distribution):
 
     The probability mass function (PMF) for multinomial is
 
-    .. :math:
+    .. math::
 
         f(x_1, ..., x_k; n, p_1,...,p_k) = \frac{n!}{x_1!...x_k!}p_1^{x_1}...p_k^{x_k}
 
-    where, :math:`n` is number of trails, k is the number of categories, 
-    :math:`p_i` denote probability of a trail falling into each category, 
+    where, :math:`n` is number of trials, k is the number of categories, 
+    :math:`p_i` denote probability of a trial falling into each category, 
     :math:`{\textstyle \sum_{i=1}^{k}p_i=1}, p_i \ge 0`, and :math:`x_i` denote 
     count of each category. 
 
     Args:
         total_count (int): Number of trials.
-        probs (Tensor): Probability of a trail falling into each category. Last 
+        probs (Tensor): Probability of a trial falling into each category. Last 
             axis of probs indexes over categories, other axes index over batches.
-            Probs value should between [0, 1], and sum to 1. If the value over 
-            1, it will be normalized to sum to 1 along the last axis. 
+            Probs value should between [0, 1], and sum to 1 along last axis. If 
+            the value over 1, it will be normalized to sum to 1 along the last 
+            axis. 
 
     Examples:
 
     .. code-block:: python
 
+        import paddle
 
+        multinomial = paddle.distribution.Multinomial(10, paddle.to_tensor([0.2, 0.3, 0.5]))
+        print(multinomial.sample((2, 3)))
+        # Tensor(shape=[2, 3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+        #        [[[1., 4., 5.],
+        #          [0., 2., 8.],
+        #          [2., 4., 4.]],
+
+        #         [[1., 6., 3.],
+        #          [3., 3., 4.],
+        #          [3., 4., 3.]]])
     """
 
     def __init__(self, total_count, probs):
@@ -128,10 +140,10 @@ class Multinomial(distribution.Distribution):
         """
         if not isinstance(shape, collections.Iterable):
             raise TypeError('sample shape must be Iterable object.')
-        shape = shape if isinstance(shape, tuple) else tuple(shape)
-        samples = self._categorical.sample((self.total_count, ) + shape)
-        return paddle.nn.functional.one_hot(samples,
-                                            self.probs.shape[-1]).sum(0)
+
+        samples = self._categorical.sample([self.total_count, ] + list(shape))
+        return paddle.nn.functional.one_hot(
+            samples, self.probs.shape[-1]).cast(self.probs.dtype).sum(0)
 
     def entropy(self):
         """entropy of multinomial distribution
@@ -139,28 +151,28 @@ class Multinomial(distribution.Distribution):
         Returns:
             Tensor: entropy value
         """
-        n = paddle.full(shape=[1], fill_value=self.total_count)
+        n = paddle.full(
+            shape=[1], fill_value=self.total_count, dtype=self.probs.dtype)
         support = paddle.arange(
             self.total_count + 1, dtype=self.probs.dtype).reshape((-1, ) + (
                 1, ) * len(self.probs.shape))[1:]
 
-        binomial_pmf = paddle.exp(_binomial_logpmf(n, self.probs, support))
+        binomial_pmf = paddle.exp(self._binomial_logpmf(n, support))
 
         return ((n * self._categorical.entropy() - paddle.lgamma(n + 1)) + (
             (binomial_pmf * paddle.lgamma(support + 1)).sum([0, -1])))
 
+    def _binomial_logpmf(self, count, value):
+        logits = self._probs_to_logits(self.probs, is_binary=True)
 
-def _binomial_logpmf(count, probs, value):
-    logits = self._probs_to_logits(probs, is_binary=True)
+        factor_n = paddle.lgamma(count + 1)
+        factor_k = paddle.lgamma(value + 1)
+        factor_nmk = paddle.lgamma(count - value + 1)
 
-    factor_n = paddle.lgamma(count + 1)
-    factor_k = paddle.lgamma(value + 1)
-    factor_nmk = paddle.lgamma(count - value + 1)
+        norm = (count * _clip_by_zero(logits) + count *
+                paddle.log1p(paddle.exp(-paddle.abs(logits))) - factor_n)
 
-    norm = (count * _clip_by_zero(logits) + count *
-            paddle.log1p(paddle.exp(-paddle.abs(logits))) - factor_n)
-
-    return value * logits - factor_k - factor_nmk - norm
+        return value * logits - factor_k - factor_nmk - norm
 
 
 def _binomial_support(count, dtype):

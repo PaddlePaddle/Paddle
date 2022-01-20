@@ -44,8 +44,14 @@ class Beta(ExponentialFamily):
 
 
     Args:
-        alpha (float|Tensor): alpha parameter of beta distribution, positive(>0), support broadcast semantic. when the parameter is tensor type, represent multiple independent distribution with batch_shape(refer to `Distribution`) equals to shape of alpha after broadcast.
-        beta (float|Tensor): beta parameter of beta distribution, positive(>0).when the parameter is tensor type, represent multiple independent distribution with batch_shape(refer to `Distribution`) equals to shape of beta after broadcast.
+        alpha (float|Tensor): Alpha parameter. It supports broadcast semantics. 
+            The value of alpha must be positive. When the parameter is a tensor, 
+            it represents multiple independent distribution with 
+            a batch_shape(refer to ``Distribution`` ).
+        beta (float|Tensor): Beta parameter. It supports broadcast semantics. 
+            The value of beta must be positive(>0). When the parameter is tensor, 
+            it represent multiple independent distribution with 
+            a batch_shape(refer to ``Distribution`` ). 
 
     Examples:
 
@@ -93,56 +99,56 @@ class Beta(ExponentialFamily):
 
     @property
     def mean(self):
-        """mean of beta distribution.
+        """Mean of beta distribution.
         """
         return self.alpha / (self.alpha + self.beta)
 
     @property
     def variance(self):
-        """variance of beat distribution
+        """Variance of beat distribution
         """
         sum = self.alpha + self.beta
         return self.alpha * self.beta / (sum.pow(2) * (sum + 1))
 
     def prob(self, value):
-        """probability density funciotn evaluated at value
+        """Probability density funciotn evaluated at value
 
         Args:
-            value (Tensor): value to be evaluated.
+            value (Tensor): Value to be evaluated.
         
         Returns:
-            Tensor: probability.
+            Tensor: Probability.
         """
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """log probability density funciton evaluated at value
+        """Log probability density funciton evaluated at value
 
         Args:
-            value (Tensor): value to be evaluated
+            value (Tensor): Value to be evaluated
         
         Returns:
-            Tensor: log probability.
+            Tensor: Log probability.
         """
         return self._dirichlet.log_prob(paddle.stack([value, 1.0 - value], -1))
 
     def sample(self, shape=()):
-        """sample from beta distribution with sample shape.
+        """Sample from beta distribution with sample shape.
 
         Args:
-            shape (Sequence[int], optional): sample shape.
+            shape (Sequence[int], optional): Sample shape.
 
         Returns:
-            sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
+            Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         return paddle.squeeze(self._dirichlet.sample(shape)[..., 0], axis=-1)
 
     def entropy(self):
-        """entropy of dirichlet distribution
+        """Entropy of dirichlet distribution
 
         Returns:
-            Tensor: entropy.
+            Tensor: Entropy.
         """
         return self._dirichlet.entropy()
 
