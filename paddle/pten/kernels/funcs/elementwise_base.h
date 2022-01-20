@@ -462,7 +462,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+      pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -485,7 +485,7 @@ struct ElementwiseWriteDataCaller {
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, 1> outs,
+      pten::framework::Array<_ptr_ OutT *, 1> outs,
       OutT src[VecSize],
       int block_offset,
       int num) {
@@ -502,8 +502,8 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
@@ -537,8 +537,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -578,8 +578,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = ins[0]->numel();
-  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
     ins_data[i] = ins[i]->data<InT>();
