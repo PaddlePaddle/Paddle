@@ -22,6 +22,7 @@ from ..fluid.dygraph.jit import set_code_level  # noqa: F401
 from ..fluid.dygraph.jit import set_verbosity  # noqa: F401
 from ..fluid.dygraph.jit import declarative as to_static  # noqa: F401
 from ..fluid.dygraph.jit import not_to_static  # noqa: F401
+from ..fluid.dygraph.jit import clear_function_cache  # noqa: F401
 from ..fluid.dygraph import ProgramTranslator  # noqa: F401
 from ..fluid.dygraph.io import TranslatedLayer  # noqa: F401
 
@@ -36,5 +37,6 @@ __all__ = [  # noqa
     'TranslatedLayer',
     'set_code_level',
     'set_verbosity',
-    'not_to_static'
+    'not_to_static',
+    'clear_function_cache'
 ]
