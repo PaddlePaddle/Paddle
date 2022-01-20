@@ -175,7 +175,7 @@ function run_op_benchmark_test {
     echo "$api_info" >> $api_info_file
   done
   # install tensorflow for testing accuary
-  pip install tensorflow==2.3.0 tensorflow-probability
+  # pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "dev_whl" "pr_whl"
   do
     LOG "[INFO] Uninstall Paddle ..."
@@ -190,7 +190,7 @@ function run_op_benchmark_test {
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
                                 "gpu" \
-                                "both" \
+                                "speed" \
                                 $api_info_file \
                                 "paddle"
     popd > /dev/null
