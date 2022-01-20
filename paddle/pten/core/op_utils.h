@@ -16,70 +16,88 @@ limitations under the License. */
 
 #include <mutex>
 
-#include "paddle/pten/core/arg_map_utils.h"
+#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace pten {
 
-// TODO(chenweihang): Add function to remove suffix
-
-class KernelSignatureMap {
+class DefaultKernelSignatureMap {
  public:
-  static KernelSignatureMap& Instance();
+  static DefaultKernelSignatureMap& Instance();
 
   bool Has(const std::string& op_type) const;
 
   const KernelSignature& Get(const std::string& op_type) const;
 
- private:
-  KernelSignatureMap() = default;
-  DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
+  void Insert(std::string op_type, KernelSignature signature);
 
  private:
-  static KernelSignatureMap* kernel_signature_map_;
-  static std::once_flag init_flag_;
+  DefaultKernelSignatureMap() = default;
 
   paddle::flat_hash_map<std::string, KernelSignature> map_;
+
+  DISABLE_COPY_AND_ASSIGN(DefaultKernelSignatureMap);
 };
 
-// A set of components for compatibility with the original fluid op
-class OpUtils {
+struct OpUtils {
+  std::string api_name;
+  ArgumentMappingFn arg_mapping_fn;
+
+  OpUtils() {
+    arg_mapping_fn = [&](const ArgumentMappingContext& ctx) -> KernelSignature {
+      return DefaultKernelSignatureMap::Instance().Get(this->api_name);
+    };
+  }
+};
+class OpUtilsMap {
  public:
-  static OpUtils& Instance();
+  static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const;
 
-  void InsertArgumentMappingFn(const std::string& op_type,
-                               ArgumentMappingFn fn);
-  void InsertInferMetaFn(const std::string& kernel_name_prefix, InferMetaFn fn);
+  const OpUtils& Get(const std::string& op_type) const;
 
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const;
-  InferMetaFn GetInferMetaFn(const std::string& kernel_name_prefix) const;
+  OpUtils* GetMutable(const std::string& op_type);
+
+  void Insert(std::string op_type, OpUtils utils);
 
  private:
-  OpUtils() = default;
+  OpUtilsMap() = default;
 
-  /**
-   * [ Why kernel name prefix? ]
-   *
-   * one op -> a matrix of kernels
-   *
-   * such as, scale op, it may correspond to the following kernels:
-   *
-   * - scale, scale_sr, scale_dnnl
-   * - scale_raw, scale_raw_sr, scale_raw_dnnl
-   *
-   * All the kernels in each row correspond to the same infershape function,
-   * the number of kernel arguments in the same row is the same, and only
-   * the tensor types in the arguments are different.
-   */
+  paddle::flat_hash_map<std::string, OpUtils> op_utils_map_;
 
-  paddle::flat_hash_map<std::string, ArgumentMappingFn> args_fn_map_;
-  paddle::flat_hash_map<std::string, InferMetaFn> infer_meta_fn_map_;
-
-  DISABLE_COPY_AND_ASSIGN(OpUtils);
+  DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
+
+struct ArgumentMappingFnRegistrar {
+  ArgumentMappingFnRegistrar(const char* op_type,
+                             const char* api_name,
+                             ArgumentMappingFn arg_mapping_fn) {
+    OpUtils op_utils;
+    op_utils.api_name = api_name;
+    op_utils.arg_mapping_fn = std::move(arg_mapping_fn);
+    OpUtilsMap::Instance().Insert(op_type, std::move(op_utils));
+  }
+};
+
+#define PT_REGISTER_ARG_MAPPING_FN(op_type, api_name, arg_mapping_fn)    \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
+      pt_register_arg_map_fn_ns_check_##op_type##_##api_name,            \
+      "PT_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
+  static const ::pten::ArgumentMappingFnRegistrar                        \
+      __registrar_arg_map_fn_for_##op_type##_##api_name(                 \
+          #op_type, #api_name, arg_mapping_fn);                          \
+  int TouchArgumentMappingFnSymbol_##op_type##_##api_name() { return 0; }
+
+#define PT_DECLARE_ARG_MAPPING_FN(op_type, api_name)                         \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      pt_declare_arg_map_fn_ns_check_##op_type##_##api_name,                 \
+      "PT_DECLARE_ARG_MAPPING_FN must be called in global namespace.");      \
+  extern int TouchArgumentMappingFnSymbol_##op_type##_##api_name();          \
+  UNUSED static int __declare_arg_map_fn_symbol_for_##op_type##_##api_name = \
+      TouchArgumentMappingFnSymbol_##op_type##_##api_name()
 
 }  // namespace pten

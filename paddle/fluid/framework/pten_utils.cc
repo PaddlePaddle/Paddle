@@ -155,51 +155,23 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
                          GetOutputArgsNames());
 }
 
-}  // namespace framework
-}  // namespace paddle
+std::once_flag kernel_sig_map_init_flag;
 
-// NOTE: [Why the definition of KernelSignatureMap method isn't in op_utils.cc]
-// - In order to avoid introducing fluid proto and op-related dependencies
-// into pten
-namespace pten {
-
-KernelSignatureMap& KernelSignatureMap::Instance() {
-  std::call_once(init_flag_, [] {
-    kernel_signature_map_ = new KernelSignatureMap();
+void IntiDefaultKernelSignatureMap() {
+  std::call_once(kernel_sig_map_init_flag, [] {
     for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
       const auto* op_proto = pair.second.proto_;
-      if (KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
-        auto success = kernel_signature_map_->map_
-                           .emplace(TransToPtenKernelName(op_type),
-                                    std::move(maker.GetKernelSignature()))
-                           .second;
-        PADDLE_ENFORCE_EQ(
-            success, true,
-            paddle::platform::errors::PermissionDenied(
-                "Kernel signature of the operator %s has been registered.",
-                op_type));
+        pten::DefaultKernelSignatureMap::Instance().Insert(op_type,
+            std::move(maker.GetKernelSignature());
       }
     }
   });
-  return *kernel_signature_map_;
 }
 
-bool KernelSignatureMap::Has(const std::string& op_type) const {
-  return map_.find(op_type) != map_.end();
-}
-
-const KernelSignature& KernelSignatureMap::Get(
-    const std::string& op_type) const {
-  auto it = map_.find(op_type);
-  PADDLE_ENFORCE_NE(
-      it, map_.end(),
-      paddle::platform::errors::NotFound(
-          "Operator `%s`'s kernel signature is not registered.", op_type));
-  return it->second;
-}
-
-}  // namespace pten
+}  // namespace framework
+}  // namespace paddle

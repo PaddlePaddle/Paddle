@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+namespace pten {
+
 // Disable the copy and assignment operator for a class.
 #ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
@@ -23,3 +25,32 @@ limitations under the License. */
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
 #endif
+
+#define PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
+  _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
+
+#define _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                    \
+  struct __test_global_namespace_##uniq_name##__ {};                          \
+  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
+                             __test_global_namespace_##uniq_name##__>::value, \
+                msg)
+
+#ifdef __COUNTER__
+#define PT_ID __COUNTER__
+#else
+#define PT_ID __LINE__
+#endif
+
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
+
+#define PT_CONCATENATE(arg1, arg2) PT_CONCATENATE1(arg1, arg2)
+#define PT_CONCATENATE1(arg1, arg2) PT_CONCATENATE2(arg1, arg2)
+#define PT_CONCATENATE2(arg1, arg2) arg1##arg2
+#define PT_EXPAND(x) x
+
+}  // namespace pten

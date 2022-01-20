@@ -12,9 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/pten/core/arg_map_utils.h"
+#include "paddle/pten/core/op_utils.h"
 
 namespace pten {
 
@@ -22,15 +20,18 @@ KernelSignature ScaleOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     std::string scale_attr;
     if (ctx.HasInput("ScaleTensor")) {
-      scale_attr = "ScaleTensor";
+      return KernelSignature(
+          "scale", {"X"}, {"ScaleTensor", "bias", "bias_after_scale"}, {"Out"});
     } else {
-      scale_attr = "scale";
+      return KernelSignature(
+          "scale", {"X"}, {"scale", "bias", "bias_after_scale"}, {"Out"});
     }
-    return KernelSignature(
-        "scale", {"X"}, {scale_attr, "bias", "bias_after_scale"}, {"Out"});
   }
   // TODO(chenweihang): support other cases after selected rows added
   return KernelSignature("scale.unregistered", {}, {}, {});
 }
 
 }  // namespace pten
+
+// op_type, api_name, arg_mapping_fn
+PT_REGISTER_ARG_MAPPING_FN(scale, scale, pten::ScaleOpArgumentMapping);

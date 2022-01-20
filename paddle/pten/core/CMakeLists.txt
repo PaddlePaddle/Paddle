@@ -8,7 +8,7 @@ endif()
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce convert_utils)
 cc_library(kernel_context SRCS kernel_context.cc DEPS enforce pten_context)
-cc_library(arg_map_utils SRCS arg_map_utils.cc DEPS enforce)
+cc_library(arg_map_context SRCS arg_map_context.cc DEPS enforce)
 
 cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)
 cc_library(tensor_meta SRCS tensor_meta.cc DEPS enforce mixed_vector)
@@ -16,7 +16,7 @@ cc_library(dense_tensor SRCS dense_tensor.cc DEPS convert_utils tensor_meta tens
 
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
-cc_library(op_utils SRCS op_utils.cc DEPS arg_map_utils enforce convert_utils)
+cc_library(op_utils SRCS op_utils.cc DEPS arg_map_context enforce convert_utils)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)

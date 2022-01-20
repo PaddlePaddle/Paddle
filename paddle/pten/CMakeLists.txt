@@ -3,6 +3,9 @@
 # float16.h/complex.h/bfloat16.h into pten
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
+# pten auto cmake utils
+include(pten)
+
 # paddle experimental common components
 add_subdirectory(common)
 
@@ -24,7 +27,7 @@ add_subdirectory(tests)
 
 # make an unity target for compile deps
 set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory
-    kernel_context arg_map_utils infermeta op_utils)
+    kernel_context arg_map_context infermeta op_utils)
 get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
 # keep this message for debug, remove it later if needless
 message(STATUS "All standard pten kernels: ${pten_kernels}")

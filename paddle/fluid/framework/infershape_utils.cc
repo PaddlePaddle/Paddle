@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/core/arg_map_utils.h"
+#include "paddle/pten/core/arg_map_context.h"
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -195,7 +195,7 @@ class CompatMetaTensor : public pten::MetaTensor {
 pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type) {
   // 1. get kernel args
-  auto arg_map_fn = pten::OpUtils::Instance().GetArgumentMappingFn(op_type);
+  auto arg_map_fn = pten::OpUtilsMap::Instance().Get(op_type).arg_mapping_fn;
   PADDLE_ENFORCE_NOT_NULL(
       arg_map_fn, platform::errors::NotFound(
                       "The ArgumentMappingFn of %s op is not found.", op_type));

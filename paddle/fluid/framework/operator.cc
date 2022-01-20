@@ -1808,7 +1808,9 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return pten::KernelSignatureMap::Instance().Get(
+  // only init DefaultKernelSignatureMap when pten kernel needed
+  framework::IntiDefaultKernelSignatureMap();
+  return pten::DefaultKernelSignatureMap::Instance().Get(
       pten::TransToPtenKernelName(Type()));
 }
 
