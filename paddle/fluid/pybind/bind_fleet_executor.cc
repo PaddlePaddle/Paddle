@@ -224,13 +224,13 @@ void BindFleetExecutor(py::module* m) {
       .def_readwrite("shape", &DistModelTensor::shape)
       .def_readwrite("data", &DistModelTensor::data)
       .def_readwrite("dtype", &DistModelTensor::dtype)
-      .def_readwrite("lod", &DistModelTensor::lod);
+      .def_readwrite("lod", &DistModelTensor::lod)
+      .def("as_ndarray", &DistModelTensorGetData);
 
   py::enum_<DistModelDataType>(*m, "DistModelDataType")
       .value("FLOAT32", DistModelDataType::FLOAT32)
       .value("INT64", DistModelDataType::INT64)
-      .value("INT32", DistModelDataType::INT32)
-      .def("as_ndarray", &DistModelTensorGetData);
+      .value("INT32", DistModelDataType::INT32);
 }
 }  // namespace pybind
 }  // namespace paddle
