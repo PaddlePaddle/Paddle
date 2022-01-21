@@ -98,20 +98,16 @@ def monkey_patch_variable():
 
             if not isinstance(other_var, Variable):
                 if reverse:
-                    has_batch_size = False
                     for elem in self.shape:
                         if elem < 0:
-                            has_batch_size = True
+                            other_var = create_tensor_with_batchsize(self, other_var, lhs_dtype)
                             break
-                    if not has_batch_size:
-                        other_var = create_tensor(
-                            self.block,
-                            other_var,
-                            dtype=lhs_dtype,
-                            shape=self.shape)
                     else:
-                        other_var = create_tensor_with_batchsize(
-                            self, other_var, lhs_dtype)
+                        other_var = create_tensor(
+                            current_block(self), 
+                            other_var, 
+                            dtype=lhs_dtype, 
+                            shape=self.shape)
                 else:
                     # add fill_op to self.block
                     other_var = create_scalar(
