@@ -30,7 +30,7 @@ class GPUSeedKernel : public framework::OpKernel<T> {
     if (cpu_place) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(context.GetPlace());
+      auto &dev_ctx = *pool.Get(platform::CPUPlace());
       out->mutable_data<T>(platform::CPUPlace());
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),

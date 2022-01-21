@@ -53,7 +53,10 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     Out->mutable_data<T>(X->place());
 
     // call new kernel
-    pten::MatmulKernel<T>(dev_ctx, *X, *Y, trans_x, trans_y, Out);
+    pten::MatmulKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *X, *Y, trans_x, trans_y, Out);
   }
 };
 
@@ -149,8 +152,10 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::MatmulGradKernel<T>(dev_ctx, *x, *y, *dout, transpose_x, transpose_y,
-                              dx, dy);
+    pten::MatmulGradKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *y, *dout, transpose_x, transpose_y, dx, dy);
   }
 };
 
@@ -178,8 +183,10 @@ class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
-    pten::MatmulDoubleGradKernel<T>(dev_ctx, *x, *y, *dout, *ddx, *ddy,
-                                    transpose_x, transpose_y, dx, dy, ddout);
+    pten::MatmulDoubleGradKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *y, *dout, *ddx, *ddy, transpose_x, transpose_y, dx, dy, ddout);
   }
 };
 
@@ -218,7 +225,9 @@ class MatMulV2TripleGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.device_context<DeviceContext>();
     // call new kernel
     pten::MatmulTripleGradKernel<T>(
-        dev_ctx, *x, *y, *dout, *ddx, *ddy, *d_dx, *d_dy, *d_ddout, transpose_x,
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *y, *dout, *ddx, *ddy, *d_dx, *d_dy, *d_ddout, transpose_x,
         transpose_y, out_d_x, out_d_y, out_d_dout, out_d_ddx, out_d_ddy);
   }
 };
