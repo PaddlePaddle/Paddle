@@ -10,3 +10,4 @@ cc_test(test_elementwise_dev_api SRCS test_elementwise_dev_api.cc DEPS pten pten
 cc_test(test_reshape_dev_api SRCS test_reshape_dev_api.cc DEPS pten pten_api_utils)
 cc_test(test_sum_dev_api SRCS test_sum_dev_api.cc DEPS pten pten_api_utils)
 cc_test(test_conj_dev_api SRCS test_conj_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_concat_dev_api SRCS test_concat_dev_api.cc DEPS pten pten_api_utils)
