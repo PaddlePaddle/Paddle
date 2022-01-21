@@ -43,16 +43,11 @@ TEST(DEV_API, reshape) {
   for (int i = 0; i < dense_x.numel(); i++) {
     dense_x_data[i] = i;
   }
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
   std::vector<int64_t> shape{12, 3};
 
   // 2. test API
-  auto out = pten::Reshape<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      shape);
+  pten::CPUContext dev_ctx;
+  auto out = pten::Reshape<float>(dev_ctx, dense_x, shape);
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};
   ASSERT_EQ(out.dims()[0], expect_shape[0]);

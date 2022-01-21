@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/complex_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -42,13 +43,10 @@ TEST(DEV_API, conj) {
     dense_x_data[i] = paddle::complex64(i * 1.0, i * 1.0);
   }
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
 
   // 2. test API
-  auto out = pten::Conj<paddle::complex64>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+  auto out = pten::Conj<paddle::complex64>(dev_ctx, dense_x);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

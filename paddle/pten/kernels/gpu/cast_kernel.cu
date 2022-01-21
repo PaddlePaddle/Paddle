@@ -21,10 +21,10 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/float16.h"
 
 namespace pten {
 

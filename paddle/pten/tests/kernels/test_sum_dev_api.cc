@@ -43,18 +43,12 @@ TEST(DEV_API, sum) {
     dense_x_data[i] = i * 1.0;
     sum += i * 1.0;
   }
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   std::vector<int64_t> axis = {0, 1};
+  pten::CPUContext dev_ctx;
   // 2. test API
-  auto out = pten::Sum<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      axis,
-      pten::DataType::FLOAT32,
-      false);
+  auto out =
+      pten::Sum<float>(dev_ctx, dense_x, axis, pten::DataType::FLOAT32, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
