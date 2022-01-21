@@ -2751,6 +2751,19 @@ def moveaxis(x, source, destination, name=None):
     return out
 
 
+def non_negative_axis(arr, axis):
+    ndim = len(arr.shape)
+    if axis >= 0:
+        assert axis < ndim, "'axis'  must be in the range of [-{0}, {0})".format(
+            ndim)
+    else:
+        assert axis >= -ndim, "'axis'  must be in the range of [-{0}, {0})".format(
+            ndim)
+        axis += ndim
+
+    return axis
+
+
 def infer_broadcast_shape(arr, indices, axis):
     # This function is used in take/put_along_axis 
     broadcast_shape_list = list(arr.shape)
@@ -2794,6 +2807,7 @@ def take_along_axis(arr, indices, axis):
     if (len(arr.shape) != len(indices.shape)):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
@@ -2861,6 +2875,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     if (len(arr.shape) != len(indices.shape)):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     if in_dygraph_mode():
         values = paddle.to_tensor(values) if not isinstance(
@@ -2902,6 +2917,7 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     if (len(arr.shape) != len(indices.shape)):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     values = paddle.to_tensor(values) if not isinstance(
         values, paddle.Tensor) else values
