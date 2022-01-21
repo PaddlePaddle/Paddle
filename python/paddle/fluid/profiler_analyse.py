@@ -42,9 +42,9 @@ def _parse_args():
     base_group.add_argument(
         "--mode",
         type=str,
-        default="model",
-        choices=["model", "op"],
-        help="Select the mode to analyze. [model/op] mode can be selected. Default is model."
+        default="all",
+        choices=["model", "op", "all"],
+        help="Select the mode to analyze. [model/op/all] mode can be selected. Default is all."
     )
     base_group.add_argument(
         "--profile_start_step",
@@ -81,6 +81,16 @@ def _parse_args():
     return parser.parse_args()
 
 
+def _parse_string(value):
+    # PY2     : PY3
+    # unicode : str
+    # str     : bytes
+    if six.PY3:
+        return value
+    else:
+        return value.encode("utf-8") if isinstance(value, unicode) else value
+
+
 def _run_command(command, shell=True):
     print("run command: %s" % command)
     p = subprocess.Popen(
@@ -97,15 +107,10 @@ def _run_command(command, shell=True):
     return stdout, exit_code
 
 
-def _parse_string(value):
-    import six
-    # PY2     : PY3
-    # unicode : str
-    # str     : bytes
-    if six.PY3:
-        return value
-    else:
-        return value.encode("utf-8") if isinstance(value, unicode) else value
+def _nsys_cmd(cmd, args):
+    return _run_command(
+        "nsys profile -t cuda,nvtx --stats true -o {}.qdrep --capture-range=cudaProfilerApi --stop-on-range-end=true --force-overwrite {} {}".
+        format(args.output, args.force_overwrite, cmd))
 
 
 class NsightRunnerForModelAnalyse(object):
@@ -113,23 +118,16 @@ class NsightRunnerForModelAnalyse(object):
     Use Nsight System tool to analyse performance of Model.
     """
 
-    def run(self, cmd, args):
+    def run(self, stdout, args):
         """
-        Run program/script.
+        parse logs to analyse performance and print the report.
         """
-        stdout, exit_code = self._nsys_cmd_for_model_analyse(cmd, args)
-        if exit_code == 0:
-            parse_status, scheduling_time_dict = self._parse_logs(
-                stdout.split("\n"), args)
-            if parse_status:
-                self._print_scheduling_time(scheduling_time_dict)
-                return
-        print("Running Error:\n {}".format(stdout))
-
-    def _nsys_cmd_for_model_analyse(self, cmd, args):
-        return _run_command(
-            "nsys profile -t cuda,nvtx --stats true -o {}.qdrep --capture-range=cudaProfilerApi --stop-on-range-end=true --force-overwrite {} {}".
-            format(args.output, args.force_overwrite, cmd))
+        parse_status, scheduling_time_dict = self._parse_logs(
+            stdout.split("\n"), args)
+        if parse_status:
+            self._print_scheduling_time(scheduling_time_dict)
+            return
+        print("Parse Error:\n {}".format(stdout))
 
     def _parse_gpu_time(self, line):
         infos = line.strip().split()
@@ -193,8 +191,8 @@ class NsightRunnerForModelAnalyse(object):
 
             # step time
             if nvtx_range_type.isdigit() and int(
-                    nvtx_range_type) > args.profile_start_step and int(
-                        nvtx_range_type) < args.profile_end_step:
+                    nvtx_range_type) > args.profile_start_step + 1 and int(
+                        nvtx_range_type) < args.profile_end_step - 1:
                 step_count += 1
                 step_time = float(infos[1].replace(",", ""))
                 total_step_time += step_time
@@ -207,29 +205,35 @@ class NsightRunnerForModelAnalyse(object):
             scheduling_time_dict['percentage_of_blanks'] = scheduling_time_dict[
                 'blank_time'] * 100 / scheduling_time_dict['step_time']
         else:
-            scheduling_time_dict['step_time'] = None
-            scheduling_time_dict['blank_time'] = None
-            scheduling_time_dict['percentage_of_blanks'] = None
+            scheduling_time_dict['step_time'] = 0.0
+            scheduling_time_dict['blank_time'] = 0.0
+            scheduling_time_dict['percentage_of_blanks'] = 0.0
         parse_status = True
 
         return parse_status, scheduling_time_dict
 
     def _print_scheduling_time(self, time_dict):
         print('\n')
-        print('{:*^55}'.format('Dygraph Scheduling Profiling Report'))
+        print('{:*^80}'.format('Model Dygraph Scheduling Profiling Report'))
         print('Time unit: ms\n')
 
-        print('{:-^55}'.format(''))
-        print('{:40}'.format('cuda kernel time in a step'),
-              time_dict['cuda_kernel_avg_time'])
-        print('{:40}'.format('cuda memcpy time in a step'),
-              time_dict['cuda_memory_avg_time'])
-        print('{:40}'.format('average time on cuda side in a step'),
-              time_dict['cuda_avg_time'])
-        print('{:40}'.format('average time in a step'), time_dict['step_time'])
-        print('{:40}'.format('blank time in a step'), time_dict['blank_time'])
-        print('{:40}'.format('percentage of blank time (%)'),
-              time_dict['percentage_of_blanks'])
+        print('{:=^80}'.format('Step'))
+        print('{:70}{:.6}'.format('average time in a step', time_dict[
+            'step_time']))
+        print('{:=^80}'.format('CUDA'))
+        print('{:70}{:.6}'.format('cuda kernel time in a step', time_dict[
+            'cuda_kernel_avg_time']))
+        print('{:70}{:.6}'.format('cuda memcpy time in a step', time_dict[
+            'cuda_memory_avg_time']))
+        print('{:-^80}'.format(''))
+        print('{:70}{:.6}'.format('average time on cuda side in a step',
+                                  time_dict['cuda_avg_time']))
+        print('{:=^80}'.format('Blank'))
+        print('{:70}{:.6}'.format('blank time in a step', time_dict[
+            'blank_time']))
+        print('{:70}{:.6}'.format('percentage of blank time (%)', time_dict[
+            'percentage_of_blanks']))
+        print('\n')
 
 
 class NsightRunnerForOpAnalyse(object):
@@ -237,34 +241,36 @@ class NsightRunnerForOpAnalyse(object):
     Use Nsight System tool to analyse performance of OP.
     """
 
-    def run(self, cmd, args):
+    def run(self, stdout, args):
         """
-        Run program/script.
+        parse logs to analyse performance and print the report.
         """
-        stdout, exit_code = self._nsys_cmd_for_op_analyse(cmd, args)
-        if exit_code == 0:
-            parse_status, op_type_list, scheduling_time_dict = self._parse_logs(
-                stdout.split("\n"), args)
-            if parse_status:
-                self._print_scheduling_time(op_type_list, scheduling_time_dict)
-                return
-        print("Running Error:\n {}".format(stdout))
-
-    def _nsys_cmd_for_op_analyse(self, cmd, args):
-        return _run_command(
-            "nsys profile -t cuda,nvtx --stats true -o {}.qdrep --force-overwrite {} {}".
-            format(args.output, args.force_overwrite, cmd))
+        parse_status, op_type_list, scheduling_time_dict = self._parse_logs(
+            stdout.split("\n"), args)
+        if parse_status:
+            self._print_scheduling_time(op_type_list, scheduling_time_dict)
+            return
+        print("Parse Error:\n {}".format(stdout))
 
     def _to_float(self, s):
         return float(s.replace(',', ''))
 
     def _calculate_avg_time_per_op(self, l):
+        """
+        Within a step, the same OP may be executed multiple times. When the information
+         within the OP is analyzed, each OP needs to be statistics separately.
+        """
         total_time = self._to_float(l[1])
         max_time = self._to_float(l[5])
         num_calls = self._to_float(l[2]) - 1
         return (total_time - max_time) / num_calls
 
     def _calculate_avg_time_per_step(self, l, num_step):
+        """
+        Within a step, the same OP may be executed multiple times. When the influence
+         of this OP to the entire step needs to be analysed, the OP needs to be processed
+         as a whole in a step. 
+        """
         # The same op may appear multiple times within a step.
         total_time = self._to_float(l[1])
         max_time = self._to_float(l[5])
@@ -281,7 +287,11 @@ class NsightRunnerForOpAnalyse(object):
         nvtx_time_start_step = 0
         total_step_time = 0.0
         total_op_call_time_per_step = 0.0
+        # num step of using profile
         num_step = args.profile_end_step - args.profile_start_step
+        # Profile data in start_step and end_step may be not correct,
+        # so we need to select some reliable data. Number of reliable
+        # step data is step_count.
         step_count = 0
 
         op_type_list = []
@@ -338,7 +348,6 @@ class NsightRunnerForOpAnalyse(object):
             if nvtx_range_type in _nvtx_meta_data_dict:
                 avg_time = self._calculate_avg_time_per_op(infos)
                 _nvtx_meta_data_dict[nvtx_range_type] = round(avg_time, 2)
-                # print(nvtx_range_type + ' time: ', avg_time)
 
                 if '_grad' in nvtx_range_type and 'compute' not in nvtx_range_type or 'pybind_imperative_func' in nvtx_range_type:
                     total_op_call_time_per_step += self._calculate_avg_time_per_step(
@@ -382,18 +391,17 @@ class NsightRunnerForOpAnalyse(object):
             scheduling_time_dict[op_type] = tmp_op_time_dict
 
         parse_status = True
-        # print(scheduling_time_dict)
         return parse_status, op_type_list, scheduling_time_dict
 
     def _print_scheduling_time(self, op_type_list, time_dict):
         print('\n')
-        print('{:*^80}'.format('Dygraph Scheduling Profiling Report'))
+        print('{:*^80}'.format('OP Dygraph Scheduling Profiling Report'))
         print('Time unit: ns\n')
         print('{:^70}  {:^10}'.format('dygraph scheduling process', 'time'))
 
         for op_type in op_type_list:
             print('\n')
-            print('{:-^80}'.format(op_type))
+            print('{:=^80}'.format(op_type + ' op'))
             print('{:^80}'.format('[Forward]'))
             print('{:70}'.format(
                 'scheduling time of [imperative_op method in Pybind]'),
@@ -404,6 +412,7 @@ class NsightRunnerForOpAnalyse(object):
             print('{:70}'.format(
                 'scheduling time of [OP Compute method] when OP is executed'),
                   time_dict[op_type]['fwd_op_compute_avg_time'])
+            print('{:-^80}'.format(''))
             print('{:70}'.format('overall scheduling time of [Forward OP]'),
                   time_dict[op_type]['imperative_avg_time'])
             print('{:^80}'.format('[Backward]'))
@@ -413,11 +422,12 @@ class NsightRunnerForOpAnalyse(object):
             print('{:70}'.format(
                 'scheduling time of [OP Compute method] when Grad OP is executed'
             ), time_dict[op_type]['bwd_op_compute_avg_time'])
+            print('{:-^80}'.format(''))
             print('{:70}'.format('overall scheduling time of [Backward OP]'),
                   time_dict[op_type]['bwd_trace_op_avg_time'])
 
         print('\n')
-        print('{:-^80}'.format(''))
+        print('{:=^80}'.format('Summary'))
         print('{:70}'.format(
             'overall scheduling time of [Forward and Backward OP]'),
               time_dict['op_call_time_per_step'])
@@ -426,22 +436,7 @@ class NsightRunnerForOpAnalyse(object):
         ), time_dict['python_call_time'])
         print('{:70}'.format('average time for a [Step]'),
               time_dict['step_time'])
-
-
-def _analyse_model(args):
-    cmd = "{} {} {}".format(sys.executable, args.running_script,
-                            " ".join(args.running_script_args))
-    if args.tool == 'nsys':
-        runner = NsightRunnerForModelAnalyse()
-        runner.run(cmd, args)
-
-
-def _analyse_op(args):
-    cmd = "{} {} {}".format(sys.executable, args.running_script,
-                            " ".join(args.running_script_args))
-    if args.tool == 'nsys':
-        runner = NsightRunnerForOpAnalyse()
-        runner.run(cmd, args)
+        print('\n')
 
 
 def profiler_analyse():
@@ -455,7 +450,7 @@ def profiler_analyse():
     Usage:
         .. code-block:: bash
 
-            python -m paddle.fluid.profiler_analyse [-h] [--tool {nsys}] [--mode {model,op}]
+            python -m paddle.fluid.profiler_analyse [-h] [--tool {nsys}] [--mode {model,op,all}]
                                         [--profile_start_step PROFILE_START_STEP]
                                         [--profile_end_step PROFILE_END_STEP] [-o OUTPUT]
                                         [-f {true,false}]
@@ -465,15 +460,15 @@ def profiler_analyse():
         - ``--tool``: Tools used to analyze performance. Currently only supports ``Nsight System``
         performance analysis tool. Default is ``nsys``.
 
-        - ``--mode``: Select the mode to analyze. [model/op] mode can be selected. Default is ``model``.
+        - ``--mode``: Select the mode to analyze. [model/op/all] mode can be selected. Default is ``all``.
         
         -- ``--profile_start_step``: The number of step to start using profile to analyze performance.
         Must be the same as the step set using profile in the model program/script. To analyse more
-        accurately, ``profile_end_step`` must be 4 greater than ``profile_start_step`` in ``op`` mode.
+        accurately, ``profile_end_step`` must be 4 greater than ``profile_start_step``.
 
         -- ``--profile_end_step``: The number of step to end using profile to analyze performance.
         Must be the same as the step set using profile in the model program/script. To analyse more
-        accurately, ``profile_end_step`` must be 4 greater than ``profile_start_step`` in ``op`` mode.
+        accurately, ``profile_end_step`` must be 4 greater than ``profile_start_step``.
     
     Nsys Parameters:
         -- ``--output`` or ``-o``: Output report filename. Default is tmp.{qdrep,sqlite}.
@@ -486,6 +481,8 @@ def profiler_analyse():
          at the cuda execution side) during the model execution process will be printed out. 
         If ``op`` mode is selected, the scheduling overhead of each stage in the op execution process
          will be printed out. 
+        If ``all`` mode is selected, all information including `model` and `op` mode will be printed
+         out.
     
 
     Examples （The execution script is as follows, the script filename is ``test_matmul.py``）:
@@ -532,16 +529,19 @@ def profiler_analyse():
             run command: nsys profile -t cuda,nvtx --stats true -o tmp.qdrep --capture-range=cudaProfilerApi --stop-on-range-end=true --force-overwrite true python test_matmul.py
 
 
-            **********Dygraph Scheduling Profiling Report**********
+            *******************Model Dygraph Scheduling Profiling Report********************
             Time unit: ms
 
-            -------------------------------------------------------
-            cuda kernel time in a step               0.0034013831478537358
-            cuda memcpy time in a step               0.0
-            average time on cuda side in a step      0.0034013831478537358
-            average time in a step                   0.1177650303030303
-            blank time in a step                     0.11436364715517656
-            percentage of blank time (%)             97.11172056840526
+            ======================================Step======================================
+            average time in a step                                                0.122781
+            ======================================CUDA======================================
+            cuda kernel time in a step                                            0.00339739
+            cuda memcpy time in a step                                            0.0
+            --------------------------------------------------------------------------------
+            average time on cuda side in a step                                   0.00339739
+            =====================================Blank======================================
+            blank time in a step                                                  0.119383
+            percentage of blank time (%)                                          97.233
 
 
     Examples 2 (op mode):
@@ -552,43 +552,56 @@ def profiler_analyse():
             
             # The following information is output:
 
-            run command: nsys profile -t cuda,nvtx --stats true -o tmp.qdrep --force-overwrite true python test_matmul.py
+            run command: nsys profile -t cuda,nvtx --stats true -o tmp.qdrep --capture-range=cudaProfilerApi --stop-on-range-end=true --force-overwrite true python test_matmul.py
 
 
-            **********************Dygraph Scheduling Profiling Report***********************
+            *********************OP Dygraph Scheduling Profiling Report*********************
             Time unit: ns
 
                                 dygraph scheduling process                           time
 
 
-            -----------------------------------matmul_v2------------------------------------
+            ==================================matmul_v2 op==================================
                                             [Forward]
-            scheduling time of [imperative_op method in Pybind]                    9441.11
-            scheduling time of [TraceOP] other than Run OP                         16699.55
-            scheduling time of [OP Compute method] when OP is executed             28076.56
-            overall scheduling time of [Forward OP]                                54217.22
-                                            [Backward]
-            scheduling time of [TraceOP] other than Run Grad OP                    None
-            scheduling time of [OP Compute method] when Grad OP is executed        None
-            overall scheduling time of [Backward OP]                               None
-
-
-            --------------------------------elementwise_add---------------------------------
-                                            [Forward]
-            scheduling time of [imperative_op method in Pybind]                    9821.02
-            scheduling time of [TraceOP] other than Run OP                         15157.47
-            scheduling time of [OP Compute method] when OP is executed             24214.44
-            overall scheduling time of [Forward OP]                                49192.93
-                                            [Backward]
-            scheduling time of [TraceOP] other than Run Grad OP                    None
-            scheduling time of [OP Compute method] when Grad OP is executed        None
-            overall scheduling time of [Backward OP]                               None
-
-
+            scheduling time of [imperative_op method in Pybind]                    11956.07
+            scheduling time of [TraceOP] other than Run OP                         21632.19
+            scheduling time of [OP Compute method] when OP is executed             36613.59
             --------------------------------------------------------------------------------
-            overall scheduling time of [Forward and Backward OP]                   103410.15
-            [Python API Call Time] and Overhead of [Pybind Binding C++ OP] etc.    21626.05
-            average time for a [Step]                                              125036.2
+            overall scheduling time of [Forward OP]                                70201.85
+                                            [Backward]
+            scheduling time of [TraceOP] other than Run Grad OP                    None
+            scheduling time of [OP Compute method] when Grad OP is executed        None
+            --------------------------------------------------------------------------------
+            overall scheduling time of [Backward OP]                               None
+
+
+            ===============================elementwise_add op===============================
+                                            [Forward]
+            scheduling time of [imperative_op method in Pybind]                    12921.39
+            scheduling time of [TraceOP] other than Run OP                         20388.43
+            scheduling time of [OP Compute method] when OP is executed             31837.75
+            --------------------------------------------------------------------------------
+            overall scheduling time of [Forward OP]                                65147.57
+                                            [Backward]
+            scheduling time of [TraceOP] other than Run Grad OP                    None
+            scheduling time of [OP Compute method] when Grad OP is executed        None
+            --------------------------------------------------------------------------------
+            overall scheduling time of [Backward OP]                               None
+
+
+            ====================================Summary=====================================
+            overall scheduling time of [Forward and Backward OP]                   135349.41
+            [Python API Call Time] and Overhead of [Pybind Binding C++ OP] etc.    24619.26
+            average time for a [Step]                                              159968.67
+
+
+    Examples 3 (all mode):
+        .. code-block:: bash
+
+            python -m paddle.fluid.profiler_analyse --mode all --profile_start_step 10 --profile_end_step 110 test_matmul.py
+
+            
+            # output all information including `model` and `op` mode 
 
     """
     args = _parse_args()
@@ -600,17 +613,22 @@ def profiler_analyse():
         raise ValueError(
             "profile_end_step must be set manually and is the same as the profile step set in the script."
         )
-    if args.mode == 'model':
-        if args.profile_end_step - args.profile_start_step < 2:
-            raise ValueError(
-                "profile_end_step must be 2 greater than profile_start_step.")
-        _analyse_model(args)
-    elif args.mode == 'op':
-        if args.profile_end_step - args.profile_start_step < 4:
-            raise ValueError(
-                "profile_end_step must be 4 greater than profile_start_step in op mode."
-            )
-        _analyse_op(args)
+    if args.profile_end_step - args.profile_start_step < 4:
+        raise ValueError(
+            "profile_end_step must be 4 greater than profile_start_step.")
+    if args.tool == 'nsys':
+        cmd = "{} {} {}".format(sys.executable, args.running_script,
+                                " ".join(args.running_script_args))
+        stdout, exit_code = _nsys_cmd(cmd, args)
+        if exit_code == 0:
+            if args.mode == 'model' or args.mode == 'all':
+                runner = NsightRunnerForModelAnalyse()
+                runner.run(stdout, args)
+            if args.mode == 'op' or args.mode == 'all':
+                runner = NsightRunnerForOpAnalyse()
+                runner.run(stdout, args)
+        else:
+            print("Running Error:\n {}".format(stdout))
 
 
 if __name__ == "__main__":
