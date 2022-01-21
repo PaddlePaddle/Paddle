@@ -325,7 +325,7 @@ void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move allocation."));
-  dst->ResizeAndAllocate(src->dims());
+  dst->Resize(src->dims());
   dst->ResetHolderWithType(src->Holder(),
                            pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);
