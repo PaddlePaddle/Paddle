@@ -30,7 +30,8 @@ static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place()) ||
       platform::is_npu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<T>();
   }
   return tensor_data[0];
@@ -66,7 +67,10 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::ScaleKernel<T>(dev_ctx, *in, scale, bias, bias_after_scale, out);
+    pten::ScaleKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, scale, bias, bias_after_scale, out);
   }
 };
 

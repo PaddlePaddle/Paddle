@@ -199,10 +199,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
-  z->mutable_data<OutType>(ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
     std::vector<const framework::Tensor *> ins = {x, y};
@@ -211,11 +207,17 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
 
     const auto &dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
-        dev_ctx, ins, &outs, axis, func);
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   OutType>(dev_ctx, ins, &outs,
+                                                            axis, func);
 #endif
     return;
   }
+
+  z->mutable_data<OutType>(ctx.GetPlace());
+  auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+  auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
 
   const auto &dev_ctx =
       ctx.template device_context<platform::CPUDeviceContext>();
@@ -1271,8 +1273,8 @@ void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
     outs = {&tmp_dx, &tmp_dy};
   }
 
-  LaunchElementwiseCudaKernel<ET, T, T, decltype(func), 2>(dev_ctx, ins, &outs,
-                                                           axis, func);
+  paddle::operators::LaunchElementwiseCudaKernel<ET, T, T, decltype(func), 2>(
+      dev_ctx, ins, &outs, axis, func);
 
   if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
     ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
@@ -1301,7 +1303,8 @@ void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx,
     outs = {dxy};
   }
 
-  LaunchElementwiseCudaKernel<ET, T, T>(dev_ctx, ins, &outs, axis, func);
+  paddle::operators::LaunchElementwiseCudaKernel<ET, T, T>(dev_ctx, ins, &outs,
+                                                           axis, func);
   if (dxy->dims() != dout->dims()) {
     ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
   }

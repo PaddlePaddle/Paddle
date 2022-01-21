@@ -96,7 +96,7 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-class Testcompatible(unittest.TestCase):
+class TestCompatible(unittest.TestCase):
     def test_matmulv2_matmul_2_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
@@ -123,7 +123,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                impls = dist_op_impl_container.get_impls()
+                impls = dist_op_impl_container.impls
                 op_dist_attr = OperatorDistributedAttribute()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
@@ -174,7 +174,7 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
-                    self.assertFalse(impls[2].is_auto_compatible(
+                    self.assertTrue(impls[2].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
                     self.assertFalse(impls[2].is_auto_compatible(
@@ -220,7 +220,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                impls = dist_op_impl_container.get_impls()
+                impls = dist_op_impl_container.impls
                 op_dist_attr = OperatorDistributedAttribute()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
@@ -261,7 +261,7 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, 1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
-                    self.assertFalse(impls[1].is_auto_compatible(
+                    self.assertTrue(impls[1].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
                     self.assertFalse(impls[1].is_auto_compatible(
@@ -307,7 +307,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                impls = dist_op_impl_container.get_impls()
+                impls = dist_op_impl_container.impls
                 op_dist_attr = OperatorDistributedAttribute()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
@@ -362,7 +362,7 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, 1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, 1])
-                    self.assertFalse(impls[0].is_auto_compatible(
+                    self.assertTrue(impls[0].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_output_dims_mapping(out, [0, -1, -1, 1])
                     self.assertFalse(impls[0].is_auto_compatible(
