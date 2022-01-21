@@ -250,7 +250,11 @@ XPUDeviceContext::XPUDeviceContext() {
   xpu_version_ = get_xpu_version(place_.device);
 }
 
-XPUDeviceContext::~XPUDeviceContext() {}
+XPUDeviceContext::~XPUDeviceContext() {
+  if (context_) {
+    xpu::destroy_context(context_);
+  }
+}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   platform::XPUDeviceGuard guard(place.device);
