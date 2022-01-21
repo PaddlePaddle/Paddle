@@ -81,7 +81,7 @@ class ConcatKernel : public framework::OpKernel<T> {
     }
 
     pten::ConcatKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         pt_ins, axis, out);
   }
