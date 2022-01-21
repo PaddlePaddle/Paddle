@@ -15,6 +15,8 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/pten/kernels/masked_select_grad_kernel.h"
+#include "paddle/pten/kernels/masked_select_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -30,38 +32,11 @@ class MaskedSelectKernel : public framework::OpKernel<T> {
     auto input = context.Input<framework::Tensor>("X");
     auto mask = context.Input<framework::Tensor>("Mask");
     auto out = context.Output<framework::Tensor>("Y");
-    auto* mask_data = mask->data<bool>();
-    auto input_data = input->data<T>();
-
-    auto mask_size = mask->numel();
-
-    auto input_dim = input->dims();
-    auto mask_dim = mask->dims();
-    PADDLE_ENFORCE_EQ(
-        input_dim, mask_dim,
-        platform::errors::InvalidArgument(
-            "The dim size of input and mask in OP(masked_selected) "
-            "must be equal, but got input dim:(%ld), mask dim: "
-            "(%ld). Please check input "
-            "value.",
-            input_dim, mask_dim));
-
-    int out_size = 0;
-    for (int i = 0; i < mask_size; i++) {
-      if (mask_data[i]) out_size++;
-    }
-
-    framework::DDim out_dim{out_size};
-    out->Resize(out_dim);
-    auto out_data = out->mutable_data<T>(context.GetPlace());
-
-    int index = 0;
-    for (int i = 0; i < mask_size; i++) {
-      if (mask_data[i]) {
-        out_data[index] = input_data[i];
-        index++;
-      }
-    }
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::MaskedSelectKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *input, *mask, out);
   }
 };
 
@@ -71,22 +46,14 @@ class MaskedSelectGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto out = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto mask = context.Input<framework::Tensor>("Mask");
+    auto x = context.Input<framework::Tensor>("X");
     auto input = context.Input<framework::Tensor>(framework::GradVarName("Y"));
 
-    auto* mask_data = mask->data<bool>();
-    auto* input_data = input->data<T>();
-    auto* out_data = out->mutable_data<T>(context.GetPlace());
-    int mask_size = mask->numel();
-
-    int index = 0;
-    for (int i = 0; i < mask_size; i++) {
-      if (mask_data[i]) {
-        out_data[i] = input_data[index];
-        index++;
-      } else {
-        out_data[i] = 0;
-      }
-    }
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::MaskedSelectGradKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *input, *x, *mask, out);
   }
 };
 
