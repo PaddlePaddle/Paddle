@@ -966,12 +966,13 @@ def remove_no_need_in_startup(auto_parallel_main_prog,
 def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
             dist_context):
     """
-    Reshard tensor in the program according to its dist attr and corresponding op dist attr.
+    Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
 
     Args:
         auto_parallel_main_prog (Program): An auto parallel main program.
         auto_parallel_startup_prog (Program): An auto parallel startup program.
         rank_id (int): The process id.
+        dist_context (DistributedContext): The distributed context of this rank.
     """
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_main_prog))
