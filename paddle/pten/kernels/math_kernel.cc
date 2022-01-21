@@ -34,9 +34,9 @@ void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
+               DataType out_dtype,
                DenseTensor* out) {
   bool reduce_all = false;
-  DataType out_dtype = DataType::UNDEFINED;
   SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
 }
 

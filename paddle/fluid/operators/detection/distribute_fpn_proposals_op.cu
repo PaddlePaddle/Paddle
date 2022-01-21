@@ -200,7 +200,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       }
       if (multi_rois_num.size() > 0) {
         Tensor* rois_num_t = multi_rois_num[i];
-        TensorCopySync(sub_lod, dev_ctx.GetPlace(), rois_num_t);
+        paddle::framework::TensorCopySync(sub_lod, dev_ctx.GetPlace(),
+                                          rois_num_t);
         rois_num_t->Resize({lod_size});
       }
       framework::LoD lod;

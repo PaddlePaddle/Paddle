@@ -20,9 +20,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Variable;
-class Tensor;
 }  // namespace framework
 }  // namespace paddle
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace distributed {

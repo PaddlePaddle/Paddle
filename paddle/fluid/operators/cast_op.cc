@@ -16,6 +16,9 @@ limitations under the License. */
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -101,6 +104,19 @@ class CastOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(tensor->type(), ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
+    }
+#endif
+#ifdef PADDLE_WITH_MLU
+    auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
+    auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
+    if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
+      return framework::OpKernelType(tensor->type(), tensor_place);
+    } else {
+      VLOG(3) << "MLU not support cast type: "
+              << framework::DataTypeToString(src_type)
+              << " to type: " << framework::DataTypeToString(dst_type)
+              << ", fallbacking to CPU one!";
+      return framework::OpKernelType(tensor->type(), platform::CPUPlace());
     }
 #endif
     return framework::OpKernelType(tensor->type(), tensor_place);

@@ -51,6 +51,7 @@ void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
+               DataType out_dtype,
                DenseTensor* out);
 
 template <typename T, typename Context>
