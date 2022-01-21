@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/platform/device/mlu/device_context.h"
 
 namespace paddle {
 namespace operators {
