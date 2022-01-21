@@ -15,8 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/core/hostdevice.h"
 
 template <typename T>
 class Scale {
