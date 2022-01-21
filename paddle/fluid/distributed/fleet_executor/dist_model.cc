@@ -185,7 +185,7 @@ bool DistModel::CommInit() {
     InsertCommOp("mp_comm_id", mp_group_nranks, mp_group_rank, peer_endpoints,
                  comm_init_block, config_.mp_ring_id);
   }
-  if (config_.pp_degree) {
+  if (config_.pp_degree > 1) {
     // NOTE: the last pp stage doesn't need init pp comm
     VLOG(3) << "Init comm group for pp.";
     if (config_.local_rank - config_.mp_degree >= 0) {
