@@ -418,7 +418,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
   VLOG(3) << "DistModel is feeding data.";
   if (input_data.size() != feeds_.size()) {
     LOG(ERROR) << "Should provide " << feeds_.size() << " feeds, but got "
-               << input_data.size() << "data.";
+               << input_data.size() << " data.";
     return false;
   }
   feed_tensors_.resize(feeds_.size());
