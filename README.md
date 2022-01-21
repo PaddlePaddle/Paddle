@@ -70,15 +70,11 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 
   You might want to start from how to implement deep learning basics with PaddlePaddle.
 
-- [Practice](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
-
-  So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator. 
-
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/08_contribution/index_en.html)
+- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/10_contribution/index_en.html)
 
    We appreciate your contributions!
 
