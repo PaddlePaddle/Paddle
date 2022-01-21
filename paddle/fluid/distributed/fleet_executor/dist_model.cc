@@ -502,7 +502,7 @@ bool DistModel::FetchResult(const framework::LoDTensor &fetch,
 bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
                     std::vector<DistModelTensor> *output_data) {
   if (!FeedData(input_data, scope_.get())) {
-    LOG(ERROE) << "DistModel failed at feeding data.";
+    LOG(ERROR) << "DistModel failed at feeding data.";
     return false;
   }
   VLOG(3) << "Finish loading data.";
