@@ -1071,8 +1071,8 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
     if (worker_param.downpour_table_param(i).table_id() == table_id) {
       var_name = worker_param.downpour_table_param(i).common().table_name();
-      var_num = worker_param.downpour_table_param(i).accessor().fea_dim();
-      var_shape = worker_param.downpour_table_param(i).accessor().embedx_dim();
+      var_num = worker_param.downpour_table_param(i).common().table_num();
+      var_shape = worker_param.downpour_table_param(i).common().table_dim();
       break;
     }
   }

@@ -115,7 +115,7 @@ template <typename DeviceContext, typename T, typename IndexT = int>
 void GPUGatherNd(const framework::ExecutionContext& context,
                  const Tensor& input, const Tensor& index, Tensor* output) {
   const auto& ctx = context.template device_context<DeviceContext>();
-  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  const auto gplace = ctx.GetPlace();
   auto cplace = platform::CPUPlace();
 
   auto index_dims = index.dims();

@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Scope;
 
 void DeviceWorker::SetRootScope(Scope* root_scope) { root_scope_ = root_scope; }

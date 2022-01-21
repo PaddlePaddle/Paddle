@@ -102,8 +102,7 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
     std::vector<int> error_info;  // only for checking positive matrix
     error_info.resize(batch_count);
 
-    memory::Copy(platform::CPUPlace(), error_info.data(),
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+    memory::Copy(platform::CPUPlace(), error_info.data(), dev_ctx.GetPlace(),
                  info_ptr, sizeof(int) * batch_count, dev_ctx.stream());
 
     for (int i = 0; i < batch_count; ++i) {

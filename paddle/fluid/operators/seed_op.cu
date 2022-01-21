@@ -30,15 +30,14 @@ class GPUSeedKernel : public framework::OpKernel<T> {
     if (cpu_place) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(context.GetPlace());
+      auto &dev_ctx = *pool.Get(platform::CPUPlace());
       out->mutable_data<T>(platform::CPUPlace());
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(seed));
     } else {
       auto *out_data = out->mutable_data<T>(context.GetPlace());
-      auto target_gpu_place =
-          BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+      auto target_gpu_place = context.GetPlace();
       auto stream = context.cuda_device_context().stream();
       memory::Copy(target_gpu_place, out_data, platform::CPUPlace(), &seed,
                    sizeof(int), stream);

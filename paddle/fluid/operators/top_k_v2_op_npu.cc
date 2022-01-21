@@ -41,7 +41,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 
     if (k_tensor != nullptr) {
       std::vector<int> v_tmp(1);
-      TensorToVector(
+      paddle::framework::TensorToVector(
           *k_tensor,
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           &v_tmp);

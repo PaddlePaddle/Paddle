@@ -93,6 +93,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
     target_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
@@ -171,6 +172,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
     target_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));

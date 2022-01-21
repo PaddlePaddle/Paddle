@@ -48,7 +48,7 @@ class CCommInitAllOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "CCommInitAllOp can run on gpu place only"));
 

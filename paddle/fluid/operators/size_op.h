@@ -36,7 +36,7 @@ class SizeKernel : public framework::OpKernel<T> {
       auto cpu_data =
           cpu_tensor.mutable_data<int64_t>(out_t->dims(), cpu_place);
       cpu_data[0] = in_t->numel();
-      TensorCopy(cpu_tensor, place, out_t);
+      paddle::framework::TensorCopy(cpu_tensor, place, out_t);
     }
   }
 };
