@@ -43,7 +43,7 @@ void ConcatKernel(const Context& dev_ctx,
 
   pten::DDim out_dims = pten::funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
-  out->mutable_data<T>();
+  out->mutable_data<T>(dev_ctx.GetPlace());
 
   // If axis is 0, the lod of the output is not the same as inputs.
   if (axis == 0 && x[0].lod().size() > 0) {
