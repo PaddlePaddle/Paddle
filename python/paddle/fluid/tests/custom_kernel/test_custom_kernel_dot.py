@@ -39,6 +39,7 @@ class TestCustomKernelDot(unittest.TestCase):
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
 
         import paddle
+        paddle.set_device('cpu')
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         out = paddle.dot(x, y)
