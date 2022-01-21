@@ -55,14 +55,6 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 
 cc_library(string_array SRCS string_array.cc DEPS utf8proc)
 
-cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
-cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-if(WITH_GPU)
-  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-elseif(WITH_ROCM)
-  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
-endif()
-cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
@@ -102,7 +94,7 @@ else()
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim mixed_vector place tensor framework_proto version)
 
-cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
+cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_utils lod_tensor memory)
 
 if(WITH_GPU)
   nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -118,7 +110,7 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto scope)
+cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows_utils framework_proto scope)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -172,7 +164,7 @@ cc_library(data_layout_transform SRCS data_layout_transform.cc DEPS tensor math_
 cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_layout_transform)
 
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
-        framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
+        framework_proto selected_rows_utils data_device_transform data_type_transform data_layout_transform)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
@@ -390,8 +382,8 @@ cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
-cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
-cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
+cc_library(selected_rows_utils SRCS selected_rows_utils.cc DEPS tensor)
+cc_test(selected_rows_utils_test SRCS selected_rows_utils_test.cc DEPS selected_rows_utils)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto op_kernel_type)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
@@ -414,7 +406,7 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows place pten var_type_traits pten_api_utils op_info)
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
 
 # Get the current working branch
 execute_process(
@@ -446,8 +438,8 @@ set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_prot
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
-if(WITH_TESTING AND TEST selected_rows_test)
-  set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
+if(WITH_TESTING AND TEST selected_rows_utils_test)
+  set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)

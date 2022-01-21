@@ -38,15 +38,14 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorBase(
                              src.dims(),
                              src.layout(),
                              src.offset()};
-  if (src.Holder() == nullptr) {
-    auto shared_storage = pten::make_intrusive<SharedStorage>(src.place());
-    return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
-                                               std::move(meta));
-  } else {
-    auto shared_storage = pten::make_intrusive<SharedStorage>(src.Holder());
-    return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
-                                               std::move(meta));
+  if (!src.IsInitialized()) {
+    return std::make_unique<pten::DenseTensor>(
+        std::move(pten::make_intrusive<SharedStorage>(src.place())),
+        std::move(meta));
   }
+  auto shared_storage = pten::make_intrusive<SharedStorage>(src.Holder());
+  return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
+                                             std::move(meta));
 }
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
@@ -253,8 +252,9 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
-    if (!platform::is_same_place(tensor.place(), expected_place) &&
-        tensor.Holder() != nullptr) {
+
+    if (tensor.IsInitialized() &&
+        !platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return MakePtenDenseTensor(tmp_tensor);
