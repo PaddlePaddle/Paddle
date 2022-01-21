@@ -201,8 +201,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
+        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
         return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_cpu_kernel, dev_ctx);
+                          pt_cpu_kernel, cpu_ctx);
       }
     }
   }
