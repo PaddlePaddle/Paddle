@@ -14,6 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+#include "paddle/pten/core/lod_utils.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -73,7 +75,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
                                                               dst_num_rows, 0);
       height = lod_offset.second.second;
       auto out_lod = out_tensor.mutable_lod();
-      framework::AppendLoD(out_lod, lod_offset.first);
+      pten::AppendLoD(out_lod, lod_offset.first);
     }
 
     if (dst_num_rows != 0) {

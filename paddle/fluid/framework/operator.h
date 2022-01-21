@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
