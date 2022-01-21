@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/operators/eigen/eigen_function.h"

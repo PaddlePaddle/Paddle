@@ -41,6 +41,8 @@ inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
     return HCCL_DATA_TYPE_FP32;
   } else if (type == framework::proto::VarType::FP16) {
     return HCCL_DATA_TYPE_FP16;
+  } else if (type == framework::proto::VarType::INT64) {
+    return HCCL_DATA_TYPE_INT64;
   } else if (type == framework::proto::VarType::INT32) {
     return HCCL_DATA_TYPE_INT32;
   } else if (type == framework::proto::VarType::INT8) {

@@ -67,7 +67,10 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::ScaleKernel<T>(dev_ctx, *in, scale, bias, bias_after_scale, out);
+    pten::ScaleKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, scale, bias, bias_after_scale, out);
   }
 };
 
