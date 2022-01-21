@@ -1524,11 +1524,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "reduce op input data type must be int32 or float32";
         return false;
       }
-
-      // int32 not support if it's not dynamic shape.
-      if (!with_dynamic_shape && (dtype == framework::proto::VarType::INT32)) {
-        return false;
-      }
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
