@@ -126,26 +126,17 @@ class SparseCsrTensor : public TensorBase,
                  const DenseTensor& non_zero_elements,
                  const DDim& dims);
 
-  /// \brief Get a mutable data pointer of non_zero_crows.
-  /// return a mutable data pointer of non_zero_crows.
-  template <typename T>
-  T* mutable_non_zero_crows() {
-    return non_zero_crows_.mutable_data<T>();
-  }
+  /// \brief Get a mutable pointer of non_zero_crows.
+  /// return a mutable pointer of non_zero_crows.
+  DenseTensor* mutable_non_zero_crows() { return &non_zero_crows_; }
 
-  /// \brief Get a mutable data pointer of non_zero_cols.
-  /// return a mutable data pointer of non_zero_cols.
-  template <typename T>
-  T* mutable_non_zero_cols() {
-    return non_zero_cols_.mutable_data<T>();
-  }
+  /// \brief Get a mutable pointer of non_zero_cols.
+  /// return a mutable pointer of non_zero_cols.
+  DenseTensor* mutable_non_zero_cols() { return &non_zero_cols_; }
 
-  /// \brief Get a mutable data pointer of non_zero_elements.
-  /// return a mutable data pointer of non_zero_elements.
-  template <typename T>
-  T* mutable_non_zero_elements() {
-    return non_zero_elements_.mutable_data<T>();
-  }
+  /// \brief Get a mutable pointer of non_zero_elements.
+  /// return a mutable pointer of non_zero_elements.
+  DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
  private:
   // save the compressed rows information of non zero elements
