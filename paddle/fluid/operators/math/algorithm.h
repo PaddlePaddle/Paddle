@@ -18,7 +18,7 @@
 #include <cstdint>  // for int64_t
 #include <numeric>
 
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

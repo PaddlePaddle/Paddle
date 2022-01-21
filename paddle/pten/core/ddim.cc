@@ -1,22 +1,22 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/core/ddim.h"
 #include <set>
-#include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
+namespace pten {
+namespace platform = paddle::platform;
 namespace framework {
 
 DDim make_ddim(std::initializer_list<int64_t> dims) {
@@ -82,10 +82,13 @@ bool contain_unknown_dim(const DDim& ddim) {
 
 DDim slice_ddim(const DDim& dim, int begin, int end) {
   PADDLE_ENFORCE_EQ(
-      (begin >= 0 && end <= dim.size()), true,
+      (begin >= 0 && end <= dim.size()),
+      true,
       platform::errors::InvalidArgument(
-          "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.", begin,
-          end, dim.size()));
+          "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.",
+          begin,
+          end,
+          dim.size()));
   // Constructor of DDim would check whether end - begin is valid
   return DDim(dim.Get() + begin, end - begin);
 }
@@ -108,27 +111,34 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 }
 
 DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims) {
-  PADDLE_ENFORCE_GE(src.size(), 3,
+  PADDLE_ENFORCE_GE(src.size(),
+                    3,
                     platform::errors::InvalidArgument(
                         "The rank of src dim should be at least 3 "
                         "in flatten_to_3d, but received %d.",
                         src.size()));
-  PADDLE_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()), true,
+  PADDLE_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()),
+                    true,
                     platform::errors::InvalidArgument(
                         "The num_row_dims should be inside [1, %d] "
                         "in flatten_to_3d, but received %d.",
-                        src.size() - 1, num_row_dims));
-  PADDLE_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()), true,
+                        src.size() - 1,
+                        num_row_dims));
+  PADDLE_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()),
+                    true,
                     platform::errors::InvalidArgument(
                         "The num_col_dims should be inside [2, %d] "
                         "in flatten_to_3d, but received %d.",
-                        src.size(), num_col_dims));
+                        src.size(),
+                        num_col_dims));
   PADDLE_ENFORCE_GE(
-      num_col_dims, num_row_dims,
+      num_col_dims,
+      num_row_dims,
       platform::errors::InvalidArgument(
           "The num_row_dims should be less than num_col_dims in flatten_to_3d,"
           "but received num_row_dims = %d, num_col_dims = %d.",
-          num_row_dims, num_col_dims));
+          num_row_dims,
+          num_col_dims));
 
   return DDim({product(slice_ddim(src, 0, num_row_dims)),
                product(slice_ddim(src, num_row_dims, num_col_dims)),
@@ -169,13 +179,16 @@ DDim DDim::reshape(const std::vector<int>& shape) const {
   out_dims.rank_ = shape.size();
   for (size_t i = 0; i < shape.size(); ++i) {
     if (shape[i] == copy_dim_val) {
-      PADDLE_ENFORCE_LT(static_cast<int>(i), in_dims.size(),
+      PADDLE_ENFORCE_LT(static_cast<int>(i),
+                        in_dims.size(),
                         platform::errors::InvalidArgument(
                             "Index %d of shape under which the value of 0 "
                             "is stored, must be lower than the number of "
                             "old dimensions. But received shape[%d] = 0, "
                             "dimensions = %d, shape = [%s].",
-                            i, in_dims.size(), in_dims));
+                            i,
+                            in_dims.size(),
+                            in_dims));
       out_dims[i] = in_dims[i];
     } else {
       out_dims[i] = shape[i];
@@ -190,19 +203,23 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
   size_t axis_size = axis.size();
 
   auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
+  PADDLE_ENFORCE_EQ(axis_set.size(),
+                    axis_size,
                     platform::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
   PADDLE_ENFORCE_EQ(
-      in_rank, axis_size,
+      in_rank,
+      axis_size,
       platform::errors::InvalidArgument("The input dimension's size "
                                         "should be equal to the axis's size. "
                                         "But received dimension is %d, "
                                         "axis's size is %d",
-                                        in_rank, axis_size));
+                                        in_rank,
+                                        axis_size));
 
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
+  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
+                    axis_size,
                     platform::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
@@ -214,4 +231,4 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 }
 
 }  // namespace framework
-}  // namespace paddle
+}  // namespace pten

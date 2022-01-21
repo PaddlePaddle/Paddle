@@ -1220,6 +1220,8 @@ class QuantizationFreezePass(object):
             if op_node_desc.has_attr("quantization_type") and \
                 op_node_desc.attr("quantization_type") == "qat_with_weight":
                 if self._weight_quantize_type == 'channel_wise_abs_max':
+                    quant_axis = 1 if op_node.name() in \
+                        _channelwise_quant_axis1_ops else 0
                     self._insert_post_channel_dequant_op(graph, op_node,
                                                          quant_axis)
                 else:
