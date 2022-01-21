@@ -1,0 +1,73 @@
+# A image for building paddle binaries
+# Update CNTOOLKIT_VERSION, CNNL_VERSION and CNCL_VERSION if using other versions
+#
+# Build:
+# - CNTOOLKIT_VERSION 2.6.5-1
+# - CNNL_VERSION 1.8.3-1
+# - CNCL_VERSION 1.0.2-1
+#
+# Download three packages from FTP (need to connect cambricon AE to get FTP url)
+# - cntoolkit_2.6.5-1.ubuntu18.04_amd64.deb
+# - cnnl_1.8.3-1.ubuntu18.04_amd64.deb
+# - cncl_1.0.2-1.ubuntu18.04_amd64.deb
+# copy them to current directory first, then run build commands
+#
+# For example:
+#
+# cd Paddle/tools/dockerfile
+#
+# (get cntoolkit pkg)
+# (get cnnl pkg)
+# (get cncl pkg)
+#
+# docker build -f Dockerfile.mlu  \
+# --build-arg CNTOOLKIT_VERSION=2.6.5-1 \
+# --build-arg CNNL_VERSION=1.8.3-1 \
+# --build-arg CNCL_VERSION=1.0.2-1 \
+# -t paddlepaddle/paddle:latest-dev-mlu .
+#
+# without mlu device:
+# docker run -it --network=host --pids-limit 409600 \
+# paddlepaddle/paddle:latest-dev-mlu /bin/bash
+#
+# with mlu device:
+# docker run -it --network=host --pids-limit 409600 \
+# --device=/dev/cambricon_ctl --device=/dev/cambricon_dev0 \
+# paddlepaddle/paddle:latest-dev-mlu /bin/bash
+
+FROM registry.baidubce.com/paddlepaddle/paddle:latest-dev
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+ENV WITH_GPU=OFF
+
+ARG CNTOOLKIT_VERSION=2.6.5-1
+ARG CNNL_VERSION=1.8.3-1
+ARG CNCL_VERSION=1.0.2-1
+ARG CNTOOLKIT_PKG=cntoolkit_$CNTOOLKIT_VERSION.ubuntu18.04_amd64.deb
+ARG CNNL_PKG=cnnl_$CNNL_VERSION.ubuntu18.04_amd64.deb
+ARG CNCL_PKG=cncl_$CNCL_VERSION.ubuntu18.04_amd64.deb
+
+# install cntoolkit
+COPY $CNTOOLKIT_PKG ./
+RUN dpkg -i $CNTOOLKIT_PKG && \
+    apt-get update && \
+    apt-get install -y cnrt cnperf cnpapi cnlicense cngdb cndrv cndev cncodec cncc cnas cnbin cnstudio cnrtc cnpx && \
+    rm -f $CNTOOLKIT_PKG
+
+ENV NEUWARE_HOME=/usr/local/neuware
+ENV LD_LIBRARY_PATH=$NEUWARE_HOME/lib64:$LD_LIBRARY_PATH
+
+# install cnnl
+COPY $CNNL_PKG ./
+RUN dpkg -i $CNNL_PKG && \
+    rm -f $CNNL_PKG
+
+# install cncl
+COPY $CNCL_PKG ./
+RUN dpkg -i $CNCL_PKG && \
+    rm -f $CNCL_PKG
+
+# Clean
+RUN apt-get clean -y
+
+EXPOSE 22

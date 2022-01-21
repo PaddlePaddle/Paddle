@@ -35,9 +35,7 @@ class MeanMLUKernel : public framework::OpKernel<T> {
     auto stream = context.template device_context<MLUDeviceContext>().stream();
 
     if (rank == 0) {  // scalar
-      auto mlu_place = BOOST_GET(platform::MLUPlace, place);
-      memory::Copy(mlu_place, out_data, mlu_place, in_data, numel * sizeof(T),
-                   stream);
+      memory::Copy(place, out_data, place, in_data, numel * sizeof(T), stream);
       return;
     }
 
@@ -85,9 +83,7 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
     auto stream = context.template device_context<MLUDeviceContext>().stream();
 
     if (rank == 0) {  // scalar
-      auto mlu_place = BOOST_GET(platform::MLUPlace, place);
-      memory::Copy(mlu_place, out_data, mlu_place, in_data, numel * sizeof(T),
-                   stream);
+      memory::Copy(place, out_data, place, in_data, numel * sizeof(T), stream);
       return;
     }
 
