@@ -299,11 +299,7 @@ def convert_var_shape(x, idx=None, in_control_flow=False):
     """
 
     def has_negative(list_shape, idx=None):
-        if idx is not None:
-            return list_shape[idx] < 0
-
-        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
-        return num_negative > 0
+        return list_shape[idx] < 0 if idx is not None else False
 
     # When `x` is Variable, call nn.shape(x) in following cases:
     #  (1) The shape of `x` is used in control flow condition.
