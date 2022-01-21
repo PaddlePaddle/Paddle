@@ -1064,7 +1064,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_add_reader_dependency', 'test_imperative_transformer_sorted_gradient',
     'test_bicubic_interp_v2_op', 'test_rank_attention_op',
     'test_space_to_depth_op', 'test_image_classification',
-    'test_custom_relu_op_setup', 'test_sgd_op', 'test_fused_seqpool_cvm_op'
+    'test_custom_relu_op_setup', 'test_sgd_op'
 ]
 
 # mem != 0 : It run 7 job each time in Single cases; 3 job each time in exclusive cases
@@ -2784,7 +2784,6 @@ TWO_PARALLEL_JOB = [
     'test_trt_convert_clip',
     'test_trt_convert_batch_norm',
     'test_cuda_stream_event',
-    'test_fused_seqpool_cvm_op',
 ]
 
 
