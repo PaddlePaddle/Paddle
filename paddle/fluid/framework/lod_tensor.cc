@@ -19,12 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 std::string LoDToString(const LoD &lod) {

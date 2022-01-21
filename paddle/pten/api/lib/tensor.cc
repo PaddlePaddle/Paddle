@@ -47,13 +47,13 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace experimental {
@@ -94,10 +94,10 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-paddle::framework::DDim Tensor::dims() const { return impl_->dims(); }
+pten::framework::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return paddle::framework::vectorize<int64_t>(impl_->dims());
+  return pten::framework::vectorize<int64_t>(impl_->dims());
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
