@@ -238,3 +238,48 @@ class HybridParallelOptimizer:
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
+
+
+class UnifiedOptimizer:
+    """
+    A wrapper for optimizers used by data parallel, recompute, amp,
+    GroupShard.
+    """
+
+    def __init__(self, optimizer, strategy):
+        self._original_optimizer = optimizer
+        self._strategy = strategy
+
+        self._dp_enable = True if fleet.worker_num() > 1 else False
+
+    @imperative_base.no_grad
+    @framework.dygraph_only
+    def step(self):
+        # minimize does not support parameters in the form of param_group, 
+        # so no need use _obtain_optimizer_parameters_list
+        parameters_list = _obtain_optimizer_parameters_list(
+            self._original_optimizer)
+
+        if self._dp_enable:
+            fused_allreduce_gradients(list(parameters_list))
+
+        self._original_optimizer.step()
+
+    @imperative_base.no_grad
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameters=None,
+                 no_grad_set=None):
+
+        parameter_list = parameters if parameters \
+            else self._original_optimizer._parameter_list
+
+        if self._dp_enable:
+            fused_allreduce_gradients(list(parameter_list))
+
+        return self._original_optimizer.minimize(loss, startup_program,
+                                                 parameter_list, no_grad_set)
+
+    def __getattr__(self, item):
+        return getattr(self._original_optimizer, item)

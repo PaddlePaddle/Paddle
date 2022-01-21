@@ -166,6 +166,7 @@ class Fleet(object):
         self._runtime_handle = None
         self._util = None
         self._context = {}
+        self.user_defined_optimizer = None
 
     def init(self, role_maker=None, is_collective=False, strategy=None):
         """
@@ -885,6 +886,9 @@ class Fleet(object):
                 if self._user_defined_strategy.heter_ccl_mode == False:
                     return HybridParallelOptimizer(optimizer, self._hcg,
                                                    self._user_defined_strategy)
+                elif self._user_defined_strategy.amp:
+                    return UnifiedOptimizer(optimizer,
+                                            self._user_defined_strategy)
                 else:
                     return HeterParallelOptimizer(optimizer,
                                                   self._user_defined_strategy)
@@ -899,6 +903,7 @@ class Fleet(object):
 
         Args:
             model (Layer): the user-defind model which inherits Layer.
+            optimizer (Optimizer): the optimizer.
 
         Returns:
             distributed data parallel model which inherits Layer.
@@ -949,11 +954,58 @@ class Fleet(object):
 
         """
         assert model is not None, "model should not be None"
+        assert self.user_defined_optimizer, "Please call fleet.distributed_optimizer first."
         if self.worker_num() <= 1:
             return model
 
+        sharding_enable = False
+        amp_enable = False
+        strategy = self._user_defined_strategy
+        if strategy.amp == True:
+            amp_enable = True
+            amp_level = strategy.amp_configs['amp_level']
+            if amp_level.upper() == "O2":
+                assert optimizer
+                model, optimizer = paddle.amp.decorate(
+                    models=model,
+                    optimizers=optimizer,
+                    level="O2",
+                    master_weight=None,
+                    save_dtype=None)
+                init_loss_scaling = strategy.amp_configs['init_loss_scaling']
+                incr_ratio = strategy.amp_configs['incr_ratio']
+                decr_ratio = strategy.amp_configs['decr_ratio']
+                incr_every_n_steps = strategy.amp_configs['incr_every_n_steps']
+                decr_every_n_nan_or_inf = strategy.amp_configs[
+                    'decr_every_n_nan_or_inf']
+                use_dynamic_loss_scaling = strategy.amp_configs[
+                    'use_dynamic_loss_scalling']
+
+                self._optimizer = optimizer
+                self._optimizer._scalar = paddle.amp.GradScalar(
+                    init_loss_scaling=init_loss_scaling,
+                    incr_ratio=incr_ratio,
+                    decr_ratio=decr_ratio,
+                    incr_every_n_steps=incr_every_n_steps,
+                    decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
+                    use_dynamic_loss_scaling=use_dynamic_loss_scaling)
+
+        if strategy.sharding == True:
+            sharding_enable = True
+            sharding_level = strategy.sharding_configs['level']
+            if sharding_level == "stage2":
+                optimizer = ShardingOptimizer(
+                    params=model.parameters(), optim=self._optimizer)
+                model = ShardingStage2(model, optimizer)
+                self._optimizer = optimizer
+            elif sharding_level == "stage3":
+                model = ShardingStage3(model, optimizer=self._optimizer)
+            else:
+                raise RuntimeError("Unknown sharding stage: {}".format(
+                    sharding_level))
+
         if self._user_defined_strategy.heter_ccl_mode == True:
-            distributed_model = paddle.DataParallel(
+            model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
                 fuse_grad_size_in_MB,
@@ -961,10 +1013,10 @@ class Fleet(object):
                 last_comm_group_size_MB,
                 find_unused_parameters=self._user_defined_strategy.
                 find_unused_parameters)
-            return distributed_model
+            return model
 
         if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
-            distributed_model = ShardingParallel(
+            model = ShardingParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
 
@@ -975,7 +1027,7 @@ class Fleet(object):
                 assert self.sharding_degree == self._hcg.get_sharding_parallel_world_size(
                 )
                 broadcast_sharding_parameters(model, self._hcg)
-            distributed_model = paddle.DataParallel(
+            model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
                 fuse_grad_size_in_MB,
@@ -984,13 +1036,13 @@ class Fleet(object):
                 find_unused_parameters=self._user_defined_strategy.
                 find_unused_parameters)
         elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
-            distributed_model = TensorParallel(
+            model = TensorParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
-            distributed_model = PipelineParallel(
+            model = PipelineParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
 
-        return distributed_model
+        return model
 
     @dygraph_only
     def state_dict(self):
