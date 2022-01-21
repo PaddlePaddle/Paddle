@@ -2758,7 +2758,7 @@ def infer_broadcast_shape(arr, indices, axis):
     broadcast_shape = tuple(broadcast_shape_list)
     for i in range(len(arr.shape)):
         if arr.shape[i] < indices.shape[i]:
-        # if indices matrix has larger size than arr matrix, do not broadcast.
+            # if indices matrix has larger size than arr matrix, do not broadcast.
             return None
     return broadcast_shape
 
@@ -2791,8 +2791,11 @@ def take_along_axis(arr, indices, axis):
             print(result)
             # [[1, 2, 3]]
     """
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if not broadcast_shape :
+    if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
     if in_dygraph_mode():
@@ -2855,6 +2858,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             # [60, 40, 50]]
 
     """
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     if in_dygraph_mode():
         values = paddle.to_tensor(values) if not isinstance(
@@ -2893,6 +2899,9 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
     Please refer to :ref:`api_tensor_put_along_axis`.
     """
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     values = paddle.to_tensor(values) if not isinstance(
         values, paddle.Tensor) else values
