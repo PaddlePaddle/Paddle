@@ -47,5 +47,4 @@ PD_REGISTER_KERNEL(dot, CPU, ANY, INT8, paddle::custom_kernel::Dot<int8_t>) {
   /* do some args define here
    * the only param can be used is OpKernelInfo* op_kernel_info */
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-  std::cout << "Hello World!" << std::endl;
 }

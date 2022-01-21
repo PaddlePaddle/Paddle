@@ -15,29 +15,39 @@
 import os
 import sys
 import subprocess
-
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-if os.name == 'nt':
-    exit()
-else:
-    cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
-        cur_dir, sys.executable)
-subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
-
-os.environ['CUSTOM_DEVICE_ROOT'] = cur_dir
-
-print(os.environ.get('CUSTOM_DEVICE_ROOT'))
-
-import paddle
+import unittest
 import numpy as np
 
-x_data = np.random.uniform(1, 5, [3]).astype(np.int8)
-y_data = np.random.uniform(1, 3, [3]).astype(np.int8)
 
-np_z = np.dot(x_data, y_data)
+# use dot <CPU, ANY, INT8> as test case.
+class TestCustomKernelDot(unittest.TestCase):
+    def setUp(self):
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        # not support WIN32
+        if os.name == 'nt':
+            exit()
+        else:
+            cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
+                cur_dir, sys.executable)
+        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+        os.environ['CUSTOM_DEVICE_ROOT'] = cur_dir
 
-x = paddle.to_tensor(x_data)
-y = paddle.to_tensor(y_data)
+    def test_dot_run(self):
+        # test dor run
+        x_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
+        y_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
+        result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
 
-z = paddle.dot(x, y)
-print(np.allclose(z.numpy(), np_z))
+        import paddle
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        out = paddle.dot(x, y)
+
+        self.assertTrue(
+            np.array_equal(out.numpy(), result),
+            "custom kernel dot out: {},\n numpy dot out: {}".format(out.numpy(),
+                                                                    result))
+
+
+if __name__ == '__main__':
+    unittest.main()

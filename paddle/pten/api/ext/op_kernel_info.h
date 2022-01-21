@@ -366,7 +366,7 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
+  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(pten::dtype::float16);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
