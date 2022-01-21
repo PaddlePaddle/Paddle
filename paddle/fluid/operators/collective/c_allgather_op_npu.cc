@@ -18,7 +18,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -79,5 +79,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_allgather, ops::CAllGatherOpASCENDKernel<int8_t>,
                        ops::CAllGatherOpASCENDKernel<int>,
+                       ops::CAllGatherOpASCENDKernel<int64_t>,
                        ops::CAllGatherOpASCENDKernel<float>,
                        ops::CAllGatherOpASCENDKernel<plat::float16>);

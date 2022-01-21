@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
 
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 
@@ -261,7 +262,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     framework::Tensor d_linear2_out, d_dropout2_out, d_residual;
     d_linear2_out.mutable_data<T>({bsz_seq, d_model}, place);
     d_dropout2_out.mutable_data<T>({bsz_seq, d_model}, place);
-    d_residual.mutable_data<T>({bsz_seq, d_model}, place);
+    d_residual.mutable_data<T>(d_x->dims(), place);
 
     if (pre_layer_norm) {
       fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
@@ -301,6 +302,15 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     } else {
       MatMulGrad(ctx, d_linear1_out, x, linear1_weight, d_x, d_linear1_weight);
     }
+    std::vector<const Tensor*> ins(2);
+    std::vector<Tensor*> outs(1);
+    ins[0] = &d_residual;
+    ins[1] = d_x;
+    outs[0] = d_x;
+    int elewise_add_axis = -1;
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(
+        ctx, ins, &outs, elewise_add_axis, AddFunctor<T>());
   }
 
   void Compute(const framework::ExecutionContext& context) const override {

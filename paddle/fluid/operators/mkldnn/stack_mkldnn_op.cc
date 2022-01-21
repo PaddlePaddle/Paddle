@@ -20,10 +20,10 @@ namespace operators {
 using framework::DataLayout;
 using framework::Tensor;
 using framework::LoDTensor;
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::concat;
-using mkldnn::stream;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::concat;
+using dnnl::stream;
 using platform::to_void_cast;
 
 template <typename T>
@@ -31,7 +31,7 @@ class StackMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::concat> {
  public:
   StackMKLDNNHandler(const framework::ExecutionContext& ctx,
-                     const mkldnn::engine mkldnn_engine,
+                     const dnnl::engine mkldnn_engine,
                      const std::vector<const Tensor*>& inputs, Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
@@ -91,7 +91,7 @@ class StackMKLDNNHandler
         dst_md, stack_axis, srcs_md, this->engine_));
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(const Tensor& input, int i) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const Tensor& input, int i) {
     const T* input_data = input.data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),
                                             to_void_cast<T>(input_data));
@@ -122,9 +122,9 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::unordered_map<int, memory> args;
     for (size_t i = 0; i < multi_input.size(); ++i) {
       srcs.push_back(handler.AcquireSrcMemory(*(multi_input[i]), i));
-      args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, *(srcs.at(i))});
+      args.insert({DNNL_ARG_MULTIPLE_SRC + i, *(srcs.at(i))});
     }
-    args.insert({MKLDNN_ARG_DST, *dst_mem});
+    args.insert({DNNL_ARG_DST, *dst_mem});
 
     concat_p->execute(astream, args);
     astream.wait();

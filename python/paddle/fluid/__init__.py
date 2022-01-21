@@ -69,8 +69,9 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
+
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -129,6 +130,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'CUDAPlace',
         'CUDAPinnedPlace',
         'NPUPlace',
+        'IPUPlace',
+        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -193,6 +196,11 @@ def __bootstrap__():
 
     if os.name == 'nt':
         remove_flag_if_exists('cpu_deterministic')
+
+    if core.is_compiled_with_ipu():
+        # Currently we request all ipu available for training and testing
+        #   finer control of pod of IPUs will be added later
+        read_env_flags += []
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     # Note(zhouwei25): sys may not have argv in some cases, 

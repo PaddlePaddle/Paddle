@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 
 namespace paddle {
@@ -353,8 +353,10 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
 
     float* cpu_data = new float[tensor->numel()];
-    xpu_memcpy(cpu_data, tensor->data<float>(), tensor->numel() * sizeof(float),
-               XPU_DEVICE_TO_HOST);
+    memory::Copy(platform::CPUPlace(), static_cast<void*>(cpu_data),
+                 tensor->place(),
+                 static_cast<const void*>(tensor->data<float>()),
+                 tensor->numel() * sizeof(float));
     bool flag = false;
     for (int i = 0; i < tensor->numel(); i++) {
       if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {

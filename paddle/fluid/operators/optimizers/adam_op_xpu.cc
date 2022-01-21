@@ -68,8 +68,8 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -86,11 +86,11 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           mom2, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &mom2_out);
       framework::TensorCopy(
-          beta1_pow, ctx.GetPlace(),
+          beta1_pow, beta1_pow.place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta1_pow_out);
       framework::TensorCopy(
-          beta2_pow, ctx.GetPlace(),
+          beta2_pow, beta2_pow.place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta2_pow_out);
       return;
@@ -138,8 +138,10 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       Tensor xpu_beta2_pow;
       if (beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
-        TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx, &xpu_beta1_pow);
-        TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx, &xpu_beta2_pow);
+        paddle::framework::TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx,
+                                      &xpu_beta1_pow);
+        paddle::framework::TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx,
+                                      &xpu_beta2_pow);
         dev_ctx.Wait();
         beta1_pow_ptr = xpu_beta1_pow.template data<float>();
         beta2_pow_ptr = xpu_beta2_pow.template data<float>();

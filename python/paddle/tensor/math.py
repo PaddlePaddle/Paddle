@@ -24,6 +24,7 @@ from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
 
 from paddle.tensor import cast
+from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable, convert_np_dtype_to_dtype_
@@ -64,6 +65,9 @@ from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
 from ..fluid.layers import lgamma    # noqa: F401
+from ..fluid.layers import asinh    # noqa: F401
+from ..fluid.layers import acosh    # noqa: F401
+from ..fluid.layers import atanh    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -630,6 +634,128 @@ def minimum(x, y, name=None):
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
+def fmax(x, y, name=None):
+    """
+    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmax(x, y)
+
+    **Note**:
+    ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [[3, 4],
+            #     [7, 8]]
+
+            x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [[3, 2, 4],
+            #     [3, 2, 4]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [ 2., 3., 5.]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float32')
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [  5.,   3., inf.]
+    """
+    op_type = 'elementwise_fmax'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def fmin(x, y, name=None):
+    """
+    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmin(x, y)
+
+    **Note**:
+    ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [[1, 2],
+            #        [5, 6]]
+
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [[[1, 0, 3],
+            #         [1, 0, 3]]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [ 1., 3., 5.]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float64')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float64')
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [   1., -inf.,    5.]
+    """
+    op_type = 'elementwise_fmin'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
 for func in [
         add,
         multiply
@@ -777,6 +903,66 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
+
+def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
+    """
+    Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
+            :attr:`None`, nansum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            # x is a Tensor with following elements:
+            #    [[nan, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, -nan, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = np.array([[float('nan'), 0.3, 0.5, 0.9],
+                            [0.1, 0.2, float('-nan'), 0.7]]).astype(np.float32)
+            x = paddle.to_tensor(x)
+            out1 = paddle.nansum(x)  # [2.7]
+            out2 = paddle.nansum(x, axis=0)  # [0.1, 0.5, 0.5, 1.6]
+            out3 = paddle.nansum(x, axis=-1)  # [1.7, 1.0]
+            out4 = paddle.nansum(x, axis=1, keepdim=True)  # [[1.7], [1.0]]
+
+            # y is a Tensor with shape [2, 2, 2] and elements as below:
+            #      [[[1, nan], [3, 4]],
+            #      [[5, 6], [-nan, 8]]]
+            # Each example is followed by the corresponding output tensor.
+            y = np.array([[[1, float('nan')], [3, 4]], 
+                            [[5, 6], [float('-nan'), 8]]])
+            y = paddle.to_tensor(y)
+            out5 = paddle.nansum(y, axis=[1, 2]) # [8, 19]
+            out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum')
+    check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
+
+    zero_tensor = paddle.zeros_like(x)
+    tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
+    return sum(tmp_tensor, axis, dtype, keepdim, name)
 
 
 @templatedoc(op_type="sum")
@@ -932,6 +1118,38 @@ def mm(input, mat2, name=None):
     Returns:
         Tensor: The product Tensor.
 
+    ::
+
+        * example 1:
+
+        input: [B, ..., M, K], mat2: [B, ..., K, N]
+        out: [B, ..., M, N]
+
+        * example 2:
+
+        input: [B, M, K], mat2: [B, K, N]
+        out: [B, M, N]
+
+        * example 3:
+
+        input: [B, M, K], mat2: [K, N]
+        out: [B, M, N]
+
+        * example 4:
+
+        input: [M, K], mat2: [K, N]
+        out: [M, N]
+
+        * example 5:
+
+        input: [B, M, K], mat2: [K]
+        out: [B, M]
+
+        * example 6:
+
+        input: [K], mat2: [K]
+        out: [1]
+
     Examples:
         .. code-block:: python
 
@@ -1068,6 +1286,185 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
 
+def renorm(x, p, axis, max_norm):
+    """
+    **renorm**
+
+    This operator is used to calculate the p-norm along the axis,
+    suppose the input-shape on axis dimension has the value of T, then
+    the tensor is split into T parts, the p-norm should be calculated for each
+    part, if the p-norm for part i is larger than max-norm, then each element 
+    in part i should be re-normalized at the same scale so that part-i' p-norm equals
+    max-norm exactly, otherwise part-i stays unchanged.
+
+    Args:
+        x (Tensor): The input Tensor
+        p (float): The power of the norm operation.
+        axis (int): the dimension to slice the tensor.
+        max-norm (float): the maximal norm limit.
+
+    Returns:
+        Tensor: the renorm Tensor.
+
+    Examples:
+        ..  code-block:: python
+            
+            import paddle
+            input = [[[2.0,2,-2],[3,0.3,3]],[[2,-8,2],[3.1,3.7,3]]]
+            x = paddle.to_tensor(input,dtype='float32')
+            y = paddle.renorm(x, 1.0, 2, 2.05)
+            print(y)        
+    #        [[[ 0.40594056,  0.29285714, -0.41000000],
+    #          [ 0.60891086,  0.04392857,  0.61500001]],
+    #         [[ 0.40594056, -1.17142856,  0.41000000],
+    #          [ 0.62920785,  0.54178572,  0.61500001]]])
+    
+    """
+    input_shape = x.shape
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
+    if not axis < len(input_shape):
+        raise ValueError("the axis:{} should be less then the shape's size {}:{}".format(axis,len(input_shape),input_shape))
+    if not axis >=0:
+        if not axis >= -1 * len(input_shape):
+            raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
+        axis = axis + len(input_shape)
+    if in_dygraph_mode():
+        out = core.ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
+        return out
+
+    inputs = {'X': x}
+    attrs = {'p': p, 'axis': axis, 'max_norm':max_norm}
+
+    helper = LayerHelper("renorm", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    return out
+
+
+
+def inner(x, y, name=None):
+    """
+
+    Inner product of two input Tensor.
+    
+    Ordinary inner product for 1-D Tensors, in higher dimensions a sum product over the last axes.
+
+    Args:
+        x (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match y's.
+        y (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match x's.
+        name(str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The inner-product Tensor, the output shape is x.shape[:-1] + y.shape[:-1].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(1, 7).reshape((2, 3)).astype('float32')
+            y = paddle.arange(1, 10).reshape((3, 3)).astype('float32')
+            out = paddle.inner(x, y)
+            print(out)
+            #        ([[14, 32, 50],
+            #         [32, 77, 122]])
+
+
+    """
+    if x.size == 1 or y.size == 1:
+        return multiply(x, y)
+    else:
+        xshape = x.shape
+        yshape = y.shape
+        dstshape = list(xshape[:-1])+list(yshape[:-1])
+        if len(dstshape)==0:
+            dstshape = [1]
+        nx = x.reshape((-1, xshape[-1]))
+        ny = y.reshape((-1, yshape[-1]))
+
+        if in_dygraph_mode():
+            return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
+
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(val, name,
+                                        ['float16', 'float32', 'float64'], 'inner')
+            x_shape = list(xshape)
+            y_shape = list(yshape)
+
+            # check the inner 2 dimensions
+            if x_shape[-1] != y_shape[-1]:
+                if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
+                    raise ValueError(
+                        "After performing an optional transpose, Input X's last dim should be "
+                        "equal to Y's last dim for multiplication "
+                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+                        % (x_shape, y_shape))
+
+        __check_input(nx, ny)
+
+        helper = LayerHelper('inner', **locals())
+        out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+        helper.append_op(
+            type='matmul_v2', inputs={'X': nx,
+                                'Y': ny.T}, outputs={'Out': out})
+        return out.reshape(dstshape)
+
+
+def outer(x, y, name=None):
+    """
+
+    Outer product of two Tensors.
+
+    Input is flattened if not already 1-dimensional.
+
+    Args:
+        x (Tensor): An N-D Tensor or a Scalar Tensor. 
+        y (Tensor): An N-D Tensor or a Scalar Tensor. 
+        name(str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The outer-product Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(1, 4).astype('float32')
+            y = paddle.arange(1, 6).astype('float32')
+            out = paddle.outer(x, y)
+            print(out)
+            #        ([[1, 2, 3, 4, 5],
+            #         [2, 4, 6, 8, 10],
+            #         [3, 6, 9, 12, 15]])
+
+
+    """
+    nx = x.reshape((-1, 1))
+    ny = y.reshape((1, -1))
+
+    if in_dygraph_mode():
+        return _C_ops.matmul_v2(nx, ny)
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(val, name,
+                                     ['float16', 'float32', 'float64'], 'inner')
+
+    __check_input(nx, ny)
+
+    helper = LayerHelper('outer', **locals())
+    out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+    helper.append_op(
+        type='matmul_v2', inputs={'X': nx,
+                               'Y': ny}, outputs={'Out': out})
+    return out
+
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
     r"""
@@ -1077,7 +1474,8 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \\log\\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32 or float64, which 
+            have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
             tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
@@ -1180,15 +1578,37 @@ def inverse(x, name=None):
         type='inverse', inputs={'Input': [x] }, outputs={'Output': [out]})
     return out
 
+def _get_reduce_all_value(axis):
+    """
+    Internal function for max, min, amax and amin. 
+    It computes the attribute reduce_all value based on axis.
+    """
+    if axis is not None and not isinstance(axis, list):
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
+
+    reduce_all = True if axis == None or axis == [] else False
+    axis = axis if axis != None and axis != [] else [0]
+    return reduce_all, axis
 
 def max(x, axis=None, keepdim=False, name=None):
     """
 
     Computes the maximum of tensor elements over the given axis.
 
+    Note:
+        The difference between max and amax is: If there are multiple maximum elements,
+        amax evenly distributes gradient between these equal values, 
+        while max propagates gradient to all of them.
+
+
     Args:
-        x(Tensor): A tensor, the data type is float32,
-            float64, int32, int64.
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
@@ -1212,47 +1632,50 @@ def max(x, axis=None, keepdim=False, name=None):
 
             # data_x is a Tensor with shape [2, 4]
             # the axis is a int element
-
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
+                                  [0.1, 0.2, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
             result1 = paddle.max(x)
-            print(result1)
-            #[0.9]
+            result1.backward()
+            print(result1, x.grad) 
+            #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
+
+            x.clear_grad()
             result2 = paddle.max(x, axis=0)
-            print(result2)
-            #[0.2 0.3 0.6 0.9]
+            result2.backward()
+            print(result2, x.grad) 
+            #[0.2, 0.3, 0.6, 0.9], [[1., 1., 0., 1.], [0., 0., 1., 0.]]
+
+            x.clear_grad()
             result3 = paddle.max(x, axis=-1)
-            print(result3)
-            #[0.9 0.7]
+            result3.backward()
+            print(result3, x.grad) 
+            #[0.9, 0.7], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
+
+            x.clear_grad()
             result4 = paddle.max(x, axis=1, keepdim=True)
-            print(result4)
-            #[[0.9]
-            # [0.7]]
+            result4.backward()
+            print(result4, x.grad) 
+            #[[0.9], [0.7]], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
-
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
-                                  [[5.0, 6.0], [7.0, 8.0]]])
+                                  [[5.0, 6.0], [7.0, 8.0]]],
+                                 dtype='float64', stop_gradient=False)
             result5 = paddle.max(y, axis=[1, 2])
-            print(result5)
-            #[4. 8.]
+            result5.backward()
+            print(result5, y.grad) 
+            #[4., 8.], [[[0., 0.], [0., 1.]], [[0., 0.], [0., 1.]]]
+
+            y.clear_grad()
             result6 = paddle.max(y, axis=[0, 1])
-            print(result6)
-            #[7. 8.]
+            result6.backward()
+            print(result6, y.grad) 
+            #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis= [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
-
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
+    reduce_all, axis = _get_reduce_all_value(axis)
     if in_dygraph_mode():
         return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
@@ -1279,6 +1702,11 @@ def min(x, axis=None, keepdim=False, name=None):
 
     Computes the minimum of tensor elements over the given axis
 
+    Note:
+        The difference between min and amin is: If there are multiple minimum elements,
+        amin evenly distributes gradient between these equal values, 
+        while min propagates gradient to all of them.
+
     Args:
         x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(int|list|tuple, optional): The axis along which the minimum is computed.
@@ -1302,46 +1730,52 @@ def min(x, axis=None, keepdim=False, name=None):
 
             import paddle
 
-            # x is a tensor with shape [2, 4]
+            # data_x is a Tensor with shape [2, 4]
             # the axis is a int element
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
+                                  [0.1, 0.2, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
             result1 = paddle.min(x)
-            print(result1)
-            #[0.1]
-            result2 = paddle.min(x, axis=0)
-            print(result2)
-            #[0.1 0.2 0.5 0.7]
-            result3 = paddle.min(x, axis=-1)
-            print(result3)
-            #[0.2 0.1]
-            result4 = paddle.min(x, axis=1, keepdim=True)
-            print(result4)
-            #[[0.2]
-            # [0.1]]
+            result1.backward()
+            print(result1, x.grad) 
+            #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
 
-            # y is a Tensor with shape [2, 2, 2]
+            x.clear_grad()
+            result2 = paddle.min(x, axis=0)
+            result2.backward()
+            print(result2, x.grad) 
+            #[0.1, 0.2, 0.5, 0.7], [[0., 0., 1., 0.], [1., 1., 0., 1.]]
+
+            x.clear_grad()
+            result3 = paddle.min(x, axis=-1)
+            result3.backward()
+            print(result3, x.grad) 
+            #[0.2, 0.1], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
+
+            x.clear_grad()
+            result4 = paddle.min(x, axis=1, keepdim=True)
+            result4.backward()
+            print(result4, x.grad) 
+            #[[0.2], [0.1]], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
+
+            # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
-                                  [[5.0, 6.0], [7.0, 8.0]]])
+                                  [[5.0, 6.0], [7.0, 8.0]]],
+                                 dtype='float64', stop_gradient=False)
             result5 = paddle.min(y, axis=[1, 2])
-            print(result5)
-            #[1. 5.]
+            result5.backward()
+            print(result5, y.grad) 
+            #[1., 5.], [[[1., 0.], [0., 0.]], [[1., 0.], [0., 0.]]]
+
+            y.clear_grad()
             result6 = paddle.min(y, axis=[0, 1])
-            print(result6)
-            #[1. 2.]
+            result6.backward()
+            print(result6, y.grad) 
+            #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis= [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
+    reduce_all, axis = _get_reduce_all_value(axis)
     if in_dygraph_mode():
         return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
@@ -1363,6 +1797,230 @@ def min(x, axis=None, keepdim=False, name=None):
         })
     return out
 
+def amax(x, axis=None, keepdim=False, name=None):
+    """
+    Computes the maximum of tensor elements over the given axis.
+
+    Note:
+        The difference between max and amax is: If there are multiple maximum elements,
+        amax evenly distributes gradient between these equal values, 
+        while max propagates gradient to all of them.
+
+    Args:
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64,
+            the dimension is no more than 4.
+        axis(int|list|tuple, optional): The axis along which the maximum is computed.
+            If :attr:`None`, compute the maximum over all elements of
+            `x` and return a Tensor with a single element,
+            otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
+            If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the `x` unless :attr:`keepdim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor, results of maximum on the specified axis of input tensor,
+        it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            # data_x is a Tensor with shape [2, 4] with multiple maximum elements
+            # the axis is a int element
+
+            x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
+                                  [0.9, 0.9, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
+            # There are 5 maximum elements: 
+            # 1) amax evenly distributes gradient between these equal values, 
+            #    thus the corresponding gradients are 1/5=0.2;
+            # 2) while max propagates gradient to all of them, 
+            #    thus the corresponding gradient are 1.
+            result1 = paddle.amax(x)
+            result1.backward()
+            print(result1, x.grad) 
+            #[0.9], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+
+            x.clear_grad()
+            result1_max = paddle.max(x)
+            result1_max.backward()
+            print(result1_max, x.grad) 
+            #[0.9], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
+
+            ###############################
+
+            x.clear_grad()
+            result2 = paddle.amax(x, axis=0)
+            result2.backward()
+            print(result2, x.grad) 
+            #[0.9, 0.9, 0.9, 0.9], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
+
+            x.clear_grad()
+            result3 = paddle.amax(x, axis=-1)
+            result3.backward()
+            print(result3, x.grad) 
+            #[0.9, 0.9], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
+
+            x.clear_grad()
+            result4 = paddle.amax(x, axis=1, keepdim=True)
+            result4.backward()
+            print(result4, x.grad) 
+            #[[0.9], [0.9]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
+
+            # data_y is a Tensor with shape [2, 2, 2]
+            # the axis is list 
+            y = paddle.to_tensor([[[0.1, 0.9], [0.9, 0.9]],
+                                  [[0.9, 0.9], [0.6, 0.7]]],
+                                 dtype='float64', stop_gradient=False)
+            result5 = paddle.amax(y, axis=[1, 2])
+            result5.backward()
+            print(result5, y.grad) 
+            #[0.9., 0.9], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
+
+            y.clear_grad()
+            result6 = paddle.amax(y, axis=[0, 1])
+            result6.backward()
+            print(result6, y.grad) 
+            #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
+    """
+
+    reduce_all, axis = _get_reduce_all_value(axis)
+    if in_dygraph_mode():
+        return _C_ops.reduce_amax(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
+
+    helper = LayerHelper('amax', **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amax')
+
+    out = helper.create_variable_for_type_inference(
+            dtype=x.dtype)
+    helper.append_op(
+        type='reduce_amax',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={
+            'dim': axis,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all
+        })
+    return out
+
+def amin(x, axis=None, keepdim=False, name=None):
+    """
+
+    Computes the minimum of tensor elements over the given axis
+
+    Note:
+        The difference between min and amin is: If there are multiple minimum elements,
+        amin evenly distributes gradient between these equal values, 
+        while min propagates gradient to all of them.
+
+    Args:
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64, 
+            the dimension is no more than 4.
+        axis(int|list|tuple, optional): The axis along which the minimum is computed.
+            If :attr:`None`, compute the minimum over all elements of
+            `x` and return a Tensor with a single element,
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
+            If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the `x` unless :attr:`keepdim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor, results of minimum on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            # data_x is a Tensor with shape [2, 4] with multiple minimum elements
+            # the axis is a int element
+
+            x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1],
+                                  [0.1, 0.1, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
+            # There are 5 minimum elements: 
+            # 1) amin evenly distributes gradient between these equal values, 
+            #    thus the corresponding gradients are 1/5=0.2;
+            # 2) while min propagates gradient to all of them, 
+            #    thus the corresponding gradient are 1.
+            result1 = paddle.amin(x)
+            result1.backward()
+            print(result1, x.grad) 
+            #[0.1], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+
+            x.clear_grad()
+            result1_min = paddle.min(x)
+            result1_min.backward()
+            print(result1_min, x.grad) 
+            #[0.1], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
+
+            ###############################
+
+            x.clear_grad()
+            result2 = paddle.amin(x, axis=0)
+            result2.backward()
+            print(result2, x.grad) 
+            #[0.1, 0.1, 0.1, 0.1], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
+
+            x.clear_grad()
+            result3 = paddle.amin(x, axis=-1)
+            result3.backward()
+            print(result3, x.grad) 
+            #[0.1, 0.1], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
+
+            x.clear_grad()
+            result4 = paddle.amin(x, axis=1, keepdim=True)
+            result4.backward()
+            print(result4, x.grad) 
+            #[[0.1], [0.1]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
+
+            # data_y is a Tensor with shape [2, 2, 2]
+            # the axis is list 
+            y = paddle.to_tensor([[[0.2, 0.1], [0.1, 0.1]],
+                                  [[0.1, 0.1], [0.6, 0.7]]],
+                                 dtype='float64', stop_gradient=False)
+            result5 = paddle.amin(y, axis=[1, 2])
+            result5.backward()
+            print(result5, y.grad) 
+            #[0.1., 0.1], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
+
+            y.clear_grad()
+            result6 = paddle.amin(y, axis=[0, 1])
+            result6.backward()
+            print(result6, y.grad) 
+            #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
+    """
+
+    reduce_all, axis = _get_reduce_all_value(axis)
+    if in_dygraph_mode():
+        return _C_ops.reduce_amin(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
+
+    helper = LayerHelper('amin', **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amin')
+
+    out = helper.create_variable_for_type_inference(
+            dtype=x.dtype)
+    helper.append_op(
+        type='reduce_amin',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={
+            'dim': axis,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all
+        })
+    return out
 
 def log1p(x, name=None):
     r"""
@@ -2611,3 +3269,630 @@ def atan2(x, y, name=None):
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
+
+def logit(x, eps=None, name=None):
+    r"""
+    This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
+
+    .. math::
+ 
+        logit(x) = ln(\frac{x}{1 - x})
+
+    where
+
+    .. math::
+
+        x_i=
+            \left\{\begin{array}{rcl}
+                x_i & &\text{if } eps == Default \\
+                eps & &\text{if } x_i < eps \\
+                x_i & &\text{if } eps <= x_i <= 1-eps \\
+                1-eps & &\text{if } x_i > 1-eps
+            \end{array}\right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        eps (float, optional):  the epsilon for input clamp bound. Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
+            out1 = paddle.logit(x)
+            print(out1)
+            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
+
+    """
+
+    if eps == None:
+        eps = 0.0
+    if in_dygraph_mode():
+        return _C_ops.logit(x, 'eps', eps)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
+    helper = LayerHelper("logit", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='logit',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'eps': eps})
+    return out
+
+def lerp(x, y, weight, name=None):
+    r"""
+    Does a linear interpolation between x and y based on weight.
+
+    Equation:
+        .. math::
+
+            lerp(x, y, weight) = x + weight * (y - x).
+
+    Args:
+        x (Tensor): An N-D Tensor with starting points, the data type is float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.arange(1., 5., dtype='float32')
+            y = paddle.empty([4], dtype='float32')
+            y.fill_(10.)
+            out = paddle.lerp(start, end, 0.5)
+            # out: [5.5., 6., 6.5, 7.]
+
+    """
+    if in_dygraph_mode():
+        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+        if isinstance(weight, float):
+            weight = paddle.to_tensor(weight, dtype=x.dtype)
+        return _C_ops.lerp(x, y, weight)
+
+    if isinstance(weight, float):
+        weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'], 'lerp')
+
+    helper = LayerHelper('lerp', **locals())
+    inputs = {'X': x, 'Y': y, 'Weight': weight}
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def lerp_(x, y, weight, name=None):
+    r"""
+    Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_lerp`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+    if isinstance(weight, float):
+        weight = paddle.to_tensor([weight], dtype=x.dtype)
+    elif isinstance(weight, (paddle.Tensor, Variable)):
+        out_shape = broadcast_shape(out_shape, weight.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    return _C_ops.lerp_(x, y, weight)
+
+def erfinv(x, name=None):
+    r"""
+    The inverse error function of x, .
+
+    Equation:
+        .. math::
+
+            erfinv(erf(x)) = x.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.to_tensor([0, 0.5, -1.], dtype="float32")
+            out = paddle.erfinv(x)
+            # out: [0, 0.4769, -inf]
+
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+
+    if in_dygraph_mode():
+        return _C_ops.erfinv(x)
+
+    helper = LayerHelper('erfinv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def erfinv_(x, name=None):
+    r"""
+    Inplace version of ``erfinv`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_erfinv`.
+    """
+    check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    return _C_ops.erfinv_(x)
+
+def rad2deg(x, name=None):
+    """
+    Convert each of the elements of input x from angles in radians to degrees.
+    
+    Equation:
+        .. math::
+
+            rad2deg(x)=180/ \pi * x
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
+            result1 = paddle.rad2deg(x1)
+            print(result1)
+            # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [180.02334595, -180.02334595,  359.98937988, -359.98937988,
+            #           9.95437622 , -89.95437622])
+
+            x2 = paddle.to_tensor(np.pi/2)
+            result2 = paddle.rad2deg(x2)
+            print(result2)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [90.])
+                     
+            x3 = paddle.to_tensor(1)
+            result3 = paddle.rad2deg(x3)
+            print(result3)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [57.29578018])
+    """
+    rad2deg_scale = 180 / np.pi
+    if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.scale(x, 'scale', rad2deg_scale)
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg')
+        helper = LayerHelper('rad2deg', **locals())
+        out_cast = x
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
+            helper.append_op(
+                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
+        helper.append_op(
+            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': rad2deg_scale})
+        return out
+
+def deg2rad(x, name=None):
+    """
+    Convert each of the elements of input x from degrees to angles in radians.
+    
+    Equation:
+        .. math::
+
+            deg2rad(x)=\pi * x / 180
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
+            result1 = paddle.deg2rad(x1)
+            print(result1)
+            # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [3.14159274, -3.14159274,  6.28318548, -6.28318548,  1.57079637,
+            #           -1.57079637])
+
+            x2 = paddle.to_tensor(180)
+            result2 = paddle.deg2rad(x2)
+            print(result2)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [3.14159274])
+    """
+    deg2rad_scale = np.pi / 180.0
+    if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.scale(x, 'scale', deg2rad_scale)
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad')
+        helper = LayerHelper('deg2rad', **locals())
+        out_cast = x
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
+            helper.append_op(
+                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
+        helper.append_op(
+            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
+        return out
+
+def gcd(x, y, name=None):
+    """
+    Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
+    Both x and y must have integer types.
+    
+    Note:
+        gcd(0,0)=0, gcd(0, y)=|y|
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int32，int64. 
+        y (Tensor): An N-D Tensor, the data type is int32，int64. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x1 = paddle.to_tensor(12)
+            x2 = paddle.to_tensor(20)
+            paddle.gcd(x1, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [4])
+
+            x3 = paddle.arange(6)
+            paddle.gcd(x3, x2)
+            # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [20, 1 , 2 , 1 , 4 , 5])
+
+            x4 = paddle.to_tensor(0)
+            paddle.gcd(x4, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [20])
+
+            paddle.gcd(x4, x4)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+            
+            x5 = paddle.to_tensor(-20)
+            paddle.gcd(x1, x5)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [4])
+    """
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    x = paddle.broadcast_to(x, shape)
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs(x)
+    y = paddle.abs(y)
+
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
+
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
+        # that, we change those zeros to ones. Their values don't matter because
+        # they won't be used.
+        y_not_equal_0 = (y != 0)
+        y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
+        x, y = (paddle.where(y_not_equal_0, y, x),
+                  paddle.where(y_not_equal_0, paddle.mod(x, y_safe),paddle.zeros(y.shape, y.dtype)))
+        return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
+
+    if in_dygraph_mode():
+        while _gcd_cond_fn(x, y):
+            x, y = _gcd_body_fn(x, y)
+
+        return x
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64'], 'gcd')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'gcd')
+        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
+        return out
+
+def lcm(x, y, name=None):
+    """
+    Computes the element-wise least common multiple (LCM) of input |x| and |y|.
+    Both x and y must have integer types.
+    
+    Note:
+        lcm(0,0)=0, lcm(0, y)=0
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int32，int64. 
+        y (Tensor): An N-D Tensor, the data type is int32，int64. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x1 = paddle.to_tensor(12)
+            x2 = paddle.to_tensor(20)
+            paddle.lcm(x1, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [60])
+
+            x3 = paddle.arange(6)
+            paddle.lcm(x3, x2)
+            # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0, 20, 20, 60, 20, 20])
+
+            x4 = paddle.to_tensor(0)
+            paddle.lcm(x4, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+
+            paddle.lcm(x4, x4)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+            
+            x5 = paddle.to_tensor(-20)
+            paddle.lcm(x1, x5)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [60])
+    """
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
+    # that, we change those zeros to ones. Their values don't matter because
+    # they won't be used.
+    d_equal_0 = paddle.equal(d, 0)
+    d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
+    out = paddle.where(d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe)
+    return out
+
+def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
+    r"""
+    Computes the n-th forward difference along the given axis.
+    The first-order differences is computed by using the following formula: 
+
+    .. math::
+
+        out[i] = x[i+1] - x[i]
+    
+    Higher-order differences are computed by using paddle.diff() recursively. 
+    Only n=1 is currently supported.
+
+    Args:
+        x(Tensor): The input tensor to compute the forward difference on
+        n(int, optional): The number of times to recursively compute the difference. 
+                          Only support n=1. Default:1
+        axis(int, optional): The axis to compute the difference along. Default:-1
+        prepend(Tensor, optional): The tensor to prepend to input along axis before computing the difference.
+                                   It's dimensions must be equivalent to that of x, 
+                                   and its shapes must match x's shape except on axis.
+        append(Tensor, optional): The tensor to append to input along axis before computing the difference, 
+                                   It's dimensions must be equivalent to that of x, 
+                                   and its shapes must match x's shape except on axis.
+        name(str|None): A name for this layer(optional). If set None, 
+                        the layer will be named automatically.
+    
+    Returns:
+        Tensor: The output tensor with same dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 4, 5, 2])
+            out = paddle.diff(x)
+            print(out)
+            # out:
+            # [3, 1, -3]
+
+            y = paddle.to_tensor([7, 9])
+            out = paddle.diff(x, append=y)
+            print(out)
+            # out: 
+            # [3, 1, -3, 5, 2]
+
+            z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            out = paddle.diff(z, axis=0)
+            print(out)
+            # out:
+            # [[3, 3, 3]]
+            out = paddle.diff(z, axis=1)
+            print(out)
+            # out:
+            # [[1, 1], [1, 1]]
+    """
+
+    if axis < 0:
+        axis = axis + len(x.shape)
+    if axis > len(x.shape):
+        axis = len(x.shape)
+    if axis < 0:
+        axis = 0
+    dtype = x.dtype
+    axes = [axis]
+    infer_flags = list(1 for i in range(len(axes)))
+    if in_dygraph_mode():
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+        if has_pend:
+            new_input = _C_ops.concat(input_list, 'axis', axis)
+        else:
+            new_input = x
+
+        attrs_1 = ()
+        attrs_2 = ()
+
+        dim_len = new_input.shape[axis]
+
+        starts_1 = [0]
+        attrs_1 += ('starts', starts_1)
+        ends_1 = [dim_len - 1]
+        attrs_1 += ('ends', ends_1)
+        input_front = _C_ops.slice(new_input, None, None, 'axes', axes, \
+            'infer_flags', infer_flags, *attrs_1)
+        starts_2 = [1]
+        attrs_2 += ('starts', starts_2)
+        ends_2 = [dim_len]
+        attrs_2 += ('ends', ends_2)
+        input_back = _C_ops.slice(new_input, None, None, 'axes', axes, \
+            'infer_flags', infer_flags, *attrs_2)
+
+        if x.dtype == paddle.bool:
+            op = getattr(_C_ops, "logical_xor")
+            out = op(input_back, input_front)
+        else:
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
+        return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
+        check_type(axis, 'axis', (int), 'diff')
+        helper = LayerHelper('diff', **locals())
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+
+        if has_pend:
+            new_input = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='concat', inputs={'X': input_list}, outputs={'Out': [new_input]}, attrs={'axis': axis}
+            )
+        else:
+            new_input = x
+
+        dim_len = new_input.shape[axis]
+        attrs_1 = {'axes': axes}
+        starts_1 = [0]
+        ends_1 = [dim_len - 1]
+        attrs_1['starts'] = starts_1
+        attrs_1['ends'] = ends_1
+        input_front = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='slice', inputs={'Input': new_input}, attrs=attrs_1, outputs={'Out': input_front}
+        )
+        attrs_2 = {'axes': axes}
+        starts_2 = [1]
+        ends_2 = [dim_len]
+        attrs_2['starts'] = starts_2
+        attrs_2['ends'] = ends_2
+        input_back = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='slice', inputs={'Input': new_input}, attrs=attrs_2, outputs={'Out': input_back}
+        )
+
+        if dtype == paddle.bool:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='logical_xor', inputs={"X": input_back, "Y": input_front}, outputs={"Out": out}
+            )
+        else:
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
+
+        return out
+
+def angle(x, name=None):
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
+    for negative real numbers, the angle is :math:`\pi`.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            z = x + 1j * y
+            print(z.numpy())
+            # [[-2.-2.j -2.-1.j -2.+0.j -2.+1.j]
+            #  [-1.-2.j -1.-1.j -1.+0.j -1.+1.j]
+            #  [ 0.-2.j  0.-1.j  0.+0.j  0.+1.j]
+            #  [ 1.-2.j  1.-1.j  1.+0.j  1.+1.j]]
+
+            theta = paddle.angle(z)
+            print(theta.numpy())
+            # [[-2.3561945 -2.6779451  3.1415927  2.6779451]
+            #  [-2.0344439 -2.3561945  3.1415927  2.3561945]
+            #  [-1.5707964 -1.5707964  0.         1.5707964]
+            #  [-1.1071488 -0.7853982  0.         0.7853982]]
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.angle(x)
+
+    check_variable_and_dtype(x, 'x',
+        ['float32', 'float64', 'complex64', 'complex128'], 'angle')
+    op_type = "angle"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(x.dtype))
+    outputs = {"Out": out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out

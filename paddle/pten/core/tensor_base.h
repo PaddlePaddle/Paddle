@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/utils/type_registry.h"
 
@@ -28,7 +28,7 @@ class TensorBase {
  public:
   using DataType = paddle::experimental::DataType;
   using DataLayout = paddle::experimental::DataLayout;
-  using DDim = paddle::framework::DDim;
+  using DDim = pten::framework::DDim;
   using Place = paddle::platform::Place;
 
   virtual ~TensorBase() = default;
@@ -43,7 +43,7 @@ class TensorBase {
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  virtual DataType data_type() const = 0;
+  virtual DataType dtype() const = 0;
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.

@@ -40,7 +40,6 @@ namespace paddle {
 namespace framework {
 
 class Dataset;
-class LoDTensor;
 class ProgramDesc;
 class PullDenseWorker;
 class Scope;
@@ -346,11 +345,6 @@ class HeterPipelineTrainer : public TrainerBase {
   std::vector<int> trainers_;  //  std::vector<int> trainers
   int thread_num_;
   std::vector<std::thread> threads_;
-
-  std::vector<std::string> need_merge_var_names_;
-#ifdef PADDLE_WITH_HETERPS
-  std::vector<platform::Place> places_;
-#endif
 
   int num_microbatches_;
   platform::Place place_;

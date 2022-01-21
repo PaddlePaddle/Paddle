@@ -66,6 +66,48 @@ extern "C" void cgeev_(char *jobvl, char *jobvr, int *n, std::complex<float> *a,
                        std::complex<float> *work, int *lwork, float *rwork,
                        int *info);
 
+// gels
+extern "C" void dgels_(char *trans, int *m, int *n, int *nrhs, double *a,
+                       int *lda, double *b, int *ldb, double *work, int *lwork,
+                       int *info);
+extern "C" void sgels_(char *trans, int *m, int *n, int *nrhs, float *a,
+                       int *lda, float *b, int *ldb, float *work, int *lwork,
+                       int *info);
+
+// gelsd
+extern "C" void dgelsd_(int *m, int *n, int *nrhs, double *a, int *lda,
+                        double *b, int *ldb, double *s, double *rcond,
+                        int *rank, double *work, int *lwork, int *iwork,
+                        int *info);
+extern "C" void sgelsd_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
+                        int *ldb, float *s, float *rcond, int *rank,
+                        float *work, int *lwork, int *iwork, int *info);
+
+// gelsy
+extern "C" void dgelsy_(int *m, int *n, int *nrhs, double *a, int *lda,
+                        double *b, int *ldb, int *jpvt, double *rcond,
+                        int *rank, double *work, int *lwork, int *info);
+extern "C" void sgelsy_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
+                        int *ldb, int *jpvt, float *rcond, int *rank,
+                        float *work, int *lwork, int *info);
+
+// gelss
+extern "C" void dgelss_(int *m, int *n, int *nrhs, double *a, int *lda,
+                        double *b, int *ldb, double *s, double *rcond,
+                        int *rank, double *work, int *lwork, int *info);
+extern "C" void sgelss_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
+                        int *ldb, float *s, float *rcond, int *rank,
+                        float *work, int *lwork, int *info);
+
+extern "C" void zpotrs_(char *uplo, int *n, int *nrhs, std::complex<double> *a,
+                        int *lda, std::complex<double> *b, int *ldb, int *info);
+extern "C" void cpotrs_(char *uplo, int *n, int *nrhs, std::complex<float> *a,
+                        int *lda, std::complex<float> *b, int *ldb, int *info);
+extern "C" void dpotrs_(char *uplo, int *n, int *nrhs, double *a, int *lda,
+                        double *b, int *ldb, int *info);
+extern "C" void spotrs_(char *uplo, int *n, int *nrhs, float *a, int *lda,
+                        float *b, int *ldb, int *info);
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -105,7 +147,19 @@ extern void *lapack_dso_handle;
   __macro(dgeev_);                   \
   __macro(sgeev_);                   \
   __macro(zgeev_);                   \
-  __macro(cgeev_);
+  __macro(cgeev_);                   \
+  __macro(dgels_);                   \
+  __macro(sgels_);                   \
+  __macro(dgelsd_);                  \
+  __macro(sgelsd_);                  \
+  __macro(dgelsy_);                  \
+  __macro(sgelsy_);                  \
+  __macro(dgelss_);                  \
+  __macro(sgelss_);                  \
+  __macro(zpotrs_);                  \
+  __macro(cpotrs_);                  \
+  __macro(dpotrs_);                  \
+  __macro(spotrs_);
 
 LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 

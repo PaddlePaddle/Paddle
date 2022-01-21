@@ -32,10 +32,13 @@ class PSClient;
 class PSServer;
 }  // namespace distributed
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

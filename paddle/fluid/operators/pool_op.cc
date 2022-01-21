@@ -15,12 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 
 #include <unordered_map>
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -102,7 +97,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (this->IsMKLDNNType() == false) &&
+  const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   // update paddings if "SAME" or global_pooling

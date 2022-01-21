@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -36,8 +37,6 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/include/core.h"
-
 namespace paddle {
 namespace framework {
 class Variable;
@@ -212,6 +211,8 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  size_t ElementSize() const { return framework::SizeOfType(var_->DataType()); }
+
   void SetForwardDataType(framework::proto::VarType::Type data_type) {
     var_->SetForwardDataType(data_type);
   }
@@ -279,16 +280,6 @@ class VarBase {
   mutable size_t copied_counter_ = 0;
 
   static ThreadSafeNameSet name_set_;
-};
-
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual std::vector<std::shared_ptr<VarBase>> Forward(
-      const std::vector<std::shared_ptr<VarBase>>& inputs) {
-    return {};
-  }
 };
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(

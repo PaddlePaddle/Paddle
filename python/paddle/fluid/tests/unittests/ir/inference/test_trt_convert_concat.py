@@ -318,18 +318,6 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
                            "INPUT AxisTensor NOT SUPPORT")
 
-        def teller2(program_config, predictor_config):
-            if len(
-                    program_config.inputs['concat_input1'].shape
-            ) == 2 and not predictor_config.tensorrt_dynamic_shape_enabled():
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output shape has diff, but we can add shuffle layer to resolve it."
-        )
-
     def test(self):
         self.add_skip_trt_case()
         self.run_test()

@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,14 +18,13 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 struct PowFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
 // TODO(wujionghao): A potential speed improvement is supporting different
 // types in C++.
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
@@ -31,7 +33,8 @@ struct PowFunctor {
     // when cast to int by default and it is wrong.
     // Use llrint to cast it to the nearest integer, which is 3.
     if (std::is_integral<T>::value) {
-      return std::llrint(std::pow(a, b));
+      return std::llrint(
+          std::pow(static_cast<double>(a), static_cast<double>(b)));
     }
 #endif
     return std::pow(a, b);
@@ -60,13 +63,25 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
 template <typename T>
 struct PowGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * y *
+             std::pow(static_cast<double>(x), static_cast<double>(y - 1));
+    }
+#endif
     return dout * y * std::pow(x, y - 1);
   }
 };
 
-template <typename T>
+template <typename T, typename Enable = void>
 struct PowGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * std::log(static_cast<double>(x)) *
+             std::pow(static_cast<double>(x), static_cast<double>(y));
+    }
+#endif
     return dout * std::log(x) * std::pow(x, y);
   }
 };

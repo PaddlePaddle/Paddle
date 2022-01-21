@@ -245,6 +245,11 @@ class Communicator {
 
   virtual void InitBrpcClient(const std::string &dist_desc,
                               const std::vector<std::string> &host_sign_list);
+
+  virtual std::vector<uint64_t> GetClientInfo();
+
+  virtual int SetClients(std::vector<uint64_t> &host_sign_list);  // NOLINT
+
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,
                             int table_id, Scope *scope);
@@ -271,6 +276,7 @@ class Communicator {
 
   virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
 
+  // note: only for pull dense param first before training
   virtual void PullDense(const RecvCtxMap &recv_varname_to_ctx);
 
   virtual void Start() = 0;
@@ -294,6 +300,17 @@ class Communicator {
   virtual void BarrierWithTable(uint32_t barrier_type) {
     auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
     rets.wait();
+    int status = rets.get();
+    PADDLE_ENFORCE_EQ(status, 0,
+                      platform::errors::InvalidArgument(
+                          "The ret status must be 0 when barrier with table"));
+  }
+
+  virtual void CreateC2CConnection(int pserver_timeout_ms,
+                                   int pserver_connect_timeout_ms,
+                                   int max_retry) {
+    _worker_ptr->create_client2client_connection(
+        pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
   virtual void BarrierTriggerDecrement() {}
@@ -342,13 +359,13 @@ class Communicator {
 
   PSClient *GetPsClient() { return _worker_ptr.get(); }
 
-  std::shared_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
-    return _worker_ptr;
+  std::unique_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
+    return std::move(_worker_ptr);
   }
 
   RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
 
-  std::shared_ptr<PSClient> _worker_ptr;  // pointer to worker
+  std::unique_ptr<PSClient> _worker_ptr;  // pointer to worker
 
  protected:
   bool running_ = false;
@@ -434,6 +451,20 @@ class AsyncCommunicator : public Communicator {
 
   virtual void BarrierWeakUp() {}
 
+  void PushDensePostProcessing();
+
+  void PullSparseToTensorSync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, bool is_training,
+      std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
+      std::vector<framework::LoDTensor *> *outputs);      // NOLINT
+
+  void PushSparseFromTensorAsync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
+      const framework::LoDTensor *shows, const framework::LoDTensor *clicks,
+      std::vector<framework::LoDTensor *> *outputs);
+
  protected:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
@@ -448,6 +479,7 @@ class AsyncCommunicator : public Communicator {
   bool need_global_step_ = false;
   bool independent_recv_ = true;
   int parallel_task_nums_ = 0;
+  int32_t sleep_seconds_before_fail_exit_;
 
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
@@ -542,14 +574,15 @@ class GeoCommunicator : public AsyncCommunicator {
                 Scope *recv_scope) override;
 
   void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
-  void InitDense(std::vector<std::string> &varnames, int table_id);
+  void InitDense(std::vector<std::string> &varnames, int table_id);  // NOLINT
   void InitSparse(const std::string &var_name, int table_id);
 
   void SendDense(const CommContext &send_ctx);
   void RecvDense(const CommContext &send_ctx);
 
   std::vector<int64_t> MergeSparseIds(const std::string &varname);
-  void SendSparse(const std::string &varname, std::vector<int64_t> &sparse_ids,
+  void SendSparse(const std::string &varname,
+                  std::vector<int64_t> &sparse_ids,  // NOLINT
                   int table_id, int ep_idx);
   void RecvSparse(const std::string &varname, int table_id, int ep_idx);
 

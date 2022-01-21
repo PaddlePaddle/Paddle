@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/top_k_v2_op.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 
     if (k_tensor != nullptr) {
       std::vector<int> v_tmp(1);
-      TensorToVector(
+      paddle::framework::TensorToVector(
           *k_tensor,
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           &v_tmp);

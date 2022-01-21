@@ -19,7 +19,7 @@
 
 ## 安装
 
-### PaddlePaddle最新版本: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
+### PaddlePaddle最新版本: [v2.2](https://github.com/PaddlePaddle/Paddle/tree/release/2.2)
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 

@@ -31,12 +31,11 @@ class LSTMMKLDNNHandler
  public:
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                     const platform::MKLDNNDeviceContext& dev_ctx,
-                    const mkldnn::engine mkldnn_engine,
-                    platform::Place cpu_place, const LoDTensor* input,
-                    const Tensor* weight_h, const Tensor* h0, const Tensor* c0,
-                    const bool is_reverse, const int64_t N, const int64_t Ti,
-                    const int64_t IC, const int64_t OC,
-                    const std::string& unique_name)
+                    const dnnl::engine mkldnn_engine, platform::Place cpu_place,
+                    const LoDTensor* input, const Tensor* weight_h,
+                    const Tensor* h0, const Tensor* c0, const bool is_reverse,
+                    const int64_t N, const int64_t Ti, const int64_t IC,
+                    const int64_t OC, const std::string& unique_name)
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
             is_reverse, N, Ti, IC, OC, 4,

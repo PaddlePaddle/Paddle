@@ -68,13 +68,12 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto reduction_op_ = str_to_nccl_red_type(reduction);
 
     // device id
-    int gpu_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     VLOG(3) << "gpu : "
             << " invoke allreduce. send " << x->numel() << " recv "
             << out->numel();
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         x->data<T>(), out->mutable_data<T>(ctx.GetPlace()), out->numel(),
         NCCLTypeWrapper<T>::type, reduction_op_, comm->comms().at(idx),
         ctx.cuda_device_context().stream()));
@@ -100,8 +99,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     auto reduction_op_ = str_to_nccl_red_type(reduction);
 
     // device id
-    int gpu_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     T* recvbuffer = nullptr;
     if (root == gpu_id) {
@@ -111,7 +109,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     }
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
         x->data<T>(), recvbuffer, x->numel(), NCCLTypeWrapper<T>::type,
         reduction_op_, root, comm->comms().at(idx),
         ctx.cuda_device_context().stream()));
@@ -130,13 +128,12 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     int root = ctx.Attr<int>("root");
     auto* comm = ctx.Input<Communicator>("Communicator");
     // device id
-    int gpu_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
       auto* x = ctx.Input<LoDTensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), x->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));
@@ -145,7 +142,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
       auto* out = ctx.Output<LoDTensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
               << framework::product(out->dims());
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           out->mutable_data<T>(ctx.GetPlace()), out->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));

@@ -16,12 +16,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -61,26 +61,25 @@ template <typename T>
 class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto place = ctx.GetPlace();
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+    platform::GpuStreamSync(stream);
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
+                          "Sync comm stream op can run on npu place only for "
+                          "now, but we got %s, please check the environment.",
+                          place.DebugString()));
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    platform::NPUStreamSync(stream);
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

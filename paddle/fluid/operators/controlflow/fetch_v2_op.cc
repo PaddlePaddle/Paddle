@@ -26,11 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -52,12 +47,13 @@ static void DeepCopy(const framework::LoDTensor &src_item,
                                  : paddle::platform::MKLDNNDeviceContext::tls()
                                        .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
-      TensorCopySync(out, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
-      TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, platform::CPUPlace(),
+                                        dst_item);
     }
 #else
-    TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
   } else {
     // Not copy, if the src tensor is empty.
@@ -112,13 +108,6 @@ class FetchV2Op : public framework::OperatorWithKernel {
   }
 };
 
-class FetchV2InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SyncTypeAndDataType("X", "Out");
-  }
-};
-
 class FetchV2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -164,6 +153,7 @@ class FetchV2Kernel {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
         dst_item->ShareDataWith(src_item);
+        dst_item->set_lod(src_item.lod());
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
@@ -179,6 +169,7 @@ class FetchV2Kernel {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
         } else {
           dst_item[i].ShareDataWith(src_item[i]);
+          dst_item[i].set_lod(src_item[i].lod());
         }
       }
     }
@@ -211,7 +202,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     fetch_v2, ops::FetchV2Op, ops::FetchV2OpProtoMaker,
-    ops::FetchV2InferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

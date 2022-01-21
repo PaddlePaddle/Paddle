@@ -87,6 +87,9 @@ class FillConstantOp : public framework::OperatorWithKernel {
         case 3:
           kt.place_ = platform::XPUPlace();
           break;
+        case 4:
+          kt.place_ = platform::NPUPlace();
+          break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(
               "Could NOT determine the place of variable, place_type = %d .",
@@ -99,14 +102,23 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    if (!ctx.HasInput("ShapeTensor") &&
-        ctx.MultiInput<framework::Tensor>("ShapeTensorList").empty() &&
-        !ctx.HasInput("ValueTensor") &&
-        !ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
+    std::string shape;
+    if (ctx.HasInput("ShapeTensor")) {
+      shape = "ShapeTensor";
+    } else if (ctx.MultiInput<framework::Tensor>("ShapeTensorList").size()) {
+      shape = "ShapeTensorList";
+    } else {
+      shape = "shape";
+    }
+    std::string value;
+    if (ctx.HasInput("ValueTensor")) {
+      value = "ValueTensor";
+    } else {
       const auto& str_value = ctx.Attr<std::string>("str_value");
-      std::string value = str_value.empty() ? "value" : "str_value";
-      return framework::KernelSignature("fill_constant.scalar", {}, {value},
-                                        {"Out"});
+      value = str_value.empty() ? "value" : "str_value";
+    }
+    if (!ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
+      return framework::KernelSignature("full", {}, {shape, value}, {"Out"});
     }
     return framework::KernelSignature("fill_constant.unregistered", {}, {}, {});
   }
@@ -164,7 +176,8 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "0: CPUPlace. "
                  "1: CUDAPlace. "
                  "2: CUDAPinnedPlace. "
-                 "3: XPUPlace. ")
+                 "3: XPUPlace. "
+                 "4: NPUPlace. ")
         .SetDefault(-1);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "

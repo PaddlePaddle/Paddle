@@ -20,23 +20,13 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 using framework::DDim;
-
-template <typename Tout>
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  template <typename U>
-  HOSTDEVICE inline Tout operator()(const U& x) const {
-    return static_cast<Tout>(x);
-  }
-};
 
 template <typename T>
 class CUDABroadcastTensorsGradOpKernel : public framework::OpKernel<T> {
@@ -99,9 +89,9 @@ class CUDABroadcastTensorsGradOpKernel : public framework::OpKernel<T> {
       } else {
         // reduce_sum implementation on CUDA
         auto stream = context.cuda_device_context().stream();
-        TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-            *input_tensor, output_tensor, reduce_dims_vec, static_cast<T>(0),
-            cub::Sum(), IdentityFunctor<T>(), stream);
+        TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+            *input_tensor, output_tensor, kps::IdentityFunctor<T>(),
+            reduce_dims_vec, stream);
       }
     }
   }

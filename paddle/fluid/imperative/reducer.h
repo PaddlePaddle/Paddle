@@ -33,11 +33,6 @@
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-
-}  // namespace platform
-
 namespace imperative {
 class ParallelContext;
 class VarBase;
@@ -48,8 +43,9 @@ class VariableWrapper;
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 
 template <typename T>
 struct DivNRanksFunctor {

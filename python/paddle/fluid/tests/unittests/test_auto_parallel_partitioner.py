@@ -28,6 +28,7 @@ import paddle.tensor as tensor
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
@@ -49,14 +50,15 @@ def get_programs(annotated_func):
     global _global_process_mesh
     dist_context.process_mesh = _global_process_mesh
     train_program, start_program = annotated_func(train_program, start_program)
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
 
     rank_id = 3
     dist_strategy = fleet.DistributedStrategy()
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-    test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog = partitioner.transpile_forward(
-        complete_train_program, start_program)
+    partitioner = Partitioner(dist_context, rank_id)
+    test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog, _ = partitioner.partition(
+        complete_train_program, start_program, [])
 
     return complete_train_program, start_program, test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog, dist_context
 

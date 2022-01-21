@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/creation.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +33,6 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
                                 float, T>::type>::type;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
@@ -62,12 +60,12 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
         std::isnan(value), false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
-
     const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
-    pten::FillAnyLike<T>(dev_ctx, *pt_x, value, pt_out.get());
+    pten::FullLikeKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        value, out);
   }
 };
 

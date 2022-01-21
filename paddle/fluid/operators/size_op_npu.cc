@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/mul_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -30,8 +30,9 @@ class SizeNPUKernel : public framework::OpKernel<T> {
     auto cpu_data =
         cpu_tensor.mutable_data<int64_t>(out->dims(), platform::CPUPlace());
     cpu_data[0] = x->numel();
-    TensorCopy(cpu_tensor, ctx.GetPlace(),
-               ctx.template device_context<platform::DeviceContext>(), out);
+    paddle::framework::TensorCopy(
+        cpu_tensor, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), out);
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   }
 };

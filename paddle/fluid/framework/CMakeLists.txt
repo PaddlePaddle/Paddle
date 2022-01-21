@@ -55,28 +55,20 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 
 cc_library(string_array SRCS string_array.cc DEPS utf8proc)
 
-cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
-cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-if(WITH_GPU)
-  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-elseif(WITH_ROCM)
-  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
-endif()
-cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
   if (WIN32)
     windows_symbolic(tensor_util SRCS tensor_util.cu)
-    nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
+    nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context dense_tensor)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler dense_tensor)
   endif(WIN32)
 elseif(WITH_ROCM)
-  hip_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
+  hip_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler dense_tensor)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler dense_tensor)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -91,15 +83,16 @@ endif()
 cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
+cc_library(mixed_vector SRCS mixed_vector.cc DEPS device_context place memory)
 
 if(WITH_GPU)
-  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
 elseif(WITH_ROCM)
-  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
 else()
-  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
+  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS mixed_vector place memory device_context tensor)
 endif()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim mixed_vector place tensor framework_proto version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 
@@ -239,7 +232,7 @@ if(WITH_PYTHON)
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
   )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init pass_desc_py_proto)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
@@ -247,7 +240,7 @@ if(WITH_PYTHON)
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_executor_desc_py_proto 
+    add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_proto_init fleet_executor_desc_py_proto
       COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
   else(NOT WIN32)
@@ -274,7 +267,11 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
+if (TENSORRT_FOUND)
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper tensorrt_engine_op)
+else()
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
+endif(TENSORRT_FOUND)
 
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector op_registry while_op_helper recurrent_op_helper conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
@@ -285,7 +282,7 @@ if(WITH_DISTRIBUTE)
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
     ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-    device_context scope framework_proto trainer_desc_proto glog fs shell
+    device_context scope framework_proto trainer_desc_proto glog fs shell 
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
@@ -307,6 +304,7 @@ if(WITH_DISTRIBUTE)
             downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+            index_sampler index_wrapper sampler index_dataset_proto
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server brpc fleet_executor)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -375,7 +373,7 @@ if(WITH_PSCORE)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper ${RPC_DEPS})
     cc_test(heter_pipeline_trainer_test SRCS heter_pipeline_trainer_test.cc DEPS
-           conditional_block_op scale_op heter_listen_and_serv_op executor heter_server gloo_wrapper ${RPC_DEPS})
+           conditional_block_op scale_op heter_listen_and_serv_op executor heter_server gloo_wrapper eigen_function ${RPC_DEPS})
 else()
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper)
@@ -431,34 +429,7 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-# Adapt to custom op mechanism: Include the header files related to the data type
-# to avoid exposing the path of the underlying file
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
-
-if (WITH_GPU)
-  if (WIN32)
-    windows_symbolic(ext_tensor_cu SRCS ext_tensor.cu PATH ../extension/src)
-    nv_library(custom_tensor SRCS ../extension/src/.ext_tensor.cu DEPS lod_tensor memory enforce)
-    add_dependencies(custom_tensor ext_tensor_cu)
-  else()
-    nv_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
-  endif(WIN32)
-elseif (WITH_ROCM)
-  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
-else()
-  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
-endif()
-
-cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
-cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
-
-if(WITH_ROCM)
-  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
-else()
-  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
-endif()
+cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
 
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)

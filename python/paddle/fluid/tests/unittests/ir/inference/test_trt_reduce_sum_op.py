@@ -27,13 +27,13 @@ class TRTReduceSumTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 3, 10, 768], dtype="float32")
+                name="data", shape=[-1, 3, 10, 192], dtype="float32")
             reduce_sum = fluid.layers.reduce_sum(
                 data, dim=[2, -1], keep_dim=True)
             out = fluid.layers.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
-            "data": np.random.random([3, 3, 10, 768]).astype("float32"),
+            "data": np.random.random([3, 3, 10, 192]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceSumTest.TensorRTParam(
@@ -41,7 +41,7 @@ class TRTReduceSumTest(InferencePassTest):
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceSumTest.DynamicShapeParam({
             'data': [1, 3, 8, 8]
-        }, {'data': [3, 3, 10, 768]}, {'data': [3, 3, 10, 768]}, False)
+        }, {'data': [3, 3, 10, 192]}, {'data': [3, 3, 10, 192]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -55,12 +55,12 @@ class TRTReduceSumAllTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 3, 10, 768], dtype="float32")
+                name="data", shape=[-1, 3, 10, 192], dtype="float32")
             reduce_sum = fluid.layers.reduce_sum(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
-            "data": np.random.random([3, 3, 10, 768]).astype("float32"),
+            "data": np.random.random([3, 3, 10, 192]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceSumAllTest.TensorRTParam(
@@ -68,7 +68,7 @@ class TRTReduceSumAllTest(InferencePassTest):
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceSumAllTest.DynamicShapeParam({
             'data': [1, 3, 8, 8]
-        }, {'data': [3, 3, 10, 768]}, {'data': [3, 3, 10, 768]}, False)
+        }, {'data': [3, 3, 10, 192]}, {'data': [3, 3, 10, 192]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

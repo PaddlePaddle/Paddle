@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/log_loss_op.h"
 #include <cmath>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
