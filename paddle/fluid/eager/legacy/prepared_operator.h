@@ -31,9 +31,6 @@ namespace paddle {
 namespace framework {
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace pten {

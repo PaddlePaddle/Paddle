@@ -31,7 +31,6 @@ namespace paddle {
 namespace platform {
 class CPUDeviceContext;
 class CUDADeviceContext;
-class DeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
