@@ -568,13 +568,13 @@ static void PreparedOpRunPtImpl(
   {
     platform::RecordEvent record_event(op.Type() + " compute",
                                        platform::EventRole::kInnerOp);
-    
+
     PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
     pten::KernelContext pt_kernel_context;
     BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
-                                          outs, attrs, default_attrs, dev_ctx,
-                                          &pt_kernel_context);
+                                           outs, attrs, default_attrs, dev_ctx,
+                                           &pt_kernel_context);
 
     pt_kernel(&pt_kernel_context);
   }
