@@ -25,17 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
-namespace platform {
-struct bfloat16;
-template <typename T>
-struct complex;
-struct float16;
-template <typename T>
-struct complex;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 template <typename T>

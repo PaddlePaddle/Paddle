@@ -22,7 +22,10 @@ from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
-__all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = [
+    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
+    'IpuCompiledProgram', 'IpuStrategy'
+]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
@@ -83,6 +86,16 @@ def _has_optimizer_in_control_flow(program):
                 return True
 
     return False
+
+
+def _should_broadcast_or_not_exists(program, var_name):
+    block = program.global_block()
+    var = block.vars.get(var_name, None)
+    if var is None:
+        return True
+    is_distributed = getattr(var, '_is_distributed', False) or getattr(
+        var, 'is_distributed', False)
+    return not is_distributed
 
 
 class CompiledProgram(object):
@@ -398,7 +411,10 @@ class CompiledProgram(object):
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
                     node.var().type() != core.VarDesc.VarType.RAW:
-                self._persistable_vars.append(cpt.to_text(node.name()))
+                name = cpt.to_text(node.name())
+                if self._program is not None and _should_broadcast_or_not_exists(
+                        self._program, name):
+                    self._persistable_vars.append(cpt.to_text(node.name()))
 
         places = list(map(_place_obj, places))
 
@@ -480,3 +496,417 @@ class CompiledProgram(object):
                 place_list = cpu_places()
         assert place_list, "No places for execution."
         return place_list
+
+
+class IpuStrategy(object):
+    """
+    Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
+
+    Args:
+        None.
+        
+    Returns:
+        The IpuStrategy instance.
+
+    Examples:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+            ipu_strategy = static.IpuStrategy()
+    """
+
+    def __init__(self):
+        if core.is_compiled_with_ipu():
+            self._ipu_strategy = core.IpuStrategy()
+        else:
+            raise RuntimeError(
+                "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
+            )
+
+    def SetGraphConfig(self,
+                       num_ipus=1,
+                       is_training=True,
+                       batch_size=1,
+                       enable_manual_shard=False,
+                       need_avg_shard=False):
+        """
+        Set graph configuration to the IpuStrategy instance.
+
+        Args:
+            num_ipus (int, optional): Number of IPU devices. Default 1, which means only use 1 IPU.
+            is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
+            batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
+                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
+            enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True. 
+                Default False, which means disabled.    
+            need_avg_shard (bool, optional): Enable auto graph sharding or not. Only if num_ipus > 1 and enable_manual_shard=True, need_avg_shard is able to be set Trues. 
+                Default False, which means disabled.
+            
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+	
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(num_ipus=1,
+                                            is_training=True,
+                                            batch_size=1,
+                                            enable_manual_shard=False,
+                                            need_avg_shard=False)
+        """
+
+        self._ipu_strategy.num_ipus = num_ipus
+        self._ipu_strategy.is_training = is_training
+        self._ipu_strategy.batch_size = batch_size
+        self._ipu_strategy.enable_manual_shard = enable_manual_shard
+        if self._ipu_strategy.num_ipus == 1 and self._ipu_strategy.enable_manual_shard:
+            raise RuntimeError(
+                "Only if num_ipus > 1, enable_manual_shard is able to be set True."
+            )
+        self._ipu_strategy.need_avg_shard = need_avg_shard
+        if self._ipu_strategy.enable_manual_shard != True and self._ipu_strategy.need_avg_shard:
+            raise RuntimeError(
+                "Only if enable_manual_shard=True, need_avg_shard is able to be set True."
+            )
+
+    def SetPipeliningConfig(self,
+                            enable_pipelining=False,
+                            batches_per_step=1,
+                            accumulationFactor=1):
+        """
+        Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
+
+        Args:
+            enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True. 
+                Default False, which means disabled.
+            batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
+                Default 1, which means no data pipelining.
+            accumulationFactor (int, optional): Specify the number of micro-batches to accumulate 
+                before applying the varUpdate. Default 1, which means disable the accumulation.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetPipeliningConfig(enable_pipelining=False,
+                                                 batches_per_step=1,
+                                                 accumulationFactor=1)
+        """
+        self._ipu_strategy.enable_pipelining = enable_pipelining
+        if self._ipu_strategy.enable_manual_shard != True and self._ipu_strategy.enable_pipelining:
+            raise RuntimeError(
+                "Only if enable_manual_shard=True, enable_pipelining is able to be set True."
+            )
+        self._ipu_strategy.batches_per_step = batches_per_step
+        if self._ipu_strategy.enable_pipelining != True and self._ipu_strategy.batches_per_step > 1:
+            raise RuntimeError(
+                "Only if enable_pipelining=True, batches_per_step is able to be set > 1."
+            )
+        self._ipu_strategy.accumulationFactor = accumulationFactor
+
+    def SetHalfConfig(self, enable_fp16=False):
+        """
+        Set half computation configuration to the IpuStrategy instance. Used to optimize the performance.
+
+        Args:
+            enable_fp16 (bool, optional): Enable FLOAT16 mode and transform FLOAT32 to FLOAT16. Default False, which means disable FLOAT16 mode.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetHalfConfig(enable_fp16=False)
+        """
+
+        self._ipu_strategy.enable_fp16 = enable_fp16
+
+    @property
+    def num_ipus(self):
+        """
+        Get the number of IPU devices from IpuStrategy instance.
+        """
+        return self._ipu_strategy.num_ipus
+
+    @property
+    def is_training(self):
+        """
+        Get the boolean of training or inference from IpuStrategy instance.
+        """
+        return self._ipu_strategy.is_training
+
+    @property
+    def batch_size(self):
+        """
+        Get the batch_size used in dynamic batch_size graph from IpuStrategy instance.
+        """
+        return self._ipu_strategy.batch_size
+
+    @property
+    def enable_manual_shard(self):
+        """
+        Get the boolean of enable manual shard or not from IpuStrategy instance.
+        """
+        return self._ipu_strategy.enable_manual_shard
+
+    @property
+    def need_avg_shard(self):
+        """
+        Get the boolean of need average shard or not from IpuStrategy instance.
+        """
+        return self._ipu_strategy.need_avg_shard
+
+    @property
+    def enable_pipelining(self):
+        """
+        Get the boolean of enable pipelining or not from IpuStrategy instance.
+        """
+        return self._ipu_strategy.enable_pipelining
+
+    @property
+    def batches_per_step(self):
+        """
+        Get the number of batch_size per run in the pipelining mode from IpuStrategy instance.
+        """
+        return self._ipu_strategy.batches_per_step
+
+    @property
+    def accumulationFactor(self):
+        """
+        Get the number of micro-batches to accumulate before applying the varUpdate from IpuStrategy instance.
+        """
+        return self._ipu_strategy.accumulationFactor
+
+    @property
+    def enable_fp16(self):
+        """
+        Get the boolean of float16 mode or not from IpuStrategy instance.
+        """
+        return self._ipu_strategy.enable_fp16
+
+
+class IpuCompiledProgram(object):
+    """
+    The IpuCompiledProgram is used to transform a program to a ipu-target program,
+    such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.
+
+    Args:
+        program(Program, optional): This parameter represents the :code:`Program`
+            to be executed. Default is None, which means the program will be set to 
+            the default program :code:`paddle.static.default_main_program()` .
+        scope(Scope, optional): The scope used to run this program, you can switch
+            it to different scope. Default is None, which means use the global 
+            scope :code:`paddle.static.global_scope()` .
+        ipu_strategy(IpuStrategy, optional): This argument is used to build the program with the
+            specified options, such as half computation, training or inference session, the number of IPUs, etc.
+            Default is None, which means build the program based on the default `ipu_strategy`. 
+
+    Returns:
+        IpuCompiledProgram
+
+    Example:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            a = static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 1
+            main_prog = static.default_main_program()
+            
+            ipu_strategy = static.IpuStrategy()
+            ipu_strategy.SetGraphConfig(num_ipus=1, is_training=True, batch_size=1)
+            ipu_strategy.SetPipeliningConfig(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+            ipu_strategy.SetHalfConfig(enable_fp16=False)
+            
+            ipu_compiled_program = static.IpuCompiledProgram(
+                main_prog,
+                ipu_strategy=ipu_strategy)
+    """
+
+    def __init__(self, program=None, scope=None, ipu_strategy=None):
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "Can not use this function since PaddlePaddle is not compiled with IPU"
+            )
+
+        if program is None:
+            program = default_main_program()
+
+        if not isinstance(program, framework.Program):
+            raise TypeError(
+                "The type of program is wrong, expected Program, but got %s" %
+                type(program))
+        # import here to avoiding confused
+        import paddle
+
+        self._program = program
+        self._compiled = False
+
+        if scope is not None:
+            self._scope = scope
+        else:
+            self._scope = paddle.static.global_scope()
+
+        if ipu_strategy is not None:
+            self._ipu_strategy = ipu_strategy._ipu_strategy
+        else:
+            self._ipu_strategy = core.IpuStrategy()
+
+        self._backend = core.IpuBackend()
+        self._backend.set_scope(self._scope)
+        self._backend.set_ipu_strategy(self._ipu_strategy)
+        self._graph_passes = [
+            "optimizer_extract_pass", "optimizer_state_align_pass",
+            "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
+            "popart_canonicalization_pass"
+        ]
+        global ipu_compiler_ref
+        ipu_compiler_ref = self
+
+    def compile(self, feed_list, fetch_list):
+        """
+        This interface is used to compile the input Program to a program
+        to run the model on the ipu.
+        
+        Args:
+            feed_list(list): This parameter represents the input Tensors of the model.
+
+            fetch_list(list): This parameter represents the Tensors that need to be returned
+                after the model.
+
+        Returns:
+            Program
+
+        Example:
+            .. code-block:: python
+    	
+                # required: ipu
+    
+                import paddle
+                import paddle.static as static
+    
+                paddle.enable_static()
+    
+                a = static.data(name='data', shape=[None, 1], dtype='int32')
+                b = a + 1
+                main_prog = static.default_main_program()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(num_ipus=1, is_training=True, batch_size=1)
+                ipu_strategy.SetPipeliningConfig(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+                ipu_strategy.SetHalfConfig(enable_fp16=False)
+                
+                program = static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+        """
+        # feed and fetch doesn't have corresponding popart op, so we rm both here
+        global_block = self._program.global_block()
+        need_to_remove_op_index = []
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                need_to_remove_op_index.append(i)
+
+        for index in need_to_remove_op_index[::-1]:
+            global_block._remove_op(index)
+
+        for var in ['feed', 'fetch']:
+            if global_block.has_var(var):
+                global_block._remove_var(var)
+
+        self._program.desc.flush()
+        self._graph = core.Graph(self._program.desc)
+
+        for pass_name in self._graph_passes:
+            graph_pass = core.get_pass(pass_name)
+            if pass_name == "infer_shape_pass":
+                graph_pass.set("feed_list", feed_list)
+            graph_pass.apply(self._graph)
+
+        ipu_inplace_pass = core.get_pass("ipu_inplace_pass")
+        ipu_inplace_pass.set("feed_list", feed_list)
+        ipu_inplace_pass.set("fetch_list", fetch_list)
+        ipu_inplace_pass.apply(self._graph)
+
+        ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
+        ipu_graph_builder_pass.set("feed_list", feed_list)
+        ipu_graph_builder_pass.set("fetch_list", fetch_list)
+        ipu_graph_builder_pass.apply(self._graph)
+
+        ipu_runtime_replacer_pass = core.get_pass("ipu_runtime_replacer_pass")
+        ipu_runtime_replacer_pass.set("feed_list", feed_list)
+        ipu_runtime_replacer_pass.set("fetch_list", fetch_list)
+        ipu_runtime_replacer_pass.apply(self._graph)
+
+        convert_pass = core.get_pass('graph_to_program_pass')
+        desc = core.ProgramDesc()
+        convert_pass.set_not_owned('program', desc)
+        convert_pass.apply(self._graph)
+        program = framework.Program._construct_from_desc(desc)
+
+        if hasattr(self._program, 'lr_sheduler'):
+            # how to share var between two different block ?
+            lr_var_name = self._program.lr_sheduler._var_name
+
+            program.lr_sheduler = self._program.lr_sheduler
+            # Program.clone will clone lr_sheduler, so i set lr_var as
+            # lr_sheduler attribute
+            global_block = self._program.global_block()
+            program.lr_sheduler.lr_var = global_block.vars[lr_var_name]
+
+        # with popart, we need to support batches_per_step, what means
+        # the shape of feed_var and feed_tensor(maybe numpy array) will
+        # mismatch, so we set need_check_feed to False. Thus we can avoid
+        # modify logic of run.
+        program_global_block = program.global_block()
+        for feed_name in feed_list:
+            feed_var = program_global_block.var(feed_name)
+            feed_var.desc.set_need_check_feed(False)
+
+        if not hasattr(program, 'org_program'):
+            program.org_program = self._program
+
+        return program
+
+    def clean(self):
+        self._backend.clear()
+
+    def __del__(self):
+        self.clean()

@@ -36,7 +36,12 @@ class Storage : public intrusive_ref_counter<Storage> {
   Storage() = default;
   Storage(const Storage&) = delete;
 
-  /* --------- shared_ptr<Allocation> -------- */
+  /* @jim19930609: Following interfaces will be modified/replaced/removed
+                   as soon as the new Allocation - Allocator design get
+     finalized.
+    */
+
+  /*   --------- shared_ptr<Allocation> -------- */
   // Initialize a Storage with unique Allocation
   explicit Storage(std::shared_ptr<paddle::memory::Allocation>&& data)
       : data_(std::move(data)) {}
@@ -53,6 +58,15 @@ class Storage : public intrusive_ref_counter<Storage> {
 
   const std::shared_ptr<paddle::memory::Allocation> data_shared() const {
     return data_;
+  }
+
+  virtual void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) {
+    data_ = holder;
+  }
+
+  std::shared_ptr<paddle::memory::Allocation> move_data_shared() {
+    return std::move(data_);
   }
 
   virtual void ReallocShared(size_t n) {
@@ -78,10 +92,10 @@ class TensorStorage : public Storage {
  public:
   using Place = paddle::platform::Place;
 
-  explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
+  explicit TensorStorage(Allocator* a) : alloc_(a) {}
 
-  TensorStorage(const std::shared_ptr<Allocator>& a, size_t size)
-      : Storage(paddle::memory::AllocShared(a->place(), size)), alloc_(a) {
+  TensorStorage(Allocator* a, size_t size)
+      : Storage(a->Allocate(size)), alloc_(a) {
     size_ = data_->size();
   }
 
@@ -99,24 +113,18 @@ class TensorStorage : public Storage {
   size_t size() const noexcept override { return size_; }
 
   const Place& place() const override {
-    if (!data_ && !alloc_) {
+    if (!data_) {
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unable to visit place: either data_ or alloc_ has to be initialized "
           "first."));
     }
-    if (data_) {
-      return data_->place();
-    }
-    return alloc_->place();
+    return data_->place();
   }
 
   bool OwnsMemory() const noexcept override { return true; }
-  const std::shared_ptr<Allocator>& allocator() const noexcept {
-    return alloc_;
-  }
 
  private:
-  const std::shared_ptr<Allocator> alloc_;
+  Allocator* alloc_;
   int64_t size_{0};
 };
 

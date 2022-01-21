@@ -72,7 +72,7 @@ Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_, this);
+  platform::ClearMKLDNNCache(place_, this);
 #endif
 }
 
@@ -443,31 +443,26 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
       } else {
-        gc.reset(new DefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new DefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
     } else if (platform::is_cpu_place(place_)) {
-      gc.reset(new CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+      gc.reset(new CPUGarbageCollector(place_, max_memory_size));
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      gc.reset(new XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place_), max_memory_size));
+      gc.reset(new XPUGarbageCollector(place_, max_memory_size));
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
     } else if (platform::is_ipu_place(place_)) {
 #ifdef PADDLE_WITH_IPU
-      gc.reset(new IPUGarbageCollector(
-          BOOST_GET_CONST(platform::IPUPlace, place_), max_memory_size));
+      gc.reset(new IPUGarbageCollector(place_, max_memory_size));
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
@@ -476,16 +471,14 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #ifdef PADDLE_WITH_ASCEND_CL
       if (IsFastEagerDeletionModeEnabled()) {
         VLOG(4) << "Use unsafe fast gc for NPU.";
-        gc.reset(new NPUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+        gc.reset(new NPUUnsafeFastGarbageCollector(place_, max_memory_size));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Please set FLAGS_fast_eager_deletion_mode=true to use "
             "GarbageCollector on NPU."));
         // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
         VLOG(4) << "Use default stream gc for NPU.";
-        gc.reset(new NPUDefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+        gc.reset(new NPUDefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(
@@ -494,11 +487,9 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     } else if (platform::is_mlu_place(place_)) {
 #ifdef PADDLE_WITH_MLU
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+        gc.reset(new MLUUnsafeFastGarbageCollector(place_, max_memory_size));
       } else {
-        gc.reset(new MLUDefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+        gc.reset(new MLUDefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(

@@ -134,7 +134,7 @@ void MemoryCopyAsync(const platform::Place& dst_place, void* dst_data,
           "Lite::MemoryCopy CPU->GPU is not yet implemented."));
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_gpu_place(src_place)) {
-      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
+      auto gpu_place = src_place;
       memory::Copy(
           gpu_place, dst_data, gpu_place, src_data, size,
           static_cast<const platform::CUDADeviceContext&>(ctx).stream());
@@ -210,7 +210,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
   const size_t bytes =
       static_cast<size_t>(src.numel()) * framework::SizeOfType(src.type());
   dst->Resize(framework::vectorize(src.dims()));
-  const void* src_data = src.data<void>();
+  const void* src_data = src.data();
   void* dst_data{nullptr};
   dst_data = GetLiteTensorDataPtr(dst, GetLitePrecisionType(src.type()),
                                   GetLiteTargetType(src.place()));
@@ -242,7 +242,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
 template <>
 void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
   dst->Resize(framework::vectorize(src->dims()));
-  dst->ShareExternalMemory(src->data<void>(), src->memory_size(),
+  dst->ShareExternalMemory(src->data(), src->memory_size(),
                            GetLiteTargetType(src->place()));
   dst->SetPrecision(GetLitePrecisionType(src->type()));
   paddle::lite::LoD lite_lod;
@@ -257,9 +257,8 @@ void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
   size_t memory_size =
       GetLiteTensorNumel(*src) *
       framework::SizeOfType(GetNativePrecisionType(src->precision()));
-  std::shared_ptr<memory::allocation::Allocation> holder(
-      new memory::allocation::Allocation(src_raw_data, memory_size,
-                                         GetNativePlace(src->target())));
+  std::shared_ptr<pten::Allocation> holder(new pten::Allocation(
+      src_raw_data, memory_size, GetNativePlace(src->target())));
   dst->Resize(paddle::framework::make_ddim(src->shape()));
   SetLoD(dst->mutable_lod(), src->lod());
   dst->ResetHolderWithType(holder, GetNativePrecisionType(src->precision()));

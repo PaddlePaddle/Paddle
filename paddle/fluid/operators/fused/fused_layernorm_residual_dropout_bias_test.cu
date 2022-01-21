@@ -223,7 +223,7 @@ struct TestFusedLayernormResidualDropoutBias {
       layernorm_bias_ptr = layernorm_bias.data<U>();
     }
 
-    paddle::operators::LaunchLayernormResidualDropoutBias<T, uint8_t>(
+    paddle::operators::LaunchLayernormResidualDropoutBias<T, uint8_t, U, false>(
         rows, cols, increment, seed, dropout_prob, epsilon, is_upscale_in_train,
         is_test, src.data<T>(), residual.data<T>(), bias_ptr, scale_ptr,
         layernorm_bias_ptr, mask.data<uint8_t>(), out.data<T>(),
