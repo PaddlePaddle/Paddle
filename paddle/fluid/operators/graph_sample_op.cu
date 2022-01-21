@@ -68,7 +68,7 @@ __global__ void GraphSampleCUDAKernel(const uint64_t rand_seed, int k,
                                       const T* src, const T* dst_count,
                                       const T* src_eids, T* outputs,
                                       T* outputs_eids, T* output_ptr,
-                                      T* output_idxs) {
+                                      T* output_idxs, bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -90,7 +90,9 @@ __global__ void GraphSampleCUDAKernel(const uint64_t rand_seed, int k,
       for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
         const T in_idx = in_row_start + idx;
         outputs[out_row_start + idx] = src[in_idx];
-        outputs_eids[out_row_start + idx] = src_eids[in_idx];
+        if (return_eids) {
+          outputs_eids[out_row_start + idx] = src_eids[in_idx];
+        }
       }
     } else {
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
@@ -110,7 +112,9 @@ __global__ void GraphSampleCUDAKernel(const uint64_t rand_seed, int k,
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
         const T perm_idx = output_idxs[out_row_start + idx] + in_row_start;
         outputs[out_row_start + idx] = src[perm_idx];
-        outputs_eids[out_row_start + idx] = src_eids[perm_idx];
+        if (return_eids) {
+          outputs_eids[out_row_start + idx] = src_eids[perm_idx];
+        }
       }
     }
 
@@ -149,7 +153,7 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
                       thrust::device_vector<T>* outputs,
                       thrust::device_vector<T>* output_counts,
                       thrust::device_vector<T>* outputs_eids, int k,
-                      bool last_layer) {
+                      bool is_last_layer, bool return_eids) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
 
@@ -166,7 +170,10 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
   // 3. Get the number of total sample neighbors and some necessary datas.
   T tos = thrust::reduce(output_counts->begin(), output_counts->end());
   outputs->resize(tos);
-  outputs_eids->resize(tos);
+  if (return_eids) {
+    outputs_eids->resize(tos);
+  }
+
   thrust::device_vector<T> output_ptr;
   thrust::device_vector<T> output_idxs;
   output_ptr.resize(bs);
@@ -182,15 +189,15 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
   GraphSampleCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream()>>>(0, k, bs, thrust::raw_pointer_cast(inputs->data()), src,
-                       dst_count, src_eids,
-                       thrust::raw_pointer_cast(outputs->data()),
-                       thrust::raw_pointer_cast(outputs_eids->data()),
-                       thrust::raw_pointer_cast(output_ptr.data()),
-                       thrust::raw_pointer_cast(output_idxs.data()));
+          .stream()>>>(
+      0, k, bs, thrust::raw_pointer_cast(inputs->data()), src, dst_count,
+      src_eids, thrust::raw_pointer_cast(outputs->data()),
+      thrust::raw_pointer_cast(outputs_eids->data()),
+      thrust::raw_pointer_cast(output_ptr.data()),
+      thrust::raw_pointer_cast(output_idxs.data()), return_eids);
 
   // 5. Get inputs = outputs - inputs:
-  if (!last_layer) {
+  if (!is_last_layer) {
     thrust::device_vector<T> unique_outputs(outputs->size());
     thrust::sort(inputs->begin(), inputs->end());
     thrust::device_vector<T> outputs_sort(outputs->size());
@@ -300,6 +307,7 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     auto* dst_count = ctx.Input<Tensor>("Dst_Count");
     auto* vertices = ctx.Input<Tensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
+    bool return_eids = ctx.Attr<bool>("return_eids");
 
     const T* src_data = src->data<T>();
     const T* src_eids_data = src_eids->data<T>();
@@ -321,10 +329,10 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     std::vector<thrust::device_vector<T>> outputs_eids_vec;
 
     const size_t num_layers = sample_sizes.size();
-    bool last_layer = false;
+    bool is_last_layer = false;
     for (int i = 0; i < num_layers; i++) {
       if (i == num_layers - 1) {
-        last_layer = true;
+        is_last_layer = true;
       }
       if (inputs.size() == 0) {
         break;
@@ -334,7 +342,7 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
       }
       sample_neighbors<T>(ctx, src_data, dst_count_data, src_eids_data, &inputs,
                           &outputs, &output_counts, &outputs_eids,
-                          sample_sizes[i], last_layer);
+                          sample_sizes[i], is_last_layer, return_eids);
       outputs_vec.emplace_back(outputs);
       output_counts_vec.emplace_back(output_counts);
       outputs_eids_vec.emplace_back(outputs_eids);
@@ -345,7 +353,6 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     thrust::device_vector<T> unique_dst_merge;         // unique dst
     thrust::device_vector<T> src_merge;                // src
     thrust::device_vector<T> dst_sample_counts_merge;  // dst degree
-    thrust::device_vector<T> eids_merge;
     int64_t unique_dst_size = 0, src_size = 0;
     for (int i = 0; i < num_layers; i++) {
       unique_dst_size += dst_vec[i].size();
@@ -354,11 +361,9 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     unique_dst_merge.resize(unique_dst_size);
     src_merge.resize(src_size);
     dst_sample_counts_merge.resize(unique_dst_size);
-    eids_merge.resize(src_size);
     auto unique_dst_merge_ptr = unique_dst_merge.begin();
     auto src_merge_ptr = src_merge.begin();
     auto dst_sample_counts_merge_ptr = dst_sample_counts_merge.begin();
-    auto eids_merge_ptr = eids_merge.begin();
     for (int i = 0; i < num_layers; i++) {
       if (i == 0) {
         unique_dst_merge_ptr = thrust::copy(
@@ -368,9 +373,6 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
         dst_sample_counts_merge_ptr = thrust::copy(
             output_counts_vec[i].begin(), output_counts_vec[i].end(),
             dst_sample_counts_merge.begin());
-        eids_merge_ptr =
-            thrust::copy(outputs_eids_vec[i].begin(), outputs_eids_vec[i].end(),
-                         eids_merge.begin());
       } else {
         unique_dst_merge_ptr = thrust::copy(
             dst_vec[i].begin(), dst_vec[i].end(), unique_dst_merge_ptr);
@@ -379,10 +381,29 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
         dst_sample_counts_merge_ptr = thrust::copy(output_counts_vec[i].begin(),
                                                    output_counts_vec[i].end(),
                                                    dst_sample_counts_merge_ptr);
-        eids_merge_ptr =
-            thrust::copy(outputs_eids_vec[i].begin(), outputs_eids_vec[i].end(),
-                         eids_merge_ptr);
       }
+    }
+
+    if (return_eids) {
+      thrust::device_vector<T> eids_merge;
+      eids_merge.resize(src_size);
+      auto eids_merge_ptr = eids_merge.begin();
+      for (int i = 0; i < num_layers; i++) {
+        if (i == 0) {
+          eids_merge_ptr =
+              thrust::copy(outputs_eids_vec[i].begin(),
+                           outputs_eids_vec[i].end(), eids_merge.begin());
+        } else {
+          eids_merge_ptr =
+              thrust::copy(outputs_eids_vec[i].begin(),
+                           outputs_eids_vec[i].end(), eids_merge_ptr);
+        }
+      }
+      auto* out_eids = ctx.Output<Tensor>("Out_Eids");
+      out_eids->Resize({static_cast<int>(eids_merge.size())});
+      T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
+      cudaMemset(p_out_eids, 0, eids_merge.size() * sizeof(T));
+      thrust::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
     }
 
     int64_t num_sample_edges = thrust::reduce(dst_sample_counts_merge.begin(),
@@ -430,22 +451,15 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     // 6. Give output results.
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
-    auto* out_eids = ctx.Output<Tensor>("Out_Eids");
-    out_src->Resize({static_cast<int>(src_merge.size())});
-    out_dst->Resize({static_cast<int>(src_merge.size())});
-    out_eids->Resize({static_cast<int>(src_merge.size())});
+    out_src->Resize({static_cast<int>(src_merge.size()), 1});
+    out_dst->Resize({static_cast<int>(src_merge.size()), 1});
     T* p_out_src = out_src->mutable_data<T>(ctx.GetPlace());
     T* p_out_dst = out_dst->mutable_data<T>(ctx.GetPlace());
-    T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
-
     const size_t& memset_bytes = src_merge.size() * sizeof(T);
     cudaMemset(p_out_src, 0, memset_bytes);  // hipMemset
     cudaMemset(p_out_dst, 0, memset_bytes);
-    cudaMemset(p_out_eids, 0, memset_bytes);
-
     thrust::copy(src_merge.begin(), src_merge.end(), p_out_src);
     thrust::copy(dst_merge.begin(), dst_merge.end(), p_out_dst);
-    thrust::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
   }
 };
 
