@@ -28,24 +28,6 @@ limitations under the License. */
 #include <windows.h>  // GetModuleFileName, Sleep
 #endif
 
-#ifdef PADDLE_WITH_CUDA
-#include <cublas_v2.h>
-#include <cudnn.h>
-#include <cufft.h>
-#include <curand.h>
-#include <cusparse.h>
-#include <thrust/system/cuda/error.h>
-#include <thrust/system_error.h>
-#endif  // PADDLE_WITH_CUDA
-
-#ifdef PADDLE_WITH_HIP
-#include <hiprand.h>
-#include <miopen/miopen.h>
-#include <rocblas.h>
-#include <thrust/system/hip/error.h>
-#include <thrust/system_error.h>  // NOLINT
-#endif
-
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -63,8 +45,8 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/pten/core/errors.h"
-#include "paddle/pten/core/string/printf.h"
-#include "paddle/pten/core/string/to_string.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/to_string.h"
 
 // Note: these headers for simplify demangle type string
 #include "paddle/pten/core/type_defs.h"
@@ -185,7 +167,7 @@ template <bool kCanToString /* = true */>
 struct BinaryCompareMessageConverter {
   template <typename T>
   static std::string Convert(const char* expression, const T& value) {
-    return expression + std::string(":") + string::to_string(value);
+    return expression + std::string(":") + paddle::string::to_string(value);
   }
 };
 
@@ -254,7 +236,7 @@ inline std::string GetCurrentTraceBackString(bool for_signal = false) {
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
       if (path.substr(path.length() - 3).compare(".so") == 0) {
-        sout << string::Sprintf(
+        sout << paddle::string::Sprintf(
             "%-3d %s\n", idx++, SimplifyDemangleStr(demangled));
       }
     }
@@ -275,7 +257,7 @@ inline std::string GetErrorSumaryString(StrType&& what,
     sout << "\n----------------------\nError Message "
             "Summary:\n----------------------\n";
   }
-  sout << string::Sprintf(
+  sout << paddle::string::Sprintf(
               "%s (at %s:%d)", std::forward<StrType>(what), file, line)
        << std::endl;
   return sout.str();
@@ -352,7 +334,7 @@ struct EnforceNotMet : public std::exception {
     }
   }
 
-  pten::proto::Code code() const { return code_; }
+  pten::ErrorCode code() const { return code_; }
 
   const std::string& error_str() const { return err_str_; }
 
@@ -368,7 +350,7 @@ struct EnforceNotMet : public std::exception {
 
  private:
   // Used to determine the final type of exception thrown
-  pten::proto::Code code_ = pten::proto::LEGACY;
+  pten::ErrorCode code_ = pten::ErrorCode::LEGACY;
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
@@ -436,16 +418,16 @@ struct EnforceNotMet : public std::exception {
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                    \
-  do {                                                                         \
-    if (UNLIKELY(nullptr == (__VAL))) {                                        \
-      auto __summary__ = pten::ErrorSummary(__VA_ARGS__);                      \
-      auto __message__ = ::pten::string::Sprintf("%s\n  [Hint: " #__VAL        \
-                                                 " should not be null.]",      \
-                                                 __summary__.error_message()); \
-      __THROW_ERROR_INTERNAL__(                                                \
-          pten::ErrorSummary(__summary__.code(), __message__));                \
-    }                                                                          \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                     \
+  do {                                                          \
+    if (UNLIKELY(nullptr == (__VAL))) {                         \
+      auto __summary__ = pten::ErrorSummary(__VA_ARGS__);       \
+      auto __message__ = ::paddle::string::Sprintf(             \
+          "%s\n  [Hint: " #__VAL " should not be null.]",       \
+          __summary__.error_message());                         \
+      __THROW_ERROR_INTERNAL__(                                 \
+          pten::ErrorSummary(__summary__.code(), __message__)); \
+    }                                                           \
   } while (0)
 
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
@@ -465,7 +447,7 @@ struct EnforceNotMet : public std::exception {
       constexpr bool __kCanToString__ =                                 \
           ::pten::details::CanToString<__TYPE1__>::kValue &&            \
           ::pten::details::CanToString<__TYPE2__>::kValue;              \
-      auto __message__ = ::pten::string::Sprintf(                       \
+      auto __message__ = ::paddle::string::Sprintf(                     \
           "%s\n  [Hint: Expected %s " #__CMP                            \
           " %s, but received %s " #__INV_CMP " %s.]",                   \
           __summary__.error_message(),                                  \
@@ -539,7 +521,7 @@ struct EnforceNotMet : public std::exception {
           __OP_TYPE,                                                    \
           __NAME,                                                       \
           __NAME);                                                      \
-      auto __message__ = ::pten::string::Sprintf(                       \
+      auto __message__ = ::paddle::string::Sprintf(                     \
           "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
           __summary__.error_message());                                 \
       __THROW_ERROR_INTERNAL__(                                         \
@@ -571,100 +553,6 @@ struct EnforceNotMet : public std::exception {
             "No %s(%s) found for %s operator.", __ROLE, __NAME, __OP_TYPE)); \
   } while (0)
 
-/*
- * Summary: This BOOST_GET(_**) series macros are used to call boost::get
- *   safely. boost::get is not a completely safe api, although it will not
- *   go wrong in most cases, but in extreme cases, it may fail and directly
- *   throw a boost::bad_get exception, without any stack information.
- *   This kind of problems is difficult to debug, so add these macros to
- *   enrich boost::get error information. At the same time, we restrict
- *   the direct use of boost::get by CI rule.
- *
- * Parameters:
- *     __TYPE: the target variable type
- *     __VALUE: the target variable to get
- *
- * Examples:
- *     - unsafe writing: int x = boost::get<int>(y);
- *     - safe writing: int x = BOOST_GET(int, y);
- *
- * Note: GCC 4.8 cannot select right overloaded function here, so need
- *    to define different functions and macros here, after we upgreade
- *    CI gcc version, we can only define one BOOST_GET macro.
- */
-namespace details {
-
-#define DEFINE_SAFE_BOOST_GET(                                               \
-    __InputType, __OutputType, __OutputTypePtr, __FuncName)                  \
-  template <typename OutputType, typename InputType>                         \
-  auto __FuncName(                                                           \
-      __InputType input, const char* expression, const char* file, int line) \
-      ->typename std::conditional<std::is_pointer<InputType>::value,         \
-                                  __OutputTypePtr,                           \
-                                  __OutputType>::type {                      \
-    try {                                                                    \
-      return boost::get<OutputType>(input);                                  \
-    } catch (boost::bad_get&) {                                              \
-      HANDLE_THE_ERROR                                                       \
-      throw ::pten::enforce::EnforceNotMet(                                  \
-          pten::errors::InvalidArgument(                                     \
-              "boost::get failed, cannot get value "                         \
-              "(%s) by type %s, its type is %s.",                            \
-              expression,                                                    \
-              pten::enforce::demangle(typeid(OutputType).name()),            \
-              pten::enforce::demangle(input.type().name())),                 \
-          file,                                                              \
-          line);                                                             \
-      END_HANDLE_THE_ERROR                                                   \
-    }                                                                        \
-  }
-
-DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
-DEFINE_SAFE_BOOST_GET(const InputType&,
-                      const OutputType&,
-                      const OutputType*,
-                      SafeBoostGetConst);
-DEFINE_SAFE_BOOST_GET(InputType&&,
-                      OutputType,
-                      OutputType*,
-                      SafeBoostGetMutable);
-
-}  // namespace details
-
-#define BOOST_GET(__TYPE, __VALUE) \
-  ::pten::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, __FILE__, __LINE__)
-#define BOOST_GET_CONST(__TYPE, __VALUE)      \
-  ::pten::details::SafeBoostGetConst<__TYPE>( \
-      __VALUE, #__VALUE, __FILE__, __LINE__)
-#define BOOST_GET_MUTABLE(__TYPE, __VALUE)      \
-  ::pten::details::SafeBoostGetMutable<__TYPE>( \
-      __VALUE, #__VALUE, __FILE__, __LINE__)
-
-/** OTHER EXCEPTION AND ENFORCE **/
-
-struct EOFException : public std::exception {
-  std::string err_str_;
-  EOFException(const char* err_msg, const char* file, int line) {
-    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, file, line);
-  }
-
-  const char* what() const noexcept override { return err_str_.c_str(); }
-};
-
-#define PADDLE_THROW_EOF()                                                    \
-  do {                                                                        \
-    HANDLE_THE_ERROR                                                          \
-    throw ::pten::EOFException("There is no next data.", __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                      \
-  } while (0)
-
-#define PADDLE_THROW_BAD_ALLOC(...)                                       \
-  do {                                                                    \
-    HANDLE_THE_ERROR                                                      \
-    throw ::paddle::memory::allocation::BadAlloc(                         \
-        pten::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                  \
-  } while (0)
 }  // namespace enforce
 using namespace enforce;  // NOLINT
 }  // namespace pten

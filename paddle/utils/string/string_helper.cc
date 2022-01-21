@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <cstring>
 #include <string>
 
-#include "glog/logging.h"
-
-namespace pten {
+namespace paddle {
 namespace string {
 
 // remove leading and tailing spaces
@@ -75,7 +73,7 @@ char* LineFileReader::getdelim(FILE* f, char delim) {
     return _buffer;
   } else {
     _length = 0;
-    CHECK(feof(f));
+    assert(feof(f));
     return NULL;
   }
 #else
@@ -84,4 +82,4 @@ char* LineFileReader::getdelim(FILE* f, char delim) {
 }
 
 }  // end namespace string
-}  // end namespace pten
+}  // end namespace paddle

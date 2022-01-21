@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 #include "gflags/gflags.h"
 
 DEFINE_bool(color, true, "Whether to turn on pretty log");
 
-namespace pten {
+namespace paddle {
 namespace string {}  // namespace string
-}  // namespace pten
+}  // namespace paddle

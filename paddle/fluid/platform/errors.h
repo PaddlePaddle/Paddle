@@ -17,6 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace errors = ::pten::errors;
-namespace error = ::pten::proto;
+using error = ::pten::ErrorCode;
 }
 }

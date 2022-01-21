@@ -4,3 +4,4 @@ set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests CACHE INTERN
 add_subdirectory(pten)
 add_subdirectory(infrt)
 add_subdirectory(fluid)
+add_subdirectory(utils)

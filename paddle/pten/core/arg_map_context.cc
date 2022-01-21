@@ -34,7 +34,7 @@ const ArgumentMappingFn& OpArgumentMappingFnMap::Get(
   PADDLE_ENFORCE_NE(
       it,
       fn_map_.end(),
-      ::pten::errors::NotFound(
+      pten::errors::NotFound(
           "Operator `%s`'s argument mapping funciton is not registered.",
           op_type));
   return it->second;

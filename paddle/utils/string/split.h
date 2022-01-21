@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-namespace pten {
+namespace paddle {
 namespace string {
 
 static inline std::vector<std::string> Split(std::string const& original,
@@ -34,4 +34,4 @@ static inline std::vector<std::string> Split(std::string const& original,
 }
 
 }  // namespace string
-}  // namespace pten
+}  // namespace paddle

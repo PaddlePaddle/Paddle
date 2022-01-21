@@ -304,7 +304,7 @@ copy(fluid_lib_dist
         )
 
 set(module "platform")
-set(platform_lib_deps profiler_proto error_codes_proto)
+set(platform_lib_deps profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif(WITH_GPU)

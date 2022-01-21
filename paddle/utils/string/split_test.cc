@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/string/split.h"
+#include "paddle/utils/string/split.h"
 
 #include <string>
 
@@ -21,7 +21,7 @@
 TEST(StringSplit, StringSplit) {
   std::string to_split = "0,1,2,3,4,5";
   int i = 0;
-  for (auto s : pten::string::Split(to_split, ',')) {
+  for (auto s : paddle::string::Split(to_split, ',')) {
     EXPECT_EQ(atoi(s.c_str()), i);
     i++;
   }

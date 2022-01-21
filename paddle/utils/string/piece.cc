@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/string/piece.h"
+#include "paddle/utils/string/piece.h"
 
 #include <string.h>
 #include <algorithm>
@@ -23,7 +23,7 @@
     if (!b) return 1;          \
   } while (0)
 
-namespace pten {
+namespace paddle {
 namespace string {
 
 Piece::Piece() : data_(NULL), size_(0) {}
@@ -143,4 +143,4 @@ std::ostream& operator<<(std::ostream& o, Piece piece) {
 }
 
 }  // namespace string
-}  // namespace pten
+}  // namespace paddle

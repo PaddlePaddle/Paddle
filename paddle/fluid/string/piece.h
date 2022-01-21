@@ -17,9 +17,4 @@
 #include <ostream>
 #include <string>
 
-#include "paddle/pten/core/string/piece.h"
-namespace paddle {
-namespace string {
-using namespace ::pten::string;  // NOLINT
-}
-}
+#include "paddle/utils/string/piece.h"

@@ -20,11 +20,71 @@ limitations under the License. */
 #include <tuple>
 #include <type_traits>
 
-#include "paddle/pten/core/error_codes.pb.h"
-#include "paddle/pten/core/string/printf.h"
+#include "paddle/utils/string/printf.h"
 
 namespace pten {
-typedef ::pten::proto::Code Code;
+enum ErrorCode {
+  // Legacy error.
+  // Error type string: "Error"
+  LEGACY = 0,
+
+  // Client specified an invalid argument.
+  // Error type string: "InvalidArgumentError"
+  INVALID_ARGUMENT = 1,
+
+  // Some requested entity (e.g., file or directory) was not found.
+  // Error type string: "NotFoundError"
+  NOT_FOUND = 2,
+
+  // Operation tried to iterate past the valid input range.  E.g., seeking or
+  // reading past end of file.
+  // Error type string: "OutOfRangeError"
+  OUT_OF_RANGE = 3,
+
+  // Some entity that we attempted to create (e.g., file or directory)
+  // already exists.
+  // Error type string: "AlreadyExistsError"
+  ALREADY_EXISTS = 4,
+
+  // Some resource has been exhausted, perhaps a per-user quota, or
+  // perhaps the entire file system is out of space.
+  // Error type string: "ResourceExhaustedError"
+  RESOURCE_EXHAUSTED = 5,
+
+  // Operation was rejected because the system is not in a state
+  // required for the operation's execution.
+  // Error type string: "PreconditionNotMetError"
+  PRECONDITION_NOT_MET = 6,
+
+  // The caller does not have permission to execute the specified
+  // operation.
+  // Error type string: "PermissionDeniedError"
+  PERMISSION_DENIED = 7,
+
+  // Deadline expired before operation could complete.
+  // Error type string: "ExecutionTimeout"
+  EXECUTION_TIMEOUT = 8,
+
+  // Operation is not implemented or not supported/enabled in this service.
+  // Error type string: "UnimpelmentedError"
+  UNIMPLEMENTED = 9,
+
+  // The service is currently unavailable.  This is a most likely a
+  // transient condition and may be corrected by retrying with
+  // a backoff.
+  // Error type string: "UnavailableError"
+  UNAVAILABLE = 10,
+
+  // Fatal errors.  Means some invariant expected by the underlying
+  // system has been broken.  If you see one of these errors,
+  // something is very broken.
+  // Error type string: "FatalError"
+  FATAL = 11,
+
+  // Third-party library error.
+  // Error type string: "ExternalError"
+  EXTERNAL = 12,
+};
 
 class ErrorSummary {
  public:
@@ -38,46 +98,47 @@ class ErrorSummary {
   //   constructor now.
   template <typename... Args>
   explicit ErrorSummary(Args... args) {
-    code_ = pten::proto::LEGACY;
-    msg_ = pten::string::Sprintf(args...);
+    code_ = pten::ErrorCode::LEGACY;
+    msg_ = paddle::string::Sprintf(args...);
   }
 
   // Note(chenweihang): Only recommended constructor
   //   No longer supports PADDLE_ENFORCE without type or without error message
-  explicit ErrorSummary(Code code, std::string msg) : code_(code), msg_(msg) {}
+  explicit ErrorSummary(ErrorCode code, std::string msg)
+      : code_(code), msg_(msg) {}
 
-  Code code() const { return code_; }
+  ErrorCode code() const { return code_; }
 
   const std::string& error_message() const { return msg_; }
 
   std::string to_string() const;
 
  private:
-  Code code_;
+  ErrorCode code_;
   std::string msg_;
 };
 
 namespace errors {
 
-#define REGISTER_ERROR(FUNC, CONST, ...)                           \
-  template <typename... Args>                                      \
-  ::pten::ErrorSummary FUNC(Args... args) {                        \
-    return ::pten::ErrorSummary(::pten::CONST,                     \
-                                ::pten::string::Sprintf(args...)); \
+#define REGISTER_ERROR(FUNC, CONST, ...)                             \
+  template <typename... Args>                                        \
+  ::pten::ErrorSummary FUNC(Args... args) {                          \
+    return ::pten::ErrorSummary(::pten::CONST,                       \
+                                ::paddle::string::Sprintf(args...)); \
   }
 
-REGISTER_ERROR(InvalidArgument, proto::INVALID_ARGUMENT)
-REGISTER_ERROR(NotFound, proto::NOT_FOUND)
-REGISTER_ERROR(OutOfRange, proto::OUT_OF_RANGE)
-REGISTER_ERROR(AlreadyExists, proto::ALREADY_EXISTS)
-REGISTER_ERROR(ResourceExhausted, proto::RESOURCE_EXHAUSTED)
-REGISTER_ERROR(PreconditionNotMet, proto::PRECONDITION_NOT_MET)
-REGISTER_ERROR(PermissionDenied, proto::PERMISSION_DENIED)
-REGISTER_ERROR(ExecutionTimeout, proto::EXECUTION_TIMEOUT)
-REGISTER_ERROR(Unimplemented, proto::UNIMPLEMENTED)
-REGISTER_ERROR(Unavailable, proto::UNAVAILABLE)
-REGISTER_ERROR(Fatal, proto::FATAL)
-REGISTER_ERROR(External, proto::EXTERNAL)
+REGISTER_ERROR(InvalidArgument, ErrorCode::INVALID_ARGUMENT)
+REGISTER_ERROR(NotFound, ErrorCode::NOT_FOUND)
+REGISTER_ERROR(OutOfRange, ErrorCode::OUT_OF_RANGE)
+REGISTER_ERROR(AlreadyExists, ErrorCode::ALREADY_EXISTS)
+REGISTER_ERROR(ResourceExhausted, ErrorCode::RESOURCE_EXHAUSTED)
+REGISTER_ERROR(PreconditionNotMet, ErrorCode::PRECONDITION_NOT_MET)
+REGISTER_ERROR(PermissionDenied, ErrorCode::PERMISSION_DENIED)
+REGISTER_ERROR(ExecutionTimeout, ErrorCode::EXECUTION_TIMEOUT)
+REGISTER_ERROR(Unimplemented, ErrorCode::UNIMPLEMENTED)
+REGISTER_ERROR(Unavailable, ErrorCode::UNAVAILABLE)
+REGISTER_ERROR(Fatal, ErrorCode::FATAL)
+REGISTER_ERROR(External, ErrorCode::EXTERNAL)
 
 #undef REGISTER_ERROR
 

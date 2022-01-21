@@ -17,9 +17,4 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/pten/core/string/split.h"
-namespace paddle {
-namespace string {
-using namespace ::pten::string;  // NOLINT
-}
-}
+#include "paddle/utils/string/split.h"

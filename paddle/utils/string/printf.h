@@ -74,9 +74,9 @@
 #include <string>
 #include <vector>
 
-#include "tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
+#include "paddle/utils/string/tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
 
-namespace pten {
+namespace paddle {
 namespace string {
 
 template <typename... Args>
@@ -121,4 +121,4 @@ inline std::string HumanReadableSize(double f_size) {
 }
 
 }  // namespace string
-}  // namespace pten
+}  // namespace paddle

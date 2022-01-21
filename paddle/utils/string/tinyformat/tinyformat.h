@@ -133,7 +133,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace pten {
+namespace paddle {
 namespace string {
 namespace tinyformat {
 
@@ -914,4 +914,4 @@ void printfln(const char *fmt, const Args &... args) {
 
 }  // namespace tinyformat
 }  // namespace string
-}  // namespace pten
+}  // namespace paddle

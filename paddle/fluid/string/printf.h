@@ -13,9 +13,4 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pten/core/string/printf.h"
-namespace paddle {
-namespace string {
-using namespace ::pten::string;  // NOLINT
-}
-}
+#include "paddle/utils/string/printf.h"

@@ -19,7 +19,7 @@
 #include <utility>
 #include "gflags/gflags.h"
 
-#include "paddle/pten/core/string/printf.h"
+#include "paddle/utils/string/printf.h"
 
 DECLARE_bool(color);
 

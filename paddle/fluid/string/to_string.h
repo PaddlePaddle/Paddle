@@ -13,9 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/pten/core/string/to_string.h"
-namespace paddle {
-namespace string {
-using namespace ::pten::string;  // NOLINT
-}
-}
+#include "paddle/utils/string/to_string.h"

@@ -14,16 +14,16 @@
 
 #pragma once
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-
-namespace pten {
+namespace paddle {
 namespace string {
 
 inline size_t count_spaces(const char* s) {
@@ -51,12 +51,12 @@ void format_string_append(std::string& str,  // NOLINT
                           const char* fmt,   // NOLINT
                           ARGS&&... args) {
   int len = snprintf(NULL, 0, fmt, args...);
-  CHECK_GE(len, 0);
+  assert(len == 0);
   size_t oldlen = str.length();
   str.resize(oldlen + len + 1);
 
-  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) ==  // NOLINT
-        len);
+  assert(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) ==  // NOLINT
+         len);
   str.resize(oldlen + len);
 }
 
@@ -232,4 +232,4 @@ class LineFileReader {
   size_t _length = 0;
 };
 }  // end namespace string
-}  // end namespace pten
+}  // end namespace paddle

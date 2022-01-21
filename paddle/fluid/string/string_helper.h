@@ -14,9 +14,4 @@
 
 #pragma once
 
-#include "paddle/pten/core/string/string_helper.h"
-namespace paddle {
-namespace string {
-using namespace ::pten::string;  // NOLINT
-}
-}
+#include "paddle/utils/string/string_helper.h"

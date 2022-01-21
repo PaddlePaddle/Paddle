@@ -19,10 +19,4 @@
 #include <utility>
 #include "gflags/gflags.h"
 
-#include "paddle/pten/core/string/pretty_log.h"
-
-namespace paddle {
-namespace string {
-using namespace ::pten::string;  // NOLINT
-}
-}
+#include "paddle/utils/string/pretty_log.h"

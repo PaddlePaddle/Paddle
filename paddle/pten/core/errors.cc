@@ -17,47 +17,45 @@ limitations under the License. */
 #include <stdexcept>
 
 namespace pten {
-typedef ::pten::proto::Code Code;
-
-std::string error_name(Code code) {
+std::string error_name(ErrorCode code) {
   switch (code) {
-    case Code::LEGACY:
+    case ErrorCode::LEGACY:
       return "Error";
       break;
-    case Code::INVALID_ARGUMENT:
+    case ErrorCode::INVALID_ARGUMENT:
       return "InvalidArgumentError";
       break;
-    case Code::NOT_FOUND:
+    case ErrorCode::NOT_FOUND:
       return "NotFoundError";
       break;
-    case Code::OUT_OF_RANGE:
+    case ErrorCode::OUT_OF_RANGE:
       return "OutOfRangeError";
       break;
-    case Code::ALREADY_EXISTS:
+    case ErrorCode::ALREADY_EXISTS:
       return "AlreadyExistsError";
       break;
-    case Code::RESOURCE_EXHAUSTED:
+    case ErrorCode::RESOURCE_EXHAUSTED:
       return "ResourceExhaustedError";
       break;
-    case Code::PRECONDITION_NOT_MET:
+    case ErrorCode::PRECONDITION_NOT_MET:
       return "PreconditionNotMetError";
       break;
-    case Code::PERMISSION_DENIED:
+    case ErrorCode::PERMISSION_DENIED:
       return "PermissionDeniedError";
       break;
-    case Code::EXECUTION_TIMEOUT:
+    case ErrorCode::EXECUTION_TIMEOUT:
       return "ExecutionTimeoutError";
       break;
-    case Code::UNIMPLEMENTED:
+    case ErrorCode::UNIMPLEMENTED:
       return "UnimplementedError";
       break;
-    case Code::UNAVAILABLE:
+    case ErrorCode::UNAVAILABLE:
       return "UnavailableError";
       break;
-    case Code::FATAL:
+    case ErrorCode::FATAL:
       return "FatalError";
       break;
-    case Code::EXTERNAL:
+    case ErrorCode::EXTERNAL:
       return "ExternalError";
       break;
     default:

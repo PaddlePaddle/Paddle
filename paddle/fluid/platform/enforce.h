@@ -121,9 +121,97 @@ using namespace ::pten::enforce;  // NOLINT
 #define PADDLE_MAY_THROW noexcept(false)
 #endif
 
+/*
+ * Summary: This BOOST_GET(_**) series macros are used to call boost::get
+ *   safely. boost::get is not a completely safe api, although it will not
+ *   go wrong in most cases, but in extreme cases, it may fail and directly
+ *   throw a boost::bad_get exception, without any stack information.
+ *   This kind of problems is difficult to debug, so add these macros to
+ *   enrich boost::get error information. At the same time, we restrict
+ *   the direct use of boost::get by CI rule.
+ *
+ * Parameters:
+ *     __TYPE: the target variable type
+ *     __VALUE: the target variable to get
+ *
+ * Examples:
+ *     - unsafe writing: int x = boost::get<int>(y);
+ *     - safe writing: int x = BOOST_GET(int, y);
+ *
+ * Note: GCC 4.8 cannot select right overloaded function here, so need
+ *    to define different functions and macros here, after we upgreade
+ *    CI gcc version, we can only define one BOOST_GET macro.
+ */
 namespace details {
-using namespace ::pten::enforce::details;  // NOLINT
+
+using namespace pten::enforce::details;  // NOLINT
+
+#define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
+                              __FuncName)                                      \
+  template <typename OutputType, typename InputType>                           \
+  auto __FuncName(__InputType input, const char* expression, const char* file, \
+                  int line)                                                    \
+      ->typename std::conditional<std::is_pointer<InputType>::value,           \
+                                  __OutputTypePtr, __OutputType>::type {       \
+    try {                                                                      \
+      return boost::get<OutputType>(input);                                    \
+    } catch (boost::bad_get&) {                                                \
+      HANDLE_THE_ERROR                                                         \
+      throw ::pten::enforce::EnforceNotMet(                                    \
+          pten::errors::InvalidArgument(                                       \
+              "boost::get failed, cannot get value "                           \
+              "(%s) by type %s, its type is %s.",                              \
+              expression, pten::enforce::demangle(typeid(OutputType).name()),  \
+              pten::enforce::demangle(input.type().name())),                   \
+          file, line);                                                         \
+      END_HANDLE_THE_ERROR                                                     \
+    }                                                                          \
+  }
+
+DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
+DEFINE_SAFE_BOOST_GET(const InputType&, const OutputType&, const OutputType*,
+                      SafeBoostGetConst);
+DEFINE_SAFE_BOOST_GET(InputType&&, OutputType, OutputType*,
+                      SafeBoostGetMutable);
+
 }  // namespace details
+
+#define BOOST_GET(__TYPE, __VALUE)                                             \
+  paddle::platform::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, __FILE__, \
+                                                  __LINE__)
+#define BOOST_GET_CONST(__TYPE, __VALUE)                                  \
+  paddle::platform::details::SafeBoostGetConst<__TYPE>(__VALUE, #__VALUE, \
+                                                       __FILE__, __LINE__)
+#define BOOST_GET_MUTABLE(__TYPE, __VALUE)                                  \
+  paddle::platform::details::SafeBoostGetMutable<__TYPE>(__VALUE, #__VALUE, \
+                                                         __FILE__, __LINE__)
+
+/** OTHER EXCEPTION AND ENFORCE **/
+
+struct EOFException : public std::exception {
+  std::string err_str_;
+  EOFException(const char* err_msg, const char* file, int line) {
+    err_str_ = paddle::string::Sprintf("%s at [%s:%d]", err_msg, file, line);
+  }
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+};
+
+#define PADDLE_THROW_EOF()                                                   \
+  do {                                                                       \
+    HANDLE_THE_ERROR                                                         \
+    throw paddle::platform::EOFException("There is no next data.", __FILE__, \
+                                         __LINE__);                          \
+    END_HANDLE_THE_ERROR                                                     \
+  } while (0)
+
+#define PADDLE_THROW_BAD_ALLOC(...)                                       \
+  do {                                                                    \
+    HANDLE_THE_ERROR                                                      \
+    throw ::paddle::memory::allocation::BadAlloc(                         \
+        pten::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                  \
+  } while (0)
 
 /**************************************************************************/
 /**************************** NVIDIA ERROR ********************************/
