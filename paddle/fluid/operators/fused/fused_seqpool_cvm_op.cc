@@ -80,13 +80,30 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       outs_dims[i] = framework::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    auto inputs = ctx.MultiInput<LoDTensor>("X");
+    auto input_data_type = framework::proto::VarType::Type(0);
+    bool flag = 0;
+    for (auto* input : inputs) {
+      if (input->IsInitialized() && input->numel() > 0) {
+        input_data_type = input->type();
+        flag = 1;
+        break;
+      }
+    }
+    PADDLE_ENFORCE_EQ(flag, 1,
+                      platform::errors::InvalidArgument(
+                          "All Inputs of fused_seqpool_cvm OP are Empty!"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    // return framework::OpKernelType(framework::proto::VarType::FP32,
+    //                                ctx.device_context());
+    // return framework::OpKernelType(
+    //   OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
