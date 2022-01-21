@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -54,7 +53,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -75,6 +74,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/pten/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
 #endif
@@ -1093,7 +1093,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("recursive_sequence_lengths",
            [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
-             LoD lod = ConvertToLengthBasedLoD(self.lod());
+             LoD lod = pten::ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));

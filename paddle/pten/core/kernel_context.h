@@ -92,7 +92,7 @@ class KernelContext {
   std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
-      auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
+      auto t = static_cast<const TensorType*>(inputs_.at(i));
       v.emplace_back(*t);
       inputs_.at(i) = nullptr;
     }
