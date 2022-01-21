@@ -38,9 +38,9 @@ limitations under the License. */
  * Pten is working on exposing headers, custom kernel depends on them, and
  * we prefer outer users following pten-kernel-function-style and registering
  * macro. So, we have to re-implement some structs or class and functions to
- * make sure users' custom kernel functions can be registered to pten
+ * make sure users' custom kernel functions can be registered to pten.
  *
- * TODO(Aganlengzi): We should upgrade following pten
+ * TODO(Aganlengzi): We should upgrade following pten.
  */
 
 namespace paddle {
@@ -48,8 +48,8 @@ namespace framework {
 class PADDLE_API OpKernelInfoHelper;
 }  // namespace framework
 
-// TODO(Aganlengzi): Simple DeviceContext temporarily for stream get in user
-// kernel function
+// TODO(Aganlengzi): Simple DeviceContext temporarily for stream getting
+// before pten::DeviceContext is exposed.
 class DeviceContext {
  public:
   DeviceContext() { stream_ = nullptr; }
@@ -61,15 +61,15 @@ class DeviceContext {
 };
 class CPUContext : public DeviceContext {};
 
-// TODO(Aganlengzi): Use paddle::Tensor before DenseTensor and SparseTensor
-// exposed
+// TODO(Aganlengzi): Use paddle::Tensor before DenseTensor is exposed
 using Tensor = paddle::experimental::Tensor;
 using Scalar = pten::Scalar;
 using ScalarArray = pten::ScalarArray;
 
 // Record custom kernel core information
-// we can not use pten::KernelFn directly for lacking of header exposing
-// but we need unify users' custom kernel function for registering
+// We can not use pten::KernelFn directly, so users' custom kernel function
+// is signatured to `CustomKernelFunc', notice that the first parameter is
+// fixed to `const DeviceContext&'.
 using CustomKernelFunc =
     void (*)(const DeviceContext& dev_ctx,
              const std::vector<Tensor>& inputs,
@@ -408,11 +408,10 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
                                       &__VA_ARGS__>::VariadicCompute)
 
 ////////////////////// Op Kernel Info depended structs //////////////////////
-// TODO(Aganlengzi): Re-define TensorArgDef and AttributeArgDef temporarily
-// because kernel_factory.h is not exposed and incomplete type is not enough.
-// TensorArgDef from pten::TensorArgDef in kernel_factory.h
-// The difference is custom_kernel needs extra `is_vector' to ensure we can
-// deal with case: vector with only one element.
+// TODO(Aganlengzi): Re-define TensorArgDef and AttributeArgDef temporarily.
+// TensorArgDef follows pten::TensorArgDef in kernel_factory.h, the
+// difference is that custom_kernel needs extra `is_vector' to ensure we can
+// deal with case like vector with only one element.
 struct TensorArgDef {
   pten::Backend backend;
   pten::DataLayout layout;
@@ -444,7 +443,7 @@ struct TensorArgDef {
   }
 };
 
-// AttributeArgDef from pten::AttributeArgDef in kernel_factory.h
+// AttributeArgDef follows pten::AttributeArgDef in kernel_factory.h
 struct AttributeArgDef {
   std::type_index type_index;
 
@@ -453,8 +452,8 @@ struct AttributeArgDef {
 };
 
 ////////////////////// Op Kernel Info //////////////////////
-// OpKernelInfo stores all info parsing from user kernel function, including:
-// 0. op_type and kernel key(backend, layout and dtype)
+// OpKernelInfo stores all info parsed from user kernel function, includes:
+// 0. op_name and kernel key(backend, data_layout and data_type)
 // 1. unified custom kernel function
 // 2. variadic kernel function(use paddle::Tensor)
 // 3. args info and user defined change for specific arg
@@ -501,16 +500,6 @@ class PADDLE_API OpKernelInfo {
   const pten::DataLayout& GetDataLayout() const { return layout_; }
   const pten::DataType& GetDataType() const { return dtype_; }
 
-  const paddle::SmallVector<TensorArgDef>& input_defs() const {
-    return input_defs_;
-  }
-  const paddle::SmallVector<TensorArgDef>& output_defs() const {
-    return output_defs_;
-  }
-  const paddle::SmallVector<AttributeArgDef>& attribute_defs() const {
-    return attribute_defs_;
-  }
-
  private:
   friend class framework::OpKernelInfoHelper;
 
@@ -533,8 +522,7 @@ class PADDLE_API OpKernelInfo {
 };
 
 ////////////////////// Op Kernel Args Parser //////////////////////
-// Define CustomKernelArgsParseFunctor
-// KernelArgsParseFunctor is in kernel_registry.h
+// Define CustomKernelArgsParseFunctor for args parsing
 // We have to store parsed info into OpKernelInfo before
 // mapping to pten::KernelArgsDef in pten::Kernel
 template <typename Func>
@@ -653,24 +641,24 @@ void LoadCustomKernelLib(const std::string& dso_name);
 #define PD_DATALAYOUT(arg__) pten::DataLayout::arg__
 #define PD_DATATYPE(arg__) pten::DataType::arg__
 
-#define PD_REGISTER_KERNEL(op_name, dev, layout, dtype, func)                  \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
-      __reg_kernel__##op_name##_##dev##_##layout##_##dtype,                    \
-      "PD_REGISTER_KERNEL must be called in global namespace.");               \
-  void __PD_USER_args_def_F_##op_name##_##dev##_##layout_##dtype(              \
-      ::paddle::OpKernelInfo* op_kernel_info);                                 \
-  static ::paddle::OpKernelInfoBuilder                                         \
-      __op_kernel_info_##op_name##_##dev##_##layout##_##dtype =                \
-          ::paddle::OpKernelInfoBuilder(#op_name,                              \
-                                        PD_BACKEND(dev),                       \
-                                        PD_DATALAYOUT(layout),                 \
-                                        PD_DATATYPE(dtype))                    \
-              .SetKernelFn(PD_PT_KERNEL(func))                                 \
-              .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(func))                \
-              .ArgsParse(PD_PT_ARGS_PARSE(func))                               \
-              .ArgsDef(                                                        \
-                  &__PD_USER_args_def_F_##op_name##_##dev##_##layout_##dtype); \
-  void __PD_USER_args_def_F_##op_name##_##dev##_##layout_##dtype(              \
+#define PD_REGISTER_KERNEL(name, backend, layout, dtype, func)                \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
+      __reg_kernel__##name##_##backend##_##layout##_##dtype,                  \
+      "PD_REGISTER_KERNEL must be called in global namespace.");              \
+  void __PD_USER_args_def_##name##_##backend##_##layout_##dtype(              \
+      ::paddle::OpKernelInfo* op_kernel_info);                                \
+  static ::paddle::OpKernelInfoBuilder                                        \
+      __op_kernel_info_##name##_##backend##_##layout##_##dtype =              \
+          ::paddle::OpKernelInfoBuilder(#name,                                \
+                                        PD_BACKEND(backend),                  \
+                                        PD_DATALAYOUT(layout),                \
+                                        PD_DATATYPE(dtype))                   \
+              .SetKernelFn(PD_PT_KERNEL(func))                                \
+              .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(func))               \
+              .ArgsParse(PD_PT_ARGS_PARSE(func))                              \
+              .ArgsDef(                                                       \
+                  &__PD_USER_args_def_##name##_##backend##_##layout_##dtype); \
+  void __PD_USER_args_def_##name##_##backend##_##layout_##dtype(              \
       ::paddle::OpKernelInfo* kernel)
 
 }  // namespace paddle

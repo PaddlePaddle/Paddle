@@ -26,14 +26,45 @@ class OpKernelInfoHelper {
   static const std::string& GetOpName(const paddle::OpKernelInfo& info) {
     return info.op_name_;
   }
+
+  static const pten::Backend& GetBackend(const paddle::OpKernelInfo& info) {
+    return info.backend_;
+  }
+
+  static const pten::DataLayout& GetDataLayout(
+      const paddle::OpKernelInfo& info) {
+    return info.layout_;
+  }
+
+  static const pten::DataType& GetDataType(const paddle::OpKernelInfo& info) {
+    return info.dtype_;
+  }
+
   static pten::KernelKey GetKernelKey(const paddle::OpKernelInfo& info) {
     return pten::KernelKey(info.backend_, info.layout_, info.dtype_);
   }
+
   static const CustomKernelFunc& GetKernelFn(const paddle::OpKernelInfo& info) {
     return info.kernel_fn_;
   }
+
   static void* GetVariadicKernelFn(const paddle::OpKernelInfo& info) {
     return info.variadic_kernel_fn_;
+  }
+
+  static const paddle::SmallVector<TensorArgDef>& GetInputDefs(
+      const paddle::OpKernelInfo& info) {
+    return info.input_defs_;
+  }
+
+  static const paddle::SmallVector<TensorArgDef>& GetOutputDefs(
+      const paddle::OpKernelInfo& info) {
+    return info.output_defs_;
+  }
+
+  static const paddle::SmallVector<AttributeArgDef>& GetAttributeDefs(
+      const paddle::OpKernelInfo& info) {
+    return info.attribute_defs_;
   }
 };
 

@@ -31,6 +31,9 @@ namespace custom_kernel {
 
 // Here we use dot <CPU, ANY, UINT8> for test
 // This test will fail when these two kernels are aupported in framework
+// input 3: two Tensors and one std::vector<Tensor>
+// attribute 11: fake_attributes
+// output 2: one Tensor* and one std::vector<Tensor*>
 template <typename T>
 void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
              const paddle::Tensor& y,
@@ -57,6 +60,19 @@ void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
             << std::endl;
   std::cout << "fake_attr_int_vec: " << fake_attr_int_vec.size() << std::endl;
   std::cout << "fake_out_vec: " << fake_out_vec.size() << std::endl;
+
+  // assert check
+  assert(fake_input_vec.size() == 2);
+  assert(fake_attr_bool == false);
+  assert(fake_attr_int == 1);
+  assert(fake_attr_float == 2);
+  assert(fake_attr_double == 3);
+  assert(fake_attr_int64 == 4);
+  assert(fake_attr_f16 == 5);
+  assert(fake_attr_dtype == pten::DataType::UINT32);
+  assert(fake_attr_int64_vec.size() == 0);
+  assert(fake_attr_int_vec.size() == 0);
+  assert(fake_out_vec.size() == 2);
 
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
@@ -225,23 +241,34 @@ TEST(CustomKernel, custom_kernel_dot) {
 
 // test OpKernelInfoHelper
 TEST(OpKernelInfoHelper, op_kernel_info_help_getters) {
+  using OpKernelInfoHelper = paddle::framework::OpKernelInfoHelper;
   std::string op_name = "dot";
   pten::Backend backend = pten::Backend::CPU;
   pten::DataLayout layout = pten::DataLayout::ANY;
   pten::DataType dtype = pten::DataType::UINT8;
 
   auto op_kernel_info = paddle::OpKernelInfoMap::Instance()[op_name][0];
-  EXPECT_EQ(op_name,
-            paddle::framework::OpKernelInfoHelper::GetOpName(op_kernel_info));
-  EXPECT_EQ(
-      pten::KernelKey(backend, layout, dtype),
-      paddle::framework::OpKernelInfoHelper::GetKernelKey(op_kernel_info));
+
+  EXPECT_EQ(op_name, OpKernelInfoHelper::GetOpName(op_kernel_info));
+  EXPECT_EQ(backend, OpKernelInfoHelper::GetBackend(op_kernel_info));
+  EXPECT_EQ(layout, OpKernelInfoHelper::GetDataLayout(op_kernel_info));
+  EXPECT_EQ(dtype, OpKernelInfoHelper::GetDataType(op_kernel_info));
+
+  EXPECT_EQ(pten::KernelKey(backend, layout, dtype),
+            OpKernelInfoHelper::GetKernelKey(op_kernel_info));
+
   paddle::CustomKernelFunc kernel_fn =
       PD_PT_KERNEL(custom_kernel::FakeDot<uint8_t>);
-  EXPECT_EQ(kernel_fn,
-            paddle::framework::OpKernelInfoHelper::GetKernelFn(op_kernel_info));
+  EXPECT_EQ(kernel_fn, OpKernelInfoHelper::GetKernelFn(op_kernel_info));
+
   void* variadic_func = PD_PT_VARIADIC_KERNEL(custom_kernel::FakeDot<uint8_t>);
   EXPECT_EQ(variadic_func,
-            paddle::framework::OpKernelInfoHelper::GetVariadicKernelFn(
-                op_kernel_info));
+            OpKernelInfoHelper::GetVariadicKernelFn(op_kernel_info));
+
+  auto& input_defs = OpKernelInfoHelper::GetInputDefs(op_kernel_info);
+  auto& output_defs = OpKernelInfoHelper::GetOutputDefs(op_kernel_info);
+  auto& attribute_defs = OpKernelInfoHelper::GetAttributeDefs(op_kernel_info);
+  EXPECT_EQ(3, static_cast<int>(input_defs.size()));
+  EXPECT_EQ(2, static_cast<int>(output_defs.size()));
+  EXPECT_EQ(11, static_cast<int>(attribute_defs.size()));
 }

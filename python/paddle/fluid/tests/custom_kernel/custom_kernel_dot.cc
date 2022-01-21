@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ namespace paddle {
 
 namespace custom_kernel {
 
+// Here we use dot <CPU, ANY, INT8> for test
+// This test will fail when these two kernels are aupported in framework
 template <typename T>
 void Dot(const paddle::CPUContext& dev_ctx,
          const paddle::Tensor& x,
@@ -45,6 +47,6 @@ void Dot(const paddle::CPUContext& dev_ctx,
 
 PD_REGISTER_KERNEL(dot, CPU, ANY, INT8, paddle::custom_kernel::Dot<int8_t>) {
   /* do some args define here
-   * the only param can be used is OpKernelInfo* op_kernel_info */
+   * the only param can be used is OpKernelInfo* kernel */
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }

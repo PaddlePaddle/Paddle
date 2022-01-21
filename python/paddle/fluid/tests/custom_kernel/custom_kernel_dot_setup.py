@@ -24,17 +24,17 @@ paddle_extra_compile_args = [
 if core.is_compiled_with_npu():
     paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']
 
-print(paddle_extra_compile_args)
-
 # include path
 site_packages_path = get_python_lib()
 paddle_custom_kernel_include = [
     os.path.join(site_packages_path, 'paddle', 'include'),
 ]
+
 # libs path
 paddle_custom_kernel_library_dir = [
     os.path.join(site_packages_path, 'paddle', 'fluid'),
 ]
+
 # libs
 libs = [':core_avx.so']
 if not core.has_avx_core and core.has_noavx_core:

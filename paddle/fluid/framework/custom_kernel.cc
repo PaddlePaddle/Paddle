@@ -33,30 +33,14 @@ namespace paddle {
 
 namespace framework {
 
-namespace detail {
-
-// dynamic lib load func
-template <typename T>
-static T* DynLoad(void* handle, std::string name) {
-  T* func = reinterpret_cast<T*>(dlsym(handle, name.c_str()));
-  auto errorno = dlerror();
-  PADDLE_ENFORCE_NOT_NULL(
-      func, platform::errors::NotFound(
-                "Failed to load dynamic operator library, error message(%s).",
-                errorno));
-  return func;
-}
-
-}  // namespace detail
-
 // set pten::Kernel args_def_ from op_kernel_info
 // because we can not set directly to pten::Kernel without exposing
-// pten::KernelArgsDef
+// pten::KernelArgsDef when parsing custom user function
 static void ParseArgs(const OpKernelInfo& op_kernel_info,
                       pten::KernelArgsDef* args_def) {
-  auto& input_defs = op_kernel_info.input_defs();
-  auto& output_defs = op_kernel_info.output_defs();
-  auto& attribute_defs = op_kernel_info.attribute_defs();
+  auto& input_defs = OpKernelInfoHelper::GetInputDefs(op_kernel_info);
+  auto& output_defs = OpKernelInfoHelper::GetOutputDefs(op_kernel_info);
+  auto& attribute_defs = OpKernelInfoHelper::GetAttributeDefs(op_kernel_info);
 
   for (auto& input : input_defs) {
     args_def->AppendInput(input.backend, input.layout, input.dtype);
@@ -81,9 +65,9 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   size_t attr_size = ctx->AttrsSize();
 
   // parameters' num of unified user kernel function
-  auto& input_defs = op_kernel_info.input_defs();
-  auto& output_defs = op_kernel_info.output_defs();
-  auto& attribute_defs = op_kernel_info.attribute_defs();
+  auto& input_defs = OpKernelInfoHelper::GetInputDefs(op_kernel_info);
+  auto& output_defs = OpKernelInfoHelper::GetOutputDefs(op_kernel_info);
+  auto& attribute_defs = OpKernelInfoHelper::GetAttributeDefs(op_kernel_info);
 
   PADDLE_ENFORCE_GE(input_size, input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -103,9 +87,11 @@ static void RunKernelFunc(pten::KernelContext* ctx,
                         "to the size of kernel attribute_defs (%d).",
                         attr_size, attribute_defs.size()));
 
-  VLOG(3) << "[CUSTOM KERNEL] InputSize: " << input_defs.size()
-          << " AttrsSize: " << attribute_defs.size()
-          << " OutputSize: " << output_defs.size();
+  VLOG(3) << "[CUSTOM KERNEL] Input num: " << input_defs.size()
+          << "[tensor size:" << input_size << "]"
+          << " Attribute num: " << attribute_defs.size()
+          << " Output num: " << output_defs.size()
+          << "[tensor size:" << output_size << "].";
 
   // Inputs mapping
   std::vector<paddle::experimental::Tensor> custom_ins;
@@ -113,14 +99,13 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   for (size_t in_idx = 0; in_idx < input_defs.size(); ++in_idx) {
     VLOG(3) << "Mapping Input[" << in_idx << "]";
     const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
+
     // is_vector tells if this Input is Tensor or std::vector<Tensor>
     if (!input_defs.at(in_idx).is_vector) {
       paddle::experimental::Tensor custom_t;
       auto& ctx_tensor = ctx->InputAt<pten::DenseTensor>(range.first);
       custom_t.set_impl(std::make_shared<pten::DenseTensor>(ctx_tensor));
       custom_ins.emplace_back(custom_t);
-      VLOG(3) << "Mapped Tensor Input[" << in_idx
-              << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor> custom_vec_in;
       auto ctx_tensor_vec =
@@ -131,10 +116,9 @@ static void RunKernelFunc(pten::KernelContext* ctx,
         custom_vec_in.emplace_back(custom_t);
       }
       custom_vec_ins.emplace_back(custom_vec_in);
-      VLOG(3) << "Mapped std::vector<Tensor> Input[" << in_idx
-              << "] with range.first: " << range.first
-              << ", and rang.second: " << range.second;
     }
+    VLOG(3) << "Mapped Input[" << in_idx << "] with range[" << range.first
+            << "," << range.second << ").";
   }
 
   // Attributes mapping
@@ -161,29 +145,30 @@ static void RunKernelFunc(pten::KernelContext* ctx,
       int64_t arg = ctx->AttrAt<int64_t>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
-               std::type_index(typeid(paddle::platform::float16))) {
-      paddle::platform::float16 arg =
-          ctx->AttrAt<paddle::platform::float16>(attr_idx);
+               std::type_index(typeid(pten::dtype::float16))) {
+      pten::dtype::float16 arg = ctx->AttrAt<pten::dtype::float16>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
                std::type_index(typeid(DataType))) {
       DataType arg = ctx->AttrAt<DataType>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
-               std::type_index(typeid(Scalar))) {
-      Scalar arg = ctx->AttrAt<Scalar>(attr_idx);
+               std::type_index(typeid(const Scalar&))) {
+      const Scalar& arg = ctx->AttrAt<const Scalar&>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
-               std::type_index(typeid(std::vector<int64_t>))) {
-      std::vector<int64_t> arg = ctx->AttrAt<std::vector<int64_t>>(attr_idx);
+               std::type_index(typeid(const std::vector<int64_t>&))) {
+      const std::vector<int64_t>& arg =
+          ctx->AttrAt<const std::vector<int64_t>&>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
-               std::type_index(typeid(ScalarArray))) {
-      ScalarArray arg = ctx->AttrAt<ScalarArray>(attr_idx);
+               std::type_index(typeid(const ScalarArray&))) {
+      const ScalarArray& arg = ctx->AttrAt<const ScalarArray&>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else if (attribute_defs[attr_idx].type_index ==
-               std::type_index(typeid(std::vector<int>))) {
-      std::vector<int> arg = ctx->AttrAt<std::vector<int>>(attr_idx);
+               std::type_index(typeid(const std::vector<int>&))) {
+      const std::vector<int>& arg =
+          ctx->AttrAt<const std::vector<int>&>(attr_idx);
       custom_attrs.emplace_back(arg);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -211,8 +196,6 @@ static void RunKernelFunc(pten::KernelContext* ctx,
       custom_t->set_impl(custom_t_ptr);
       custom_outs.emplace_back(custom_t);
       custom_outs_ptr.emplace_back(custom_t_ptr);
-      VLOG(3) << "Mapped Tensor Output[" << out_idx
-              << "] with range.first: " << range.first;
     } else {
       std::vector<paddle::experimental::Tensor*> custom_vec_out;
       std::vector<std::shared_ptr<pten::DenseTensor>> custom_vec_out_ptr;
@@ -227,44 +210,38 @@ static void RunKernelFunc(pten::KernelContext* ctx,
       }
       custom_vec_outs.emplace_back(custom_vec_out);
       custom_vec_outs_ptr.emplace_back(custom_vec_out_ptr);
-      VLOG(3) << "Mapped std::vector<Tensor> Output[" << out_idx
-              << "] with range.first: " << range.first
-              << ", and rang.second: " << range.second;
     }
+    VLOG(3) << "Mapped Output[" << out_idx << "] with range[" << range.first
+            << "," << range.second << ").";
   }
 
-  // DeviceContext:
-  // In pten, kernel function knows XXContext through template param
-  // from input KernelContext, but here we don't have KernelContext
-  // and need mapping to user kernel function with backend from OpKernelInfo
-  // user_kernel_fn will do static_cast according to user kernel function.
-  // we just set necessary info to dev_ctx(such as stream in NPUContext) before
-  // pten::DeviceContext is exposed to outer
+  // DeviceContext
+  // In pten, the first paramter XXContext is decided when registering
+  // through template param, but custom kernel function use unified
+  // DeviceContext as first parameter of user_kernel_fn, we use backend
+  // from OpKernelInfo to decide XXContext. In temporary simple
+  // DeviceContext, we just set necessary info to dev_ctx(such as stream
+  // in NPUContext), more related work should be done when
+  // pten::DeviceContext is exposed to outer.
   DeviceContext dev_ctx;
-  if (op_kernel_info.GetBackend() == pten::Backend::CPU) {
+  auto& backend = OpKernelInfoHelper::GetBackend(op_kernel_info);
+  if (backend == pten::Backend::CPU) {
     // do nothing
   } else {
-    LOG(ERROR) << "[CUSTOM KERNEL] mismatched kernel backend: "
-               << op_kernel_info.GetBackend() << " with compiled paddle.";
+    LOG(ERROR) << "[CUSTOM KERNEL] Unsupported kernel backend: " << backend
+               << " with compiled Paddle.";
     return;
   }
+
   auto& user_kernel_fn = OpKernelInfoHelper::GetKernelFn(op_kernel_info);
   // call user function
   user_kernel_fn(dev_ctx, custom_ins, custom_vec_ins, custom_attrs,
                  &custom_outs, &custom_vec_outs);
-  VLOG(3) << "[CUSTOM KERNEL] finished call user kernel function";
 
-  // NOTE: Here we have to mapping back the output tensors, before
-  // user_kernel_fn call
-  // we get raw ptr form KernelContext, but user_kernel_fn do changes to
-  // the Copy-Conxtructed DenseTensor ptr thoungh they share the same storage.
-  // So, we mapping back Tensor infos with stored shared_ptrs.
-  std::reverse(custom_outs_ptr.begin(), custom_outs_ptr.end());
-  for (auto& custom_vec_out_ptr : custom_vec_outs_ptr) {
-    std::reverse(custom_vec_out_ptr.begin(), custom_vec_out_ptr.end());
-  }
-  std::reverse(custom_vec_outs_ptr.begin(), custom_vec_outs_ptr.end());
-  for (size_t out_idx = 0; out_idx < output_defs.size(); ++out_idx) {
+  VLOG(3) << "[CUSTOM KERNEL] finished call user kernel function.";
+
+  // NOTE: Map back the output tensors with stored shared_ptrs.
+  for (int out_idx = output_defs.size() - 1; out_idx >= 0; --out_idx) {
     VLOG(3) << "Mapping Back Output[" << out_idx << "]";
     const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
 
@@ -273,24 +250,21 @@ static void RunKernelFunc(pten::KernelContext* ctx,
       auto* ctx_tensor = ctx->MutableOutputAt<pten::DenseTensor>(range.first);
       *ctx_tensor = *(custom_outs_ptr.back().get());
       custom_outs_ptr.pop_back();
-      VLOG(3) << "Mapped Back Tensor Output[" << out_idx
-              << "] with range.first: " << range.first;
     } else {
       auto ctx_tensor_vec = ctx->MutableOutputBetween<pten::DenseTensor>(
           range.first, range.second);
       auto custom_vec_ptr_out = custom_vec_outs_ptr.back();
-      for (auto ctx_tensor : ctx_tensor_vec) {
-        *ctx_tensor = *(custom_vec_ptr_out.back().get());
+      for (int idx = ctx_tensor_vec.size() - 1; idx >= 0; --idx) {
+        *(ctx_tensor_vec[idx]) = *(custom_vec_ptr_out.back().get());
         custom_vec_ptr_out.pop_back();
       }
       custom_vec_outs_ptr.pop_back();
-      VLOG(3) << "Mapped Back std::vector<Tensor> Output[" << out_idx
-              << "] with range.first: " << range.first
-              << ", and rang.second: " << range.second;
     }
+    VLOG(3) << "Mapped Output[" << out_idx << "] with range[" << range.first
+            << "," << range.second << "].";
   }
 
-  // delete newed paddle::Tensor for calling user kernel function
+  // delete newed paddle::Tensor for outputs while calling user kernel function
   for (size_t i = 0; i < custom_outs.size(); ++i) {
     delete custom_outs[i];
   }
@@ -318,7 +292,7 @@ void RegisterKernelWithMetaInfo(
     PADDLE_ENFORCE_EQ(
         pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type), true,
         platform::errors::InvalidArgument(
-            "[CUSTOM KERNEL] %s is not ready for custom kernel registering",
+            "[CUSTOM KERNEL] %s is not ready for custom kernel registering.",
             op_type));
 
     // 2.Check whether kernel_key has been already registed
@@ -347,7 +321,7 @@ void RegisterKernelWithMetaInfo(
     pten::KernelFactory::Instance().kernels()[op_type][kernel_key] = kernel;
     VLOG(3) << "[CUSTOM KERNEL] Successed in registering operator <" << op_type
             << ">'s kernel " << kernel_key << " to Paddle. "
-            << "It will be used like native ones";
+            << "It will be used like native ones.";
   }
 }
 

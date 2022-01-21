@@ -27,13 +27,15 @@ class TestCustomKernelDot(unittest.TestCase):
         if os.name == 'nt':
             exit()
         else:
+            # --inplace to place output so file to current dir
             cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
                 cur_dir, sys.executable)
         subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+        # set environment for loading and registering compiled custom kernels
         os.environ['CUSTOM_DEVICE_ROOT'] = cur_dir
 
     def test_dot_run(self):
-        # test dor run
+        # test dot run
         x_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
         y_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
