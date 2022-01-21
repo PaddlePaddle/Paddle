@@ -26,3 +26,16 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
 
     def _type(self):
         return PassType.FUSION_OPT
+
+
+@register_pass("fuse_relu_depthwise_conv_pass")
+class FuseReluDepthwiseConvPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseReluDepthwiseConvPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_relu_depthwise_conv_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
