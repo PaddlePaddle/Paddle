@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,18 +11,18 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
-namespace paddle {
-namespace operators {
+namespace pten {
+namespace funcs {
 
 template <typename T, int Rank>
-struct EigenPad<Eigen::GpuDevice, T, Rank> {
-  using Array = std::array<std::pair<int64_t, int64_t>, Rank>;
-  using Array32Bit = std::array<std::pair<int, int>, Rank>;
+struct EigenSlice<Eigen::GpuDevice, T, Rank> {
+  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
+  using Array32Bit = Eigen::DSizes<int, Rank>;
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   using InType32BitIndex =
@@ -34,15 +34,20 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
       Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
                        Eigen::Aligned>;
 
-  static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& in,
-                   const Array& padding, const T value) {
-    out.device(dev) = in.pad(padding, value);
+  static void Eval(const Eigen::GpuDevice& dev,
+                   OutType out,
+                   const InType& in,
+                   const Array& offsets,
+                   const Array& extents) {
+    out.device(dev) = in.slice(offsets, extents);
   }
 
-  static void Eval(const Eigen::GpuDevice& dev, OutType32BitIndex out,
-                   const InType32BitIndex& in, const Array32Bit& padding,
-                   const T value) {
-    out.device(dev) = in.pad(padding, value);
+  static void Eval(const Eigen::GpuDevice& dev,
+                   OutType32BitIndex out,
+                   const InType32BitIndex& in,
+                   const Array32Bit& offsets,
+                   const Array32Bit& extents) {
+    out.device(dev) = in.slice(offsets, extents);
   }
 };
 
@@ -53,16 +58,16 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 4>; \
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 6>
-INSTANTIATION(EigenPad, bool);
-INSTANTIATION(EigenPad, int);
-INSTANTIATION(EigenPad, int64_t);
-INSTANTIATION(EigenPad, float);
-INSTANTIATION(EigenPad, double);
-INSTANTIATION(EigenPad, platform::float16);
-INSTANTIATION(EigenPad, platform::bfloat16);
-INSTANTIATION(EigenPad, platform::complex<float>);
-INSTANTIATION(EigenPad, platform::complex<double>);
+INSTANTIATION(EigenSlice, bool);
+INSTANTIATION(EigenSlice, int);
+INSTANTIATION(EigenSlice, int64_t);
+INSTANTIATION(EigenSlice, float);
+INSTANTIATION(EigenSlice, double);
+INSTANTIATION(EigenSlice, dtype::float16);
+INSTANTIATION(EigenSlice, dtype::bfloat16);
+INSTANTIATION(EigenSlice, dtype::complex<float>);
+INSTANTIATION(EigenSlice, dtype::complex<double>);
 #undef INSTANTIATION
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

@@ -23,8 +23,8 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle {
@@ -303,56 +303,56 @@ TEST(complex, print) {
 TEST(complex, isinf) {
   // *********** complex<float> *************
   complex<float> a;
-  a.real = float(INFINITY);
+  a.real = static_cast<float>(INFINITY);
   EXPECT_EQ(std::isinf(a), true);
-  a.imag = float(INFINITY);
+  a.imag = static_cast<float>(INFINITY);
   EXPECT_EQ(std::isinf(a), true);
 
-  complex<float> b = float(INFINITY);
+  complex<float> b = static_cast<float>(INFINITY);
   EXPECT_EQ(std::isinf(b), true);
 
-  complex<float> c(float(INFINITY), 0);
+  complex<float> c(static_cast<float>(INFINITY), 0);
   EXPECT_EQ(std::isinf(c), true);
 
   // *********** complex<double> *************
   complex<double> a1;
-  a1.real = double(INFINITY);
+  a1.real = static_cast<double>(INFINITY);
   EXPECT_EQ(std::isinf(a1), true);
-  a1.imag = double(INFINITY);
+  a1.imag = static_cast<double>(INFINITY);
   EXPECT_EQ(std::isinf(a1), true);
 
-  complex<double> b1 = double(INFINITY);
+  complex<double> b1 = static_cast<double>(INFINITY);
   EXPECT_EQ(std::isinf(b1), true);
 
-  complex<double> c1(double(INFINITY), 0);
+  complex<double> c1(static_cast<double>(INFINITY), 0);
   EXPECT_EQ(std::isinf(c1), true);
 }
 
 TEST(complex, isnan) {
   // *********** complex<float> *************
   complex<float> a;
-  a.real = float(NAN);
+  a.real = static_cast<float>(NAN);
   EXPECT_EQ(std::isnan(a), true);
-  a.imag = float(NAN);
+  a.imag = static_cast<float>(NAN);
   EXPECT_EQ(std::isnan(a), true);
 
-  complex<float> b = float(NAN);
+  complex<float> b = static_cast<float>(NAN);
   EXPECT_EQ(std::isnan(b), true);
 
-  complex<float> c(float(NAN), 0);
+  complex<float> c(static_cast<float>(NAN), 0);
   EXPECT_EQ(std::isnan(c), true);
 
   // *********** complex<double> *************
   complex<double> a1;
-  a1.real = double(NAN);
+  a1.real = static_cast<double>(NAN);
   EXPECT_EQ(std::isnan(a1), true);
-  a1.imag = double(NAN);
+  a1.imag = static_cast<double>(NAN);
   EXPECT_EQ(std::isnan(a1), true);
 
-  complex<double> b1 = double(NAN);
+  complex<double> b1 = static_cast<double>(NAN);
   EXPECT_EQ(std::isnan(b1), true);
 
-  complex<double> c1(double(NAN), 0);
+  complex<double> c1(static_cast<double>(NAN), 0);
   EXPECT_EQ(std::isnan(c1), true);
 }
 

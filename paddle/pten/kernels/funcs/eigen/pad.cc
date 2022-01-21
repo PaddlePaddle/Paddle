@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,11 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
-namespace paddle {
-namespace operators {
+namespace pten {
+namespace funcs {
 
 template <typename T, int Rank>
 struct EigenPad<Eigen::DefaultDevice, T, Rank> {
@@ -32,13 +32,18 @@ struct EigenPad<Eigen::DefaultDevice, T, Rank> {
       Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
                        Eigen::Aligned>;
 
-  static void Eval(const Eigen::DefaultDevice& dev, OutType out,
-                   const InType& in, const Array& padding, const T value) {
+  static void Eval(const Eigen::DefaultDevice& dev,
+                   OutType out,
+                   const InType& in,
+                   const Array& padding,
+                   const T value) {
     out.device(dev) = in.pad(padding, value);
   }
 
-  static void Eval(const Eigen::DefaultDevice& dev, OutType32BitIndex out,
-                   const InType32BitIndex& in, const Array32Bit& padding,
+  static void Eval(const Eigen::DefaultDevice& dev,
+                   OutType32BitIndex out,
+                   const InType32BitIndex& in,
+                   const Array32Bit& padding,
                    const T value) {
     out.device(dev) = in.pad(padding, value);
   }
@@ -56,9 +61,9 @@ INSTANTIATION(EigenPad, int);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);
 INSTANTIATION(EigenPad, double);
-INSTANTIATION(EigenPad, platform::complex<float>);
-INSTANTIATION(EigenPad, platform::complex<double>);
+INSTANTIATION(EigenPad, dtype::complex<float>);
+INSTANTIATION(EigenPad, dtype::complex<double>);
 #undef INSTANTIATION
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

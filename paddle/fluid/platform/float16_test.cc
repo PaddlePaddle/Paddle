@@ -14,8 +14,8 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace platform {
