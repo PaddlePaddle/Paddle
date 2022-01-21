@@ -1243,6 +1243,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (run_pten_kernel_) {
       pten::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
+      // TODO(zhiqiu): support TransferInplaceVarsBack
       PreparePtenData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
                       runtime_ctx);
       BuildPtenKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
@@ -1880,7 +1881,7 @@ Scope* OperatorWithKernel::PreparePtenData(
 
       // Create new var with the same name in transfer scopes
       auto* trans_var = new_scope->Var(input_names[i]);
-      ins_vector[i] = trans_var;
+      ins_vector[offset] = trans_var;
 
       // Do transfer
       Tensor out;
