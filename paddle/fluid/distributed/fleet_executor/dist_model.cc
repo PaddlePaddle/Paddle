@@ -431,8 +431,9 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
     }
     std::string target_name = input_data[i].name;
     if (feed_names_.find(target_name) == feed_names_.end()) {
-      LOG(ERROR) << "Wrong input name: " << target_name
-                 << " DistModel load data failed.";
+      LOG(ERROR) << "The input name: " << target_name
+                 << " cannot be found in the program."
+                 << " DistModel loads data failed.";
       return false;
     }
     int feed_idx = feed_names_[target_name];
@@ -459,18 +460,23 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     auto type = fetch.type();
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];
+    bool rst = false;
     if (type == framework::proto::VarType::FP32) {
-      FetchResult<float>(fetch, output);
+      rst = FetchResult<float>(fetch, output);
       output->dtype = DistModelDataType::FLOAT32;
     } else if (type == framework::proto::VarType::INT64) {
-      FetchResult<int64_t>(fetch, output);
+      rst = FetchResult<int64_t>(fetch, output);
       output->dtype = DistModelDataType::INT64;
     } else if (type == framework::proto::VarType::INT32) {
-      FetchResult<int32_t>(fetch, output);
+      rst = FetchResult<int32_t>(fetch, output);
       output->dtype = DistModelDataType::INT32;
     } else {
-      LOG(ERROR) << "DistModel meets unknow fetch data type. DistModel only "
+      LOG(ERROR) << "DistModel meets unknown fetch data type. DistModel only "
                     "supports float32, int64 and int32 fetch type for now.";
+    }
+    if (!rst) {
+      LOG(ERROR) << "DistModel fails to fetch result " << idx_to_fetches_[idx];
+      return false;
     }
   }
   return true;
@@ -490,6 +496,7 @@ bool DistModel::FetchResult(const framework::LoDTensor &fetch,
   for (auto &level : fetch.lod()) {
     output_data->lod.emplace_back(level.begin(), level.end());
   }
+  return true;
 }
 
 bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
