@@ -19,6 +19,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/kernels/reshape_grad_kernel.h"
 #include "paddle/pten/kernels/reshape_kernel.h"
@@ -30,9 +31,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -438,7 +436,8 @@ class ReshapeKernel {
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::ReshapeKernel(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(static_cast<const pten::CPUContext &>(dev_ctx),
+                          *pt_x.get(), pt_scalar_shape, pt_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -474,7 +473,8 @@ class ReshapeGradKernel {
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::ReshapeGradKernel(dev_ctx, *pt_d_out.get(), pt_d_x.get());
+      pten::ReshapeGradKernel(static_cast<const pten::CPUContext &>(dev_ctx),
+                              *pt_d_out.get(), pt_d_x.get());
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -503,7 +503,9 @@ class ReshapeDoubleGradKernel {
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::ReshapeDoubleGradKernel(dev_ctx, *pt_dd_x.get(), pt_dd_out.get());
+      pten::ReshapeDoubleGradKernel(
+          static_cast<const pten::CPUContext &>(dev_ctx), *pt_dd_x.get(),
+          pt_dd_out.get());
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
