@@ -18,14 +18,14 @@ repos:
     -   id: detect-private-key
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
-#-   repo: local
-#    hooks:
-#    -   id: clang-format-with-version-check
-#        name: clang-format
-#        description: Format files with ClangFormat.
-#        entry: bash ./tools/codestyle/clang_format.hook -i
-#        language: system
-#        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
+-   repo: local
+    hooks:
+    -   id: clang-format-with-version-check
+        name: clang-format
+        description: Format files with ClangFormat.
+        entry: bash ./tools/codestyle/clang_format.hook -i
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
