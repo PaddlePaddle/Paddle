@@ -34,7 +34,7 @@ static inline int GetLastPow2(int n) {
   return std::max(1, n - (n >> 1));
 }
 
-inline platform::GpuLaunchConfig GetCpuLaunchConfig3D(
+inline platform::GpuLaunchConfig GetGpuLaunchConfig3D(
     const platform::CUDADeviceContext& context, int num_img, int height,
     int width) {
   const int kThreadsPerBlock = 256;
@@ -46,8 +46,8 @@ inline platform::GpuLaunchConfig GetCpuLaunchConfig3D(
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
   dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = platform::DivUp(width, block_x);
-  int grid_y = platform::DivUp(height, block_y);
+  int grid_x = std::min<int>(max_grid_dim.x, platform::DivUp(width, block_x));
+  int grid_y = std::min<int>(max_grid_dim.y, platform::DivUp(height, block_y));
   int grid_z =
       std::min<int>(max_grid_dim.z, platform::DivUp(num_img, block_z * 4));
 
@@ -1373,7 +1373,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       // get launch 3D config
       int nc = n * c;
       platform::GpuLaunchConfig config_3d =
-          GetCpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
+          GetGpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
       KeNearestNeighborInterpNCHWFw<
           T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
