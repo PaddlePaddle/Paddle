@@ -103,7 +103,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dx = tensor_dx->mutable_data<T>();
       const auto* data_y = tensor_y->data<T>();
       const DDim& dim = tensor_x->dims();
-      size_t N = static_cast<size_t>(paddle::framework::product(dim));
+      size_t N = static_cast<size_t>(pten::framework::product(dim));
 
       auto step = dim[dim.size() - 1];
 
@@ -118,7 +118,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dy = tensor_dy->mutable_data<T>();
       const auto* data_x = tensor_x->data<T>();
       const DDim& dim = tensor_y->dims();
-      size_t N = static_cast<size_t>(paddle::framework::product(dim));
+      size_t N = static_cast<size_t>(pten::framework::product(dim));
 
       auto step = dim[dim.size() - 1];
 

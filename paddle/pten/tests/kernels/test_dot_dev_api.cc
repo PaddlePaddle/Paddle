@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/dot_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -25,7 +26,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, dot) {
   // 1. create tensor
@@ -52,15 +53,9 @@ TEST(DEV_API, dot) {
     }
   }
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Dot<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y);
+  pten::CPUContext dev_ctx;
+  auto out = pten::Dot<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

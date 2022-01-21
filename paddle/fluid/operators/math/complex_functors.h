@@ -17,7 +17,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
