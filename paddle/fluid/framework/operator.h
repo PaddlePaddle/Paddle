@@ -472,8 +472,8 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::Tensor>() ||
-           ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+    VLOG(0) << "Judge IsDenseTensorInput: " << name;
+    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {

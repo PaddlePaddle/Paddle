@@ -20,9 +20,9 @@ limitations under the License. */
 
 namespace pten {
 
-void UnchangedInferMetaNew(const MetaTensor& x,
-                           MetaTensor* out,
-                           const InferMetaConfigs& configs) {
+void UnchangedInferMetaNew(MetaConfig config,
+                           const MetaTensor& x,
+                           MetaTensor* out) {
   out->set_dims(x.dims());
   out->share_lod(x);
 }

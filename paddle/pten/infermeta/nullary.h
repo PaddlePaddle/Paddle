@@ -22,10 +22,11 @@ namespace pten {
 // Common InferMeta Functions for 0-nary operators(no input tensor), The format
 // like:
 //
-//   1. DenseTensorMeta [OpName]InferMeta( ...)
-//  NOTE: The name "InferMeta" may be not appropriate. "InferMeta" may be good.
-//  Because functions in this file
-//  not only can infer shape, but alse need infer lod or other useful data.
+//   void [OpName]InferMeta(..., MetaTensor* out) {}
+//
+// NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+// Because functions in this file not only can infer shape, but also need
+// infer lod or other useful data.
 
 DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
                                 DataType dtype,

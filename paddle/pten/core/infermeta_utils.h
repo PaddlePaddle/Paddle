@@ -23,19 +23,22 @@ limitations under the License. */
 
 namespace pten {
 
-// TODO(chenweihang): add can_cached flag to judge the infer result
-// whether can be cached
-struct InferMetaConfigs {
+// TODO(chenweihang): add other flags if needed
+struct MetaConfig {
   bool is_runtime{true};
 
-  InferMetaConfigs() = default;
-  explicit InferMetaConfigs(bool is_runtime) : is_runtime(is_runtime) {}
+  MetaConfig() = default;
+
+  // supporting implicit construction is easier to use
+  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
 };
 
 class InferMetaContext {
  public:
   InferMetaContext() = default;
+  explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
+  void SetMetaConfig(MetaConfig config);
   void EmplaceBackInput(std::shared_ptr<pten::MetaTensor> input);
   void EmplaceBackOutput(std::shared_ptr<pten::MetaTensor> output);
   void EmplaceBackAttr(paddle::any attr);
@@ -48,9 +51,9 @@ class InferMetaContext {
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
+  const MetaConfig& GetMetaConfig() const;
   const MetaTensor& InputAt(size_t idx) const;
   MetaTensor* MutableOutputAt(size_t idx);
-  const InferMetaConfigs& Configs() const;
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -63,18 +66,18 @@ class InferMetaContext {
   }
 
  private:
+  MetaConfig config_;
+
   // NOTE(chenweihang): Because the MetaTensor is a base class, and MetaTensor
   // objects are all created in each round, so we have to use smart pointer
   // here, maybe we can implemented a new InferMetaContext and a series utils
-  // specifically for fluid
+  // specifically for fluid to avoid using shared_ptr
   paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs_;
   paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
-
-  InferMetaConfigs configs_;
 };
 
 #define PT_INFER_META(...) \
@@ -128,7 +131,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
-  // TODO(chenweihang): support vector<Meta> input later
+  // TODO(chenweihang): support vector<MetaTensor> input later
 
   template <typename... Tail>
   struct InferMetaFnCallHelper<MetaTensor*, Tail...> {
@@ -143,13 +146,13 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
-  // TODO(chenweihang): support vector<Meta> output later
+  // TODO(chenweihang): support vector<MetaTensor> output later
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<const InferMetaConfigs&, Tail...> {
+  struct InferMetaFnCallHelper<MetaConfig, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
-      const InferMetaConfigs& arg = ctx->Configs();
+      const MetaConfig& arg = ctx->GetMetaConfig();
       InferMetaFnCallHelper<Tail...>::template Call<in_idx, attr_idx, out_idx>(
           ctx, pargs..., arg);
     }

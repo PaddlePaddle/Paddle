@@ -16,6 +16,10 @@ limitations under the License. */
 
 namespace pten {
 
+void InferMetaContext::SetMetaConfig(MetaConfig config) {
+  config_ = std::move(config);
+}
+
 void InferMetaContext::EmplaceBackInput(
     std::shared_ptr<pten::MetaTensor> input) {
   int index = inputs_.size();
@@ -57,13 +61,13 @@ const std::pair<int, int>& InferMetaContext::OutputRangeAt(size_t idx) const {
   return output_range_.at(idx);
 }
 
+const MetaConfig& InferMetaContext::GetMetaConfig() const { return config_; }
+
 const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
   return *inputs_.at(idx);
 }
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }
-
-const InferMetaConfigs& InferMetaContext::Configs() const { return configs_; }
 
 }  // namespace pten

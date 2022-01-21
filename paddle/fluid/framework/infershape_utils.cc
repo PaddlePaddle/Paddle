@@ -204,10 +204,11 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  pten::InferMetaContext infer_meta_context;
+  pten::InferMetaContext infer_meta_context(ctx->IsRuntime());
 
   auto& input_names = std::get<0>(signature.args);
   auto& output_names = std::get<2>(signature.args);
+  // TODO(chenweihang): support attrs in next pr
   // auto& attr_names = std::get<1>(signature.args);
 
   // TODO(chenweihang): support multiple inputs and outputs

@@ -22,25 +22,21 @@ limitations under the License. */
 
 namespace pten {
 
-class InferMetaConfigs;
+class MetaConfig;
 
 // Common InferMeta Functions for unary operators, The format like:
 //
-//   1. DenseTensorMeta [OpName]InferMeta(const DenseTensorMeta& x_meta, ...)
-//   {}
-//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferMeta(const
-//   DenseTensorMeta&
-//   x_meta, ...) {}
-//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
-//   [OpName]InferMeta(const
-//   DenseTensorMeta& x_meta, ...)
-//  NOTE: The name "InferMeta" may be not appropriate. "InferMeta" may be good.
-//  Because functions in this file
-//  not only can infer shape, but alse need infer lod or other useful data.
+//   void [OpName]InferMeta(const MetaTensor& x, ..., MetaTensor* out) {}
+//
+// NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+// Because functions in this file not only can infer shape, but also need
+// infer lod or other useful data.
 
-void UnchangedInferMetaNew(const MetaTensor& x,
-                           MetaTensor* out,
-                           const InferMetaConfigs& config = InferMetaConfigs());
+// TODO(chenweihang): update all InferMeta function format in next pr,
+// now add UnchangedInferMetaNew for test new format
+void UnchangedInferMetaNew(MetaConfig config,
+                           const MetaTensor& x,
+                           MetaTensor* out);
 
 DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta);
 
