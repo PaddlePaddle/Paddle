@@ -19,15 +19,11 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <type_traits>
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cublasLt.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag cublasLt_dso_flag;
-extern void *cublasLt_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -36,20 +32,8 @@ extern void *cublasLt_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP(__name)                          \
-  struct DynLoad__##__name {                                                \
-    template <typename... Args>                                             \
-    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
-      using cublasLt_func =                                                 \
-          decltype(::__name(std::declval<Args>()...)) (*)(Args...);         \
-      std::call_once(cublasLt_dso_flag, []() {                              \
-        cublasLt_dso_handle =                                               \
-            paddle::platform::dynload::GetCublasLtDsoHandle();              \
-      });                                                                   \
-      static void *p_##__name = dlsym(cublasLt_dso_handle, #__name);        \
-      return reinterpret_cast<cublasLt_func>(p_##__name)(args...);          \
-    }                                                                       \
-  };                                                                        \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP(__name)   \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 // APIs available after CUDA 10.1
@@ -69,10 +53,10 @@ extern void *cublasLt_dso_handle;
   __macro(cublasLtMatrixTransformDescDestroy); \
   __macro(cublasLtMatrixTransformDescSetAttribute);
 
-CUBLASLT_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
+CUBLASLT_BLAS_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
 // #endif
 
-#undef DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

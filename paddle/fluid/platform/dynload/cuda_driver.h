@@ -17,30 +17,17 @@ limitations under the License. */
 #include <cuda.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cuda_driver.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag cuda_dso_flag;
-extern void* cuda_dso_handle;
 extern bool HasCUDADriver();
 
-#define DECLARE_DYNAMIC_LOAD_CUDA_WRAP(__name)                           \
-  struct DynLoad__##__name {                                             \
-    template <typename... Args>                                          \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {     \
-      using cuda_func = decltype(&::__name);                             \
-      std::call_once(cuda_dso_flag, []() {                               \
-        cuda_dso_handle = paddle::platform::dynload::GetCUDADsoHandle(); \
-      });                                                                \
-      static void* p_##__name = dlsym(cuda_dso_handle, #__name);         \
-      return reinterpret_cast<cuda_func>(p_##__name)(args...);           \
-    }                                                                    \
-  };                                                                     \
-  extern struct DynLoad__##__name __name
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUDA_WRAP(__name)       \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
 
 /**
  * include all needed cuda driver functions
@@ -72,12 +59,12 @@ extern bool HasCUDADriver();
   __macro(cuMemRelease);                  \
   __macro(cuMemAddressFree)
 
-CUDA_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
+CUDA_ROUTINE_EACH_VVM(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 #endif
 
-CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
+CUDA_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 
-#undef DECLARE_DYNAMIC_LOAD_CUDA_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_CUDA_WRAP
 
 }  // namespace dynload
 }  // namespace platform

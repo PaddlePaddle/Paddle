@@ -13,31 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cufft.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/backends/dynload/cufft.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-std::once_flag cufft_dso_flag;
-void* cufft_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 CUFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUFFT() {
-  std::call_once(cufft_dso_flag,
-                 []() { cufft_dso_handle = GetCUFFTDsoHandle(); });
-  return cufft_dso_handle != nullptr;
-}
-
-void EnforceCUFFTLoaded(const char* fn_name) {
-  PADDLE_ENFORCE_NOT_NULL(
-      cufft_dso_handle,
-      platform::errors::PreconditionNotMet(
-          "Cannot load cufft shared library. Cannot invoke method %s.",
-          fn_name));
-}
+bool HasCUFFT() { return pten::dynload::HasCUFFT(); }
 
 }  // namespace dynload
 }  // namespace platform

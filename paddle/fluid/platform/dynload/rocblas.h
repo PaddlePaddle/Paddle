@@ -19,15 +19,11 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <type_traits>
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/rocblas.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag rocblas_dso_flag;
-extern void *rocblas_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -36,18 +32,8 @@ extern void *rocblas_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP(__name)                             \
-  struct DynLoad__##__name {                                                  \
-    template <typename... Args>                                               \
-    rocblas_status operator()(Args... args) {                                 \
-      using rocblas_func = decltype(&::__name);                               \
-      std::call_once(rocblas_dso_flag, []() {                                 \
-        rocblas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
-      });                                                                     \
-      static void *p_##__name = dlsym(rocblas_dso_handle, #__name);           \
-      return reinterpret_cast<rocblas_func>(p_##__name)(args...);             \
-    }                                                                         \
-  };                                                                          \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP(__name)    \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define ROCBLAS_BLAS_ROUTINE_EACH(__macro) \
@@ -83,7 +69,7 @@ extern void *rocblas_dso_handle;
   __macro(rocblas_set_pointer_mode);       \
   __macro(rocblas_get_pointer_mode);
 
-ROCBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
+ROCBLAS_BLAS_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
 
 // APIs available after CUDA 8.0
 #define ROCBLAS_BLAS_ROUTINE_EACH_R2(__macro) \
@@ -94,21 +80,21 @@ ROCBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
   __macro(rocblas_zgemm_strided_batched);     \
   __macro(rocblas_hgemm_strided_batched);
 
-ROCBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
+ROCBLAS_BLAS_ROUTINE_EACH_R2(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
 
 // HIP not supported in ROCM3.5
 // #define ROCBLAS_BLAS_ROUTINE_EACH_R3(__macro)
 //   __macro(cublasSetMathMode);
 //   __macro(cublasGetMathMode);
-// ROCBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
+// ROCBLAS_BLAS_ROUTINE_EACH_R3(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
 
 #define ROCBLAS_BLAS_ROUTINE_EACH_R4(__macro) \
   __macro(rocblas_gemm_batched_ex);           \
   __macro(rocblas_gemm_strided_batched_ex);
 
-ROCBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
+ROCBLAS_BLAS_ROUTINE_EACH_R4(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
 
-#undef DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

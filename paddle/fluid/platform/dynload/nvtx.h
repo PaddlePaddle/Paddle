@@ -17,36 +17,23 @@ limitations under the License. */
 #include <nvToolsExt.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/nvtx.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-extern std::once_flag nvtx_dso_flag;
-extern void *nvtx_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_NVTX_WRAP(__name)                           \
-  struct DynLoad__##__name {                                             \
-    template <typename... Args>                                          \
-    int operator()(Args... args) {                                       \
-      using nvtxFunc = decltype(&::__name);                              \
-      std::call_once(nvtx_dso_flag, []() {                               \
-        nvtx_dso_handle = paddle::platform::dynload::GetNvtxDsoHandle(); \
-      });                                                                \
-      static void *p_##__name = dlsym(nvtx_dso_handle, #__name);         \
-      return reinterpret_cast<nvtxFunc>(p_##__name)(args...);            \
-    }                                                                    \
-  };                                                                     \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_NVTX_WRAP(__name)       \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define NVTX_ROUTINE_EACH(__macro) \
   __macro(nvtxRangePushA);         \
   __macro(nvtxRangePop);
 
-NVTX_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
+NVTX_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
 
-#undef DECLARE_DYNAMIC_LOAD_NVTX_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_NVTX_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

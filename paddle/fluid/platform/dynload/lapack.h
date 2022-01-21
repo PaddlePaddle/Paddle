@@ -16,122 +16,20 @@ limitations under the License. */
 
 #include <complex>
 #include <mutex>
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
-
-// Note(zhouwei): because lapack doesn't provide appropriate header file.
-// should expose API statement yourself.
-
-// getrf_(For example)
-extern "C" void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv,
-                        int *info);
-extern "C" void sgetrf_(int *m, int *n, float *a, int *lda, int *ipiv,
-                        int *info);
-
-// evd
-extern "C" void zheevd_(char *jobz, char *uplo, int *n, std::complex<double> *a,
-                        int *lda, double *w, std::complex<double> *work,
-                        int *lwork, double *rwork, int *lrwork, int *iwork,
-                        int *liwork, int *info);
-extern "C" void cheevd_(char *jobz, char *uplo, int *n, std::complex<float> *a,
-                        int *lda, float *w, std::complex<float> *work,
-                        int *lwork, float *rwork, int *lrwork, int *iwork,
-                        int *liwork, int *info);
-extern "C" void dsyevd_(char *jobz, char *uplo, int *n, double *a, int *lda,
-                        double *w, double *work, int *lwork, int *iwork,
-                        int *liwork, int *info);
-extern "C" void ssyevd_(char *jobz, char *uplo, int *n, float *a, int *lda,
-                        float *w, float *work, int *lwork, int *iwork,
-                        int *liwork, int *info);
-
-// geev
-extern "C" void dgeev_(char *jobvl, char *jobvr, int *n, double *a, int *lda,
-                       double *wr, double *wi, double *vl, int *ldvl,
-                       double *vr, int *ldvr, double *work, int *lwork,
-                       int *info);
-extern "C" void sgeev_(char *jobvl, char *jobvr, int *n, float *a, int *lda,
-                       float *wr, float *wi, float *vl, int *ldvl, float *vr,
-                       int *ldvr, float *work, int *lwork, int *info);
-extern "C" void zgeev_(char *jobvl, char *jobvr, int *n,
-                       std::complex<double> *a, int *lda,
-                       std::complex<double> *w, std::complex<double> *vl,
-                       int *ldvl, std::complex<double> *vr, int *ldvr,
-                       std::complex<double> *work, int *lwork, double *rwork,
-                       int *info);
-extern "C" void cgeev_(char *jobvl, char *jobvr, int *n, std::complex<float> *a,
-                       int *lda, std::complex<float> *w,
-                       std::complex<float> *vl, int *ldvl,
-                       std::complex<float> *vr, int *ldvr,
-                       std::complex<float> *work, int *lwork, float *rwork,
-                       int *info);
-
-// gels
-extern "C" void dgels_(char *trans, int *m, int *n, int *nrhs, double *a,
-                       int *lda, double *b, int *ldb, double *work, int *lwork,
-                       int *info);
-extern "C" void sgels_(char *trans, int *m, int *n, int *nrhs, float *a,
-                       int *lda, float *b, int *ldb, float *work, int *lwork,
-                       int *info);
-
-// gelsd
-extern "C" void dgelsd_(int *m, int *n, int *nrhs, double *a, int *lda,
-                        double *b, int *ldb, double *s, double *rcond,
-                        int *rank, double *work, int *lwork, int *iwork,
-                        int *info);
-extern "C" void sgelsd_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
-                        int *ldb, float *s, float *rcond, int *rank,
-                        float *work, int *lwork, int *iwork, int *info);
-
-// gelsy
-extern "C" void dgelsy_(int *m, int *n, int *nrhs, double *a, int *lda,
-                        double *b, int *ldb, int *jpvt, double *rcond,
-                        int *rank, double *work, int *lwork, int *info);
-extern "C" void sgelsy_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
-                        int *ldb, int *jpvt, float *rcond, int *rank,
-                        float *work, int *lwork, int *info);
-
-// gelss
-extern "C" void dgelss_(int *m, int *n, int *nrhs, double *a, int *lda,
-                        double *b, int *ldb, double *s, double *rcond,
-                        int *rank, double *work, int *lwork, int *info);
-extern "C" void sgelss_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
-                        int *ldb, float *s, float *rcond, int *rank,
-                        float *work, int *lwork, int *info);
-
-extern "C" void zpotrs_(char *uplo, int *n, int *nrhs, std::complex<double> *a,
-                        int *lda, std::complex<double> *b, int *ldb, int *info);
-extern "C" void cpotrs_(char *uplo, int *n, int *nrhs, std::complex<float> *a,
-                        int *lda, std::complex<float> *b, int *ldb, int *info);
-extern "C" void dpotrs_(char *uplo, int *n, int *nrhs, double *a, int *lda,
-                        double *b, int *ldb, int *info);
-extern "C" void spotrs_(char *uplo, int *n, int *nrhs, float *a, int *lda,
-                        float *b, int *ldb, int *info);
+#include "paddle/pten/backends/dynload/lapack.h"
+#include "paddle/pten/common/complex.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag lapack_dso_flag;
-extern void *lapack_dso_handle;
 
 /**
  * The following macro definition can generate structs
  * (for each function) to dynamic load lapack routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                     \
-  struct DynLoad__##__name {                                                 \
-    template <typename... Args>                                              \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {         \
-      using lapackFunc = decltype(&::__name);                                \
-      std::call_once(lapack_dso_flag, []() {                                 \
-        lapack_dso_handle = paddle::platform::dynload::GetLAPACKDsoHandle(); \
-      });                                                                    \
-      static void *p_##_name = dlsym(lapack_dso_handle, #__name);            \
-      return reinterpret_cast<lapackFunc>(p_##_name)(args...);               \
-    }                                                                        \
-  };                                                                         \
+#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                      \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define DECLARE_DYNAMIC_LOAD_LAPACK_WRAP(__name) \

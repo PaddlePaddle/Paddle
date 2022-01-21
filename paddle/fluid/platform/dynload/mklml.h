@@ -17,36 +17,23 @@ limitations under the License. */
 #include <mkl.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/mklml.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag mklml_dso_flag;
-extern void *mklml_dso_handle;
 
 /**
  * The following macro definition can generate structs
  * (for each function) to dynamic load mklml routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_MKLML_WRAP(__name)                                    \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using mklmlFunc = decltype(&::__name);                               \
-      std::call_once(mklml_dso_flag, []() {                                \
-        mklml_dso_handle = paddle::platform::dynload::GetMKLMLDsoHandle(); \
-      });                                                                  \
-      static void *p_##_name = dlsym(mklml_dso_handle, #__name);           \
-      return reinterpret_cast<mklmlFunc>(p_##_name)(args...);              \
-    }                                                                      \
-  };                                                                       \
+#define DYNAMIC_LOAD_MKLML_WRAP(__name)                       \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_MKLML_WRAP(__name) DYNAMIC_LOAD_MKLML_WRAP(__name)
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_MKLML_WRAP(__name) \
+  DYNAMIC_LOAD_MKLML_WRAP(__name)
 
 #define MKLML_ROUTINE_EACH(__macro) \
   __macro(cblas_sgemm);             \
@@ -111,7 +98,7 @@ extern void *mklml_dso_handle;
   __macro(MKL_Set_Num_Threads);     \
   __macro(MKL_Get_Max_Threads);
 
-MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);
+MKLML_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MKLML_WRAP);
 
 #if !defined(_WIN32)
 DYNAMIC_LOAD_MKLML_WRAP(mkl_scsrmm);

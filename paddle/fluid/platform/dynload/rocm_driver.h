@@ -17,30 +17,17 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/rocm_driver.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag rocm_dso_flag;
-extern void* rocm_dso_handle;
 extern bool HasCUDADriver();
 
-#define DECLARE_DYNAMIC_LOAD_ROCM_WRAP(__name)                           \
-  struct DynLoad__##__name {                                             \
-    template <typename... Args>                                          \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {     \
-      using rocm_func = decltype(&::__name);                             \
-      std::call_once(rocm_dso_flag, []() {                               \
-        rocm_dso_handle = paddle::platform::dynload::GetCUDADsoHandle(); \
-      });                                                                \
-      static void* p_##__name = dlsym(rocm_dso_handle, #__name);         \
-      return reinterpret_cast<rocm_func>(p_##__name)(args...);           \
-    }                                                                    \
-  };                                                                     \
-  extern struct DynLoad__##__name __name
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_ROCM_WRAP(__name)       \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
 
 /**
  * include all needed cuda driver functions
@@ -59,9 +46,9 @@ extern bool HasCUDADriver();
   __macro(hipGetDeviceCount);                                 \
   __macro(hipDevicePrimaryCtxGetState)
 
-ROCM_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCM_WRAP);
+ROCM_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCM_WRAP);
 
-#undef DECLARE_DYNAMIC_LOAD_ROCM_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_ROCM_WRAP
 
 }  // namespace dynload
 }  // namespace platform

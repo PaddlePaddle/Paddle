@@ -18,32 +18,17 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cudnn.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag cudnn_dso_flag;
-extern void* cudnn_dso_handle;
 extern bool HasCUDNN();
 
-extern void EnforceCUDNNLoaded(const char* fn_name);
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using cudnn_func = decltype(&::__name);                              \
-      std::call_once(cudnn_dso_flag, []() {                                \
-        cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
-      });                                                                  \
-      EnforceCUDNNLoaded(#__name);                                         \
-      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);          \
-      return reinterpret_cast<cudnn_func>(p_##__name)(args...);            \
-    }                                                                      \
-  };                                                                       \
-  extern struct DynLoad__##__name __name
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)      \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
 
 /**
  * include all needed cudnn functions in HPPL
@@ -127,7 +112,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnGetActivationDescriptor);                   \
   __macro(cudnnDestroyActivationDescriptor);               \
   __macro(cudnnSetRNNDescriptor_v6);
-CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+CUDNN_DNN_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #if CUDNN_VERSION >= 7000 && CUDNN_VERSION < 8000
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(__macro) \
@@ -135,7 +120,8 @@ CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetConvolutionForwardAlgorithm);          \
   __macro(cudnnGetConvolutionBackwardDataAlgorithm);     \
   __macro(cudnnSetRNNDescriptor);
-CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(
+    PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7001
@@ -153,7 +139,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm_v7); \
   __macro(cudnnGetConvolutionForwardAlgorithm_v7);        \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount);
-CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+CUDNN_DNN_ROUTINE_EACH_R7(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7201
@@ -166,7 +152,7 @@ CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnRNNBackwardDataEx);                   \
   __macro(cudnnRNNBackwardWeightsEx);                \
   __macro(cudnnRNNForwardInferenceEx);
-CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7401
@@ -176,7 +162,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);        \
   __macro(cudnnBatchNormalizationBackwardEx);                        \
   __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);
-CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+CUDNN_DNN_ROUTINE_EACH_AFTER_R7(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 8000
@@ -192,7 +178,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnSetFusedOpsConstParamPackAttribute);   \
   __macro(cudnnSetFusedOpsVariantParamPackAttribute); \
   __macro(cudnnMakeFusedOpsPlan);
-CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+CUDNN_DNN_ROUTINE_EACH_R8(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 }  // namespace dynload

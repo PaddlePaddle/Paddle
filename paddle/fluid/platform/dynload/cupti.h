@@ -19,15 +19,11 @@ limitations under the License. */
 #include <cupti.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cupti.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag cupti_dso_flag;
-extern void *cupti_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -36,18 +32,8 @@ extern void *cupti_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    inline CUptiResult CUPTIAPI operator()(Args... args) {                 \
-      using cuptiFunc = decltype(&::__name);                               \
-      std::call_once(cupti_dso_flag, []() {                                \
-        cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
-      });                                                                  \
-      static void *p_##__name = dlsym(cupti_dso_handle, #__name);          \
-      return reinterpret_cast<cuptiFunc>(p_##__name)(args...);             \
-    }                                                                      \
-  };                                                                       \
+#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)               \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define CUPTI_ROUTINE_EACH(__macro)           \
