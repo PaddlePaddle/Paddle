@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 namespace paddle {
 namespace framework {
 namespace details {

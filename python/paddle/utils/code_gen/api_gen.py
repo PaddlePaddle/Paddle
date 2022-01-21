@@ -58,7 +58,10 @@ class API:
             f"Args declaration should start with '(' and end with ')', please check the args of {self.api} in api.yaml."
         args_str = args_str[1:-1]
         args_list = args_str.split(',')
-        input_types = ['const Tensor&', 'const Tensor &']
+        input_types = [
+            'const Tensor&', 'const Tensor &', 'const std::vector<Tensor>&',
+            'const std::vector<Tensor> &'
+        ]
         attr_types = ['const Scalar&', 'const Scalar &', 'const ScalarArray&', 'const ScalarArray &', \
                       'int', 'int32_t', 'int64_t', 'size_t', 'float', 'double', 'bool', \
                       'const std::vector<int64_t>&', 'Backend', 'DataLayout', 'DataType']
@@ -247,7 +250,7 @@ PADDLE_API {self.output} {self.api}({self.args['args_declare']});
         param_code = ""
         for param in infer_meta_params:
             if param in input_names:
-                param_code = param_code + self.prefix_tensor_name + param + "->meta(), "
+                param_code = param_code + "GetDenseTensorMeta(" + self.prefix_tensor_name + param + "), "
             elif param in attr_names:
                 param_code = param_code + param + ", "
             elif isinstance(param, str):
@@ -267,7 +270,7 @@ PADDLE_API {self.output} {self.api}({self.args['args_declare']});
         for input_name in input_names:
             # set input code
             input_tensor_code = input_tensor_code + f"""
-  auto {self.prefix_tensor_name}{input_name} = std::dynamic_pointer_cast<pten::DenseTensor>({input_name}.impl());"""
+  auto {self.prefix_tensor_name}{input_name} = TensorToDenseTensor({input_name});"""
 
         attr_names = attrs['names']
         if kernel_param is None:
@@ -374,6 +377,35 @@ namespace experimental {
 """)
 
 
+def tensor_to_densetensor():
+    return """
+  std::shared_ptr<pten::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
+      return std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
+  }
+
+  std::shared_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(const std::vector<Tensor>& tensors) {
+      std::vector<pten::DenseTensor> pt_tensors;
+
+      for(auto & t : tensors) {
+          pt_tensors.push_back(*std::dynamic_pointer_cast<pten::DenseTensor>(t.impl()));
+      }
+      return std::make_shared<std::vector<pten::DenseTensor>>(pt_tensors);
+  }
+
+   const pten::DenseTensorMeta GetDenseTensorMeta(const std::shared_ptr<pten::DenseTensor> & x) {
+       return x->meta();
+   }
+
+   const std::vector<pten::DenseTensorMeta> GetDenseTensorMeta(const std::shared_ptr<std::vector<pten::DenseTensor>>& x) {
+       std::vector<pten::DenseTensorMeta> metas;
+       for(auto& t : *x) {
+           metas.push_back(t.meta());
+       }
+       return metas;
+   }
+"""
+
+
 def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     with open(api_yaml_path, 'r') as f:
@@ -390,6 +422,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     include_header_file = "paddle/pten/api/include/api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
+    source_file.write(tensor_to_densetensor())
 
     for api in apis:
         api_code = API(api)

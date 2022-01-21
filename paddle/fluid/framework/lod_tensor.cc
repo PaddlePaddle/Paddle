@@ -19,12 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 std::string LoDToString(const LoD &lod) {
@@ -123,7 +117,8 @@ bool CheckLoD(const LoD &in, int tensor_height) {
   }
   // check: the lowest level's last offset should equals `tensor_height` if
   //        tensor_height>0.
-  if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
+  if (tensor_height > 0 &&
+      static_cast<size_t>(tensor_height) != in.back().back())
     return false;
 
   // check: the higher level's last offset should equals the lower level's
@@ -156,7 +151,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
     if (level.front() != 0) return false;
     if (tensor_height < 0) {
       tensor_height = level.back();
-    } else if ((size_t)tensor_height != level.back()) {
+    } else if (static_cast<size_t>(tensor_height) != level.back()) {
       return false;
     }
   }
@@ -190,27 +185,6 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
   }
 
   return LoDAndOffset{sub_lod, {start_idx, end_idx}};
-}
-
-void AppendLoD(LoD *lod, const LoD &lod_length) {
-  PADDLE_ENFORCE(
-      lod->empty() || lod->size() == lod_length.size(),
-      platform::errors::InvalidArgument(
-          "The input LoD length should be equal to the appended LoD size, but "
-          "received input LoD length is %d, actual LoD size is %d.",
-          lod_length, lod->size()));
-  if (lod->empty()) {
-    for (size_t i = 0; i < lod_length.size(); ++i) {
-      lod->emplace_back(1, 0);  // size = 1, value = 0;
-    }
-    *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
-  }
-  for (size_t i = 0; i < lod->size(); ++i) {
-    auto &level = (*lod)[i];
-    for (size_t len : lod_length[i]) {
-      level.push_back(level.back() + len);
-    }
-  }
 }
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
@@ -317,22 +291,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   }
   // the 3st filed, Tensor
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
-}
-
-LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
-  LoD length_lod;
-  length_lod.reserve(offset_lod.size());
-  for (size_t lvl = 0; lvl < offset_lod.size(); ++lvl) {
-    std::vector<size_t> level;
-    if (offset_lod[lvl].size() > 0) {
-      level.reserve(offset_lod[lvl].size() - 1);
-    }
-    for (size_t idx = 0; idx < offset_lod[lvl].size() - 1; ++idx) {
-      level.push_back(offset_lod[lvl][idx + 1] - offset_lod[lvl][idx]);
-    }
-    length_lod.push_back(level);
-  }
-  return length_lod;
 }
 
 LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {

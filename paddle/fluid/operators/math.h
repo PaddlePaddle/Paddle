@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 #include "math.h"  // NOLINT
 
