@@ -243,6 +243,15 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
 
+  // if src and dst are in different place, copy dst to src's place
+  auto dst_place = dst_tensor->place();
+  if (dst_place != place) {
+    auto dst_data_origin = dst_tensor->data();
+    auto dst_data_mutable = dst_tensor->mutable_data(place);
+    auto size = numel * paddle::framework::SizeOfType(data_type);
+    memory::Copy(place, dst_data_mutable, dst_place, dst_data_origin, size);
+  }
+
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
