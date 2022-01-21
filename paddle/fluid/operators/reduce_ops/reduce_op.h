@@ -551,7 +551,7 @@ class ReduceOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    bool reduce_all = ctx.Attr<int>("reduce_all");
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
     if (Type() == "reduce_sum") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         if (!reduce_all) {
