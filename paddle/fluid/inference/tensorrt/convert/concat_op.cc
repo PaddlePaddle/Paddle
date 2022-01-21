@@ -44,17 +44,16 @@ class ConcatOpConverter : public OpConverter {
       itensors.push_back(engine_->GetITensor(input_name));
     }
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
-
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
-                                       itensors.size());
+    if (!engine_->with_dynamic_shape()) {
+      axis = axis - 1;  // Remove batch dim
+    }
     if (axis == -1) {
       axis = (engine_->GetITensor(op_desc.Input("X").front())->getDimensions())
                  .nbDims -
              1;
     }
-    if (!engine_->with_dynamic_shape()) {
-      axis = axis - 1;  // Remove batch dim
-    }
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
+                                       itensors.size());
     layer->setAxis(axis);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);
