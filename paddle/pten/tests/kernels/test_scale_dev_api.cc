@@ -25,7 +25,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, scale) {
   // 1. create tensor
@@ -44,17 +44,10 @@ TEST(DEV_API, scale) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Scale<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      scale,
-      bias,
-      bias_after_scale);
+  pten::CPUContext dev_ctx;
+  auto out =
+      pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -88,17 +81,10 @@ TEST(DEV_API, scale_host) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Scale<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      scale,
-      bias,
-      bias_after_scale);
+  pten::CPUContext dev_ctx;
+  auto out =
+      pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
