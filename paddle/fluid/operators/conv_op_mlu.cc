@@ -20,7 +20,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
-// using MLUConvGradOpKernel = platform::MLUConvGradOpKernel;
 
 template <typename T>
 class MLUConvOpKernel : public framework::OpKernel<T> {
@@ -38,9 +37,11 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
 
-    PADDLE_ENFORCE_EQ(data_format == "NCHW", false,
-                      platform::errors::InvalidArgument(
-                          ("MLU do support data_format is NHWC in conv op.")));
+    PADDLE_ENFORCE_EQ(
+        data_format == "NCHW", false,
+        platform::errors::InvalidArgument(
+            ("MLU only support data_format is NHWC in conv op, but now %s",
+             data_format)));
 
     // update padding and dilation
     auto in_dims = input->dims();
@@ -116,9 +117,11 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_EQ(data_format == "NCHW", false,
-                      platform::errors::InvalidArgument(
-                          ("MLU do support data_format is NHWC in conv op.")));
+    PADDLE_ENFORCE_EQ(
+        data_format == "NCHW", false,
+        platform::errors::InvalidArgument(
+            ("MLU only support data_format is NHWC in conv op, but now %s",
+             data_format)));
 
     // update padding and dilation
     auto in_dims = input->dims();
