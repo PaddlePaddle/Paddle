@@ -26,7 +26,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(API, matmul_cpu) {
   // 1. create tensor

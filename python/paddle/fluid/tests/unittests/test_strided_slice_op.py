@@ -216,6 +216,16 @@ class TestStrideSliceOp13(TestStrideSliceOp):
         self.infer_flags = [1, 1, 1, 1, 1]
 
 
+class TestStrideSliceOp14(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(4, 4, 4, 4)
+        self.axes = [1, 2, 3]
+        self.starts = [-5, 0, -7]
+        self.ends = [-1, 2, 4]
+        self.strides = [1, 1, 1]
+        self.infer_flags = [1, 1, 1]
+
+
 class TestStrideSliceOpBool(TestStrideSliceOp):
     def test_check_grad(self):
         pass

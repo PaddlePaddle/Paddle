@@ -27,12 +27,6 @@ limitations under the License. */
 // MIOPEN do not have epslion definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
-namespace paddle {
-namespace platform {
-struct float16;
-}  // namespace platform
-}  // namespace paddle
-
 DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
