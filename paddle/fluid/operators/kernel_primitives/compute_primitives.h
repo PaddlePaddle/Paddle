@@ -395,8 +395,8 @@ __device__ __forceinline__ void cumsum(OutT* out, const InT* in,
                                        OpFunc compute) {
   __shared__ InT temp[shared_size * 2 + (shared_size * 2) / 32];
   int tidx = threadIdx.x;
-  temp[tidx + tidx / 32] = data[0];
-  temp[shared_size + tidx + (shared_size + tidx) / 32] = data[1];
+  temp[tidx + tidx / 32] = in[0];
+  temp[shared_size + tidx + (shared_size + tidx) / 32] = in[1];
   for (int stride = 1; stride <= blockDim.x; stride *= 2) {
     __syncthreads();
     int index = (tidx + 1) * 2 * stride - 1;
