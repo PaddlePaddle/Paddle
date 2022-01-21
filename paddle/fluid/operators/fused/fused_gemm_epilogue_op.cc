@@ -216,24 +216,24 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
             dout_mat_dims[0], x_mat_dims[0]));
 
-    auto activation = ctx->Attrs().Get<std::string>("activation");
+    auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
     auto auxiliary_key = ctx->Attrs().Get<std::string>("auxiliary_key");
-    if ((activation != "relu") && (activation != "gelu") &&
-        (activation != "none")) {
+    if ((activation_grad != "relu_grad") && (activation_grad != "gelu_grad") &&
+        (activation_grad != "none")) {
       PADDLE_ENFORCE_EQ(
           true, false,
           platform::errors::InvalidArgument(
               "The activation attribute of fused_gemm_epilogue op should be"
               " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
               "But received activation=%s.",
-              activation));
+              activation_grad));
     }
 
-    if (activation != "none" && auxiliary_key.size() == 0) {
+    if (activation_grad != "none" && auxiliary_key.size() == 0) {
       PADDLE_ENFORCE_EQ(true, false,
                         platform::errors::InvalidArgument(
-                            "The activation_key should not be empty string. "
-                            "when activation == {relu, gelu}."));
+                            "The auxiliary_key should not be empty string. "
+                            "when activation_grad == {relu_grad, gelu_grad}."));
     }
 
     std::vector<int64_t> dx_dims;
@@ -268,7 +268,8 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("DY", "The output grad tensor DY of Out = (X * Y) + bias.");
     AddOutput("DBias", "The output grad tensor DBias of Out = (X * Y) + bias.");
 
-    AddAttr<std::string>("activation", "{noen, relu, gelu}").SetDefault("none");
+    AddAttr<std::string>("activation_grad", "{noen, relu_grad, gelu_grad}")
+        .SetDefault("none");
     AddAttr<std::string>("auxiliary_key", "").SetDefault("");
 
     AddComment(R"DOC(FusedGemmEpilogueGrad OP)DOC");

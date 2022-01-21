@@ -43,6 +43,7 @@ def get_output(X, Y, bias, act):
         return out
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
@@ -91,6 +92,7 @@ class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
@@ -139,6 +141,7 @@ class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
@@ -187,6 +190,7 @@ class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
@@ -235,6 +239,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
@@ -286,6 +291,7 @@ class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
@@ -337,6 +343,7 @@ class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP16WithAux(OpTest):
@@ -392,6 +399,7 @@ class TestFuseGemmEpilogueOpReluMMFP64WithAux(
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
@@ -442,6 +450,7 @@ class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpGeluMMFP16WithAux(OpTest):
@@ -497,6 +506,7 @@ class TestFuseGemmEpilogueOpGeluMMFP64WithAux(
         self.atol = 1e-6
 
 
+@skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpNoneMMFP16(OpTest):

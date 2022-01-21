@@ -187,7 +187,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     Tensor* dy = ctx.Output<Tensor>("DY");
     Tensor* dbias = ctx.Output<Tensor>("DBias");
 
-    std::string activation = ctx.Attr<std::string>("activation");
+    std::string activation_grad = ctx.Attr<std::string>("activation_grad");
     std::string auxiliary_key = ctx.Attr<std::string>("auxiliary_key");
 
     auto dout_mat_dims =
@@ -240,13 +240,14 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
         platform::dynload::cublasLtMatmulDescSetAttribute(
             dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y,
             sizeof(trans_y)));
-    cublasLtEpilogue_t epiloque_func_for_dx = get_epilogue_type_(activation);
+    cublasLtEpilogue_t epiloque_func_for_dx =
+        get_epilogue_type_(activation_grad);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescSetAttribute(
             dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
             &epiloque_func_for_dx, sizeof(epiloque_func_for_dx)));
 
-    if (activation != "none") {
+    if (activation_grad != "none") {
       auto* aux_data =
           EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -320,21 +321,22 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
   }
 
  private:
-  static cublasLtEpilogue_t get_epilogue_type_(std::string activation) {
-    if (activation == "relu") {
+  static cublasLtEpilogue_t get_epilogue_type_(std::string activation_grad) {
+    if (activation_grad == "relu_grad") {
       return CUBLASLT_EPILOGUE_DRELU;
-    } else if (activation == "gelu") {
+    } else if (activation_grad == "gelu_grad") {
       return CUBLASLT_EPILOGUE_DGELU;
-    } else if (activation == "none") {
+    } else if (activation_grad == "none") {
       return CUBLASLT_EPILOGUE_DEFAULT;
     } else {
       PADDLE_ENFORCE_EQ(
           true, false,
           platform::errors::InvalidArgument(
-              "The activation attribute of fused_gemm_epilogue op should be"
+              "The activation_grad attribute of fused_gemm_epilogue op should "
+              "be"
               " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-              "But received activation=%s.",
-              activation));
+              "But received activation_grad=%s.",
+              activation_grad));
     }
   }
 };
