@@ -23,6 +23,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import Program
 from .dist_context import get_default_distributed_context
 from .utils import _merge_parameter, _load_distributed_attribute
+from .reshard import _compute_complete_shape, _compute_partition_index
 
 
 class AutoAlign:
@@ -38,11 +39,11 @@ class AutoAlign:
         if not os.path.exists(directory):
             directory = './'
         if not isinstance(directory, (str)):
-            raise TypeError("directory be string, got %s here" %
+            raise TypeError("directory must be string, got %s here" %
                             type(directory))
         if not isinstance(program, (Program)):
             raise TypeError(
-                "program be paddle.fluid.framework.program, got %s here" %
+                "program must be paddle.fluid.framework.program, got %s here" %
                 type(program))
         self._directory = directory
         self._program = program
@@ -69,7 +70,6 @@ class AutoAlign:
 
     def save_dist_attr(self, dist_context=None):
         """ Set distributed attribute of every rank."""
-
         if dist_context is None:
             dist_context = get_default_distributed_context()
         dist_attr = {}
@@ -192,8 +192,6 @@ class AutoAlign:
 
     def _merge_parameter_with_dist_attr(self, param_list, dist_attr):
         """ Merge parameter with distributed attribute. """
-        from paddle.distributed.auto_parallel.reshard import _compute_complete_shape, _compute_partition_index
-
         dims_mapping = dist_attr["dims_mapping"]
         process_shape = dist_attr["process_shape"]
         process_group = dist_attr["process_group"]
@@ -220,15 +218,15 @@ class AutoAlign:
     def find_diff_info(self, dist_tensor_file_path_list, serial_path,
                        dist_attr_file_path, diff_step):
         """
-            Find different step and tensor.
+        Find different step and tensor.
 
-            Args:
-                dist_tensor_file_path_list(list): used to hold every rank losses  
+        Args:
+            dist_tensor_file_path_list(list): used to hold every rank losses  
 
-            Examples:
-                dist_tensor_file_path_list(list) = ["./tensors_0.pkl", "./tensors_1.pkl"]
-                autoalign.find_diff_info(dist_tensor_file_path_list, "./tensors.pkl", "dist_attr_0.pkl")
-            """
+        Examples:
+            dist_tensor_file_path_list(list) = ["./tensors_0.pkl", "./tensors_1.pkl"]
+            autoalign.find_diff_info(dist_tensor_file_path_list, "./tensors.pkl", "dist_attr_0.pkl")
+        """
         with open(serial_path, 'rb') as f:
             serial_dict = pickle.load(f)
         dist_dict = OrderedDict()
