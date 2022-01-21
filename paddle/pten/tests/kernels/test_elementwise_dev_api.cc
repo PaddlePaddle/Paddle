@@ -56,11 +56,10 @@ TEST(DEV_API, add) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  auto dense_out = pten::Add<float>(dev_ctx, dense_x, dense_y, axis);
+  auto dense_out = pten::Add<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
@@ -105,11 +104,10 @@ TEST(DEV_API, subtract) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  auto dense_out = pten::Subtract<float>(dev_ctx, dense_x, dense_y, axis);
+  auto dense_out = pten::Subtract<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
@@ -154,11 +152,10 @@ TEST(DEV_API, divide) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0 + 1;
   }
-  int axis = 1;
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  auto dense_out = pten::Divide<float>(dev_ctx, dense_x, dense_y, axis);
+  auto dense_out = pten::Divide<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
@@ -203,11 +200,10 @@ TEST(DEV_API, multiply) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  auto dense_out = pten::Multiply<float>(dev_ctx, dense_x, dense_y, axis);
+  auto dense_out = pten::Multiply<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
