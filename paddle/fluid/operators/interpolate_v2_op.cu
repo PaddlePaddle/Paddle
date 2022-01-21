@@ -29,19 +29,13 @@ struct FastDivModForInterpolate {
  public:
   FastDivMod channels_div;
   FastDivMod output_w_div;
-  FastDivMod outimg_w_div;
-  FastDivMod out_size_div;
   FastDivMod out_wc_div;
 
   explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
                                                const int output_w,
-                                               const int outimg_w,
-                                               const int out_size,
                                                const int out_wc)
       : channels_div(FastDivMod(channels)),
         output_w_div(FastDivMod(output_w)),
-        outimg_w_div(FastDivMod(outimg_w)),
-        out_size_div(FastDivMod(out_size)),
         out_wc_div(FastDivMod(out_wc)) {}
 };
 
@@ -54,7 +48,7 @@ static inline int GetLastPow2(int n) {
   return std::max(1, n - (n >> 1));
 }
 
-inline platform::GpuLaunchConfig GetCpuLaunchConfig3D(
+inline platform::GpuLaunchConfig GetGpuLaunchConfig3D(
     const platform::CUDADeviceContext& context, int num_img, int height,
     int width) {
   const int kThreadsPerBlock = 256;
@@ -66,8 +60,8 @@ inline platform::GpuLaunchConfig GetCpuLaunchConfig3D(
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
   dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = platform::DivUp(width, block_x);
-  int grid_y = platform::DivUp(height, block_y);
+  int grid_x = std::min<int>(max_grid_dim.x, platform::DivUp(width, block_x));
+  int grid_y = std::min<int>(max_grid_dim.y, platform::DivUp(height, block_y));
   int grid_z =
       std::min<int>(max_grid_dim.z, platform::DivUp(num_img, block_z * 4));
 
@@ -205,8 +199,6 @@ __global__ void KeNearestNeighborInterpNCHWBw(
   // prevent from multiple threads writing
   if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
     while (nc_id < nc) {
-      // int out_id_h = out_img_idx / output_w;
-      // int out_id_h = out_img_idx % output_w;
       T* in_pos = &in[in_index];
       const T out_pos = out[out_index];
       platform::CudaAtomicAdd(in_pos, out_pos);
@@ -223,8 +215,7 @@ __global__ void KeNearestNeighborInterpBw(
     const size_t input_w, const T* out, const size_t out_img_h,
     const size_t out_img_w, const size_t output_h, const size_t output_w,
     const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout,
-    FastDivModForInterpolate divmods) {
+    const bool align_corners, FastDivModForInterpolate divmods) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -232,24 +223,16 @@ __global__ void KeNearestNeighborInterpBw(
   int out_img_size = out_img_h * out_img_w;
 
   for (; tid < nthreads; tid += stride) {
-    // int out_id_h = tid / output_w;
-    // int out_id_w = tid % output_w;
     auto out_id_divmod = divmods.output_w_div.Divmod(tid);
     int out_id_h = out_id_divmod.val[0];
     int out_id_w = out_id_divmod.val[1];
 
-    int channel_id, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
-      auto channel_divmod = divmods.out_size_div.Divmod(out_id_w);
-      channel_id = channel_divmod.val[0];
-      out_img_idy = divmods.outimg_w_div.Divmod(channel_divmod.val[1]).val[0];
-      out_img_idx = divmods.outimg_w_div.Divmod(tid).val[1];
-    } else {
-      channel_id = divmods.channels_div.Divmod(tid).val[1];
-      auto outimg_id_divmod = divmods.out_wc_div.Divmod(out_id_w);
-      out_img_idy = outimg_id_divmod.val[0];
-      out_img_idx = divmods.channels_div.Divmod(outimg_id_divmod.val[1]).val[0];
-    }
+    int channel_id = divmods.channels_div.Divmod(tid).val[1];
+    auto outimg_id_divmod = divmods.out_wc_div.Divmod(out_id_w);
+    int out_img_idy = outimg_id_divmod.val[0];
+    int out_img_idx =
+        divmods.channels_div.Divmod(outimg_id_divmod.val[1]).val[0];
+
     int in_img_idy = (align_corners)
                          ? static_cast<int>(ratio_h * out_img_idy + 0.5)
                          : static_cast<int>(ratio_h * out_img_idy);
@@ -257,15 +240,9 @@ __global__ void KeNearestNeighborInterpBw(
                          ? static_cast<int>(ratio_w * out_img_idx + 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
 
-    T* in_pos;
-    if (data_layout == DataLayout::kNCHW) {
-      in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
-                   in_img_idy * in_img_w + in_img_idx];
-    } else {
-      in_pos = &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
-                   in_img_idx * num_channels + channel_id];
-    }
-    // const T out_pos = out[out_id_h * output_w + out_id_w];
+    T* in_pos = &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
+                    in_img_idx * num_channels + channel_id];
+
     const T out_pos = out[tid];
     platform::CudaAtomicAdd(in_pos, out_pos);
   }
@@ -1823,22 +1800,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
-    /*
-    int64_t cw = c * out_w;
-    auto interp_divmods = FastDivModForInterpolate(c, out_chw, out_w, out_hw,
-    cw);
-    KeNearestNeighborInterpBw<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
-        n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout,
-    interp_divmods);
-    */
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
       int nc = n * c;
       platform::GpuLaunchConfig config_3d =
-          GetCpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
+          GetGpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
       KeNearestNeighborInterpNCHWBw<
           T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
@@ -1846,13 +1812,12 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
           ratio_h, ratio_w, align_corners);
     } else {
       int64_t cw = c * out_w;
-      auto interp_divmods =
-          FastDivModForInterpolate(c, out_chw, out_w, out_hw, cw);
+      auto interp_divmods = FastDivModForInterpolate(c, out_chw, cw);
       KeNearestNeighborInterpBw<
           T><<<config.block_per_grid, config.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
           input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-          out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout,
+          out_w, n, out_chw, c, ratio_h, ratio_w, align_corners,
           interp_divmods);
     }
   } else if ("bilinear" == interp_method) {
