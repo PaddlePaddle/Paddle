@@ -25,7 +25,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, concat) {
   // 1. create tensor
@@ -50,15 +50,11 @@ TEST(DEV_API, concat) {
     }
   }
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   std::vector<pten::DenseTensor> inputs = {dense_x, dense_y};
 
   // 2. test API
-  auto out = pten::Concat<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), inputs, 0);
+  pten::CPUContext dev_ctx;
+  auto out = pten::Concat<float>(dev_ctx, inputs, 0);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
