@@ -248,7 +248,7 @@ class AutoAlign:
                 serial_tensor = serial_dict[diff_step][tensor_name]
 
                 if not np.allclose(merged_tensor, serial_tensor):
-                    print("The tensor {} is different at step {}.".format(
-                        tensor_name, diff_step))
-                    print('serial_tensor', serial_tensor)
-                    print('merged_tensor', merged_tensor)
+                    print(
+                        'The tensor {} is different at step {}, serial tensor: {}, merged tensor: {}'.
+                        format(tensor_name, diff_step, serial_tensor,
+                               merged_tensor))
