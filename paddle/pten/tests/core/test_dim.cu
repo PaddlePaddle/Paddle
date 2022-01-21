@@ -18,6 +18,9 @@
 #include "gtest/gtest.h"
 #include "paddle/pten/core/dim.h"
 
+namespace pten {
+namespace tests {
+
 __global__ void test(pten::framework::Dim<2>* o) {
   o[0] = pten::framework::make_dim(5, 6);
 }
@@ -95,3 +98,6 @@ TEST(Dim, Print) {
     EXPECT_EQ(ss.str(), "8");
   }
 }
+
+}  // namespace tests
+}  // namespace pten

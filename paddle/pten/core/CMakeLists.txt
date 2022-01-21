@@ -17,12 +17,6 @@ cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
-cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-if(WITH_GPU)
-  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-elseif(WITH_ROCM)
-  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
-endif()
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
