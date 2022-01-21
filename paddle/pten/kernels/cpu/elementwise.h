@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 #include "paddle/fluid/operators/math/blas.h"
@@ -582,8 +583,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext& ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << paddle::framework::make_ddim(x_dims_array)
-          << " ydim:" << paddle::framework::make_ddim(y_dims_array);
+          << pten::framework::make_ddim(x_dims_array)
+          << " ydim:" << pten::framework::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,

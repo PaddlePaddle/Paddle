@@ -27,9 +27,9 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
@@ -51,21 +51,6 @@ namespace pten {
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(     \
         dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }
-
-/**
- * Util Functors
- */
-
-template <typename T>
-struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n)
-      : n_inv(static_cast<T>(1.0 / n)) {}
-
-  HOSTDEVICE inline T operator()(const T x) const { return x * n_inv; }
-
- private:
-  T n_inv;
-};
 
 /**
  * Kernels

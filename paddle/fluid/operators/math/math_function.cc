@@ -220,7 +220,8 @@ void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  tensor->place().apply_visitor(func);
+  // tensor->place().apply_visitor(func);
+  paddle::platform::VisitPlace(tensor->place(), func);
 #else
   func(platform::CPUPlace());
 #endif
@@ -280,13 +281,6 @@ struct ElementwiseAddTo<platform::CPUDeviceContext, T> {
                   framework::Tensor* dst) {
     auto in = framework::EigenVector<T>::Flatten(src);
     auto out = framework::EigenVector<T>::Flatten(*dst);
-    auto& place = *(ctx->eigen_device());
-    out.device(place) = out + in;
-  }
-  void operator()(platform::CPUDeviceContext* ctx, const pten::DenseTensor& src,
-                  pten::DenseTensor* dst) {
-    auto in = pten::EigenVector<T>::Flatten(src);
-    auto out = pten::EigenVector<T>::Flatten(*dst);
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }

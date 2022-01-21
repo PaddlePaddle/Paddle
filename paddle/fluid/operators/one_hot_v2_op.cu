@@ -69,7 +69,8 @@ class OneHotV2CUDAKernel : public framework::OpKernel<T> {
       auto* depth_tensor = context.Input<framework::Tensor>("depth_tensor");
       if (platform::is_gpu_place(depth_tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*depth_tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*depth_tensor, platform::CPUPlace(),
+                                          &temp);
         depth = *temp.data<int32_t>();
       } else {
         depth = *depth_tensor->data<int32_t>();

@@ -41,12 +41,12 @@ class TensorRTEngineTest : public ::testing::Test {
 
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {
-    TensorFromVector(input, *ctx_, &input_);
+    paddle::framework::TensorFromVector(input, *ctx_, &input_);
     output_.Resize(framework::make_ddim(output_shape));
   }
 
   void GetOutput(std::vector<float> *output) {
-    TensorToVector(output_, *ctx_, output);
+    paddle::framework::TensorToVector(output_, *ctx_, output);
   }
 
  protected:

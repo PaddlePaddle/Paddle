@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -91,8 +91,8 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor*> outs = {dx};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto functor = BCELossGradFunctor<T>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kTernary, T, T>(dev_ctx, ins, &outs, functor);
   }
 };
 

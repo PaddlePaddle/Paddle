@@ -43,25 +43,17 @@ void Copy(const Context& dev_ctx,
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
-  dst->Resize(src.dims());
+  dst->ResizeAndAllocate(src.dims());
   CHECK(dst->layout() == src.layout());
   auto size = src.numel() *
               paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
       paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::CPUPlace, dst_place),
-                         dst_ptr,
-                         BOOST_GET_CONST(paddle::platform::XPUPlace, src_place),
-                         src_ptr,
-                         size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_cpu_place(src_place) &&
              paddle::platform::is_xpu_place(dst_place)) {
-    paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::XPUPlace, dst_place),
-                         dst_ptr,
-                         BOOST_GET_CONST(paddle::platform::CPUPlace, src_place),
-                         src_ptr,
-                         size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_xpu_place(src_place) &&
              paddle::platform::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
@@ -69,11 +61,7 @@ void Copy(const Context& dev_ctx,
               << dst_place;
       return;
     }
-    paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::XPUPlace, dst_place),
-                         dst_ptr,
-                         BOOST_GET_CONST(paddle::platform::XPUPlace, src_place),
-                         src_ptr,
-                         size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
