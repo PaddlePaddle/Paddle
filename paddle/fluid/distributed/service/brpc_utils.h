@@ -42,9 +42,6 @@ namespace framework {
 class Scope;
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
