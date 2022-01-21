@@ -31,6 +31,7 @@ from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
 import paddle.static as static
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
@@ -881,8 +882,9 @@ class TestGPTPartitioner(unittest.TestCase):
         dist_context.process_mesh = _global_process_mesh
         train_program, startup_program, loss = gpt_pretrain_forward(
             train_program, startup_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
 
         # serial backward pass
         params_grads = parallelizer._generate_backward(
@@ -913,8 +915,9 @@ class TestGPTPartitioner(unittest.TestCase):
                   "w") as fw:
             fw.write(str(auto_parallel_startup_prog))
         # with open("./test_auto_parallel_partitioner_main_completed.txt", "w") as fw:
-        #     from paddle.distributed.auto_parallel.completion import complete_backward_annotation
-        #     complete_backward_annotation(auto_parallel_main_prog)
+        #     from paddle.distributed.auto_parallel.completion import Completer
+        #     completer = Completer()
+        #     completer.complete_forward_annotation(auto_parallel_main_prog)
         #     fw.write(str(auto_parallel_main_prog))       
         nrank = 4
         # col parallel

@@ -32,7 +32,7 @@ from paddle.distributed.passes import new_pass, PassContext
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
-from .completion import complete_annotation, complete_backward_annotation, complete_update_annotation
+from .completion import Completer
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .process_group import get_process_group
@@ -130,8 +130,8 @@ class AutoParallelizer:
                 no_grad_set,
                 callbacks,
                 distop_context=self._dist_context.dist_op_context)
-        complete_backward_annotation(
-            main_program, dist_context=self._dist_context)
+        self._completer = Completer(self._dist_context)
+        self._completer.complete_backward_annotation(main_program)
 
         return params_grads
 
@@ -142,8 +142,8 @@ class AutoParallelizer:
                 params_grads)
 
         # update completion 
-        complete_update_annotation(
-            main_program, dist_context=self._dist_context)
+        self._completer = Completer(self._dist_context)
+        self._completer.complete_update_annotation(main_program)
 
         return optimize_ops
 
@@ -179,8 +179,9 @@ class AutoParallelizer:
             # Annotation completion
             self._dist_context = DistributedContext()
             _logger.info("Start annotation dist attr.")
-            completed_main_program = complete_annotation(serial_main_program,
-                                                         self._dist_context)
+            self._completer = Completer(self._dist_context)
+            completed_main_program = self._completer.complete_forward_annotation(
+                serial_main_program)
         else:
             completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)

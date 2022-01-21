@@ -1192,9 +1192,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     if (run_pten_kernel_) {
       pten::KernelContext pt_kernel_context;
+      // Do data transform before building KernelContext
+      PreparePtenData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
+                      runtime_ctx);
       BuildPtenKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
       (*pt_kernel_)(&pt_kernel_context);
-      WriteBackToOutputs(runtime_ctx, &pt_kernel_context);
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
@@ -1786,6 +1788,62 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
       pten::TransToPtenKernelName(Type()));
 }
 
+Scope* OperatorWithKernel::PreparePtenData(
+    const Scope& scope, const pten::Kernel& pt_kernel,
+    const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto input_defs = pt_kernel.args_def().input_defs();
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "The size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+  Scope* new_scope = nullptr;
+  for (size_t i = 0; i < input_defs.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ctx->inputs.at(input_names[i]);
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      // Only tensor can be tranfer to another device.
+      auto* var = ins_vector[offset];
+      if (var == nullptr || !VarIsTensor(*var)) {
+        continue;
+      }
+
+      auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      if (!tensor_in->IsInitialized()) {
+        continue;
+      }
+
+      auto expected_place = pten::TransToFluidPlace(in_def.backend);
+      if (platform::is_same_place(tensor_in->place(), expected_place)) {
+        continue;
+      }
+
+      // TODO(zyfncg): Now there is no kernel which need to transform input
+      // data, so we commented out following code temporarily,
+      // and it will be used in the future.
+
+      // VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
+      //         << tensor_in->place() << " to " << expected_place;
+
+      // if (!new_scope) {
+      //   new_scope = &scope.NewScope();
+      // }
+
+      // // Create new var with the same name in transfer scopes
+      // auto* trans_var = new_scope->Var(input_names[i]);
+      // ins_vector[i] = trans_var;
+
+      // // Do transfer
+      // Tensor out;
+      // framework::TensorCopySync(*tensor_in, expected_place, &out);
+      // SetTensorToVariable(*var, out, trans_var);
+    }
+  }
+
+  return new_scope;
+}
+
 void OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, platform::DeviceContext* dev_ctx,
     pten::KernelContext* pt_kernel_context) const {
@@ -1818,7 +1876,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx.inputs.at(input_names[i]);
 
     // calcute the start and end index of the input tensors
@@ -1827,14 +1884,22 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      pt_kernel_context->EmplaceBackInputWithoutSetRange(
-          experimental::MakePtenTensorBaseFromVar(*ins_vector[offset], in_def));
+      const framework::Tensor* tensor_in = nullptr;
+      auto* var = ins_vector[offset];
+      if (var->IsType<framework::LoDTensor>()) {
+        tensor_in = &(var->Get<framework::LoDTensor>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }  // TODO(zyfncg): Add support for SelectedRows
+
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& out_def = output_defs.at(i);
     auto& outs_vector = ctx.outputs.at(output_names[i]);
 
     size_t start_idx =
@@ -1842,9 +1907,21 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      pt_kernel_context->EmplaceBackOutputWithoutSetRange(
-          experimental::MakePtenTensorBaseFromVar(outs_vector[offset],
-                                                  out_def));
+      framework::Tensor* tensor_out = nullptr;
+      auto* var = outs_vector[offset];
+      if (var->template IsType<framework::LoDTensor>()) {
+        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported output `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }  // TODO(zyfncg): Add support for SelectedRows
+
+      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      SetAllocationForOutputTenosr(
+          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+
+      pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 
     // Deal with the case that some outputs are NULL when run the kernel.
@@ -1901,6 +1978,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::string))) {
           pt_kernel_context->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          pt_kernel_context->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "

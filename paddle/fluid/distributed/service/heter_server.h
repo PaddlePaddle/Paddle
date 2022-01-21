@@ -48,9 +48,6 @@ class Executor;
 class ProgramDesc;
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 DECLARE_double(eager_delete_tensor_gb);

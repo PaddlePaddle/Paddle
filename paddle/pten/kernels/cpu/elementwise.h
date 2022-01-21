@@ -583,8 +583,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext& ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << paddle::framework::make_ddim(x_dims_array)
-          << " ydim:" << paddle::framework::make_ddim(y_dims_array);
+          << pten::framework::make_ddim(x_dims_array)
+          << " ydim:" << pten::framework::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
