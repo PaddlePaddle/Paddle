@@ -166,7 +166,7 @@ DenseTensor Sum(const Context& dev_ctx,
   auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim, dtype);
   auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
 
-  SumKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
+  SumKernel<T, Context>(dev_ctx, x, axis, keep_dim, dtype, &dense_out);
   return dense_out;
 }
 
