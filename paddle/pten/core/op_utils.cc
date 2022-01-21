@@ -56,34 +56,50 @@ OpUtilsMap& OpUtilsMap::Instance() {
 }
 
 bool OpUtilsMap::Contains(const std::string& op_type) const {
-  return op_utils_map_.count(op_type) > 0;
+  return name_map_.count(op_type) || arg_mapping_fn_map_.count(op_type);
 }
 
-const OpUtils& OpUtilsMap::Get(const std::string& op_type) const {
+void OpUtilsMap::InsertApiName(std::string op_type, std::string api_name) {
   PADDLE_ENFORCE_EQ(
-      Contains(op_type),
-      true,
-      paddle::platform::errors::NotFound(
-          "Operator (%s)'s compatible utils is not registered.", op_type));
-  return op_utils_map_.at(op_type);
+      name_map_.count(op_type),
+      0UL,
+      paddle::platform::errors::AlreadyExists(
+          "Operator (%s)'s api name has been registered.", op_type));
+  name_map_.insert({std::move(op_type), std::move(api_name)});
 }
 
-OpUtils* OpUtilsMap::GetMutable(const std::string& op_type) {
-  auto it = op_utils_map_.find(op_type);
-  if (it == op_utils_map_.end()) {
-    return nullptr;
+void OpUtilsMap::InsertArgumentMappingFn(std::string op_type,
+                                         ArgumentMappingFn fn) {
+  PADDLE_ENFORCE_EQ(
+      arg_mapping_fn_map_.count(op_type),
+      0UL,
+      paddle::platform::errors::AlreadyExists(
+          "Operator (%s)'s argu,emt mapping function has been registered.",
+          op_type));
+  arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
+}
+
+std::string OpUtilsMap::GetApiName(const std::string& op_type) const {
+  auto it = name_map_.find(op_type);
+  if (it == name_map_.end()) {
+    return "deprecated";
   } else {
-    return &it->second;
+    return it->second;
   }
 }
 
-void OpUtilsMap::Insert(std::string op_type, OpUtils utils) {
-  PADDLE_ENFORCE_NE(
-      Contains(op_type),
-      true,
-      paddle::platform::errors::AlreadyExists(
-          "Operator (%s)'s compatible utils has been registered.", op_type));
-  op_utils_map_.insert({std::move(op_type), std::move(utils)});
+ArgumentMappingFn OpUtilsMap::GetArgumentMappingFn(
+    const std::string& op_type) const {
+  auto it = arg_mapping_fn_map_.find(op_type);
+  if (it == arg_mapping_fn_map_.end()) {
+    auto func =
+        [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
+      return DefaultKernelSignatureMap::Instance().Get(op_type);
+    };
+    return func;
+  } else {
+    return it->second;
+  }
 }
 
 }  // namespace pten

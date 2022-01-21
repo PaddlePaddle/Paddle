@@ -34,4 +34,4 @@ KernelSignature ScaleOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }  // namespace pten
 
 // op_type, api_name, arg_mapping_fn
-PT_REGISTER_ARG_MAPPING_FN(scale, scale, pten::ScaleOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(scale, pten::ScaleOpArgumentMapping);

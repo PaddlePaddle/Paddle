@@ -23,9 +23,9 @@ namespace tests {
 
 TEST(OpUtilsMap, ArgMappingFnExists) {
   std::cout << "enter ArgMappingFnExists";
-  auto& scale_op_utils = pten::OpUtilsMap::Instance().Get("scale");
-  EXPECT_EQ(scale_op_utils.api_name, "scale");
-  EXPECT_NE(scale_op_utils.arg_mapping_fn, nullptr);
+  auto scale_arg_mapping_fn =
+      pten::OpUtilsMap::Instance().GetArgumentMappingFn("scale");
+  EXPECT_NE(scale_arg_mapping_fn, nullptr);
 }
 
 }  // namespace tests

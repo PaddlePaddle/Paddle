@@ -195,7 +195,7 @@ class CompatMetaTensor : public pten::MetaTensor {
 pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type) {
   // 1. get kernel args
-  auto arg_map_fn = pten::OpUtilsMap::Instance().Get(op_type).arg_mapping_fn;
+  auto arg_map_fn = pten::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   PADDLE_ENFORCE_NOT_NULL(
       arg_map_fn, platform::errors::NotFound(
                       "The ArgumentMappingFn of %s op is not found.", op_type));

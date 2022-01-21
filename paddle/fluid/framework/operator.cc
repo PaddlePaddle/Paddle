@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/op_utils.h"
+#include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
 class DenseTensor;
@@ -1796,10 +1797,11 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  // only init DefaultKernelSignatureMap when pten kernel needed
-  framework::IntiDefaultKernelSignatureMap();
-  return pten::DefaultKernelSignatureMap::Instance().Get(
-      pten::TransToPtenKernelName(Type()));
+  // only init DefaultKernelSignatureMap once when pten kernel needed
+  IntiDefaultKernelSignatureMap();
+  ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
+  return pten::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
+      arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePtenData(

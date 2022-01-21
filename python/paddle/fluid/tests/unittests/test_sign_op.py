@@ -31,10 +31,10 @@ class TestSignOp(OpTest):
         self.outputs = {'Out': np.sign(self.inputs['X'])}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSignOpError(unittest.TestCase):
