@@ -34,6 +34,10 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+extern void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
+                                          const pybind11::object& array,
+                                          bool zero_copy);
+
 extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
