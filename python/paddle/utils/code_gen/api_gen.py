@@ -62,7 +62,8 @@ PADDLE_API {self.output} {self.api}({self.args['args_declare']});
             input_tensors, kernel_args = gen_utils.get_kernel_args(
                 self.args['inputs']['names'], self.args['attrs'],
                 self.kernel['param'])
-            outputs_args, output_create = gen_utils.gene_output(self.output)
+            out_type, _ = gen_utils.parse_output(self.api, self.output)
+            outputs_args, output_create = gen_utils.gene_output(out_type)
             return f"""
 PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 {gen_utils.gene_kernel_select(self.api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
@@ -106,8 +107,8 @@ def source_include(header_file_path):
 
 #include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
+#include "paddle/pten/api/lib/api_utils.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/tensor_adapt.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/binary.h"

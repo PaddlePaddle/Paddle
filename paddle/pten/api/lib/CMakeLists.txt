@@ -25,7 +25,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 # backward api file
 set(bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward_api_gen.py)
 set(bw_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml)
-set(bw_api_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/include/backward_api.h)
+set(bw_api_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/backward/backward_api.h)
 set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/lib/backward_api.cc)
 set(bw_api_header_file_tmp ${bw_api_header_file}.tmp)
 set(bw_api_source_file_tmp ${bw_api_source_file}.tmp)
@@ -63,4 +63,4 @@ add_custom_command(
 
 cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)
-cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch grad_infermeta)
+cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta)

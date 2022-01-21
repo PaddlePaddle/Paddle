@@ -91,6 +91,45 @@ def parse_args(args_str):
     return args
 
 
+def parse_output(api_name, output_config):
+    def parse_output_item(output_item):
+        alllowd_output_types = ['Tensor', 'std::vector<Tensor>']
+        if re.search(r'\(\w*\)', output_item):
+            result = re.search(
+                r"(?P<out_type>[a-zA-Z0-9_<>]+)\s*\((?P<name>\w+)\)",
+                output_item)
+            out_type = result.group('out_type')
+            assert out_type in alllowd_output_types, \
+                f"{api_name} : Output type error: the output type only support Tensor and std::vector<Tensor>, \
+                  but now is {out_type}."
+
+            return out_type, result.group('name')
+
+        else:
+            if output_item.strip() in alllowd_output_types:
+                return output_item.strip(), 'out'
+            else:
+                raise ValueError(
+                    "{} : Output type error: the output type only support Tensor and std::vector<Tensor>, \
+                  but now is {}.".format(api_name, out_type))
+
+    temp_list = output_config.split(',')
+
+    if len(temp_list) == 1:
+        out_type, out_name = parse_output_item(temp_list[0])
+        return out_type, out_name
+    else:
+        out_type_list = []
+        out_name_list = []
+        for output_item in temp_list:
+            out_type, out_name = parse_output_item(output_item)
+            out_type_list.append(out_type)
+            out_name_list.append(out_name)
+
+        return "std::tuple<" + ",".join(out_type_list) + ">", ", ".join(
+            out_name_list)
+
+
 def gene_kernel_select(api, input_names, attrs, kernel) -> str:
 
     kernel_key_item_init = """

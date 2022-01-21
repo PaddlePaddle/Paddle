@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/infermeta/grad_infermeta.h"
+#include "paddle/pten/infermeta/backward.h"
 
 namespace pten {
 

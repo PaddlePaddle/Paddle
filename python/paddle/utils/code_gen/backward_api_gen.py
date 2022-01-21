@@ -22,7 +22,7 @@ import gen_utils
 
 class BackwardAPI:
     def __init__(self, backward_item_yaml):
-        self.grad_api = backward_item_yaml['grad_api']
+        self.backward_api = backward_item_yaml['backward_api']
         self.args, self.output_type, self.return_comment = self.parse_and_check_args(
             backward_item_yaml['forward'], backward_item_yaml['args'],
             backward_item_yaml['output'])
@@ -59,34 +59,6 @@ class BackwardAPI:
 
         return api, forward_args['inputs'], forward_args['attrs'], outputs
 
-    def parse_backward_output(self, output_config):
-        def parse_output_item(output_item):
-            result = re.search(
-                r"(?P<out_type>[a-zA-Z0-9_<>]+)\s*\((?P<name>\w+)\)",
-                output_item)
-            out_type = result.group('out_type')
-            assert out_type in ['Tensor', 'std::vector<Tensor>'], \
-                f"{self.grad_api} : Output type error: the output type only support Tensor and std::vector<Tensor>, \
-                  but now is {out_type}."
-
-            return out_type, result.group('name')
-
-        temp_list = output_config.split(',')
-
-        if len(temp_list) == 1:
-            out_type, out_name = parse_output_item(temp_list[0])
-            return out_type, 1, out_name
-        else:
-            out_type_list = []
-            out_name_list = []
-            for output_item in temp_list:
-                out_type, out_name = parse_output_item(output_item)
-                out_type_list.append(out_type)
-                out_name_list.append(out_name)
-
-            return "std::tuple<" + ",".join(out_type_list) + ">", len(
-                temp_list), ", ".join(out_name_list)
-
     def parse_and_check_args(self, forward_config, args_config, output_config):
         # parse the forward and backward config
         _, fw_inputs, fw_attrs, fw_outputs = self.parse_forward_config(
@@ -99,21 +71,21 @@ class BackwardAPI:
                 if input.endswith('_grad'):
                     original_name = input[:-5]
                     assert original_name in fw_outputs, \
-                        f"{self.grad_api} : Input Tensor error: the input tensor({input}) of backward should be an input or output or grad of output in forward api. \
-                         Please check the forward of {self.grad_api} in yaml."
+                        f"{self.backward_api} : Input Tensor error: the input tensor({input}) of backward should be an input or output or grad of output in forward api. \
+                         Please check the forward of {self.backward_api} in yaml."
 
         # check the attributes of backward
         for attr in bw_args['attrs']['names']:
             assert attr in fw_attrs['names'] and bw_args['attrs']['attr_info'][attr][0] == fw_attrs['attr_info'][attr][0], \
-                f"{self.grad_api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api. \
-                 Please check the args of {self.grad_api} in yaml."
+                f"{self.backward_api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api. \
+                 Please check the args of {self.backward_api} in yaml."
 
         # check the output of backward
-        output_type, output_num, return_comment = self.parse_backward_output(
-            output_config)
-        assert output_num <= len(fw_inputs['names']), \
-            f"{self.grad_api} : Output error: The number of ouputs should be less then the number of inputs of forward api. \
-             Please check the output of {self.grad_api} in yaml."
+        output_type, return_comment = gen_utils.parse_output(self.backward_api,
+                                                             output_config)
+        assert output_type.count('Tensor') <= len(fw_inputs['names']), \
+            f"{self.backward_api} : Output error: The number of ouputs should be less then the number of inputs of forward api. \
+             Please check the output of {self.backward_api} in yaml."
 
         return bw_args, output_type, return_comment
 
@@ -121,12 +93,12 @@ class BackwardAPI:
         if self.return_comment:
             return f"""
 // {self.return_comment}
-{self.output_type} {self.grad_api}({self.args['args_declare']});
+{self.output_type} {self.backward_api}({self.args['args_declare']});
 """
 
         else:
             return f"""
-{self.output_type} {self.grad_api}({self.args['args_declare']});
+{self.output_type} {self.backward_api}({self.args['args_declare']});
 """
 
     def gene_api_code(self):
@@ -138,15 +110,15 @@ class BackwardAPI:
                 self.output_type)
             return f"""
 // {self.return_comment}
-{self.output_type} {self.grad_api}({self.args["args_define"]}) {{
-{gen_utils.gene_kernel_select(self.grad_api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
+{self.output_type} {self.backward_api}({self.args["args_define"]}) {{
+{gen_utils.gene_kernel_select(self.backward_api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 {input_tensors}
 {gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
 {output_create}
 
-  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.grad_api}_kernel>();
+  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.backward_api}_kernel>();
   (*kernel_fn)({kernel_args}, {outputs_args});
 
   return out;
@@ -171,7 +143,7 @@ class BackwardAPI:
                 params_code = self.args["args_define"]
             return f"""
 // {self.return_comment}
-{self.output_type} {self.grad_api}({params_code}) {{
+{self.output_type} {self.backward_api}({params_code}) {{
   return {invoke_code};
 }}
 """
@@ -196,12 +168,12 @@ def source_include(header_file_path):
 
 #include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
+#include "paddle/pten/api/lib/api_utils.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/tensor_adapt.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/api/include/api.h"
-#include "paddle/pten/infermeta/grad_infermeta.h"
+#include "paddle/pten/infermeta/backward.h"
 """
 
 
@@ -231,7 +203,7 @@ def generate_backward_api(backward_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/api/include/backward_api.h"
+    include_header_file = "paddle/pten/api/backward/backward_api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -258,7 +230,7 @@ def main():
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
-        default='paddle/pten/api/include/backward_api.h')
+        default='paddle/pten/api/backward/backward_api.h')
 
     parser.add_argument(
         '--backward_source_path',
