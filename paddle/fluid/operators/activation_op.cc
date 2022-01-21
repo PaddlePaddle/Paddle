@@ -129,7 +129,7 @@ class ActivationOp : public framework::OperatorWithKernel {
     return GetKernelType(ctx, *this, "X");
   }
 
-  framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
+  framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
