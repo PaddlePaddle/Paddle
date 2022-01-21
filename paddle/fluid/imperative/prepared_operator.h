@@ -345,7 +345,7 @@ void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(int))) {
           kernel_ctx->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
-        }else {
+        } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "
               "KernelContext in dygraph.",
