@@ -71,6 +71,10 @@ class SelectedRows {
 
   const Vector<int64_t>& rows() const { return rows_; }
 
+  const std::unordered_map<int64_t, int64_t>& id_to_index() const {
+    return id_to_index_;
+  }
+
   Vector<int64_t>* mutable_rows() { return &rows_; }
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
