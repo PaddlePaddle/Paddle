@@ -98,6 +98,7 @@ using sum_kernel = void (*)(const DeviceContext&,
                             const DenseTensor&,
                             const std::vector<int64_t>&,
                             bool,
+                            DataType,
                             DenseTensor*);
 
 using subtract_kernel = void (*)(const DeviceContext&,
