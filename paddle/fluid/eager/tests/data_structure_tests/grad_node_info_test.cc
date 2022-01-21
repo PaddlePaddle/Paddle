@@ -76,9 +76,9 @@ TEST(GradNodeInfo, GradNodeBase) {
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
   grad_test_node0->SetGradInMeta(metas, 0);
-  grad_test_node0->SetGradInMeta(*auto_grad1.get(), 1);
+  grad_test_node0->SetGradInMeta(auto_grad1.get(), 1);
   grad_test_node0->SetGradOutMeta(metas, 0);
-  grad_test_node0->SetGradOutMeta(*auto_grad1.get(), 1);
+  grad_test_node0->SetGradOutMeta(auto_grad1.get(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[0].Size(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[1].Size(), 1);
   CHECK(grad_test_node0->OutputMeta()[0].IsStopGradient(0));

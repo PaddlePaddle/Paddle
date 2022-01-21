@@ -173,6 +173,11 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
+        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
+                          pt_kernel, cpu_ctx);
+      }
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
@@ -433,6 +438,10 @@ static void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::string))) {
           kernel_ctx->EmplaceBackAttr(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to Scalar when construct "
