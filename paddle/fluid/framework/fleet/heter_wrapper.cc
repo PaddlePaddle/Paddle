@@ -27,7 +27,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace paddle {

@@ -61,7 +61,7 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 class HeterWrapper;
 #endif
 
@@ -359,7 +359,7 @@ class DownpourWorkerOpt : public DownpourWorker {
   uint64_t async_tid_ = 0;
 };
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 class HeterCpuWorker : public HogwildWorker {
  public:
   HeterCpuWorker() {}

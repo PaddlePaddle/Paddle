@@ -202,6 +202,17 @@ if (APPLE)
     set (COMMON_FLAGS -Wno-deprecated-register)
 endif(APPLE)
 
+if(WITH_HETERPS)
+    set(COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${COMMON_FLAGS})
+
+    set(GPU_COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${GPU_COMMON_FLAGS})
+endif()
+message("GPU_COMMON_FLAGS=${GPU_COMMON_FLAGS}")
+
 if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
