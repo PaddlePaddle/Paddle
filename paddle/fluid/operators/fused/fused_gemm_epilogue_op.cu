@@ -227,97 +227,107 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       beta = &beta32;
     }
 
-    cublasLtMatmulDesc_t dx_operation_desc = NULL;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
-        &dx_operation_desc, compute_type, scale_type));
     cublasOperation_t trans_dout = CUBLAS_OP_N;
-    cublasOperation_t trans_y = CUBLAS_OP_T;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_dout,
-            sizeof(trans_dout)));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y,
-            sizeof(trans_y)));
-    cublasLtEpilogue_t epiloque_func_for_dx =
-        get_epilogue_type_(activation_grad);
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
-            &epiloque_func_for_dx, sizeof(epiloque_func_for_dx)));
-
-    if (activation_grad != "none") {
-      auto* aux_data =
-          EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatmulDescSetAttribute(
-              dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
-              &aux_data, sizeof(aux_data)));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatmulDescSetAttribute(
-              dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD, &N,
-              sizeof(N)));
-    }
-
-    cublasLtMatrixLayout_t dout_desc = NULL, y_desc = NULL, dx_desc = NULL;
+    cublasLtMatrixLayout_t dout_desc = NULL;
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
         &dout_desc, mat_type, N, M, N));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &y_desc, mat_type, N, K, N));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &dx_desc, mat_type, K, M, K));
 
-    memory::allocation::AllocationPtr dx_workspace =
-        memory::Alloc(dev_ctx, workspace_size);
+    if (dx) {
+      cublasLtMatmulDesc_t dx_operation_desc = NULL;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+          &dx_operation_desc, compute_type, scale_type));
+      cublasOperation_t trans_y = CUBLAS_OP_T;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_dout,
+              sizeof(trans_dout)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y,
+              sizeof(trans_y)));
+      cublasLtEpilogue_t epiloque_func_for_dx =
+          get_epilogue_type_(activation_grad);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
+              &epiloque_func_for_dx, sizeof(epiloque_func_for_dx)));
 
-    dx->mutable_data<T>(ctx.GetPlace());
-    auto* dx_data = dx->data<T>();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
-        lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
-        dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
-        algo, dx_workspace->ptr(), workspace_size, stream));
+      if (activation_grad != "none") {
+        auto* aux_data =
+            EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::cublasLtMatmulDescSetAttribute(
+                dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+                &aux_data, sizeof(aux_data)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::cublasLtMatmulDescSetAttribute(
+                dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD, &N,
+                sizeof(N)));
+      }
 
-    cublasLtMatmulDesc_t dy_operation_desc = NULL;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
-        &dy_operation_desc, compute_type, scale_type));
-    cublasOperation_t trans_x = CUBLAS_OP_T;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_dout,
-            sizeof(trans_dout)));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_x,
-            sizeof(trans_x)));
-    cublasLtEpilogue_t epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADA;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dy_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
-            &epiloque_func_for_dy, sizeof(epiloque_func_for_dy)));
+      cublasLtMatrixLayout_t y_desc = NULL, dx_desc = NULL;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &y_desc, mat_type, N, K, N));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &dx_desc, mat_type, K, M, K));
 
-    dbias->mutable_data<T>(ctx.GetPlace());
-    auto* dbias_data = dbias->data<T>();
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            dy_operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &dbias_data,
-            sizeof(dbias_data)));
+      memory::allocation::AllocationPtr dx_workspace =
+          memory::Alloc(dev_ctx, workspace_size);
 
-    cublasLtMatrixLayout_t x_desc = NULL, dy_desc = NULL;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &x_desc, mat_type, K, M, K));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &dy_desc, mat_type, N, K, N));
+      dx->mutable_data<T>(ctx.GetPlace());
+      auto* dx_data = dx->data<T>();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
+          lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
+          dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
+          algo, dx_workspace->ptr(), workspace_size, stream));
+    }
 
-    memory::allocation::AllocationPtr dy_workspace =
-        memory::Alloc(dev_ctx, workspace_size);
+    if (dy) {
+      cublasLtMatmulDesc_t dy_operation_desc = NULL;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+          &dy_operation_desc, compute_type, scale_type));
+      cublasOperation_t trans_x = CUBLAS_OP_T;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_dout,
+              sizeof(trans_dout)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_x,
+              sizeof(trans_x)));
+      cublasLtEpilogue_t epiloque_func_for_dy = dbias == nullptr
+                                                    ? CUBLASLT_EPILOGUE_DEFAULT
+                                                    : CUBLASLT_EPILOGUE_BGRADA;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dy_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
+              &epiloque_func_for_dy, sizeof(epiloque_func_for_dy)));
 
-    dy->mutable_data<T>(ctx.GetPlace());
-    auto* dy_data = dy->data<T>();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
-        lt_handle, dy_operation_desc, alpha, dout->data<T>(), dout_desc,
-        x->data<T>(), x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, algo,
-        dy_workspace->ptr(), workspace_size, stream));
+      if (dbias) {
+        dbias->mutable_data<T>(ctx.GetPlace());
+        auto* dbias_data = dbias->data<T>();
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::cublasLtMatmulDescSetAttribute(
+                dy_operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+                &dbias_data, sizeof(dbias_data)));
+      }
+
+      cublasLtMatrixLayout_t x_desc = NULL, dy_desc = NULL;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &x_desc, mat_type, K, M, K));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &dy_desc, mat_type, N, K, N));
+
+      memory::allocation::AllocationPtr dy_workspace =
+          memory::Alloc(dev_ctx, workspace_size);
+
+      dy->mutable_data<T>(ctx.GetPlace());
+      auto* dy_data = dy->data<T>();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
+          lt_handle, dy_operation_desc, alpha, dout->data<T>(), dout_desc,
+          x->data<T>(), x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, algo,
+          dy_workspace->ptr(), workspace_size, stream));
+    }
   }
 
  private:

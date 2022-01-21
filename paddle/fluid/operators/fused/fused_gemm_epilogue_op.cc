@@ -157,12 +157,7 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
                    "FusedGemmEpilogueGradOp");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGemmEpilogueGradOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "FusedGemmEpilogueGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput("DX"), "Output", "DX",
-                   "FusedGemmEpilogueGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput("DY"), "Output", "DY",
-                   "FusedGemmEpilogueGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput("DBias"), "Output", "DBias",
-                   "FusedGemmEpilogueGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput("DY"), "Output", "DY", "FusedGemmEpilogueOp");
 
     auto dout_dims = ctx->GetInputDim("DOut");
     auto x_dims = ctx->GetInputDim("X");
@@ -236,12 +231,14 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
                             "when activation_grad == {relu_grad, gelu_grad}."));
     }
 
-    std::vector<int64_t> dx_dims;
-    dx_dims.reserve(static_cast<size_t>(x_dims.size()));
-    for (int i = 0; i < x_dims.size(); ++i) {
-      dx_dims.push_back(x_dims[i]);
+    if (ctx->HasOutput("DX")) {
+      std::vector<int64_t> dx_dims;
+      dx_dims.reserve(static_cast<size_t>(x_dims.size()));
+      for (int i = 0; i < x_dims.size(); ++i) {
+        dx_dims.push_back(x_dims[i]);
+      }
+      ctx->SetOutputDim("DX", framework::make_ddim(dx_dims));
     }
-    ctx->SetOutputDim("DX", framework::make_ddim(dx_dims));
 
     std::vector<int64_t> dy_dims;
     dy_dims.reserve(static_cast<size_t>(y_dims.size()));
@@ -250,10 +247,12 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("DY", framework::make_ddim(dy_dims));
 
-    std::vector<int64_t> dbias_dims;
-    dbias_dims.reserve(1);
-    dbias_dims.push_back(y_dims[1]);
-    ctx->SetOutputDim("DBias", framework::make_ddim(dbias_dims));
+    if (ctx->HasOutput("DBias")) {
+      std::vector<int64_t> dbias_dims;
+      dbias_dims.reserve(1);
+      dbias_dims.push_back(y_dims[1]);
+      ctx->SetOutputDim("DBias", framework::make_ddim(dbias_dims));
+    }
   }
 };
 
@@ -264,9 +263,11 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input tensor X of Out = (X * Y) + bias.");
     AddInput("Y", "The input tensor X of Out = (X * Y) + bias.");
 
-    AddOutput("DX", "The output grad tensor DX of Out = (X * Y) + bias.");
+    AddOutput("DX", "The output grad tensor DX of Out = (X * Y) + bias.")
+        .AsDispensable();
     AddOutput("DY", "The output grad tensor DY of Out = (X * Y) + bias.");
-    AddOutput("DBias", "The output grad tensor DBias of Out = (X * Y) + bias.");
+    AddOutput("DBias", "The output grad tensor DBias of Out = (X * Y) + bias.")
+        .AsDispensable();
 
     AddAttr<std::string>("activation_grad", "{noen, relu_grad, gelu_grad}")
         .SetDefault("none");
