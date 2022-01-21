@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/hostdevice.h"
 
 #include "unsupported/Eigen/CXX11/Tensor"
