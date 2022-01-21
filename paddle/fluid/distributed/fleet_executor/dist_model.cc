@@ -18,6 +18,7 @@
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -37,10 +38,67 @@ bool IsPersistable(const framework::VarDesc *var) {
   }
   return false;
 }
+
+bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
+                                 framework::LoDTensor *input_tensor,
+                                 const platform::Place &place) {
+  VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
+  framework::DDim dims = framework::make_ddim(input_data.shape);
+  void *input_tensor_ptr;
+  if (input_data.dtype == DistModelDataType::INT64) {
+    input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
+  } else if (input_data.dtype == DistModelDataType::FLOAT32) {
+    input_tensor_ptr = input_tensor->mutable_data<float>(dims, place);
+  } else if (input_data.dtype == DistModelDataType::INT32) {
+    input_tensor_ptr = input_tensor->mutable_data<int32_t>(dims, place);
+  } else {
+    // Q(fleet exe dev): for input/output, should we support fp16
+    LOG(ERROR) << "unsupported feed type " << input_data.dtype;
+    return false;
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(
+      input_tensor_ptr,
+      paddle::platform::errors::Fatal(
+          "LoDTensor creation failed. DistModel loaded data failed."));
+  PADDLE_ENFORCE_NOT_NULL(input_data.data.data(),
+                          paddle::platform::errors::InvalidArgument(
+                              "DistModelTensor contains no data."));
+
+  if (platform::is_cpu_place(place)) {
+    std::memcpy(static_cast<void *>(input_tensor_ptr), input_data.data.data(),
+                input_data.data.length());
+  } else if (platform::is_gpu_place(place)) {
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx =
+        dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto gpu_place = place;
+    memory::Copy(gpu_place, static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(), input_data.data.data(),
+                 input_data.data.length(), dev_ctx->stream());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "DistModel only supports CPU and GPU."));
+  }
+
+  framework::LoD dst_lod;
+  for (auto &src_lod : input_data.lod) {
+    dst_lod.emplace_back(src_lod);
+  }
+  input_tensor->set_lod(dst_lod);
+  return true;
+}
+
+template <typename T>
+int VectorReducer(const std::vector<T> &vec) {
+  return std::accumulate(vec.begin(), vec.end(), 1,
+                         [](T a, T b) { return a * b; });
+}
+
 }  // namespace
 
 bool DistModel::Init() {
-  /* TODO(fleet exe dev): implement this funct */
+  carrier_id_ = "inference";
   bool init_method = (!config_.model_dir.empty() || config_.program_desc);
   PADDLE_ENFORCE_EQ(init_method, true,
                     platform::errors::InvalidArgument(
@@ -326,7 +384,7 @@ bool DistModel::PrepareFleetExe() {
     id_to_rank.insert({i, i});
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
-  fleet_exe->Init("inference", *(program_.get()), scope_.get(), place_, 1,
+  fleet_exe->Init(carrier_id_, *(program_.get()), scope_.get(), place_, 1,
                   {task_node_.get()}, id_to_rank);
   return true;
 }
@@ -349,15 +407,107 @@ bool DistModel::PrepareFeedAndFetch() {
         fetches_.resize(idx + 1);
       }
       fetches_[idx] = op;
-      id_to_fetches_[idx] = op->Input("X")[0];
+      idx_to_fetches_[idx] = op->Input("X")[0];
     }
   }
   return true;
 }
 
-void DistModel::Run(const std::vector<DistModelTensor> &input_data,
+bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
+                         framework::Scope *scope) {
+  VLOG(3) << "DistModel is feeding data.";
+  if (input_data.size() != feeds_.size()) {
+    LOG(ERROR) << "Should provide " << feeds_.size() << " feeds, but got "
+               << input_data.size() << "data.";
+    return false;
+  }
+  feed_tensors_.resize(feeds_.size());
+  for (size_t i = 0; i < input_data.size(); ++i) {
+    // feed each data separately
+    framework::LoDTensor *input_tensor = &(feed_tensors_[i]);
+    if (!LoadDataFromDistModelTensor(input_data[i], input_tensor, place_)) {
+      LOG(ERROR) << "Fail to load data from tensor " << input_data[i].name;
+      return false;
+    }
+    std::string target_name = input_data[i].name;
+    if (feed_names_.find(target_name) == feed_names_.end()) {
+      LOG(ERROR) << "Wrong input name: " << target_name
+                 << " DistModel load data failed.";
+      return false;
+    }
+    int feed_idx = feed_names_[target_name];
+    framework::SetFeedVariable(scope, *input_tensor, "feed", feed_idx);
+  }
+  return true;
+}
+
+bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
+                             framework::Scope *scope) {
+  VLOG(3) << "DistModel is fetch results.";
+  output_data->resize(fetches_.size());
+  for (size_t i = 0; i < fetches_.size(); ++i) {
+    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
+    VLOG(3) << "Fetching data for " << idx_to_fetches_[idx];
+    PADDLE_ENFORCE_EQ(
+        static_cast<size_t>(idx), i,
+        platform::errors::InvalidArgument(
+            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            i));
+    framework::FetchType &fetch_var =
+        framework::GetFetchVariable(*scope, "fetch", idx);
+    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto type = fetch.type();
+    auto output = &(output_data->at(i));
+    output->name = idx_to_fetches_[idx];
+    if (type == framework::proto::VarType::FP32) {
+      FetchResult<float>(fetch, output);
+      output->dtype = DistModelDataType::FLOAT32;
+    } else if (type == framework::proto::VarType::INT64) {
+      FetchResult<int64_t>(fetch, output);
+      output->dtype = DistModelDataType::INT64;
+    } else if (type == framework::proto::VarType::INT32) {
+      FetchResult<int32_t>(fetch, output);
+      output->dtype = DistModelDataType::INT32;
+    } else {
+      LOG(ERROR) << "DistModel meets unknow fetch data type. DistModel only "
+                    "supports float32, int64 and int32 fetch type for now.";
+    }
+  }
+  return true;
+}
+
+template <typename T>
+bool DistModel::FetchResult(const framework::LoDTensor &fetch,
+                            DistModelTensor *output_data) {
+  auto shape = framework::vectorize(fetch.dims());
+  output_data->shape.assign(shape.begin(), shape.end());
+  const T *data = fetch.data<T>();
+  int num_elems = VectorReducer(shape);
+  output_data->data.Resize(num_elems * sizeof(T));
+  // The output of fetch op is always on the cpu, no need switch on place
+  memcpy(output_data->data.data(), data, num_elems * sizeof(T));
+  output_data->lod.clear();
+  for (auto &level : fetch.lod()) {
+    output_data->lod.emplace_back(level.begin(), level.end());
+  }
+}
+
+bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
                     std::vector<DistModelTensor> *output_data) {
-  /* TODO(fleet exe dev): implement this funct */
+  if (!FeedData(input_data, scope_.get())) {
+    LOG(ERROE) << "DistModel failed at feeding data.";
+    return false;
+  }
+  VLOG(3) << "Finish loading data.";
+
+  fleet_exe->Run(carrier_id_);
+
+  if (!FetchResults(output_data, scope_.get())) {
+    LOG(ERROR) << "DistModel failed at fetching result.";
+    return false;
+  }
+  VLOG(3) << "Finish fetching data.";
+  return true;
 }
 
 }  // namespace distributed
