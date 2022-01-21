@@ -15,11 +15,13 @@
 #include <mlir/Support/MlirOptMain.h>
 #include <mlir/Transforms/Passes.h>
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/pd_test_op_kernel_mapping_pass.h"
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   infrt::registerCinnDialects(registry);
   mlir::registerCanonicalizerPass();
+  infrt::RegisterOpKernelMappingPass();
   return mlir::failed(
       mlir::MlirOptMain(argc, argv, "infrt mlir pass driver", registry));
 }

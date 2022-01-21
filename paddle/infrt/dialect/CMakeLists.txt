@@ -12,7 +12,7 @@ gather_srcs(infrt_src SRCS
     diagnostic_utils.cc
     pd_types.cc
     pd_ops.cc
-    # pd_test_op_kernel_mapping_pass.cc
+    pd_test_op_kernel_mapping_pass.cc
     )
 mlir_tablegen_on(basic_kernels)
 mlir_tablegen_on(test_kernels)

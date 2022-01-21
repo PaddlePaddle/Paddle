@@ -17,6 +17,8 @@
 #include <glog/logging.h>
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/Pass/Pass.h>
+#include <mlir/Rewrite/PatternApplicator.h>
+#include <mlir/Transforms/GreedyPatternRewriteDriver.h>
 
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
@@ -29,27 +31,61 @@ namespace pd {
 
 namespace infrt {
 
-class NaivePatternRewriter : public mlir::PatternRewriter {
+class MyPatternRewriter : public mlir::PatternRewriter {
  public:
-  explicit NaivePatternRewriter(mlir::MLIRContext* ctx)
+  explicit MyPatternRewriter(mlir::MLIRContext* ctx)
       : mlir::PatternRewriter(ctx) {}
+
+  void replaceOp(mlir::Operation* op, mlir::ValueRange newValues) override {
+    LOG(INFO) << "Replacing " << op->getName().getIdentifier().str();
+    for (size_t i = 0; i < newValues.size(); i++) {
+      std::string str;
+      llvm::raw_string_ostream os(str);
+      newValues[i].print(os);
+      LOG(INFO) << str;
+    }
+    RewriterBase::replaceOp(op, newValues);
+  }
 };
+
+/// Apply the custom driver to `op`.
+void applyMyPatternDriver(mlir::Operation* op,
+                          mlir::RewritePatternSet&& patterns) {
+  // Initialize the custom PatternRewriter.
+  MyPatternRewriter rewriter(op->getContext());
+
+  mlir::FrozenRewritePatternSet fpatterns(std::move(patterns));
+  // Create the applicator and apply our cost model.
+  mlir::PatternApplicator applicator(fpatterns);
+  applicator.applyCostModel([](const mlir::Pattern& pattern) {
+    // Apply a default cost model.
+    // Note: This is just for demonstration, if the default cost model is truly
+    //       desired `applicator.applyDefaultCostModel()` should be used
+    //       instead.
+    return pattern.getBenefit();
+  });
+
+  // Try to match and apply a pattern.
+  auto result = applicator.matchAndRewrite(op, rewriter);
+  if (failed(result)) {
+    LOG(INFO) << "No pattern applied";
+  }
+  // ... A pattern was successfully applied.
+}
 
 struct OpKernelMapPass
     : public mlir::PassWrapper<OpKernelMapPass, mlir::OperationPass<>> {
  public:
   void runOnOperation() override {
     mlir::Operation* op = getOperation();
+
     op->walk([&](mlir::Operation* op) {
       LOG(INFO) << "Op.name: " << op->getName().getIdentifier().data();
       if (op->getName().getIdentifier().str() == "pd.matmul") {
-        LOG(INFO) << "Process rewrite";
-        pd::PDKEL_Matmul_to_CPU pattern(&getContext());
-        NaivePatternRewriter rewriter(&getContext());
-        if (mlir::succeeded(pattern.matchAndRewrite(op, rewriter))) {
-          LOG(INFO) << "succeed in matching";
-        }
-        LOG(INFO) << "** after " << op->getName().getIdentifier().str();
+        mlir::RewritePatternSet patterns(&getContext());
+        patterns.add<pd::PDKEL_Matmul_to_CPU>(patterns.getContext());
+
+        applyMyPatternDriver(op, std::move(patterns));
       }
     });
   }
