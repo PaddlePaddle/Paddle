@@ -52,6 +52,9 @@ class TestMaxMemoryreserved(unittest.TestCase):
             for device in wrong_device:
                 with self.assertRaises(BaseException):
                     max_memory_reserved(device)
+        else:
+            with self.assertRaises(BaseException):
+                max_memory_reserved()
 
 
 if __name__ == "__main__":
