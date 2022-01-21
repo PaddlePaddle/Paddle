@@ -388,8 +388,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
-            calib_res->calib_.get(),
-            BOOST_GET_CONST(platform::CUDAPlace, dev_place).device));
+            calib_res->calib_.get(), dev_place.device));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
@@ -405,7 +404,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
-      calib_data.emplace(x, t.data<void>());
+      calib_data.emplace(x, t.data());
     }
     temp_calibrator->setBatch(calib_data);
     RunNativeImpl(scope, dev_place);
@@ -567,8 +566,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "than the number of bindings, but got binding "
                             "index = %d, number of bindings = %d.",
                             bind_index, num_bindings));
-      buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
-          BOOST_GET_CONST(platform::CUDAPlace, dev_place)));
+      buffers[bind_index] =
+          static_cast<void *>(fluid_t->mutable_data<float>(dev_place));
 
       output_index += 1;
     }

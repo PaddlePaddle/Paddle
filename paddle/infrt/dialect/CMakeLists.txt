@@ -2,7 +2,6 @@ core_gather_headers()
 
 gather_srcs(infrt_src SRCS
     dialect.cc
-    types.cc
     basic_kernels.cc
     test_kernels.cc
     infrt_base.cc
@@ -14,8 +13,6 @@ gather_srcs(infrt_src SRCS
     pd_types.cc
     pd_ops.cc
     )
-
-mlir_tablegen_on(ops)
 mlir_tablegen_on(basic_kernels)
 mlir_tablegen_on(test_kernels)
 mlir_tablegen_on(infrt_base DIALECT infrt)
@@ -27,8 +24,7 @@ mlir_add_rewriter(rewrite)
 
 # TODO(Superjomn) add a cmake function cc_executable to ecapsulate the following code
 add_executable(infrtopt opt.cc)
-target_link_libraries(infrtopt infrt ${mlir_libs})
-add_dependencies(infrtopt infrt)
+target_link_libraries(infrtopt infrt)
 
 add_executable(print-ir print_ir.cc)
 target_link_libraries(print-ir infrt ${mlir_libs})

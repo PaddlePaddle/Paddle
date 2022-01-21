@@ -20,61 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-template <typename T>
-inline const T* Tensor::data() const {
-  check_memory_size();
-  bool valid =
-      std::is_same<T, void>::value || type_ == DataTypeTrait<T>::DataType();
-  PADDLE_ENFORCE_EQ(
-      valid, true,
-      platform::errors::InvalidArgument(
-          "Tensor holds the wrong type, it holds %s, but desires to be %s.",
-          DataTypeToString(type_),
-          DataTypeToString(DataTypeTrait<T>::DataType())));
-
-  return reinterpret_cast<const T*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
-}
-
-inline bool Tensor::IsInitialized() const { return holder_ != nullptr; }
-
-template <typename T>
-inline T* Tensor::data() {
-  check_memory_size();
-  bool valid =
-      std::is_same<T, void>::value || type_ == DataTypeTrait<T>::DataType();
-  PADDLE_ENFORCE_EQ(
-      valid, true,
-      platform::errors::InvalidArgument(
-          "Tensor holds the wrong type, it holds %s, but desires to be %s",
-          DataTypeToString(type_),
-          DataTypeToString(DataTypeTrait<T>::DataType())));
-
-  return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                              offset_);
-}
-
-inline const void* Tensor::data() const {
-  check_memory_size();
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 offset_);
-}
-
-template <typename T>
-inline T* Tensor::mutable_data(const DDim& dims, const platform::Place& place,
-                               size_t requested_size) {
-  static_assert(std::is_pod<T>::value, "T must be POD");
-  Resize(dims);
-  return mutable_data<T>(place, requested_size);
-}
-
-template <typename T>
-inline T* Tensor::mutable_data(const platform::Place& place,
-                               size_t requested_size) {
-  static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(
-      mutable_data(place, DataTypeTrait<T>::DataType(), requested_size));
-}
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   int rank = src.dims().size();

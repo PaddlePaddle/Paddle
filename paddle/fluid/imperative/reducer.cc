@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -24,6 +25,7 @@
 
 #include "paddle/fluid/imperative/parallel_context.h"
 
+#include "paddle/pten/core/dense_tensor.h"
 namespace paddle {
 namespace imperative {
 
@@ -835,7 +837,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // thrown in comm_pool_.
     auto next_group = next_group_;
     comm_pool_->enqueue([this, run_order, next_group, &group] {
-      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+      auto dev_id = place_.device;
       platform::SetXPUDeviceId(dev_id);
       FusedAllReduceSchedule(run_order, group, next_group);
       {
@@ -975,7 +977,8 @@ void Reducer::ProcessUnusedDenseVars() {
       auto *dest_grad_tensor =
           grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
       const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-      TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
+      paddle::framework::TensorCopy(src_tensor, place_, *dev_ctx,
+                                    dest_grad_tensor);
       dest_grad_tensor->Resize(dest_dims);
     }
   }

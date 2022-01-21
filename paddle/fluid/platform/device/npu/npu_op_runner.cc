@@ -231,7 +231,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
   auto *dev_ctx =
       static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
-  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  paddle::framework::TensorFromVector(dims, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
 
   // create aclTensorDesc
@@ -247,7 +247,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
   auto *dev_ctx =
       static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
-  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  paddle::framework::TensorFromVector(dims, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
 
   // create aclTensorDesc
@@ -263,7 +263,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&values) {
   auto *dev_ctx =
       static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
-  TensorFromVector(values, *dev_ctx, &host_tensor);
+  paddle::framework::TensorFromVector(values, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
 
   // create aclTensorDesc
@@ -279,7 +279,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<double> &&values) {
   auto *dev_ctx =
       static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
-  TensorFromVector(values, *dev_ctx, &host_tensor);
+  paddle::framework::TensorFromVector(values, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
 
   // create aclTensorDesc
@@ -401,7 +401,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
-  void *ptr = tensor.data<void>();
+  void *ptr = tensor.data();
   VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.memory_size();
   auto *buffer = aclCreateDataBuffer(ptr, tensor.memory_size());
   PADDLE_ENFORCE_NOT_NULL(
