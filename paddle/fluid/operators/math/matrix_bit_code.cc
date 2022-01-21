@@ -227,11 +227,11 @@ template <typename T>
 struct MatrixBitCodeFunctorMulGradWeightSR
     : public boost::static_visitor<void> {
   const framework::Tensor &tmat_;
-  framework::SelectedRows *weight_;
+  pten::SelectedRows *weight_;
   const framework::Tensor &input_;
 
   MatrixBitCodeFunctorMulGradWeightSR(const framework::Tensor &tmat,
-                                      framework::SelectedRows *weight,
+                                      pten::SelectedRows *weight,
                                       const framework::Tensor &input)
       : tmat_(tmat), weight_(weight), input_(input) {}
 
@@ -274,7 +274,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR
 
 template <typename T>
 void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
-                                            framework::SelectedRows *weight,
+                                            pten::SelectedRows *weight,
                                             const framework::Tensor &input) {
   MatrixBitCodeFunctorMulGradWeightSR<T> func(tmat, weight, input);
   code_table_.apply_visitor(func);

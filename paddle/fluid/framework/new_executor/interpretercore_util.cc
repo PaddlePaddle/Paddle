@@ -468,8 +468,8 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<SelectedRows>()
+      } else if (var->IsType<pten::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<pten::SelectedRows>()
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {

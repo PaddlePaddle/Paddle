@@ -124,8 +124,8 @@ static void CopyVar(const framework::Variable& var,
     auto* dst_tensor = dst.GetMutable<framework::LoDTensor>();
     framework::TensorCopySync(src_tensor, src_tensor.place(), dst_tensor);
   } else {
-    const auto& src_selected_rows = var.Get<framework::SelectedRows>();
-    auto* dst_selected_rows = dst.GetMutable<framework::SelectedRows>();
+    const auto& src_selected_rows = var.Get<pten::SelectedRows>();
+    auto* dst_selected_rows = dst.GetMutable<pten::SelectedRows>();
     dst_selected_rows->set_rows(src_selected_rows.rows());
     dst_selected_rows->set_height(src_selected_rows.height());
     framework::TensorCopySync(src_selected_rows.value(),
@@ -148,8 +148,8 @@ static bool IsEqualVar(const framework::Variable& var1,
     framework::TensorCopySync(var2.Get<framework::LoDTensor>(),
                               platform::CPUPlace(), &t2);
   } else {
-    auto& s1 = var1.Get<framework::SelectedRows>();
-    auto& s2 = var2.Get<framework::SelectedRows>();
+    auto& s1 = var1.Get<pten::SelectedRows>();
+    auto& s2 = var2.Get<pten::SelectedRows>();
 
     if (s1.height() != s2.height()) {
       return false;
@@ -166,9 +166,9 @@ static bool IsEqualVar(const framework::Variable& var1,
       return false;
     }
 
-    framework::TensorCopySync(var1.Get<framework::SelectedRows>().value(),
+    framework::TensorCopySync(var1.Get<pten::SelectedRows>().value(),
                               platform::CPUPlace(), &t1);
-    framework::TensorCopySync(var2.Get<framework::SelectedRows>().value(),
+    framework::TensorCopySync(var2.Get<pten::SelectedRows>().value(),
                               platform::CPUPlace(), &t2);
   }
 
@@ -211,7 +211,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
   dims[0] = row_number;
 
   framework::Variable ret;
-  auto* sr = ret.GetMutable<framework::SelectedRows>();
+  auto* sr = ret.GetMutable<pten::SelectedRows>();
   auto tensor_var = RandomTensor<T>(dims, place, low, high);
   sr->mutable_value()->ShareDataWith(
       tensor_var.template Get<framework::LoDTensor>());

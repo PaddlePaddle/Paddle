@@ -76,7 +76,7 @@ void SerializeToMultiVarMsgAndIOBuf(
 
     if (var->IsType<framework::LoDTensor>()) {
       SerializeLodTensor(var, ctx, send_var_msg, &temp_iobuf);
-    } else if (var->IsType<framework::SelectedRows>()) {
+    } else if (var->IsType<pten::SelectedRows>()) {
       SerializeSelectedRows(var, ctx, send_var_msg, &temp_iobuf);
     }
     iobuf->append(temp_iobuf);
@@ -127,7 +127,7 @@ void SerializeLodTensor(framework::Variable* var,
 void SerializeSelectedRows(framework::Variable* var,
                            const platform::DeviceContext& ctx, VarMsg* var_msg,
                            butil::IOBuf* iobuf) {
-  framework::SelectedRows* slr = var->GetMutable<framework::SelectedRows>();
+  pten::SelectedRows* slr = var->GetMutable<pten::SelectedRows>();
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
 
@@ -255,7 +255,7 @@ void DeserializeSelectedRows(
     butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
     const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
-  auto* slr = var->GetMutable<framework::SelectedRows>();
+  auto* slr = var->GetMutable<pten::SelectedRows>();
   framework::Tensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
   std::vector<int64_t> tmp_rows(msg.dims()[0]);

@@ -57,9 +57,9 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
     MLUCnnl::Fill(ctx, bias, bias_desc.get(), GetBasePtr(&bias_tensor));
 
     auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<framework::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+    if (in_var->IsType<pten::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<pten::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<pten::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }

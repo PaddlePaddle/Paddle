@@ -24,10 +24,11 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/device_context.h"
-
+namespace pten {
+class SelectedRows;
+}  // namespace pten
 namespace paddle {
 namespace framework {
-class SelectedRows;
 
 namespace details {
 struct VarHandle;

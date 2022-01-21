@@ -120,9 +120,9 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     tran_lod_tensor->set_format(in_lod_tensor.format());
 #endif
     tran_lod_tensor->ShareDataWith(tensor);
-  } else if (in_var.IsType<SelectedRows>()) {
-    auto &in_selected_rows = in_var.Get<SelectedRows>();
-    auto *trans_selected_rows = out_var->GetMutable<SelectedRows>();
+  } else if (in_var.IsType<pten::SelectedRows>()) {
+    auto &in_selected_rows = in_var.Get<pten::SelectedRows>();
+    auto *trans_selected_rows = out_var->GetMutable<pten::SelectedRows>();
     trans_selected_rows->set_height(in_selected_rows.height());
     trans_selected_rows->set_rows(in_selected_rows.rows());
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);

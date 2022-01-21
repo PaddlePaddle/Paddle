@@ -112,7 +112,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
           param->numel(), param_out->mutable_data<T>(ctx.GetPlace()),
           master_in_data, master_out_data);
 
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.
@@ -121,7 +121,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
           platform::errors::InvalidArgument(
               "The input tensor Param of SgdOp should be equal with ParamOut "
               "if variable's type is SelectedRows."));
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
 
       auto in_height = grad->height();
       auto out_dims = param_out->dims();

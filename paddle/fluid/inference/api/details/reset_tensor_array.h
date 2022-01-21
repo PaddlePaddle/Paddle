@@ -43,7 +43,7 @@ struct TensorArrayBatchCleaner {
     constexpr auto kLoDTensorId =
         framework::VarTypeTrait<framework::LoDTensor>::kId;
     constexpr auto kSelectedRowsId =
-        framework::VarTypeTrait<framework::SelectedRows>::kId;
+        framework::VarTypeTrait<pten::SelectedRows>::kId;
     constexpr auto kFetchListId =
         framework::VarTypeTrait<framework::FetchList>::kId;
     valid_types_.insert(kTensorId);

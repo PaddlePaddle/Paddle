@@ -218,10 +218,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
               rho, epsilon, momentum, grad_func));
         }
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto &grad = grad_var->Get<framework::SelectedRows>();
-      framework::SelectedRows tmp_merged_grad;
-      framework::SelectedRows *merged_grad = &tmp_merged_grad;
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto &grad = grad_var->Get<pten::SelectedRows>();
+      pten::SelectedRows tmp_merged_grad;
+      pten::SelectedRows *merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(dev_ctx, grad, merged_grad);
 

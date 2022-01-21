@@ -28,7 +28,7 @@ namespace paddle {
 namespace distributed {
 
 using framework::LoDTensor;
-using framework::SelectedRows;
+using pten::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
@@ -293,7 +293,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(var_name);
-  auto *tensor = send_var->GetMutable<SelectedRows>();
+  auto *tensor = send_var->GetMutable<pten::SelectedRows>();
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
@@ -1012,10 +1012,10 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
 
   auto *var = scope.FindVar(table_name);
 
-  PADDLE_ENFORCE_EQ(var->IsType<framework::SelectedRows>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<pten::SelectedRows>(), true,
                     platform::errors::InvalidArgument(
                         "Only need to send Sparse Grad in Geo mode."));
-  auto &rows = var->Get<framework::SelectedRows>().rows();
+  auto &rows = var->Get<pten::SelectedRows>().rows();
 
   // insert ids which has not been record
   for (size_t j = 0; j < rows.size(); j++) {
@@ -1290,7 +1290,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
   auto *var_delta = delta_scope_->Var(varname);
-  auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
+  auto *t_delta = var_delta->GetMutable<pten::SelectedRows>();
   auto *var_t_value = t_delta->mutable_value();
   var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
   auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());

@@ -48,7 +48,7 @@ class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
     VLOG(4) << "[ONEDNN]: sgd_dense_param_kernel<T, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+    const auto *grad = ctx.Input<pten::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();

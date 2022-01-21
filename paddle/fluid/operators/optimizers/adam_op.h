@@ -521,8 +521,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
             beta2 * beta2_pow->data<T>()[0];
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -537,8 +537,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {

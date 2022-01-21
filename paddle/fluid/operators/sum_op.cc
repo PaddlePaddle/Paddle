@@ -165,9 +165,9 @@ class SumOp : public framework::OperatorWithKernel {
 
       return framework::OpKernelType(data_type, ctx.GetPlace(), layout,
                                      library);
-    } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
+    } else if (x_vars[0]->IsType<pten::SelectedRows>()) {
       for (auto& var : x_vars) {
-        auto& value = var->Get<framework::SelectedRows>().value();
+        auto& value = var->Get<pten::SelectedRows>().value();
         if (value.IsInitialized()) {
           return framework::OpKernelType(value.type(), ctx.device_context(),
                                          layout, library);

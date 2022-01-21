@@ -72,18 +72,18 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
     }
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>());
-  } else if (src.IsType<framework::SelectedRows>()) {
+  } else if (src.IsType<pten::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<framework::SelectedRows>()) {
+      if (!dst->IsType<pten::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>());
+      AllReduce(src.Get<pten::SelectedRows>(),
+                dst->GetMutable<pten::SelectedRows>());
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<framework::SelectedRows>(),
-                tmp_dst.GetMutable<framework::SelectedRows>());
+      AllReduce(src.Get<pten::SelectedRows>(),
+                tmp_dst.GetMutable<pten::SelectedRows>());
       *dst = std::move(tmp_dst);
     }
   } else {
@@ -120,8 +120,8 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
     break;                                                        \
   }
 
-void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
-                                    framework::SelectedRows *dst) {
+void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
+                                    pten::SelectedRows *dst) {
   // auto ;
   // int local_rank = strategy_.local_rank_;
   int nranks = strategy_.nranks_;

@@ -204,7 +204,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
                                   "Custom tree must be set for sparse mode!"));
       framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
-          ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
+          ctx.Output<pten::SelectedRows>(framework::GradVarName("W"));
       w_grad->set_rows(real_rows);
       // Build a map of id -> row_index to speed up finding the index of one id
       w_grad->set_height(w.dims()[0]);

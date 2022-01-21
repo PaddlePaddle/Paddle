@@ -31,7 +31,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = pten::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 
@@ -364,8 +364,8 @@ class NCEGradKernel : public framework::OpKernel<T> {
       DDim table_dim;
       if (table_var->IsType<LoDTensor>()) {
         table_dim = context.Input<LoDTensor>("Weight")->dims();
-      } else if (table_var->IsType<SelectedRows>()) {
-        auto *table_t = context.Input<SelectedRows>("Weight");
+      } else if (table_var->IsType<pten::SelectedRows>()) {
+        auto *table_t = context.Input<pten::SelectedRows>("Weight");
         table_dim = table_t->value().dims();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -373,7 +373,8 @@ class NCEGradKernel : public framework::OpKernel<T> {
             "must be either LoDTensor or SelectedRows"));
       }
 
-      auto d_w = context.Output<SelectedRows>(framework::GradVarName("Weight"));
+      auto d_w =
+          context.Output<pten::SelectedRows>(framework::GradVarName("Weight"));
 
       d_w->set_rows(labels);
       d_w->set_height(table_dim[0]);

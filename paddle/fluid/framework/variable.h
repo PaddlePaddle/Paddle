@@ -123,8 +123,8 @@ inline pten::TensorInplaceVersion* Variable::InplaceVersionCounter() {
     version_counter_ptr =
         &GetMutable<framework::Tensor>()->InplaceVersionCounter();
 
-  } else if (IsType<framework::SelectedRows>()) {
-    version_counter_ptr = &GetMutable<framework::SelectedRows>()
+  } else if (IsType<pten::SelectedRows>()) {
+    version_counter_ptr = &GetMutable<pten::SelectedRows>()
                                ->mutable_value()
                                ->InplaceVersionCounter();
   } else {

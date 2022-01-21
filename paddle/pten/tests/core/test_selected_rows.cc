@@ -40,7 +40,7 @@ class SelectedRowsTester : public ::testing::Test {
 
  protected:
   pten::CPUPlace place_;
-  std::unique_ptr<SelectedRows> selected_rows_{nullptr};
+  std::unique_ptr<pten::SelectedRows> selected_rows_{nullptr};
 };
 
 TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }

@@ -252,8 +252,7 @@ class MatrixBitCodeFunctor {
   /* For SelectedRows Weight, For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::Tensor& tmat,
-                     framework::SelectedRows* weight,
+  void MulGradWeight(const framework::Tensor& tmat, pten::SelectedRows* weight,
                      const framework::Tensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))

@@ -151,7 +151,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *table = context.Input<LoDTensor>("W");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *d_table =
+          context.Output<pten::SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();

@@ -32,7 +32,7 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
                           ctx.InputName("X")));
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    if (x_var->IsType<framework::SelectedRows>()) {
+    if (x_var->IsType<pten::SelectedRows>()) {
       framework::Tensor x_for_selectedrows;
       std::vector<const framework::Tensor*> ins;
       std::vector<framework::Tensor*> outs;

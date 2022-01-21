@@ -40,8 +40,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     if (var->IsType<framework::LoDTensor>()) {
       emb_dim = var->Get<framework::LoDTensor>().dims()[1];
-    } else if (var->IsType<framework::SelectedRows>()) {
-      emb_dim = var->Get<framework::SelectedRows>().value().dims()[1];
+    } else if (var->IsType<pten::SelectedRows>()) {
+      emb_dim = var->Get<pten::SelectedRows>().value().dims()[1];
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of `W` must be Tensor, SelectedRows.But got "

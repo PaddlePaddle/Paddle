@@ -29,9 +29,8 @@ class ShareDataKernel : public framework::OpKernel<T> {
       auto *detach_tensor = out_var->GetMutable<framework::LoDTensor>();
       detach_tensor->ShareDataWith(origin_tensor);
     } else {
-      const auto &origin_selected_rows = in_var->Get<framework::SelectedRows>();
-      auto *detach_selected_rows =
-          out_var->GetMutable<framework::SelectedRows>();
+      const auto &origin_selected_rows = in_var->Get<pten::SelectedRows>();
+      auto *detach_selected_rows = out_var->GetMutable<pten::SelectedRows>();
       detach_selected_rows->mutable_value()->ShareDataWith(
           origin_selected_rows.value());
     }

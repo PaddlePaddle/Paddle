@@ -87,7 +87,7 @@ TEST(AssignOp, AssignSelectedRows) {
   std::vector<int64_t> rows{0, 4, 7};
   int64_t height = 10;
 
-  paddle::framework::SelectedRows input(rows, height);
+  pten::SelectedRows input(rows, height);
   paddle::framework::Tensor* input_tensor = input.mutable_value();
 
   paddle::framework::DDim in_dims = paddle::framework::make_ddim({3, 4});
@@ -98,7 +98,7 @@ TEST(AssignOp, AssignSelectedRows) {
 
   assign_functor(input);
 
-  auto& out_selected_row = output.Get<paddle::framework::SelectedRows>();
+  auto& out_selected_row = output.Get<pten::SelectedRows>();
   const paddle::framework::Vector<int64_t>& out_rows = out_selected_row.rows();
   EXPECT_EQ(rows.size(), out_rows.size());
   for (size_t i = 0; i < rows.size(); ++i) {

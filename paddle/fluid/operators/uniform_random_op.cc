@@ -73,8 +73,8 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (out_var->IsType<framework::SelectedRows>()) {
-      auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
+    if (out_var->IsType<pten::SelectedRows>()) {
+      auto *selected_rows = out_var->GetMutable<pten::SelectedRows>();
       tensor = selected_rows->mutable_value();
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
       if (!new_shape.empty()) shape = new_shape;

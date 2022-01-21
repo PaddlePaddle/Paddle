@@ -24,8 +24,8 @@ template <typename DeviceContext, typename T>
 class MergeSelectedRowsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::SelectedRows>("X");
-    auto* out = context.Output<framework::SelectedRows>("Out");
+    auto* x = context.Input<pten::SelectedRows>("X");
+    auto* out = context.Output<pten::SelectedRows>("Out");
 
     math::scatter::MergeAdd<DeviceContext, T> merge_func;
     merge_func(context.template device_context<DeviceContext>(), *x, out);

@@ -151,7 +151,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       if (lod_length && in_i.IsInitialized()) {
         in_data.emplace_back(in_i.data<T>());
       }
-    } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
+    } else if (in_vars[i]->IsType<pten::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
   }
@@ -162,7 +162,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     size_t rows = 0;
     int64_t length = 0;
     for (auto index : selectrow_index) {
-      auto &sr = in_vars[index]->Get<framework::SelectedRows>();
+      auto &sr = in_vars[index]->Get<pten::SelectedRows>();
       auto &sr_value = sr.value();
       auto &sr_rows = sr.rows();
 
@@ -235,7 +235,7 @@ class SumKernel<platform::CUDADeviceContext, T>
 
     if (out_var->IsType<framework::LoDTensor>()) {
       SumToLoDTensor<T>(context);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<pten::SelectedRows>()) {
       SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);

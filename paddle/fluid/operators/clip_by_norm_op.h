@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+// using SelectedRows = pten::SelectedRows;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -43,20 +43,21 @@ class ClipByNormKernel : public framework::OpKernel<T> {
 
       output = context.Output<Tensor>("Out");
       output->mutable_data<T>(context.GetPlace());
-    } else if (in_var->IsType<SelectedRows>()) {
-      auto* x = context.Input<SelectedRows>("X");
+    } else if (in_var->IsType<pten::SelectedRows>()) {
+      auto* x = context.Input<pten::SelectedRows>("X");
 
       // merge ids in selected rows first
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
-      SelectedRows* merged_input =
+      pten::SelectedRows* merged_input =
           const_cast<framework::Scope&>(context.scope())
               .Var()
-              ->GetMutable<SelectedRows>();
+              ->GetMutable<pten::SelectedRows>();
       merge_func(context.template device_context<DeviceContext>(), *x,
                  merged_input);
       input = &(merged_input->value());
 
-      SelectedRows* output_selected_rows = context.Output<SelectedRows>("Out");
+      pten::SelectedRows* output_selected_rows =
+          context.Output<pten::SelectedRows>("Out");
       output_selected_rows->set_rows(merged_input->rows());
       output_selected_rows->set_height(merged_input->height());
       output = output_selected_rows->mutable_value();

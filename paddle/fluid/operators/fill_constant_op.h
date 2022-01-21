@@ -92,8 +92,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->Resize(shape);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+    } else if (out_var->IsType<pten::SelectedRows>()) {
+      tensor = out_var->GetMutable<pten::SelectedRows>()->mutable_value();
       tensor->Resize(shape);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
