@@ -12,7 +12,7 @@ cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place 
 cc_library(fetch_barrier_op_handle SRCS fetch_barrier_op_handle.cc DEPS framework_proto scope place operator op_registry)
 cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_helper)
 
-cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
+cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows_utils)
 
 if(WITH_PSCORE)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -88,7 +88,7 @@ endif()
 
 cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor)
 
-cc_library(eager_deletion_op_handle SRCS eager_deletion_op_handle.cc DEPS lod_tensor selected_rows reference_count_pass_helper)
+cc_library(eager_deletion_op_handle SRCS eager_deletion_op_handle.cc DEPS lod_tensor selected_rows_utils reference_count_pass_helper)
 
 set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
     multi_devices_helper
@@ -114,7 +114,7 @@ cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_ha
 cc_test(gather_op_test SRCS gather_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
         device_context gather_op_handle)
 
-cc_library(scope_buffered_monitor SRCS scope_buffered_monitor.cc DEPS scope profiler selected_rows)
+cc_library(scope_buffered_monitor SRCS scope_buffered_monitor.cc DEPS scope profiler selected_rows_utils)
 cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_executor.cc DEPS ssa_graph_executor scope_buffered_monitor)
 #cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
 #        device_context reduce_op_handle )

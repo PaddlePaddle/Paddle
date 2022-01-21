@@ -16,17 +16,13 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-
 namespace framework {
 class Variable;
 }  // namespace framework
-
 }  // namespace paddle
 
 namespace paddle {

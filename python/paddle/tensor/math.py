@@ -3559,8 +3559,8 @@ def gcd(x, y, name=None):
         If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        x (Tensor): An N-D Tensor, the data type is int32，int64. 
+        y (Tensor): An N-D Tensor, the data type is int32，int64. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3621,8 +3621,8 @@ def gcd(x, y, name=None):
 
         return x
     else:
-        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
-        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        check_variable_and_dtype(x, 'x', ['int32', 'int64'], 'gcd')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'gcd')
         out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
         return out
 
@@ -3637,8 +3637,8 @@ def lcm(x, y, name=None):
         If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        x (Tensor): An N-D Tensor, the data type is int32，int64. 
+        y (Tensor): An N-D Tensor, the data type is int32，int64. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
