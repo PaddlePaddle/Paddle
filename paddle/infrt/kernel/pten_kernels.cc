@@ -23,42 +23,14 @@
 
 using infrt::host_context::Attribute;
 
-namespace pten {
-
-template <>
-void AddKernel<float, float>(float const& dev_ctx,
-                             pten::DenseTensor const& x,
-                             pten::DenseTensor const& y,
-                             int axis,
-                             pten::DenseTensor* out) {
-  // nothing to do
-}
-
-template <>
-void AddKernel<int, int>(int const& dev_ctx,
-                         pten::DenseTensor const& x,
-                         pten::DenseTensor const& y,
-                         int axis,
-                         pten::DenseTensor* out) {
-  // nothing to do
-}
-
-}  // namespace pten
-
 namespace infrt {
 namespace kernel {
 
 void RegisterPtenKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel(
-      "pd_cpu.add.float32",
-      INFRT_KERNEL(pten::AddKernel<
-                   float,
-                   float /*should be CPUContext, use float temporarily*/>));
-  registry->AddKernel(
-      "pd_cpu.add.int32",
-      INFRT_KERNEL(
-          pten::AddKernel<int,
-                          int /*should be CPUContext, use int temporarily*/>));
+  registry->AddKernel("pd_cpu.add.float32",
+                      INFRT_KERNEL(pten::AddKernel<float, pten::CPUContext>));
+  registry->AddKernel("pd_cpu.add.int32",
+                      INFRT_KERNEL(pten::AddKernel<int, pten::CPUContext>));
 }
 
 }  // namespace kernel
