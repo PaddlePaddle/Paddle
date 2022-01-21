@@ -50,7 +50,7 @@ class TrtConvertReduceMeanTest(TrtLayerAutoScanTest):
             for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
                         [-4, 1], [3, 4, 5]]:
                 for reduce_all in [True, False]:
-                    for out_dtype in [-1, 5]:
+                    for out_dtype in [-1, 2, 5]:
                         dics = [{
                             "keep_dim": keep_dim,
                             "dim": dim,
