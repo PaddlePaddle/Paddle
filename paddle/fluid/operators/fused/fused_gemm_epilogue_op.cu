@@ -173,6 +173,172 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+
+    const Tensor* dout = ctx.Input<Tensor>("DOut");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* y = ctx.Input<Tensor>("Y");
+
+    Tensor* dx = ctx.Output<Tensor>("DX");
+    Tensor* dy = ctx.Output<Tensor>("DY");
+    Tensor* dbias = ctx.Output<Tensor>("DBias");
+
+    std::string activation = ctx.Attr<std::string>("activation");
+    std::string auxiliary_key = ctx.Attr<std::string>("auxiliary_key");
+
+    auto dout_mat_dims =
+        framework::flatten_to_2d(dout->dims(), dout->dims().size() - 1);
+    auto x_mat_dims = framework::flatten_to_2d(x->dims(), x->dims().size() - 1);
+
+    int64_t M = x_mat_dims[0];
+    int64_t K = y->dims()[0];
+    int64_t N = y->dims()[1];
+
+    cudaDataType_t mat_type = CUDA_R_32F;
+    cudaDataType_t scale_type = CUDA_R_32F;
+    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+    if (std::is_same<T, paddle::platform::float16>::value) {
+      mat_type = CUDA_R_16F;
+      scale_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, double>::value) {
+      mat_type = CUDA_R_64F;
+      scale_type = CUDA_R_64F;
+      compute_type = CUBLAS_COMPUTE_64F;
+    }
+
+    cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+    size_t workspace_size = 4 * 1024 * 1024;
+    const cublasLtMatmulAlgo_t* algo = nullptr;
+    cudaStream_t stream = 0;
+
+    double alpha64 = 1.0, beta64 = 0.0;
+    float alpha32 = 1.0f, beta32 = 0.0f;
+    void *alpha, *beta;
+    if (std::is_same<T, double>::value) {
+      alpha = &alpha64;
+      beta = &beta64;
+    } else {
+      alpha = &alpha32;
+      beta = &beta32;
+    }
+
+    cublasLtMatmulDesc_t dx_operation_desc = NULL;
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+        &dx_operation_desc, compute_type, scale_type));
+    cublasOperation_t trans_dout = CUBLAS_OP_N;
+    cublasOperation_t trans_y = CUBLAS_OP_T;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_dout,
+            sizeof(trans_dout)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y,
+            sizeof(trans_y)));
+    cublasLtEpilogue_t epiloque_func_for_dx = get_epilogue_type_(activation);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
+            &epiloque_func_for_dx, sizeof(epiloque_func_for_dx)));
+
+    if (activation != "none") {
+      auto* aux_data =
+          EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+              &aux_data, sizeof(aux_data)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD, &N,
+              sizeof(N)));
+    }
+
+    cublasLtMatrixLayout_t dout_desc = NULL, y_desc = NULL, dx_desc = NULL;
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &dout_desc, mat_type, N, M, N));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &y_desc, mat_type, N, K, N));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &dx_desc, mat_type, K, M, K));
+
+    memory::allocation::AllocationPtr dx_workspace =
+        memory::Alloc(dev_ctx, workspace_size);
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto* dx_data = dx->data<T>();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
+        lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
+        dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
+        algo, dx_workspace->ptr(), workspace_size, stream));
+
+    cublasLtMatmulDesc_t dy_operation_desc = NULL;
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+        &dy_operation_desc, compute_type, scale_type));
+    cublasOperation_t trans_x = CUBLAS_OP_T;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_dout,
+            sizeof(trans_dout)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_x,
+            sizeof(trans_x)));
+    cublasLtEpilogue_t epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADA;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dy_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE,
+            &epiloque_func_for_dy, sizeof(epiloque_func_for_dy)));
+
+    dbias->mutable_data<T>(ctx.GetPlace());
+    auto* dbias_data = dbias->data<T>();
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            dy_operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &dbias_data,
+            sizeof(dbias_data)));
+
+    cublasLtMatrixLayout_t x_desc = NULL, dy_desc = NULL;
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &x_desc, mat_type, K, M, K));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &dy_desc, mat_type, N, K, N));
+
+    memory::allocation::AllocationPtr dy_workspace =
+        memory::Alloc(dev_ctx, workspace_size);
+
+    dy->mutable_data<T>(ctx.GetPlace());
+    auto* dy_data = dy->data<T>();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
+        lt_handle, dy_operation_desc, alpha, dout->data<T>(), dout_desc,
+        x->data<T>(), x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, algo,
+        dy_workspace->ptr(), workspace_size, stream));
+  }
+
+ private:
+  static cublasLtEpilogue_t get_epilogue_type_(std::string activation) {
+    if (activation == "relu") {
+      return CUBLASLT_EPILOGUE_DRELU;
+    } else if (activation == "gelu") {
+      return CUBLASLT_EPILOGUE_DGELU;
+    } else if (activation == "none") {
+      return CUBLASLT_EPILOGUE_DEFAULT;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          true, false,
+          platform::errors::InvalidArgument(
+              "The activation attribute of fused_gemm_epilogue op should be"
+              " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
+              "But received activation=%s.",
+              activation));
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -184,4 +350,13 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext,
                                  paddle::platform::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    fused_gemm_epilogue_grad,
+    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
+                                     float>,
+    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
+                                     double>,
+    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
+                                     paddle::platform::float16>);
 #endif
