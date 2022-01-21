@@ -962,6 +962,23 @@ void Copy<pten::Place, pten::MLUPlace>(pten::Place dst_place, void* dst,
        stream);
 }
 
+// NOTE: only for (MLUPlace) -> (CPUPlace) with mluStream.
+template <>
+void Copy<pten::CPUPlace, pten::Place>(pten::CPUPlace dst_place, void* dst,
+                                       pten::Place src_place, const void* src,
+                                       size_t num, mluStream stream) {
+  Copy(pten::Place(dst_place.GetType()), dst, src_place, src, num, stream);
+}
+
+// NOTE: only for (CPUPlace) -> (MLUPlace) with mluStream.
+template <>
+void Copy<pten::Place, pten::CPUPlace>(pten::Place dst_place, void* dst,
+                                       pten::CPUPlace src_place,
+                                       const void* src, size_t num,
+                                       mluStream stream) {
+  Copy(dst_place, dst, pten::Place(src_place.GetType()), src, num, stream);
+}
+
 #endif  // PADDLE_WITH_MLU
 
 // NOTE: Only for CPUPlace, XPUPlace and PinnedPlace.
