@@ -129,10 +129,6 @@ _CACHE_LOCK = threading.Lock()
 _FUNCTION_CACHE = FunctionCache()
 
 
-def clear_function_cache():
-    _FUNCTION_CACHE._converted_static_func_caches.clear()
-
-
 def convert_to_static(function):
     """
     Transforms function of dygraph into static function using the cache mechanism.

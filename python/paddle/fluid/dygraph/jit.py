@@ -33,7 +33,7 @@ from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_stat
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import ConversionOptions, CONVERSION_OPTIONS
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators, clear_function_cache
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
@@ -44,7 +44,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load', 'not_to_static', 'clear_function_cache'
+    'set_verbosity', 'save', 'load', 'not_to_static'
 ]
 
 
