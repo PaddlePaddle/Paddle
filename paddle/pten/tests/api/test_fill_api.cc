@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, full_like) {

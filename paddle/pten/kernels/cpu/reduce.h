@@ -50,13 +50,13 @@ void ReduceFunctor(const DeviceContext& context,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = paddle::framework::vectorize(out_dims);
+    auto dims_vector = pten::framework::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = paddle::framework::make_ddim(dims_vector);
+    out_dims = pten::framework::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;

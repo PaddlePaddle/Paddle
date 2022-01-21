@@ -36,7 +36,7 @@ void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(paddle::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 

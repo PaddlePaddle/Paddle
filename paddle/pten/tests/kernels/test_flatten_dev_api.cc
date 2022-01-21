@@ -36,7 +36,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, flatten) {
   // 1. create tensor
