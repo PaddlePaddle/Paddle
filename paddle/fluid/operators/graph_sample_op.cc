@@ -43,16 +43,16 @@ class GraphSampleOP : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The parameter 'sample_sizes' in GraphSampleOp must be set. "
             "But received 'sample_sizes' is empty."));
-    // const bool& return_eids = ctx->Attrs().Get<bool>("return_eids");
-    // if (return_eids) {
-    OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
-                   "GraphSampling");
-    //}
+    const bool& return_eids = ctx->Attrs().Get<bool>("return_eids");
+    if (return_eids) {
+      OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
+                     "GraphSampling");
+      ctx->SetOutputDim("Out_Eids", {-1});
+    }
 
-    ctx->SetOutputDim("Out_Src", {-1});
-    ctx->SetOutputDim("Out_Dst", {-1});
+    ctx->SetOutputDim("Out_Src", {-1, 1});
+    ctx->SetOutputDim("Out_Dst", {-1, 1});
     ctx->SetOutputDim("Sample_index", {-1});
-    ctx->SetOutputDim("Out_Eids", {-1});
   }
 
  protected:
@@ -67,7 +67,6 @@ class GraphSampleOP : public framework::OperatorWithKernel {
 class GraphSampleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // AddInput("Unique_Dst", "The unique dst index tensor.");
     AddInput("Src", "The src index tensor after sorted by dst.");
     AddInput("Src_Eids", "The eids of the input graph edges.");
     AddInput("Dst_Count",
@@ -80,13 +79,13 @@ class GraphSampleOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output dst edges tensor after sampling and reindex.");
     AddOutput("Sample_index",
               "The original index of the sampling nodes and center nodes.");
-    AddOutput("Out_Eids", "The eids of the sample edges.");
+    AddOutput("Out_Eids", "The eids of the sample edges.").AsIntermediate();
     AddAttr<std::vector<int>>("sample_sizes",
                               "The sample sizes of graphsage sampling method.")
         .SetDefault({});
-    /*AddAttr<bool>("return_eids",
+    AddAttr<bool>("return_eids",
                   "Whether to return the eids of the sample edges.")
-        .SetDefault(false);*/
+        .SetDefault(false);
     AddComment(R"DOC(
 Graph Learning Sampling operator, mainly for graphsage sampling method currently.
 
