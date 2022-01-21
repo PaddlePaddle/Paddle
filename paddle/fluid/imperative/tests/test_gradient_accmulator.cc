@@ -101,7 +101,7 @@ TEST(test_add_functor, add_functor) {
 
 #ifndef PADDLE_WITH_XPU
   // does not support double when compiled using xpu
-  cpu_res = TensorddTest(cpu_place, cpu_plce, static_cast<double>(1.0),
+  cpu_res = TensorddTest(cpu_place, cpu_palce, static_cast<double>(1.0),
                          static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
 #endif
