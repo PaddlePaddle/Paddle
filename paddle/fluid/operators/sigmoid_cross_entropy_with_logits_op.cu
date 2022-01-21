@@ -22,7 +22,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
