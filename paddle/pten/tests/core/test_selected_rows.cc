@@ -18,9 +18,6 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/pten/core/selected_rows.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
 
 class SelectedRowsTester : public ::testing::Test {
