@@ -135,10 +135,8 @@ struct AbsMaxAndMinGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    auto ones = dx->constant(static_cast<T>(1.));
-    auto zeros = dx->constant(static_cast<T>(0.));
     dx->device(place) = dy->broadcast(dim) * (*x).sign() *
-                        ((*x).abs() == y->broadcast(dim)).select(ones, zeros);
+                        ((*x).abs() == y->broadcast(dim)).template cast<T>();
   }
 };
 
@@ -151,8 +149,6 @@ struct PNormGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    auto ones = dx->constant(static_cast<T>(1.));
-    auto zeros = dx->constant(static_cast<T>(0.));
     dx->device(place) = (*x).abs().pow(this->porder) * (*x).sign() *
                         dy->broadcast(dim) *
                         (*y).pow(-this->porder).broadcast(dim);
