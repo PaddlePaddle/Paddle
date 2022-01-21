@@ -58,7 +58,10 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     const auto &dev_ctx = ctx.template device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
-    pten::AddGradKernel<T>(dev_ctx, *x, *y, *dout, axis, dx, dy);
+    pten::AddGradKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
+        *x, *y, *dout, axis, dx, dy);
   }
 };
 
@@ -84,8 +87,10 @@ class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
     if (ddy != nullptr) {
       ddy_optional = *ddy;
     }
-    pten::AddDoubleGradKernel<T>(dev_ctx, *y, ddx_optional, ddy_optional, *dout,
-                                 axis, ddout);
+    pten::AddDoubleGradKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
+        *y, ddx_optional, ddy_optional, *dout, axis, ddout);
   }
 };
 
@@ -102,8 +107,10 @@ class ElementwiseAddTripleGradKernel : public framework::OpKernel<T> {
 
     const auto &dev_ctx = ctx.template device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
-    pten::AddTripleGradKernel<T>(dev_ctx, *ddx, *ddy, *d_ddout, axis, d_ddx,
-                                 d_ddy);
+    pten::AddTripleGradKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
+        *ddx, *ddy, *d_ddout, axis, d_ddx, d_ddy);
   }
 };
 

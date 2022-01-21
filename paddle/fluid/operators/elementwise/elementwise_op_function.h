@@ -174,6 +174,16 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
   z->mutable_data<OutType>(ctx.GetPlace());
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+    const auto &dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    pten::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func,
+                                                  z);
+
+#endif
+    return;
+  }
   const auto &dev_ctx =
       ctx.template device_context<platform::CPUDeviceContext>();
   pten::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func, z);

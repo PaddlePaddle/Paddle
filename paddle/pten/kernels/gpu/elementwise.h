@@ -591,7 +591,7 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
   z->mutable_data<OutType>(dev_ctx.GetPlace());
-  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+  pten::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
       dev_ctx, ins, &outs, axis, func);
 }
 
