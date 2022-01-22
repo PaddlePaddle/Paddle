@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +23,7 @@ import numpy as np
 class HybridParallelInferenceHelper(object):
     """
     A helper class to split program for inference with hybrid parallelism.
-    
+
     Args:
         startup_program (Program): the startup program.
         main_program (Program): the main program.
@@ -32,17 +32,22 @@ class HybridParallelInferenceHelper(object):
         micro_batch_size (int): number of micro batch size. Default ``1``.
         beam_size (int): number of beam search size. Default ``1``.
         init_comm (bool): wheter if initilize comminication group. Default ``True``.
+        start_ring_id (int): start ring id just is a magic number.
+            Change start_ring_id to avoid conflict between train_startup_program 
+            and test_startup_program. Default ``20`` in train_startup_program.
+            So, you can set a more large number for test_startup_program, e.g. ``40``.
+            Default ``20``.
         role_maker (RoleMakerBase or subclass): user custom define RoleMakerBase.
             If ``role_maker==None``, then use PaddleCloudRoleMaker. Default ``None``.
-    
+
     Returns:
         None.
-        
+
     Write Paradigm:
-    
+
     .. code-block:: bash
         :name: bash-example1
-        
+
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
             # init global cond
@@ -51,10 +56,10 @@ class HybridParallelInferenceHelper(object):
             cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
             cond = layers.cast(step_idx < max_len, dtype="bool")
             while_op = layers.While(cond, is_test=True)
-            
+
             # init global lod_tensor_array for generation task
             arr = layers.array_write(data, step_idx)
-            
+
         with while_op.block():
             with paddle.fluid.device_guard(f'{device}:all'):
                 # read data from global lod_tensor_array
@@ -63,36 +68,36 @@ class HybridParallelInferenceHelper(object):
                 # it need for send_v2 of lod_tensor_array
                 layers.increment(x=step_idx, value=1.0, in_place=True)
                 layers.array_write(element_in_arr, i=step_idx, array=arr)
-                
+
             with paddle.fluid.device_guard(f'{device}:0'):
                 ... some code
-                
+
             with paddle.fluid.device_guard(f'{device}:1'):
                 ... some code
-                
+
             with paddle.fluid.device_guard(f'{device}:{num_pp-1}'):
                 # generate some data in while block and write to global lod_tensor_array
                 # that they are read in next while step.
                 # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
                 layers.array_write(other_var, i=step_idx, array=arr)
-                
+
                 # update cond and assign to cond_int, we will sync cond_int
                 layers.assign(layers.cast(cond, dtype="int32"), cond_int)
-                
+
             with paddle.fluid.device_guard(f'{model._device}:all'):
                 # the code below must at end of while block and exists in device:all
                 layers.assign(layers.cast(cond_int, dtype='bool'), cond)
-                
+
         with paddle.fluid.device_guard(f'{model._device}:all'):
             # use a empty lod_tensor_array to clear lod_tensor_array
             layers.assign(layers.create_array(data.dtype), arr)
-            
-            
+
+
     Examples:
-    
+
     .. code-block:: python
         :name: code-example1
-    
+
         # required: distributed
         import os
         import numpy as np
@@ -100,79 +105,61 @@ class HybridParallelInferenceHelper(object):
         import paddle.fluid.layers as layers
         import paddle.distributed.fleet as fleet
         paddle.enable_static()
-
         nranks = int(os.getenv("PADDLE_TRAINERS_NUM", 1))
         rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
         dev_id = int(os.getenv("FLAGS_selected_gpus", 0))
-
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-
         if nranks > 1:
             dist_strategy = fleet.DistributedStrategy()
             dist_strategy.without_graph_optimization = True
             fleet.init(is_collective=True, strategy=dist_strategy)
-
         device = "gpu"
-
         with paddle.static.program_guard(main_program, startup_program):
             with paddle.fluid.device_guard(f'{device}:0'):
                 X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
-
             with paddle.fluid.device_guard(f'{device}:all'):
                 max_len = layers.fill_constant(
                     shape=[1], dtype="int64", value=5, force_cpu=False, name="n")
                 step_idx = layers.fill_constant(
                     shape=[1], dtype="int64", value=0, force_cpu=False, name="i")
-
                 data = layers.array_write(X, step_idx)
-
                 cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
                 cond = layers.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
-
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
                     input = layers.array_read(array=data, i=step_idx)
                     layers.increment(x=step_idx, value=1.0, in_place=True)
                     layers.array_write(input, i=step_idx, array=data)
-
                 with paddle.fluid.device_guard(f'{device}:0'):
                     param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
                     weight1 = paddle.static.create_parameter(
                         shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
                     hidden1 = paddle.matmul(input, weight1)
-
                 with paddle.fluid.device_guard(f'{device}:1'):
                     param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(2.0))
                     weight2 = paddle.static.create_parameter(
                         shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
                     hidden2 = paddle.matmul(hidden1, weight2)
-
                     layers.array_write(hidden2, i=step_idx, array=data)
-
                     # update cond and assign to cond_int, we will sync cond_int
                     layers.less_than(x=step_idx, y=max_len, cond=cond)
                     layers.assign(layers.cast(cond, dtype="int32"), cond_int)
-
                 with paddle.fluid.device_guard(f'{device}:all'):
                     # the code below must at end of while block and exists in device:all
                     layers.assign(layers.cast(cond_int, dtype='bool'), cond)
-
             with paddle.fluid.device_guard(f'{device}:all'):
                 out = layers.create_array(data.dtype)
                 layers.assign(data, out)
-
             with paddle.fluid.device_guard(f'{device}:all'):
                 # use a empty lod_tensor_array to clear lod_tensor_array
                 layers.assign(layers.create_array(data.dtype), data)
-
         helper = fleet.HybridParallelInferenceHelper(startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks>1)
         helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
-
         exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
         exe.run(startup_program)
-        
+
         np.random.seed(2333)
         for step in range(5):
             init_data = np.random.uniform(low=0.0, high=1.0, size=[2, 2]).astype('float32')
@@ -189,6 +176,7 @@ class HybridParallelInferenceHelper(object):
                  micro_batch_size=1,
                  beam_size=1,
                  init_comm=True,
+                 start_ring_id=20,
                  role_maker=None):
 
         assert isinstance(startup_program, Program)
@@ -212,7 +200,7 @@ class HybridParallelInferenceHelper(object):
         self._pipeline_pair = []
         self._pipeline_pair_in_while = []
         self._pp_ring_map = dict()
-        self.ring_id = 20  # Just a magic number
+        self.ring_id = start_ring_id  # Just a magic number
 
         self.micro_batch_size = micro_batch_size
         self.beam_size = beam_size
@@ -348,11 +336,10 @@ class HybridParallelInferenceHelper(object):
     def _split_program(self, program, stage, block_idx):
         """
         Split a program and get the one with the given pipeline stage.
-
         Args:
             stage (int): pipeline stage
             block_idx (int): block index
-            
+
         Returns:
             used_var_names (set): used var names in block_idx block
         """
@@ -419,9 +406,9 @@ class HybridParallelInferenceHelper(object):
 
     def _add_op_device_attr(self, block):
         """
-        Add op_device attrribute for ops in block that have 
+        Add op_device attrribute for ops in block that have
         not that attribute set.
-        
+
         Args:
             block (Block): the block to process.
         """
@@ -448,7 +435,7 @@ class HybridParallelInferenceHelper(object):
 
     def _check_validation(self, block):
         """
-        Check whether ops in a block have both the op_device and the 
+        Check whether ops in a block have both the op_device and the
         op_role attributes set.
         """
         assert isinstance(block, Block)
@@ -603,15 +590,6 @@ class HybridParallelInferenceHelper(object):
     def _insert_sendrecv_ops_in_while_block(
             self, block, sync_in_while_lastpp2firstpp_var_names,
             sync_in_while_var_names, stage):
-
-        if sync_in_while_lastpp2firstpp_var_names is None and sync_in_while_var_names is None:
-            return
-
-        if sync_in_while_lastpp2firstpp_var_names is None:
-            sync_in_while_lastpp2firstpp_var_names = []
-        if sync_in_while_var_names is None:
-            sync_in_while_var_names = []
-
         dev_ids = []
         for pair in self._pipeline_pair_in_while:
             prev_id, cur_id = pair
@@ -690,11 +668,8 @@ class HybridParallelInferenceHelper(object):
     def _insert_sendrecv_ops_for_results_pipeline_parallel(
             self, block, fetch_var_names_for_pp, stage):
 
-        if fetch_var_names_for_pp is None:
-            return
-
         dev_ids = []
-        for pair in self._pipeline_pair_in_while:
+        for pair in self._pipeline_pair:
             prev_id, cur_id = pair
             if prev_id not in dev_ids:
                 dev_ids.append(prev_id)
@@ -782,23 +757,23 @@ class HybridParallelInferenceHelper(object):
             if op.type == 'while':
                 sub_block_id = op.attr('sub_block').id
                 sub_block = block.program.block(sub_block_id)
-                self.convert_op_device(sub_block, target_device)
+                self.convert_op_device(sub_block, target_ops, target_device)
             if op.type in target_ops:
                 op._set_attr(self._op_device_key, target_device)
 
     def gen_infer_program(self,
-                          sync_in_while_lastpp2firstpp_var_names=None,
-                          sync_in_while_var_names=None,
-                          fetch_var_names_for_pp=None,
+                          sync_in_while_lastpp2firstpp_var_names=[],
+                          sync_in_while_var_names=[],
+                          fetch_var_names_for_pp=[],
                           debug=False):
         """
         Generate inference program.
         Params:
-            sync_in_while_lastpp2firstpp_var_names (list(str)): the vars in the last pipeline 
+            sync_in_while_lastpp2firstpp_var_names (list(str)): the vars in the last pipeline
                 that need to send var to first pipeline and exclude bool dtype var
             sync_in_while_var_names (list(str)): the vars sync among all pipeline in while block
                 e.g cond. Note that cond cannot be bool dtype.
-            fetch_var_names_for_pp (list(str)): the fetch var names need to send back from the 
+            fetch_var_names_for_pp (list(str)): the fetch var names need to send back from the
                 last pipeline to the first pipeline
             debug (bool): the flag indicate debug
         """
@@ -806,9 +781,9 @@ class HybridParallelInferenceHelper(object):
         startup_block = self._startup_program.global_block()
 
         if debug:
-            with open(f'main_program.txt', 'w') as f:
+            with open(f'main_program_ori.txt', 'w') as f:
                 f.write(str(self._main_program))
-            with open(f'startup_program.txt', 'w') as f:
+            with open(f'startup_program_ori.txt', 'w') as f:
                 f.write(str(self._startup_program))
 
         # step1: add op_device attribute for all ops
@@ -847,15 +822,15 @@ class HybridParallelInferenceHelper(object):
         self._split_program(self._startup_program, self._stage, 0)
         self._split_program(self._main_program, self._stage, 0)
 
-        if self.micro_batch_size > 4:
+        if self.micro_batch_size > 0:  # beam_search always on cpu
             self.convert_op_device(startup_block, ['beam_search'], 'cpu')
             self.convert_op_device(main_block, ['beam_search'], 'cpu')
+
+        if self.init_comm:
+            self._init_communication_group()
 
         if debug:
             with open(f'main_program.txt.{self.rank}', 'w') as f:
                 f.write(str(self._main_program))
             with open(f'startup_program.txt.{self.rank}', 'w') as f:
                 f.write(str(self._startup_program))
-
-        if self.init_comm:
-            self._init_communication_group()
