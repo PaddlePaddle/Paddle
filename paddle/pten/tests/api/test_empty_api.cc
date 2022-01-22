@@ -47,10 +47,8 @@ TEST(API, empty_like) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 TEST(API, empty1) {
@@ -77,10 +75,8 @@ TEST(API, empty1) {
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 TEST(API, empty2) {
@@ -104,10 +100,8 @@ TEST(API, empty2) {
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 4);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 TEST(API, empty3) {
@@ -118,10 +112,8 @@ TEST(API, empty3) {
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::INT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 }  // namespace tests

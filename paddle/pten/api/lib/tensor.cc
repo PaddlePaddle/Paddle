@@ -173,11 +173,13 @@ Tensor::mutable_data<paddle::platform::float16>();
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   auto inner_place = ConvertExtPlaceToInnerPlace(place);
-  PADDLE_ENFORCE_EQ(
-      platform::is_same_place(inner_place, impl_->place()),
-      true,
-      platform::errors::Unimplemented("Modification of tensor place through "
-                                      "mutable_data is not supported now"));
+  if (impl_->initialized()) {
+    PADDLE_ENFORCE_EQ(
+        platform::is_same_place(inner_place, impl_->place()),
+        true,
+        platform::errors::Unimplemented("Modification of tensor place through "
+                                        "mutable_data is not supported now"));
+  }
   if (is_dense_tensor()) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
         inner_place);
