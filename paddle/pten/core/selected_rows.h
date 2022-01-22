@@ -22,11 +22,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/pten/common/place.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/rw_lock.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -143,10 +143,10 @@ class SelectedRows {
   /*
    * @brief Get complete Dims before
    */
-  DDim GetCompleteDims() const {
+  pten::framework::DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
-    return paddle::framework::make_ddim(dims);
+    return pten::framework::make_ddim(dims);
   }
 
  private:
