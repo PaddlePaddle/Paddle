@@ -16,20 +16,19 @@
 
 namespace pten {
 
-void KernelContext::EmplaceBackInput(std::shared_ptr<TensorBase> input) {
+void KernelContext::EmplaceBackInput(const TensorBase* input) {
   int index = inputs_.size();
-  inputs_.emplace_back(std::move(input));
+  inputs_.emplace_back(input);
   // Record the start and end index of the input
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 
-void KernelContext::EmplaceBackInputWithoutSetRange(
-    std::shared_ptr<TensorBase> input) {
-  inputs_.emplace_back(std::move(input));
+void KernelContext::EmplaceBackInputWithoutSetRange(const TensorBase* input) {
+  inputs_.emplace_back(input);
 }
 
 void KernelContext::EmplaceBackInputs(
-    paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
+    paddle::SmallVector<const TensorBase*> inputs) {
   int index = inputs_.size();
   // Record the start and end index of the input
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
@@ -38,20 +37,23 @@ void KernelContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 
-void KernelContext::EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
+void KernelContext::EmplaceBackOutput(TensorBase* output) {
   int index = outputs_.size();
-  outputs_.emplace_back(std::move(output));
+  outputs_.emplace_back(output);
   // Record the start and end index of the input
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 
-void KernelContext::EmplaceBackOutputWithoutSetRange(
-    std::shared_ptr<TensorBase> output) {
-  outputs_.emplace_back(std::move(output));
+void KernelContext::EmplaceBackOutputWithoutSetRange(TensorBase* output) {
+  outputs_.emplace_back(output);
+}
+
+void KernelContext::SetOutputWithoutSetRange(int index, TensorBase* output) {
+  outputs_.at(index) = output;
 }
 
 void KernelContext::EmplaceBackOutputs(
-    paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
+    paddle::SmallVector<TensorBase*> outputs) {
   int index = outputs_.size();
   // Record the start and end index of the input
   output_range_.emplace_back(
@@ -111,17 +113,5 @@ std::pair<int, int>& KernelContext::MutableOutputRangeAt(size_t idx) {
 
 // Temporary method: For compatible with fluid Tensor and improve performance
 // Only deal with DenseTensor now
-void KernelContext::ClearData() {
-  for (auto& in : inputs_) {
-    if (in) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(in.get()));
-    }
-  }
-  for (auto& out : outputs_) {
-    CompatibleDenseTensorUtils::ClearStorage(
-        static_cast<DenseTensor*>(out.get()));
-  }
-  attrs_.clear();
-}
+void KernelContext::ClearData() { attrs_.clear(); }
 }  // namespace pten

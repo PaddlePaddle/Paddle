@@ -500,11 +500,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
+        gc.reset(new UnsafeFastGPUGarbageCollector(place, max_memory_size));
       } else {
-        gc.reset(new StreamGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
+        gc.reset(new StreamGarbageCollector(place, max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -515,11 +513,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place), max_memory_size));
+        gc.reset(new MLUUnsafeFastGarbageCollector(place, max_memory_size));
       } else {
-        gc.reset(new MLUStreamGarbageCollector(
-            BOOST_GET_CONST(platform::MLUPlace, place), max_memory_size));
+        gc.reset(new MLUStreamGarbageCollector(place, max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -529,8 +525,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place), max_memory_size));
+      gc.reset(new XPUGarbageCollector(place, max_memory_size));
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -538,8 +533,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
+      gc.reset(new CPUGarbageCollector(place, max_memory_size));
       VLOG(10) << "Created GarbageCollector at " << place;
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -609,10 +603,9 @@ void InitP2P(const std::vector<platform::Place> &places) {
 
     std::vector<int> devices;
     for (int i = 0; i < count; i++) {
-      if (!is_gpu_place(places[i])) return;
+      if (!platform::is_gpu_place(places[i])) return;
 
-      platform::CUDAPlace device =
-          BOOST_GET_CONST(platform::CUDAPlace, places[i]);
+      platform::CUDAPlace device = places[i];
       devices.push_back(device.GetDeviceId());
     }
 
@@ -655,9 +648,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE(places.size() > 0 && !is_npu_place(places[0]),
-                 platform::errors::Unavailable(
-                     "NPU is not supported in ParallelExecutor"));
+  PADDLE_ENFORCE_EQ(places.size() > 0 && !platform::is_npu_place(places[0]),
+                    true, platform::errors::Unavailable(
+                              "NPU is not supported in ParallelExecutor."));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
@@ -788,7 +781,7 @@ void ParallelExecutor::BCastParamsToDevices(
         void *buffer;
 
         if (i == 0 && trainer_id == 0) {
-          buffer = const_cast<void *>(main_tensor.data<void>());
+          buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
@@ -831,7 +824,7 @@ void ParallelExecutor::BCastParamsToDevices(
         void *buffer;
 
         if (i == 0 && trainer_id == 0) {
-          buffer = const_cast<void *>(main_tensor.data<void>());
+          buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
@@ -1055,7 +1048,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
             << " data (" << pair.first << "), dim:" << pair.second.dims()
             << ", place: " << pair.second.place();
-    auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
+    auto lod_tensors = SplitLoDTensor(pair.second, member_->places_);
     bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
     if (!is_persistable && num_places != lod_tensors.size() &&
         !allow_partial_feed) {

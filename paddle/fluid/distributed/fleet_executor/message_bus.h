@@ -24,7 +24,7 @@
     !defined(PADDLE_WITH_ASCEND_CL)
 #include "brpc/channel.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "paddle/fluid/distributed/fleet_executor/message_service.h"
 #endif
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
@@ -83,7 +83,7 @@ class MessageBus final {
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  InterceptorMessageServiceImpl interceptor_message_service_;
+  MessageServiceImpl message_service_;
   // brpc server
   brpc::Server server_;
 #endif

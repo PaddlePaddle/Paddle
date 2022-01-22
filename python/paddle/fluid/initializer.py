@@ -137,54 +137,27 @@ class ConstantInitializer(Initializer):
                 isinstance(var, framework.EagerParamBase))
         assert isinstance(block, framework.Block)
 
-        # to be compatible of fp16 initializers
-        if var.dtype == VarDesc.VarType.FP16:
-            out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(
-                name=unique_name.generate(".".join(
-                    ['constant_init', var.name, 'tmp'])),
-                shape=var.shape,
-                dtype=out_dtype,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False)
-        else:
-            out_dtype = var.dtype
-            out_var = var
-
         if framework.in_dygraph_mode():
-            out_var = _C_ops.fill_constant(
-                out_var, 'value',
+            var = _C_ops.fill_constant(
+                var, 'value',
                 float(self._value), 'force_cpu', self._force_cpu, 'dtype',
-                int(out_dtype), 'str_value',
+                int(var.dtype), 'str_value',
                 str(float(self._value)), 'shape', var.shape)
-            if var.dtype == VarDesc.VarType.FP16:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
-            else:
-                var.copy_(out_var, False)
             return None
         else:
             # fill constant should set the "str_value" to preserve precision
             op = block.append_op(
                 type="fill_constant",
-                outputs={"Out": out_var},
+                outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "dtype": int(out_dtype),
+                    "dtype": int(var.dtype),
                     "value": float(self._value),
                     'str_value': str(float(self._value)),
                     'force_cpu': self._force_cpu
                 },
                 stop_gradient=True)
 
-            if var.dtype == VarDesc.VarType.FP16:
-                block.append_op(
-                    type="cast",
-                    inputs={"X": out_var},
-                    outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype,
-                           "out_dtype": var.dtype})
             var.op = op
             return op
 
@@ -279,9 +252,9 @@ class UniformInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
@@ -361,38 +334,19 @@ class NormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-            out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(
-                name=unique_name.generate(".".join(
-                    ['gaussian_random', var.name, 'tmp'])),
-                shape=var.shape,
-                dtype=out_dtype,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False)
-        else:
-            out_dtype = var.dtype
-            out_var = var
-
         if framework.in_dygraph_mode():
             out_var = _C_ops.gaussian_random(
-                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
+                'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
-            else:
-                var.copy_(out_var, False)
+            out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
                 type="gaussian_random",
-                outputs={"Out": out_var},
+                outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "dtype": out_dtype,
+                    "dtype": var.dtype,
                     "mean": self._mean,
                     "std": self._std_dev,
                     "seed": self._seed,
@@ -400,13 +354,6 @@ class NormalInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                block.append_op(
-                    type="cast",
-                    inputs={"X": out_var},
-                    outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype,
-                           "out_dtype": var.dtype})
             var.op = op
             return op
 
@@ -477,9 +424,9 @@ class TruncatedNormalInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
@@ -617,9 +564,9 @@ class XavierInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             if self._uniform:
@@ -770,9 +717,9 @@ class MSRAInitializer(Initializer):
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             if self._uniform:
@@ -938,9 +885,9 @@ class BilinearInitializer(Initializer):
             ]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
@@ -1044,9 +991,9 @@ class NumpyArrayInitializer(Initializer):
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)
-                var.copy_(var_tmp, False)
+                var_tmp._share_underline_tensor_to(var)
             else:
-                var.copy_(out_var, False)
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(

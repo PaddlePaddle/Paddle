@@ -1,3 +1,6 @@
+#TO DO:remove fluid
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
 if (NOT WITH_INFRT)
     return()
 endif()
@@ -77,7 +80,6 @@ add_subdirectory(paddle)
 
 # MLIR td file generations
 set(infrt_mlir_incs
-        ops_inc
         basic_kernels_inc
         test_kernels_inc
         infrt_base_inc
@@ -89,8 +91,8 @@ set(infrt_mlir_incs
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
-cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
 add_dependencies(infrt ${infrt_mlir_incs})
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})

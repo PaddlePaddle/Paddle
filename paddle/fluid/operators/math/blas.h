@@ -20,7 +20,6 @@
 namespace paddle {
 namespace framework {
 class ExecutionContext;
-class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -224,6 +223,10 @@ class Blas {
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
+
+  template <typename T>
+  void MatMul(const T* mat_a, const MatDescriptor& dim_a, const T* mat_b,
+              const MatDescriptor& dim_b, T alpha, T* mat_out, T beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;

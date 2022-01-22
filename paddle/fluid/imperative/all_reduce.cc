@@ -25,7 +25,7 @@
 #endif
 
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -60,7 +60,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
-  const void *src_ptr = src.data<void>();
+  const void *src_ptr = src.data();
   dst->Resize(src.dims());
   auto *dst_ptr = dst->mutable_data(src.place(), src.type());
   auto nccl_dtype = platform::ToNCCLDataType(src.type());
@@ -129,7 +129,7 @@ static void AllReduce(const framework::SelectedRows &src,
   auto feature_size = framework::product(dims) / dims[0];
   dst_tensor->Resize(dims);
   auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
-  const auto *src_tensor_ptr = src_tensor.data<void>();
+  const auto *src_tensor_ptr = src_tensor.data();
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
   int64_t row_offset = 0;

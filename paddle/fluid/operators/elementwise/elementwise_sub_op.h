@@ -14,14 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/place.h"
 
-// only can include the headers in paddle/pten/include dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/math_kernel.h"
 namespace paddle {
 namespace operators {
@@ -56,8 +51,10 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
     auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
-    pten::SubtractKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
-                            pt_z.get());
+    pten::SubtractRawKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *pt_x.get(), *pt_y.get(), axis, pt_z.get());
   }
 };
 

@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -125,7 +126,8 @@ void ReduceOpHandle::RunImpl() {
 
       // TODO(gongwb): add cpu support
       if (collective_context.endpoints_.size() <= 1 ||
-          is_cpu_place(in_places[0]) || is_cpu_place(t_out_p)) {
+          platform::is_cpu_place(in_places[0]) ||
+          platform::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
             in_selected_rows, in_places, dev_ctxes_, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
@@ -159,7 +161,7 @@ void ReduceOpHandle::RunImpl() {
           VisitDataType(lod_tensors[0]->type(), func);
 
           auto trg = out_var->GetMutable<framework::LoDTensor>();
-          if (reduce_sum_trg.data<void>() != trg->data<void>()) {
+          if (reduce_sum_trg.data() != trg->data()) {
             TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
           }
         }
@@ -172,16 +174,16 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place(), pre_in.type());
 
       auto out_p = out_var_handle->place();
-      int root_id = BOOST_GET_CONST(platform::CUDAPlace, out_p).device;
+      int root_id = out_p.device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
+        int dev_id = p.device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
 
-        void *buffer = const_cast<void *>(lod_tensor.data<void>());
+        void *buffer = const_cast<void *>(lod_tensor.data());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
           recvbuffer =
@@ -218,16 +220,16 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place(), pre_in.type());
 
       auto out_p = out_var_handle->place();
-      int root_id = BOOST_GET_CONST(platform::XPUPlace, out_p).device;
+      int root_id = out_p.device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = BOOST_GET_CONST(platform::XPUPlace, p).device;
+        int dev_id = p.device;
         auto &bkcl_ctx = bkcl_ctxs_->at(dev_id);
 
-        void *buffer = const_cast<void *>(lod_tensor.data<void>());
+        void *buffer = const_cast<void *>(lod_tensor.data());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
           recvbuffer =

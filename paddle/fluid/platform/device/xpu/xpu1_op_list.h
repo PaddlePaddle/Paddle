@@ -300,6 +300,7 @@ XPUOpMap& get_kl1_ops() {
                                 pOpKernelType(vartype::UINT8, XPUPlace()),
                                 pOpKernelType(vartype::FP32, XPUPlace())})},
       {"stack", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"stack_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"tanh_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"tanh", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},

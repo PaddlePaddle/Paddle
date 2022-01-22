@@ -231,9 +231,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   allocate_bytes = DeviceAllocateSize(&platform::NPUInitAllocSize,
                                       &platform::NPUReallocSize, request_bytes);
 #elif defined(PADDLE_WITH_MLU)
-  allocate_bytes =
-      DeviceAllocateSize(&platform::MLUInitAllocSize(),
-                         &platform::MLUReallocSize(), request_bytes);
+  allocate_bytes = DeviceAllocateSize(&platform::MLUInitAllocSize,
+                                      &platform::MLUReallocSize, request_bytes);
 #endif
 
   // Allocate a new block

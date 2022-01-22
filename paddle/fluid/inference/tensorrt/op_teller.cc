@@ -55,6 +55,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 // #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
+    teller_set.insert("flatten_contiguous_range");
 #endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
@@ -270,36 +271,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      if (desc.HasAttr("padding_algorithm")) {
-        auto padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-        if (padding_algorithm == "VALID") {
-          return false;
-        }
-        if (padding_algorithm == "SAME") {
-          if (desc.HasAttr("dilations")) {
-            const std::vector<int> dilations =
-                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
-            if (dilations[0] != 1 || dilations[1] != 1) {
-              VLOG(3) << "In Same mode, Dilations must be (1, 1) for "
-                         "tensorRT, but given ("
-                      << dilations[0] << ", " << dilations[1] << ")";
-              return false;
-            }
-          }
-        }
-      }
-
-      if (use_no_calib_int8) {
-        if (desc.HasAttr("padding_algorithm")) {
-          auto padding_algorithm =
-              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-          if (padding_algorithm == "SAME") {
-            return false;
-          }
-        }
-      }
-
       if (desc.HasAttr("enable_int8")) {
         if (op_type == "conv2d" || op_type == "conv2d_fusion") {
           if (!desc.HasAttr("Input_scale")) {
@@ -486,7 +457,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (axis[0] == 0 && axis.size() == 2) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -498,7 +468,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (axis.size() != x_shape.size()) return false;
       int dims = x_shape.size();
+
       std::vector<int> perm(nvinfer1::Dims::MAX_DIMS);
       for (int i = 0; i < dims; i++) {
         perm[i] = axis[i];
@@ -517,6 +489,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!is_valid_permutation(dims, perm)) {
         VLOG(3) << "Invalid permutation dimensions for trt transpose op "
                    "converter: duplicate or out of bound.";
+        return false;
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {
@@ -529,6 +502,37 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 #endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
+      }
+    }
+    if (op_type == "flatten_contiguous_range") {
+      if (!with_dynamic_shape) {
+        int start_axis = BOOST_GET_CONST(int, desc.GetAttr("start_axis"));
+        int stop_axis = BOOST_GET_CONST(int, desc.GetAttr("stop_axis"));
+        auto x_var_name = desc.Input("X")[0];
+        auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                     "Developers need to check whether block_desc is passed in "
+                     "the pass.";
+          return false;
+        }
+        auto* x_var_desc = block->FindVar(x_var_name);
+        const auto x_shape = x_var_desc->GetShape();
+        int dims = x_shape.size();
+        if (start_axis < 0) start_axis += dims;
+        if (start_axis == 0) {
+          VLOG(3) << "TRT flatten_contiguous_range not support the "
+                     "batch-dimension being changed";
+          return false;
+        }
+        if (stop_axis < 0) stop_axis += dims;
+        for (int i = start_axis; i <= stop_axis; ++i) {
+          if (x_shape[i] < 0) {
+            VLOG(3) << "On TRT static shape,flatten_contiguous_range input dim "
+                       "should be > 0";
+            return false;
+          }
+        }
       }
     }
 
@@ -733,28 +737,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
-    }
-
-    if (op_type == "roi_align") {
-      if (!with_dynamic_shape) return false;
-
-      std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio"};
-      for (auto const attr : attrs) {
-        if (!desc.HasAttr(attr)) return false;
-      }
-
-      const auto pooled_height =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
-      if (pooled_height <= 0) return false;
-
-      const auto pooled_width =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
-      if (pooled_width <= 0) return false;
-
-      const auto spatial_scale =
-          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
-      if (spatial_scale <= 0.f) return false;
     }
 
     if (op_type == "hard_swish") {
@@ -1283,7 +1265,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio"};
+                                     "spatial_scale", "sampling_ratio",
+                                     "aligned"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -1299,12 +1282,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto spatial_scale =
           BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
       if (spatial_scale <= 0.f) return false;
-
-      const auto sampling_ratio =
-          BOOST_GET_CONST(int, desc.GetAttr("sampling_ratio"));
-      const auto aligned = BOOST_GET_CONST(bool, desc.GetAttr("aligned"));
-
-      if (sampling_ratio == -1 && aligned == true) return false;
 
       auto roi_align_inputs = desc.Inputs();
       if (roi_align_inputs.find("RoisNum") != roi_align_inputs.end()) {

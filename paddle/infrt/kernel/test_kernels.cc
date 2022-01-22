@@ -33,7 +33,8 @@ using infrt::host_context::Attribute;
 using infrt::host_context::MlirFunctionExecutable;
 using infrt::host_context::RemainingArguments;
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 namespace {
 class BenchmarkStats {
  public:
@@ -197,4 +198,5 @@ void RegisterTestKernels(host_context::KernelRegistry *registry) {
                       INFRT_KERNEL(ShadowCopyTensor));
 }
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt
