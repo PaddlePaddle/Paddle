@@ -65,6 +65,7 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(backend)),
       std::move(out_meta));
+  dense_out->mutable_data(pten::TransToFluidPlace(backend));
   kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
   out.set_impl(dense_out);

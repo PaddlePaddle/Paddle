@@ -137,7 +137,9 @@ std::vector<paddle::Tensor> AttrTestForward(
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   // Check attrs value
@@ -175,12 +177,13 @@ std::vector<paddle::Tensor> AttrTestBackward(
     const std::vector<std::string>& str_vec_attr) {
   auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, grad_out.shape());
 
-  PD_DISPATCH_FLOATING_TYPES(grad_out.type(), "assign_cpu_kernel", ([&] {
-                               assign_cpu_kernel<data_t>(
-                                   grad_out.data<data_t>(),
-                                   grad_x.mutable_data<data_t>(),
-                                   grad_out.size());
-                             }));
+  PD_DISPATCH_FLOATING_TYPES(
+      grad_out.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            grad_out.data<data_t>(),
+            grad_x.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            grad_out.size());
+      }));
 
   CheckAllBackwardAttrs(int_attr, float_vec_attr, str_vec_attr);
 
@@ -203,7 +206,9 @@ std::vector<paddle::Tensor> ConstAttrTestForward(
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   // Check attrs value
@@ -241,12 +246,13 @@ std::vector<paddle::Tensor> ConstAttrTestBackward(
     const std::vector<std::string>& str_vec_attr) {
   auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, grad_out.shape());
 
-  PD_DISPATCH_FLOATING_TYPES(grad_out.type(), "assign_cpu_kernel", ([&] {
-                               assign_cpu_kernel<data_t>(
-                                   grad_out.data<data_t>(),
-                                   grad_x.mutable_data<data_t>(),
-                                   grad_out.size());
-                             }));
+  PD_DISPATCH_FLOATING_TYPES(
+      grad_out.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            grad_out.data<data_t>(),
+            grad_x.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            grad_out.size());
+      }));
 
   CheckAllBackwardAttrs(int_attr, float_vec_attr, str_vec_attr);
 
