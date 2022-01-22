@@ -30,7 +30,7 @@ class ShapeNPUKernel : public framework::OpKernel<T> {
     auto* in_var = ctx.InputVar("Input");
     framework::DDim in_dims;
     if (in_var->IsType<pten::SelectedRows>()) {
-      in_dims = in_var->Getp<pten::SelectedRows>().value().dims();
+      in_dims = in_var->Get<pten::SelectedRows>().value().dims();
     } else {
       in_dims = in_var->Get<LoDTensor>().dims();
     }
