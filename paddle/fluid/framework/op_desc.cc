@@ -35,8 +35,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string &name) const override;
 
-  bool HasAttr(const std::string &name) const override;
-
   bool HasInputs(const std::string &name) const override;
 
   bool HasOutputs(const std::string &name) const override;
@@ -855,10 +853,6 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
                                      "but it has %d values now.",
                                      name, length));
   return block_.HasVarRecursive(output_names[0]);
-}
-
-bool CompileTimeInferShapeContext::HasAttr(const std::string &name) const {
-  return op_.HasAttr(name);
 }
 
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {

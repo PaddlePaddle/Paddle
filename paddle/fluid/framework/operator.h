@@ -454,10 +454,6 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
-  bool HasAttr(const std::string& name) const override {
-    return ctx_.HasAttr(name);
-  }
-
   paddle::any Attr(const std::string& name) const override {
     auto& attr = ctx_.GetAttr(name);
     return GetAttrValue(attr);
@@ -472,7 +468,6 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
-    VLOG(0) << "Judge IsDenseTensorInput: " << name;
     return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
   }
 

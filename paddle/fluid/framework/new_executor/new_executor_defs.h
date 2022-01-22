@@ -54,8 +54,6 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string& name) const override;
 
-  bool HasAttr(const std::string& name) const override;
-
   bool HasInputs(const std::string& name) const override;
 
   bool HasOutputs(const std::string& name) const override;

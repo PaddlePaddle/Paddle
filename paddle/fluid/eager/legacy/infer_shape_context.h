@@ -77,10 +77,6 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
     return out[0] != nullptr;
   }
 
-  bool HasAttr(const std::string& name) const override {
-    return default_attrs_->find(name) != default_attrs_->end();
-  }
-
   bool HasInputs(const std::string& name) const override {
     auto it = tensor_in_->find(name);
     if (it == tensor_in_->end() || it->second.empty()) {

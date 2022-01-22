@@ -40,10 +40,6 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
-  bool HasAttr(const std::string& name) const override {
-    return ctx_.HasAttr(name);
-  }
-
   paddle::any Attr(const std::string& name) const override {
     auto& attr = ctx_.Attrs().GetAttr(name);
     return GetAttrValue(attr);
