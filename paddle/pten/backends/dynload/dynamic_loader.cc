@@ -25,70 +25,76 @@ limitations under the License. */
 #endif
 
 // TODO(wilber): The pten computing library requires a component to manage flags
-// (must not use gflags). Temporarily use std::getenv directly.
-// To ensure backward compatibility, the flags are prefixed with FLAGS_, which
-// needs to be corrected later.
+// (maybe not use gflags).
+#include "gflags/gflags.h"
 
-// All FLAGS:
-// DEFINE_string(cudnn_dir, "",
-//               "Specify path for loading libcudnn.so. For instance, "
-//               "/usr/local/cudnn/lib. If empty [default], dlopen "
-//               "will search cudnn from LD_LIBRARY_PATH");
+DEFINE_string(cudnn_dir,
+              "",
+              "Specify path for loading libcudnn.so. For instance, "
+              "/usr/local/cudnn/lib. If empty [default], dlopen "
+              "will search cudnn from LD_LIBRARY_PATH");
 
-// DEFINE_string(
-//     cuda_dir, "",
-//     "Specify path for loading cuda library, such as libcublas, libcublasLt "
-//     "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
-//     "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+DEFINE_string(
+    cuda_dir,
+    "",
+    "Specify path for loading cuda library, such as libcublas, libcublasLt "
+    "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+    "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
-// DEFINE_string(nccl_dir, "",
-//               "Specify path for loading nccl library, such as libnccl.so. "
-//               "For instance, /usr/local/cuda/lib64. If default, "
-//               "dlopen will search cuda from LD_LIBRARY_PATH");
+DEFINE_string(nccl_dir,
+              "",
+              "Specify path for loading nccl library, such as libnccl.so. "
+              "For instance, /usr/local/cuda/lib64. If default, "
+              "dlopen will search cuda from LD_LIBRARY_PATH");
 
-// DEFINE_string(hccl_dir, "",
-//               "Specify path for loading hccl library, such as libhccl.so. "
-//               "For instance, "
-//               "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
-//               "default, "
-//               "dlopen will search hccl from LD_LIBRARY_PATH");
+DEFINE_string(hccl_dir,
+              "",
+              "Specify path for loading hccl library, such as libhccl.so. "
+              "For instance, "
+              "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
+              "default, "
+              "dlopen will search hccl from LD_LIBRARY_PATH");
 
-// DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
+DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
-// DEFINE_string(
-//     tensorrt_dir, "",
-//     "Specify path for loading tensorrt library, such as libnvinfer.so.");
+DEFINE_string(
+    tensorrt_dir,
+    "",
+    "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
-// DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
-// DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
+DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
-// DEFINE_string(mkl_dir, "",
-//               "Specify path for loading libmkl_rt.so. "
-//               "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
-//               "If default, "
-//               "dlopen will search mkl from LD_LIBRARY_PATH");
+DEFINE_string(mkl_dir,
+              "",
+              "Specify path for loading libmkl_rt.so. "
+              "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+              "If default, "
+              "dlopen will search mkl from LD_LIBRARY_PATH");
 
-// DEFINE_string(op_dir, "", "Specify path for loading user-defined op
-// library.");
+DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
-// #ifdef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_HIP
 
-// DEFINE_string(miopen_dir, "",
-//               "Specify path for loading libMIOpen.so. For instance, "
-//               "/opt/rocm/miopen/lib. If empty [default], dlopen "
-//               "will search miopen from LD_LIBRARY_PATH");
+DEFINE_string(miopen_dir,
+              "",
+              "Specify path for loading libMIOpen.so. For instance, "
+              "/opt/rocm/miopen/lib. If empty [default], dlopen "
+              "will search miopen from LD_LIBRARY_PATH");
 
-// DEFINE_string(rocm_dir, "",
-//               "Specify path for loading rocm library, such as librocblas, "
-//               "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
-//               "If default, dlopen will search rocm from LD_LIBRARY_PATH");
+DEFINE_string(rocm_dir,
+              "",
+              "Specify path for loading rocm library, such as librocblas, "
+              "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
+              "If default, dlopen will search rocm from LD_LIBRARY_PATH");
 
-// DEFINE_string(rccl_dir, "",
-//               "Specify path for loading rccl library, such as librccl.so. "
-//               "For instance, /opt/rocm/rccl/lib. If default, "
-//               "dlopen will search rccl from LD_LIBRARY_PATH");
-// #endif
+DEFINE_string(rccl_dir,
+              "",
+              "Specify path for loading rccl library, such as librccl.so. "
+              "For instance, /opt/rocm/rccl/lib. If default, "
+              "dlopen will search rccl from LD_LIBRARY_PATH");
+#endif
 
 namespace pten {
 namespace dynload {
@@ -304,26 +310,21 @@ static inline void* GetDsoHandleFromSearchPath(
 
 void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcublas.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_cublas_lib, true, {cuda_lib_path});
+      FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
 #elif defined(PADDLE_WITH_HIP)
-  auto lib_dir = std::getenv("FLAGS_rocm_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "librocblas.so");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcublas.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
 }
 
 void* GetCublasLtDsoHandle() {
 // APIs available after CUDA 10.1
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcublasLt.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
 #else
   std::string warning_msg(
       "Your CUDA_VERSION less 10.1, not support CublasLt. "
@@ -341,9 +342,8 @@ void* GetCUDNNDsoHandle() {
       "cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local \n sudo "
       "chmod a+r /usr/local/cuda/include/cudnn.h "
       "/usr/local/cuda/lib/libcudnn*");
-  auto lib_dir = std::getenv("FLAGS_cudnn_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libcudnn.dylib", false, {}, mac_warn_meg);
+      FLAGS_cudnn_dir, "libcudnn.dylib", false, {}, mac_warn_meg);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   std::string win_warn_meg(
       "Note: [Recommend] copy cudnn into CUDA installation directory. \n "
@@ -353,121 +353,103 @@ void* GetCUDNNDsoHandle() {
       "Toolkit\\CUDA\\v10.0\n"
       "You should do this according to your CUDA installation directory and "
       "CUDNN version.");
-  auto lib_dir = std::getenv("FLAGS_cudnn_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_cudnn_lib, true, {cuda_lib_path}, win_warn_meg);
+      FLAGS_cudnn_dir, win_cudnn_lib, true, {cuda_lib_path}, win_warn_meg);
 #elif defined(PADDLE_WITH_HIP)
-  auto lib_dir = std::getenv("FLAGS_miopen_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libMIOpen.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
-  auto lib_dir = std::getenv("FLAGS_cudnn_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libcudnn.so", false, {cuda_lib_path});
+      FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
 #endif
 }
 
 void* GetCUPTIDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_cupti_dir");
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libcupti.dylib", false, {cupti_lib_path});
+      FLAGS_cupti_dir, "libcupti.dylib", false, {cupti_lib_path});
 #else
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libcupti.so", false, {cupti_lib_path});
+      FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #endif
 }
 
 void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcurand.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_curand_lib, true, {cuda_lib_path});
+      FLAGS_cuda_dir, win_curand_lib, true, {cuda_lib_path});
 #elif defined(PADDLE_WITH_HIP)
-  auto lib_dir = std::getenv("FLAGS_rocm_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libhiprand.so");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
 #else
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcurand.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
 }
 
 #ifdef PADDLE_WITH_HIP
 void* GetROCFFTDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_rocm_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "librocfft.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "librocfft.so");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
 #endif
 }
 #endif
 
 void* GetNvjpegDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvjpeg.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_nvjpeg_lib, true, {cuda_lib_path});
+      FLAGS_cuda_dir, win_nvjpeg_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvjpeg.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.so");
 #endif
 }
 
 void* GetCusolverDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libcusolver.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_cusolver_lib, true, {cuda_lib_path});
+      FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libcusolver.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
 }
 
 void* GetCusparseDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libcusparse.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_cusparse_lib, true, {cuda_lib_path});
+      FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libcusparse.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
 #endif
 }
 
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvrtc.dylib", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
-  auto lib_dir = std::getenv("FLAGS_rocm_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libamdhip64.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
-  auto lib_dir = std::getenv("FLAGS_rocm_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvrtc.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
 }
 
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcuda.dylib", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
-  auto lib_dir = std::getenv("FLAGS_rocm_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libamdhip64.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #elif defined(_WIN32)
   char system32_dir[MAX_PATH];
   GetSystemDirectory(system32_dir, MAX_PATH);
   return GetDsoHandleFromSearchPath(system32_dir, "nvcuda.dll");
 #else
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libcuda.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
 }
 
@@ -499,17 +481,14 @@ void* GetNCCLDsoHandle() {
 #endif
 
 #if defined(__APPLE__) || defined(__OSX__)
-  auto lib_dir = std::getenv("FLAGS_nccl_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libnccl.dylib", true, {}, warning_msg);
+      FLAGS_nccl_dir, "libnccl.dylib", true, {}, warning_msg);
 #elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
-  auto lib_dir = std::getenv("FLAGS_rccl_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "librccl.so", true, {}, warning_msg);
+      FLAGS_rccl_dir, "librccl.so", true, {}, warning_msg);
 #else
-  auto lib_dir = std::getenv("FLAGS_nccl_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libnccl.so", true, {}, warning_msg);
+      FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
 #endif
 }
 void* GetHCCLDsoHandle() {
@@ -517,98 +496,85 @@ void* GetHCCLDsoHandle() {
       "You may need to install 'hccl2' from Huawei official website: "
       "before install PaddlePaddle.");
 #if defined(__APPLE__) || defined(__OSX__)
-  auto lib_dir = std::getenv("FLAGS_nccl_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libnccl.dylib", true, {}, warning_msg);
+      FLAGS_nccl_dir, "libnccl.dylib", true, {}, warning_msg);
 #elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
-  auto lib_dir = std::getenv("FLAGS_rccl_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "librccl.so", true);
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
-  auto lib_dir = std::getenv("FLAGS_hccl_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libhccl.so", true, {}, warning_msg);
+      FLAGS_hccl_dir, "libhccl.so", true, {}, warning_msg);
 #else
-  auto lib_dir = std::getenv("FLAGS_nccl_dir");
   return GetDsoHandleFromSearchPath(
-      lib_dir, "libnccl.so", true, {}, warning_msg);
+      FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
 #endif
 }
 
 void* GetTensorRtDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_tensorrt_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvinfer.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(lib_dir, "nvinfer.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "nvinfer.dll");
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvinfer.so");
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
 #endif
 }
 
 void* GetMKLMLDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_mklml_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libmklml_intel.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(lib_dir, "mklml.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libmklml_intel.so");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
 }
 
 void* GetLAPACKDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_lapack_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "liblapack.3.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.3.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(lib_dir, "liblapack.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dll");
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "liblapack.so.3");
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
 #endif
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
-  auto lib_dir = std::getenv("FLAGS_op_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, dso_name);
+  return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
 }
 
 void* GetNvtxDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("Nvtx do not support Apple."));
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("Nvtx do not support Windows."));
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Windows."));
 #elif !defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(paddle::platform::errors::Unimplemented(
-      "Nvtx do not support without CUDA."));
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
-  return GetDsoHandleFromSearchPath(lib_dir, "libnvToolsExt.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif
 }
 
 void* GetCUFFTDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_cuda_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libcufft.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(
-      lib_dir, win_cufft_lib, true, {cuda_lib_path});
+      FLAGS_cuda_dir, win_cufft_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libcufft.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
 #endif
 }
 
 void* GetMKLRTDsoHandle() {
-  auto lib_dir = std::getenv("FLAGS_mkl_dir");
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(lib_dir, "libmkl_rt.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(lib_dir, "mkl_rt.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_rt.dll");
 #else
-  return GetDsoHandleFromSearchPath(lib_dir, "libmkl_rt.so");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.so");
 #endif
 }
 
