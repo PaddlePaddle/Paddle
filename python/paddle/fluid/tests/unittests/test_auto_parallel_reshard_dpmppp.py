@@ -22,19 +22,18 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.context import DistributedContext
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"
-ROOT_MESH = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]])
-_global_process_mesh = auto.ProcessMesh(
-    [[[0, 1], [4, 5]], [[2, 3], [6, 7]]], parent=ROOT_MESH)
-PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]], parent=ROOT_MESH)
-PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], parent=ROOT_MESH)
+_global_process_mesh = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]])
+PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]])
+PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]])
 
 
 class MLPLayer(nn.Layer):
@@ -56,8 +55,14 @@ class MLPLayer(nn.Layer):
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        auto.shard_tensor(self.linear0.weight, PP_MESH_0, dim_mapping=[-1, 1])
-        auto.shard_tensor(self.linear1.weight, PP_MESH_1, dim_mapping=[1, -1])
+        auto.shard_tensor(
+            self.linear0.weight,
+            dist_attr={"process_mesh": PP_MESH_0,
+                       "dims_mapping": [-1, 1]})
+        auto.shard_tensor(
+            self.linear1.weight,
+            dist_attr={"process_mesh": PP_MESH_1,
+                       "dims_mapping": [1, -1]})
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -78,8 +83,14 @@ def mlp_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32')
 
-        auto.shard_tensor(input, PP_MESH_0, dim_mapping=[0, -1])
-        auto.shard_tensor(label, PP_MESH_1, dim_mapping=[0, -1])
+        auto.shard_tensor(
+            input,
+            dist_attr={"process_mesh": PP_MESH_0,
+                       "dims_mapping": [0, -1]})
+        auto.shard_tensor(
+            label,
+            dist_attr={"process_mesh": PP_MESH_1,
+                       "dims_mapping": [0, -1]})
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -95,26 +106,35 @@ def mlp_forward(train_program, start_program):
 
 def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     global _global_process_mesh
-    dist_context.set_process_mesh(_global_process_mesh)
+    dist_context.process_mesh = _global_process_mesh
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
-    # auto completion
+    fleet._user_defined_strategy = fleet.DistributedStrategy()
+    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    parallelizer = AutoParallelizer(fleet)
+    parallelizer._dist_context = dist_context
+
+    # serial forward & backward completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
 
-    dist_strategy = fleet.DistributedStrategy()
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    params_grads = parallelizer._generate_backward(
+        complete_train_program,
+        startup_program,
+        loss,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None)
+
     # logical partition
-    auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-        complete_train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, complete_train_program, startup_program, auto_parallel_main_prog,
-        auto_parallel_startup_prog)
-    optimizer = paddle.fluid.optimizer.AdamOptimizer()
-    opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                         auto_parallel_main_prog,
-                                         auto_parallel_startup_prog)
+    partitioner = Partitioner(dist_context, rank_id)
+    auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads = partitioner.partition(
+        complete_train_program, startup_program, params_grads)
+
+    partitioned_optimize_ops = parallelizer._apply_optimize(
+        auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
+
     return auto_parallel_main_prog, auto_parallel_startup_prog
 
 
@@ -157,11 +177,8 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        print(dist_main_prog)
-        complete_backward_annotation(dist_main_prog, dist_context)
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-        print(dist_main_prog)
-        print(dist_startup_prog)
+        # print_program_with_dist_attr(dist_main_prog, dist_context)
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 

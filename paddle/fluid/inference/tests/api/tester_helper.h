@@ -465,7 +465,8 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   }
   int iterations = 1;
   if (FLAGS_warmup_iters > 1)
-    iterations = std::min(FLAGS_warmup_iters, static_cast<int>(inputs.size()));
+    iterations =
+        (std::min)(FLAGS_warmup_iters, static_cast<int>(inputs.size()));
   outputs->resize(iterations);
   Timer warmup_timer;
   double elapsed_time = 0;

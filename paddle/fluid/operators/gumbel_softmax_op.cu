@@ -98,7 +98,7 @@ struct OneHotGenerator<platform::CUDADeviceContext, T> {
 
     Tensor input_tensor;
     input_tensor.mutable_data<T>(Out->dims(), platform::CUDAPlace());
-    TensorCopy(*Out, context.GetPlace(), &input_tensor);
+    paddle::framework::TensorCopy(*Out, context.GetPlace(), &input_tensor);
     math::set_constant(context, Out, 0.0);
     OneHotCUDAKernel<
         T, thread_size><<<block_size, thread_size, 0, context.stream()>>>(
@@ -129,15 +129,14 @@ struct GumbleNoiseGenerator<platform::CUDADeviceContext, T> {
     int64_t size = size_to_axis * size_from_axis;
     T* random_data =
         random_tensor.mutable_data<T>({size}, platform::CUDAPlace());
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
 
     // generate gumbel noise
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy()) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
+      int64_t gen_offset = size * seed_offset.second;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(random_data),

@@ -122,7 +122,36 @@ message TableAccessorParameter {
   optional uint32 fea_dim = 4 [ default = 11 ];
   optional uint32 embedx_dim = 5 [ default = 8 ];
   optional uint32 embedx_threshold = 6 [ default = 10 ];
+  optional CtrAccessorParameter ctr_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
+  optional SparseCommonSGDRuleParameter embed_sgd_param = 10;
+  optional SparseCommonSGDRuleParameter embedx_sgd_param = 11;
+}
+
+message CtrAccessorParameter {
+  optional float nonclk_coeff = 1
+      [ default = 0.1 ]; // to calculate show_click_score
+  optional float click_coeff = 2
+      [ default = 1 ]; // to calculate show_click_score
+  optional float base_threshold = 3 [
+    default = 1.5
+  ]; // show_click_score > base_threshold, this feature can be saved
+  optional float delta_threshold = 4
+      [ default =
+            0.25 ]; // delta_score > delta_threshold, this feature can be saved
+  optional float delta_keep_days = 5
+      [ default =
+            16 ]; // unseen_day < delta_keep_days, this feature can be saved
+  optional float show_click_decay_rate = 6 [
+    default = 0.98
+  ]; // show/click will update to show/click * show_click_decay_rate after a day
+  optional float delete_threshold = 7
+      [ default = 0.8 ]; // threshold to shrink a feasign
+  optional float delete_after_unseen_days = 8
+      [ default = 30 ]; // unseen_day > delete_after_unseen_days, this feature
+                        // will be delete in shrink_model
+  optional int32 ssd_unseenday_threshold = 9
+      [ default = 1 ]; // threshold to save ssd
 }
 
 message TensorAccessorParameter {
@@ -143,10 +172,42 @@ message CommonAccessorParameter {
   optional string entry = 7;
   optional int32 trainer_num = 8;
   optional bool sync = 9;
+  optional uint32 table_num = 10;
+  optional uint32 table_dim = 11;
 }
 
 message TableAccessorSaveParameter {
   optional uint32 param = 1;
   optional string converter = 2;
   optional string deconverter = 3;
+}
+
+message SparseCommonSGDRuleParameter {
+  optional string name = 1;
+  optional SparseNaiveSGDRuleParameter naive = 2;
+  optional SparseAdagradSGDRuleParameter adagrad = 3;
+  optional SparseAdamSGDParameter adam = 4;
+}
+
+message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  repeated float weight_bounds = 3;
+}
+
+message
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_g2sum = 2 [ default = 3.0 ];
+  optional double initial_range = 3 [ default = 0.0001 ];
+  repeated float weight_bounds = 4;
+}
+
+message SparseAdamSGDParameter { // SparseAdamSGDRule
+  optional double learning_rate = 1 [ default = 0.001 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  optional double beta1_decay_rate = 3 [ default = 0.9 ];
+  optional double beta2_decay_rate = 4 [ default = 0.999 ];
+  optional double ada_epsilon = 5 [ default = 1e-08 ];
+  repeated float weight_bounds = 6;
 }

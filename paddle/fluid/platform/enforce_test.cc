@@ -294,14 +294,14 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 bool CheckCudaStatusSuccess(T value, const std::string& msg = "success") {
-  PADDLE_ENFORCE_CUDA_SUCCESS(value);
+  PADDLE_ENFORCE_GPU_SUCCESS(value);
   return true;
 }
 
 template <typename T>
 bool CheckCudaStatusFailure(T value, const std::string& msg) {
   try {
-    PADDLE_ENFORCE_CUDA_SUCCESS(value);
+    PADDLE_ENFORCE_GPU_SUCCESS(value);
     return false;
   } catch (paddle::platform::EnforceNotMet& error) {
     std::string ex_msg = error.what();
@@ -331,6 +331,10 @@ TEST(enforce, hip_success) {
       CheckCudaStatusFailure(rocblas_status_invalid_handle, "Rocblas error"));
   EXPECT_TRUE(
       CheckCudaStatusFailure(rocblas_status_invalid_value, "Rocblas error"));
+  EXPECT_TRUE(CheckCudaStatusSuccess(HIPFFT_SUCCESS));
+  EXPECT_TRUE(CheckCudaStatusFailure(HIPFFT_INVALID_PLAN, "HIPFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(HIPFFT_ALLOC_FAILED, "HIPFFT error"));
+
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "Rccl error"));

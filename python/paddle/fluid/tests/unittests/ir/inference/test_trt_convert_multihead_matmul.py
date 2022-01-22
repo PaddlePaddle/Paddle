@@ -14,6 +14,7 @@
 
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
+import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -26,16 +27,16 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.randn(batch, dim1, 768).astype(np.float32)
+            return np.random.random((batch, dim1, 768)).astype(np.float32)
 
         def generate_input2(shape):
             return np.random.random(shape).astype(np.float32)
 
         def generate_weight1():
-            return np.random.randn(768, 768).astype(np.float32)
+            return np.random.random((768, 768)).astype(np.float32)
 
         def generate_weight2():
-            return np.random.randn(768).astype(np.float32)
+            return np.random.random(768).astype(np.float32)
 
         for batch in [1, 2, 4]:
             self.batch = batch
@@ -425,7 +426,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
+        yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
 

@@ -50,12 +50,9 @@ class XPURangeKernel : public framework::OpKernel<T> {
       out_cpu_data_ptr[i] = value;
       value += step;
     }
-    int ret = xpu_memcpy(out_data, out_cpu_data_ptr, out->numel() * sizeof(T),
-                         XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External("XPU xpu_memcpy return wrong "
-                                                 "value[%d %s]",
-                                                 ret, XPUAPIErrorMsg[ret]));
+    memory::Copy(context.GetPlace(), static_cast<void*>(out_data),
+                 platform::CPUPlace(), static_cast<void*>(out_cpu_data_ptr),
+                 out->numel() * sizeof(T));
   }
 };
 

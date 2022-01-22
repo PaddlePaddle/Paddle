@@ -297,9 +297,8 @@ class AdamW(Adam):
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
                 'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
                 'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
-                'beta2', _beta2, 'coeff', self._coeff, 'multi_precision',
-                find_master, 'lr_ratio', lr_ratio_)
-
+                'beta2', _beta2, "with_decay", with_decay, 'coeff', self._coeff,
+                'multi_precision', find_master, 'lr_ratio', lr_ratio_)
             return None
 
         inputs = {

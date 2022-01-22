@@ -359,6 +359,15 @@ TEST(AnalysisPredictor, set_xpu_device_id) {
 namespace paddle_infer {
 
 TEST(Predictor, Run) {
+  auto trt_compile_ver = GetTrtCompileVersion();
+  auto trt_runtime_ver = GetTrtRuntimeVersion();
+  LOG(INFO) << "trt compile version: " << std::get<0>(trt_compile_ver) << "."
+            << std::get<1>(trt_compile_ver) << "."
+            << std::get<2>(trt_compile_ver);
+  LOG(INFO) << "trt runtime version: " << std::get<0>(trt_runtime_ver) << "."
+            << std::get<1>(trt_runtime_ver) << "."
+            << std::get<2>(trt_runtime_ver);
+
   Config config;
   config.SetModel(FLAGS_dirname);
 

@@ -48,9 +48,6 @@ class Executor;
 class ProgramDesc;
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -147,7 +144,7 @@ class PsBaseService : public PsService {
  public:
   PsBaseService() : _rank(0), _server(NULL), _config(NULL) {}
   virtual ~PsBaseService() {}
-
+  virtual size_t get_rank() { return _rank; }
   virtual int32_t configure(PSServer *server) {
     _server = server;
     _rank = _server->rank();
@@ -167,6 +164,7 @@ class PsBaseService : public PsService {
   }
 
   virtual int32_t initialize() = 0;
+  PSServer *get_server() { return _server; }
 
  protected:
   size_t _rank;

@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
@@ -55,9 +56,9 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #endif
   };
   destroy_event(start_event_);
@@ -87,10 +88,10 @@ void FusedAllReduceOpHandle::RunImpl() {
     auto create_event = [](gpuEvent_t *event) {
       if (*event) return;
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(event, hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(event, cudaEventDisableTiming));
 #endif
     };
@@ -102,19 +103,19 @@ void FusedAllReduceOpHandle::RunImpl() {
   gpuStream_t compute_stream{nullptr};
 
   if (FLAGS_allreduce_record_one_event) {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, places_[0]);
+    auto gpu_place = platform::CUDAPlace(places_[0].GetDeviceId());
     compute_stream =
         platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     auto &nccl_ctx = flat_nccl_ctxs->at(gpu_place.device);
     nccl_stream = nccl_ctx.stream();
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(start_event_, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(nccl_stream, start_event_, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(start_event_, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamWaitEvent(nccl_stream, start_event_, 0));
 #endif
   } else {
@@ -169,12 +170,12 @@ void FusedAllReduceOpHandle::RunImpl() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (FLAGS_allreduce_record_one_event) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(end_event_, nccl_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(compute_stream, end_event_, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(end_event_, nccl_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamWaitEvent(compute_stream, end_event_, 0));
 #endif
   }
@@ -220,17 +221,17 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
         g_tensor.begin(), g_tensor.end(),
         [](const std::pair<std::string, const LoDTensor *> &grad1,
            const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
-          return grad1.second->data<void>() < grad2.second->data<void>();
+          return grad1.second->data() < grad2.second->data();
         });
 
     size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
-      const void *cur_address = g_tensor.at(k - 1).second->data<void>();
+      const void *cur_address = g_tensor.at(k - 1).second->data();
       int64_t len = g_tensor.at(k - 1).second->numel();
       auto offset = platform::Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
-      const void *next_address = g_tensor.at(k).second->data<void>();
+      const void *next_address = g_tensor.at(k).second->data();
 
       VLOG(10) << string::Sprintf(
           "Input[%d](%s) address: 0X%02x, Input[%d](%s) address: 0X%02x, Infer "
@@ -267,7 +268,7 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
   std::vector<const void *> lod_tensor_data;
   lod_tensor_data.reserve(place_num);
   for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
-    auto data = grads_tensor.at(scope_idx).at(0).second->data<void>();
+    auto data = grads_tensor.at(scope_idx).at(0).second->data();
     lod_tensor_data.emplace_back(data);
   }
   std::vector<std::string> grad_var_names;
@@ -291,7 +292,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var, platform::errors::NotFound(
                    "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<LoDTensor>();
-      if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
+      if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
     }

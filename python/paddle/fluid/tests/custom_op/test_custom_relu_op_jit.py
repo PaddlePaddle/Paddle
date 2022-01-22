@@ -49,7 +49,8 @@ custom_module = load(
 class TestJITLoad(unittest.TestCase):
     def setUp(self):
         self.custom_ops = [
-            custom_module.custom_relu, custom_module.custom_relu_dup
+            custom_module.custom_relu, custom_module.custom_relu_dup,
+            custom_module.custom_relu_no_x_in_backward
         ]
         self.dtypes = ['float32', 'float64']
         if paddle.is_compiled_with_cuda():
@@ -101,7 +102,7 @@ class TestJITLoad(unittest.TestCase):
         except OSError as e:
             caught_exception = True
             self.assertTrue(
-                "function \"relu_cpu_forward\" is not implemented for data type `int32_t`"
+                "function \"relu_cpu_forward\" is not implemented for data type `int32`"
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
@@ -123,7 +124,7 @@ class TestJITLoad(unittest.TestCase):
         except OSError as e:
             caught_exception = True
             self.assertTrue(
-                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32_t`"
+                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32`"
                 in str(e))
             self.assertTrue(
                 "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in

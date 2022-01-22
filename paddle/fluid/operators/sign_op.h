@@ -16,24 +16,30 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+
+#include "paddle/pten/kernels/sign_kernel.h"
 
 namespace paddle {
 namespace operators {
+
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class SignKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
+    auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    auto* in = context.Input<framework::Tensor>("X");
-    out->mutable_data<T>(in->place());
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    out->mutable_data<T>(x->place());
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    EigenSign<std::decay_t<decltype(place)>, T>::Eval(place, eigen_out,
-                                                      eigen_in);
+    // call new kernel
+    pten::SignKernel<T, typename paddle::framework::ConvertToPtenContext<
+                            DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, out);
   }
 };
 

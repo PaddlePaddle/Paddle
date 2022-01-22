@@ -220,33 +220,6 @@ int32_t CommonSparseTable::initialize_value() {
     shard_values_.emplace_back(shard);
   }
 
-  auto accessor = _config.accessor();
-  std::vector<uint64_t> feasigns;
-
-  for (size_t x = 0; x < accessor.fea_dim(); ++x) {
-    if (x % _shard_num == _shard_idx) {
-      feasigns.push_back(x);
-    }
-  }
-
-  VLOG(3) << "has " << feasigns.size() << " ids need to be pre inited";
-
-  auto buckets = bucket(feasigns.size(), 10);
-  for (int x = 0; x < 10; ++x) {
-    auto bucket_feasigns = buckets[x + 1] - buckets[x];
-    std::vector<uint64_t> ids(bucket_feasigns);
-    std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
-              ids.begin());
-
-    std::vector<uint32_t> fres;
-    fres.resize(ids.size(), 1);
-
-    auto pull_value = PullSparseValue(ids, fres, param_dim_);
-    std::vector<float> pulls;
-    pulls.resize(bucket_feasigns * param_dim_);
-    pull_sparse(pulls.data(), pull_value);
-  }
-
   return 0;
 }
 
@@ -279,18 +252,25 @@ int32_t CommonSparseTable::set_global_lr(float* lr) {
   return 0;
 }
 
-int32_t CommonSparseTable::load(const std::string& path,
+int32_t CommonSparseTable::load(const std::string& dirname,
                                 const std::string& param) {
   auto begin = GetCurrentUS();
   rwlock_->WRLock();
-  LoadFromText(path, param, _shard_idx, _shard_num, task_pool_size_,
+  auto varname = _config.common().table_name();
+  std::string var_store =
+      string::Sprintf("%s/%s%s", dirname, varname, PSERVER_SAVE_SUFFIX);
+  std::string shard_var_pre =
+      string::Sprintf("%s.block%d", varname, _shard_idx);
+  std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
+  std::string meta_ = string::Sprintf("%s/%s.meta", var_store, shard_var_pre);
+
+  LoadFromText(value_, meta_, _shard_idx, _shard_num, task_pool_size_,
                &shard_values_);
   rwlock_->UNLock();
   auto end = GetCurrentUS();
 
-  auto varname = _config.common().table_name();
-  VLOG(0) << "load " << varname << " with value: " << path
-          << " , meta: " << param
+  VLOG(0) << "load " << varname << " with value: " << value_
+          << " , meta: " << meta_
           << " using: " << std::to_string((end - begin) / 1e+6) << " seconds";
 
   return 0;

@@ -108,7 +108,10 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
-  void SetAmpLevel(AmpLevel level) { amp_level_ = level; }
+  void SetAmpLevel(AmpLevel level) {
+    VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
+    amp_level_ = level;
+  }
 
   AmpLevel GetAmpLevel() const { return amp_level_; }
 

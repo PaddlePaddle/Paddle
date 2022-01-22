@@ -147,7 +147,7 @@ TEST(LoD, SplitLoDTensor) {
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod0);
   EXPECT_EQ(lods[1].lod(), lod1);
 }
@@ -167,7 +167,7 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   LoD lod_res;
   lod_res.push_back(std::vector<size_t>({0}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod_res);
   EXPECT_EQ(lods[1].lod(), lod_res);
 }
@@ -213,7 +213,7 @@ TEST(LoD, MergeLoDTensor) {
   std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1, &lod_tensor2};
 
   LoDTensor lod_tensor;
-  lod_tensor.MergeLoDTensor(lods, place);
+  MergeLoDTensor(&lod_tensor, lods, place);
   EXPECT_EQ(lod_tensor.lod(), lod);
 }
 

@@ -10,10 +10,10 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
 #include "paddle/fluid/operators/tril_triu_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -33,12 +33,41 @@ class TrilTriuNPUKernel : public framework::OpKernel<T> {
 
     framework::NPUAttributeMap attr_input = {{"diagonal", diagonal}};
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    const auto& dev_ctx =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>();
 
-    const auto& runner = NpuOpRunner(op_type, {*x}, {*out}, attr_input);
-    runner.Run(stream);
+    auto op_func_tril = [](const std::vector<Tensor>& inputs,
+                           const std::vector<Tensor>& outputs,
+                           const NPUAttributeMap& attrs,
+                           const platform::NPUDeviceContext& dev_ctx) {
+      const auto& runner = NpuOpRunner("Tril", inputs, outputs, attrs);
+      runner.Run(dev_ctx.stream());
+    };
+
+    auto op_func_triu = [](const std::vector<Tensor>& inputs,
+                           const std::vector<Tensor>& outputs,
+                           const NPUAttributeMap& attrs,
+                           const platform::NPUDeviceContext& dev_ctx) {
+      const auto& runner = NpuOpRunner("Triu", inputs, outputs, attrs);
+      runner.Run(dev_ctx.stream());
+    };
+
+    if (x->type() == framework::proto::VarType::BOOL) {
+      if (lower) {
+        NpuOpRunner::TypeAdapter({*x}, {*out}, attr_input, dev_ctx,
+                                 op_func_tril,
+                                 {framework::proto::VarType::UINT8},
+                                 {framework::proto::VarType::UINT8});
+      } else {
+        NpuOpRunner::TypeAdapter({*x}, {*out}, attr_input, dev_ctx,
+                                 op_func_triu,
+                                 {framework::proto::VarType::UINT8},
+                                 {framework::proto::VarType::UINT8});
+      }
+    } else {
+      const auto& runner = NpuOpRunner(op_type, {*x}, {*out}, attr_input);
+      runner.Run(dev_ctx.stream());
+    }
   }
 };
 
@@ -49,4 +78,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
     tril_triu, ops::TrilTriuNPUKernel<plat::NPUDeviceContext, float>,
+    ops::TrilTriuNPUKernel<plat::NPUDeviceContext, int>,
+    ops::TrilTriuNPUKernel<plat::NPUDeviceContext, bool>,
     ops::TrilTriuNPUKernel<plat::NPUDeviceContext, plat::float16>);

@@ -82,6 +82,20 @@ class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return dout * self.op_forward(x) * (1 - self.op_forward(x))
 
 
+class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "sqrt"
+
+    def init_data(self):
+        self.x = np.random.uniform(1, 2, [2, 4, 3, 5]).astype(np.float32)
+
+    def op_forward(self, x):
+        return np.sqrt(x)
+
+    def op_grad(self, dout, x):
+        return dout / (2 * np.sqrt(x))
+
+
 class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "gelu"
@@ -132,6 +146,20 @@ class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
     def op_grad(self, dout, x):
         return dout
+
+
+class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "mish"
+
+    def op_forward(self, x):
+        return x * np.tanh(np.log(1 + np.exp(x)))
+
+    def op_grad(self, dout, x):
+        omega = np.exp(3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6
+                                                                 ) + 4 * (x + 1)
+        delta = np.exp(2 * x) + 2 * np.exp(x) + 2
+        return dout * ((np.exp(x) * omega) / delta**2)
 
 
 if __name__ == '__main__':

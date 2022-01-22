@@ -183,6 +183,19 @@ class OpBase {
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
+  bool HasVoidFunctionPostHook() const {
+    return !void_function_post_hooks_.empty();
+  }
+
+  void AddVoidFunctionPostHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_function_post_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>&
+  GetVoidFunctionPostHooks() const {
+    return void_function_post_hooks_;
+  }
+
  private:
   static const std::string& UnknownOpType() {
     static std::string kUnknownOpType{"unknown"};
@@ -197,6 +210,10 @@ class OpBase {
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  static pten::KernelContext pt_kernel_context_;
+  std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 
 class GradOpNode {

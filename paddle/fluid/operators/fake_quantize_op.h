@@ -28,8 +28,9 @@ namespace operators {
 
 template <typename T>
 inline HOSTDEVICE T inverse(T s) {
-  T eps = 1e-6;
-  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
+  T eps = static_cast<T>(1e-6);
+  T one = static_cast<T>(1.0);
+  return s <= static_cast<T>(1e-30) ? one / (s + eps) : one / s;
 }
 
 template <typename DeviceContext, typename T>

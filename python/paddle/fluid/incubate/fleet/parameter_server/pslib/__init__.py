@@ -544,18 +544,6 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
-    def clear_model(self):
-        """
-        clear_model() will be called by user. It will clear sparse model.
-        Examples:
-            .. code-block:: python
-              fleet.clear_model()
-        """
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.clear_model()
-        self._role_maker._barrier_worker()
-
     def load_pslib_whitelist(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table with whitelist
@@ -797,6 +785,15 @@ class PSLib(Fleet):
                     table_id, model_dir, mode, prefix)
             else:
                 self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def set_date(self, table_id, date):
+        """
+        set_date, eg, 20210918
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_date(table_id, str(date))
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):

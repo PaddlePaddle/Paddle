@@ -67,6 +67,7 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
   lite_cxx_config.set_xpu_conv_autotune(cfg.autotune, cfg.autotune_file);
   lite_cxx_config.set_xpu_multi_encoder_method(cfg.precision,
                                                cfg.adaptive_seqlen);
+  lite_cxx_config.set_xpu_dev_per_thread(cfg.device_id);
 #endif
 
 #ifdef LITE_SUBGRAPH_WITH_NPU

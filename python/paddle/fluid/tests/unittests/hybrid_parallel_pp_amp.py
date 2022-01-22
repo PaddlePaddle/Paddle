@@ -61,11 +61,14 @@ class TestDistPPTraning(unittest.TestCase):
         rank_id = dist.get_rank()
         set_random_seed(1024, dp_id, rank_id)
 
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(1.0)
+
         #construct model a
         model_a = AlexNet(10)
         scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2], values=[0.001, 0.002], verbose=True)
         optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
+                                           grad_clip=grad_clip,
                                            parameters=model_a.parameters())
 
         scaler_a = paddle.amp.GradScaler(init_loss_scaling=2**5)
@@ -80,6 +83,7 @@ class TestDistPPTraning(unittest.TestCase):
         scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2], values=[0.001, 0.002], verbose=True)
         optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
+                                           grad_clip=grad_clip,
                                            parameters=model_b.parameters())
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)

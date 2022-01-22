@@ -175,9 +175,13 @@ class ProgramStats(object):
             return
 
         op_idx = 0
-        while (op_idx < len(self.ops)):
+        while op_idx < len(self.ops):
             op = self.ops[op_idx]
             if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # already insert seed op before dropout
+            if op.input('Seed') is not None and len(op.input('Seed')) == 1:
                 op_idx += 1
                 continue
             # add a seed op so that the two dropout op can generate same output
@@ -198,7 +202,7 @@ class ProgramStats(object):
             if op.desc.has_attr(op_device_attr_name):
                 op_device = op.desc.attr(op_device_attr_name)
 
-            # Setting the force_cpu of seed to true will make the output of seed in cpu memory, 
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory,
             # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
@@ -953,7 +957,7 @@ def _append_backward_ops_with_checkpoints_(
         # added_descs should be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
-        # 3.c. add backward ops for all ops in current segment 
+        # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
@@ -1047,7 +1051,8 @@ def _append_backward_ops_(block,
                           grad_to_var,
                           callbacks=None,
                           input_grad_names_set=None,
-                          op_path_dict=None):
+                          op_path_dict=None,
+                          distop_context=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -1104,6 +1109,11 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+        # Build the mapping between the forward op and bacckward op (Only for auto parallel)
+        if distop_context is not None:
+            for op_desc in grad_op_desc:
+                assert op_desc.id() not in distop_context.grad_op_id_to_op_id
+                distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1188,6 +1198,12 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
+        # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
+        if distop_context is not None:
+            if op_desc.id() in distop_context.grad_op_id_to_op_id:
+                distop_context.grad_op_id_to_op_id[new_op_desc.id(
+                )] = distop_context.grad_op_id_to_op_id[op_desc.id()]
+                distop_context.grad_op_id_to_op_id.pop(op_desc.id())
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
@@ -1398,7 +1414,8 @@ def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
                     callbacks=None,
-                    checkpoints=None):
+                    checkpoints=None,
+                    distop_context=None):
     """
     :api_attr: Static Graph
 
@@ -1613,7 +1630,8 @@ def append_backward(loss,
                 grad_to_var,
                 callbacks,
                 input_grad_names_set=input_grad_names_set,
-                op_path_dict=op_path_dict)
+                op_path_dict=op_path_dict,
+                distop_context=distop_context, )
 
     grad_info_map = dict()
 

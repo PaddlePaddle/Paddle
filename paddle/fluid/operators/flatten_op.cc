@@ -79,14 +79,6 @@ class FlattenOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -157,14 +149,6 @@ class FlattenGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -227,14 +211,6 @@ class Flatten2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -285,14 +261,6 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -364,6 +332,18 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
     }
 
     return out_shape;
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasOutput("XShape")) {
+      return framework::KernelSignature("flatten_with_xshape", {"X"},
+                                        {"start_axis", "stop_axis"},
+                                        {"Out", "XShape"});
+    } else {
+      return framework::KernelSignature("flatten", {"X"},
+                                        {"start_axis", "stop_axis"}, {"Out"});
+    }
   }
 };
 
@@ -450,6 +430,12 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
+  }
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("flatten_grad",
+                                      {framework::GradVarName("Out"), "XShape"},
+                                      {}, {framework::GradVarName("X")});
   }
 };
 DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInferer, {"X", "Out"});

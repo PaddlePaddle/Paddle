@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,8 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
       framework::Tensor temp;
-      TensorCopySync(*max_len_tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*max_len_tensor, platform::CPUPlace(),
+                                        &temp);
       maxlen = *temp.data<int32_t>();
       PADDLE_ENFORCE_GT(
           maxlen, 0,

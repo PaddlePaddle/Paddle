@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -86,7 +86,8 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
         Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        paddle::framework::TensorCopySync(*mom_tensor, platform::CPUPlace(),
+                                          &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
@@ -192,6 +193,9 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       auto dx_tensor =
           ctx.AllocateTmpTensor<T, NPUDeviceContext>(d_x->dims(), dev_ctx);
       dx_tensor.ShareDataWith(*d_x);
+      if (data_layout == DataLayout::kNHWC) {
+        dx_tensor.set_layout(DataLayout::kNHWC);
+      }
       if (use_global_stats) {
         if (x->dims().size() == 3) {
           // BNInferGrad only support x rank = 4,

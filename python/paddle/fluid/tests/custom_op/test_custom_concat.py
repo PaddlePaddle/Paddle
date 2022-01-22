@@ -24,8 +24,7 @@ from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
-    get_build_directory())
+file = '{}\\custom_concat\\custom_concat.pyd'.format(get_build_directory())
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)

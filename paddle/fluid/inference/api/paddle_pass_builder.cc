@@ -93,8 +93,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "squeeze2_matmul_fuse_pass",              //
       "reshape2_matmul_fuse_pass",              //
       "flatten2_matmul_fuse_pass",              //
-      "map_matmul_to_mul_pass",                 //
       "map_matmul_v2_to_mul_pass",              //
+      "map_matmul_v2_to_matmul_pass",           //
+      "map_matmul_to_mul_pass",                 //
       "fc_fuse_pass",                           //
       "conv_elementwise_add_fuse_pass",         //
       "add_support_int8_pass",
@@ -142,8 +143,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "squeeze2_matmul_fuse_pass",                 //
         "reshape2_matmul_fuse_pass",                 //
         "flatten2_matmul_fuse_pass",                 //
-        "map_matmul_to_mul_pass",                    //
         "map_matmul_v2_to_mul_pass",                 //
+        "map_matmul_v2_to_matmul_pass",              //
+        "map_matmul_to_mul_pass",                    //
         "fc_fuse_pass",                              //
         "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
@@ -203,8 +205,11 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "squeeze2_matmul_fuse_pass",               //
                   "reshape2_matmul_fuse_pass",               //
                   "flatten2_matmul_fuse_pass",               //
-                  "map_matmul_to_mul_pass",                  //
+                  "matmul_v2_scale_fuse_pass",               //
                   "map_matmul_v2_to_mul_pass",               //
+                  "map_matmul_v2_to_matmul_pass",            //
+                  "matmul_scale_fuse_pass",                  //
+                  "map_matmul_to_mul_pass",                  //
                   "fc_fuse_pass",                            //
                   "repeated_fc_relu_fuse_pass",              //
                   "squared_mat_sub_fuse_pass",               //
@@ -238,21 +243,29 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_transpose_eltwiseadd_bn_fuse_pass",    //
              "conv_bias_mkldnn_fuse_pass",                //
              "conv_transpose_bias_mkldnn_fuse_pass",
-             "conv3d_bias_mkldnn_fuse_pass",  //
+             // TODO(baoachun): Need to support 5-dimensional input.
+             // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",                 //
-             "conv_leaky_relu_mkldnn_fuse_pass",           //
-             "conv_relu6_mkldnn_fuse_pass",                //
-             "conv_swish_mkldnn_fuse_pass",                //
-             "conv_hard_swish_mkldnn_fuse_pass",           //
-             "scale_matmul_fuse_pass",                     //
-             "reshape_transpose_matmul_mkldnn_fuse_pass",  //
-             "matmul_transpose_reshape_fuse_pass",         //
+             "conv_relu_mkldnn_fuse_pass",          //
+             "conv_leaky_relu_mkldnn_fuse_pass",    //
+             "conv_relu6_mkldnn_fuse_pass",         //
+             "conv_swish_mkldnn_fuse_pass",         //
+             "conv_hard_swish_mkldnn_fuse_pass",    //
+             "conv_mish_mkldnn_fuse_pass",          //
+             "conv_hard_sigmoid_mkldnn_fuse_pass",  //
+             // TODO(baoachun) fix int8 accuracy
+             "conv_gelu_mkldnn_fuse_pass",
+             "scale_matmul_fuse_pass",                        //
+             "reshape_transpose_matmul_mkldnn_fuse_pass",     //
+             "reshape_transpose_matmul_v2_mkldnn_fuse_pass",  //
+             "matmul_transpose_reshape_fuse_pass",            //
+             "matmul_v2_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass",
-             // "fc_act_mkldnn_fuse_pass",
-             "batch_norm_act_fuse_pass",
+             //  "fc_mkldnn_pass",
+             //  "fc_act_mkldnn_fuse_pass",
+             "batch_norm_act_fuse_pass",              //
+             "softplus_activation_mkldnn_fuse_pass",  //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
@@ -290,6 +303,10 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 #else
   use_mkldnn_bfloat16_ = false;
 #endif
+}
+
+IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
+  passes_.assign({"inference_process_pass"});
 }
 
 }  // namespace paddle
