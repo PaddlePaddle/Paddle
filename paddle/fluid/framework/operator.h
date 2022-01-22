@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -454,8 +454,9 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
-  bool HasAttr(const std::string& name) const override {
-    return ctx_.HasAttr(name);
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.GetAttr(name);
+    return GetAttrValue(attr);
   }
 
   size_t InputSize(const std::string& name) const override {
