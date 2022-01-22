@@ -24,9 +24,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/device_context.h"
-namespace pten {
-class SelectedRows;
-}  // namespace pten
+
 namespace paddle {
 namespace framework {
 
@@ -132,11 +130,11 @@ struct ReduceOpHandle : public OpHandleBase {
     defined PADDLE_WITH_DISTRIBUTE
   template <typename DevCtx, typename DataType>
   void GatherSelectedRows(
-      const std::vector<const SelectedRows *> &src_selecte_rows_,
+      const std::vector<const pten::SelectedRows *> &src_selecte_rows_,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle, const platform::Place &out_place,
-      SelectedRows *dst_selecte_rows);
+      pten::SelectedRows *dst_selecte_rows);
 #endif
 
   void Wait(
