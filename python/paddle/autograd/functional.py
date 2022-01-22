@@ -958,11 +958,14 @@ class Jacobian(object):
         """
 
         def enable_grads(inputs):
-            if isinstance(inputs, list):
+            if isinstance(inputs, (list, tuple)):
                 for x in inputs:
                     x.stop_gradient = False
             else:
-                assert isinstance(inputs, paddle.fluid.framework.Variable)
+                assert isinstance(inputs, paddle.fluid.framework.Variable), (
+                    f"Expecting {inputs} to be paddle.fluid.framework.Variable,"
+                    f" however it's found to be a(n) {type(inputs)}."
+                )
                 inputs.stop_gradient = False
             return inputs
 

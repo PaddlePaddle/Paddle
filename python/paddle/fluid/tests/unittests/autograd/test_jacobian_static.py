@@ -179,7 +179,7 @@ class TestJacobianFloat64(unittest.TestCase):
         self.rtol = 1e-6
         self.atol = 1e-6
 
-    def run_test(self, pd_f, np_f, inps, dtype, batch=False):
+    def run_test_by_fullmatrix(self, pd_f, np_f, inps, dtype, batch=False):
         def make_tensors(inps):
             if isinstance(inps, list):
                 xs = [
@@ -211,6 +211,72 @@ class TestJacobianFloat64(unittest.TestCase):
         self.assertTrue(
             np.allclose(pd_jacobians, np_jacobians, self.rtol, self.atol))
 
+    def run_test_by_rows(self, pd_f, np_f, inps, dtype, batch=False):
+        def make_tensors(inps):
+            if isinstance(inps, list):
+                xs = [
+                    paddle.static.data(
+                        f'x{i}', inp.shape, dtype=inp.dtype)
+                    for i, inp in enumerate(inps)
+                ]
+            else:
+                xs = paddle.static.data(
+                    name='x', shape=inps.shape, dtype=inps.dtype)
+            return xs
+
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            xs = make_tensors(inps)
+            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
+            nrow, ncol = JJ.shape()
+            rows = [JJ[i] for i in range(nrow)] 
+        place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        if isinstance(inps, list):
+            feeds = {f'x{i}': x for i, x in enumerate(inps)}
+        else:
+            feeds = {'x': inps}
+        pd_jac = exe.run(main, feed=feeds, fetch_list=[rows])
+        np_jac = approx_jacobian(np_f, inps, dtype, self.eps, batch=batch)
+        for i in range(nrow):
+            self.assertTrue(np.allclose(pd_jac[i], np_jac[i], self.rtol, self.atol))
+
+    def run_test_by_entries(self, pd_f, np_f, inps, dtype, batch=False):
+        def make_tensors(inps):
+            if isinstance(inps, list):
+                xs = [
+                    paddle.static.data(
+                        f'x{i}', inp.shape, dtype=inp.dtype)
+                    for i, inp in enumerate(inps)
+                ]
+            else:
+                xs = paddle.static.data(
+                    name='x', shape=inps.shape, dtype=inps.dtype)
+            return xs
+
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            xs = make_tensors(inps)
+            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
+            nrow, ncol = JJ.shape()
+            entries = [JJ[i, j] for i in range(nrow) for j in range(ncol)] 
+        place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        if isinstance(inps, list):
+            feeds = {f'x{i}': x for i, x in enumerate(inps)}
+        else:
+            feeds = {'x': inps}
+        pd_entries = exe.run(main, feed=feeds, fetch_list=[entries])
+        np_jac = approx_jacobian(np_f, inps, dtype, self.eps, batch=batch)
+        np_entries = [np_jac[i, ..., j] for i in range(nrow) 
+                                        for j in range(ncol)]
+        for pd_entry, np_entry in zip(pd_entries, np_entries):
+            self.assertTrue(np.allclose(pd_entry, np_entry, self.rtol, self.atol))
+
     def test_square(self):
         def pd_f(x):
             return paddle.multiply(x, x)
@@ -218,7 +284,9 @@ class TestJacobianFloat64(unittest.TestCase):
         def np_f(x):
             return np.multiply(x, x)
 
-        self.run_test(pd_f, np_f, self.A, np.dtype('float64'))
+        self.run_test_by_fullmatrix(pd_f, np_f, self.A, np.dtype('float64'))
+        self.run_test_by_rows(pd_f, np_f, self.A, np.dtype('float64'))
+        self.run_test_by_entries(pd_f, np_f, self.A, np.dtype('float64'))
 
     def test_mul(self):
         def pd_f(xs):
@@ -229,7 +297,12 @@ class TestJacobianFloat64(unittest.TestCase):
             x, y = xs
             return np.multiply(x, y)
 
-        self.run_test(pd_f, np_f, [self.B, self.C], np.dtype('float64'))
+        self.run_test_by_fullmatrix(pd_f, np_f, [self.B, self.C], 
+                                    np.dtype('float64'))
+        self.run_test_by_rows(pd_f, np_f, [self.B, self.C], 
+                                    np.dtype('float64'))
+        self.run_test_by_entries(pd_f, np_f, [self.B, self.C], 
+                                    np.dtype('float64'))
 
     def test_matmul(self):
         def pd_f(xs):
@@ -240,7 +313,12 @@ class TestJacobianFloat64(unittest.TestCase):
             x, y = xs
             return np.matmul(x, y)
 
-        self.run_test(pd_f, np_f, [self.B, self.C], np.dtype('float64'))
+        self.run_test_by_fullmatrix(pd_f, np_f, [self.B, self.C],
+                                    np.dtype('float64'))
+        self.run_test_by_rows(pd_f, np_f, [self.B, self.C],
+                                    np.dtype('float64'))
+        self.run_test_by_entries(pd_f, np_f, [self.B, self.C],
+                                    np.dtype('float64'))
 
     def test_batch_matmul(self):
         def pd_f(xs):
@@ -251,9 +329,12 @@ class TestJacobianFloat64(unittest.TestCase):
             x, y = xs
             return np.matmul(x, y)
 
-        self.run_test(
-            pd_f, np_f, [self.D, self.E], np.dtype('float64'), batch=True)
-
+        self.run_test_by_fullmatrix(pd_f, np_f, [self.D, self.E],
+                                    np.dtype('float64'), batch=True)
+        self.run_test_by_rows(pd_f, np_f, [self.D, self.E],
+                                    np.dtype('float64'), batch=True)
+        self.run_test_by_entries(pd_f, np_f, [self.D, self.E],
+                                    np.dtype('float64'), batch=True)
 
 if __name__ == "__main__":
     unittest.main()
