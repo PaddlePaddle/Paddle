@@ -122,5 +122,15 @@ __global__ void reindex_src_output(IdType* src_output, int64_t num_items,
   }
 }
 
+template <typename IdType>
+__global__ void reindex_inputs_nodes(const IdType* nodes, int64_t num_items,
+                                     IdType* reindex_nodes, int64_t size,
+                                     const IdType* keys, const IdType* values) {
+  CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
+    int64_t pos = Search(nodes[i], keys, size);
+    reindex_nodes[i] = values[pos];
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

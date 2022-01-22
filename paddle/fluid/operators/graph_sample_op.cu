@@ -263,7 +263,9 @@ template <typename T>
 void reindex_func(const framework::ExecutionContext& ctx,
                   thrust::device_vector<T>* inputs,
                   thrust::device_vector<T>* outputs,
-                  thrust::device_vector<T>* subset) {
+                  thrust::device_vector<T>* subset,
+                  thrust::device_vector<T>* orig_nodes,
+                  thrust::device_vector<T>* reindex_nodes, int bs) {
   subset->resize(inputs->size() + outputs->size());
   thrust::copy(inputs->begin(), inputs->end(), subset->begin());
   thrust::copy(outputs->begin(), outputs->end(),
@@ -295,6 +297,15 @@ void reindex_func(const framework::ExecutionContext& ctx,
       thrust::raw_pointer_cast(outputs->data()), outputs->size(), size,
       thrust::raw_pointer_cast(keys.data()),
       thrust::raw_pointer_cast(values.data()));
+
+  int grid_ = (bs + block - 1) / block;
+  reindex_inputs_nodes<T><<<
+      grid_, block, 0,
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
+          .stream()>>>(thrust::raw_pointer_cast(orig_nodes->data()), bs,
+                       thrust::raw_pointer_cast(reindex_nodes->data()), size,
+                       thrust::raw_pointer_cast(keys.data()),
+                       thrust::raw_pointer_cast(values.data()));
 }
 
 template <typename DeviceContext, typename T>
@@ -313,15 +324,18 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
     const T* src_eids_data = src_eids->data<T>();
     const T* dst_count_data = dst_count->data<T>();
     const T* p_vertices = vertices->data<T>();
-    const size_t bs = vertices->dims()[0];
+    const int bs = vertices->dims()[0];
+
+    // 1.1 Get unique inputs.
+    thrust::device_vector<T> inputs(bs);
+    thrust::copy(p_vertices, p_vertices + bs, inputs.begin());
+    auto unique_inputs_end = thrust::unique(inputs.begin(), inputs.end());
+    inputs.resize(thrust::distance(inputs.begin(), unique_inputs_end));
 
     // 2. Sample neighbors.
-    thrust::device_vector<T> inputs;
     thrust::device_vector<T> outputs;
     thrust::device_vector<T> output_counts;
     thrust::device_vector<T> outputs_eids;
-    inputs.resize(bs);
-    thrust::copy(p_vertices, p_vertices + bs, inputs.begin());
     std::vector<thrust::device_vector<T>> dst_vec;
     dst_vec.emplace_back(inputs);
     std::vector<thrust::device_vector<T>> outputs_vec;
@@ -415,8 +429,16 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
 
     // 4. Get hashtable according to unique_dst_merge and src_merge.
     // We can get unique items(subset) and reindex src_merge.
+    thrust::device_vector<T> orig_nodes(bs);
+    thrust::copy(p_vertices, p_vertices + bs, orig_nodes.begin());
+    thrust::device_vector<T> reindex_nodes(bs);
     thrust::device_vector<T> subset;
-    reindex_func<T>(ctx, &unique_dst_merge, &src_merge, &subset);
+    reindex_func<T>(ctx, &unique_dst_merge, &src_merge, &subset, &orig_nodes,
+                    &reindex_nodes, bs);
+    auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
+    T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
+    cudaMemset(p_reindex_x, 0, bs * sizeof(T));
+    thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
 
     auto* sample_index = ctx.Output<Tensor>("Sample_index");
     sample_index->Resize({static_cast<int>(subset.size())});
