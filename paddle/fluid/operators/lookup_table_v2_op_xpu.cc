@@ -76,42 +76,85 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
-    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
-                      platform::errors::PermissionDenied(
-                          "Unsupported Variable Type , idx in "
-                          "LookupTableV2GradXPUKernel should be LoDTensor."));
-    table_dim = context.Input<LoDTensor>("W")->dims();
-
-    bool is_sparse = context.Attr<bool>("is_sparse");
-    PADDLE_ENFORCE_EQ(
-        is_sparse, false,
-        platform::errors::InvalidArgument(
-            "LookupTableV2GradXPUKernel dose NOT support is_sparse = True."));
-
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
-
-    int64_t ids_numel = ids_t->numel();
-    PADDLE_ENFORCE_EQ(
-        ids_numel <= std::numeric_limits<int32_t>::max(), true,
-        platform::errors::OutOfRange(
-            "Number of ids greater than int32_t::max , please check "
-            "number of ids in LookupTableV2GradXPUKernel."));
+    if (table_var->IsType<LoDTensor>()) {
+      table_dim = context.Input<LoDTensor>("W")->dims();
+    } else if (table_var->IsType<SelectedRows>()) {
+      auto *table_t = context.Input<SelectedRows>("W");
+      table_dim = table_t->value().dims();
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The parameter W of a LookupTable "
+          "must be either LoDTensor or SelectedRows"));
+    }
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    const int64_t *ids_data = ids_t->data<int64_t>();
-    const T *d_output_data = d_output_t->data<T>();
-    T *d_table_data = d_table_t->mutable_data<T>(context.GetPlace());
-    int xm = d_table_t->dims()[0];
-    int ym = static_cast<int>(ids_numel);
-    int n = d_table_t->dims()[1];
-    int padding_idx = context.Attr<int64_t>("padding_idx");
+    bool is_sparse = context.Attr<bool>("is_sparse");
 
-    int r = xpu::embedding_grad<T, int64_t>(dev_ctx.x_context(), d_output_data,
-                                            ids_data, d_table_data, xm, n, ym,
-                                            padding_idx);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
+    if (is_sparse) {
+      auto *ids_t = context.Input<LoDTensor>("Ids");
+      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+
+      int64_t ids_num = ids_t->numel();
+      std::vector<int64_t> ids;
+      ids.resize(ids_num);
+
+      framework::SelectedRows &tmp_d_table = *d_table;
+      framework::TensorToVector(*ids_t, dev_ctx, &ids);
+
+      tmp_d_table.set_rows(ids);
+      tmp_d_table.set_height(table_dim[0]);
+      auto *d_table_value = tmp_d_table.mutable_value();
+      d_table_value->Resize({ids_num, table_dim[1]});
+      d_table_value->mutable_data<T>(context.GetPlace());
+
+      auto *d_output_data = d_output->data<T>();
+      auto *d_table_data = d_table_value->data<T>();
+
+      auto d_output_dims = d_output->dims();
+      auto d_output_dims_2d =
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+
+      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+                        platform::errors::InvalidArgument(
+                            "ShapeError: The shape of lookup_table@Grad and "
+                            "output@Grad should be same. "
+                            "But received lookup_table@Grad's shape = [%s], "
+                            "output@Grad's shape = [%s].",
+                            d_table_value->dims(), d_output_dims_2d));
+      int r = xpu::copy<T>(dev_ctx.x_context(), d_output_data, d_table_data,
+                           d_output->numel() * sizeof(T));
+      PADDLE_ENFORCE_EQ(
+          r == xpu::Error_t::SUCCESS, true,
+          platform::errors::External("XPU copy in lookup_table_v2_op return "
+                                     "wrong value[%d %s].",
+                                     r, XPUAPIErrorMsg[r]));
+    } else {
+      auto ids_t = context.Input<LoDTensor>("Ids");
+      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+
+      int64_t ids_numel = ids_t->numel();
+      PADDLE_ENFORCE_EQ(
+          ids_numel <= std::numeric_limits<int32_t>::max(), true,
+          platform::errors::OutOfRange(
+              "Number of ids greater than int32_t::max , please check "
+              "number of ids in LookupTableV2GradXPUKernel."));
+
+      auto &dev_ctx = context.template device_context<DeviceContext>();
+      const int64_t *ids_data = ids_t->data<int64_t>();
+      const T *d_output_data = d_output_t->data<T>();
+      T *d_table_data = d_table_t->mutable_data<T>(context.GetPlace());
+      int xm = d_table_t->dims()[0];
+      int ym = static_cast<int>(ids_numel);
+      int n = d_table_t->dims()[1];
+      int padding_idx = context.Attr<int64_t>("padding_idx");
+
+      int r = xpu::embedding_grad<T, int64_t>(
+          dev_ctx.x_context(), d_output_data, ids_data, d_table_data, xm, n, ym,
+          padding_idx);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
+    }
   }
 };
 }  // namespace operators

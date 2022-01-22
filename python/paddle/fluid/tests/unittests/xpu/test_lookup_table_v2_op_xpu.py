@@ -175,6 +175,54 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
             assert (row == result_array[idx]).all()
 
 
+class TestLookupTableIsSparse(unittest.TestCase):
+    def init_data(self):
+        self.x_data = np.array([[1, 3, 0, 4, 7]]).astype("int64")
+        self.y_data = np.array([[0.1, 0.3, 0, 0.4, 0.7]]).astype("float32")
+
+    def get_w_grad(self, is_sparse):
+        self.init_data()
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program, fluid.Program()):
+            x = fluid.layers.data(name='x', shape=[5], dtype='int64')
+            y_ = fluid.layers.data(name='y_', shape=[5], dtype='float32')
+            emb = fluid.input.embedding(
+                input=x,
+                size=[10, 16],
+                param_attr=fluid.ParamAttr(
+                    name="emb_weight",
+                    learning_rate=10,
+                    initializer=fluid.initializer.NumpyArrayInitializer(
+                        self.w_data)),
+                is_sparse=is_sparse)
+            y = fluid.layers.reduce_sum(emb, dim=-1)
+
+            loss = fluid.layers.square_error_cost(input=y, label=y_)
+            loss = fluid.layers.mean(loss)
+
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=1e-4)
+            sgd_optimizer.minimize(loss)
+
+            place = paddle.XPUPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            ret = exe.run(feed={'x': self.x_data,
+                                'y_': self.y_data},
+                          fetch_list=['emb_weight'],
+                          return_numpy=False)
+            return np.array(ret[0])
+
+    def test_w_grad(self):
+        self.w_data = np.random.random(size=(10, 16)).astype("float32")
+        w_grad = self.get_w_grad(False)
+        w_grad_with_sparse = self.get_w_grad(True)
+        self.check_grad(w_grad, w_grad_with_sparse)
+
+    def check_grad(self, w_grad1, w_grad2, tolerance=1e-6):
+        np.testing.assert_allclose(
+            w_grad1, w_grad2, rtol=tolerance, atol=tolerance)
+
+
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
         x = fluid.layers.data(name='x', shape=[20], dtype='int64')
