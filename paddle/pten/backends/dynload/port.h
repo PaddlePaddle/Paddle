@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 #include <time.h>
 
 #include <cstdio>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#include "glog/logging.h"
 
 #if !defined(_WIN32)
 #include <dlfcn.h>  // dladdr
@@ -50,7 +50,7 @@ static void *dlsym(void *handle, const char *symbol_name) {
   found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
 
   if (found_symbol == NULL) {
-    std::cerr << "Load symbol " << symbol_name << " failed." << std::endl;
+    LOG(ERROR) << "Load symbol " << symbol_name << " failed.";
     throw std::runtime_error(std::string(symbol_name) + " not found.");
   }
   return reinterpret_cast<void *>(found_symbol);
@@ -98,7 +98,7 @@ static void ExecShellCommand(const std::string &cmd, std::string *message) {
   std::shared_ptr<FILE> pipe(_popen(cmd.c_str(), "r"), _pclose);
 #endif  // _WIN32
   if (!pipe) {
-    std::cerr << "error running command: " << cmd << std::endl;
+    LOG(ERROR) << "error running command: " << cmd;
     return;
   }
   while (!feof(pipe.get())) {

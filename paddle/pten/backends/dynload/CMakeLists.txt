@@ -1,4 +1,4 @@
-cc_library(pten_dynamic_loader SRCS dynamic_loader.cc DEPS enforce)
+cc_library(pten_dynamic_loader SRCS dynamic_loader.cc DEPS enforce glog gflags)
 
 list(APPEND CUDA_SRCS cublas.cc cublasLt.cc cudnn.cc curand.cc cusolver.cc cusparse.cc  nvtx.cc cufft.cc)
 
