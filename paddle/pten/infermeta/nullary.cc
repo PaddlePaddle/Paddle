@@ -20,14 +20,14 @@ namespace pten {
 DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
                                 DataType dtype,
                                 DataLayout layout) {
-  const auto& out_dims = paddle::framework::make_ddim(shape);
+  const auto& out_dims = pten::framework::make_ddim(shape);
   return {dtype, out_dims, layout};
 }
 
 DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
                                 DataType dtype,
                                 DataLayout layout) {
-  const auto& out_dims = paddle::framework::make_ddim(shape.GetData());
+  const auto& out_dims = pten::framework::make_ddim(shape.GetData());
   return {dtype, out_dims, layout};
 }
 
