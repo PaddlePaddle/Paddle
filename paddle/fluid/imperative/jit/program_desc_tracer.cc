@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 
 namespace paddle {
@@ -219,42 +218,52 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
 
 void ProgramDescTracer::InsertVarIfNotExist(
     const std::shared_ptr<VarBase> &new_var, bool is_input) {
+  std::unique_lock<std::mutex> lock(vars_mutex_);
+
   PADDLE_ENFORCE_NOT_NULL(new_var, platform::errors::InvalidArgument(
                                        "The variable to insert is NULL."));
-  if (vars_.count(new_var) != 0) return;
 
-  auto new_var_desc = new framework::VarDesc("");
-  vars_[new_var].reset(new_var_desc);
+  for (; vars_.count(new_var) == 0; ) {
+    if(!lock.try_lock())
+      continue;
 
-  if (new_var->Persistable() || is_input) {
-    new_var_desc->SetName(new_var->Name());
-    new_var_desc->SetPersistable(new_var->Persistable());
-    if (!new_var->Persistable()) {
-      non_exist_input_vars_.insert(new_var);
-    }
-  } else {
-    new_var_desc->SetPersistable(false);
-  }
+    auto& pair = vars_[new_var];
+    lock.unlock();
 
-  const auto &inner_var = new_var->Var();
-  PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
-                    platform::errors::InvalidArgument(
-                        "The variable to insert is not initialized."));
-  if (inner_var.IsType<framework::LoDTensor>()) {
-    const auto &tensor = inner_var.Get<framework::LoDTensor>();
-    new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
-    new_var_desc->SetShape(framework::vectorize<int64_t>(tensor.dims()));
-    new_var_desc->SetLoDLevel(tensor.lod().size());
-    if (tensor.IsInitialized()) {
-      new_var_desc->SetDataType(tensor.type());
+    auto new_var_desc = new framework::VarDesc("");
+    pair.reset(new_var_desc);
+
+    if (new_var->Persistable() || is_input) {
+      new_var_desc->SetName(new_var->Name());
+      new_var_desc->SetPersistable(new_var->Persistable());
+      if (!new_var->Persistable()) {
+        non_exist_input_vars_.insert(new_var);
+      }
     } else {
-      new_var_desc->SetDataType(framework::proto::VarType::FP32);
+      new_var_desc->SetPersistable(false);
     }
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Not support variable type %s.",
-        framework::ToTypeName(inner_var.Type())));
+
+    const auto &inner_var = new_var->Var();
+    PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "The variable to insert is not initialized."));
+    if (inner_var.IsType<framework::LoDTensor>()) {
+      const auto &tensor = inner_var.Get<framework::LoDTensor>();
+      new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
+      new_var_desc->SetShape(framework::vectorize<int64_t>(tensor.dims()));
+      new_var_desc->SetLoDLevel(tensor.lod().size());
+      if (tensor.IsInitialized()) {
+        new_var_desc->SetDataType(tensor.type());
+      } else {
+        new_var_desc->SetDataType(framework::proto::VarType::FP32);
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Not support variable type %s.",
+          framework::ToTypeName(inner_var.Type())));
+    }
   }
+  return;
 }
 
 void ProgramDescTracer::Reset() {

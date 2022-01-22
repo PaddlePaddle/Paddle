@@ -16,6 +16,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <tuple>
@@ -77,6 +78,7 @@ class ProgramDescTracer {
   std::vector<std::unique_ptr<OpDescMeta>> ops_;
   VarDescMetaMap vars_;
   VarBaseSet non_exist_input_vars_;
+  std::mutex vars_mutex_;
 };
 
 }  // namespace jit
