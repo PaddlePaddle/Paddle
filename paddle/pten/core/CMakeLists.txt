@@ -16,7 +16,6 @@ cc_library(lod_utils SRCS lod_utils.cc DEPS enforce mixed_vector)
 cc_library(dense_tensor SRCS dense_tensor.cc DEPS convert_utils tensor_meta tensor_base)
 cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 
-
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
@@ -27,6 +26,8 @@ if(WITH_GPU)
 elseif(WITH_ROCM)
   hip_test(dim_test SRCS dim_test.cu DEPS ddim)
 endif()
+
+cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector enforce ddim)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
