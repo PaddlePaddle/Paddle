@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

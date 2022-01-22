@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -72,22 +72,6 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
-// TODO(Wilber): support others device context.
-template <typename T>
-struct ConvertToPtenContext {
-  using TYPE = T;
-};
-
-template <>
-struct ConvertToPtenContext<platform::CPUDeviceContext> {
-  using TYPE = pten::CPUContext;
-};
-
-template <>
-struct ConvertToPtenContext<platform::XPUDeviceContext> {
-  using TYPE = pten::XPUContext;
-};
-
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
                                   const platform::Place& place);
 
@@ -101,6 +85,13 @@ template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
+
+#ifdef PADDLE_WITH_XPU
+template <>
+struct ConvertToPtenContext<platform::XPUDeviceContext> {
+  using TYPE = pten::XPUContext;
+};
+#endif
 
 }  // namespace framework
 }  // namespace paddle

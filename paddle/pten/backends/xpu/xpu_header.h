@@ -14,14 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-// #ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU
 #include <map>
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/float16.h"
 
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
@@ -42,15 +42,15 @@ class XPUTypeTrait {
 };
 
 template <>
-class XPUTypeTrait<paddle::platform::float16> {
+class XPUTypeTrait<pten::dtype::float16> {
  public:
   using Type = float16;
 };
 
 template <>
-class XPUTypeTrait<paddle::platform::bfloat16> {
+class XPUTypeTrait<pten::dtype::bfloat16> {
  public:
   using Type = bfloat16;
 };
 
-// #endif
+#endif

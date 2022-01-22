@@ -14,11 +14,25 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 
+#include "paddle/pten/backends/xpu/enforce_xpu.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/backends/xpu/xpu_header.h"
 #include "paddle/pten/common/place.h"
 
-#include "paddle/pten/backends/xpu/enforce_xpu.h"
-#include "paddle/pten/backends/xpu/xpu_context.h"
+// TODO(wilber): The pten computing library requires a component to manage
+// flags.
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_string(
+    selected_xpus,
+    "",
+    "A list of device ids separated by comma, like: 0,1,2,3. "
+    "This option is useful when doing multi process training and "
+    "each process have only one device (XPU). If you want to use "
+    "all visible devices, set this to empty string. NOTE: the "
+    "reason of doing this is that we want to use P2P communication"
+    "between XPU devices, use XPU_VISIBLE_DEVICES can only use"
+    "share-memory only.");
 
 namespace pten {
 class XPUContext;
@@ -50,12 +64,16 @@ int GetRuntimeVersion() {
 
 /**************************** Device Management **************************/
 
-static int GetDeviceCountImpl(const std::string& xpu_visible_devices_str) {
-  if (std::all_of(xpu_visible_devices_str.begin(),
-                  xpu_visible_devices_str.end(),
-                  [](char ch) { return ch == ' '; })) {
-    VLOG(2) << "XPU_VISIBLE_DEVICES is set to be empty. No XPU detected.";
-    return 0;
+static int GetDeviceCountImpl() {
+  const auto* xpu_visible_devices = std::getenv("XPU_VISIBLE_DEVICES");
+  if (xpu_visible_devices != nullptr) {
+    std::string xpu_visible_devices_str(xpu_visible_devices);
+    if (std::all_of(xpu_visible_devices_str.begin(),
+                    xpu_visible_devices_str.end(),
+                    [](char ch) { return ch == ' '; })) {
+      VLOG(2) << "XPU_VISIBLE_DEVICES is set to be empty. No XPU detected.";
+      return 0;
+    }
   }
 
   int count = 0;
@@ -63,8 +81,8 @@ static int GetDeviceCountImpl(const std::string& xpu_visible_devices_str) {
   return count;
 }
 
-int GetXPUDeviceCount(const std::string& xpu_visible_devices_str) {
-  static auto dev_cnt = GetDeviceCountImpl(xpu_visible_devices_str);
+int GetXPUDeviceCount() {
+  static auto dev_cnt = GetDeviceCountImpl();
   return dev_cnt;
 }
 
@@ -78,10 +96,10 @@ int GetXPUCurrentDeviceId() {
   return dev_id;
 }
 
-void SetXPUDeviceId(int id, const std::string& xpu_visible_devices_str) {
+void SetXPUDeviceId(int id) {
   PADDLE_ENFORCE_LT(
       id,
-      GetXPUDeviceCount(xpu_visible_devices_str),
+      GetXPUDeviceCount(),
       paddle::platform::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
 }
@@ -100,18 +118,16 @@ static inline std::vector<std::string> Split(std::string const& original,
 }
 
 //! Get a list of device ids from environment variable or use all.
-std::vector<int> GetXPUSelectedDevices(
-    const std::string& selected_xpus,
-    const std::string& xpu_visible_devices_str) {
+std::vector<int> GetXPUSelectedDevices() {
   // use user specified XPUs in single-node multi-process mode.
   std::vector<int> devices;
-  if (!selected_xpus.empty()) {
-    auto devices_str = Split(selected_xpus, ',');
+  if (!FLAGS_selected_xpus.empty()) {
+    auto devices_str = Split(FLAGS_selected_xpus, ',');
     for (auto id : devices_str) {
-      devices.push_back(std::atoi(id.c_str()));
+      devices.push_back(atoi(id.c_str()));
     }
   } else {
-    int count = GetXPUDeviceCount(xpu_visible_devices_str);
+    int count = GetXPUDeviceCount();
     for (int i = 0; i < count; ++i) {
       devices.push_back(i);
     }

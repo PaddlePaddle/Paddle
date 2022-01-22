@@ -10,8 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-// #ifdef PADDLE_WITH_XPU
-
 #include <string>
 #include <vector>
 #include "paddle/pten/common/place.h"
@@ -34,19 +32,16 @@ int GetRuntimeVersion();
 /***** Device Management *****/
 
 //! Get the total number of XPU devices in system.
-int GetXPUDeviceCount(const std::string &);
+int GetXPUDeviceCount();
 
 //! Set the XPU device id for next execution.
-void SetXPUDeviceId(int device_id,
-                    const std::string &xpu_visible_devices_str = "");
+void SetXPUDeviceId(int device_id);
 
 //! Get the current XPU device id in system.
 int GetXPUCurrentDeviceId();
 
 //! Get a list of device ids from environment variable or use all.
-std::vector<int> GetXPUSelectedDevices(
-    const std::string &selected_xpus = "",
-    const std::string &xpu_visible_devices_str = "");
+std::vector<int> GetXPUSelectedDevices();
 
 /***** Memory Management *****/
 
@@ -96,5 +91,3 @@ XPUVersion get_xpu_version(int dev_id);
 }  // namespace xpu
 }  // namespace backends
 }  // namespace pten
-
-// #endif

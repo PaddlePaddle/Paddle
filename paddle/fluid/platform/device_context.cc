@@ -256,7 +256,7 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
   // platform::XPUDeviceGuard guard(place.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                          << static_cast<int>(place_.device);
+                          << static_cast<int>(place.device);
 
   // context_ = xpu::create_context();
   // const int MAX_XPU_NUM = 16;
