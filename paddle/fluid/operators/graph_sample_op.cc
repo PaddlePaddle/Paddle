@@ -34,6 +34,8 @@ class GraphSampleOP : public framework::OperatorWithKernel {
                    "GraphSampling");
     OP_INOUT_CHECK(ctx->HasOutput("Sample_index"), "Output", "Sample_index",
                    "GraphSampling");
+    OP_INOUT_CHECK(ctx->HasOutput("Reindex_X"), "Output", "Reindex_X",
+                   "GraphSampling");
     // 是否限制所有输入输出均为1维向量，或者2维向量第二维为1.
 
     const std::vector<int>& sample_sizes =
@@ -53,6 +55,9 @@ class GraphSampleOP : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out_Src", {-1, 1});
     ctx->SetOutputDim("Out_Dst", {-1, 1});
     ctx->SetOutputDim("Sample_index", {-1});
+
+    auto dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Reindex_X", dims);
   }
 
  protected:
@@ -79,6 +84,7 @@ class GraphSampleOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output dst edges tensor after sampling and reindex.");
     AddOutput("Sample_index",
               "The original index of the sampling nodes and center nodes.");
+    AddOutput("Reindex_X", "The reindex node id of the input nodes.");
     AddOutput("Out_Eids", "The eids of the sample edges.").AsIntermediate();
     AddAttr<std::vector<int>>("sample_sizes",
                               "The sample sizes of graphsage sampling method.")

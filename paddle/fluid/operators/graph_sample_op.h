@@ -147,12 +147,16 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
     const T* p_vertices = vertices->data<T>();
     const size_t bs = vertices->dims()[0];
 
-    // 2. Sample neighbors.
+    // 1.1 Get unique inputs X.
     std::vector<T> inputs(bs);
+    std::copy(p_vertices, p_vertices + bs, inputs.begin());
+    auto unique_inputs_end = std::unique(inputs.begin(), inputs.end());
+    inputs.resize(std::distance(inputs.begin(), unique_inputs_end));
+
+    // 2. Sample neighbors.
     std::vector<T> outputs;
     std::vector<T> output_counts;
     std::vector<T> outputs_eids;
-    std::copy(p_vertices, p_vertices + bs, inputs.begin());
     std::vector<std::vector<T>> dst_vec;
     dst_vec.emplace_back(inputs);
     std::vector<std::vector<T>> outputs_vec;
@@ -264,7 +268,15 @@ class GraphSampleOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    // 6. Get outputs.
+    // 6. Get Reindex_X.
+    auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
+    T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
+    memset(p_reindex_x, 0, bs * sizeof(T));
+    for (size_t i = 0; i < bs; i++) {
+      p_reindex_x[i] = node_map[p_vertices[i]];
+    }
+
+    // 7. Get outputs.
     auto* sample_index = ctx.Output<Tensor>("Sample_index");
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
