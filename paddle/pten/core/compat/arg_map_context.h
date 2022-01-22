@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -27,22 +28,6 @@ namespace pten {
 using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
                                    paddle::SmallVector<std::string>,
                                    paddle::SmallVector<std::string>>;
-
-// TODO(chenweihang): Add more methods if needed in future
-class ArgumentMappingContext {
- public:
-  virtual ~ArgumentMappingContext() = default;
-
-  virtual bool HasInput(const std::string& name) const = 0;
-  virtual bool HasOutput(const std::string& name) const = 0;
-  virtual bool HasAttr(const std::string& name) const = 0;
-
-  virtual size_t InputSize(const std::string& name) const = 0;
-  virtual size_t OutputSize(const std::string& name) const = 0;
-
-  virtual bool IsDenseTensorInput(const std::string& name) const = 0;
-  virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
-};
 
 struct KernelSignature {
   std::string name;
@@ -64,23 +49,23 @@ struct KernelSignature {
 
 std::ostream& operator<<(std::ostream& os, KernelSignature signature);
 
-using ArgumentMappingFn = KernelSignature (*)(const ArgumentMappingContext&);
-
-class OpArgumentMappingFnMap {
+// TODO(chenweihang): Add more methods if needed in future
+class ArgumentMappingContext {
  public:
-  static OpArgumentMappingFnMap& Instance();
+  virtual ~ArgumentMappingContext() = default;
 
-  bool Has(const std::string& op_type) const;
+  virtual bool HasInput(const std::string& name) const = 0;
+  virtual bool HasOutput(const std::string& name) const = 0;
 
-  const ArgumentMappingFn& Get(const std::string& op_type) const;
+  // now we can't use Attribute here, it will cause pten relay on
+  // boost::variant and BlockDesc
+  virtual paddle::any Attr(const std::string& name) const = 0;
 
-  void Emplace(const std::string& op_type,
-               const std::string api_name,
-               ArgumentMappingFn fn);
+  virtual size_t InputSize(const std::string& name) const = 0;
+  virtual size_t OutputSize(const std::string& name) const = 0;
 
- private:
-  paddle::flat_hash_map<std::string, std::string> name_map_;
-  paddle::flat_hash_map<std::string, ArgumentMappingFn> fn_map_;
+  virtual bool IsDenseTensorInput(const std::string& name) const = 0;
+  virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
 };
 
 }  // namespace pten
