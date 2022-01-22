@@ -68,6 +68,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/pten/backends/dynload/cublas.h"
