@@ -33,8 +33,8 @@ template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
-               bool keep_dim,
                DataType out_dtype,
+               bool keep_dim,
                DenseTensor* out) {
   bool reduce_all = false;
   SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
