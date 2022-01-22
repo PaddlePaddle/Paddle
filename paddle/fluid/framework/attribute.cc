@@ -37,6 +37,8 @@ paddle::any GetAttrValue(const Attribute& attr) {
   } else if (attr.type() == typeid(BlockDesc*)) {
     return paddle::any(BOOST_GET_CONST(BlockDesc*, attr));
   } else if (attr.type() == typeid(int64_t)) {
+    return paddle::any(BOOST_GET_CONST(int64_t, attr));
+  } else if (attr.type() == typeid(std::vector<BlockDesc*>)) {
     return paddle::any(BOOST_GET_CONST(std::vector<BlockDesc*>, attr));
   } else if (attr.type() == typeid(std::vector<int64_t>)) {
     return paddle::any(BOOST_GET_CONST(std::vector<int64_t>, attr));
