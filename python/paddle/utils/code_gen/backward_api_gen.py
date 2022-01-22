@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,7 +55,7 @@ class BackwardAPI:
             forward_config)
         api = result.group('api')
         outputs = [item.strip() for item in result.group('outputs').split(',')]
-        forward_args = gen_utils.parse_args(result.group('args'))
+        forward_args = gen_utils.parse_args(api, result.group('args'))
 
         return api, forward_args['inputs'], forward_args['attrs'], outputs
 
@@ -63,7 +63,7 @@ class BackwardAPI:
         # parse the forward and backward config
         _, fw_inputs, fw_attrs, fw_outputs = self.parse_forward_config(
             forward_config)
-        bw_args = gen_utils.parse_args(args_config)
+        bw_args = gen_utils.parse_args(self.backward_api, args_config)
 
         # check the inputs of backward
         for input in bw_args['inputs']['names']:

@@ -20,6 +20,29 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
+                                   const VT::Type& dst_type) {
+  cnnlCastDataType_t cast_type = CNNL_CAST_FLOAT_TO_HALF;
+  for (auto it = MLU_SUPPORTED_CAST_TYPE.begin();
+       it != MLU_SUPPORTED_CAST_TYPE.end(); ++it) {
+    if (it->first.first == src_type && it->first.second == dst_type) {
+      cast_type = it->second;
+      break;
+    }
+  }
+  return cast_type;
+}
+
+bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type) {
+  for (auto it = MLU_SUPPORTED_CAST_TYPE.begin();
+       it != MLU_SUPPORTED_CAST_TYPE.end(); ++it) {
+    if (it->first.first == src_type && it->first.second == dst_type) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class MLUCnnlTensorDescPool {
  public:
   cnnlTensorDescriptor_t Pop() {
@@ -152,6 +175,10 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                 tensor_dim, tensor_dim_sizes_int.data()));
   }
 }
+
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
+    : MLUCnnlTensorDesc(tensor, CNNL_LAYOUT_ARRAY,
+                        ToCnnlDataType(tensor.type())) {}
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      cnnlTensorLayout_t layout,
@@ -1848,7 +1875,7 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   if (is_training) {
     /*
-     *  If in Paddle, running_mean_output = momentum * runnning_mean_input +
+     *  In Paddle, running_mean_output = momentum * runnning_mean_input +
      *  (1 - momentum) * batch_mean. However, In CNNL,
      *  running_mean_output = (1 - momentum) * running_mean_input +
      *  momentum * batch_mean. So we pass (1.0 - momentum) to momentum param.

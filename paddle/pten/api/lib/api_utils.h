@@ -24,21 +24,40 @@ namespace experimental {
 
 /* ------------------ for input ----------------------- */
 
-// inline const pten::DenseTensor& TensorToDenseTensor(const Tensor& tensor) {
-//   return *std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
-// }
+inline std::shared_ptr<pten::DenseTensor> TensorToDenseTensor(
+    const Tensor& tensor) {
+  return std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
+}
 
-// inline std::vector<pten::DenseTensor> TensorListToDenseTensorList(const
-// std::vector<Tensor>& tensors) {
-//   size_t n = tensors.size();
-//   std::vector<pten::DenseTensor> results;
-//   results.reserve(n);
-//   for (size_t i = 0; i < n; ++i) {
-//     results.emplace_back(*std::dynamic_pointer_cast<pten::DenseTensor>(tensors[i].impl()));
-//   }
+inline std::unique_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(
+    const std::vector<Tensor>& tensors) {
+  auto pt_tensors = std::make_unique<std::vector<pten::DenseTensor>>();
+  pt_tensors->reserve(tensors.size());
 
-//   return results;
-// }
+  for (const auto& t : tensors) {
+    pt_tensors->push_back(
+        *std::dynamic_pointer_cast<pten::DenseTensor>(t.impl()));
+  }
+
+  return std::move(pt_tensors);
+}
+
+/* ----------------- for infer_meta --------------------- */
+
+inline const pten::DenseTensorMeta& GetDenseTensorMeta(
+    const pten::DenseTensor& tensor) {
+  return tensor.meta();
+}
+
+inline std::vector<pten::DenseTensorMeta> GetDenseTensorMeta(
+    const std::vector<pten::DenseTensor>& tensors) {
+  std::vector<pten::DenseTensorMeta> metas;
+  metas.reserve(tensors.size());
+  for (const auto& t : tensors) {
+    metas.push_back(t.meta());
+  }
+  return metas;
+}
 
 /* ------------------ for output ----------------------- */
 

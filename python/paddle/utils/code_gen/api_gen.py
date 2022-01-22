@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,12 +25,12 @@ class API:
     def __init__(self, api_item_yaml):
         self.api = api_item_yaml['api']
         # args:
-        #   inputs: 
+        #   inputs:
         #     names : [], list of input names
         #   attrs:
         #     names : [], list of attribute names
-        #     attr_info : { attr_name : (type, default_values)}    
-        self.args = gen_utils.parse_args(api_item_yaml['args'])
+        #     attr_info : { attr_name : (type, default_values)}
+        self.args = gen_utils.parse_args(self.api, api_item_yaml['args'])
         self.output = api_item_yaml['output']
         self.is_base_api = True
         if 'invoke' in api_item_yaml:
@@ -121,9 +121,6 @@ def source_include(header_file_path):
 
 def api_register():
     return """
-PT_REGISTER_API(Creation);
-PT_REGISTER_API(Linalg);
-PT_REGISTER_API(Manipulation);
 PT_REGISTER_API(Math);
 """
 

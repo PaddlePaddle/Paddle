@@ -355,8 +355,8 @@ bool DistModel::PrepareFeedAndFetch() {
   return true;
 }
 
-void DistModel::Run(const std::vector<paddle::framework::Tensor> &input_data,
-                    std::vector<paddle::framework::Tensor> *output_data) {
+void DistModel::Run(const std::vector<DistModelTensor> &input_data,
+                    std::vector<DistModelTensor> *output_data) {
   /* TODO(fleet exe dev): implement this funct */
 }
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/flatten_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -35,7 +36,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, flatten) {
   // 1. create tensor
@@ -52,16 +53,10 @@ TEST(DEV_API, flatten) {
     dense_x_data[i] = i;
   }
   int start_axis = 1, stop_axis = 2;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
 
   // 2. test API
-  auto out = pten::Flatten<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      start_axis,
-      stop_axis);
+  auto out = pten::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4, 3};

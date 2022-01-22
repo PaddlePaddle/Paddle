@@ -59,8 +59,7 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    using MT = typename details::MPTypeTrait<T>::Type;
-    using Div = kernel_primitives::DivideFunctor<T, MT>;
+    using Div = kernel_primitives::DivideFunctor<T, T>;
     std::vector<int> reduce_dims;
     reduce_dims.reserve(rank);
     for (decltype(rank) i = 0; i < rank; ++i) {

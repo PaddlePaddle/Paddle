@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,34 +17,38 @@ import re
 PREFIX_TENSOR_NAME = 'dense_'
 
 
-def parse_args(args_str):
-    """ 
+def parse_args(api_name, args_str):
+    """
     Returns:
        { inputs : {
-             names : [] // list of input names 
+             names : [] // list of input names
              input_info : { input_name : type }
          }
          attrs: {
              names : [] // list of attribute names
-             attr_info : { attr_name : (type, default_value)} 
+             attr_info : { attr_name : (type, default_value)}
          }
          args_declare : "str" // str of funtion params with default value. Example: (..., bool flag=false)
          args_define : "str" // str of funtion params without default value. Example: (..., bool flag)
-       } 
+       }
     """
     inputs = {'names': [], 'input_info': {}}
     attrs = {'names': [], 'attr_info': {}}
     args_str = args_str.strip()
     assert args_str.startswith('(') and args_str.endswith(')'), \
-        f"Args declaration should start with '(' and end with ')', please check the args of {api} in yaml."
+        f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
     args_str = args_str[1:-1]
     args_list = args_str.split(',')
-    input_types = ['const Tensor&', 'const Tensor &']
+    input_types = [
+        'const Tensor&', 'const Tensor &', 'const std::vector<Tensor>&',
+        'const std::vector<Tensor> &'
+    ]
     attr_types = ['const Scalar&', 'const Scalar &', 'const ScalarArray&', 'const ScalarArray &', \
                   'int', 'int32_t', 'int64_t', 'size_t', 'float', 'double', 'bool', \
                   'const std::vector<int64_t>&', 'Backend', 'DataLayout', 'DataType']
     args_declare_str = ""
     args_define_str = ""
+
     for item in args_list:
         item = item.strip()
         # match the input tensor
@@ -53,7 +57,10 @@ def parse_args(args_str):
             if item.startswith(in_type):
                 input_name = item[len(in_type):].strip()
                 assert len(input_name) > 0, \
-                    f"The input tensor name should not be empty. Please check the args of {api} in yaml."
+                    f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
+                assert len(attrs['names']) == 0, \
+                    f"The input Tensor should appear before attributes. please check the position of {api_name}:input({input_name}) in yaml"
+
                 inputs['names'].append(input_name)
                 inputs['input_info'][input_name] = in_type
                 args_declare_str = args_declare_str + in_type + ' ' + input_name + ', '
@@ -63,12 +70,12 @@ def parse_args(args_str):
         if has_input:
             continue
 
-            # match the attribute
+        # match the attribute
         for attr_type in attr_types:
             if item.startswith(attr_type):
                 attr_name = item[len(attr_type):].strip()
                 assert len(attr_name) > 0, \
-                    f"The attribute name should not be empty. Please check the args of {api} in yaml."
+                    f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
                 default_value = None
                 if '=' in attr_name:
                     attr_infos = attr_name.split('=')
@@ -265,7 +272,7 @@ def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
     param_code = ""
     for param in infer_meta_params:
         if param in input_names:
-            param_code = param_code + PREFIX_TENSOR_NAME + param + "->meta(), "
+            param_code = param_code + "GetDenseTensorMeta(*" + PREFIX_TENSOR_NAME + param + "), "
         elif param in attr_names:
             param_code = param_code + param + ", "
         elif isinstance(param, str):
@@ -286,7 +293,7 @@ def get_kernel_args(input_names, attrs, kernel_param):
     for input_name in input_names:
         # set input code
         input_tensor_code = input_tensor_code + f"""
-  auto {PREFIX_TENSOR_NAME}{input_name} = std::dynamic_pointer_cast<pten::DenseTensor>({input_name}.impl());"""
+  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});"""
 
     attr_names = attrs['names']
     if kernel_param is None:
