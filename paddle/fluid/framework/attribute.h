@@ -32,7 +32,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-paddle::any GetAttributeValue(const Attribute& attr);
+paddle::any GetAttrValue(const Attribute& attr);
+
+Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 template <typename T>
 struct ExtractAttribute {
@@ -206,8 +208,6 @@ inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
   return static_cast<proto::AttrType>(tmp.which() - 1);
 }
-
-Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 class AttrReader {
  public:

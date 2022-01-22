@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <mutex>
 
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/macros.h"

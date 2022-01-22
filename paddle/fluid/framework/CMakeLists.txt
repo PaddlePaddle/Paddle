@@ -167,6 +167,7 @@ cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows_utils data_device_transform data_type_transform data_layout_transform)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
+cc_test(attribute_test SRCS attribute_test.cc DEPS attribute framework_proto proto_desc)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 

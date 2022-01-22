@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -46,7 +46,7 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
 
   paddle::any Attr(const std::string& name) const override {
     auto& attr = ctx_.Attrs().GetAttr(name);
-    return GetAttributeValue(attr);
+    return GetAttrValue(attr);
   }
 
   size_t InputSize(const std::string& name) const override {
