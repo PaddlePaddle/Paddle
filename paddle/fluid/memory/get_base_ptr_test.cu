@@ -35,9 +35,9 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   void OneByOneAllocTest() {
     for (size_t i = 0; i < alloc_times_; ++i) {
       size_t size = dis_(random_engine_);
-      AllocationPtr allocation = Alloc(place_, size);
+      auto allocation = AllocShared(place_, size);
 
-      void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
+      void* base_ptr = GetBasePtr(allocation);
       void* system_ptr =
           platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
       EXPECT_EQ(base_ptr, system_ptr);
@@ -47,21 +47,21 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   }
 
   void BatchByBatchAllocTest() {
-    std::vector<AllocationPtr> allocations;
+    std::vector<std::shared_ptr<pten::Allocation>> allocations;
     allocations.reserve(batch_size_);
     size_t batch_num = alloc_times_ / batch_size_;
 
     for (size_t i = 0; i < batch_num; ++i) {
       for (size_t j = 0; j < batch_size_; ++j) {
         size_t size = dis_(random_engine_);
-        AllocationPtr allocation = Alloc(place_, size);
+        auto allocation = AllocShared(place_, size);
 
-        void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
+        void* base_ptr = GetBasePtr(allocation);
         void* system_ptr =
             platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
         EXPECT_EQ(base_ptr, system_ptr);
 
-        allocations.emplace_back(std::move(allocation));
+        allocations.emplace_back(allocation);
       }
       allocations.clear();
     }
@@ -70,19 +70,19 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   }
 
   void ContinuousAllocTest() {
-    std::vector<AllocationPtr> allocations;
+    std::vector<std::shared_ptr<pten::Allocation>> allocations;
     allocations.reserve(alloc_times_);
 
     for (size_t i = 0; i < alloc_times_; ++i) {
       size_t size = dis_(random_engine_);
-      AllocationPtr allocation = Alloc(place_, size);
+      auto allocation = AllocShared(place_, size);
 
-      void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
+      void* base_ptr = GetBasePtr(allocation);
       void* system_ptr =
           platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
       EXPECT_EQ(base_ptr, system_ptr);
 
-      allocations.emplace_back(std::move(allocation));
+      allocations.emplace_back(allocation);
     }
 
     allocations.clear();
@@ -90,8 +90,8 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   }
 
   void ZeroSizeAllocTest() {
-    AllocationPtr allocation = Alloc(place_, 0);
-    void* base_ptr = static_cast<Allocation*>(allocation.get())->base_ptr();
+    auto allocation = AllocShared(place_, 0);
+    void* base_ptr = GetBasePtr(allocation);
     void* system_ptr =
         platform::GetGpuBasePtr(allocation->ptr(), place_.GetDeviceId());
     EXPECT_EQ(base_ptr, system_ptr);
