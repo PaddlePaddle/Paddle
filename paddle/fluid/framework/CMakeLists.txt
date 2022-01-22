@@ -393,10 +393,6 @@ cc_test(tuple_test SRCS tuple_test.cc )
 
 cc_test(inlined_vector_test SRCS inlined_vector_test.cc)
 
-if (NOT WIN32)
-cc_test(rw_lock_test SRCS rw_lock_test.cc)
-endif (NOT WIN32)
-
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 

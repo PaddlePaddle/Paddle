@@ -38,12 +38,12 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {

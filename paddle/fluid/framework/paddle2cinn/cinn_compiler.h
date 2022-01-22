@@ -26,9 +26,9 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 namespace paddle {
 

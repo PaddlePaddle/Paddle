@@ -21,13 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-// #include "paddle/fluid/framework/lod_tensor.h"
-// #include "paddle/fluid/framework/rw_lock.h"
-// #include "paddle/fluid/framework/tensor.h"
-// #include "paddle/fluid/memory/memcpy.h"
-// #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/core/selected_rows.h"
-// #include "paddle/pten/common/place.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
