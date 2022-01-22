@@ -102,7 +102,7 @@ class CinnCompiler {
                      std::unique_ptr<CinnCompiledObject>, CinnCacheKey::Hash>
       cache_by_struct_;
   std::atomic_int64_t real_compiled_num_{0};
-  mutable RWLock rwlock_;
+  mutable pten::RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };

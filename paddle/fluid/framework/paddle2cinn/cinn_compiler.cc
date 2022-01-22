@@ -75,7 +75,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
 
   bool exist = false;
   {
-    AutoRDLock r_guard{&rwlock_};
+    pten::AutoRDLock r_guard{&rwlock_};
     exist = cache_by_address_.count(cur_key_by_address) != 0;
     // if cannot find graph by address, checkout whether the graph structure
     // have been stored in cache.
@@ -96,13 +96,13 @@ const CinnCompiledObject& CinnCompiler::Compile(
     std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
     auto compiled_res =
         CompileGraph(graph, input_tensors, target, compiled_num, stream);
-    AutoWRLock w_guard{&rwlock_};
+    pten::AutoWRLock w_guard{&rwlock_};
     if (!cache_by_struct_.count(cur_key_by_struct)) {
       cache_by_address_[cur_key_by_address] = compiled_res.get();
       cache_by_struct_[cur_key_by_struct] = std::move(compiled_res);
     }
   }
-  AutoRDLock guard{&rwlock_};
+  pten::AutoRDLock guard{&rwlock_};
   const auto& cached_boj = *cache_by_address_[cur_key_by_address];
   return cached_boj;
 }
@@ -198,7 +198,7 @@ std::string CinnCompiler::ReadableKey(
 
 void CinnCompiler::Clear() {
   {
-    AutoWRLock guard{&rwlock_};
+    pten::AutoWRLock guard{&rwlock_};
     graphs_.clear();
     cache_by_address_.clear();
     cache_by_struct_.clear();
