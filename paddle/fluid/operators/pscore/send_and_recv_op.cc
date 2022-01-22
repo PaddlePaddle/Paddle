@@ -15,7 +15,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"

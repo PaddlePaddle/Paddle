@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/timer.h"
 
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
 
 #if defined _WIN32 || defined __APPLE__
