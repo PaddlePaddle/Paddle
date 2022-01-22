@@ -67,50 +67,80 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
                       std::vector<T>* outputs_eids, int k, bool is_last_layer,
                       bool return_eids) {
   const size_t bs = inputs->size();
+  // Allocate the memory of outputs
+  // Collect the neighbors size
+  std::vector<std::vector<T>> out_src_vec;
+  std::vector<std::vector<T>> out_eids_vec;
+  // `sample_cumsum_sizes` record the start position and end position after the
+  //  sample.
+  std::vector<size_t> sample_cumsum_sizes(bs + 1);
+  size_t total_neighbors = 0;
+  // `total_neighbors` the size of output after the sample
+  sample_cumsum_sizes[0] = total_neighbors;
+  for (size_t i = 0; i < bs; i++) {
+    T node = inputs->data()[i];
+    T begin = dst_count[node];
+    T end = dst_count[node + 1];
+    int cap = end - begin;
+    int sample_size = cap > k ? k : cap;
+    total_neighbors += sample_size;
+    sample_cumsum_sizes[i + 1] = total_neighbors;
+    std::vector<T> out_src;
+    out_src.resize(sample_size);
+    out_src_vec.emplace_back(out_src);
+    if (return_eids) {
+      std::vector<T> out_eids;
+      out_eids.resize(sample_size);
+      out_eids_vec.emplace_back(out_eids);
+    }
+  }
   output_counts->resize(bs);
-  outputs->resize(k * bs);
-
+  outputs->resize(total_neighbors);
   if (return_eids) {
-    outputs_eids->resize(k * bs);
+    outputs_eids->resize(total_neighbors);
   }
 
-  size_t total_neighbors = 0;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  // Sample the neighbour parallelism
   for (size_t i = 0; i < bs; i++) {
     T node = inputs->data()[i];
     T begin = dst_count[node];
     T end = dst_count[node + 1];
     int cap = end - begin;
     if (k < cap) {
-      std::vector<T> cut_src(cap);
-      std::copy(src + begin, src + end, cut_src.begin());
+      std::copy(src + begin, src + end, out_src_vec[i].begin());
       if (return_eids) {
-        std::vector<T> cut_eids(cap);
-        std::copy(src_eids + begin, src_eids + end, cut_eids.begin());
-        sample_unique_with_eids(cut_src.begin(), cut_src.end(),
-                                cut_eids.begin(), cut_eids.end(), k);
-        std::copy(cut_src.begin(), cut_src.begin() + k,
-                  outputs->data() + total_neighbors);
-        std::copy(cut_eids.begin(), cut_eids.begin() + k,
-                  outputs_eids->data() + total_neighbors);
+        std::copy(src_eids + begin, src_eids + end, out_eids_vec[i].begin());
+        sample_unique_with_eids(out_src_vec[i].begin(), out_src_vec[i].end(),
+                                out_eids_vec[i].begin(), out_eids_vec[i].end(),
+                                k);
       } else {
-        sample_unique(cut_src.begin(), cut_src.end(), k);
-        std::copy(cut_src.begin(), cut_src.begin() + k,
-                  outputs->data() + total_neighbors);
+        sample_unique(out_src_vec[i].begin(), out_src_vec[i].end(), k);
       }
-      cap = k;
+      *(output_counts->data() + i) = k;
     } else {
-      std::copy(src + begin, src + end, outputs->data() + total_neighbors);
+      std::copy(src + begin, src + end, out_src_vec[i].begin());
       if (return_eids) {
-        std::copy(src_eids + begin, src_eids + end,
-                  outputs_eids->data() + total_neighbors);
+        std::copy(src_eids + begin, src_eids + end, out_eids_vec[i].begin());
       }
+      *(output_counts->data() + i) = cap;
     }
-    total_neighbors += cap;
-    *(output_counts->data() + i) = cap;
   }
-  outputs->resize(total_neighbors);
-  if (return_eids) {
-    outputs_eids->resize(total_neighbors);
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  // Copy the results parallelism
+  for (size_t i = 0; i < bs; i++) {
+    int sample_size = sample_cumsum_sizes[i + 1] - sample_cumsum_sizes[i];
+    std::copy(out_src_vec[i].begin(), out_src_vec[i].begin() + sample_size,
+              outputs->data() + sample_cumsum_sizes[i]);
+    if (return_eids) {
+      std::copy(out_eids_vec[i].begin(), out_eids_vec[i].begin() + sample_size,
+                outputs_eids->data() + sample_cumsum_sizes[i]);
+    }
   }
 
   if (!is_last_layer) {
@@ -130,7 +160,7 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
 }
 
 template <typename DeviceContext, typename T>
-class GraphSampleOpKernel : public framework::OpKernel<T> {
+class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get inputs.

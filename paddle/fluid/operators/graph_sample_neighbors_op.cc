@@ -12,30 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/graph_sample_op.h"
+#include "paddle/fluid/operators/graph_sample_neighbors_op.h"
 
 namespace paddle {
 namespace operators {
 
-class GraphSampleOP : public framework::OperatorWithKernel {
+class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Src"), "Input", "Src", "GraphSampling");
+    OP_INOUT_CHECK(ctx->HasInput("Src"), "Input", "Src",
+                   "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasInput("Src_Eids"), "Input", "Src_Eids",
-                   "GraphSampling");
+                   "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasInput("Dst_Count"), "Input", "Dst_Count",
-                   "GraphSampling");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphSampling");
+                   "GraphSampleNeighbors");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasOutput("Out_Src"), "Output", "Out_Src",
-                   "GraphSampling");
+                   "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasOutput("Out_Dst"), "Output", "Out_Dst",
-                   "GraphSampling");
+                   "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasOutput("Sample_index"), "Output", "Sample_index",
-                   "GraphSampling");
+                   "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasOutput("Reindex_X"), "Output", "Reindex_X",
-                   "GraphSampling");
+                   "GraphSampleNeighbors");
     // 是否限制所有输入输出均为1维向量，或者2维向量第二维为1.
 
     const std::vector<int>& sample_sizes =
@@ -48,7 +49,7 @@ class GraphSampleOP : public framework::OperatorWithKernel {
     const bool& return_eids = ctx->Attrs().Get<bool>("return_eids");
     if (return_eids) {
       OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
-                     "GraphSampling");
+                     "GraphSampleNeighbors");
       ctx->SetOutputDim("Out_Eids", {-1});
     }
 
@@ -69,7 +70,7 @@ class GraphSampleOP : public framework::OperatorWithKernel {
   }
 };
 
-class GraphSampleOpMaker : public framework::OpProtoAndCheckerMaker {
+class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Src", "The src index tensor after sorted by dst.");
@@ -86,14 +87,14 @@ class GraphSampleOpMaker : public framework::OpProtoAndCheckerMaker {
               "The original index of the sampling nodes and center nodes.");
     AddOutput("Reindex_X", "The reindex node id of the input nodes.");
     AddOutput("Out_Eids", "The eids of the sample edges.").AsIntermediate();
-    AddAttr<std::vector<int>>("sample_sizes",
-                              "The sample sizes of graphsage sampling method.")
+    AddAttr<std::vector<int>>(
+        "sample_sizes", "The sample sizes of graph sample neighbors method.")
         .SetDefault({});
     AddAttr<bool>("return_eids",
                   "Whether to return the eids of the sample edges.")
         .SetDefault(false);
     AddComment(R"DOC(
-Graph Learning Sampling operator, mainly for graphsage sampling method currently.
+Graph Learning Sampling Neighbors operator, for graphsage sampling method.
 
 )DOC");
   }
@@ -105,6 +106,8 @@ Graph Learning Sampling operator, mainly for graphsage sampling method currently
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(graph_sample, ops::GraphSampleOP, ops::GraphSampleOpMaker);
-REGISTER_OP_CPU_KERNEL(graph_sample, ops::GraphSampleOpKernel<CPU, int>,
-                       ops::GraphSampleOpKernel<CPU, int64_t>);
+REGISTER_OPERATOR(graph_sample_neighbors, ops::GraphSampleNeighborsOP,
+                  ops::GraphSampleNeighborsOpMaker);
+REGISTER_OP_CPU_KERNEL(graph_sample_neighbors,
+                       ops::GraphSampleNeighborsOpKernel<CPU, int>,
+                       ops::GraphSampleNeighborsOpKernel<CPU, int64_t>);

@@ -29,8 +29,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/graph_sample_op.h"
-#include "paddle/fluid/operators/graph_sample_reindex.h"
+#include "paddle/fluid/operators/graph_sample_neighbors_op.h"
+#include "paddle/fluid/operators/graph_sample_neighbors_reindex.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -63,12 +63,10 @@ struct DegreeFunctor {
 };
 
 template <typename T, int BLOCK_WARPS, int TILE_SIZE>
-__global__ void GraphSampleCUDAKernel(const uint64_t rand_seed, int k,
-                                      const int64_t num_rows, const T* in_rows,
-                                      const T* src, const T* dst_count,
-                                      const T* src_eids, T* outputs,
-                                      T* outputs_eids, T* output_ptr,
-                                      T* output_idxs, bool return_eids) {
+__global__ void GraphSampleNeighborsCUDAKernel(
+    const uint64_t rand_seed, int k, const int64_t num_rows, const T* in_rows,
+    const T* src, const T* dst_count, const T* src_eids, T* outputs,
+    T* outputs_eids, T* output_ptr, T* output_idxs, bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -186,7 +184,7 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-  GraphSampleCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
+  GraphSampleNeighborsCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
           .stream()>>>(
@@ -309,7 +307,7 @@ void reindex_func(const framework::ExecutionContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
+class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get inputs.
@@ -491,5 +489,6 @@ class GraphSampleOpCUDAKernel : public framework::OpKernel<T> {
 using CUDA = paddle::platform::CUDADeviceContext;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(graph_sample, ops::GraphSampleOpCUDAKernel<CUDA, int>,
-                        ops::GraphSampleOpCUDAKernel<CUDA, int64_t>);
+REGISTER_OP_CUDA_KERNEL(graph_sample_neighbors,
+                        ops::GraphSampleNeighborsOpCUDAKernel<CUDA, int>,
+                        ops::GraphSampleNeighborsOpCUDAKernel<CUDA, int64_t>);
