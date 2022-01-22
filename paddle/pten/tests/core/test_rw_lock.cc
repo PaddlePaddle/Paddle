@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/rw_lock.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 #include <gtest/gtest.h>  // NOLINT
 #include <thread>         // NOLINT
+
+namespace pten {
+namespace tests {
 
 void f1(pten::RWLock *lock) {
   lock->RDLock();
@@ -76,3 +79,5 @@ TEST(RWLOCK, write_read) {
   lock.UNLock();
   t1.join();
 }
+}  // namespace tests
+}  // namespace pten

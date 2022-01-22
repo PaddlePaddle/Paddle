@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/rw_lock.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"

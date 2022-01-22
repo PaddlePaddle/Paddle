@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/pten/core/selected_rows.h"
 
 namespace pten {
-
+namespace tests {
 class SelectedRowsTester : public ::testing::Test {
  public:
   void SetUp() override {
@@ -183,4 +183,5 @@ TEST(SelectedRows, MultiThreadAutoIndex) {
   t3.join();
   t4.join();
 }
+}  // namespace tests
 }  // namespace pten
