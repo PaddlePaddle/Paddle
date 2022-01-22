@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
+#include "paddle/pten/kernels/primitive/functor_primitives.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #else
@@ -62,7 +62,7 @@ void SquaredL2Norm(const platform::CUDADeviceContext& ctx, const T1* x, T2* y,
     return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
   }
 
-  using FunctorT = kernel_primitives::SquareFunctor<T1, T2>;
+  using FunctorT = pten::kps::SquareFunctor<T1, T2>;
   cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
   size_t temp_storage_bytes = 0;
   void* d_temp_storage = nullptr;

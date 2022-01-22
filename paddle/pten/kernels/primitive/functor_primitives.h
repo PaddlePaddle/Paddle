@@ -17,14 +17,14 @@
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/float16.h"
 
-namespace paddle {
-namespace operators {
-namespace kernel_primitives {
+namespace pten {
+namespace kps {
 namespace details {
 
-static __device__ __forceinline__ platform::float16 Exp(platform::float16 x) {
+static __device__ __forceinline__ pten::dtype::float16 Exp(
+    pten::dtype::float16 x) {
   return ::Eigen::numext::exp(x);
 }
 
@@ -32,7 +32,8 @@ static __device__ __forceinline__ float Exp(float x) { return expf(x); }
 
 static __device__ __forceinline__ double Exp(double x) { return exp(x); }
 
-static __device__ __forceinline__ platform::float16 Log(platform::float16 x) {
+static __device__ __forceinline__ pten::dtype::float16 Log(
+    pten::dtype::float16 x) {
   return ::Eigen::numext::log(x);
 }
 
@@ -224,7 +225,8 @@ struct DivFunctor<T,
 
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     // For int32/int64, need to check whether the divison is zero.
-    PADDLE_ENFORCE_NE(b, 0,
+    PADDLE_ENFORCE_NE(b,
+                      0,
                       platform::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
@@ -240,7 +242,8 @@ struct FloorDivFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    PADDLE_ENFORCE_NE(b, 0,
+    PADDLE_ENFORCE_NE(b,
+                      0,
                       platform::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
@@ -248,6 +251,5 @@ struct FloorDivFunctor {
   }
 };
 
-}  // namespace kernel_primitives
-}  // namespace operators
-}  // namespace paddle
+}  // namespace kps
+}  // namespace pten

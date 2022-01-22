@@ -15,12 +15,12 @@
 #pragma once
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>

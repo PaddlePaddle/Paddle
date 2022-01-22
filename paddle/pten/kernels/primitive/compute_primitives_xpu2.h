@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/pten/common/float16.h"
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
 
-namespace paddle {
-namespace operators {
-namespace kernel_primitives {
+namespace pten {
+namespace kps {
 namespace details {
 
 // kGlobalMode: block reduce, each block gets an output;
@@ -33,7 +33,7 @@ class MPTypeTrait {
 };
 
 template <>
-class MPTypeTrait<platform::float16> {
+class MPTypeTrait<pten::dtype::float16> {
  public:
   using Type = float;
 };
@@ -102,9 +102,14 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
  * in: The register pointer of in, the size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT, typename OutT, int NX, int NY, int BlockSize,
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
           class OpFunc>
-__device__ __forceinline__ void ElementwiseUnary(OutT* out, const InT* in,
+__device__ __forceinline__ void ElementwiseUnary(OutT* out,
+                                                 const InT* in,
                                                  OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
@@ -137,9 +142,14 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out, const InT* in,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT, typename OutT, int NX, int NY, int BlockSize,
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
           class OpFunc>
-__device__ __forceinline__ void ElementwiseBinary(OutT* out, const InT* in1,
+__device__ __forceinline__ void ElementwiseBinary(OutT* out,
+                                                  const InT* in1,
                                                   const InT* in2,
                                                   OpFunc compute) {
 #pragma unroll
@@ -175,12 +185,14 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out, const InT* in1,
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT, typename OutT, int NX, int NY, int BlockSize,
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
           class OpFunc>
-__device__ __forceinline__ void ElementwiseTernary(OutT* out, const InT* in1,
-                                                   const InT* in2,
-                                                   const InT* in3,
-                                                   OpFunc compute) {
+__device__ __forceinline__ void ElementwiseTernary(
+    OutT* out, const InT* in1, const InT* in2, const InT* in3, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx], in3[idx]));
@@ -212,9 +224,15 @@ __device__ __forceinline__ void ElementwiseTernary(OutT* out, const InT* in1,
  * ins: A pointers of array consisting of multiple inputs.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT, typename OutT, int NX, int NY, int BlockSize, int Arity,
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          int Arity,
           class OpFunc>
-__device__ __forceinline__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY],
+__device__ __forceinline__ void ElementwiseAny(OutT* out,
+                                               InT (*ins)[NX * NY],
                                                OpFunc compute) {
   __local__ InT args[Arity];
 #pragma unroll
@@ -253,10 +271,16 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY],
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT, typename OutT, int NX, int NY, int BlockSize,
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
           class OpFunc>
-__device__ __forceinline__ void CycleBinary(OutT* out, const InT* in1,
-                                            const InT* in2, OpFunc compute) {
+__device__ __forceinline__ void CycleBinary(OutT* out,
+                                            const InT* in1,
+                                            const InT* in2,
+                                            OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX; idx++) {
 #pragma unroll
@@ -294,9 +318,14 @@ __device__ __forceinline__ void CycleBinary(OutT* out, const InT* in1,
  * reducer: Compute function which was declared like ReduceFunctor<InT>().
  * reduce_last_dim: if the last dim gets involved in reduction.
  */
-template <typename T, int NX, int NY, int BlockSize, class ReduceFunctor,
+template <typename T,
+          int NX,
+          int NY,
+          int BlockSize,
+          class ReduceFunctor,
           details::ReduceMode Mode>
-__device__ __forceinline__ void Reduce(T* out, const T* in,
+__device__ __forceinline__ void Reduce(T* out,
+                                       const T* in,
                                        ReduceFunctor reducer,
                                        bool reduce_last_dim) {
   if (Mode == kGlobalMode) {
@@ -319,6 +348,5 @@ __device__ __forceinline__ void Reduce(T* out, const T* in,
   }
 }
 
-}  // namespace kernel_primitives
-}  // namespace operators
-}  // namespace paddle
+}  // namespace kps
+}  // namespace pten

@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
+#include "paddle/pten/kernels/primitive/helper_primitives.h"
 #ifdef PADDLE_WITH_XPU2
-#include "paddle/fluid/operators/kernel_primitives/compute_primitives_xpu2.h"
-#include "paddle/fluid/operators/kernel_primitives/datamover_primitives_xpu2.h"
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives_xpu2.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/kernels/primitive/compute_primitives_xpu2.h"
+#include "paddle/pten/kernels/primitive/datamover_primitives_xpu2.h"
+#include "paddle/pten/kernels/primitive/functor_primitives_xpu2.h"
 
 #define KPStream XPUStream
-#define KPDevice paddle::platform::XPUDeviceContext
+#define KPDevice pten::XPUContext
 #define _ptr_ _global_ptr_
 #define __forceinline__ __inline__
 #define __restrict__
@@ -41,12 +42,13 @@
 #define GRID_NUM_Y 0
 #define GRID_NUM_Z 0
 #else
-#include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/kernels/primitive/compute_primitives.h"
+#include "paddle/pten/kernels/primitive/datamover_primitives.h"
+#include "paddle/pten/kernels/primitive/functor_primitives.h"
 
 #define KPStream gpuStream_t
-#define KPDevice paddle::platform::CUDADeviceContext
+#define KPDevice pten::GPUContext
 #define _ptr_
 
 #define THREAD_ID_X threadIdx.x
@@ -65,9 +67,3 @@
 #define GRID_NUM_Y gridDim.y
 #define GRID_NUM_Z gridDim.z
 #endif
-
-namespace paddle {
-namespace operators {
-namespace kernel_primitives {}
-}
-}

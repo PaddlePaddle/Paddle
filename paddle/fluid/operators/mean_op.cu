@@ -19,11 +19,11 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/mean_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/primitive/functor_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -59,13 +59,13 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    using Div = kernel_primitives::DivideFunctor<T, T>;
+    using Div = pten::kps::DivideFunctor<T, T>;
     std::vector<int> reduce_dims;
     reduce_dims.reserve(rank);
     for (decltype(rank) i = 0; i < rank; ++i) {
       reduce_dims.push_back(i);
     }
-    TensorReduceFunctorImpl<T, T, kernel_primitives::AddFunctor, Div>(
+    TensorReduceFunctorImpl<T, T, pten::kps::AddFunctor, Div>(
         *input, output, Div(numel), reduce_dims, stream);
   }
 };

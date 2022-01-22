@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,8 @@
 
 #pragma once
 
-namespace paddle {
-namespace operators {
-namespace kernel_primitives {
+namespace pten {
+namespace kps {
 
 #ifdef PADDLE_WITH_XPU2
 struct dim3 {
@@ -43,8 +42,12 @@ struct DimConfig {
   int rem_y;
   int rem_z;
 
-  HOSTDEVICE explicit inline DimConfig(int split_x, int split_y, int split_z,
-                                       int size_x, int size_y, int size_z) {
+  HOSTDEVICE explicit inline DimConfig(int split_x,
+                                       int split_y,
+                                       int split_z,
+                                       int size_x,
+                                       int size_y,
+                                       int size_z) {
     split_num_x = split_x;
     split_num_y = split_y;
     split_num_z = split_z;
@@ -60,6 +63,5 @@ struct DimConfig {
   }
 };
 
-}  // namespace kernel_primitives
-}  // namespace operators
-}  // namespace paddle
+}  // namespace kps
+}  // namespace pten

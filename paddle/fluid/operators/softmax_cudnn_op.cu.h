@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -96,7 +96,7 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
   }
 }
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 template <typename Tx, typename Ty = Tx>
 struct ReduceMaxFunctor {
