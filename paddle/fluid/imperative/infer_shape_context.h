@@ -220,17 +220,30 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
             (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
   }
 
-  // TODO(paddle-dev): Can this be template?
   std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "GetInputVarPtrs not support in dygraph runtime context"));
+    std::vector<framework::InferShapeVarPtr> res;
+    auto it = var_base_map_in_->find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_->end(),
+        platform::errors::NotFound("Can not find [%s] in inputs.", name));
+    for (auto& var : it->second) {
+      res.emplace_back(var->MutableVar());
+    }
+    return res;
   }
 
   std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "GetOutputVarPtrs not support in dygraph runtime context"));
+    std::vector<framework::InferShapeVarPtr> res;
+    auto it = var_base_map_out_->find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_->end(),
+        platform::errors::NotFound("Can not find [%s] in outputs.", name));
+    for (auto& var : it->second) {
+      res.emplace_back(var->MutableVar());
+    }
+    return res;
   }
 
   DDim GetInputDim(const std::string& name) const override {
