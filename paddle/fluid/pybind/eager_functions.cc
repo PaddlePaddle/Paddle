@@ -161,7 +161,6 @@ static PyObject* eager_api_read_next_eager_tensor_list(PyObject* self,
     auto autograd_meta = egr::EagerUtils::autograd_meta(&eager_tensor);
     autograd_meta->SetPersistable(false);
     autograd_meta->SetStopGradient(true);
-    auto tmp = std::move(tensor);
     eager_tensor.set_impl(std::make_shared<pten::DenseTensor>(tensor));
     return eager_tensor;
   };
