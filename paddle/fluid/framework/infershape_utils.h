@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/pten/core/op_utils.h"
 
 namespace pten {
 class InferMetaContext;
