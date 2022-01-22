@@ -88,10 +88,11 @@ void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
 }
 }  // namespace custom_kernel
 
-PD_REGISTER_KERNEL(dot, CPU, ANY, UINT8, custom_kernel::FakeDot<uint8_t>) {
+PD_REGISTER_KERNEL(dot, CPU, ALL_LAYOUT, UINT8,
+                   custom_kernel::FakeDot<uint8_t>) {
   /* do some args define here
    * the only param can be used is OpKernelInfo* kernel */
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UINT8);
 }
 
 // Upper code will store dot kernels info into OpKernelInfoMap

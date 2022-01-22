@@ -19,7 +19,7 @@ namespace paddle {
 namespace custom_kernel {
 
 // Here we use dot <CPU, ANY, INT8> for test
-// This test will fail when these two kernels are aupported in framework
+// This test will fail when this kernel is supported in framework
 template <typename T>
 void Dot(const paddle::CPUContext& dev_ctx,
          const paddle::Tensor& x,
@@ -45,8 +45,9 @@ void Dot(const paddle::CPUContext& dev_ctx,
 }  // namespace custom_kernel
 }  // namespace paddle
 
-PD_REGISTER_KERNEL(dot, CPU, ANY, INT8, paddle::custom_kernel::Dot<int8_t>) {
+PD_REGISTER_KERNEL(
+    dot, CPU, ALL_LAYOUT, INT8, paddle::custom_kernel::Dot<int8_t>) {
   /* do some args define here
    * the only param can be used is OpKernelInfo* kernel */
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT8);
 }
