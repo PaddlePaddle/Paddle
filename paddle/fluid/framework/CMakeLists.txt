@@ -409,6 +409,7 @@ cc_library(generator SRCS generator.cc DEPS enforce place)
 
 cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
 cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
+cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
 
 # Get the current working branch
 execute_process(
