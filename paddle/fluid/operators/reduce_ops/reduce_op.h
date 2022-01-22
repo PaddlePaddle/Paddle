@@ -258,8 +258,11 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    pten::Reduce<DeviceContext, T, Functor>(
-        dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
+    pten::Reduce<typename framework::ConvertToPtenContext<DeviceContext>::TYPE,
+                 T, Functor>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *pt_x.get(), reduce_all, tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }
 };
@@ -548,17 +551,26 @@ class ReduceOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
     if (Type() == "reduce_sum") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        if (!reduce_all) {
+          return framework::KernelSignature(
+              "sum", {"X"}, {"dim", "keep_dim", "out_dtype"}, {"Out"});
+        }
         return framework::KernelSignature(
-            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            "sum_raw", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
             {"Out"});
       }
     }
     if (Type() == "reduce_mean") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        if (!reduce_all) {
+          return framework::KernelSignature("mean", {"X"}, {"dim", "keep_dim"},
+                                            {"Out"});
+        }
         return framework::KernelSignature(
-            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+            "mean_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
       }
     }
     // TODO(chentianyu03): support other cases after selected rows added

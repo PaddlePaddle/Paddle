@@ -202,7 +202,10 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       commonterm_for_range(commonterm_functor);
       commonterm_conj = helper.Transpose(commonterm_conj);
 
-      pten::AddKernel<T>(dev_ctx, commonterm, commonterm_conj, -1, &commonterm);
+      pten::AddRawKernel<T>(
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE &>(dev_ctx),
+          commonterm, commonterm_conj, -1, &commonterm);
 
       auto mat_dim_u = math::CreateMatrixDescriptor(u_bst.dims(), 0, false);
       auto mat_dim_c =
