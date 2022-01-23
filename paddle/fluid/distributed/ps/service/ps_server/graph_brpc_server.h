@@ -20,8 +20,8 @@
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
-#include "paddle/fluid/distributed/ps/service/server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/server.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 namespace paddle {

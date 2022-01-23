@@ -23,8 +23,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/ps/service/communicator_common.h"
-#include "paddle/fluid/distributed/ps/service/service.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/io/shell.h"

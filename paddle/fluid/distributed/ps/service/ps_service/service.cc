@@ -12,13 +12,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/distributed/ps/service/service.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 
 #include <fcntl.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <iostream>
-#include "paddle/fluid/distributed/ps/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/string/string_helper.h"
 
 using namespace std;  // NOLINT

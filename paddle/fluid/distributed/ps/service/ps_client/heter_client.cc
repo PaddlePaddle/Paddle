@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/heter_client.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/split.h"
 

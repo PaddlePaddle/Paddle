@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/brpc_ps_server.h"
 #include <thread>  // NOLINT
 #include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"

@@ -33,10 +33,10 @@
 
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
-#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/graph_brpc_server.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
-#include "paddle/fluid/distributed/ps/service/service.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"

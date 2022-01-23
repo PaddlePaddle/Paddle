@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/ps/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 
 #include <google/protobuf/text_format.h>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 

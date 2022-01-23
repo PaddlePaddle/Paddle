@@ -20,9 +20,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/ps_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
-#include "paddle/fluid/distributed/ps/service/server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/server.h"
 
 namespace paddle {
 namespace distributed {

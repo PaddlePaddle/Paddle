@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/graph_brpc_client.h"
 #include <algorithm>
 #include <memory>
 #include <sstream>
@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 #include "Eigen/Dense"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/string/string_helper.h"

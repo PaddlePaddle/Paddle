@@ -18,7 +18,7 @@
 #include "brpc/controller.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
-#include "paddle/fluid/distributed/ps/service/server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/server.h"
 
 namespace brpc {
 class Controller;

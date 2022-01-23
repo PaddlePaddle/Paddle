@@ -24,7 +24,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
-#include "paddle/fluid/distributed/ps/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/heter_server.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"

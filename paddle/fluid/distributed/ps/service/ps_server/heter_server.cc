@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/heter_server.h"
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {

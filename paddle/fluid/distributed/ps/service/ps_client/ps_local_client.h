@@ -15,7 +15,7 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/ps_client.h"
 
 namespace paddle {
 namespace distributed {

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/ps_client.h"
 #include "glog/logging.h"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/ps/service/ps_local_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
 namespace paddle {

@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/math/math_function.h"

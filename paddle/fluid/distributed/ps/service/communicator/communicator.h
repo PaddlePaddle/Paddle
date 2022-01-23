@@ -29,7 +29,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/distributed/ps/service/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -41,7 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/ps_client.h"
 
 namespace paddle {
 namespace distributed {

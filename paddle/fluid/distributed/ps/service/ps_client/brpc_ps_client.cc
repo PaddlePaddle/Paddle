@@ -16,7 +16,7 @@
 #include <sstream>
 #include <string>
 
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
 
 static const int max_port = 65535;

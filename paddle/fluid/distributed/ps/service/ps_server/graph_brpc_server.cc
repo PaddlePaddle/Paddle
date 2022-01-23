@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/graph_brpc_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/brpc_ps_server.h"
 
 #include <thread>  // NOLINT
 #include <utility>
 #include "butil/endpoint.h"
 #include "iomanip"
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {

@@ -16,7 +16,7 @@
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/distributed/ps/service/server.h"
+#include "paddle/fluid/distributed/ps/service/ps_server/server.h"
 
 namespace paddle {
 namespace distributed {

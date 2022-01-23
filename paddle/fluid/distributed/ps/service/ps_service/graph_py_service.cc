@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include <thread>  // NOLINT
 #include "butil/endpoint.h"
 #include "iomanip"

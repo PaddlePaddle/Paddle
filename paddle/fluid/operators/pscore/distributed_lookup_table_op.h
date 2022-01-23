@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
-#include "paddle/fluid/distributed/ps/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
