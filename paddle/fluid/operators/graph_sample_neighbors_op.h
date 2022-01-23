@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <stdlib.h>
+#include <cstdlib.h>
 #include <numeric>
 #include <unordered_map>
 #include <vector>
