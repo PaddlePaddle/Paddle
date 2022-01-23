@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/framework/unroll_array_ops.h"
+#include "paddle/pten/core/unroll_array_ops.h"
+// TODO(paddle-dev): Need to modify into pten/core/enforce.h
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
+namespace pten {
+namespace platform = paddle::platform;
 namespace framework {
 
 template <typename T, size_t N>
@@ -146,4 +148,4 @@ class Array<T, 0> {
 };
 
 }  // namespace framework
-}  // namespace paddle
+}  // namespace pten
