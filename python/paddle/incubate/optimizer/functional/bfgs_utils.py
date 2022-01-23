@@ -14,11 +14,11 @@
 
 import numpy as np
 import paddle
-from ...autograd import vjp as _vjp
+from paddle.autograd.functional import vjp as _vjp
 
 
 def ternary(cond, x, y):
-    
+
     expanding_dim = x.dim() - cond.dim()
     assert expanding_dim >= 0
 
@@ -29,6 +29,7 @@ def ternary(cond, x, y):
         cond = cond.broadcast_to(x.shape)
 
     return paddle.where(cond, x, y)
+
 
 def vjp(f, x, v=None, create_graph=False):
     r"""A single tensor version of VJP.
@@ -44,30 +45,33 @@ def vjp(f, x, v=None, create_graph=False):
     """
     assert isinstance(x, paddle.Tensor), (
         f'This BFGS optimizer applies to function of a single input tensor. '
-        f'The input however is a {type(x)}.'
-    )
+        f'The input however is a {type(x)}.')
     fval, gval = _vjp(f, x, v=v, create_graph=create_graph)
     assert isinstance(fval, paddle.Tensor), (
         f'This BFGS optimizer only supports function returning a single output '
-        f'tensor. However, the function result is a {type(fval)}.'
-    )
+        f'tensor. However, the function result is a {type(fval)}.')
 
     return fval, gval[0]
+
 
 def vnorm_p(x, p=2):
     r"""p vector norm."""
     return paddle.norm(x, p=p, axis=-1)
 
+
 def vnorm_inf(x):
     r"""Infinum vector norm."""
     return paddle.norm(x, p=np.inf, axis=-1)
+
 
 def matnorm(x):
     r"""Matrix norm."""
     return paddle.norm(x, 'fro')
 
+
 def any_active(state):
     return paddle.any(state == 0)
+
 
 def all_active_with_predicates(state, *predicates):
     r"""Tests whether all active states also satisfies the predicates.
@@ -85,8 +89,9 @@ def all_active_with_predicates(state, *predicates):
     active_preds = active = active_state(state)
     for p in predicates:
         active_preds = paddle.logical_and(active_preds, p)
-  
+
     return paddle.all(active == active_preds)
+
 
 def any_active_with_predicates(state, *predicates):
     r"""Tests whether there's any active state also satisfies all the
@@ -108,14 +113,18 @@ def any_active_with_predicates(state, *predicates):
 
     return paddle.any(active_preds)
 
+
 def active_state(state):
     return state == 0
+
 
 def converged_state(state):
     return state == 1
 
+
 def failed_state(state):
     return state == 2
+
 
 def make_const(tensor_like, value, dtype=None):
     r"""Makes a tensor filled with specified constant value.
@@ -134,6 +143,7 @@ def make_const(tensor_like, value, dtype=None):
     if dtype is None:
         dtype = tensor_like.dtype
     return paddle.to_tensor(value, dtype).broadcast_to(tensor_like.shape)
+
 
 def make_state(tensor_like, value='active'):
     r"""Makes BFGS state tensor. Default is all zeros.
@@ -158,8 +168,9 @@ def make_state(tensor_like, value='active'):
     else:
         assert value is 'failed'
         state = paddle.ones_like(tensor_like, dtype='int32') + 1
-    
+
     return state
+
 
 def update_state(input_state, predicate, new_state):
     r"""Updates the state on the locations where the old value is 0 and 
@@ -176,14 +187,15 @@ def update_state(input_state, predicate, new_state):
         Tensor updated on the specified locations.
     """
     assert new_state in ('converged', 'failed')
-        
+
     if new_state is 'converged':
         increments = paddle.to_tensor(predicate, dtype='int32')
     else:
         increments = paddle.to_tensor(predicate, dtype='int32') * 2
-    
+
     output_state = paddle.where(input_state == 0, increments, input_state)
     return output_state
+
 
 def as_float_tensor(input, dtype=None):
     r"""Generates a float or double typed tensor from `input`. The data
@@ -199,9 +211,8 @@ def as_float_tensor(input, dtype=None):
         A tensor with the required dtype.
     """
     assert isinstance(input, (int, float, list, paddle.Tensor)), (
-        f'Input `{input}` should be float, list or paddle.Tensor but found ' 
-        f'{type(input)}.'
-    )
+        f'Input `{input}` should be float, list or paddle.Tensor but found '
+        f'{type(input)}.')
 
     if dtype in ('float', 'float32', paddle.float32):
         dtype = 'float32'
@@ -214,8 +225,10 @@ def as_float_tensor(input, dtype=None):
         if output.dtype not in (paddle.float32, paddle.float64):
             raise TypeError
     except TypeError:
-        raise TypeError(f'The data type of {input} is {type(input)}, which is not supported.')
-    
+        raise TypeError(
+            f'The data type of {input} is {type(input)}, which is not supported.'
+        )
+
     return output
 
 
@@ -234,7 +247,7 @@ class StopCounter(object):
         self.count = 0
         assert isinstance(end, int) and end > 0
         self.end = end
-    
+
     def increment(self):
         r"""Increments the counter."""
 

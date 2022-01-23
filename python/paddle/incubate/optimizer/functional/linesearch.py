@@ -15,20 +15,10 @@
 import paddle
 from paddle import dot, einsum
 from .bfgs_utils import vjp
-from .bfgs_utils import (StopCounter,
-                         StopCounterException,
-                         vnorm_inf,
-                         vnorm_p,
-                         ternary,
-                         make_const,
-                         update_state,
-                         any_active,
-                         active_state,
-                         converged_state,
-                         failed_state,
-                         any_active_with_predicates,
-                         all_active_with_predicates)
-
+from .bfgs_utils import (StopCounter, StopCounterException, vnorm_inf, vnorm_p,
+                         ternary, make_const, update_state, any_active,
+                         active_state, converged_state, failed_state,
+                         any_active_with_predicates, all_active_with_predicates)
 
 hz_default_params = {
     'eps': 1e-6,
@@ -71,7 +61,7 @@ def initial(state):
     # I2. Otherwise, c = psi_2 * a_k-1
     if state.k == 0:
         x0, f0, g0, a0 = state.xk, state.fk, state.gk, state.ak
-        
+
         if a0 is not None:
             return a0.broadcast_to(f0)
 
@@ -86,7 +76,7 @@ def initial(state):
         # (TODO) implements quadratic interpolant
         prev_ak = state.ak
         c = psi_2 * prev_ak
-    
+
     return c
 
 
@@ -149,7 +139,7 @@ def bracket(state, phi, c, iter_count):
 
     # (TODO) Line search stops on the still expanding step sizes and exceeding 
     # maximum iterations.
-    
+
     # Narrows down the interval by recursively bisecting it.
     ifcond = B21_cond = g < .0
     a, b = bisect(state, phi, make_const(c, .0), c, ifcond, iter_count)
@@ -195,14 +185,14 @@ def bisect(state, phi, a, b, ifcond, iter_count):
     # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
 
     falling = make_const(f0, True, dtype='bool')
-    while True: 
+    while True:
         d = (1 - theta) * a + theta * b
 
         f, g = vjp(phi, d)
         iter_count.increment()
         state.nf += 1
         state.ng += 1
-        
+
         falling = falling & (g < .0)
 
         pred = ifcond & falling
@@ -238,7 +228,7 @@ def secant(phi, a, b):
     #                 a * phi'(b) - b * phi'(a)
     # secant(a, b) = ---------------------------
     #                   phi'(b)  - phi'(a)
-    
+
     fa, ga = vjp(phi, a)
     fb, gb = vjp(phi, b)
 
@@ -276,10 +266,10 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     c = secant(phi, a, b)
 
     A, B = update(state, phi, a, b, c, ifcond, iter_count)
-    
+
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
-    
+
     # Boolean tensor each element of which holds the S3 condition 
     S3_cond = c == A
 
@@ -298,11 +288,10 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     a = ternary(S2_or_S3, a, A)
     b = ternary(S2_or_S3, b, B)
 
-    return [a, b]   
+    return [a, b]
 
 
-def stopping_condition(state, phi, c, phiprime_0,
-                       phi_c=None, phiprime_c=None):
+def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
     r"""Tests T1/T2 condition in the Hager-Zhang paper.
     
     Args:
@@ -330,7 +319,7 @@ def stopping_condition(state, phi, c, phiprime_0,
         phi_c, phiprime_c = vjp(phi, c)
         state.nf += 1
         state.ng += 1
-    
+
     # T1 (Wolfe). 
     #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
     #   T1.2            phi'(c) >= sigma * phi'(0)
@@ -341,17 +330,17 @@ def stopping_condition(state, phi, c, phiprime_0,
     #   T2.3            phi(c) - phi(0) <= epsilon_k
 
     phi_diff = phi_c - phi_0
-    T11_cond = phi_diff <= delta * c * phiprime_0 
-    T12_cond = phiprime_c >= sigma * phiprime_0    
-    
+    T11_cond = phi_diff <= delta * c * phiprime_0
+    T12_cond = phiprime_c >= sigma * phiprime_0
+
     wolfe_cond = T11_cond & T12_cond
 
-    T21_cond = phiprime_c <= (2 * delta - 1) * phiprime_0 
+    T21_cond = phiprime_c <= (2 * delta - 1) * phiprime_0
     T22_cond = T12_cond
     T23_cond = phi_diff <= epsilon_k
 
     approx_wolfe_cond = T21_cond & T22_cond & T23_cond
-    
+
     stopping = wolfe_cond | approx_wolfe_cond
 
     return stopping
@@ -577,6 +566,7 @@ def hz_linesearch(state,
             return Bisect([a, c])
 
     """
+
     def phi(a):
         r'''
         phi is used as the objective function restricted on the line search 
@@ -593,7 +583,7 @@ def hz_linesearch(state,
 
     if params is None:
         state.params = hz_default_params
-    
+
     # Load config parameters
     params = state.params
     gamma, Delta = params['gamma'], params['Delta']
@@ -601,7 +591,7 @@ def hz_linesearch(state,
     # For each line search, the input location, function value, gradients and
     # the approximate inverse hessian are already present in the state date
     # struture. No need to recompute.
-    bat, xk, fk, gk, Hk = state.bat, state.xk, state.fk, state.gk, state.Hk  
+    bat, xk, fk, gk, Hk = state.bat, state.xk, state.fk, state.gk, state.Hk
 
     # Updates C_k, the weighted average of the absolute function values, 
     # used for assessing the relative change of function values over succesive
@@ -650,7 +640,7 @@ def hz_linesearch(state,
         c = initial(state)
         ls_stepsize = c
         iter_count.increment()
-              
+
         # Initial stopping test. Those already converged instances are likely
         # to succeed.
         stopped = stopping_condition(state, phi, c, deriv)
@@ -677,7 +667,7 @@ def hz_linesearch(state,
 
             if any_active_with_predicates(state.state, L2_cond):
                 c = 0.5 * (a + b)
-        
+
                 A, B = update(state, phi, a, b, c, L2_cond, iter_count)
                 a = ternary(L2_cond, A, a)
                 b = ternary(L2_cond, B, b)
@@ -695,4 +685,3 @@ def hz_linesearch(state,
     state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
 
     return
-
