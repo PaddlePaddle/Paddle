@@ -42,16 +42,6 @@ class DefaultKernelSignatureMap {
   DISABLE_COPY_AND_ASSIGN(DefaultKernelSignatureMap);
 };
 
-struct OpUtils {
-  std::string api_name;
-  ArgumentMappingFn arg_mapping_fn;
-
-  OpUtils() {
-    arg_mapping_fn = [&](const ArgumentMappingContext& ctx) -> KernelSignature {
-      return DefaultKernelSignatureMap::Instance().Get(this->api_name);
-    };
-  }
-};
 class OpUtilsMap {
  public:
   static OpUtilsMap& Instance();
