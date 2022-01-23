@@ -17,7 +17,7 @@ import os
 
 config.name = "MLIR tests"
 config.test_format = lit.formats.ShTest(True)
-build_dir = "/home/chunwei/project/Paddle/cmake-build-debug"
+build_dir = "@CMAKE_BINARY_DIR@"
 config.llvm_tools_dir = os.path.join(build_dir, "third_party/install/llvm/bin")
 config.llvm_tools_dir = os.path.join(build_dir, "/third_party/install/llvm/lib")
 infrtopt_bin = os.path.join(build_dir, "paddle/infrt/dialect/")

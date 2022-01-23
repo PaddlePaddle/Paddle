@@ -76,6 +76,7 @@ add_subdirectory(tensor)
 add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
+add_subdirectory(tests)
 
 
 # MLIR td file generations
@@ -95,8 +96,5 @@ message(STATUS "infrt srcs:\n${infrt_src}")
 cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs})
-
-add_test(NAME test_infrt_by_lit COMMAND sh -c "${CMAKE_SOURCE_DIR}/paddle/infrt/tests/my-lit.py -v ${CMAKE_SOURCE_DIR}/paddle/infrt/tests --filter-out \"disabled_*\""
-    DEPENDS infrtopt infrtexec)
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})
