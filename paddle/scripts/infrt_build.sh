@@ -101,6 +101,9 @@ function infrt_gen_and_build() {
 }
 
 function test_infrt() {
+    # install llvm-lit toolkit
+    python3 -m pip install lit
+
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
