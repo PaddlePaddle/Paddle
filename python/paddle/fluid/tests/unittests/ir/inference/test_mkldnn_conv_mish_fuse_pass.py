@@ -111,8 +111,7 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
         yield config, ["conv2d"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
-            quant=False, passes=["conv_mish_mkldnn_fuse_pass"])
+        self.run_and_statis(quant=False, passes=["conv_mish_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
