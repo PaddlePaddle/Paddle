@@ -201,16 +201,18 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
 
   // 5. Get inputs = outputs - inputs:
   if (!is_last_layer) {
-    thrust::device_vector<T> unique_outputs(outputs->size());
     thrust::sort(inputs->begin(), inputs->end());
     thrust::device_vector<T> outputs_sort(outputs->size());
     thrust::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
     thrust::sort(outputs_sort.begin(), outputs_sort.end());
+    auto outputs_sort_end =
+        thrust::unique(outputs_sort.begin(), outputs_sort.end());
+    outputs_sort.resize(
+        thrust::distance(outputs_sort.begin(), outputs_sort_end));
+    thrust::device_vector<T> unique_outputs(outputs_sort.size());
     auto unique_outputs_end = thrust::set_difference(
         outputs_sort.begin(), outputs_sort.end(), inputs->begin(),
         inputs->end(), unique_outputs.begin());
-    unique_outputs_end =
-        thrust::unique(unique_outputs.begin(), unique_outputs_end);
     inputs->resize(
         thrust::distance(unique_outputs.begin(), unique_outputs_end));
     thrust::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());

@@ -46,48 +46,45 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         self.sample_sizes = [5, 5]
         self.dst_src_dict = dst_src_dict
 
-    """
     def test_sample_result(self):
-        sorted_src = paddle.to_tensor(self.sorted_src)
-        dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
-        nodes = paddle.to_tensor(self.nodes)
-        
+        sorted_src = paddle.to_tensor(self.sorted_src, dtype="int64")
+        dst_cumsum_counts = paddle.to_tensor(
+            self.dst_cumsum_counts, dtype="int64")
+        nodes = paddle.to_tensor(self.nodes, dtype="int64")
+
         return_eids = False
-        empty_eids = paddle.to_tensor([], dtype=sorted_src.dtype)
         edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts, 
+            paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
                                                    nodes, self.sample_sizes)
         # Reindex edge_src and edge_dst to original index.
         edge_src = edge_src.reshape([-1])
         edge_dst = edge_dst.reshape([-1])
         sample_index = sample_index.reshape([-1])
 
-        print(edge_src)
-        print(edge_dst)
-        print(sample_index)
-        print(reindex_nodes)
         for i in range(len(edge_src)):
-           edge_src[i] = sample_index[edge_src[i]]
-           edge_dst[i] = sample_index[edge_dst[i]]
-        print(edge_src)
-        print(edge_dst) 
-        
+            edge_src[i] = sample_index[edge_src[i]]
+            edge_dst[i] = sample_index[edge_dst[i]]
+
         for n in self.nodes:
             edge_src_n = edge_src[edge_dst == n]
+            if edge_src_n.shape[0] == 0:
+                continue
             # Ensure no repetitive sample neighbors.
-            self.assertTrue(edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0])
+            self.assertTrue(
+                edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0])
             # Ensure the correct sample size.
-            self.assertTrue(edge_src_n.shape[0] == self.sample_sizes[0] or 
+            self.assertTrue(edge_src_n.shape[0] == self.sample_sizes[0] or
                             edge_src_n.shape[0] == len(self.dst_src_dict[n]))
             in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
             # Ensure the correct sample neighbors.
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
-    """
 
     def test_uva_sample_result(self):
         if paddle.fluid.core.is_compiled_with_cuda():
-            sorted_src = to_uva_tensor(self.sorted_src, 0)
-            sorted_edges_id = to_uva_tensor(self.sorted_edges_id, 0)
+            sorted_src = to_uva_tensor(
+                self.sorted_src.astype(self.sorted_src.dtype), 0)
+            sorted_edges_id = to_uva_tensor(
+                self.sorted_edges_id.astype(self.sorted_edges_id.dtype), 0)
             dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
             nodes = paddle.to_tensor(self.nodes)
 
@@ -98,11 +95,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                                                        sorted_eids=sorted_edges_id,
                                                        return_eids=True)
 
-            print(edge_src.reshape([-1]))
-            print(edge_dst.reshape([-1]))
-            print(sample_index)
-            print(reindex_nodes)
-            print(edge_eids)
             # Reindex edge_src and edge_dst to original index.
             edge_src = edge_src.reshape([-1])
             edge_dst = edge_dst.reshape([-1])
@@ -112,12 +104,10 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 edge_src[i] = sample_index[edge_src[i]]
                 edge_dst[i] = sample_index[edge_dst[i]]
 
-            print(edge_src)
-            print(edge_dst)
-
             for n in self.nodes:
                 edge_src_n = edge_src[edge_dst == n]
-                print(edge_src_n)
+                if edge_src_n.shape[0] == 0:
+                    continue
                 # Ensure no repetitive sample neighbors.
                 self.assertTrue(
                     edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0])
@@ -127,9 +117,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                     edge_src_n.shape[0] == len(self.dst_src_dict[n]))
                 in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
                 # Ensure the correct sample neighbors.
-                print(edge_src_n.numpy(), self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
-            # Ensure correct eids.
 
 
 if __name__ == "__main__":
