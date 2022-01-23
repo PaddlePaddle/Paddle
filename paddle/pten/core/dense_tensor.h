@@ -70,7 +70,7 @@ class DenseTensor : public TensorBase,
   /// \param meta The meta data of dense tensor.
   DenseTensor(Allocator* a, DenseTensorMeta&& meta);
 
-  DenseTensor(const std::shared_ptr<paddle::memory::Allocation>& holder,
+  DenseTensor(const std::shared_ptr<pten::Allocation>& holder,
               const DenseTensorMeta& meta);
 
   /// \brief Because dense tensor is a kind of container, we give a default
@@ -175,7 +175,7 @@ class DenseTensor : public TensorBase,
 
  protected:
   DenseTensorMeta meta_;
-  std::shared_ptr<paddle::memory::Allocation> holder_;
+  std::shared_ptr<pten::Allocation> holder_;
 
   /* --------------------------- */
   /*   From framework::Tensor    */
@@ -194,7 +194,7 @@ class DenseTensor : public TensorBase,
 
   /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
    */
-  explicit DenseTensor(const paddle::framework::proto::VarType::Type& dtype);
+  explicit DenseTensor(paddle::framework::proto::VarType::Type dtype);
 
   /// \brief Use existing storage space to create dense tensor. This interface
   /// can be used to deliberately create an uninitialized dense tensor.
@@ -265,24 +265,21 @@ class DenseTensor : public TensorBase,
     return holder_ && holder_ == src.Holder();
   }
 
-  const std::shared_ptr<paddle::memory::Allocation>& Holder() const {
-    return holder_;
-  }
+  const std::shared_ptr<pten::Allocation>& Holder() const { return holder_; }
 
   void set_offset(size_t offset) { meta_.offset = offset; }
   size_t offset() const { return meta_.offset; }
 
-  std::shared_ptr<paddle::memory::Allocation> MoveMemoryHolder() {
+  std::shared_ptr<pten::Allocation> MoveMemoryHolder() {
     return std::move(holder_);
   }
 
-  void ResetHolder(const std::shared_ptr<paddle::memory::Allocation>& holder);
+  void ResetHolder(const std::shared_ptr<pten::Allocation>& holder);
 
-  void ResetHolderWithType(
-      const std::shared_ptr<paddle::memory::Allocation>& holder,
-      const paddle::framework::proto::VarType::Type& type);
+  void ResetHolderWithType(const std::shared_ptr<pten::Allocation>& holder,
+                           paddle::framework::proto::VarType::Type type);
 
-  void set_type(const paddle::framework::proto::VarType::Type& type);
+  void set_type(paddle::framework::proto::VarType::Type type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;

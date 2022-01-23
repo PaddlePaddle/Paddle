@@ -38,9 +38,8 @@ DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
     : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
-DenseTensor::DenseTensor(
-    const std::shared_ptr<paddle::memory::Allocation>& holder,
-    const DenseTensorMeta& meta)
+DenseTensor::DenseTensor(const std::shared_ptr<pten::Allocation>& holder,
+                         const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
@@ -177,7 +176,7 @@ DenseTensor::DenseTensor() {
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(const paddle::framework::proto::VarType::Type& dtype) {
+DenseTensor::DenseTensor(paddle::framework::proto::VarType::Type dtype) {
   inplace_version_counter_ = std::make_shared<TensorInplaceVersion>(0);
   meta_.dtype = TransToPtenDataType(dtype);
   meta_.offset = 0;
@@ -224,8 +223,7 @@ void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;
 }
 
-void DenseTensor::ResetHolder(
-    const std::shared_ptr<paddle::memory::Allocation>& holder) {
+void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
   PADDLE_ENFORCE_EQ(
       meta_.offset,
       0,
@@ -243,14 +241,13 @@ void DenseTensor::ResetHolder(
 }
 
 void DenseTensor::ResetHolderWithType(
-    const std::shared_ptr<paddle::memory::Allocation>& holder,
-    const paddle::framework::proto::VarType::Type& type) {
+    const std::shared_ptr<pten::Allocation>& holder,
+    paddle::framework::proto::VarType::Type type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(
-    const paddle::framework::proto::VarType::Type& type) {
+void DenseTensor::set_type(paddle::framework::proto::VarType::Type type) {
   meta_.dtype = TransToPtenDataType(type);
 }
 
