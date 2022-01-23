@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +15,8 @@
 import paddle.fluid.framework as framework
 from paddle.fluid import core
 from paddle import compat as cpt
+
+ops_having_canonicalization = {"elementwise_add", }
 
 ops_having_canonicalization = {"elementwise_add", }
 
@@ -133,6 +135,7 @@ def convert_op_proto_into_mlir(op_descs):
     ]
 
     start_ = comment_ + "\n".join(lines)
+
     with open(dst_dialect_file, 'w') as ops_mlir_file:
         ops_mlir_file.write(start_)
 
