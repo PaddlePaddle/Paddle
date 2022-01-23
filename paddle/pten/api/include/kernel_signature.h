@@ -38,6 +38,11 @@ using cast_kernel = void (*)(const DeviceContext&,
                              DataType,
                              DenseTensor*);
 
+using concat_kernel = void (*)(const DeviceContext&,
+                               const std::vector<DenseTensor>&,
+                               const Scalar&,
+                               DenseTensor*);
+
 using divide_kernel = void (*)(const DeviceContext&,
                                const DenseTensor&,
                                const DenseTensor&,

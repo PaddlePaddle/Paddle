@@ -18,6 +18,16 @@
     param : [x, out_dtype]
     data_type : x
 
+
+- api : concat
+  args : (const std::vector<Tensor>& x, const Scalar& axis)
+  output : Tensor
+  infer_meta :
+    func : ConcatInferMeta
+    param : [x, axis, true]
+  kernel :
+    func : concat
+
 - api : conj
   args : (const Tensor& x)
   output : Tensor

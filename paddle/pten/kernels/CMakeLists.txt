@@ -24,7 +24,7 @@ endif()
 # pten depends all pten kernel targets
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
-set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory arg_map_context convert_utils)
+set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} pten_api_utils)
