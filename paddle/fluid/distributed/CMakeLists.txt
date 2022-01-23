@@ -13,8 +13,6 @@ if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
 endif()
 
 add_subdirectory(common)
-#add_subdirectory(service)
-#add_subdirectory(table)
 add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
