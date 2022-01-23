@@ -763,6 +763,24 @@ class EagerTensorPropertiesAndMethodsTestCase(unittest.TestCase):
                             paddle.fluid.framework._current_expected_place())
             self.assertTrue(egr_tensor0.value().get_tensor()._is_initialized())
 
+    def test_set_value(self):
+        with _test_eager_guard():
+            ori_arr = np.random.rand(4, 16, 16, 32).astype('float32')
+            egr_tensor = core.eager.EagerTensor(value=ori_arr)
+            self.assertEqual(egr_tensor.stop_gradient, True)
+            self.assertEqual(egr_tensor.shape, [4, 16, 16, 32])
+            self.assertTrue(np.array_equal(egr_tensor.numpy(), ori_arr))
+            ori_place = egr_tensor.place
+
+            new_arr = np.random.rand(4, 4, 16, 32).astype('float32')
+            self.assertFalse(np.array_equal(egr_tensor.numpy(), new_arr))
+
+            egr_tensor._set_value(new_arr)
+            self.assertEqual(egr_tensor.stop_gradient, True)
+            self.assertTrue(egr_tensor.place._equals(ori_place))
+            self.assertEqual(egr_tensor.shape, [4, 4, 16, 32])
+            self.assertTrue(np.array_equal(egr_tensor.numpy(), new_arr))
+
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):
     def test_print(self):
@@ -855,6 +873,17 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             egr_tensor12.stop_gradient = False
             egr_tensor12.backward()
             self.assertTrue(np.array_equal(egr_tensor12.gradient(), arr))
+
+    def test_set_value(self):
+        with _test_eager_guard():
+            linear = paddle.nn.Linear(1, 3)
+            ori_place = linear.weight.place
+            new_weight = np.ones([1, 3]).astype('float32')
+            self.assertFalse(np.array_equal(linear.weight.numpy(), new_weight))
+
+            linear.weight._set_value(new_weight)
+            self.assertTrue(np.array_equal(linear.weight.numpy(), new_weight))
+            self.assertTrue(linear.weight.place._equals(ori_place))
 
 
 class EagerGuardTestCase(unittest.TestCase):
