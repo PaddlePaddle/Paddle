@@ -14,11 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdlib>
+#include <stdlib.h>
 #include <numeric>
 #include <unordered_map>
 #include <vector>
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
