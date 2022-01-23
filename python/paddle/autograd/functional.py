@@ -964,8 +964,7 @@ class Jacobian(object):
             else:
                 assert isinstance(inputs, paddle.fluid.framework.Variable), (
                     f"Expecting {inputs} to be paddle.fluid.framework.Variable,"
-                    f" however it's found to be a(n) {type(inputs)}."
-                )
+                    f" however it's found to be a(n) {type(inputs)}.")
                 inputs.stop_gradient = False
             return inputs
 
