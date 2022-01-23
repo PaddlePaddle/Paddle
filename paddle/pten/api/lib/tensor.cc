@@ -78,7 +78,8 @@ Tensor::Tensor(const PlaceType &place)
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
                                           framework::make_ddim({}),
-                                          pten::DataLayout::NCHW))))) {}
+                                          pten::DataLayout::NCHW))))),
+      place_{place} {}
 
 Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
     : impl_(std::move(std::make_shared<pten::DenseTensor>(
@@ -86,7 +87,8 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
                                           framework::make_ddim(shape),
-                                          pten::DataLayout::NCHW))))) {}
+                                          pten::DataLayout::NCHW))))),
+      place_{place} {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
@@ -131,17 +133,23 @@ bool Tensor::is_dense_tensor() const {
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
-  return ConvertInnerPlaceToExtPlace(impl_->place());
+  if (!impl_->initialized()) {
+    return place_;
+  } else {
+    return ConvertInnerPlaceToExtPlace(impl_->place());
+  }
 }
 
-paddle::platform::Place Tensor::inner_place() const { return impl_->place(); }
+paddle::platform::Place Tensor::inner_place() const {
+  return ConvertExtPlaceToInnerPlace(place());
+}
 
 bool Tensor::is_cpu() const {
-  return paddle::platform::is_cpu_place(impl_->place());
+  return paddle::platform::is_cpu_place(inner_place());
 }
 
 bool Tensor::is_cuda() const {
-  return paddle::platform::is_gpu_place(impl_->place());
+  return paddle::platform::is_gpu_place(inner_place());
 }
 
 /* Part 4: Data Access methods */
