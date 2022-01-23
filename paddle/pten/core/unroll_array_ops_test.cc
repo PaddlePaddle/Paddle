@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/unroll_array_ops.h"
+#include "paddle/pten/core/unroll_array_ops.h"
 
 #include <gtest/gtest.h>
 #include <array>
 
-namespace paddle {
+namespace pten {
 namespace framework {
 
 template <typename T>
@@ -79,4 +79,4 @@ TEST(unroll_ops, product) {
 }
 
 }  // namespace framework
-}  // namespace paddle
+}  // namespace pten

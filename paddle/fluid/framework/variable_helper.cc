@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 

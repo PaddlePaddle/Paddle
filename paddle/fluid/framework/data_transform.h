@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/math/math_function.h"
