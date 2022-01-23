@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
@@ -19,11 +20,11 @@ from paddle.fluid import core
 from paddle import _C_ops
 
 
-def graph_sample_neighbors(sorted_src_index,
-                           sorted_eids,
+def graph_sample_neighbors(sorted_src,
                            dst_cumsum_counts,
                            nodes,
                            sample_sizes,
+                           sorted_eids=None,
                            return_eids=False,
                            name=None):
     """
@@ -34,24 +35,35 @@ def graph_sample_neighbors(sorted_src_index,
 
     if in_dygraph_mode():
         if return_eids:
+            if sorted_eids is None:
+                raise ValueError(f"`sorted_eid` should not be None "
+                                 f"if return_eids is True.")
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                _C_ops.graph_sample_neighbors(sorted_src_index, sorted_eids,
+                _C_ops.graph_sample_neighbors(sorted_src, sorted_eids,
                                               dst_cumsum_counts, nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", True)
-            return edge_src, edge_dst, edge_eids, sample_index, reindex_nodes
+            return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
         else:
-            # 总觉得不需要返回 eids，但是又需要用户输入原始 eids，会不会不好
+            empty_eid = paddle.to_tensor([], dtype=sorted_src.dtype)
             edge_src, edge_dst, sample_index, reindex_nodes, _ = \
-                _C_ops.graph_sample_neighbors(sorted_src_index, sorted_eids,
+                _C_ops.graph_sample_neighbors(sorted_src, empty_eid,
                                               dst_cumsum_counts, nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", False)
             return edge_src, edge_dst, sample_index, reindex_nodes
 
-    check_variable_and_dtype(sorted_src_index, "Src", ("int32", "int64"),
-                             "graph_sample_neighbors")
-    check_variable_and_dtype(sorted_eids, "Src_Eids", ("int32", "int64"),
+    if return_eids:
+        if sorted_eids is None:
+            raise ValueError(f"`sorted_eid` should not be None "
+                             f"if return_eids is True.")
+        check_variable_and_dtype(sorted_eids, "Src_Eids", ("int32", "int64"),
+                                 "graph_sample_neighbors")
+    else:
+        sorted_eids = paddle.static.data(
+            name="eid", shape=[-1], dtype=sorted_src.dtype)
+
+    check_variable_and_dtype(sorted_src, "Src", ("int32", "int64"),
                              "graph_sample_neighbors")
     check_variable_and_dtype(dst_cumsum_counts, "Dst_Count", ("int32", "int64"),
                              "graph_sample_neighbors")
@@ -59,20 +71,18 @@ def graph_sample_neighbors(sorted_src_index,
                              "graph_sample_neighbors")
 
     helper = LayerHelper("graph_sample_neighbors", **locals())
-    edge_src = helper.create_variable_for_type_inference(
-        dtype=sorted_src_index.dtype)
-    edge_dst = helper.create_variable_for_type_inference(
-        dtype=sorted_src_index.dtype)
+    edge_src = helper.create_variable_for_type_inference(dtype=sorted_src.dtype)
+    edge_dst = helper.create_variable_for_type_inference(dtype=sorted_src.dtype)
     sample_index = helper.create_variable_for_type_inference(
-        dtype=sorted_src_index.dtype)
+        dtype=sorted_src.dtype)
     reindex_nodes = helper.create_variable_for_type_inference(
-        dtype=sorted_src_index.dtype)
+        dtype=sorted_src.dtype)
     edge_eids = helper.create_variable_for_type_inference(
-        dtype=sorted_src_index.dtype)
+        dtype=sorted_src.dtype)
     helper.append_op(
         type="graph_sample_neighbors",
         inputs={
-            "Src": sorted_src_index,
+            "Src": sorted_src,
             "Src_Eids": sorted_eids,
             "Dst_Count": dst_cumsum_counts,
             "X": nodes
@@ -87,6 +97,6 @@ def graph_sample_neighbors(sorted_src_index,
         attrs={"sample_sizes": sample_sizes,
                "return_eids": return_eids})
     if return_eids:
-        return edge_src, edge_dst, edge_eids, sample_index, reindex_nodes
+        return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
     else:
         return edge_src, edge_dst, sample_index, reindex_nodes
