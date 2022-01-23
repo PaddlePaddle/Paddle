@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <curand_kernel.h>
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -22,10 +23,14 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include <thrust/transform.h>
 #include <thrust/unique.h>
-
-#include <cuda_runtime.h>
-#include <curand_kernel.h>
 #include <ostream>
+
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -423,7 +428,7 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         src_merge.size(), num_sample_edges,
-        platform::errors::External(
+        platform::errors::PreconditionNotMet(
             "Number of sample edges dismatch, the sample kernel has error."));
 
     // 4. Get hashtable according to unique_dst_merge and src_merge.
