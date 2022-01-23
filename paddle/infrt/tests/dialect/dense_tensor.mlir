@@ -1,3 +1,4 @@
+// RUN: infrtexec -i %s | FileCheck %s
 // CHECK-LABEL: dense_shape0
 func @dense_shape0() {
   %shape = ts.build_shape [1:i64, 57:i64]

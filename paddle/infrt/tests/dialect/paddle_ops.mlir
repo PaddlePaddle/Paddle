@@ -1,3 +1,5 @@
+// RUN: infrtopt %s | FileCheck %s
+// CHECK-LABEL: @ops
 func @ops() {
   %a = pd.feed() {name="input0"} : tensor<?xf32>
   %b = pd.feed() {name="input1"}: tensor<?xf32>

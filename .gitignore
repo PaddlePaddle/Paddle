@@ -43,3 +43,4 @@ tools/__pycache__
 # TODO(zhiqiang) Move this file to build directory.
 paddle/infrt/dialect/pd_ops.td
 .lit_test_times.txt
+paddle/infrt/tests/dialect/Output
