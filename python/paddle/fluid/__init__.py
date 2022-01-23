@@ -212,8 +212,6 @@ def __bootstrap__():
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
-    # init pten default op -> kernel signature map
-    core._init_default_kernel_signature()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

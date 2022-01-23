@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/compat/op_utils.h"
@@ -191,6 +192,7 @@ class CompatMetaTensor : public pten::MetaTensor {
 pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type) {
   // 1. get kernel args
+  InitDefaultKernelSignatureMap();
   auto arg_map_fn = pten::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   PADDLE_ENFORCE_NOT_NULL(
       arg_map_fn, platform::errors::NotFound(
