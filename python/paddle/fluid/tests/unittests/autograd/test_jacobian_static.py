@@ -75,6 +75,10 @@ class TestJacobianFloat32(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
+        if fluid.core.is_compiled_with_cuda():
+            self.place = fluid.CUDAPlace(0)
+        else:
+            self.place = fluid.CPUPlace()
         self.np_dtype = np.float32
         self.A = np.array([[1., 2.]]).astype('float32')
         self.B = np.array([[1., 2.], [2., 1.]]).astype('float32')
@@ -107,7 +111,6 @@ class TestJacobianFloat32(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             full_jacobian = JJ[:]
-        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup)
         if isinstance(inps, list):
@@ -167,6 +170,10 @@ class TestJacobianFloat64(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
+        if fluid.core.is_compiled_with_cuda():
+            self.place = fluid.CUDAPlace(0)
+        else:
+            self.place = fluid.CPUPlace()
         self.np_dtype = np.float32
         self.A = np.array([[1., 2.]]).astype('float64')
         self.B = np.array([[1., 2.], [2., 1.]]).astype('float64')
@@ -199,7 +206,6 @@ class TestJacobianFloat64(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             full_jacobian = JJ[:]
-        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup)
         if isinstance(inps, list):
@@ -231,7 +237,6 @@ class TestJacobianFloat64(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             rows = [JJ[i] for i in range(nrow)] 
-        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup)
         if isinstance(inps, list):
@@ -263,7 +268,6 @@ class TestJacobianFloat64(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             entries = [JJ[i, j] for i in range(nrow) for j in range(ncol)] 
-        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup)
         if isinstance(inps, list):
