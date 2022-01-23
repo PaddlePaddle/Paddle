@@ -378,10 +378,10 @@ else
     two_parallel_job=$(echo $output | cut -d ";" -f 3)
     non_parallel_job=$(echo $output | cut -d ";" -f 4)
 
-    run_unittest_cpu $cpu_parallel_job 32
-    run_unittest_cpu $tetrad_parallel_job 28
-    run_unittest_cpu $two_parallel_job 24
-    run_unittest_cpu $non_parallel_job 16
+    run_unittest_cpu $cpu_parallel_job 30
+    run_unittest_cpu $tetrad_parallel_job 24
+    run_unittest_cpu $two_parallel_job 20
+    run_unittest_cpu $non_parallel_job 10
 fi
 collect_failed_tests
 set -e
