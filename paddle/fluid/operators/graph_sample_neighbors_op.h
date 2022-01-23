@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -86,11 +86,11 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
     total_neighbors += sample_size;
     sample_cumsum_sizes[i + 1] = total_neighbors;
     std::vector<T> out_src;
-    out_src.resize(sample_size);
+    out_src.resize(cap);
     out_src_vec.emplace_back(out_src);
     if (return_eids) {
       std::vector<T> out_eids;
-      out_eids.resize(sample_size);
+      out_eids.resize(cap);
       out_eids_vec.emplace_back(out_eids);
     }
   }
@@ -144,16 +144,19 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
   }
 
   if (!is_last_layer) {
-    std::vector<T> unique_outputs(outputs->size());
     std::sort(inputs->begin(), inputs->end());
     std::vector<T> outputs_sort(outputs->size());
     std::copy(outputs->begin(), outputs->end(), outputs_sort.begin());
     std::sort(outputs_sort.begin(), outputs_sort.end());
+    auto outputs_sort_end =
+        std::unique(outputs_sort.begin(), outputs_sort.end());
+    outputs_sort.resize(std::distance(outputs_sort.begin(), outputs_sort_end));
+    std::vector<T> unique_outputs(outputs_sort.size());
+
     auto unique_outputs_end = std::set_difference(
         outputs_sort.begin(), outputs_sort.end(), inputs->begin(),
         inputs->end(), unique_outputs.begin());
-    unique_outputs_end =
-        std::unique(unique_outputs.begin(), unique_outputs_end);
+
     inputs->resize(std::distance(unique_outputs.begin(), unique_outputs_end));
     std::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
   }
@@ -177,13 +180,13 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     const T* p_vertices = vertices->data<T>();
     const size_t bs = vertices->dims()[0];
 
-    // 1.1 Get unique inputs X.
+    // 2. Get unique inputs X.
     std::vector<T> inputs(bs);
     std::copy(p_vertices, p_vertices + bs, inputs.begin());
     auto unique_inputs_end = std::unique(inputs.begin(), inputs.end());
     inputs.resize(std::distance(inputs.begin(), unique_inputs_end));
 
-    // 2. Sample neighbors.
+    // 3. Sample neighbors.
     std::vector<T> outputs;
     std::vector<T> output_counts;
     std::vector<T> outputs_eids;
@@ -213,12 +216,13 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       outputs_eids_vec.emplace_back(outputs_eids);
     }
 
-    // 3. Concat intermediate sample results
+    // 4. Concat intermediate sample results
     int64_t unique_dst_size = 0, src_size = 0;
     for (size_t i = 0; i < num_layers; i++) {
       unique_dst_size += dst_vec[i].size();
       src_size += outputs_vec[i].size();
     }
+
     std::vector<T> unique_dst_merge(unique_dst_size);
     std::vector<T> src_merge(src_size);
     std::vector<T> dst_sample_counts_merge(unique_dst_size);
@@ -245,7 +249,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    // 4. Whether return Eids
+    // 5. Whether return Eids
     if (return_eids) {
       std::vector<T> eids_merge(src_size);
       auto eids_merge_ptr = eids_merge.begin();
@@ -273,7 +277,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
         platform::errors::External(
             "Number of sample edges dismatch, the sample kernel has error."));
 
-    // 5. Reindex.
+    // 6. Reindex.
     std::unordered_map<T, T> node_map;
     std::vector<T> unique_nodes;
     size_t reindex_id = 0;
@@ -299,7 +303,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    // 6. Get Reindex_X.
+    // 7. Get Reindex_X.
     auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     memset(p_reindex_x, 0, bs * sizeof(T));
@@ -307,7 +311,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       p_reindex_x[i] = node_map[p_vertices[i]];
     }
 
-    // 7. Get outputs.
+    // 8. Get outputs.
     auto* sample_index = ctx.Output<Tensor>("Sample_index");
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
