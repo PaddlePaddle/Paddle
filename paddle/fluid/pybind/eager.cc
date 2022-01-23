@@ -143,8 +143,13 @@ void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
     self->eager_tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    self->eager_tensor.set_impl(
-        src.copy_to(pten::TransToPtenBackend(place), true).impl());
+    const auto& src_dense_tensor =
+        static_cast<const pten::DenseTensor&>(*src.impl());
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>();
+    paddle::framework::TensorCopy(src_dense_tensor, place, dense_tensor.get());
+    dense_tensor->set_lod(src_dense_tensor.lod());
+    self->eager_tensor.set_impl(std::move(dense_tensor));
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
@@ -166,23 +171,18 @@ void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
   if (place == src.place()) {
     std::shared_ptr<pten::DenseTensor> dense_tensor =
         std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+            src.Holder(),
             pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
                                   src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    self->eager_tensor.set_impl(dense_tensor);
+    dense_tensor->set_lod(src.lod());
+    self->eager_tensor.set_impl(std::move(dense_tensor));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(
-                src.place()),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    auto temp = egr::EagerTensor(dense_tensor);
-    self->eager_tensor.set_impl(
-        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+        std::make_shared<pten::DenseTensor>();
+    paddle::framework::TensorCopy(src, place, dense_tensor.get());
+    dense_tensor->set_lod(src.lod());
+    self->eager_tensor.set_impl(std::move(dense_tensor));
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);

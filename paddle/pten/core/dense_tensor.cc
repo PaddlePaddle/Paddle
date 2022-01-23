@@ -100,7 +100,6 @@ T* DenseTensor::data() {
 }
 
 void* DenseTensor::data() {
-  check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
       paddle::platform::errors::PreconditionNotMet(
@@ -110,7 +109,6 @@ void* DenseTensor::data() {
 }
 
 const void* DenseTensor::data() const {
-  check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
       paddle::platform::errors::PreconditionNotMet(
