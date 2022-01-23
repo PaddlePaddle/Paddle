@@ -345,7 +345,7 @@ if load_noavx:
         from .core_noavx import _device_synchronize
         from .core_noavx import _get_current_stream
         from .core_noavx import _set_current_stream
-        from .core_avx import _init_default_kernel_signature
+        from .core_noavx import _init_default_kernel_signature
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids
