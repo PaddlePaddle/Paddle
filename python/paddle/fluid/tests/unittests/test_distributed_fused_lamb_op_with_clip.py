@@ -17,6 +17,7 @@ import shlex
 import sys
 import shutil
 import unittest
+import paddle
 
 
 def get_test_file():
@@ -34,6 +35,8 @@ def remove_file_if_exists(file_name):
 
 
 def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
+    if not paddle.is_compiled_with_cuda():
+        return
     args = locals()
     log_dir = 'log_{}'.format(os.getpid())
     cmd = [

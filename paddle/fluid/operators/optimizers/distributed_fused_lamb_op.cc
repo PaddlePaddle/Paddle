@@ -106,18 +106,25 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("beta2", "The initial Beta2Pow value.");
     AddAttr<float>("epsilon",
                    "The epsilon value to maintain numeric stability.");
-    AddAttr<float>("max_global_grad_norm",
-                   "The maximum global gradient l2-norm value for clipping. If "
-                   "max_global_grad_norm <= 0, no clipping would be perform.");
+    AddAttr<float>(
+        "max_global_grad_norm",
+        "The maximum global gradient l2-norm value for clipping. If "
+        "max_global_grad_norm <= 0, no clipping would be performed.");
     AddAttr<bool>("clip_after_allreduce",
                   "Whether to clip before allreduce, only valid when the "
                   "world size is larger than 1.");
-    AddAttr<bool>("broadcast_master_param",
-                  "Whether to broadcast master parameter or FP16 parameter.");
+    AddAttr<bool>(
+        "broadcast_master_param",
+        "Whether to broadcast master parameter or FP16 parameter. It is only "
+        "useful when there is any FP16 parameter. If it is true, the master "
+        "weight would be updated, broadcast and cast to be FP16 parameter. "
+        "If it is false, the FP16 parameter would be updated, broadcast and "
+        "cast to be master weight.");
     AddAttr<bool>("is_grad_scaled_by_nranks",
-                  "Whether the gradient has been scaled by nranks.")
+                  "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
-    AddAttr<int>("ring_id", "").SetDefault(0);
+    AddAttr<int>("ring_id", "The ring id of the NCCL communicator.")
+        .SetDefault(0);
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };

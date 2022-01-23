@@ -64,12 +64,13 @@ class DistributedFusedLambInitOpMaker
               "The param index of each element in FP32FusedParam. Its shape is "
               "[M1+M2].");
     AddOutput("FusedParamOffsets",
-              "The parameter offset of the fused parameters.");
+              "The parameter offset of the fused parameters. Its shape is "
+              "[param_num + 1].");
     AddOutput("PartialFusedParamOffsets",
-              "The partial parameter offset of the fused parameters.");
+              "The partial parameter offset of the fused parameters. Its shape "
+              "is [local_param_num + 1].");
     AddOutput("WeightDecay",
-              "The fp32 weight decay tensor. Its shape is equal to local "
-              "parameter number.");
+              "The fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
     AddOutput("LocalParamInfo",
               "The local param info inside FP32FusedParam. It should be in "
               "CPUPlace, and its shape is [4].");

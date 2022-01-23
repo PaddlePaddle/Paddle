@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <cmath>
-#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
@@ -25,14 +24,12 @@
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
-#include "math.h"            // NOLINT
-#include "math_constants.h"  // NOLINT
+#include "math.h"  // NOLINT
 #endif
 
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
-#include "math.h"            // NOLINT
-#include "math_constants.h"  // NOLINT
+#include "math.h"  // NOLINT
 namespace cub = hipcub;
 #endif
 
@@ -64,8 +61,8 @@ static void LogParamAndTrustRatioDivSquareNorm(
     } else if (t->type() == framework::proto::VarType::FP16) {
       fp16_indices.push_back(i);
     } else {
-      PADDLE_THROW(
-          platform::errors::InvalidArgument("Unsupported type %d", t->type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported data type %s.", framework::DataTypeToString(t->type())));
     }
   }
 
@@ -160,25 +157,6 @@ struct AndFunctor {
   HOSTDEVICE bool operator()(bool x, bool y) const { return x && y; }
 };
 
-template <typename T, typename IndexT>
-struct IndexWithOffsetFunctor {
-  IndexWithOffsetFunctor(const IndexT *indices, T thresh, T offset1, T offset2)
-      : indices_(indices),
-        thresh_(thresh),
-        offset1_(offset1),
-        offset2_(offset2) {}
-
-  HOSTDEVICE IndexT operator()(T i) const {
-    return i < thresh_ ? indices_[i + offset1_] : indices_[i + offset2_];
-  }
-
- private:
-  const IndexT *indices_;
-  T thresh_;
-  T offset1_;
-  T offset2_;
-};
-
 template <typename T>
 static __global__ void ScaleCUDAKernel(const T *__restrict__ x,
                                        const T *__restrict__ scale,
@@ -188,22 +166,9 @@ static __global__ void ScaleCUDAKernel(const T *__restrict__ x,
 }
 
 template <typename T>
-static __global__ void InplaceScaleCUDAKernel(T *__restrict__ x, float scale,
-                                              int num) {
-  CUDA_KERNEL_LOOP(i, num) {
-    x[i] = static_cast<T>(static_cast<float>(x[i]) * scale);
-  }
-}
-
-template <typename T>
 static __global__ void AddToCUDAKernel(const T *__restrict__ x,
                                        T *__restrict__ y) {
   y[0] += x[0];
-}
-
-static __global__ void OrToCUDAKernel(const bool *__restrict__ x,
-                                      bool *__restrict__ y) {
-  y[0] |= x[0];
 }
 
 // If clip before allreduce,
@@ -232,13 +197,14 @@ static __global__ void CalcGradNormClipBeforeAllReduceScale(
 
 static __global__ void SetNanInfValueCUDAKernelOneFlag(const bool *in_flag_p,
                                                        float *out_p) {
-  *out_p = (*in_flag_p) ? CUDART_NAN_F : 0.0f;
+  *out_p = (*in_flag_p) ? __int_as_float(0x7fffffffU) : 0.0f;
 }
 
 static __global__ void SetNanInfValueCUDAKernelTwoFlag(const bool *in_flag_p_1,
                                                        const bool *in_flag_p_2,
                                                        float *out_p) {
-  *out_p = ((*in_flag_p_1) || (*in_flag_p_2)) ? CUDART_NAN_F : 0.0f;
+  *out_p =
+      ((*in_flag_p_1) || (*in_flag_p_2)) ? __int_as_float(0x7fffffffU) : 0.0f;
 }
 
 // TODO(zengjinle): Vectorize this function
@@ -285,21 +251,6 @@ static __global__ void UpdateLambMoment(
     mom1_p[i] = mom1;
     mom2_p[i] = mom2;
     trust_ratio_div_p[i] = trust_ratio_div;
-  }
-}
-
-template <typename T, typename IndexT>
-static __global__ void ScatterZeroForParamAndTrustRatioDivCUDAKernel(
-    T *param, T *trust_ratio_div, const IndexT *indices, int num,
-    int fp32_numel, int fp32_offset, int fp16_offset) {
-  CUDA_KERNEL_LOOP(i, num) {
-    auto idx = indices[i];
-    param[idx] = static_cast<T>(0);
-    if (idx < fp32_numel) {
-      trust_ratio_div[idx - fp32_offset] = static_cast<T>(0);
-    } else {
-      trust_ratio_div[idx - fp16_offset] = static_cast<T>(0);
-    }
   }
 }
 
@@ -489,6 +440,7 @@ static void LambUpdateParamAndBetaPows(
 #undef PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL
 }
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static bool CreatePreMulScaleOpIfSupported(ncclDataType_t dtype,
                                            ncclComm_t comm, const void *scale,
                                            ncclRedOp_t *op) {
@@ -555,6 +507,7 @@ static void NCCLReduceScatterWithScale(
   }
 #endif
 }
+#endif
 
 template <typename InputIteratorT, typename OutputIteratorT, typename ReduceOpT,
           typename T>
@@ -771,6 +724,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     // PrintAllMinMaxRange(ctx, true);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -1091,8 +1045,6 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         local_trust_ratio_div_square_norm, trust_ratio_div_square_norm,
         local_param_num, fp32_local_param_num, fp32_local_start_idx,
         fp16_local_start_idx);
-    VLOG(10) << "ScatterForTrustRatioDivCUDAKernel done before wait";
-    // dev_ctx.Wait();
     VLOG(10) << "ScatterForTrustRatioDivCUDAKernel done";
 
     VLOG(1) << "Local TrustRatioDiv L2-Norm before allreduce: "
@@ -1163,7 +1115,10 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     VLOG(10) << "Update Param done";
 
     VLOG(1) << "IsFinite: " << IsFinite(dev_ctx, fp32_square_grad_norm);
-    // PrintAllMinMaxRange(ctx, false);
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "distributed_fused_lamb op should be used with NCCL/RCCL."));
+#endif
   }
 };
 

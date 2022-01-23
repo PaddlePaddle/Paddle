@@ -473,8 +473,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
           info.param_t, fp32_p_t, info.numel_offset, stream);
       master_params[info.idx]->Resize(info.param_t->dims());
       master_params[info.idx]->ShareBufferWith(sliced_tensor);
-      PADDLE_ENFORCE_EQ(master_params[info.idx]->mutable_data<float>(),
-                        sliced_tensor.data<float>());
+      PADDLE_ENFORCE_EQ(master_params[info.idx]->mutable_data<float>(place),
+                        sliced_tensor.data<float>(),
+                        platform::errors::InvalidArgument(
+                            "Invalid master weight tensor pointer."));
       if (info.grad_t->IsInitialized()) {
         CopyAndShareBufferForInitedTensor(info.grad_t, fp32_g_t,
                                           info.numel_offset, stream);
@@ -500,8 +502,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
 
       CopyAndShareBufferForInitedTensor(info.param_t, fp16_p_t,
                                         info.numel_offset, stream);
-      PADDLE_ENFORCE_EQ(master_params[info.idx]->mutable_data<float>(),
-                        sliced_tensor.data<float>());
+      PADDLE_ENFORCE_EQ(master_params[info.idx]->mutable_data<float>(place),
+                        sliced_tensor.data<float>(),
+                        platform::errors::InvalidArgument(
+                            "Invalid master weight tensor pointer."));
 
       if (info.grad_t->IsInitialized()) {
         CopyAndShareBufferForInitedTensor(info.grad_t, fp16_g_t,
@@ -513,7 +517,7 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     }
     VLOG(10) << "Copy/share data for Param/Grad ends";
 
-    // For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
+    // Step 4: For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
     TensorFillConstant<float>(dev_ctx, ctx.Output<framework::Tensor>("Moment1"),
                               {static_cast<int64_t>(numel_each_device)}, 0.0f);
     TensorFillConstant<float>(dev_ctx, ctx.Output<framework::Tensor>("Moment2"),
@@ -526,7 +530,7 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                               ctx.Attr<float>("beta2"));
     VLOG(10) << "Init Moment and BetaPow ends";
 
-    // Do sharding
+    // Step 5: Do sharding
     size_t fp32_start_idx, fp32_end_idx, fp32_start_numel_offset,
         fp32_end_numel_offset;
     GetParamGradShardInfo(fp32_infos, rank * fp32_numel_each_device,
@@ -546,9 +550,6 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     size_t total_local_param_num = fp32_local_param_num + fp16_local_param_num;
     VLOG(10) << "Found the sharding arguments";
 
-    // For LocalParamNum, perform H2H copy, but we
-    // should find out the local
-    // param number first!
     auto *local_param_info_t = ctx.Output<framework::Tensor>("LocalParamInfo");
     local_param_info_t->Resize({4});
     auto *local_param_info =
@@ -613,14 +614,11 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
 
     std::vector<int> partial_numel_offsets;
     partial_numel_offsets.push_back(0);
-    // Fill all padding indices
-    std::vector<int> padding_indices_cpu;
+    // Fill the partial_numel_offsets
     for (size_t i = fp32_start_idx; i < fp32_start_idx + fp32_local_param_num;
          ++i) {
-      size_t start_n = fp32_infos[i].numel;
       size_t valid_start_n = 0;
       if (i == fp32_start_idx) {
-        start_n = std::max(start_n, fp32_start_numel_offset);
         valid_start_n = fp32_start_numel_offset;
       }
 
@@ -629,12 +627,9 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         end_n = std::min(end_n, fp32_end_numel_offset);
       }
 
-      auto offset = fp32_infos[i].numel_offset;
-      for (size_t j = start_n; j < end_n; ++j) {
-        padding_indices_cpu.push_back(offset + j);
-      }
-
-      PADDLE_ENFORCE_NE(valid_start_n, end_n);
+      PADDLE_ENFORCE_NE(valid_start_n, end_n,
+                        platform::errors::InvalidArgument(
+                            "Indices sharding error. This may be a bug."));
       VLOG(10) << "FP32 Partial numel = ["
                << valid_start_n + fp32_infos[i].numel << ","
                << end_n + fp32_infos[i].numel;
@@ -644,10 +639,8 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
 
     for (size_t i = fp16_start_idx; i < fp16_start_idx + fp16_local_param_num;
          ++i) {
-      size_t start_n = fp16_infos[i].numel;
       size_t valid_start_n = 0;
       if (i == fp16_start_idx) {
-        start_n = std::max(start_n, fp16_start_numel_offset);
         valid_start_n = fp16_start_numel_offset;
       }
 
@@ -656,14 +649,9 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         end_n = std::min(end_n, fp16_end_numel_offset);
       }
 
-      auto offset = fp16_numel_offset + fp16_infos[i].numel_offset;
-      for (size_t j = start_n; j < end_n; ++j) {
-        padding_indices_cpu.push_back(offset + j);
-      }
-
-      PADDLE_ENFORCE_NE(valid_start_n, end_n);
-      VLOG(10) << "FP16 Partial numel = [" << valid_start_n + offset << ","
-               << end_n + offset;
+      PADDLE_ENFORCE_NE(valid_start_n, end_n,
+                        platform::errors::InvalidArgument(
+                            "Indices sharding error. This may be a bug."));
       partial_numel_offsets.push_back(partial_numel_offsets.back() + end_n -
                                       valid_start_n);
     }
@@ -680,6 +668,7 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         partial_numel_offsets.size() * sizeof(partial_numel_offsets[0]),
         stream);
 
+    // Fill the weight decay tensor
     std::vector<float> wd_cpu;
     for (size_t i = 0; i < shard_weight_decay.size(); ++i) {
       int len = partial_numel_offsets[i + 1] - partial_numel_offsets[i];
@@ -687,7 +676,9 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         wd_cpu.push_back(shard_weight_decay[i]);
       }
     }
-    PADDLE_ENFORCE_EQ(wd_cpu.size() * nranks, fp32_numel + fp16_numel);
+    PADDLE_ENFORCE_EQ(wd_cpu.size() * nranks, fp32_numel + fp16_numel,
+                      platform::errors::InvalidArgument(
+                          "Invalid weight decay sharding. This may be a bug."));
     auto *weight_decay_t = ctx.Output<framework::Tensor>("WeightDecay");
     weight_decay_t->Resize({static_cast<int64_t>(wd_cpu.size())});
     auto *weight_decay = weight_decay_t->mutable_data<float>(place);
