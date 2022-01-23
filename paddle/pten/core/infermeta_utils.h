@@ -18,7 +18,6 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/pten/core/meta_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
 #include "paddle/utils/small_vector.h"
 
 namespace pten {
