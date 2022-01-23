@@ -20,6 +20,8 @@
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
 
 #include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
 
@@ -31,8 +33,10 @@ PaddleDialect::PaddleDialect(MLIRContext *context)
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+      ,
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
       >();
-#undef GET_OP_LIST
 }
 
 mlir::Operation *PaddleDialect::materializeConstant(mlir::OpBuilder &builder,
@@ -81,11 +85,14 @@ LogicalResult ElementwiseAdd::inferReturnTypes(
   inferredReturnTypes.push_back(operands[0].getType());
   return success();
 }
-void ElementwiseAdd::getCanonicalizationPatterns(
+*/
+
+void Elementwise_addOp::getCanonicalizationPatterns(
     mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseMulAdd>(context);
 }
 
+/*
 mlir::OpFoldResult ElementwiseAdd::fold(
     llvm::ArrayRef<mlir::Attribute> operands) {
   if (getElementTypeOrSelf(getType()).isa<FloatType>()) {

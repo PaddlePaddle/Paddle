@@ -20,6 +20,7 @@ mlir_tablegen_on(tensor_shape DIALECT ts)
 mlir_tablegen_on(dense_tensor DIALECT dt)
 mlir_tablegen_on(pd_op_base DIALECT pd)
 mlir_tablegen_on(pd_ops)
+mlir_tablegen_on(pd_extra_ops)
 mlir_add_rewriter(rewrite)
 
 # TODO(Superjomn) add a cmake function cc_executable to ecapsulate the following code
