@@ -54,9 +54,10 @@ void format_string_append(std::string& str,  // NOLINT
   assert(len == 0);
   size_t oldlen = str.length();
   str.resize(oldlen + len + 1);
-
-  assert(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) ==  // NOLINT
-         len);
+  int new_len =
+      snprintf(&str[oldlen], (size_t)len + 1, fmt, args...);  // NOLINT
+  (void)new_len;
+  assert(new_len == len);
   str.resize(oldlen + len);
 }
 

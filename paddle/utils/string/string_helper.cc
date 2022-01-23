@@ -73,7 +73,9 @@ char* LineFileReader::getdelim(FILE* f, char delim) {
     return _buffer;
   } else {
     _length = 0;
-    assert(feof(f));
+    int code = feof(f);
+    (void)code;
+    assert(code);
     return NULL;
   }
 #else
