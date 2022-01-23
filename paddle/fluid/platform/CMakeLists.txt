@@ -125,7 +125,7 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     place pten_place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS} cpu_context)
 if(WITH_XPU)
-  add_dependencies(device_context xpu_context)
+  target_link_libraries(device_context xpu_context)
 endif()
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)

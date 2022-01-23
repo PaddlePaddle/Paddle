@@ -20,19 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 
 #include "paddle/pten/backends/xpu/xpu_info.h"
-
-PADDLE_DEFINE_EXPORTED_string(
-    selected_xpus, "",
-    "A list of device ids separated by comma, like: 0,1,2,3. "
-    "This option is useful when doing multi process training and "
-    "each process have only one device (XPU). If you want to use "
-    "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between XPU devices, use XPU_VISIBLE_DEVICES can only use"
-    "share-memory only.");
 
 namespace paddle {
 namespace platform {
@@ -47,15 +36,7 @@ int GetRuntimeVersion() { return pten::backends::xpu::GetRuntimeVersion(); }
 
 /**************************** Device Management **************************/
 
-int GetXPUDeviceCount() {
-  const auto* xpu_visible_devices = std::getenv("XPU_VISIBLE_DEVICES");
-  if (xpu_visible_devices != nullptr) {
-    std::string xpu_visible_devices_str(xpu_visible_devices);
-    return pten::backends::xpu::GetXPUDeviceCount(xpu_visible_devices_str);
-  }
-  VLOG(2) << "XPU_VISIBLE_DEVICES is set to be empty. No XPU detected.";
-  return 0;
-}
+int GetXPUDeviceCount() { return pten::backends::xpu::GetXPUDeviceCount(); }
 
 int GetXPUCurrentDeviceId() {
   return pten::backends::xpu::GetXPUCurrentDeviceId();
@@ -66,7 +47,7 @@ void SetXPUDeviceId(int id) { pten::backends::xpu::SetXPUDeviceId(id); }
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices() {
   // use user specified XPUs in single-node multi-process mode.
-  return pten::backends::xpu::GetXPUSelectedDevices(FLAGS_selected_xpus);
+  return pten::backends::xpu::GetXPUSelectedDevices();
 }
 
 /**************************** Memory Management **************************/

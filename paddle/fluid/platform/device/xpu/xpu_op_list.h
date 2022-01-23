@@ -27,9 +27,9 @@ using XPUOpListMap =
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type);
 bool is_in_xpu_black_list(const std::string& op_name);
 
-std::vector<vartype::Type> get_xpu_op_support_type(const std::string& op_name,
-                                                   XPUVersion version);
-XPUOpListMap get_xpu_op_list(XPUVersion version);
+std::vector<vartype::Type> get_xpu_op_support_type(
+    const std::string& op_name, pten::backends::xpu::XPUVersion version);
+XPUOpListMap get_xpu_op_list(pten::backends::xpu::XPUVersion version);
 
 }  // namespace platform
 }  // namespace paddle
