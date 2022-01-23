@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/op_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
 #include "paddle/pten/core/convert_utils.h"
 

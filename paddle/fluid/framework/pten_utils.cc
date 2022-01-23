@@ -15,9 +15,9 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/core/op_utils.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -157,7 +157,7 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
 
 std::once_flag kernel_sig_map_init_flag;
 
-void IntiDefaultKernelSignatureMap() {
+void InitDefaultKernelSignatureMap() {
   std::call_once(kernel_sig_map_init_flag, [] {
     for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;

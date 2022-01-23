@@ -52,7 +52,7 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
-void IntiDefaultKernelSignatureMap();
+void InitDefaultKernelSignatureMap();
 
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
                                   const platform::Place& place);

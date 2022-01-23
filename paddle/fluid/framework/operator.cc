@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/op_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
@@ -1793,8 +1793,6 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  // only init DefaultKernelSignatureMap once when pten kernel needed
-  IntiDefaultKernelSignatureMap();
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
   return pten::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
       arg_mapping_ctx);

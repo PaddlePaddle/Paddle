@@ -17,12 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/meta_tensor.h"
-#include "paddle/pten/core/op_utils.h"
 
 namespace paddle {
 namespace framework {

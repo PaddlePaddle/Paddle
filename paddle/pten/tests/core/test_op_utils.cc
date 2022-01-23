@@ -15,7 +15,7 @@ limitations under the License. */
 #include <iostream>
 
 #include "gtest/gtest.h"
-#include "paddle/pten/core/op_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
