@@ -111,7 +111,7 @@ class TestJacobianFloat32(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             full_jacobian = JJ[:]
-        exe = fluid.Executor(place)
+        exe = fluid.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -206,7 +206,7 @@ class TestJacobianFloat64(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             full_jacobian = JJ[:]
-        exe = fluid.Executor(place)
+        exe = fluid.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -237,7 +237,7 @@ class TestJacobianFloat64(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             rows = [JJ[i] for i in range(nrow)] 
-        exe = fluid.Executor(place)
+        exe = fluid.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -268,7 +268,7 @@ class TestJacobianFloat64(unittest.TestCase):
             JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
             nrow, ncol = JJ.shape()
             entries = [JJ[i, j] for i in range(nrow) for j in range(ncol)] 
-        exe = fluid.Executor(place)
+        exe = fluid.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
