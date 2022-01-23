@@ -452,6 +452,7 @@ template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::imperative::VarBase> &self,
     const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
   auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
@@ -477,6 +478,7 @@ void SetUVATensorFromPyArray(
           cuda_device_pointer, need_allocate_size,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder, data_type);
+#endif
 }
 
 template <typename T, size_t D>

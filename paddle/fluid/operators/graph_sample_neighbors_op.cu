@@ -423,7 +423,8 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         src_merge.size(), num_sample_edges,
-        platform::errors::External("Number of sample edges dismatch."));
+        platform::errors::External(
+            "Number of sample edges dismatch, the sample kernel has error."));
 
     // 4. Get hashtable according to unique_dst_merge and src_merge.
     // We can get unique items(subset) and reindex src_merge.

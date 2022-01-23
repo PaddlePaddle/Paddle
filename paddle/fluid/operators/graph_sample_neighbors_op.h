@@ -270,7 +270,8 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
         dst_sample_counts_merge.begin(), dst_sample_counts_merge.end(), 0);
     PADDLE_ENFORCE_EQ(
         src_merge.size(), num_sample_edges,
-        platform::errors::External("Number of sample edges dismatch."));
+        platform::errors::External(
+            "Number of sample edges dismatch, the sample kernel has error."));
 
     // 5. Reindex.
     std::unordered_map<T, T> node_map;
