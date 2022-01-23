@@ -18,7 +18,7 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 namespace paddle {
 namespace framework {
