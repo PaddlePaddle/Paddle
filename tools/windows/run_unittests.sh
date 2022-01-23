@@ -381,7 +381,7 @@ else
     run_unittest_cpu $cpu_parallel_job 32
     run_unittest_cpu $tetrad_parallel_job 28
     run_unittest_cpu $two_parallel_job 24
-    run_unittest_cpu $non_parallel_job 20
+    run_unittest_cpu $non_parallel_job 16
 fi
 collect_failed_tests
 set -e

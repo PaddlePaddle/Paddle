@@ -4058,8 +4058,6 @@ if platform.system() == 'Windows' and paddle.version.cuda() == 'False':
         'test_group_norm_op',
         'test_image_classification_layer',
         'test_imperative_lod_tensor_to_selected_rows',
-        'test_imperative_optimizer',
-        'test_imperative_optimizer_v2',
         'test_imperative_selected_rows_to_lod_tensor',
         'test_inference_api',
         'test_layer_norm_op',
