@@ -148,6 +148,10 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_resnet_v2$|\
 ^test_build_strategy$|\
 ^test_se_resnet$|\
+^test_parallel_executor_seresnext_base_cpu$|\
+^test_parallel_executor_seresnext_with_reduce_cpu$|\
+^test_parallel_executor_seresnext_with_fuse_all_reduce_cpu$|\
+^test_tensordot$|\
 ^disable_wincpu_test$"
 
 # these unittest that cost long time, diabled temporarily, Maybe moved to the night
