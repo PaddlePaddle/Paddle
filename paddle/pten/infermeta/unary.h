@@ -16,7 +16,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/meta_tensor.h"
 
 namespace pten {
 
@@ -34,28 +34,46 @@ namespace pten {
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta);
+void UnchangedInferMeta(MetaConfig config,
+                        const MetaTensor& x,
+                        MetaTensor* out);
 
-DenseTensorMeta ReductionInferMeta(const DenseTensorMeta& x_meta);
+void ReductionInferMeta(MetaConfig config,
+                        const MetaTensor& x,
+                        MetaTensor* out);
 
-DenseTensorMeta FlattenInferMeta(const DenseTensorMeta& x_meta,
-                                 int start_axis,
-                                 int stop_axis);
-DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
-                              const DataType out_dtype);
+void FlattenInferMeta(MetaConfig config,
+                      const MetaTensor& x,
+                      int start_axis,
+                      int stop_axis,
+                      MetaTensor* out);
 
-DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
-                                    DataType dtype,
-                                    DataLayout layout);
+void CastInferMeta(MetaConfig config,
+                   const MetaTensor& x,
+                   const DataType out_dtype,
+                   MetaTensor* out);
 
-DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
-                                      const std::vector<int64_t>& shape);
+void CreateLikeInferMeta(MetaConfig config,
+                         const MetaTensor& x,
+                         DataType dtype,
+                         DataLayout layout,
+                         MetaTensor* out);
 
-DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
-                                 const ScalarArray& shape);
+void InferMetaFromVecValue(MetaConfig config,
+                           const MetaTensor& x,
+                           const std::vector<int64_t>& shape,
+                           MetaTensor* out);
 
-DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
-                                const std::vector<int64_t>& axis,
-                                bool keep_dim,
-                                DataType dtype = DataType::UNDEFINED);
+void ReshapeInferMeta(MetaConfig config,
+                      const MetaTensor& x,
+                      const ScalarArray& shape,
+                      MetaTensor* out);
+
+void ReduceInferMeta(MetaConfig config,
+                     const MetaTensor& x_meta,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     DataType dtype,
+                     MetaTensor* out);
+
 }  // namespace pten

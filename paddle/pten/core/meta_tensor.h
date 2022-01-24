@@ -25,6 +25,16 @@ limitations under the License. */
 
 namespace pten {
 
+// TODO(chenweihang): add other flags if needed
+struct MetaConfig {
+  bool is_runtime{true};
+
+  MetaConfig() = default;
+
+  // supporting implicit construction is easier to use
+  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
+};
+
 class MetaTensor {
  public:
   explicit MetaTensor(TensorBase* tensor) : tensor_(tensor) {}
