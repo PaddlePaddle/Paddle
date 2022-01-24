@@ -200,8 +200,8 @@ class TestLookupTableIsSparse(unittest.TestCase):
             loss = fluid.layers.square_error_cost(input=y, label=y_)
             loss = fluid.layers.mean(loss)
 
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=1e-4)
-            sgd_optimizer.minimize(loss)
+            adam_optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
+            adam_optimizer.minimize(loss)
 
             place = paddle.XPUPlace(0)
             exe = fluid.Executor(place)
@@ -213,10 +213,13 @@ class TestLookupTableIsSparse(unittest.TestCase):
             return np.array(ret[0])
 
     def test_w_grad(self):
-        self.w_data = np.random.random(size=(10, 16)).astype("float32")
-        w_grad = self.get_w_grad(False)
-        w_grad_with_sparse = self.get_w_grad(True)
-        self.check_grad(w_grad, w_grad_with_sparse)
+        xpu_version = core.get_xpu_device_version(0)
+        version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+        if "xpu2" == version_str:
+            self.w_data = np.random.random(size=(10, 16)).astype("float32")
+            w_grad = self.get_w_grad(False)
+            w_grad_with_sparse = self.get_w_grad(True)
+            self.check_grad(w_grad, w_grad_with_sparse)
 
     def check_grad(self, w_grad1, w_grad2, tolerance=1e-6):
         np.testing.assert_allclose(
