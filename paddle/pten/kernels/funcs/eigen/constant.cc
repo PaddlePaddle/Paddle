@@ -11,10 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
-namespace paddle {
-namespace operators {
+namespace pten {
+namespace funcs {
 
 template <typename T, int Rank>
 struct EigenConstant<Eigen::DefaultDevice, T, Rank> {
@@ -27,5 +27,5 @@ struct EigenConstant<Eigen::DefaultDevice, T, Rank> {
 
 template struct EigenConstant<Eigen::DefaultDevice, float, 1>;
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten
