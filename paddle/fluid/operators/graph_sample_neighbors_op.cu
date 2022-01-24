@@ -161,13 +161,13 @@ __global__ void GetDstEdgeCUDAKernel(const int64_t num_rows, const T* in_rows,
 }
 
 template <typename T>
-void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
-                      const T* dst_count, const T* src_eids,
-                      thrust::device_vector<T>* inputs,
-                      thrust::device_vector<T>* outputs,
-                      thrust::device_vector<T>* output_counts,
-                      thrust::device_vector<T>* outputs_eids, int k,
-                      bool is_last_layer, bool return_eids) {
+void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
+                     const T* dst_count, const T* src_eids,
+                     thrust::device_vector<T>* inputs,
+                     thrust::device_vector<T>* outputs,
+                     thrust::device_vector<T>* output_counts,
+                     thrust::device_vector<T>* outputs_eids, int k,
+                     bool is_last_layer, bool return_eids) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
 
@@ -240,7 +240,7 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   int64_t block = 1024;
   int64_t grid = (num_input + block - 1) / block;
   // 1. Insert data into keys and values.
-  build_hashtable_duplicates<
+  BuildHashTable<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
                                .stream()>>>(
@@ -249,7 +249,7 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
 
   thrust::device_vector<int> item_count(num_input + 1, 0);
   // 2. Get item index count.
-  get_item_index_count<
+  GetItemIndexCount<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
                                .stream()>>>(
@@ -263,7 +263,7 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   unique_items->resize(tos);
 
   // 3. Get unique items.
-  fill_unique_items<
+  FillUniqueItems<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
                                .stream()>>>(
@@ -276,12 +276,12 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
 }
 
 template <typename T>
-void reindex_func(const framework::ExecutionContext& ctx,
-                  thrust::device_vector<T>* inputs,
-                  thrust::device_vector<T>* outputs,
-                  thrust::device_vector<T>* subset,
-                  thrust::device_vector<T>* orig_nodes,
-                  thrust::device_vector<T>* reindex_nodes, int bs) {
+void ReindexFunc(const framework::ExecutionContext& ctx,
+                 thrust::device_vector<T>* inputs,
+                 thrust::device_vector<T>* outputs,
+                 thrust::device_vector<T>* subset,
+                 thrust::device_vector<T>* orig_nodes,
+                 thrust::device_vector<T>* reindex_nodes, int bs) {
   subset->resize(inputs->size() + outputs->size());
   thrust::copy(inputs->begin(), inputs->end(), subset->begin());
   thrust::copy(outputs->begin(), outputs->end(),
@@ -306,7 +306,7 @@ void reindex_func(const framework::ExecutionContext& ctx,
   // Fill outputs with reindex result.
   int block = 1024;
   int grid = (outputs->size() + block - 1) / block;
-  reindex_src_output<
+  ReindexSrcOutput<
       T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                                ctx.device_context())
                                .stream()>>>(
@@ -315,13 +315,14 @@ void reindex_func(const framework::ExecutionContext& ctx,
       thrust::raw_pointer_cast(values.data()));
 
   int grid_ = (bs + block - 1) / block;
-  reindex_inputs_nodes<T><<<
-      grid_, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream()>>>(thrust::raw_pointer_cast(orig_nodes->data()), bs,
-                       thrust::raw_pointer_cast(reindex_nodes->data()), size,
-                       thrust::raw_pointer_cast(keys.data()),
-                       thrust::raw_pointer_cast(values.data()));
+  ReindexInputNodes<T><<<grid_, block, 0,
+                         reinterpret_cast<const platform::CUDADeviceContext&>(
+                             ctx.device_context())
+                             .stream()>>>(
+      thrust::raw_pointer_cast(orig_nodes->data()), bs,
+      thrust::raw_pointer_cast(reindex_nodes->data()), size,
+      thrust::raw_pointer_cast(keys.data()),
+      thrust::raw_pointer_cast(values.data()));
 }
 
 template <typename DeviceContext, typename T>
@@ -372,9 +373,9 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
         if (i > 0) {
           dst_vec.emplace_back(inputs);
         }
-        sample_neighbors<T>(ctx, src_data, dst_count_data, src_eids_data,
-                            &inputs, &outputs, &output_counts, &outputs_eids,
-                            sample_sizes[i], is_last_layer, return_eids);
+        SampleNeighbors<T>(ctx, src_data, dst_count_data, src_eids_data,
+                           &inputs, &outputs, &output_counts, &outputs_eids,
+                           sample_sizes[i], is_last_layer, return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);
@@ -390,9 +391,9 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
         if (i > 0) {
           dst_vec.emplace_back(inputs);
         }
-        sample_neighbors<T>(ctx, src_data, dst_count_data, nullptr, &inputs,
-                            &outputs, &output_counts, &outputs_eids,
-                            sample_sizes[i], is_last_layer, return_eids);
+        SampleNeighbors<T>(ctx, src_data, dst_count_data, nullptr, &inputs,
+                           &outputs, &output_counts, &outputs_eids,
+                           sample_sizes[i], is_last_layer, return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);
@@ -470,8 +471,8 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
     thrust::copy(p_vertices, p_vertices + bs, orig_nodes.begin());
     thrust::device_vector<T> reindex_nodes(bs);
     thrust::device_vector<T> subset;
-    reindex_func<T>(ctx, &unique_dst_merge, &src_merge, &subset, &orig_nodes,
-                    &reindex_nodes, bs);
+    ReindexFunc<T>(ctx, &unique_dst_merge, &src_merge, &subset, &orig_nodes,
+                   &reindex_nodes, bs);
     auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);

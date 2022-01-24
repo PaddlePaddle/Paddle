@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void input_shape_check(const framework::DDim& dims, std::string tensor_name) {
+void InputShapeCheck(const framework::DDim& dims, std::string tensor_name) {
   if (dims.size() == 2) {
     PADDLE_ENFORCE_EQ(dims[1], 1, platform::errors::InvalidArgument(
                                       "The last dim of %s should be 1 when it "
@@ -53,9 +53,9 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
 
     // Restrict all the inputs as 1-dim tensor, or 2-dim tensor with the second
     // dim as 1.
-    input_shape_check(ctx->GetInputDim("Src"), "Src");
-    input_shape_check(ctx->GetInputDim("Dst_Count"), "Dst_Count");
-    input_shape_check(ctx->GetInputDim("X"), "X");
+    InputShapeCheck(ctx->GetInputDim("Src"), "Src");
+    InputShapeCheck(ctx->GetInputDim("Dst_Count"), "Dst_Count");
+    InputShapeCheck(ctx->GetInputDim("X"), "X");
 
     const std::vector<int>& sample_sizes =
         ctx->Attrs().Get<std::vector<int>>("sample_sizes");
@@ -68,7 +68,7 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
     if (return_eids) {
       OP_INOUT_CHECK(ctx->HasInput("Src_Eids"), "Input", "Src_Eids",
                      "GraphSampleNeighbors");
-      input_shape_check(ctx->GetInputDim("Src_Eids"), "Src_Eids");
+      InputShapeCheck(ctx->GetInputDim("Src_Eids"), "Src_Eids");
       OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
                      "GraphSampleNeighbors");
       ctx->SetOutputDim("Out_Eids", {-1});

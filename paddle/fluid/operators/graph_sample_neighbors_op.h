@@ -29,7 +29,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <class bidiiter>
-void sample_unique_neighbors(bidiiter begin, bidiiter end, int num_samples) {
+void SampleUniqueNeighbors(bidiiter begin, bidiiter end, int num_samples) {
   int left_num = std::distance(begin, end);
   std::random_device rd;
   std::mt19937 rng{rd()};
@@ -46,9 +46,9 @@ void sample_unique_neighbors(bidiiter begin, bidiiter end, int num_samples) {
 }
 
 template <class bidiiter>
-void sample_unique_neighbors_with_eids(bidiiter src_begin, bidiiter src_end,
-                                       bidiiter eid_begin, bidiiter eid_end,
-                                       int num_samples) {
+void SampleUniqueNeighborsWithEids(bidiiter src_begin, bidiiter src_end,
+                                   bidiiter eid_begin, bidiiter eid_end,
+                                   int num_samples) {
   int left_num = std::distance(src_begin, src_end);
   std::random_device rd;
   std::mt19937 rng{rd()};
@@ -68,11 +68,11 @@ void sample_unique_neighbors_with_eids(bidiiter src_begin, bidiiter src_end,
 }
 
 template <typename T>
-void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
-                      std::vector<T>* inputs, std::vector<T>* outputs,
-                      std::vector<T>* output_counts,
-                      std::vector<T>* outputs_eids, int k, bool is_last_layer,
-                      bool return_eids) {
+void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
+                     std::vector<T>* inputs, std::vector<T>* outputs,
+                     std::vector<T>* output_counts,
+                     std::vector<T>* outputs_eids, int k, bool is_last_layer,
+                     bool return_eids) {
   const size_t bs = inputs->size();
   // Allocate the memory of outputs
   // Collect the neighbors size
@@ -120,12 +120,11 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
       std::copy(src + begin, src + end, out_src_vec[i].begin());
       if (return_eids) {
         std::copy(src_eids + begin, src_eids + end, out_eids_vec[i].begin());
-        sample_unique_neighbors_with_eids(
+        SampleUniqueNeighborsWithEids(
             out_src_vec[i].begin(), out_src_vec[i].end(),
             out_eids_vec[i].begin(), out_eids_vec[i].end(), k);
       } else {
-        sample_unique_neighbors(out_src_vec[i].begin(), out_src_vec[i].end(),
-                                k);
+        SampleUniqueNeighbors(out_src_vec[i].begin(), out_src_vec[i].end(), k);
       }
       *(output_counts->data() + i) = k;
     } else {
@@ -218,9 +217,9 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
         if (i > 0) {
           dst_vec.emplace_back(inputs);
         }
-        sample_neighbors<T>(src_data, dst_count_data, src_eids_data, &inputs,
-                            &outputs, &output_counts, &outputs_eids,
-                            sample_sizes[i], is_last_layer, return_eids);
+        SampleNeighbors<T>(src_data, dst_count_data, src_eids_data, &inputs,
+                           &outputs, &output_counts, &outputs_eids,
+                           sample_sizes[i], is_last_layer, return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);
@@ -236,9 +235,9 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
         if (i > 0) {
           dst_vec.emplace_back(inputs);
         }
-        sample_neighbors<T>(src_data, dst_count_data, nullptr, &inputs,
-                            &outputs, &output_counts, &outputs_eids,
-                            sample_sizes[i], is_last_layer, return_eids);
+        SampleNeighbors<T>(src_data, dst_count_data, nullptr, &inputs, &outputs,
+                           &output_counts, &outputs_eids, sample_sizes[i],
+                           is_last_layer, return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);

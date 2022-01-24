@@ -78,18 +78,17 @@ inline __device__ int64_t Search(IdType id, const IdType* keys, int64_t size) {
 }
 
 template <typename IdType>
-__global__ void build_hashtable_duplicates(const IdType* items,
-                                           int64_t num_items, int64_t size,
-                                           IdType* keys, int64_t* key_index) {
+__global__ void BuildHashTable(const IdType* items, int64_t num_items,
+                               int64_t size, IdType* keys, int64_t* key_index) {
   CUDA_KERNEL_LOOP_TYPE(index, num_items, int64_t) {
     Insert(items[index], index, size, keys, key_index);
   }
 }
 
 template <typename IdType>
-__global__ void get_item_index_count(const IdType* items, int* item_count,
-                                     int64_t num_items, int64_t size,
-                                     const IdType* keys, int64_t* key_index) {
+__global__ void GetItemIndexCount(const IdType* items, int* item_count,
+                                  int64_t num_items, int64_t size,
+                                  const IdType* keys, int64_t* key_index) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(items[i], keys, size);
     if (key_index[pos] == i) {
@@ -99,10 +98,10 @@ __global__ void get_item_index_count(const IdType* items, int* item_count,
 }
 
 template <typename IdType>
-__global__ void fill_unique_items(const IdType* items, int64_t num_items,
-                                  int64_t size, IdType* unique_items,
-                                  const int* item_count, const IdType* keys,
-                                  IdType* values, int64_t* key_index) {
+__global__ void FillUniqueItems(const IdType* items, int64_t num_items,
+                                int64_t size, IdType* unique_items,
+                                const int* item_count, const IdType* keys,
+                                IdType* values, int64_t* key_index) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(items[i], keys, size);
     if (key_index[pos] == i) {
@@ -113,9 +112,9 @@ __global__ void fill_unique_items(const IdType* items, int64_t num_items,
 }
 
 template <typename IdType>
-__global__ void reindex_src_output(IdType* src_output, int64_t num_items,
-                                   int64_t size, const IdType* keys,
-                                   const IdType* values) {
+__global__ void ReindexSrcOutput(IdType* src_output, int64_t num_items,
+                                 int64_t size, const IdType* keys,
+                                 const IdType* values) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(src_output[i], keys, size);
     src_output[i] = values[pos];
@@ -123,9 +122,9 @@ __global__ void reindex_src_output(IdType* src_output, int64_t num_items,
 }
 
 template <typename IdType>
-__global__ void reindex_inputs_nodes(const IdType* nodes, int64_t num_items,
-                                     IdType* reindex_nodes, int64_t size,
-                                     const IdType* keys, const IdType* values) {
+__global__ void ReindexInputNodes(const IdType* nodes, int64_t num_items,
+                                  IdType* reindex_nodes, int64_t size,
+                                  const IdType* keys, const IdType* values) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(nodes[i], keys, size);
     reindex_nodes[i] = values[pos];
