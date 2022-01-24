@@ -27,6 +27,11 @@ import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+import op_test
+from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
 paddle.enable_static()
 
 
@@ -175,55 +180,95 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
             assert (row == result_array[idx]).all()
 
 
-class TestLookupTableIsSparse(unittest.TestCase):
-    def init_data(self):
-        self.x_data = np.array([[1, 3, 0, 4, 7]]).astype("int64")
-        self.y_data = np.array([[0.1, 0.3, 0, 0.4, 0.7]]).astype("float32")
+class XPUTestLookupTableIsSparse(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'sparse_lookup_table'
+        self.use_dynamic_create_class = False
 
-    def get_w_grad(self, is_sparse):
-        self.init_data()
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program, fluid.Program()):
-            x = fluid.layers.data(name='x', shape=[5], dtype='int64')
-            y_ = fluid.layers.data(name='y_', shape=[5], dtype='float32')
-            emb = fluid.input.embedding(
-                input=x,
-                size=[10, 16],
-                param_attr=fluid.ParamAttr(
-                    name="emb_weight",
-                    learning_rate=10,
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.w_data)),
-                is_sparse=is_sparse)
-            y = fluid.layers.reduce_sum(emb, dim=-1)
+    class TestLookupTableIsSparse(XPUOpTest):
+        def setUp(self):
+            self.set_xpu()
+            self.op_type = 'sparse_lookup_table'
+            self.place = paddle.XPUPlace(0)
 
-            loss = fluid.layers.square_error_cost(input=y, label=y_)
-            loss = fluid.layers.mean(loss)
+            self.set_inputs()
 
-            adam_optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
-            adam_optimizer.minimize(loss)
+        def set_inputs(self):
+            shape, _ = self.set_shape()
+            self.x_data = np.random.randint(10, size=shape).astype("int64")
+            self.y_data = np.random.uniform(0, 1., shape).astype('float32')
 
-            place = paddle.XPUPlace(0)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            ret = exe.run(feed={'x': self.x_data,
-                                'y_': self.y_data},
-                          fetch_list=['emb_weight'],
-                          return_numpy=False)
-            return np.array(ret[0])
+        def set_w_grad(self, is_sparse):
+            self.set_inputs()
+            main_program = fluid.Program()
+            data_shape, emb_shape = self.set_shape()
+            with fluid.program_guard(main_program, fluid.Program()):
+                x = fluid.layers.data(
+                    name='x', shape=[data_shape], dtype='int64')
+                y_ = fluid.layers.data(
+                    name='y_', shape=[data_shape], dtype='float32')
+                emb = fluid.input.embedding(
+                    input=x,
+                    size=emb_shape,
+                    param_attr=fluid.ParamAttr(
+                        name="emb_weight",
+                        learning_rate=10,
+                        initializer=fluid.initializer.NumpyArrayInitializer(
+                            self.w_data)),
+                    is_sparse=is_sparse)
+                y = fluid.layers.reduce_sum(emb, dim=-1)
 
-    def test_w_grad(self):
-        xpu_version = core.get_xpu_device_version(0)
-        version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
-        if "xpu2" == version_str:
-            self.w_data = np.random.random(size=(10, 16)).astype("float32")
-            w_grad = self.get_w_grad(False)
-            w_grad_with_sparse = self.get_w_grad(True)
+                loss = fluid.layers.square_error_cost(input=y, label=y_)
+                loss = fluid.layers.mean(loss)
+
+                adam_optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
+                adam_optimizer.minimize(loss)
+
+                place = paddle.XPUPlace(0)
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                ret = exe.run(feed={'x': self.x_data,
+                                    'y_': self.y_data},
+                              fetch_list=['emb_weight'],
+                              return_numpy=False)
+                return np.array(ret[0])
+
+        def check_grad(self, w_grad1, w_grad2, tolerance=1e-6):
+            np.testing.assert_allclose(
+                w_grad1, w_grad2, rtol=tolerance, atol=tolerance)
+
+        def test_check_w_grad(self):
+            _, shape = self.set_shape()
+            self.w_data = np.random.random(size=shape).astype("float32")
+            w_grad = self.set_w_grad(False)
+            w_grad_with_sparse = self.set_w_grad(True)
             self.check_grad(w_grad, w_grad_with_sparse)
 
-    def check_grad(self, w_grad1, w_grad2, tolerance=1e-6):
-        np.testing.assert_allclose(
-            w_grad1, w_grad2, rtol=tolerance, atol=tolerance)
+        def set_shape(self):
+            return (5, (10, 7))
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+
+    class TestLookupTableIsSparse1(TestLookupTableIsSparse):
+        def set_shape(self):
+            return (6, 64)
+
+    class TestLookupTableIsSparse2(TestLookupTableIsSparse):
+        def set_shape(self):
+            return (7, (10, 10))
+
+    class TestLookupTableIsSparse3(TestLookupTableIsSparse):
+        def set_shape(self):
+            return ((7, 3), (10, 10))
+
+    class TestLookupTableIsSparse4(TestLookupTableIsSparse):
+        def set_shape(self):
+            return ((2, 5), (10, 10, 1))
+
+    class TestLookupTableIsSparse5(TestLookupTableIsSparse):
+        def set_shape(self):
+            return (10, (100, 100, 1))
 
 
 class TestLookupTableApi(unittest.TestCase):
@@ -268,6 +313,15 @@ class TestEmbedOpError(unittest.TestCase):
             input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
             fluid.embedding(input=input3, size=(10, 64), dtype='float16')
 
+
+support_types = get_xpu_op_support_types('sparse_lookup_table')
+for stype in support_types:
+    create_test_class(globals(), XPUTestLookupTableIsSparse, stype)
+    create_test_class(
+        globals(),
+        XPUTestLookupTableIsSparse,
+        stype,
+        ignore_deivce_version=[core.XPUVersion.XPU1])
 
 if __name__ == "__main__":
     paddle.enable_static()

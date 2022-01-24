@@ -124,13 +124,9 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
                             d_table_value->dims(), d_output_dims_2d));
       int r = xpu::copy<T>(dev_ctx.x_context(), d_output_data, d_table_data,
                            d_output->numel() * sizeof(T));
-      PADDLE_ENFORCE_EQ(
-          r == xpu::Error_t::SUCCESS, true,
-          platform::errors::External("XPU copy in lookup_table_v2_op return "
-                                     "wrong value[%d %s].",
-                                     r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r,
+                                  "lookup_table_v2_op_grad when sparse=True");
     } else {
-      auto ids_t = context.Input<LoDTensor>("Ids");
       auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
 
