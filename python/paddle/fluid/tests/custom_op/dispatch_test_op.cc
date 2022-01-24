@@ -32,7 +32,9 @@ std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
   PD_DISPATCH_INTEGRAL_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   return {out};
@@ -50,7 +52,9 @@ std::vector<paddle::Tensor> DispatchTestFloatAndInteger(
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   return {out};
@@ -67,7 +71,9 @@ std::vector<paddle::Tensor> DispatchTestComplex(const paddle::Tensor& x) {
   PD_DISPATCH_COMPLEX_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   return {out};
@@ -85,7 +91,9 @@ std::vector<paddle::Tensor> DispatchTestFloatAndComplex(
   PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   return {out};
@@ -103,7 +111,9 @@ std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplex(
   PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   return {out};
@@ -120,7 +130,9 @@ std::vector<paddle::Tensor> DispatchTestFloatAndHalf(const paddle::Tensor& x) {
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
         assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+            x.data<data_t>(),
+            out.mutable_data<data_t>(paddle::PlaceType::kCPU),
+            x.size());
       }));
 
   return {out};

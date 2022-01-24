@@ -23,12 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 // StepScopes manages the scopes inside Recurrent Op.

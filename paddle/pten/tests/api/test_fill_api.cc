@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, full_like) {
@@ -37,7 +37,8 @@ TEST(API, full_like) {
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
 
   float val = 1.0;
@@ -72,7 +73,8 @@ TEST(API, zeros_like) {
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 1;
 
   paddle::experimental::Tensor x(dense_x);
@@ -105,7 +107,8 @@ TEST(API, ones_like) {
       pten::DenseTensorMeta(pten::DataType::INT32,
                             framework::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<int32_t>();
+  auto* dense_x_data =
+      dense_x->mutable_data<int32_t>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
 
   paddle::experimental::Tensor x(dense_x);
@@ -139,7 +142,8 @@ TEST(API, full1) {
       pten::DenseTensorMeta(pten::DataType::INT64,
                             framework::make_ddim({2}),
                             pten::DataLayout::NCHW));
-  auto* shape_data = dense_shape->mutable_data<int64_t>();
+  auto* shape_data =
+      dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
   shape_data[0] = 2;
   shape_data[1] = 3;
 
@@ -148,7 +152,7 @@ TEST(API, full1) {
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
-  dense_scalar->mutable_data<float>()[0] = 1.0;
+  dense_scalar->mutable_data<float>(paddle::platform::CPUPlace())[0] = 1.0;
 
   paddle::experimental::Tensor value(dense_scalar);
 
@@ -185,7 +189,7 @@ TEST(API, full2) {
       pten::DenseTensorMeta(pten::DataType::INT32,
                             framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
-  dense_scalar->mutable_data<int32_t>()[0] = 2;
+  dense_scalar->mutable_data<int>(paddle::platform::CPUPlace())[0] = 2;
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);
   paddle::experimental::Tensor shape_scalar2(dense_scalar);
