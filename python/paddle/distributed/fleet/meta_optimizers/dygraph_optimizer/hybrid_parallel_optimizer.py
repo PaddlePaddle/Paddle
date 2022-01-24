@@ -195,17 +195,11 @@ class HybridParallelOptimizer:
                 # change sharding inner_optimizer's _grad_clip
                 self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
                     self._inner_opt._grad_clip, hcg)
-                if optimizer._parameter_list and isinstance(
-                        optimizer._parameter_list[0], dict):
-                    for item in self._inner_opt._inner_optimizer._param_groups:
-                        if "grad_clip" in item.keys():
-                            item["grad_clip"] = HybridParallelClipGrad(
-                                self._inner_opt._grad_clip, hcg)
             else:
                 self._inner_opt._grad_clip = HybridParallelClipGrad(
                     self._inner_opt._grad_clip, hcg)
-                if optimizer._parameter_list and isinstance(
-                        optimizer._parameter_list[0], dict):
+                if self._inner_opt._parameter_list and isinstance(
+                        self._inner_opt._parameter_list[0], dict):
                     for item in self._inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
