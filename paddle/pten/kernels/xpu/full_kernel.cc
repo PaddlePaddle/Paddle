@@ -87,7 +87,7 @@ void FullLikeKernel(const Context& dev_ctx,
 }  // namespace pten
 
 PT_REGISTER_KERNEL(full,
-                   CPU,
+                   XPU,
                    ALL_LAYOUT,
                    pten::FullKernel,
                    float,
