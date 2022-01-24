@@ -18,6 +18,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/device_context.h"
+
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
@@ -117,26 +120,15 @@ constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
-class DeviceContext {
- public:
-  virtual ~DeviceContext() PADDLE_MAY_THROW {}
-  virtual Place GetPlace() const = 0;
+using DeviceContext = pten::DeviceContext;
 
-  virtual void Wait() const {}
-};
-
-class CPUDeviceContext : public DeviceContext {
+// using CPUDeviceContext = pten::CPUContext;
+// TODO(wilber): The place constructor is used in many places, it is more
+// difficult to use CPUDeviceContext = pten::CPUContext directly.
+class CPUDeviceContext : public pten::CPUContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
-
-  Eigen::DefaultDevice* eigen_device() const;
-
-  Place GetPlace() const override;
-
- private:
-  CPUPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
 template <typename Place>

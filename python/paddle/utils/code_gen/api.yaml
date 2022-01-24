@@ -6,7 +6,6 @@
     param : [x, y, -1]
   kernel :
     func : add
-    param : [x, y, -1]
 
 - api : cast
   args : (const Tensor& x, DataType out_dtype)
@@ -17,6 +16,16 @@
     func : cast
     param : [x, out_dtype]
     data_type : x
+
+
+- api : concat
+  args : (const std::vector<Tensor>& x, const Scalar& axis)
+  output : Tensor
+  infer_meta :
+    func : ConcatInferMeta
+    param : [x, axis, true]
+  kernel :
+    func : concat
 
 - api : conj
   args : (const Tensor& x)
@@ -34,7 +43,6 @@
     param : [x, y, -1]
   kernel :
     func : divide
-    param : [x, y, -1]
 
 - api : dot
   args : (const Tensor& x, const Tensor& y)
@@ -120,7 +128,6 @@
     param: [x, axis, keep_dim]
   kernel : 
     func : mean
-    param : [x, axis, keep_dim, false]
 
 - api : multiply
   args : (const Tensor& x, const Tensor& y)
@@ -130,7 +137,6 @@
     param : [x, y, -1]
   kernel :
     func : multiply
-    param : [x, y, -1]
 
 - api : ones_like
   args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
@@ -162,7 +168,6 @@
     param : [x, y, -1]
   kernel :
     func : subtract
-    param : [x, y, -1]
 
 - api : sum
   args : (const Tensor& x, const std::vector<int64_t>& axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
@@ -172,7 +177,7 @@
     param: [x, axis, keep_dim, dtype]
   kernel : 
     func : sum
-    param : [x, axis, keep_dim, false, DataType::UNDEFINED]
+    param : [x, axis, keep_dim, dtype]
     data_type : x
 
 - api : zeros_like

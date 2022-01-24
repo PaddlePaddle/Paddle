@@ -20,7 +20,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
 namespace pten {
 

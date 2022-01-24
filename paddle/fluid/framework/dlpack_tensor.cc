@@ -15,13 +15,6 @@
 #include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
-namespace platform {
-struct bfloat16;
-struct float16;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 namespace internal {

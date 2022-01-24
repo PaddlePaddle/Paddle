@@ -46,9 +46,6 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

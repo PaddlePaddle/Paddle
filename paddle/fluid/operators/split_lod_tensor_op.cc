@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/lod_utils.h"
 
 namespace pten {
 class DenseTensor;
@@ -96,7 +97,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
               x_lod, start_idx, start_idx + 1, level);
 
           auto &lod_length = lod_and_offset.first;
-          framework::AppendLoD(lod, lod_length);
+          pten::AppendLoD(lod, lod_length);
 
           size_t start_offset = lod_and_offset.second.first;
           size_t end_offset = lod_and_offset.second.second;

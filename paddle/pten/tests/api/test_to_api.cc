@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(

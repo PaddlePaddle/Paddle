@@ -235,7 +235,7 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
 #ifdef PADDLE_WITH_MLU
-  if (platform::is_mlu_place(dst_place)) {
+  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
     memory::Copy(
         dst_place, dst_ptr, src_place, src_ptr, size,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
