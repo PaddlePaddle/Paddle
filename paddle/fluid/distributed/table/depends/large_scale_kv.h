@@ -39,9 +39,9 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/backends/dynload/port.h"
 #include "paddle/pten/core/utils/rw_lock.h"
 
 namespace paddle {
@@ -202,7 +202,7 @@ class ValueBlock {
       // value = _alloc.acquire(value_length_);
       table[id] = value;
     } else {
-      value = (VALUE *)(void *)(res->second);
+      value = (VALUE *)(void *)(res->second);  // NOLINT
     }
     return value;
   }
@@ -282,8 +282,8 @@ class ValueBlock {
         value->unseen_days_++;
         if (value->unseen_days_ >= threshold) {
           butil::return_object(iter->second);
-          //_alloc.release(iter->second);
-          //_alloc.release(value);
+          // _alloc.release(iter->second);
+          // _alloc.release(value);
           iter = table.erase(iter);
         } else {
           ++iter;
