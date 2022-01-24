@@ -47,13 +47,13 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace experimental {
@@ -94,10 +94,10 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-paddle::framework::DDim Tensor::dims() const { return impl_->dims(); }
+pten::framework::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return paddle::framework::vectorize<int64_t>(impl_->dims());
+  return pten::framework::vectorize<int64_t>(impl_->dims());
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
@@ -149,8 +149,8 @@ bool Tensor::is_cuda() const {
 template <typename T>
 T *Tensor::mutable_data() {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)
-        ->mutable_data<T>();
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        ConvertExtPlaceToInnerPlace(place()));
   }
   return nullptr;
 }
@@ -173,12 +173,18 @@ Tensor::mutable_data<paddle::platform::float16>();
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   auto inner_place = ConvertExtPlaceToInnerPlace(place);
-  PADDLE_ENFORCE_EQ(
-      platform::is_same_place(inner_place, impl_->place()),
-      true,
-      platform::errors::Unimplemented("Modification of tensor place through "
-                                      "mutable_data is not supported now"));
-  return mutable_data<T>();
+  if (impl_->initialized()) {
+    PADDLE_ENFORCE_EQ(
+        platform::is_same_place(inner_place, impl_->place()),
+        true,
+        platform::errors::Unimplemented("Modification of tensor place through "
+                                        "mutable_data is not supported now"));
+  }
+  if (is_dense_tensor()) {
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        inner_place);
+  }
+  return nullptr;
 }
 
 template PADDLE_API float *Tensor::mutable_data<float>(const PlaceType &place);
@@ -205,7 +211,8 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        ConvertExtPlaceToInnerPlace(place()));
   }
   return nullptr;
 }
@@ -217,7 +224,6 @@ template PADDLE_API const int32_t *Tensor::data<int32_t>() const;
 template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
 template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
 template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
-template PADDLE_API const uint16_t *Tensor::data<uint16_t>() const;
 template PADDLE_API const bool *Tensor::data<bool>() const;
 template PADDLE_API const paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>() const;

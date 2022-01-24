@@ -221,7 +221,11 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  pten::AddKernel<T, DeviceContext>(dev_ctx, src1, src2, -1, out);
+  pten::AddRawKernel<
+      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPtenContext<
+          DeviceContext>::TYPE&>(dev_ctx),
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T>
@@ -230,7 +234,11 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  pten::SubtractKernel<T, DeviceContext>(dev_ctx, src1, src2, -1, out);
+  pten::SubtractRawKernel<
+      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPtenContext<
+          DeviceContext>::TYPE&>(dev_ctx),
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T, size_t D>

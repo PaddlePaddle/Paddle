@@ -424,16 +424,21 @@ class Optimizer(object):
         self._learning_rate = float(value)
         current_lr = self._global_learning_rate()
         if current_lr is not None:
-            global_block = framework.default_main_program().global_block()
-            global_block.append_op(
-                type='fill_constant',
-                outputs={'Out': [current_lr]},
-                attrs={
-                    'dtype': current_lr.dtype,
-                    'shape': list(current_lr.shape),
-                    'value': float(value)
-                },
-                stop_gradient=True)
+            if framework.in_dygraph_mode():
+                _C_ops.fill_constant(current_lr, 'value',
+                                     float(value), 'dtype', current_lr.dtype,
+                                     'shape', list(current_lr.shape))
+            else:
+                global_block = framework.default_main_program().global_block()
+                global_block.append_op(
+                    type='fill_constant',
+                    outputs={'Out': [current_lr]},
+                    attrs={
+                        'dtype': current_lr.dtype,
+                        'shape': list(current_lr.shape),
+                        'value': float(value)
+                    },
+                    stop_gradient=True)
 
     def get_lr(self):
         """
@@ -590,7 +595,9 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type if type is None else type,
+            type=core.VarDesc.VarType.LOD_TENSOR
+            if framework._in_eager_mode() else (param.type
+                                                if type is None else type),
             shape=shape,
             belong_to_optimizer=True)
         if device is None:

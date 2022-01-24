@@ -19,32 +19,17 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cufft.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag cufft_dso_flag;
-extern void* cufft_dso_handle;
 extern bool HasCUFFT();
 
-extern void EnforceCUFFTLoaded(const char* fn_name);
-#define DECLARE_DYNAMIC_LOAD_CUFFT_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using cufft_func = decltype(&::__name);                              \
-      std::call_once(cufft_dso_flag, []() {                                \
-        cufft_dso_handle = paddle::platform::dynload::GetCUFFTDsoHandle(); \
-      });                                                                  \
-      EnforceCUFFTLoaded(#__name);                                         \
-      static void* p_##__name = dlsym(cufft_dso_handle, #__name);          \
-      return reinterpret_cast<cufft_func>(p_##__name)(args...);            \
-    }                                                                      \
-  };                                                                       \
-  extern struct DynLoad__##__name __name
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUFFT_WRAP(__name)      \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
 
 /**
  * include all needed cufft functions in HPPL
@@ -104,7 +89,7 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
   __macro(cufftXtExecDescriptor);        \
   __macro(cufftXtSetWorkAreaPolicy);
 
-CUFFT_FFT_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUFFT_WRAP)
+CUFFT_FFT_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUFFT_WRAP)
 
 }  // namespace dynload
 }  // namespace platform
