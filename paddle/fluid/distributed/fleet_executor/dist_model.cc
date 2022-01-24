@@ -412,6 +412,12 @@ bool DistModel::PrepareFeedAndFetch() {
       feed_names_[var_name] = idx;
       idx_to_feeds_[idx] = var_name;
       framework::VarDesc *real_var = program_->Block(0).FindVar(var_name);
+      if (!real_var) {
+        LOG(ERROR)
+            << "The output of feed ops [" << var_name
+            << "] cannot be found in the program. Check the inference program.";
+        return false;
+      }
       if (real_var->GetDataType() == framework::proto::VarType::FP32) {
         feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT32});
       } else if (real_var->GetDataType() == framework::proto::VarType::INT32) {
