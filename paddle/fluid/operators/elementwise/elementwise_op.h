@@ -104,7 +104,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC.
       bool should_rotate =
-          this->IsMKLDNNType() &&
+          ctx->IsRunMKLDNNKernel() &&
           (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
            framework::DataLayout::kNHWC);
       if (should_rotate) {
