@@ -149,8 +149,8 @@ bool Tensor::is_cuda() const {
 template <typename T>
 T *Tensor::mutable_data() {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)
-        ->mutable_data<T>();
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        ConvertExtPlaceToInnerPlace(place()));
   }
   return nullptr;
 }
@@ -173,12 +173,18 @@ Tensor::mutable_data<paddle::platform::float16>();
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   auto inner_place = ConvertExtPlaceToInnerPlace(place);
-  PADDLE_ENFORCE_EQ(
-      platform::is_same_place(inner_place, impl_->place()),
-      true,
-      pten::errors::Unimplemented("Modification of tensor place through "
-                                  "mutable_data is not supported now"));
-  return mutable_data<T>();
+  if (impl_->initialized()) {
+    PADDLE_ENFORCE_EQ(
+        platform::is_same_place(inner_place, impl_->place()),
+        true,
+        pten::errors::Unimplemented("Modification of tensor place through "
+                                    "mutable_data is not supported now"));
+  }
+  if (is_dense_tensor()) {
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        inner_place);
+  }
+  return nullptr;
 }
 
 template PADDLE_API float *Tensor::mutable_data<float>(const PlaceType &place);
@@ -205,7 +211,8 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+        ConvertExtPlaceToInnerPlace(place()));
   }
   return nullptr;
 }
@@ -217,7 +224,6 @@ template PADDLE_API const int32_t *Tensor::data<int32_t>() const;
 template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
 template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
 template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
-template PADDLE_API const uint16_t *Tensor::data<uint16_t>() const;
 template PADDLE_API const bool *Tensor::data<bool>() const;
 template PADDLE_API const paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>() const;
