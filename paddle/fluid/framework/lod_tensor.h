@@ -29,15 +29,16 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
-}  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
-namespace paddle {
-namespace framework {
+using LoDTensor = pten::DenseTensor;
+
+// Split Tensor and copy to each place specified in places.
+std::vector<LoDTensor> SplitLoDTensor(
+    const LoDTensor& src, const std::vector<platform::Place> places);
+
+void MergeLoDTensor(LoDTensor* target,
+                    const std::vector<const LoDTensor*>& lod_tensors,
+                    platform::Place dst_place);
 
 /*
  * LoD is short for Level of Details.
@@ -55,9 +56,6 @@ namespace framework {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
-
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 std::string LoDToString(const LoD& lod);
 
@@ -101,22 +99,6 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *     tensor_height>0.
  */
 bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
-
-/*
- * LoDTensor (Level of details Tensor)
- * see https://en.wikipedia.org/wiki/Level_of_details for reference.
- */
-class LoDTensor : public Tensor {
- public:
-  using Tensor::Tensor;
-
-  // Split LoDTensor and copy to each place specified in places.
-  std::vector<LoDTensor> SplitLoDTensor(
-      const std::vector<platform::Place> places) const;
-
-  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
-                      platform::Place place);
-};
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
@@ -175,8 +157,6 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
-void AppendLoD(LoD* lod, const LoD& lod_length);
-
 /*
  * Serialize/Desiralize LoDTensor to std::ostream
  * You can pass ofstream or ostringstream to serilize to file
@@ -190,18 +170,6 @@ void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
-
-/*
- * Convert between length-based LoD and offset-based LoD.
- * The implementation of LoDTensor class use offset-based LoD.
- * However, we want to expose the more user-friendly length-based
- * LoD to the Python side instead.
- *
- * Example:
- * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
- * then length_lod = [[2, 1], [3, 2, 4]]
- */
-LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 
 LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 

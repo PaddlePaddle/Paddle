@@ -193,7 +193,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
           grad_var_->MutableVar()->GetMutable<framework::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
@@ -211,7 +211,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
           grad_t->clear();
         }
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
       }
     }
@@ -426,8 +426,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
-                          const platform::Place& place,
-                          pten::KernelContext* pt_kernel_context) {
+                          const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel, platform::errors::PermissionDenied(
@@ -468,8 +467,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs,
-                                         default_attrs, pt_kernel_context);
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
@@ -497,8 +496,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place,
-                         &pt_kernel_context_);
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -507,8 +505,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place,
-                                 &pt_kernel_context_);
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

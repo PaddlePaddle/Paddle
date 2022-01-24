@@ -40,7 +40,7 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
                           "The place of ExecutionContext should be XPUPlace."));
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-    int dev_id = BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()).device;
+    int dev_id = ctx.GetPlace().device;
     int root_dev_id = ctx.Attr<int>("root");
 
     auto in = ctx.Input<framework::Tensor>("X");

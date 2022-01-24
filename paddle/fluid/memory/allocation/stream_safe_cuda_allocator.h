@@ -65,7 +65,7 @@ class StreamSafeCUDAAllocator : public Allocator {
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsWithRelease();
 
-  static std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator *>>
+  static std::map<platform::Place, std::vector<StreamSafeCUDAAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

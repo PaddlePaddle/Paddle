@@ -31,7 +31,7 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  const auto& dst_place = dst->place();
+  auto dst_place = dst->place();
 
   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -42,7 +42,7 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
-  dst->Resize(src.dims());
+  dst->ResizeAndAllocate(src.dims());
   auto* dst_ptr = dst->mutable_data();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -51,6 +51,7 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
+
   CHECK(dst->layout() == src.layout());
 
   auto size = src.numel() *
@@ -58,33 +59,17 @@ void Copy(const Context& dev_ctx,
 
   if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
       paddle::platform::is_cuda_pinned_place(dst_place)) {
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CUDAPinnedPlace, dst_place),
-        dst_ptr,
-        BOOST_GET_CONST(paddle::platform::CUDAPinnedPlace, src_place),
-        src_ptr,
-        size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
              paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CPUPlace, dst_place),
-        dst_ptr,
-        BOOST_GET_CONST(paddle::platform::CUDAPinnedPlace, src_place),
-        src_ptr,
-        size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
              paddle::platform::is_cuda_pinned_place(dst_place)) {
-    paddle::memory::Copy(
-        BOOST_GET_CONST(paddle::platform::CUDAPinnedPlace, dst_place),
-        dst_ptr,
-        BOOST_GET_CONST(paddle::platform::CPUPlace, src_place),
-        src_ptr,
-        size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_cpu_place(dst_place)) {
-    auto src_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, src_place);
-    auto dst_cpu_place = BOOST_GET_CONST(paddle::platform::CPUPlace, dst_place);
+    auto src_gpu_place = src_place;
+    auto dst_cpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
@@ -92,8 +77,7 @@ void Copy(const Context& dev_ctx,
         paddle::platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto ctx_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, ctx_place);
+    auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
                       paddle::platform::errors::Unavailable(
@@ -110,9 +94,8 @@ void Copy(const Context& dev_ctx,
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
              paddle::platform::is_gpu_place(dst_place)) {
-    auto src_cpu_place = BOOST_GET_CONST(paddle::platform::CPUPlace, src_place);
-    auto dst_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, dst_place);
+    auto src_cpu_place = src_place;
+    auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
@@ -120,8 +103,7 @@ void Copy(const Context& dev_ctx,
         paddle::platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto ctx_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, ctx_place);
+    auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
                       paddle::platform::errors::Unavailable(
@@ -138,10 +120,8 @@ void Copy(const Context& dev_ctx,
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_cuda_pinned_place(dst_place)) {
-    auto src_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, src_place);
-    auto dst_cuda_pinned_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPinnedPlace, dst_place);
+    auto src_gpu_place = src_place;
+    auto dst_cuda_pinned_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(ctx_place),
                       true,
@@ -149,8 +129,7 @@ void Copy(const Context& dev_ctx,
                           "Device context place mismatch. When copying Tensor "
                           "data from GPU memory to CUDA Pinned memory, current "
                           "device context place should be GPU."));
-    auto ctx_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, ctx_place);
+    auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
                       paddle::platform::errors::PreconditionNotMet(
@@ -168,10 +147,8 @@ void Copy(const Context& dev_ctx,
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
              paddle::platform::is_gpu_place(dst_place)) {
-    auto src_cuda_pinned_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPinnedPlace, src_place);
-    auto dst_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, dst_place);
+    auto src_cuda_pinned_place = src_place;
+    auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(ctx_place),
                       true,
@@ -179,8 +156,7 @@ void Copy(const Context& dev_ctx,
                           "Device context place mismatch. When copying Tensor "
                           "data from CUDA Pinned memory to GPU memory, current "
                           "device context place should be GPU."));
-    auto ctx_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, ctx_place);
+    auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
                       paddle::platform::errors::PreconditionNotMet(
@@ -198,10 +174,8 @@ void Copy(const Context& dev_ctx,
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_gpu_place(dst_place)) {
-    auto src_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, src_place);
-    auto dst_gpu_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, dst_place);
+    auto src_gpu_place = src_place;
+    auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
@@ -235,6 +209,9 @@ void Copy(const Context& dev_ctx,
             "Context place dose not match the source and destination place."));
       }
     }
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Place type error. Please check the place of src and dst Tensor."));
   }
 }
 

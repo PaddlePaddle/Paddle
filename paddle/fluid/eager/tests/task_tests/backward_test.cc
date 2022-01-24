@@ -56,6 +56,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
 
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
@@ -119,7 +120,7 @@ TEST(Backward, SingleNodeCustomGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-
+    auto_grad_meta->SetStopGradient(false);
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
 
@@ -189,7 +190,7 @@ TEST(Backward, LinearNodes) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-
+    auto_grad_meta->SetStopGradient(false);
     // Connect Node0 -> Node1 via Edge
     auto meta0 = egr::AutogradMeta();
     meta0.SetStopGradient(false);
@@ -281,13 +282,14 @@ TEST(Backward, WithAccumulation) {
     auto_grad_meta0->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
     auto_grad_meta0->SetSingleOutRankWithSlot(0, 0);
-
+    auto_grad_meta0->SetStopGradient(false);
     // Connect Inp1 and Node1 via AutoGradMeta
     AutogradMeta* auto_grad_meta1 =
         EagerUtils::autograd_meta(&(target_tensors[1]));
     auto_grad_meta1->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node1_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta1->SetStopGradient(false);
 
     // Connect Node0 -> Node2 via Edge
     auto meta0 = egr::AutogradMeta();

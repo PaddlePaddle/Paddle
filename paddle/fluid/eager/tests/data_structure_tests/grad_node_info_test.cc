@@ -41,8 +41,9 @@ TEST(GradNodeInfo, GradNodeBase) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
   auto* dt_ptr = dt->mutable_data<float>();
   dt_ptr[0] = 5.0f;
@@ -75,9 +76,9 @@ TEST(GradNodeInfo, GradNodeBase) {
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
   grad_test_node0->SetGradInMeta(metas, 0);
-  grad_test_node0->SetGradInMeta(*auto_grad1.get(), 1);
+  grad_test_node0->SetGradInMeta(auto_grad1.get(), 1);
   grad_test_node0->SetGradOutMeta(metas, 0);
-  grad_test_node0->SetGradOutMeta(*auto_grad1.get(), 1);
+  grad_test_node0->SetGradOutMeta(auto_grad1.get(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[0].Size(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[1].Size(), 1);
   CHECK(grad_test_node0->OutputMeta()[0].IsStopGradient(0));
@@ -97,8 +98,9 @@ TEST(GradNodeInfo, GradNodeBase) {
     pten::DenseTensorMeta meta = pten::DenseTensorMeta(
         pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace()),
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
         meta);
     auto* dt_ptr = dt->mutable_data<float>();
     dt_ptr[0] = 6.0f;

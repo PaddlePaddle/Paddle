@@ -72,7 +72,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& context) const override {
     auto dims = context.Attr<std::vector<int>>("dim");
-    if (context.GetPlace().type() == typeid(platform::CPUPlace) &&
+    if (context.GetPlace().GetType() == platform::CPUPlace().GetType() &&
         dims.size() == 1) {
       int in_dtype = context.Attr<int>("in_dtype");
 

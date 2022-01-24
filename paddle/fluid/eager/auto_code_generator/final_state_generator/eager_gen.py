@@ -14,6 +14,21 @@
 
 import yaml
 import re
+import argparse
+
+
+def ParseArguments():
+    parser = argparse.ArgumentParser(
+        description='Eager Code Generator Args Parser')
+    parser.add_argument('--nodes_h_path', type=str)
+    parser.add_argument('--nodes_cc_path', type=str)
+    parser.add_argument('--forwards_h_path', type=str)
+    parser.add_argument('--forwards_cc_path', type=str)
+    parser.add_argument('--api_yaml_path', type=str)
+    parser.add_argument('--backward_yaml_path', type=str)
+
+    args = parser.parse_args()
+    return args
 
 
 #################
@@ -54,6 +69,10 @@ def GetConstReference(string):
     if not string.endswith("&"):
         ret += "&"
     return ret
+
+
+def GetAutoGradMetaName(string):
+    return f"{string}_autograd_meta"
 
 
 ######################
@@ -542,6 +561,149 @@ std::vector<std::vector<egr::EagerTensor>> GradNode{}::operator()(const std::vec
     return node_definition_str
 
 
+def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
+                              forward_inputs_position_map,
+                              forward_outputs_position_map, forward_attrs_list,
+                              backward_fwd_input_map, backward_grad_input_map,
+                              backward_grad_output_map, backward_attrs_list):
+    # fwd_api_name = ""
+    # forward_inputs_position_map = { "name" : [type, fwd_position] }
+    # forward_outputs_position_map = { "name" : [type, fwd_position] }
+    # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
+    # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
+    # backward_grad_output_map = { "name" : [type, fwd_position, orig_position] ...}
+    # backward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+
+    # Get Input AutoGradMeta
+    inputs_autograd_meta_list = []
+    compute_require_grad_args_list = ["trace_backward"]
+    for name, (ttype, pos) in forward_inputs_position_map.items():
+        input_autograd_meta_name = GetAutoGradMetaName(name)
+        input_autograd_meta = f"    auto* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+        inputs_autograd_meta_list.append(input_autograd_meta)
+        compute_require_grad_args_list.append(input_autograd_meta_name)
+    inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
+    compute_require_grad_args_str = ",".join(compute_require_grad_args_list)
+
+    # Get Output AutoGradMeta
+    outputs_autograd_meta_list = []
+    pass_stop_gradient_args_list = ["false"]
+    num_fwd_outputs = len(forward_outputs_position_map.keys())
+    for name, (rtype, pos) in forward_outputs_position_map.items():
+        output_autograd_meta_name = GetAutoGradMetaName(name)
+        if num_fwd_outputs == 1:
+            output_autograd_meta = f"    auto* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs);"
+        else:
+            # Tuple api_result
+            outputs_autograd_meta = f"    auto* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs[{pos}]);"
+        outputs_autograd_meta_list.append(output_autograd_meta)
+        pass_stop_gradient_args_list.append(output_autograd_meta_name)
+
+    # ComputeRequireGrad & PassStopGradient
+    outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
+    pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
+
+    # Node Construction
+    num_bwd_inputs = len(backward_grad_input_map.keys())
+    num_bwd_outputs = len(backward_grad_output_map.keys())
+    node_construction_str = f"        auto grad_node = std::make_shared<GradNode{fwd_api_name}>({num_bwd_inputs}, {num_bwd_outputs});"
+
+    # SetAttributes
+    set_attributes_list = []
+    for name, _, _, _ in backward_attrs_list:
+        set_attributes = "        grad_node->SetAttribute{name}({name});"
+        set_attributes_list.append(set_attributes)
+    set_attributes_str = "\n".join(set_attributes_list)
+
+    # SetTensorWrappers
+    set_tensor_wrappers_list = []
+    for name, (_, _, _) in backward_fwd_input_map.items():
+        set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name});"
+        set_tensor_wrappers_list.append(set_tensor_wrappers)
+    set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
+
+    # SetGradOutMeta & SetEdges
+    set_grad_out_meta_list = []
+    set_edges_list = []
+    for name, (_, pos) in forward_inputs_position_map.items():
+        input_autograd_meta_name = GetAutoGradMetaName(name)
+        set_grad_out_meta = f"        grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
+        set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        set_grad_out_meta_list.append(set_grad_out_meta)
+        set_edges_list.append(set_edges)
+    set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
+    set_edges_str = "\n".join(set_edges_list)
+
+    # SetOutRank & SetHistory & SetGradInMeta
+    set_out_rank_list = []
+    set_history_list = []
+    set_grad_in_meta_list = []
+    set_retain_grad_list = []
+    num_outputs = len(forward_outputs_position_map.keys())
+    for name, (_, pos) in forward_outputs_position_map.items():
+        output_autograd_meta_name = GetAutoGradMetaName(name)
+        set_out_rank = f"        egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
+        set_history = f"        egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
+        set_grad_in_meta = f"        grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
+
+        set_out_rank_list.append(set_out_rank)
+        set_history_list.append(set_history)
+        set_grad_in_meta_list.append(set_grad_in_meta)
+
+        if num_outputs == 1:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(outputs);"
+        else:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(outputs[{pos}]);"
+        set_retain_grad_list.append(set_retain_grad)
+    set_out_rank_str = "\n".join(set_out_rank_list)
+    set_history_str = "\n".join(set_history_list)
+    set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
+    set_retain_grad_str = "\n".join(set_retain_grad_list)
+
+    NODE_CREATION_TEMPLATE = """
+
+    // Get AutoGradMeta
+{}
+{}
+    bool trace_backward = egr::Controller::Instance().HasGrad();
+
+    bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
+    if(require_any_grad) {{
+        egr::EagerUtils::PassStopGradient({});
+        
+        // Node Construction
+{}
+
+        // SetAttributes
+{}
+
+        // SetTensorWrappers
+{}
+
+        // SetGradOutMeta & SetEdges
+{}
+{}
+
+        // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+{}
+{}
+{}
+{}
+
+    }}
+
+"""
+    node_creation_str = NODE_CREATION_TEMPLATE.format(
+        inputs_autograd_meta_str, outputs_autograd_meta_str,
+        compute_require_grad_args_str, pass_stop_gradient_args_str,
+        node_construction_str, set_attributes_str, set_tensor_wrappers_str,
+        set_grad_out_meta_str, set_edges_str, set_out_rank_str, set_history_str,
+        set_grad_in_meta_str, set_retain_grad_str)
+
+    return node_creation_str
+
+
 def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
                               forward_inputs_position_map,
                               forward_outputs_position_map, forward_attrs_list,
@@ -562,7 +724,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_args_list = ["" for i in range(num_inputs)]
     inputs_call_list = ["" for i in range(num_inputs)]
     for name, (ttype, pos) in forward_inputs_position_map.items():
-        inputs_call_list[pos] = name
+        inputs_call_list[pos] = f"*{name}.Tensor().get()"
         if IsPlainTensorType(ttype):
             inputs_args_list[pos] = f"const egr::EagerTensor& {name}"
         else:
@@ -578,10 +740,10 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
             inputs_args_list[pos] = f"{atype} {name}"
 
     inputs_args_str = ", ".join(inputs_args_list)
-    inputs_call_str = ", ".join(inputs_call_list)
+    inputs_call_args_str = ", ".join(inputs_call_list)
 
     # Forward Full Logic
-    forward_call_str = f"auto api_result = {fwd_api_name}({inputs_call_str});"
+    forward_call_str = f"auto api_result = {fwd_api_name}({inputs_call_args_str});"
 
     # Get return type list & outputs
     num_outputs = len(forward_outputs_position_map.keys())
@@ -611,21 +773,108 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         returns_str = ", ".join(returns_list)
         returns_str = f"std::make_tuple({returns_str})"
 
-    FORWARD_FUNCTION_TEMPLATE = """
-    {} {} ({}) {{
+    node_creation_str = GenerateNodeCreationCodes(
+        fwd_api_name, bwd_api_name, forward_inputs_position_map,
+        forward_outputs_position_map, forward_attrs_list,
+        backward_fwd_input_map, backward_grad_input_map,
+        backward_grad_output_map, backward_attrs_list)
 
-    }}
+    FORWARD_FUNCTION_TEMPLATE = """
+{} {}_dygraph_function({}) {{
+    // Forward API Call
+    {}
+    
+    auto outputs = {};
+    
+    // Node Creation
+{}
+
+    // Returns
+    return outputs;
+}}
 """
+
+    forward_function_str = FORWARD_FUNCTION_TEMPLATE.format(
+        returns_type_str, fwd_api_name, inputs_args_str, forward_call_str,
+        returns_str, node_creation_str)
+
+    forward_function_declaration_str = f"{returns_type_str} {fwd_api_name}_dygraph_function({inputs_args_str});"
+
+    return forward_function_str, forward_function_declaration_str
+
+
+def GenerateNodeCCFile(filepath, node_definition_str):
+    file_contents = """
+#include "glog/logging.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/nodes/nodes.h"
+
+"""
+    file_contents += node_definition_str
+    with open(filepath, 'a') as f:
+        f.write(file_contents)
+
+
+def GenerateNodeHFile(filepath, node_declaration_str):
+    file_contents = """
+#pragma once
+#include "paddle/fluid/eager/tensor_wrapper.h"
+#include "paddle/fluid/eager/legacy/op_runner.h"
+#include "paddle/fluid/eager/grad_node_info.h"
+
+"""
+    file_contents += node_declaration_str
+    with open(filepath, 'a') as f:
+        f.write(file_contents)
+
+
+def GenerateForwardCCFile(filepath, forward_definition_str):
+    file_contents = """
+#include "paddle/fluid/eager/api/generated/eager_generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/nodes/nodes.h"
+
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/legacy/op_runner.h"
+
+"""
+    file_contents += forward_definition_str
+    with open(filepath, 'a') as f:
+        f.write(file_contents)
+
+
+def GenerateForwardHFile(filepath, forward_function_declaration_str):
+    file_contents = """
+#pragma once
+#include "glog/logging.h"
+#include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+"""
+    file_contents += forward_function_declaration_str
+    with open(filepath, 'a') as f:
+        f.write(file_contents)
 
 
 if __name__ == "__main__":
-    filepath = "/workspace/PaddleRepos/Paddle4/python/paddle/utils/code_gen/api.yaml"
-    fwd_api_list = ReadFwdFile(filepath)
+    args = ParseArguments()
 
-    filepath = "/workspace/PaddleRepos/Paddle4/python/paddle/utils/code_gen/grad.yaml"
-    grad_api_dict = ReadBwdFile(filepath)
+    api_yaml_path = args.api_yaml_path
+    backward_yaml_path = args.backward_yaml_path
+
+    fwd_api_list = ReadFwdFile(api_yaml_path)
+    grad_api_dict = ReadBwdFile(backward_yaml_path)
 
     # Generate per Dygraph API
+    node_declaration_str = ""
+    node_definition_str = ""
+    forward_definition_str = ""
+    forward_declaration_str = ""
     for fwd_api in fwd_api_list:
         # We only generate Ops with grad
         if 'backward' not in fwd_api.keys():
@@ -700,20 +949,34 @@ if __name__ == "__main__":
                                 backward_attrs_list)
 
         # Node Declaration Generation
-        node_declaration_str = GenerateNodeDeclaration(
+        node_declaration_str += GenerateNodeDeclaration(
             fwd_api_name, backward_fwd_input_map, backward_attrs_list)
         print("Generated Node Declaration: ", node_declaration_str)
 
-        node_definition_str = GenerateNodeDefinition(
+        node_definition_str += GenerateNodeDefinition(
             fwd_api_name, bwd_api_name, backward_fwd_input_map,
             backward_grad_input_map, backward_grad_output_map,
             backward_attrs_list)
         print("Generated Node Definition: ", node_definition_str)
 
         # Node Definition Generation
-        forward_definition_str = GenerateForwardDefinition(
+        definition_declaration_pair = GenerateForwardDefinition(
             fwd_api_name, bwd_api_name, forward_inputs_position_map,
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
             backward_grad_output_map, backward_attrs_list)
         print("Generated Forward Definition: ", forward_definition_str)
+        print("Generated Forward Declaration: ", forward_declaration_str)
+        forward_definition_str += definition_declaration_pair[0]
+        forward_declaration_str += definition_declaration_pair[1]
+
+    # Generate Files
+    nodes_h_path = args.nodes_h_path
+    nodes_cc_path = args.nodes_cc_path
+    forwards_h_path = args.forwards_h_path
+    forwards_cc_path = args.forwards_cc_path
+
+    GenerateNodeCCFile(nodes_cc_path, node_definition_str)
+    GenerateNodeHFile(nodes_h_path, node_declaration_str)
+    GenerateForwardCCFile(forwards_cc_path, forward_definition_str)
+    GenerateForwardHFile(forwards_h_path, forward_declaration_str)

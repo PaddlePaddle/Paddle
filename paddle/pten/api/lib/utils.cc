@@ -54,7 +54,7 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
-  kernel_context.EmplaceBackInput(dense_x);
+  kernel_context.EmplaceBackInput(dense_x.get());
   kernel_context.EmplaceBackAttr(blocking);
 
   // 4. InferMeta
@@ -65,7 +65,7 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(backend)),
       std::move(out_meta));
-  kernel_context.EmplaceBackOutput(dense_out);
+  kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
   out.set_impl(dense_out);
 

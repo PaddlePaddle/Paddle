@@ -148,5 +148,19 @@ class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return dout
 
 
+class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "mish"
+
+    def op_forward(self, x):
+        return x * np.tanh(np.log(1 + np.exp(x)))
+
+    def op_grad(self, dout, x):
+        omega = np.exp(3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6
+                                                                 ) + 4 * (x + 1)
+        delta = np.exp(2 * x) + 2 * np.exp(x) + 2
+        return dout * ((np.exp(x) * omega) / delta**2)
+
+
 if __name__ == '__main__':
     unittest.main()

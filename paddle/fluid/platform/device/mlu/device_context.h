@@ -21,8 +21,6 @@ struct DefaultDevice;
 struct GpuDevice;
 }  // namespace Eigen
 
-// class DeviceContext;
-
 namespace paddle {
 namespace platform {
 

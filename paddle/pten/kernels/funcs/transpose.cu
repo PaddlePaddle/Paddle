@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/funcs/transpose.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 
 namespace pten {
 
@@ -58,14 +58,13 @@ struct TransposeNormal<GPUContext, T> {
                   pten::DenseTensor* out,
                   const std::vector<int64_t>& axis) {
     const int rank = axis.size();
-    auto in_stride = paddle::framework::stride(in.dims());
-    auto out_stride = paddle::framework::stride(out->dims());
+    auto in_stride = pten::framework::stride(in.dims());
+    auto out_stride = pten::framework::stride(out->dims());
     auto* in_ptr = in.data<T>();
     auto* out_ptr = out->mutable_data<T>();
 
     // copy in_stride, out_stride, axis to gpu device
-    const paddle::platform::CUDAPlace& cuda_place =
-        BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
+    const paddle::platform::CUDAPlace& cuda_place = dev_ctx.GetPlace();
     paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);

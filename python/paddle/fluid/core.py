@@ -253,6 +253,9 @@ load_noavx = False
 
 if avx_supported():
     try:
+        from . import core_avx
+        core_avx.LoDTensor = core_avx.Tensor
+
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
         from .core_avx import __unittest_throw_exception__
@@ -310,6 +313,9 @@ else:
 
 if load_noavx:
     try:
+        from . import core_noavx
+        core_noavx.LoDTensor = core_noavx.Tensor
+
         from .core_noavx import *
         from .core_noavx import __doc__, __file__, __name__, __package__
         from .core_noavx import __unittest_throw_exception__

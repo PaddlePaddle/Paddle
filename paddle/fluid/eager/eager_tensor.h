@@ -165,6 +165,14 @@ class EagerTensor final {
   void reset() { tensor_->reset(); }
 
   /**
+   * @brief Determine whether tensor is DenseTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dense_tensor() const { return tensor_->is_dense_tensor(); }
+
+  /**
  * @brief Transfer the current Tensor to the specified device and return.
  *
  * @param place, the target place of which the tensor will copy to.
