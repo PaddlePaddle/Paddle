@@ -116,6 +116,27 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
       memory::AllocShared(ctx.GetPlace(), total_ptr_len * sizeof(void *));
   void *ptr = temp_ptr->ptr();
 
+#ifdef PADDLE_WITH_HIP
+  T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
+  platform::GpuMemcpyAsync(gpu_input_values, input_data.data(),
+                           input_data.size() * sizeof(T *),
+                           hipMemcpyHostToDevice, stream);
+  T **gpu_output_values =
+      reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
+  platform::GpuMemcpyAsync(gpu_output_values, output_data.data(),
+                           output_data.size() * sizeof(T *),
+                           hipMemcpyHostToDevice, stream);
+  T **gpu_seqpool_output_values =
+      reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
+  platform::GpuMemcpyAsync(
+      gpu_seqpool_output_values, seqpool_output_data.data(),
+      seqpool_output_data.size() * sizeof(T *), hipMemcpyHostToDevice, stream);
+  size_t **lods_values = reinterpret_cast<size_t **>(
+      &gpu_seqpool_output_values[seqpool_output_data.size()]);
+  platform::GpuMemcpyAsync(lods_values, lods.data(),
+                           lods.size() * sizeof(size_t *),
+                           hipMemcpyHostToDevice, stream);
+#else
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
   platform::GpuMemcpyAsync(gpu_input_values, input_data.data(),
                            input_data.size() * sizeof(T *),
@@ -135,6 +156,7 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
   platform::GpuMemcpyAsync(lods_values, lods.data(),
                            lods.size() * sizeof(size_t *),
                            cudaMemcpyHostToDevice, stream);
+#endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
   platform::GpuLaunchConfig config = GetGpuLaunchConfig1D(dev_ctx, N);
@@ -251,6 +273,30 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
                          cvm_data.size() + lods.size();
   auto temp_ptr =
       memory::AllocShared(ctx.GetPlace(), total_ptr_len * sizeof(void *));
+#ifdef PADDLE_WITH_HIP
+  T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
+  platform::GpuMemcpyAsync(gpu_out_grads_values, out_grads_data.data(),
+                           out_grads_data.size() * sizeof(T *),
+                           hipMemcpyHostToDevice, stream);
+
+  T **gpu_in_grads_values =
+      reinterpret_cast<T **>(&gpu_out_grads_values[out_grads_data.size()]);
+  platform::GpuMemcpyAsync(gpu_in_grads_values, in_grads_data.data(),
+                           in_grads_data.size() * sizeof(T *),
+                           hipMemcpyHostToDevice, stream);
+
+  T **gpu_cvm_values =
+      reinterpret_cast<T **>(&gpu_in_grads_values[in_grads_data.size()]);
+  platform::GpuMemcpyAsync(gpu_cvm_values, cvm_data.data(),
+                           cvm_data.size() * sizeof(T *), hipMemcpyHostToDevice,
+                           stream);
+
+  size_t **lods_values =
+      reinterpret_cast<size_t **>(&gpu_cvm_values[cvm_data.size()]);
+  platform::GpuMemcpyAsync(lods_values, lods.data(),
+                           lods.size() * sizeof(size_t *),
+                           hipMemcpyHostToDevice, stream);
+#else
   T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
   platform::GpuMemcpyAsync(gpu_out_grads_values, out_grads_data.data(),
                            out_grads_data.size() * sizeof(T *),
@@ -273,6 +319,7 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
   platform::GpuMemcpyAsync(lods_values, lods.data(),
                            lods.size() * sizeof(size_t *),
                            cudaMemcpyHostToDevice, stream);
+#endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
   auto config = GetGpuLaunchConfig1D(dev_ctx, N);
