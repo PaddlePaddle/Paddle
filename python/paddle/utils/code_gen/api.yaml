@@ -111,6 +111,7 @@
     func : MatmulInferMeta
   kernel : 
     func : matmul
+  backward : matmul_grad
 
 - api : mean
   args : (const Tensor& x, const std::vector<int64_t>& axis={}, bool keep_dim=false)
