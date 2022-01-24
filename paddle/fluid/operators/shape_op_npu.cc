@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
 
 template <typename DeviceContext, typename T>
 class ShapeNPUKernel : public framework::OpKernel<T> {
@@ -30,8 +29,8 @@ class ShapeNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_var = ctx.InputVar("Input");
     framework::DDim in_dims;
-    if (in_var->IsType<SelectedRows>()) {
-      in_dims = in_var->Get<SelectedRows>().value().dims();
+    if (in_var->IsType<pten::SelectedRows>()) {
+      in_dims = in_var->Get<pten::SelectedRows>().value().dims();
     } else {
       in_dims = in_var->Get<LoDTensor>().dims();
     }

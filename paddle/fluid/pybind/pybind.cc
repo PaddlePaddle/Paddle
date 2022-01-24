@@ -1216,23 +1216,27 @@ PYBIND11_MODULE(core_noavx, m) {
           }));
 #endif
 
-  py::class_<SelectedRows>(m, "SelectedRows")
+  py::class_<pten::SelectedRows>(m, "SelectedRows")
       .def("__init__",
-           [](SelectedRows &instance) { new (&instance) SelectedRows(); })
+           [](pten::SelectedRows &instance) {
+             new (&instance) pten::SelectedRows();
+           })
       .def("__init__",
-           [](SelectedRows &instance, const std::vector<int64_t> rows,
+           [](pten::SelectedRows &instance, const std::vector<int64_t> rows,
               const int64_t &height) {
-             new (&instance) SelectedRows(rows, height);
+             new (&instance) pten::SelectedRows(rows, height);
            })
       .def("get_tensor",
-           [](SelectedRows &self) { return self.mutable_value(); },
+           [](pten::SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
       .def("numel",
-           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
-      .def("set_height", &SelectedRows::set_height)
-      .def("height", &SelectedRows::height)
+           [](pten::SelectedRows &self) -> int64_t {
+             return self.value().numel();
+           })
+      .def("set_height", &pten::SelectedRows::set_height)
+      .def("height", &pten::SelectedRows::height)
       .def("set_rows",
-           [](SelectedRows &self, std::vector<int64_t> rows) {
+           [](pten::SelectedRows &self, std::vector<int64_t> rows) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
@@ -1240,8 +1244,9 @@ PYBIND11_MODULE(core_noavx, m) {
         self.set_rows(new_rows);
 #endif
            })
-      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
-      .def("rows", [](SelectedRows &self) {
+      .def("sync_index",
+           [](pten::SelectedRows &instance) { instance.SyncIndex(); })
+      .def("rows", [](pten::SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
         new_rows.reserve(rows.size());
@@ -1290,8 +1295,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
       .def("get_selected_rows",
-           [](Variable &self) -> SelectedRows * {
-             return self.GetMutable<SelectedRows>();
+           [](Variable &self) -> pten::SelectedRows * {
+             return self.GetMutable<pten::SelectedRows>();
            },
            py::return_value_policy::reference)
       .def("get_lod_tensor_array",
