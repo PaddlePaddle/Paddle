@@ -316,7 +316,6 @@ class TestEmbedOpError(unittest.TestCase):
 
 support_types = get_xpu_op_support_types('sparse_lookup_table')
 for stype in support_types:
-    create_test_class(globals(), XPUTestLookupTableIsSparse, stype)
     create_test_class(
         globals(),
         XPUTestLookupTableIsSparse,
