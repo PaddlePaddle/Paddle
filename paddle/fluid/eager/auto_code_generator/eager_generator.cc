@@ -1137,11 +1137,13 @@ static std::string GenerateGradNodeCreationContent(
     grad_node_creation_str +=
         paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
 
-    VLOG(6) << "Generated Call RetainGradForTensor";
-    const char* RETAIN_GRAD_TEMPLATE =
-        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-    grad_node_creation_str +=
-        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
+    if (!output.intermediate()) {
+      VLOG(6) << "Generated Call RetainGradForTensor";
+      const char* RETAIN_GRAD_TEMPLATE =
+          "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+      grad_node_creation_str +=
+          paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
+    }
   }
   VLOG(6) << "Generated SetGradIn/OutMeta";
 

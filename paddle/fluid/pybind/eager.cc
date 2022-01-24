@@ -49,7 +49,7 @@ PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eager_tensor)) egr::EagerTensor();
-    Py_INCREF(obj);
+    // Py_INCREF(obj);
   }
   return obj;
 }
@@ -58,8 +58,8 @@ PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 void EmptyEagerTensorInitializer(
     EagerTensorObject* self, const std::string& name,
     const paddle::platform::Place& place, bool persistable = false,
-    bool stop_gradient = true, framework::proto::VarType::Type dtype =
-                                   paddle::framework::proto::VarType::FP32,
+    int stop_gradient = -1, framework::proto::VarType::Type dtype =
+                                paddle::framework::proto::VarType::FP32,
     const std::vector<int>& dims = {},
     framework::proto::VarType::Type var_type =
         paddle::framework::proto::VarType::LOD_TENSOR) {
@@ -73,7 +73,9 @@ void EmptyEagerTensorInitializer(
   self->eager_tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
   autograd_meta->SetPersistable(persistable);
-  autograd_meta->SetStopGradient(stop_gradient);
+  if (stop_gradient != -1) {
+    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  }
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
     std::shared_ptr<pten::DenseTensor> dense_tensor =
@@ -146,7 +148,6 @@ void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
         src.copy_to(pten::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
   if (src.get_autograd_meta()) {
     egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
         ->SetPersistable(
@@ -184,7 +185,6 @@ void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
         temp.copy_to(pten::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
   egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
       ->SetPersistable(false);
 }
@@ -235,21 +235,18 @@ paddle::platform::Place ParsePlace(
 }
 
 // boolean arguments: zero_copy, stop_gradient, persistable
-bool ParseBooleanArgs(std::string key,
-                      std::unordered_map<std::string, PyObject*> kws_map,
-                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-                      PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
-  bool res = false;
-  if (key == "stop_gradient") res = true;
+int ParseBooleanArgs(std::string key,
+                     std::unordered_map<std::string, PyObject*> kws_map,
+                     std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                     PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+  int res = -1;
 
   if (kw_order_map[key] <= args_num) {
-    res = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, kw_order_map[key] - 1),
-                                kw_order_map[key] - 1);
+    res = static_cast<int>(CastPyArg2AttrBoolean(
+        PyTuple_GET_ITEM(args, kw_order_map[key] - 1), kw_order_map[key] - 1));
   } else {
     if (flag_kwargs && kws_map[key] != NULL) {
-      res = CastPyArg2AttrBoolean(kws_map[key], 0);
-    } else {
-      return res;
+      res = static_cast<int>(CastPyArg2AttrBoolean(kws_map[key], 0));
     }
   }
   return res;
@@ -305,15 +302,15 @@ void AutoInitEagerTensorByPyArray(
   bool persistable = false;
   bool zero_copy = false;
   std::string act_name = "";
-  bool stop_gradient = true;
+  int stop_gradient = -1;
 
   numpy_value =
       ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  persistable = ParseBooleanArgs("persistable", kws_map, kw_order_map, args,
-                                 flag_kwargs, args_num);
-  zero_copy = ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
-                               flag_kwargs, args_num);
+  persistable = (1 == ParseBooleanArgs("persistable", kws_map, kw_order_map,
+                                       args, flag_kwargs, args_num));
+  zero_copy = (1 == ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
+                                     flag_kwargs, args_num));
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
   stop_gradient = ParseBooleanArgs("stop_gradient", kws_map, kw_order_map, args,
                                    flag_kwargs, args_num);
@@ -588,7 +585,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         EmptyEagerTensorInitializer(
             py_tensor_ptr, act_name,
             egr::Controller::Instance().GetExpectedPlace(), persistable,
-            /* stop_gradient */ true, dtype, dims, var_type);
+            /* stop_gradient */ -1, dtype, dims, var_type);
 
         return 0;
       } else {
@@ -672,7 +669,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
         EmptyEagerTensorInitializer(
             py_tensor_ptr, act_name,
-            egr::Controller::Instance().GetExpectedPlace(), persistable, true,
+            egr::Controller::Instance().GetExpectedPlace(), persistable, -1,
             dtype, dims, var_type);
         return 0;
       } else if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {

@@ -271,8 +271,10 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
 void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
-    VLOG(6) << "RetainGradForTensor: " << tensor.name();
-    egr::egr_utils_api::RetainGradForTensor(tensor);
+    if (tensor.initialized() || tensor.Var().IsInitialized()) {
+      VLOG(6) << "RetainGradForTensor: " << tensor.name();
+      egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
   }
 }
 
@@ -280,8 +282,10 @@ void EagerUtils::CheckAndRetainGrad(
     const std::vector<egr::EagerTensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
-      VLOG(6) << "RetainGradForTensor: " << tensor.name();
-      egr::egr_utils_api::RetainGradForTensor(tensor);
+      if (tensor.initialized() || tensor.Var().IsInitialized()) {
+        VLOG(6) << "RetainGradForTensor: " << tensor.name();
+        egr::egr_utils_api::RetainGradForTensor(tensor);
+      }
     }
   }
 }

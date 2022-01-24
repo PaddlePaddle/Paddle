@@ -77,7 +77,7 @@ class PassStopGradientIter : public IterHelper<AutogradMeta*> {
       VLOG(2) << "Tensor is NULL";
       return;
     }
-    element->SetStopGradient(stop_gradient_);
+    element->WeakSetStopGradient(stop_gradient_);
   }
 
   bool stop_gradient_ = true;

@@ -27,6 +27,7 @@ from test_imperative_base import new_program_scope
 import numpy as np
 import six
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -294,7 +295,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             fluid.save_dygraph(self.state_dict, "./test_dy")
 
-    def testLoadAndSetVarBase(self):
+    def func_testLoadAndSetVarBase(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -403,7 +404,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetVariable(self):
+    def testLoadAndSetVarBase(self):
+        with _test_eager_guard():
+            self.func_testLoadAndSetVarBase()
+        self.func_testLoadAndSetVarBase()
+
+    def func_testSetVariable(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -510,7 +516,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetNumpy(self):
+    def testSetVariable(self):
+        with _test_eager_guard():
+            self.func_testSetVariable()
+        self.func_testSetVariable()
+
+    def func_testSetNumpy(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -623,7 +634,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetVariableBeforeTrain(self):
+    def testSetNumpy(self):
+        with _test_eager_guard():
+            self.func_testSetNumpy()
+        self.func_testSetNumpy()
+
+    def func_testSetVariableBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -700,7 +716,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[k]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testLoadAndSetVarBaseBeforeTrain(self):
+    def testSetVariableBeforeTrain(self):
+        with _test_eager_guard():
+            self.func_testSetVariableBeforeTrain()
+        self.func_testSetVariableBeforeTrain()
+
+    def func_testLoadAndSetVarBaseBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -791,7 +812,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[k]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetNumpyBeforeTrain(self):
+    def testLoadAndSetVarBaseBeforeTrain(self):
+        with _test_eager_guard():
+            self.func_testLoadAndSetVarBaseBeforeTrain()
+        self.func_testLoadAndSetVarBaseBeforeTrain()
+
+    def func_testSetNumpyBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -894,7 +920,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[k]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testOnlyLoadParams(self):
+    def testSetNumpyBeforeTrain(self):
+        with _test_eager_guard():
+            self.func_testSetNumpyBeforeTrain()
+        self.func_testSetNumpyBeforeTrain()
+
+    def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
@@ -911,7 +942,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
             para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
-    def test_load_compatible_with_keep_name_table(self):
+    def testOnlyLoadParams(self):
+        with _test_eager_guard():
+            self.func_testOnlyLoadParams()
+        self.func_testOnlyLoadParams()
+
+    def func_test_load_compatible_with_keep_name_table(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
@@ -921,6 +957,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 os.path.join('saved_dy', 'emb_dy'), keep_name_table=True)
             self.assertTrue(para_state_dict != None)
             self.assertTrue(opti_state_dict == None)
+
+    def test_load_compatible_with_keep_name_table(self):
+        with _test_eager_guard():
+            self.func_test_load_compatible_with_keep_name_table()
+        self.func_test_load_compatible_with_keep_name_table()
 
 
 if __name__ == '__main__':
