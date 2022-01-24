@@ -477,24 +477,23 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 struct MergeAdd<platform::XPUDeviceContext, T> {
-  framework::SelectedRows operator()(const platform::XPUDeviceContext& context,
-                                     const framework::SelectedRows& input,
-                                     const bool sorted_result = false) {
-    framework::SelectedRows out;
+  pten::SelectedRows operator()(const platform::XPUDeviceContext& context,
+                                const pten::SelectedRows& input,
+                                const bool sorted_result = false) {
+    pten::SelectedRows out;
     (*this)(context, input, &out, sorted_result);
     return out;
   }
 
   void operator()(const platform::XPUDeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output,
+                  const pten::SelectedRows& input, pten::SelectedRows* output,
                   const bool sorted_result = false) {
-    framework::Vector<int64_t> input_rows(input.rows());
+    Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
 
-    framework::SelectedRows& out = *output;
+    pten::SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
     auto input_width = input.value().dims()[1];
@@ -534,14 +533,14 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
   }
 
   void operator()(const platform::XPUDeviceContext& context,
-                  const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output,
+                  const std::vector<const pten::SelectedRows*>& inputs,
+                  pten::SelectedRows* output,
                   const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
     }
-    const framework::SelectedRows* has_value_input = nullptr;
+    const pten::SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
       if (in->rows().size() > 0) {
         has_value_input = in;
@@ -554,7 +553,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     }
     auto input_width = has_value_input->value().dims()[1];
     auto input_height = has_value_input->height();
-    framework::SelectedRows& out = *output;
+    pten::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
     size_t row_num = 0;
     for (auto* input : inputs) {
