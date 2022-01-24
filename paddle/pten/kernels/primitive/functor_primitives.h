@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/float16.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace pten {
 namespace kps {
