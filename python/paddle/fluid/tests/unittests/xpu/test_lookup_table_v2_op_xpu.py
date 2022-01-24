@@ -182,21 +182,22 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
 
 class XPUTestLookupTableIsSparse(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = 'sparse_lookup_table'
+        self.op_name = 'lookup_table_v2_grad'
         self.use_dynamic_create_class = False
 
     class TestLookupTableIsSparse(XPUOpTest):
         def setUp(self):
             self.set_xpu()
-            self.op_type = 'sparse_lookup_table'
+            self.op_type = 'lookup_table_v2_grad'
             self.place = paddle.XPUPlace(0)
 
+            self.init_dtype()
             self.set_inputs()
 
         def set_inputs(self):
             shape, _ = self.set_shape()
             self.x_data = np.random.randint(10, size=shape).astype("int64")
-            self.y_data = np.random.uniform(0, 1., shape).astype('float32')
+            self.y_data = np.random.uniform(0, 1., shape).astype(self.dtype)
 
         def set_w_grad(self, is_sparse):
             self.set_inputs()
@@ -206,7 +207,7 @@ class XPUTestLookupTableIsSparse(XPUOpTestWrapper):
                 x = fluid.layers.data(
                     name='x', shape=[data_shape], dtype='int64')
                 y_ = fluid.layers.data(
-                    name='y_', shape=[data_shape], dtype='float32')
+                    name='y_', shape=[data_shape], dtype=self.dtype)
                 emb = fluid.input.embedding(
                     input=x,
                     size=emb_shape,
@@ -239,7 +240,7 @@ class XPUTestLookupTableIsSparse(XPUOpTestWrapper):
 
         def test_check_w_grad(self):
             _, shape = self.set_shape()
-            self.w_data = np.random.random(size=shape).astype("float32")
+            self.w_data = np.random.random(size=shape).astype(self.dtype)
             w_grad = self.set_w_grad(False)
             w_grad_with_sparse = self.set_w_grad(True)
             self.check_grad(w_grad, w_grad_with_sparse)
@@ -249,6 +250,9 @@ class XPUTestLookupTableIsSparse(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
+
+        def init_dtype(self):
+            self.dtype = self.in_type
 
     class TestLookupTableIsSparse1(TestLookupTableIsSparse):
         def set_shape(self):
@@ -314,7 +318,7 @@ class TestEmbedOpError(unittest.TestCase):
             fluid.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
-support_types = get_xpu_op_support_types('sparse_lookup_table')
+support_types = get_xpu_op_support_types('lookup_table_v2_grad')
 for stype in support_types:
     create_test_class(
         globals(),
