@@ -133,9 +133,6 @@ class ScalarBase {
       case DataType::INT8:
         data_.i8 = tensor.template data<int8_t>()[0];
         break;
-      case DataType::UINT16:
-        data_.ui16 = tensor.template data<uint16_t>()[0];
-        break;
       case DataType::UINT8:
         data_.ui8 = tensor.template data<uint8_t>()[0];
         break;
