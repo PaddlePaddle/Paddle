@@ -25,10 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
-from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
-from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "gradient_clip"
@@ -964,3 +961,154 @@ def _get_varname_parts(varname):
         block_index = len(varname)
     orig_var_name = varname[0:min(block_index, trainer_idx)]
     return orig_var_name, block_part, trainer_part
+
+
+dtype_to_size = {
+    core.VarDesc.VarType.FP16: 2,
+    core.VarDesc.VarType.FP32: 4,
+    core.VarDesc.VarType.FP64: 8,
+    core.VarDesc.VarType.INT16: 2,
+    core.VarDesc.VarType.INT32: 4,
+    core.VarDesc.VarType.INT64: 8,
+    core.VarDesc.VarType.BOOL: 1,
+    core.VarDesc.VarType.UINT8: 1,
+}
+
+
+def set_var_lod_type(var):
+    if var.type == core.VarDesc.VarType.SELECTED_ROWS:
+        var.lod_level = None
+    elif var.type == core.VarDesc.VarType.LOD_TENSOR:
+        pass
+    else:
+        raise ValueError("can only support SELECTED_ROWS/LOD_TENSOR now")
+
+
+def get_var_mem_size(var):
+    m_size = reduce(lambda x, y: x * y, var.shape)
+    m_size *= dtype_to_size[var.dtype]
+    return m_size
+
+
+def build_var_distributed(context):
+    sparse_pairs, dense_pairs = get_param_grads(context['origin_main_program'])
+    origin_for_sparse = []
+    origin_for_dense = []
+    param_name_grad_name = {}
+    grad_name_to_param_name = {}
+    context["merged_variables_pairs"] = []
+    context["merged_sparse_pairs"] = []
+    context["merged_variable_map"] = {}
+
+    for param, grad in sparse_pairs:
+        set_var_lod_type(param)
+        set_var_lod_type(grad)
+        origin_for_sparse.append((param, grad))
+
+    for param, grad in dense_pairs:
+        set_var_lod_type(param)
+        set_var_lod_type(grad)
+        origin_for_dense.append((param, grad))
+
+    for dense_pair in origin_for_dense:
+        param, grad = dense_pair
+
+        m_param = MergedVariable(param, [param], [0])
+        m_grad = MergedVariable(grad, [grad], [0])
+        context["merged_variables_pairs"].append((m_param, m_grad))
+        context["merged_sparse_pairs"].append((m_param, m_grad))
+
+    for sparse_pair in origin_for_sparse:
+        param, grad = sparse_pair
+
+        m_param = MergedVariable(param, [param], [0])
+        m_grad = MergedVariable(grad, [grad], [0])
+        context["merged_variables_pairs"].append((m_param, m_grad))
+        context["merged_sparse_pairs"].append((m_param, m_grad))
+
+    for merged in self.merged_variables_pairs:
+        m_param, m_grad = merged
+        context["merged_variable_map"][
+            m_param.merged_var.name] = m_param.merged_var
+        context["merged_variable_map"][
+            m_grad.merged_var.name] = m_grad.merged_var
+
+    param_merges = []
+    param_merges.extend(origin_for_sparse)
+    param_merges.extend(origin_for_dense)
+
+    for param, grad in param_merges:
+        param_name_grad_name[param.name] = grad.name
+        grad_name_to_param_name[grad.name] = param.name
+
+    context["origin_sparse_pairs"] = origin_for_sparse
+    context["origin_dense_pairs"] = origin_for_dense
+    context["param_name_to_grad_name"] = param_name_grad_name
+    cotext["grad_name_to_param_name"] = grad_name_to_param_name
+
+
+def _is_opt_role_op(op):
+    # NOTE : depend on oprole to find out whether this op is for
+    # optimize
+    op_maker = core.op_proto_and_checker_maker
+    optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+    if op_maker.kOpRoleAttrName() in op.attr_names and \
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+        return True
+    return False
+
+
+def get_param_grads(origin_program):
+    def _get_params_grads(sparse_varnames):
+        block = origin_program.global_block()
+
+        dense_param_grads = []
+        sparse_param_grads = []
+
+        optimize_params = set()
+        origin_var_dict = origin_program.global_block().vars
+        role_id = int(core.op_proto_and_checker_maker.OpRole.Backward)
+        for op in block.ops:
+            if _is_opt_role_op(op):
+                # delete clip op from opt_ops when run in Parameter Server mode
+                if OP_NAME_SCOPE in op.all_attrs() \
+                        and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
+                    op._set_attr("op_role", role_id)
+                    continue
+                if op.attr(OP_ROLE_VAR_ATTR_NAME):
+                    param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
+                    grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
+                    if param_name not in optimize_params:
+                        optimize_params.add(param_name)
+                        param_grad = (origin_var_dict[param_name],
+                                      origin_var_dict[grad_name])
+
+                        if param_name in sparse_varnames:
+                            sparse_param_grads.append(param_grad)
+                        else:
+                            dense_param_grads.append(param_grad)
+        return sparse_param_grads, dense_param_grads
+
+    def _get_sparse_varnames():
+        varnames = []
+        for op in origin_program.global_block().ops:
+            if op.type in SPARSE_OP_TYPE_DICT.keys() \
+                    and op.attr('remote_prefetch') is True:
+                param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
+                varnames.append(param_name)
+
+        return list(set(varnames))
+
+    sparse_varnames = _get_sparse_varnames()
+    sparse_param_grads, dense_param_grads = _get_params_grads(sparse_varnames)
+
+    return sparse_param_grads, dense_param_grads
+
+
+def debug_program(file, program, is_trainer):
+    if is_trainer:
+        with open("file_woker_{}".format(fleet.worker_index()), 'w+') as f:
+            f.write(str(program))
+    else:
+        with open("file_server_{}".format(fleet.worker_index()), 'w+') as f:
+            f.write(str(program))

@@ -19,7 +19,7 @@ import subprocess
 import re
 import os
 import platform
-from .public import *
+from paddle.distributed.ps.utils.public import *
 from ..base.private_helper_function import wait_server_ready
 
 
@@ -72,6 +72,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         self.context['launch_barrier_flag'] = int(
             os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
+
+        build_var_distributed(self.context)
 
         # server 
         self.context['_main_server'] = fluid.Program()
@@ -133,9 +135,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             return False
 
         free = get_sys_free_mem()
-
-        from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
-
         processed_var_names = set(["@EMPTY@"])
         param_memory_size = 0
         for varname in program.global_block().vars:
@@ -143,8 +142,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if not var.persistable or var.desc.type(
             ) != core.VarDesc.VarType.LOD_TENSOR:
                 continue
-            param = vars_metatools.create_var_struct(var)
-            param_memory_size += param.m_size
+            set_var_lod_type(var)
+            param_memory_size += get_var_mem_size(var)
             processed_var_names.add(varname)
 
         upper_mem_use = param_memory_size * 5.0
