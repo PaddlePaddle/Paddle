@@ -80,10 +80,10 @@ void TestBeamSearch() {
 
     PrepareCPUTensors(&cpu_ids, &cpu_scores, &cpu_pre_ids, &cpu_pre_scores);
 
-    TensorCopySync(cpu_ids, *place, &ids);
-    TensorCopySync(cpu_scores, *place, &scores);
-    TensorCopySync(cpu_pre_ids, *place, &pre_ids);
-    TensorCopySync(cpu_pre_scores, *place, &pre_scores);
+    paddle::framework::TensorCopySync(cpu_ids, *place, &ids);
+    paddle::framework::TensorCopySync(cpu_scores, *place, &scores);
+    paddle::framework::TensorCopySync(cpu_pre_ids, *place, &pre_ids);
+    paddle::framework::TensorCopySync(cpu_pre_scores, *place, &pre_scores);
 
     ids.set_lod(cpu_ids.lod());
     scores.set_lod(cpu_scores.lod());
@@ -110,10 +110,10 @@ void TestBeamSearch() {
     cpu_selected_ids = selected_ids;
     cpu_selected_scores = selected_scores;
   } else {
-    TensorCopySync(selected_ids, paddle::platform::CPUPlace(),
-                   &cpu_selected_ids);
-    TensorCopySync(selected_scores, paddle::platform::CPUPlace(),
-                   &cpu_selected_scores);
+    paddle::framework::TensorCopySync(
+        selected_ids, paddle::platform::CPUPlace(), &cpu_selected_ids);
+    paddle::framework::TensorCopySync(
+        selected_scores, paddle::platform::CPUPlace(), &cpu_selected_scores);
     cpu_selected_ids.set_lod(selected_ids.lod());
     cpu_selected_scores.set_lod(selected_scores.lod());
   }

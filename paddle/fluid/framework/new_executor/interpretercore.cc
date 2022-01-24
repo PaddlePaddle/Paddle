@@ -418,15 +418,16 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run pten kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
+        pten::KernelContext pt_kernel_context;
         op_with_kernel->BuildPtenKernelContext(
             *instr_node.InnerRuntimeContext().get(),
-            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()));
+            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+            &pt_kernel_context);
 
-        (*instr_node.PtenKernel())(instr_node.PtenKernelContext());
+        (*instr_node.PtenKernel())(&pt_kernel_context);
 
         op_with_kernel->WriteBackToOutputs(
-            instr_node.InnerRuntimeContext().get());
-        instr_node.PtenKernelContext()->ClearData();
+            instr_node.InnerRuntimeContext().get(), &pt_kernel_context);
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }

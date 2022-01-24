@@ -35,7 +35,8 @@ inline std::vector<int> get_repeat_times(
     if (platform::is_gpu_place(repeat_tensor->place()) ||
         platform::is_xpu_place(repeat_tensor->place()) ||
         platform::is_npu_place(repeat_tensor->place())) {
-      TensorCopySync(*repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
+      paddle::framework::TensorCopySync(*repeat_tensor, platform::CPUPlace(),
+                                        &cpu_repeat_tensor);
       repeat_data = cpu_repeat_tensor.data<int>();
     }
     auto vec_repeat_times =
@@ -54,7 +55,7 @@ inline std::vector<int> get_repeat_times(
           platform::is_xpu_place(tensor->place()) ||
           platform::is_npu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_repeat_times.push_back(*temp.data<int32_t>());
       } else {
         vec_repeat_times.push_back(*tensor->data<int32_t>());

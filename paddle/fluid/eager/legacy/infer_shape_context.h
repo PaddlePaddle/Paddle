@@ -31,15 +31,18 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   using DDim = paddle::framework::DDim;
 
  public:
-  EagerInferShapeContext(const NameTensorMap* in, const NameTensorMap* out,
-                         const paddle::framework::AttributeMap* attr,
-                         const paddle::framework::AttributeMap* default_attr,
-                         const std::string op_type)
+  EagerInferShapeContext(
+      const NameTensorMap* in, const NameTensorMap* out,
+      const paddle::framework::AttributeMap* attr,
+      const paddle::framework::AttributeMap* default_attr,
+      const std::string op_type,
+      const paddle::framework::OpKernelType* op_kernel_type = nullptr)
       : tensor_in_(in),
         tensor_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
-        op_type_(op_type) {}
+        op_type_(op_type),
+        op_kernel_type_(op_kernel_type) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -214,17 +217,35 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
-  // TODO(paddle-dev): Can this be template?
+  bool IsRunMKLDNNKernel() const override {
+    return (op_kernel_type_ && (op_kernel_type_->data_layout_ ==
+                                paddle::framework::DataLayout::kMKLDNN));
+  }
+
   std::vector<paddle::framework::InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override {
-    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "GetInputVarPtrs not support in dygraph runtime context"));
+    std::vector<paddle::framework::InferShapeVarPtr> res;
+    auto it = tensor_in_->find(name);
+    PADDLE_ENFORCE_NE(it, tensor_in_->end(),
+                      paddle::platform::errors::NotFound(
+                          "Can not find [%s] in inputs.", name));
+    for (auto& tensor : it->second) {
+      res.emplace_back(tensor->MutableVar());
+    }
+    return res;
   }
 
   std::vector<paddle::framework::InferShapeVarPtr> GetOutputVarPtrs(
       const std::string& name) const override {
-    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "GetOutputVarPtrs not support in dygraph runtime context"));
+    std::vector<paddle::framework::InferShapeVarPtr> res;
+    auto it = tensor_out_->find(name);
+    PADDLE_ENFORCE_NE(it, tensor_out_->end(),
+                      paddle::platform::errors::NotFound(
+                          "Can not find [%s] in outputs.", name));
+    for (auto& tensor : it->second) {
+      res.emplace_back(tensor->MutableVar());
+    }
+    return res;
   }
 
   DDim GetInputDim(const std::string& name) const override {
@@ -400,6 +421,7 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   const paddle::framework::AttributeMap* attrs_;
   const paddle::framework::AttributeMap* default_attrs_;
   const std::string op_type_;
+  const paddle::framework::OpKernelType* op_kernel_type_;
 };
 
 }  // namespace legacy

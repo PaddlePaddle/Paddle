@@ -44,7 +44,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init.push_back(static_cast<T>(i));
   }
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({2, 3});
 
   ctx.Wait();
@@ -70,7 +70,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   for (int i = 0; i < static_cast<int>(out_vec.size()); ++i) {
     VLOG(3) << "out_vec[" << i << "] : " << out_vec[i];
@@ -96,7 +96,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   out_init.push_back(static_cast<T>(0.4112));
   out_init.push_back(static_cast<T>(0.5457));
 
-  TensorFromVector(out_init, ctx, tensor_out);
+  paddle::framework::TensorFromVector(out_init, ctx, tensor_out);
   tensor_out->Resize({2, 3});
 
   ctx.Wait();
@@ -109,7 +109,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
     dout_init.push_back(static_cast<T>(1.0));
   }
 
-  TensorFromVector(dout_init, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(dout_init, ctx, tensor_dout);
   tensor_dout->Resize({2, 3});
 
   ctx.Wait();
@@ -144,7 +144,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_dx, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &out_vec);
 
   ctx.Wait();
 

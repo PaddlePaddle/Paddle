@@ -17,12 +17,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
-namespace platform {
-struct CUDAPlace;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 using framework::Tensor;
 using platform::ActivationDescriptor;

@@ -261,7 +261,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     VLOG(2) << "The number of sub scopes after forward: "
             << out_scope_vec->front()->kids().size();
 #ifdef PADDLE_WITH_MKLDNN
-    if (FLAGS_use_mkldnn) DontClearMKLDNNCache(ctx.GetPlace());
+    if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif
   }
 };

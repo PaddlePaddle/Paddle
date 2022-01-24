@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 class CUDADeviceContext;
-struct CUDAPlace;
+
 }  // namespace platform
 }  // namespace paddle
 
@@ -68,10 +68,8 @@ void weight_to_tensor(const platform::Place &place, gpuStream_t stream,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
-                 weight_data + weight_offset,
-                 BOOST_GET_CONST(platform::CUDAPlace, weight_list[i]->place()),
-                 in_data, in_size * sizeof(T), stream);
+    memory::Copy(weight->place(), weight_data + weight_offset,
+                 weight_list[i]->place(), in_data, in_size * sizeof(T), stream);
     weight_offset += in_size;
   }
 }
@@ -88,10 +86,8 @@ void weight_to_tensor_list(const platform::Place &place, gpuStream_t stream,
     T *weight_grad_data = (*weight_grad)[i]->mutable_data<T>(place);
     const T *src = weight_data + weight_offset;
 
-    memory::Copy(
-        BOOST_GET_CONST(platform::CUDAPlace, (*weight_grad)[i]->place()),
-        weight_grad_data, BOOST_GET_CONST(platform::CUDAPlace, weight->place()),
-        src, in_size * sizeof(T), stream);
+    memory::Copy((*weight_grad)[i]->place(), weight_grad_data, weight->place(),
+                 src, in_size * sizeof(T), stream);
     weight_offset += in_size;
   }
 }
@@ -176,8 +172,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int seed = ctx.Attr<int>("seed");
 
     if (!is_test) {
-      int device_id =
-          BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+      int device_id = ctx.GetPlace().GetDeviceId();
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
       if (gen_cuda->GetIsInitPy() && seed == 0) {
         // If perform `manual_seed` in python and inner seed is not specified

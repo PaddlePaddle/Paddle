@@ -2696,8 +2696,8 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =
@@ -2751,8 +2751,8 @@ class PowGradKernel
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =

@@ -14,11 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_scale.h"
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace operators {

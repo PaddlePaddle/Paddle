@@ -67,7 +67,8 @@ class AttnMatMul {
       ins.emplace_back(bias);
       outs.emplace_back(bias_out);
       int elewise_add_axis = -1;
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
     }
   }

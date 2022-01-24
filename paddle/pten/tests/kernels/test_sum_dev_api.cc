@@ -25,35 +25,30 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, sum) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
+  pten::DenseTensor dense_x(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   float sum = 0.0;
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
     sum += i * 1.0;
   }
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   std::vector<int64_t> axis = {0, 1};
+  pten::CPUContext dev_ctx;
   // 2. test API
-  auto out = pten::Sum<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      axis,
-      pten::DataType::FLOAT32,
-      false);
+  auto out =
+      pten::Sum<float>(dev_ctx, dense_x, axis, pten::DataType::FLOAT32, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);

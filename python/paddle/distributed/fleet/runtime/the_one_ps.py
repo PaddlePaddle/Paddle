@@ -171,6 +171,8 @@ class CommonAccessor:
         self.dims = []
         self.trainer_num = 0
         self.sync = "false"
+        self.table_num = None
+        self.table_dim = None
         self.initializers = []
         self.opt_input_map = {}
         self.opt_attr_map = {}
@@ -256,7 +258,7 @@ class CommonAccessor:
                 break
         return attr_str
 
-    def parse_by_optimizer(self, grad_name, is_sparse, total_dims,
+    def parse_by_optimizer(self, grad_name, is_sparse, size, single_dim,
                            compiled_strategy, adam_d2sum):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
         param_name = compiled_strategy.grad_name_to_param_name[grad_name]
@@ -281,6 +283,8 @@ class CommonAccessor:
         initializers = []
 
         self.trainer_num = compiled_strategy.get_trainers()
+        self.table_num = size
+        self.table_dim = single_dim
 
         if oop.type != 'adam' and adam_d2sum == True:
             print('optimization algorithm is not adam, set adam_d2sum False')
@@ -294,7 +298,7 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["naive_adagrad"]
             attr_varnames = self.opt_attr_map["naive_adagrad"]
             self.accessor_class = "sgd"
-        elif adam_d2sum:
+        elif adam_d2sum and not is_sparse:
             param_varnames = self.opt_input_map["adam_d2sum"]
             attr_varnames = self.opt_attr_map["adam_d2sum"]
             self.accessor_class = "adam_d2sum"
@@ -309,10 +313,9 @@ class CommonAccessor:
                 #for dims
                 if shape is None:
                     if is_sparse:
-                        shape = total_dims
+                        shape = single_dim
                     else:
-                        shape = self.get_shard(total_dims, pserver_num,
-                                               pserver_id)
+                        shape = self.get_shard(size, pserver_num, pserver_id)
                 dims.append(shape)
 
                 #for initializers
@@ -351,9 +354,9 @@ class CommonAccessor:
 
                     if shape is None:
                         if is_sparse:
-                            shape = total_dims
+                            shape = single_dim
                         else:
-                            shape = self.get_shard(total_dims, pserver_num,
+                            shape = self.get_shard(size, pserver_num,
                                                    pserver_id)
                     dims.append(shape)
 
@@ -382,6 +385,10 @@ class CommonAccessor:
             attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
+        if self.table_num:
+            attrs += "table_num: {} ".format(self.table_num)
+        if self.table_dim:
+            attrs += "table_dim: {} ".format(self.table_dim)
 
         for param in self.params:
             attrs += "params: \"{}\" ".format(param)
@@ -451,10 +458,7 @@ class Table:
             accessor_str = accessor_str.format(
                 conv_indent(indent), self.accessor_proto, conv_indent(indent))
             attrs += accessor_str + "\n"
-            return table_str.format(
-                conv_indent(indent), attrs, conv_indent(indent))
-
-        if self.accessor is not None:
+        elif self.accessor is not None:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
 
@@ -988,8 +992,9 @@ class TheOnePSRuntime(RuntimeBase):
                 adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
                                           ctx.is_sparse(),
-                                          ctx.sections()[1] if ctx.is_sparse()
-                                          else ctx.sections()[0],
+                                          ctx.sections()[0],
+                                          ctx.sections()[1]
+                                          if ctx.is_sparse() else 1,
                                           self.compiled_strategy, adam_d2sum)
 
                 if ctx.is_sparse():
@@ -1142,17 +1147,25 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
+    def _get_inference_model_path(self, dirname):
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
+        return model_path
+
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
         distributed_varnames = get_sparse_tablenames(
             self.compiled_strategy.origin_main_program, True)
         values = []
+        model_path = self._get_inference_model_path(dirname)
         for id, names in context.items():
             if names[0] not in distributed_varnames:
                 # only save sparse param to local
                 try:
-                    self._worker.recv_and_save_model(id, dirname)
+                    self._worker.recv_and_save_model(id, model_path)
                 except:
                     pass
             # save sparse & distributed param on server
@@ -1277,10 +1290,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         infer_program._copy_dist_param_info_from(program)
 
-        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
-            model_path = "./dnn_plugin"
-        else:
-            model_path = os.path.join(dirname, "dnn_plugin")
+        model_path = self._get_inference_model_path(dirname)
         model_basename = "__model__"
         model_basename = os.path.join(model_path, model_basename)
         paddle.save(infer_program, model_basename)

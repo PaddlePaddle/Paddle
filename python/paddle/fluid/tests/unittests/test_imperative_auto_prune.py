@@ -181,6 +181,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.func_auto_prune2()
         self.func_auto_prune2()
 
+    # TODO(jiabin): Support this when we support better split tensor
     def test_auto_prune3(self):
         with fluid.dygraph.guard():
             case3 = AutoPruneLayer3(input_size=784)
@@ -217,7 +218,30 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case4.linear.weight._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 0).all())
 
+    def func_auto_prune6(self):
+        with fluid.dygraph.guard():
+            value0 = np.arange(26).reshape(2, 13).astype("float32")
+            value1 = np.arange(6).reshape(2, 3).astype("float32")
+            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            linear = fluid.Linear(13, 5, dtype="float32")
+            linear2 = fluid.Linear(3, 3, dtype="float32")
+            a = fluid.dygraph.to_variable(value0)
+            b = fluid.dygraph.to_variable(value1)
+            c = fluid.dygraph.to_variable(value2)
+            out1 = linear(a)
+            out2 = linear2(b)
+            out1.stop_gradient = True
+            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            out.backward()
+            self.assertTrue(linear.weight.gradient() is None)
+            self.assertTrue(out1.gradient() is None)
+
     def test_auto_prune6(self):
+        with _test_eager_guard():
+            self.func_auto_prune6()
+        self.func_auto_prune6()
+
+    def func_auto_prune7(self):
         with fluid.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
@@ -236,24 +260,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune7(self):
-        with fluid.dygraph.guard():
-            value0 = np.arange(26).reshape(2, 13).astype("float32")
-            value1 = np.arange(6).reshape(2, 3).astype("float32")
-            value2 = np.arange(10).reshape(2, 5).astype("float32")
-            linear = fluid.Linear(13, 5, dtype="float32")
-            linear2 = fluid.Linear(3, 3, dtype="float32")
-            a = fluid.dygraph.to_variable(value0)
-            b = fluid.dygraph.to_variable(value1)
-            c = fluid.dygraph.to_variable(value2)
-            out1 = linear(a)
-            out2 = linear2(b)
-            out1.stop_gradient = True
-            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
-            out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+        with _test_eager_guard():
+            self.func_auto_prune7()
+        self.func_auto_prune7()
 
-    def test_auto_prune8(self):
+    def func_auto_prune8(self):
         with fluid.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
@@ -278,7 +289,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertFalse(
                 np.array_equal(linear_origin, linear.weight.numpy()))
 
-    def test_auto_prune9(self):
+    def test_auto_prune8(self):
+        with _test_eager_guard():
+            self.func_auto_prune8()
+        self.func_auto_prune8()
+
+    def func_auto_prune9(self):
         with fluid.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
@@ -307,7 +323,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             except ValueError as e:
                 assert type(e) == ValueError
 
-    def test_auto_prune10(self):
+    def test_auto_prune9(self):
+        with _test_eager_guard():
+            self.func_auto_prune9()
+        self.func_auto_prune9()
+
+    def func_auto_prune10(self):
         with fluid.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
@@ -321,12 +342,18 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out2 = linear2(b)
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            #TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support fluid anymore.
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             out.backward()
             self.assertTrue(linear.weight.gradient() is None)
             self.assertTrue(out1.gradient() is None)
 
-    def test_auto_prune_with_optimizer(self):
+    def test_auto_prune10(self):
+        with _test_eager_guard():
+            self.func_auto_prune10()
+        self.func_auto_prune10()
+
+    def func_auto_prune_with_optimizer(self):
         vocab_size = 100
         size = 20
         batch_size = 16
@@ -341,7 +368,6 @@ class TestImperativeAutoPrune(unittest.TestCase):
             grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip)
-
             indices = fluid.dygraph.to_variable(indices)
             embed = fluid.dygraph.to_variable(embed)
             dummy_loss = model(embed)
@@ -374,7 +400,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             assert model.embed1.weight._grad_ivar() is None
             assert model.linear_1.weight._grad_ivar() is None
 
-    def test_case2_prune_no_grad_branch(self):
+    def test_auto_prune_with_optimizer(self):
+        with _test_eager_guard():
+            self.func_auto_prune_with_optimizer()
+        self.func_auto_prune_with_optimizer()
+
+    def func_case2_prune_no_grad_branch(self):
         with fluid.dygraph.guard():
             value1 = np.arange(784).reshape(1, 784)
             value2 = np.arange(1).reshape(1, 1)
@@ -386,7 +417,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case3.linear2.weight._grad_ivar() is None)
             self.assertTrue(case3.linear.weight._grad_ivar() is not None)
 
-    def test_case3_prune_no_grad_branch2(self):
+    def test_case2_prune_no_grad_branch(self):
+        with _test_eager_guard():
+            self.func_case2_prune_no_grad_branch()
+        self.func_case2_prune_no_grad_branch()
+
+    def func_case3_prune_no_grad_branch2(self):
         with fluid.dygraph.guard():
             value1 = np.arange(1).reshape(1, 1)
             linear = fluid.dygraph.Linear(1, 1, act=None)
@@ -399,12 +435,22 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss.backward()
             self.assertTrue(linear.weight._grad_ivar() is None)
 
-    def test_case4_with_no_grad_op_maker(self):
+    def test_case3_prune_no_grad_branch2(self):
+        with _test_eager_guard():
+            self.func_case3_prune_no_grad_branch2()
+        self.func_case3_prune_no_grad_branch2()
+
+    def func_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
             out = fluid.layers.gaussian_random(shape=[20, 30])
             loss = fluid.layers.mean(out)
             loss.backward()
             self.assertTrue(out._grad_ivar() is None)
+
+    def test_case4_with_no_grad_op_maker(self):
+        with _test_eager_guard():
+            self.func_case4_with_no_grad_op_maker()
+        self.func_case4_with_no_grad_op_maker()
 
 
 if __name__ == '__main__':
