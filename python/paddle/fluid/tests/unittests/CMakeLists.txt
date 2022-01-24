@@ -104,6 +104,10 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
+if(ON_INFER)
+    LIST(REMOVE_ITEM TEST_OPS test_eager_trace_op)
+endif()
+
 if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)

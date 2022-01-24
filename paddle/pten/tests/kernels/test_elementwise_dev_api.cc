@@ -36,13 +36,15 @@ TEST(DEV_API, add) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   pten::DenseTensor dense_y(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float sum[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -82,13 +84,15 @@ TEST(DEV_API, subtract) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   pten::DenseTensor dense_y(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float sub[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -128,13 +132,15 @@ TEST(DEV_API, divide) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   pten::DenseTensor dense_y(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float div[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -174,13 +180,15 @@ TEST(DEV_API, multiply) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   pten::DenseTensor dense_y(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float mul[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
