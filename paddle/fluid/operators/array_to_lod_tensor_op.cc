@@ -14,6 +14,7 @@ limitations under the License. */
 #include <paddle/fluid/operators/math/concat_and_split.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -168,7 +169,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
             x[x_idx].lod(), idx, idx + 1, 0);
 
         auto &lod_length = lod_and_offset.first;
-        framework::AppendLoD(out_lod, lod_length);
+        pten::AppendLoD(out_lod, lod_length);
 
         size_t start_offset = lod_and_offset.second.first;
         size_t end_offset = lod_and_offset.second.second;

@@ -132,7 +132,7 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   return it->second.get().get();
 }
 
-template <typename DevCtx, typename PlaceType>
+template <typename DevCtx>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         map_ptr,
@@ -158,19 +158,14 @@ DeviceContextPool::DeviceContextPool(
   }
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
-      platform::CPUPlace place;
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_,
-                                                          place);
+      EmplaceDeviceContext<MKLDNNDeviceContext>(&device_contexts_, p);
 #else
-      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<CPUDeviceContext>(&device_contexts_, p);
 #endif
     } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::CUDAPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_,
-                                                         place);
+      EmplaceDeviceContext<CUDADeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("CUDAPlace is not supported. Please "
@@ -178,9 +173,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::CUDAPinnedPlace place;
-      EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
-          &device_contexts_, place);
+      EmplaceDeviceContext<CUDAPinnedDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
@@ -188,9 +181,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
-      platform::XPUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<XPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
@@ -198,9 +189,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_mlu_place(p)) {
 #ifdef PADDLE_WITH_MLU
-      platform::MLUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<MLUDeviceContext, MLUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<MLUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("MLUPlace is not supported. Please "
@@ -208,9 +197,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_ipu_place(p)) {
 #ifdef PADDLE_WITH_IPU
-      platform::IPUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<IPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("IPUPlace is not supported. Please "
@@ -218,9 +205,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::NPUPlace place(p.GetDeviceId());
-      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_,
-                                                       place);
+      EmplaceDeviceContext<NPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported. Please "
@@ -228,9 +213,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_pinned_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::NPUPinnedPlace place;
-      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
-          &device_contexts_, place);
+      EmplaceDeviceContext<NPUPinnedDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "
@@ -241,19 +224,9 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
+CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-Place CPUDeviceContext::GetPlace() const { return place_; }
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
@@ -282,7 +255,8 @@ XPUDeviceContext::~XPUDeviceContext() {}
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   platform::XPUDeviceGuard guard(place.device);
 
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: " << place_.device;
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
+                          << static_cast<int>(place_.device);
 
   context_ = xpu::create_context();
   const int MAX_XPU_NUM = 16;
@@ -522,7 +496,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   driver_version_ = GetGPUDriverVersion(place_.device);
   runtime_version_ = GetGPURuntimeVersion(place_.device);
 
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
+                          << static_cast<int>(place_.device)
                           << ", GPU Compute Capability: "
                           << compute_capability_ / 10 << "."
                           << compute_capability_ % 10
@@ -535,12 +510,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   size_t version_major, version_minor, version_patch;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
       &version_major, &version_minor, &version_patch));
-  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                           << ", MIOpen Version: " << version_major << "."
                           << version_minor << "." << version_patch;
 #else
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
-  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
                           << (cudnn_dso_ver % 1000) / 100 << ".";
 #endif
@@ -556,7 +531,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 #endif
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place_.device
+          << "WARNING: device: " << static_cast<int>(place_.device)
           << ". The installed Paddle is compiled with CUDA "
           << compile_cuda_version / 10 << "." << compile_cuda_version % 10
           << ", but CUDA runtime version in your machine is "

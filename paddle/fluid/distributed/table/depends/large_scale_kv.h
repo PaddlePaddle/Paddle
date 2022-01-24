@@ -33,16 +33,16 @@
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace paddle {
 namespace distributed {
@@ -202,7 +202,7 @@ class ValueBlock {
       // value = _alloc.acquire(value_length_);
       table[id] = value;
     } else {
-      value = (VALUE *)(void *)(res->second);
+      value = (VALUE *)(void *)(res->second);  // NOLINT
     }
     return value;
   }
@@ -282,8 +282,8 @@ class ValueBlock {
         value->unseen_days_++;
         if (value->unseen_days_ >= threshold) {
           butil::return_object(iter->second);
-          //_alloc.release(iter->second);
-          //_alloc.release(value);
+          // _alloc.release(iter->second);
+          // _alloc.release(value);
           iter = table.erase(iter);
         } else {
           ++iter;

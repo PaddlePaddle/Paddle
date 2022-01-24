@@ -132,8 +132,11 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     auto &dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
-    pten::FlattenKernel<T, DeviceContext>(dev_ctx, *in, start_axis, stop_axis,
-                                          out);
+    pten::FlattenKernel<T, typename paddle::framework::ConvertToPtenContext<
+                               DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
+        *in, start_axis, stop_axis, out);
   }
 };
 
@@ -150,7 +153,11 @@ class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::FlattenGradKernel<T, DeviceContext>(dev_ctx, *d_out, *xshape, d_x);
+    pten::FlattenGradKernel<T, typename paddle::framework::ConvertToPtenContext<
+                                   DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE &>(dev_ctx),
+        *d_out, *xshape, d_x);
   }
 };
 

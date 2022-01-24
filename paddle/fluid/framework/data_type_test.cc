@@ -18,12 +18,15 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor.h"
 
+<<<<<<< HEAD
 namespace paddle {
 namespace platform {
 struct float16;
 }  // namespace platform
 }  // namespace paddle
 
+=======
+>>>>>>> a1e40dc66160f9cd0ac413e7bdd5f4d2b387d772
 TEST(DataType, float16) {
   using paddle::framework::Tensor;
   using paddle::platform::CPUPlace;

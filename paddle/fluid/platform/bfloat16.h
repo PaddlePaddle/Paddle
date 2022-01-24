@@ -14,45 +14,11 @@
 
 #pragma once
 
-#ifdef _WIN32
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#endif
-
-#include "paddle/utils/Core"
+#include "paddle/pten/common/bfloat16.h"
 
 namespace paddle {
 namespace platform {
-using bfloat16 = Eigen::bfloat16;
+using bfloat16 = pten::dtype::bfloat16;
+using namespace pten::dtype;  // NOLINT
 }  // namespace platform
 }  // namespace paddle
-
-inline void* memset(paddle::platform::bfloat16* ptr, int value, size_t num) {
-  return memset(reinterpret_cast<void*>(ptr), value, num);
-}
-
-namespace std {
-template <>
-struct is_pod<paddle::platform::bfloat16> {
-  static const bool value = true;
-};
-
-template <>
-struct is_floating_point<paddle::platform::bfloat16>
-    : std::integral_constant<
-          bool, std::is_same<paddle::platform::bfloat16,
-                             typename std::remove_cv<
-                                 paddle::platform::bfloat16>::type>::value> {};
-
-template <>
-struct is_signed<paddle::platform::bfloat16> {
-  static const bool value = true;
-};
-
-template <>
-struct is_unsigned<paddle::platform::bfloat16> {
-  static const bool value = false;
-};
-}  // namespace std
