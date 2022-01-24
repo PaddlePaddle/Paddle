@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#define DIVUP(x, y) (((x) + ((y)-1)) / (y))
+
 template <typename T>
 void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *input,
@@ -112,11 +114,43 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     }                                                                      \
   } while (0)
 
-    if (is_scale_bias_same_dtype_with_x) {
-      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
-    } else {
-      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+    bool can_call_1024_kernel = false;
+    if (feature_size == 1024 && scale != nullptr && bias != nullptr) {
+      can_call_1024_kernel = true;
     }
+
+    if (can_call_1024_kernel) {
+      const int WARPS_M = 4;
+      const int WARPS_N = 1;
+      const int THREADS_PER_WARP = 32;
+      const int BYTES_PER_LDG = 16;
+      const int VecSize = BYTES_PER_LDG / sizeof(T);
+
+      const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
+      const int ROWS_PER_CTA = WARPS_M;
+
+      const int grid = DIVUP(batch_size, ROWS_PER_CTA);
+      if (is_scale_bias_same_dtype_with_x) {
+        ln_fwd_1024_kernel<T, U, T, VecSize, WARPS_M, WARPS_N,
+                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
+            static_cast<void *>(y_data), static_cast<void *>(mean_data),
+            static_cast<void *>(var_data), static_cast<const void *>(x_data),
+            void_scale_data, void_bias_data, epsilon, batch_size, feature_size);
+      } else {
+        ln_fwd_1024_kernel<T, U, U, VecSize, WARPS_M, WARPS_N,
+                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
+            static_cast<void *>(y_data), static_cast<void *>(mean_data),
+            static_cast<void *>(var_data), static_cast<const void *>(x_data),
+            void_scale_data, void_bias_data, epsilon, batch_size, feature_size);
+      }
+    } else {
+      if (is_scale_bias_same_dtype_with_x) {
+        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+      } else {
+        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+      }
+    }
+
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
   }
 };

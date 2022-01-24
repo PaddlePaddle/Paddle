@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#define DIVUP(x, y) (((x) + ((y)-1)) / (y))
+
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -34,12 +36,13 @@ using LayerNormScaleBiasT =
  */
 
 template <typename T, int VecSize, typename U,
-          bool ScaleBiasWithSameTypeX = false>
+          bool ScaleBiasWithSameTypeX = false, bool x_is_vec = false>
 __device__ void CalcLayernormY(
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias, const T *x,
     T *y, const int row_id, const int col_id, const int cols,
-    const LayerNormParamType<T> mean_val, const LayerNormParamType<T> invvar) {
+    const LayerNormParamType<T> mean_val, const LayerNormParamType<T> invvar,
+    platform::AlignedVector<T, VecSize> *input_vec = nullptr) {
   using LoadT = platform::AlignedVector<T, VecSize>;
   using StoreT = platform::AlignedVector<T, VecSize>;
   using LoadU = platform::AlignedVector<U, VecSize>;
@@ -57,8 +60,13 @@ __device__ void CalcLayernormY(
       bias_vec[ii] =
           static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(0);
     }
-    // vectorize load data from global
-    platform::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
+
+    if (!x_is_vec) {
+      // vectorize load data from global
+      platform::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
+    } else {
+      x_vec = *input_vec;
+    }
 
     if (scale != nullptr) {
       platform::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
@@ -153,6 +161,330 @@ __global__ void FusedLayernormResidualDropoutBias(
       invvar);
 }
 
+/*
+* @brief layernorm(residual_ + dropout(x_));
+ * Conditions:
+ * (1) The number of cols is 1024;
+ * (2) layer_norm scale and bias is not null;
+ * (3) linear bias is null;
+ * @param
+ * rows: batch_size * seq_len
+ * cols: 1024
+ * x_: [rows, cols], inputs
+ * residual_:[rows, cols]
+ * gamma_: [cols]: layernorm scale, not null
+ * beta_: [cols], layernorm bias, not null
+ * mask_out_: [rows, cols], dropout result
+ * residual_out_: [rows, cols], residual + dropout(src)
+ * y_: [rows, cols], layernorm result
+ * mean_out_: [rows]: layernorm means
+ * var_out_: [rows]: layernorm vars
+*/
+#define COLS_ 1024
+template <
+    typename T, typename U, typename ScaleT = U, typename MaskType = uint8_t,
+    int VecSize = 8, int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
+    int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
+    int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
+    int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
+    int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
+    int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
+__global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
+    void *__restrict__ y_, void *__restrict__ residual_out_,
+    void *__restrict__ mask_out_, void *__restrict__ mean_out_,
+    void *__restrict__ var_out_, const void *__restrict__ x_,
+    const void *__restrict__ residual_, const void *__restrict__ gamma_,
+    const void *__restrict__ beta_, uint64_t seed, const float dropout_prob,
+    const bool is_upscale_in_train, const bool is_test,
+    const uint64_t increment, const float epsilon, int rows, int cols) {
+  using Vec = platform::AlignedVector<T, VecSize>;
+  using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
+  using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
+
+  const int tidx = threadIdx.x;
+  const int bidx = blockIdx.x;
+  const int lane = tidx % THREADS_PER_WARP;  // 0, 1, ..., 31
+  const int warp = tidx / THREADS_PER_WARP;  // 0, 1, 2, 3
+  const int warp_n = warp % WARPS_N;         // 0
+  const int warp_m = warp / WARPS_N;         // 0, 1, 2, 3
+
+  const int c = warp_n * THREADS_PER_WARP + lane;  // lane
+  const int r = bidx * ROWS_PER_CTA + warp_m;      // row id
+
+  const T *x_ptr = static_cast<const T *>(x_);
+  const T *residual_ptr = static_cast<const T *>(residual_);
+  const ScaleT *g_ptr = static_cast<const ScaleT *>(gamma_);
+  const ScaleT *b_ptr = static_cast<const ScaleT *>(beta_);
+  T *y_ptr = static_cast<T *>(y_);
+  T *residual_out_ptr = static_cast<T *>(residual_out_);
+  MaskType *mask_out_ptr = static_cast<MaskType *>(mask_out_);
+  U *mean_out_ptr = static_cast<U *>(mean_out_);
+  U *var_out_ptr = static_cast<U *>(var_out_);
+
+  int idx = r * COLS_ + c;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+
+  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+
+  Vec_scale gamma[LDGS];
+  Vec_scale beta[LDGS];
+#pragma unroll
+  for (int it = 0, col = c; it < LDGS; it++) {
+    platform::Load<ScaleT, VecSize>(g_ptr + col * VecSize, &gamma[it]);
+    platform::Load<ScaleT, VecSize>(b_ptr + col * VecSize, &beta[it]);
+    col += THREADS_PER_ROW;
+  }
+
+  constexpr U rn = 1.f / U(COLS_);
+  for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
+    Vec x[LDGS];
+    Vec residual[LDGS];
+#pragma unroll
+    for (int it = 0, col = c; it < LDGS; it++) {
+      platform::Load<T, VecSize>(x_ptr + row * COLS_ + col * VecSize, &x[it]);
+      platform::Load<T, VecSize>(residual_ptr + row * COLS_ + col * VecSize,
+                                 &residual[it]);
+      col += THREADS_PER_ROW;
+    }
+
+    MaskStoreT mask_vec[LDGS];
+    if (!is_test) {
+#pragma unroll
+      for (int it = 0; it < LDGS; it++) {
+        float rand[VecSize];
+        RandVec<VecSize>(&state, rand);
+#pragma unroll
+        for (int jt = 0; jt < VecSize; jt++) {
+#pragma unroll
+          mask_vec[it][jt] = static_cast<MaskType>(rand[jt] >= dropout_prob);
+        }
+      }
+    } else {
+#pragma unroll
+      for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+        for (int jt = 0; jt < VecSize; jt++) {
+          mask_vec[it][jt] = static_cast<MaskType>(1);
+        }
+      }
+    }
+
+    // 4 * 8
+    U xf[LDGS * VecSize];
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        // dropout(x) + residual
+        x[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor +
+                    residual[it][jt];
+        xf[it * VecSize + jt] = U(x[it][jt]);
+      }
+    }
+
+// store dropout_residual_out and mask_out
+#pragma unroll
+    for (int it = 0, col = c; it < LDGS; it++) {
+      platform::Store<T, VecSize>(
+          x[it], residual_out_ptr + row * COLS_ + col * VecSize);
+      platform::Store<MaskType, VecSize>(
+          mask_vec[it], mask_out_ptr + row * COLS_ + col * VecSize);
+      col += THREADS_PER_ROW;
+    }
+
+    U mu_local = 0.f;
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        mu_local += xf[it * VecSize + jt];
+      }
+    }
+
+#pragma unroll
+    for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
+      mu_local += __shfl_xor_sync(uint32_t(-1), mu_local, it);
+    }
+    mu_local *= rn;
+    if (lane == 0) {
+      mean_out_ptr[row] = mu_local;
+    }
+    U var_local = 0.f;
+
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        U diff = xf[it * VecSize + jt] - mu_local;
+        var_local += diff * diff;
+      }
+    }
+
+#pragma unroll
+    for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
+      var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
+    }
+    U rsigma = rsqrtf(var_local * rn + epsilon);
+    if (lane == 0) {
+      // Note: the stored var is different for paddle(ln) and apex (fast ln).
+      // var_out_ptr[row] = rsigma;
+      var_out_ptr[row] = var_local * rn;
+    }
+
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        // use fp16 to compute
+        // ScaleT tmp = static_cast<ScaleT>(rsigma * (xf[it * VecSize + jt] -
+        // mu_local));
+        // x[it][jt] = gamma[it][jt] *  tmp + beta[it][jt];
+        // cast to fp32 to compute
+        U tmp = rsigma * (static_cast<U>(xf[it * VecSize + jt]) - mu_local);
+        x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
+                                   static_cast<U>(beta[it][jt]));
+      }
+    }
+
+#pragma unroll
+    for (int it = 0, col = c; it < LDGS; it++) {
+      platform::Store<T, VecSize>(x[it], y_ptr + row * COLS_ + col * VecSize);
+      col += THREADS_PER_ROW;
+    }
+  }
+}
+
+/**
+ * @brief layernorm(residual + dropout(src + bias));
+ * @param
+ * rows: batch_size * seq_len
+ * cols: feature_size or hidden_size
+ * src: [rows, cols], inputs
+ * bias: [cols], linear bias, can be null
+ * residual:[rows, cols]
+ * mask: [rows, cols], dropout result
+ * dst: [rows, cols], residual + dropout(src+bias)
+ * layernorm_dst: [rows, cols], layernorm result
+ * layernorm_bias: [cols], layernorm bias, can be null
+ * scale: [cols]: layernorm scale, can be null
+ * means: [rows]: layernorm means
+ * vars: [rows]: layernorm vars
+ */
+template <typename T, typename MaskType, int VecSize, typename U,
+          bool ScaleBiasWithSameTypeX = false, bool ComputeLayerNorm = true>
+__global__ void FusedLayernormResidualDropoutBiasOneRound(
+    const size_t rows, const size_t cols, uint64_t seed,
+    const float dropout_prob, const bool is_upscale_in_train,
+    const bool is_test, const uint64_t increment, const float epsilon,
+    const T *src, const T *residual, const T *bias,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
+    MaskType *mask, T *dst, T *layernorm_dst, LayerNormParamType<T> *mean,
+    LayerNormParamType<T> *var) {
+  int tid = threadIdx.x;
+  int row_id = blockIdx.x;
+  int idx = row_id * cols + tid;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+
+  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+
+  __shared__ U mean_share;
+  __shared__ U var_share;
+  __shared__ U shared_mean[32];
+  __shared__ U shared_var[32];
+
+  U mean_val = 0;
+  U var_val = 0;
+
+  //
+  int col_id = tid * VecSize;
+
+  using LoadT = platform::AlignedVector<T, VecSize>;
+  using StoreT = platform::AlignedVector<T, VecSize>;
+  using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
+
+  LoadT src_vec;
+  LoadT residual_vec;
+  LoadT bias_vec;
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    bias_vec[ii] = static_cast<T>(0);
+    residual_vec[ii] = static_cast<T>(0);
+  }
+  // vectorize load data from global
+  platform::Load<T, VecSize>(&src[row_id * cols + col_id], &src_vec);
+  if (residual) {
+    platform::Load<T, VecSize>(&residual[row_id * cols + col_id],
+                               &residual_vec);
+  }
+
+  if (bias) {
+    platform::Load<T, VecSize>(&bias[col_id], &bias_vec);
+  }
+
+  MaskStoreT mask_vec;
+  if (!is_test) {
+    float rand[VecSize];
+    RandVec<VecSize>(&state, rand);
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
+    }
+  } else {
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(1);
+    }
+  }
+
+  StoreT dest_vec;
+
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    T tmp = src_vec[ii] + bias_vec[ii];
+    dest_vec[ii] =
+        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
+    if (ComputeLayerNorm) {
+      U tmp = static_cast<U>(dest_vec[ii]);
+      mean_val += tmp;
+      var_val += (tmp * tmp);
+    }
+  }
+
+  // store result to global
+  platform::Store<T, VecSize>(dest_vec, &dst[row_id * cols + col_id]);
+  if (!is_test) {
+    platform::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
+  }
+
+  if (ComputeLayerNorm) {
+    // for ln
+    mean_val = BlockReduceSum<U>(mean_val, shared_mean);
+    var_val = BlockReduceSum<U>(var_val, shared_var);
+    if (threadIdx.x == 0) {
+      auto scale =
+          static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
+              static_cast<float>(1.) / static_cast<float>(cols));
+      auto tmp = mean_val * static_cast<U>(scale);
+      mean[row_id] = mean_share = static_cast<U>(tmp);
+      var_share = static_cast<U>(var_val * static_cast<U>(scale) -
+                                 mean_share * mean_share);
+      var_share = var_share > U(0) ? var_share : U(0);
+      var[row_id] = var_share;
+    }
+    __syncthreads();
+
+    mean_val = mean_share;
+    U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
+    // calculate layernorm_dst
+    CalcLayernormY<T, VecSize, U, ScaleBiasWithSameTypeX, true>(
+        scale, layernorm_bias, nullptr, layernorm_dst, row_id, tid, cols,
+        mean_val, invvar, &dest_vec);
+  }
+}
+
 /**
  * @brief layernorm(residual + dropout(src + bias));
  * @param
@@ -205,6 +537,13 @@ void LaunchLayernormResidualDropoutBias(
     return;
   }
 
+  bool can_call_1024_kernel = false;
+  if (cols == 1024 && scale != nullptr && layernorm_bias != nullptr &&
+      bias == nullptr) {
+    can_call_1024_kernel = true;
+  }
+  VLOG(6) << "can_call_1024_kernel = " << can_call_1024_kernel;
+
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   if (cols % VecSize != 0) {
     int blockDim = GetDesiredBlockDim(cols);
@@ -215,13 +554,40 @@ void LaunchLayernormResidualDropoutBias(
         epsilon, src, residual, bias, scale, layernorm_bias, mask_data, dst,
         layernorm_dst, mean, var);
   } else {
-    int blockDim = GetDesiredBlockDim(cols / VecSize);
-    FusedLayernormResidualDropoutBias<
-        T, uint8_t, VecSize, U,
-        ScaleBiasWithSameTypeX><<<rows, blockDim, 0, ctx.stream()>>>(
-        rows, cols, seed, dropout_prob, is_upscale_in_train, is_test, increment,
-        epsilon, src, residual, bias, scale, layernorm_bias, mask_data, dst,
-        layernorm_dst, mean, var);
+    if (can_call_1024_kernel) {
+      const int WARPS_M = 4;
+      const int WARPS_N = 1;
+      const int THREADS_PER_WARP = 32;
+      // VecSize * sizeof(T) == BYTES_PER_LDG
+      const int BYTES_PER_LDG = 16;
+      const int VecSize = BYTES_PER_LDG / sizeof(T);
+
+      const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
+      const int ROWS_PER_CTA = WARPS_M;
+
+      // Note: the grid can not exceed max_grid of the gpu.
+      const int grid = DIVUP(rows, ROWS_PER_CTA);
+      fused_ln_fwd_1024_kernel<
+          T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, uint8_t,
+          VecSize, WARPS_M, WARPS_N,
+          BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(
+          static_cast<void *>(layernorm_dst),
+          static_cast<void *>(dst),        // residual_out
+          static_cast<void *>(mask_data),  // mask_out
+          static_cast<void *>(mean), static_cast<void *>(var),
+          static_cast<const void *>(src), static_cast<const void *>(residual),
+          static_cast<const void *>(scale),
+          static_cast<const void *>(layernorm_bias), seed, dropout_prob,
+          is_upscale_in_train, is_test, increment, epsilon, rows, cols);
+    } else {
+      int blockDim = GetDesiredBlockDim(cols / VecSize);
+      FusedLayernormResidualDropoutBias<
+          T, uint8_t, VecSize, U,
+          ScaleBiasWithSameTypeX><<<rows, blockDim, 0, ctx.stream()>>>(
+          rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
+          increment, epsilon, src, residual, bias, scale, layernorm_bias,
+          mask_data, dst, layernorm_dst, mean, var);
+    }
   }
 }
 

@@ -23,6 +23,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
@@ -34,6 +35,8 @@ template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
+
+#define COLS_ 1024
 
 inline static int GetDesiredBlockDim(int64_t block_dim) {
 #ifdef __HIPCC__
@@ -168,6 +171,121 @@ __inline__ __device__ half rsqrt_(const half val) {
   return hrsqrt(val);
 }
 #endif
+
+template <typename T, typename U, typename ScaleT = U, int VecSize = 8,
+          int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
+          int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
+          int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
+          int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW,
+          int ROWS_PER_CTA = WARPS_M,
+          int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
+          int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
+__global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
+    void *__restrict__ y_, void *__restrict__ mean_out_,
+    void *__restrict__ var_out_, const void *__restrict__ x_,
+    const void *__restrict__ gamma_, const void *__restrict__ beta_,
+    const float epsilon, int rows, int cols) {
+  using Vec = platform::AlignedVector<T, VecSize>;
+  using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
+
+  const int tidx = threadIdx.x;
+  const int bidx = blockIdx.x;
+  const int lane = tidx % THREADS_PER_WARP;  // 0, 1, ..., 31
+  const int warp = tidx / THREADS_PER_WARP;  // 0, 1, 2, 3
+  const int warp_n = warp % WARPS_N;         // 0
+  const int warp_m = warp / WARPS_N;         // 0, 1, 2, 3
+
+  const int c = warp_n * THREADS_PER_WARP + lane;  // lane
+  const int r = bidx * ROWS_PER_CTA + warp_m;      // row id
+
+  const T *x_ptr = static_cast<const T *>(x_);
+  const ScaleT *g_ptr = static_cast<const ScaleT *>(gamma_);
+  const ScaleT *b_ptr = static_cast<const ScaleT *>(beta_);
+  T *y_ptr = static_cast<T *>(y_);
+  U *mean_out_ptr = static_cast<U *>(mean_out_);
+  U *var_out_ptr = static_cast<U *>(var_out_);
+
+  Vec_scale gamma[LDGS];
+  Vec_scale beta[LDGS];
+#pragma unroll
+  for (int it = 0, col = c; it < LDGS; it++) {
+    platform::Load<ScaleT, VecSize>(g_ptr + col * VecSize, &gamma[it]);
+    platform::Load<ScaleT, VecSize>(b_ptr + col * VecSize, &beta[it]);
+    col += THREADS_PER_ROW;
+  }
+
+  constexpr U rn = 1.f / U(COLS_);
+  for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
+    Vec x[LDGS];
+#pragma unroll
+    for (int it = 0, col = c; it < LDGS; it++) {
+      platform::Load<T, VecSize>(x_ptr + row * COLS_ + col * VecSize, &x[it]);
+      col += THREADS_PER_ROW;
+    }
+    U xf[LDGS * VecSize];
+
+    U mu_local = 0.f;
+
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        xf[it * VecSize + jt] = U(x[it][jt]);
+        mu_local += xf[it * VecSize + jt];
+      }
+    }
+
+#pragma unroll
+    for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
+      mu_local += __shfl_xor_sync(uint32_t(-1), mu_local, it);
+    }
+    mu_local *= rn;
+    if (lane == 0) {
+      mean_out_ptr[row] = mu_local;
+    }
+    U var_local = 0.f;
+
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        U diff = xf[it * VecSize + jt] - mu_local;
+        var_local += diff * diff;
+      }
+    }
+
+#pragma unroll
+    for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
+      var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
+    }
+    // Note: is it right for double
+    U rsigma = rsqrtf(var_local * rn + epsilon);
+    if (lane == 0) {
+      var_out_ptr[row] = var_local * rn;
+    }
+
+#pragma unroll
+    for (int it = 0; it < LDGS; it++) {
+#pragma unroll
+      for (int jt = 0; jt < VecSize; jt++) {
+        // use fp16 to compute
+        // ScaleT tmp = static_cast<ScaleT>(rsigma * (xf[it * VecSize + jt] -
+        // mu_local));
+        // x[it][jt] = gamma[it][jt] *  tmp + beta[it][jt];
+        // cast to fp32 to compute
+        U tmp = (rsigma * (static_cast<U>(xf[it * VecSize + jt]) - mu_local));
+        x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
+                                   static_cast<U>(beta[it][jt]));
+      }
+    }
+
+#pragma unroll
+    for (int it = 0, col = c; it < LDGS; it++) {
+      platform::Store<T, VecSize>(x[it], y_ptr + row * COLS_ + col * VecSize);
+      col += THREADS_PER_ROW;
+    }
+  }
+}
 
 template <typename T, typename U, bool ScaleBiasWithSameTypeX>
 using LayerNormScaleBiasT =
