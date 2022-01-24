@@ -29,10 +29,6 @@ namespace paddle {
 namespace framework {}  // namespace framework
 namespace platform {
 class CPUDeviceContext;
-<<<<<<< HEAD
-struct float16;
-=======
->>>>>>> a1e40dc66160f9cd0ac413e7bdd5f4d2b387d772
 }  // namespace platform
 }  // namespace paddle
 

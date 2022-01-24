@@ -30,35 +30,35 @@ using complex = pten::dtype::complex<T>;
 template <typename T>
 struct NumTraits;
 
-template <>
-struct NumTraits<pten::dtype::bfloat16>
-    : GenericNumTraits<pten::dtype::bfloat16> {
-  enum {
-    IsSigned = true,
-    IsInteger = false,
-    IsComplex = false,
-    RequireInitialization = false
-  };
+// template <>
+// struct NumTraits<pten::dtype::bfloat16>
+//     : GenericNumTraits<pten::dtype::bfloat16> {
+//   enum {
+//     IsSigned = true,
+//     IsInteger = false,
+//     IsComplex = false,
+//     RequireInitialization = false
+//   };
 
-  HOSTDEVICE static inline pten::dtype::bfloat16 epsilon() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x3400);
-  }
-  HOSTDEVICE static inline pten::dtype::bfloat16 dummy_precision() {
-    return pten::dtype::bfloat16(1e-5f);
-  }
-  HOSTDEVICE static inline pten::dtype::bfloat16 highest() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x7f7f);
-  }
-  HOSTDEVICE static inline pten::dtype::bfloat16 lowest() {
-    return pten::dtype::raw_uint16_to_bfloat16(0xff7f);
-  }
-  HOSTDEVICE static inline pten::dtype::bfloat16 infinity() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x7f80);
-  }
-  HOSTDEVICE static inline pten::dtype::bfloat16 quiet_NaN() {
-    return pten::dtype::raw_uint16_to_bfloat16(0xffc1);
-  }
-};
+//   HOSTDEVICE static inline pten::dtype::bfloat16 epsilon() {
+//     return pten::dtype::raw_uint16_to_bfloat16(0x3400);
+//   }
+//   HOSTDEVICE static inline pten::dtype::bfloat16 dummy_precision() {
+//     return pten::dtype::bfloat16(1e-5f);
+//   }
+//   HOSTDEVICE static inline pten::dtype::bfloat16 highest() {
+//     return pten::dtype::raw_uint16_to_bfloat16(0x7f7f);
+//   }
+//   HOSTDEVICE static inline pten::dtype::bfloat16 lowest() {
+//     return pten::dtype::raw_uint16_to_bfloat16(0xff7f);
+//   }
+//   HOSTDEVICE static inline pten::dtype::bfloat16 infinity() {
+//     return pten::dtype::raw_uint16_to_bfloat16(0x7f80);
+//   }
+//   HOSTDEVICE static inline pten::dtype::bfloat16 quiet_NaN() {
+//     return pten::dtype::raw_uint16_to_bfloat16(0xffc1);
+//   }
+// };
 
 template <>
 struct NumTraits<complex<float>> : GenericNumTraits<std::complex<float>> {
@@ -135,89 +135,89 @@ namespace numext {
 
 //////////// bfloat methods /////////////
 
-template <>
-HOSTDEVICE inline bool(isnan)(const pten::dtype::bfloat16& a) {
-  return (pten::dtype::isnan)(a);
-}
+// template <>
+// HOSTDEVICE inline bool(isnan)(const pten::dtype::bfloat16& a) {
+//   return (pten::dtype::isnan)(a);
+// }
 
-template <>
-HOSTDEVICE inline bool(isinf)(const pten::dtype::bfloat16& a) {
-  return (pten::dtype::isinf)(a);
-}
+// template <>
+// HOSTDEVICE inline bool(isinf)(const pten::dtype::bfloat16& a) {
+//   return (pten::dtype::isinf)(a);
+// }
 
-template <>
-HOSTDEVICE inline bool(isfinite)(const pten::dtype::bfloat16& a) {
-  return (pten::dtype::isfinite)(a);
-}
+// template <>
+// HOSTDEVICE inline bool(isfinite)(const pten::dtype::bfloat16& a) {
+//   return (pten::dtype::isfinite)(a);
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 exp(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::expf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 exp(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::expf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 expm1(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::expm1f(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 expm1(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::expm1f(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 erf(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::erff(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 erf(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::erff(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 log(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::logf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 log(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::logf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 tanh(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::tanhf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 tanh(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::tanhf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 sqrt(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::sqrtf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 sqrt(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::sqrtf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 ceil(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::ceilf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 ceil(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::ceilf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 floor(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::floorf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 floor(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::floorf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 round(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::roundf(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 round(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::roundf(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 pow(const pten::dtype::bfloat16& a,
-                                            const pten::dtype::bfloat16& b) {
-  return pten::dtype::bfloat16(
-      ::powf(static_cast<float>(a), static_cast<float>(b)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 pow(const pten::dtype::bfloat16& a,
+//                                             const pten::dtype::bfloat16& b) {
+//   return pten::dtype::bfloat16(
+//       ::powf(static_cast<float>(a), static_cast<float>(b)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 abs(const pten::dtype::bfloat16& a) {
-  return pten::dtype::bfloat16(::fabs(static_cast<float>(a)));
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 abs(const pten::dtype::bfloat16& a) {
+//   return pten::dtype::bfloat16(::fabs(static_cast<float>(a)));
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 mini(const pten::dtype::bfloat16& a,
-                                             const pten::dtype::bfloat16& b) {
-  return b < a ? b : a;
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 mini(const pten::dtype::bfloat16& a,
+//                                              const pten::dtype::bfloat16& b) {
+//   return b < a ? b : a;
+// }
 
-template <>
-HOSTDEVICE inline pten::dtype::bfloat16 maxi(const pten::dtype::bfloat16& a,
-                                             const pten::dtype::bfloat16& b) {
-  return a < b ? b : a;
-}
+// template <>
+// HOSTDEVICE inline pten::dtype::bfloat16 maxi(const pten::dtype::bfloat16& a,
+//                                              const pten::dtype::bfloat16& b) {
+//   return a < b ? b : a;
+// }
 
 //////////// complex<float> methods /////////////
 
