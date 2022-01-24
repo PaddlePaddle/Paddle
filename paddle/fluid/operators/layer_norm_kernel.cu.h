@@ -258,7 +258,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
       var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
     }
-    // Note: is it right for double
+    // Note: to assure if it is right for double
     U rsigma = rsqrtf(var_local * rn + epsilon);
     if (lane == 0) {
       var_out_ptr[row] = var_local * rn;
