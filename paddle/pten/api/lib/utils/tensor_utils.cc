@@ -311,7 +311,7 @@ void MovesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move storage."));
-  dst->ResizeAndAllocate(src->dims());
+  dst->Resize(src->dims());
   dst->set_type(pten::TransToProtoVarType(src->dtype()));
   auto storage = src->MoveMemoryHolder();
   dst->ResetHolderWithType(storage, pten::TransToProtoVarType(src->dtype()));
@@ -332,7 +332,7 @@ void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move allocation."));
-  dst->ResizeAndAllocate(src->dims());
+  dst->Resize(src->dims());
   dst->ResetHolderWithType(src->Holder(),
                            pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);
@@ -374,7 +374,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     auto* tensor = variable->GetMutable<framework::LoDTensor>();
 
     auto dtype = pten::TransToProtoVarType(src->dtype());
-    tensor->ResizeAndAllocate(src->dims());
+    tensor->Resize(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
     if (!tensor->IsInitialized() ||
