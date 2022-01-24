@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
 #include <string>
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace paddle {
