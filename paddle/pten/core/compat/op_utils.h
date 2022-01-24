@@ -30,9 +30,7 @@ class DefaultKernelSignatureMap {
  public:
   static DefaultKernelSignatureMap& Instance();
 
-  bool Has(const std::string& op_type) const {
-    return map_.count(op_type) > 0;
-  }
+  bool Has(const std::string& op_type) const { return map_.count(op_type) > 0; }
 
   const KernelSignature& Get(const std::string& op_type) const {
     auto it = map_.find(op_type);
@@ -46,10 +44,10 @@ class DefaultKernelSignatureMap {
 
   void Insert(std::string op_type, KernelSignature signature) {
     PADDLE_ENFORCE_NE(
-      Has(op_type),
-      true,
-      paddle::platform::errors::AlreadyExists(
-          "Operator (%s)'s Kernel Siginature has been registered.", op_type));
+        Has(op_type),
+        true,
+        paddle::platform::errors::AlreadyExists(
+            "Operator (%s)'s Kernel Siginature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
 
@@ -71,20 +69,20 @@ class OpUtilsMap {
 
   void InsertApiName(std::string op_type, std::string api_name) {
     PADDLE_ENFORCE_EQ(
-      name_map_.count(op_type),
-      0UL,
-      paddle::platform::errors::AlreadyExists(
-          "Operator (%s)'s api name has been registered.", op_type));
+        name_map_.count(op_type),
+        0UL,
+        paddle::platform::errors::AlreadyExists(
+            "Operator (%s)'s api name has been registered.", op_type));
     name_map_.insert({std::move(op_type), std::move(api_name)});
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
     PADDLE_ENFORCE_EQ(
-      arg_mapping_fn_map_.count(op_type),
-      0UL,
-      paddle::platform::errors::AlreadyExists(
-          "Operator (%s)'s argu,emt mapping function has been registered.",
-          op_type));
+        arg_mapping_fn_map_.count(op_type),
+        0UL,
+        paddle::platform::errors::AlreadyExists(
+            "Operator (%s)'s argu,emt mapping function has been registered.",
+            op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
