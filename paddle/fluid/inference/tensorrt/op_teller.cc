@@ -1519,11 +1519,18 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       auto dtype = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_GE(7000)
       if (dtype != framework::proto::VarType::INT32 &&
           dtype != framework::proto::VarType::FP32) {
         VLOG(3) << "reduce op input data type must be int32 or float32";
         return false;
       }
+#else
+      if (dtype != framework::proto::VarType::FP32) {
+        VLOG(3) << "reduce op input data type must be float32 using TensorRT < 7.0";
+        return false;
+      }
+#endif
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {

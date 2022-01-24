@@ -37,6 +37,11 @@ class TrtConvertReduceMeanTest(TrtLayerAutoScanTest):
         if len(attrs[0]["dim"]) == 0:
             return False
 
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if attrs[0]['out_dtype'] == 2:
+                return False
+
         return True
 
     def sample_program_configs(self):
