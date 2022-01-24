@@ -37,7 +37,8 @@ struct MetaConfig {
 
 class MetaTensor {
  public:
-  explicit MetaTensor(TensorBase* tensor) : tensor_(tensor) {}
+  // supporting implicit construction is easier to use
+  MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
 
   MetaTensor() = default;
   MetaTensor(const MetaTensor&) = default;

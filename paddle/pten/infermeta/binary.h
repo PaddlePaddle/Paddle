@@ -14,8 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/meta_tensor.h"
 
 namespace pten {
 
@@ -23,25 +22,26 @@ namespace pten {
 //
 //   1. DenseTensorMeta [OpName]InferMeta(const DenseTensorMeta& x_meta, ...)
 //   {}
-//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferMeta(const
-//   DenseTensorMeta&
-//   x_meta, ...) {}
-//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
-//   [OpName]InferMeta(const
-//   DenseTensorMeta& x_meta, ...)
-//  NOTE: The name "InferMeta" may be not appropriate. "InferMeta" may be good.
-//  Because functions in this file
-//  not only can infer shape, but alse need infer lod or other useful data.
+//
+// NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+//   Because functions in this file not only can infer shape, but also need
+//   infer lod or other useful data.
 
-DenseTensorMeta DotInferMeta(const DenseTensorMeta& x_meta,
-                             const DenseTensorMeta& y_meta);
+void DotInferMeta(MetaConfig config,
+                  const MetaTensor& x,
+                  const MetaTensor& y,
+                  MetaTensor* out);
 
-DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
-                                const DenseTensorMeta& y_meta,
-                                bool trans_x,
-                                bool trans_y);
+void MatmulInferMeta(MetaConfig config,
+                     const MetaTensor& x,
+                     const MetaTensor& y,
+                     bool trans_x,
+                     bool trans_y,
+                     MetaTensor* out);
 
-DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
-                                     const DenseTensorMeta& y_meta,
-                                     int axis);
+void ElementwiseInferMeta(MetaConfig config,
+                          const MetaTensor& x,
+                          const MetaTensor& y,
+                          int axis,
+                          MetaTensor* out);
 }  // namespace pten

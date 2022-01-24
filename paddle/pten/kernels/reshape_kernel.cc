@@ -26,7 +26,7 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const ScalarArray& shape,
                    DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
+  InferMetaFromVecValue(/*is_runtime*/ true, &x, shape.GetData(), out);
   if (x.data() == out->data() && x.numel() == out->numel()) {
     out->ResizeAndAllocate(out_meta.dims);
     return;

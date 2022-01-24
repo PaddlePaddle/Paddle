@@ -15,24 +15,29 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/meta_tensor.h"
 
 namespace pten {
 
 // Common InferMeta Functions for 0-nary operators(no input tensor), The format
 // like:
 //
-//   1. DenseTensorMeta [OpName]InferMeta( ...)
-//  NOTE: The name "InferMeta" may be not appropriate. "InferMeta" may be good.
-//  Because functions in this file
-//  not only can infer shape, but alse need infer lod or other useful data.
+//   1. void [FunctionDesc|OpName]InferMeta(..., MetaTensor* out)
+//
+// NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+//   Because functions in this file not only can infer shape, but also need
+//   infer lod or other useful data.
 
-DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
-                                DataType dtype,
-                                DataLayout layout);
+void CreateInferMeta(MetaConfig config,
+                     const std::vector<int64_t>& shape,
+                     DataType dtype,
+                     DataLayout layout,
+                     MetaTensor* out);
 
-DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
-                                DataType dtype,
-                                DataLayout layout);
+void CreateInferMeta(MetaConfig config,
+                     const ScalarArray& shape,
+                     DataType dtype,
+                     DataLayout layout,
+                     MetaTensor* out);
 
 }  // namespace pten

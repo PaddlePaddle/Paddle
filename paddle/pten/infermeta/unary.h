@@ -70,7 +70,7 @@ void ReshapeInferMeta(MetaConfig config,
                       MetaTensor* out);
 
 void ReduceInferMeta(MetaConfig config,
-                     const MetaTensor& x_meta,
+                     const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      DataType dtype,
