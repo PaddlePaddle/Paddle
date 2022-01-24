@@ -85,7 +85,9 @@ int32_t Table::initialize_accessor() {
             << ", accessor_name: " << _config.accessor().accessor_class();
   auto *accessor = CREATE_PSCORE_CLASS(
       ValueAccessor,
-      _config.accessor().accessor_class()) if (accessor == NULL) {
+      _config.accessor().accessor_class());
+  
+  if (accessor == NULL) {
     LOG(ERROR) << "accessor is unregisteg, table_id:" << _config.table_id()
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
