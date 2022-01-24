@@ -14,7 +14,10 @@
 
 #include "paddle/pten/kernels/full_kernel.h"
 
-#incldue "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
 
@@ -22,7 +25,7 @@ template <typename InType, typename OutType>
 void TensorSetConstantXPU(pten::DenseTensor* tensor,
                           InType value,
                           pten::Place place) {
-  auto* begin = temsor->mutable_data<OutType>(place);
+  auto* begin = tensor->mutable_data<OutType>(place);
   int64_t numel = tensor->numel();
   std::unique_ptr<OutType[]> data_cpu(new OutType[numel]);
   std::fill(
@@ -35,13 +38,13 @@ void TensorSetConstantXPU(pten::DenseTensor* tensor,
 }
 
 template <typename T, typename Context, typename VType>
-void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, T val) {
+void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
   tensor->mutable_data<T>(dev_ctx.GetPlace());
 
   PD_VISIT_ALL_TYPES(tensor->dtype(), "FullValueXPU", ([&] {
                        TensorSetConstantXPU<T, data_t>(
-                           tensor, value, dev_ctx.GetPlace());
-                     }))
+                           tensor, val, dev_ctx.GetPlace());
+                     }));
 }
 
 template <typename T, typename Context>
