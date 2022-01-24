@@ -39,5 +39,6 @@ add_custom_command(
   DEPENDS ${api_yaml_file} ${api_gen_file}
   VERBATIM)
 
+cc_library(pten_data_transform SRCS data_transform.cc DEPS pten_tensor pten)
 cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
-cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)
+cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch pten_data_transform)

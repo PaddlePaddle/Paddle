@@ -285,4 +285,10 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
+DenseTensorMeta TransferLayoutInferMeta(const DenseTensorMeta& x_meta,
+                                        DataLayout layout) {
+  DenseTensorMeta out_meta(x_meta.dtype, x_meta.dims, layout);
+  return out_meta;
+}
+
 }  // namespace pten
