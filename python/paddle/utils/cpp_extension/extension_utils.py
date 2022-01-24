@@ -449,7 +449,7 @@ def _get_include_dirs_when_compiling(compile_dir):
     include_dirs_file = 'includes.txt'
     path = os.path.abspath(compile_dir)
     include_dirs_file = os.path.join(path, include_dirs_file)
-    assert os.path.isfile(include_dirs_file), "{} not exists".format(
+    assert os.path.isfile(include_dirs_file), "File {} does not exist".format(
         include_dirs_file)
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f.readlines() if line.strip()]
