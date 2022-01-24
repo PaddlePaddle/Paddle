@@ -88,10 +88,10 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     }
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto *ids_t = context.Input<LoDTensor>("Ids");
     bool is_sparse = context.Attr<bool>("is_sparse");
 
     if (is_sparse) {
-      auto *ids_t = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
