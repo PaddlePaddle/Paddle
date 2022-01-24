@@ -33,10 +33,10 @@ class TestPsTrainerPass(PsPassTestBase):
     def tearDown(self):
         print('tearDown...')
 
-    def check_rename_program_file():
+    def check_rename_program_file(self):
         pass
 
-    def check():
+    def check(self):
         pass
 
     def test_append_send_ops_pass(self):

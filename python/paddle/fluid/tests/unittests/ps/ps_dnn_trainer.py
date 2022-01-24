@@ -284,7 +284,7 @@ class DnnTrainer(object):
                     fleet.worker_index()), 'w+') as f:
                 f.write(str(paddle.static.default_startup_program()))
 
-    def init_fleet_with_gloo(use_gloo=True):
+    def init_fleet_with_gloo(self, use_gloo=True):
         if use_gloo:
             os.environ["PADDLE_WITH_GLOO"] = "1"
             role = role_maker.PaddleCloudRoleMaker()
