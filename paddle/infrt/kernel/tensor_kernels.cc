@@ -84,10 +84,24 @@ void NaiveMatmul(const DenseHostTensor &x,
                  DenseHostTensor *out) {
   CHECK_EQ(x.shape().GetRank(), 2);
   CHECK_EQ(w.shape().GetRank(), 2);
-  CHECK_EQ(x.shape().GetDim(x.shape().GetRank() - 1),
-           w.shape().GetDim(x.shape().GetDim(0)));
+  CHECK_EQ(x.shape().GetDim(x.shape().GetRank() - 1), w.shape().GetDim(0));
   std::vector<int64_t> out_dims({x.shape().GetDim(0), w.shape().GetDim(1)});
   *out = DenseHostTensor(TensorShape(out_dims), GetDType<T>());
+
+  auto *out_data = static_cast<T *>(out->raw_data());
+  auto *x_data = static_cast<const T *>(x.raw_data());
+  auto *w_data = static_cast<const T *>(w.raw_data());
+
+  const int M = x.shape().GetDim(0);
+  const int K = x.shape().GetDim(1);
+  const int N = w.shape().GetDim(1);
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+      for (int k = 0; k < K; k++) {
+        out_data[i * N + j] += x_data[i * K + k] * w_data[k * N + j];
+      }
+    }
+  }
 }
 
 /// ===== Kernel end ====
