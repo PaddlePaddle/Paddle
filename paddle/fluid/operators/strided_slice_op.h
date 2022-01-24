@@ -376,7 +376,8 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         auto* out_tensor = &out_array->at(out_offset);
 
         out_tensor->set_lod(in_tensor.lod());
-        TensorCopy(in_tensor, context.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                      out_tensor);
       }
 
     } else {
@@ -608,7 +609,8 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
                   in_offset));
 
           d_out_tensor->set_lod(in_tensor.lod());
-          TensorCopy(in_tensor, context.GetPlace(), d_out_tensor);
+          paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                        d_out_tensor);
 
         } else {
           d_out_tensor->Resize(dim);

@@ -34,7 +34,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
             "The place of ExecutionContext should be CUDAPlace."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).device;
+    int dev_id = ctx.GetPlace().device;
     int root_dev_id = ctx.Attr<int>("root");
 
     auto in = ctx.Input<framework::Tensor>("X");

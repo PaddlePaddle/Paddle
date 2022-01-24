@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/place.h"
 
 #include "paddle/pten/kernels/math_kernel.h"
 namespace paddle {

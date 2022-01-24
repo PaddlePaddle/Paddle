@@ -83,9 +83,9 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
         assert 'Out' in kwargs, "output [{}] is not given".format('Out')
         assert 'LossScaling' in kwargs, "output [{}] is not given".format(
             'LossScaling')
-        assert 'OutGoodSteps' in kwargs, "input [{}] is not given".format(
+        assert 'OutGoodSteps' in kwargs, "output [{}] is not given".format(
             'OutGoodSteps')
-        assert 'OutBadSteps' in kwargs, "input [{}] is not given".format(
+        assert 'OutBadSteps' in kwargs, "output [{}] is not given".format(
             'OutBadSteps')
 
         assert len(kwargs['FoundInfinite']) == 1, \

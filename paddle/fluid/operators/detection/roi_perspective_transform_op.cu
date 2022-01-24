@@ -384,7 +384,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
         roi2image_data[j] = i;
       }
     }
-    TensorCopySync(roi2image, ctx.GetPlace(), &roi2image_dev);
+    paddle::framework::TensorCopySync(roi2image, ctx.GetPlace(),
+                                      &roi2image_dev);
 
     int out_size = rois_num * transformed_height * transformed_width * channels;
     auto stream = ctx.cuda_device_context().stream();

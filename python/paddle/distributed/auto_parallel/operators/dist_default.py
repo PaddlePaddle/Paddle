@@ -216,6 +216,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 for varname in backward_op.desc.input(input_name):
                     if "@GRAD" not in varname and is_parameter_related(
                             varname, main_block):
+                        # NOTE: When amp and recompute pass are effective at the same time,
+                        # if a parameter is casted and recomputed, the 'parameter@GARD' can not
+                        # be found in the grad_op's output.
+                        if "subprog_" in varname:
+                            varname = varname[:varname.index(".subprog_")]
+
                         assert len(
                             backward_op.desc.input(input_name)
                         ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(

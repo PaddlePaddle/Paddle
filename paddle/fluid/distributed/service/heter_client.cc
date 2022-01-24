@@ -44,8 +44,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(), temp_ptr,
-        BOOST_GET_CONST(platform::CUDAPlace, tensor->place()), tensor->data(),
+        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
         tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     micro_id = static_cast<int>(temp_ptr_float[0]);

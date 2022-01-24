@@ -10,6 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+#include <memory>
 #include <set>
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -140,7 +141,7 @@ inline void EmplaceDeviceContext(
   map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
                      // lazy evaluation. i.e., only create device context at
                      // first `Get`
-                     return PtrType(new DevCtx(BOOST_GET_CONST(PlaceType, p)));
+                     return PtrType(new DevCtx(p));
                    }));
 }
 
@@ -157,14 +158,19 @@ DeviceContextPool::DeviceContextPool(
   }
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
+      platform::CPUPlace place;
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_,
+                                                          place);
 #else
-      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_,
+                                                       place);
 #endif
     } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
+      platform::CUDAPlace place(p.GetDeviceId());
+      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_,
+                                                         place);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("CUDAPlace is not supported. Please "
@@ -172,8 +178,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::CUDAPinnedPlace place;
       EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
-          &device_contexts_, p);
+          &device_contexts_, place);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
@@ -181,7 +188,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
-      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_, p);
+      platform::XPUPlace place(p.GetDeviceId());
+      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_,
+                                                       place);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
@@ -189,7 +198,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_mlu_place(p)) {
 #ifdef PADDLE_WITH_MLU
-      EmplaceDeviceContext<MLUDeviceContext, MLUPlace>(&device_contexts_, p);
+      platform::MLUPlace place(p.GetDeviceId());
+      EmplaceDeviceContext<MLUDeviceContext, MLUPlace>(&device_contexts_,
+                                                       place);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("MLUPlace is not supported. Please "
@@ -197,7 +208,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_ipu_place(p)) {
 #ifdef PADDLE_WITH_IPU
-      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_, p);
+      platform::IPUPlace place(p.GetDeviceId());
+      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_,
+                                                       place);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("IPUPlace is not supported. Please "
@@ -205,7 +218,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
+      platform::NPUPlace place(p.GetDeviceId());
+      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_,
+                                                       place);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported. Please "
@@ -213,8 +228,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_pinned_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
+      platform::NPUPinnedPlace place;
       EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
-          &device_contexts_, p);
+          &device_contexts_, place);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "

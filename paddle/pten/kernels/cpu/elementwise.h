@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 #include "paddle/fluid/operators/math/blas.h"

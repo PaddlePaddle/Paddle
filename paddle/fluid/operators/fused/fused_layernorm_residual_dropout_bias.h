@@ -182,7 +182,7 @@ void LaunchLayernormResidualDropoutBias(
     LayerNormParamType<T> *var, const platform::CUDADeviceContext &ctx) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
-    auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto cuda_place = ctx.GetPlace();
     memory::Copy(cuda_place, dst, cuda_place, residual, rows * cols * sizeof(T),
                  ctx.stream());
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(

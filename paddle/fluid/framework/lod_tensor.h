@@ -36,7 +36,15 @@ class DeviceContext;
 namespace paddle {
 namespace framework {
 
-using LoDTensor = paddle::framework::Tensor;
+using LoDTensor = pten::DenseTensor;
+
+// Split Tensor and copy to each place specified in places.
+std::vector<LoDTensor> SplitLoDTensor(
+    const LoDTensor& src, const std::vector<platform::Place> places);
+
+void MergeLoDTensor(LoDTensor* target,
+                    const std::vector<const LoDTensor*>& lod_tensors,
+                    platform::Place dst_place);
 
 /*
  * LoD is short for Level of Details.

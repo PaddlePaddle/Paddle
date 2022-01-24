@@ -78,7 +78,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   TensorAddFunctor(int64_t numel, const T* x, T* y)
       : numel_(numel), x_(x), y_(y) {}
 
-  void operator()(const platform::CPUPlace& place) {
+  void operator()(const platform::CPUPlace& place) const {
     platform::CPUDeviceContext* ctx = dynamic_cast<platform::CPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     auto blas = operators::math::GetBlas<platform::CPUDeviceContext, T>(*ctx);
@@ -86,7 +86,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 
 #ifdef PADDLE_WITH_XPU
-  void operator()(const platform::XPUPlace& place) {
+  void operator()(const platform::XPUPlace& place) const {
     using XPUType = typename XPUTypeTrait<T>::Type;
     platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
@@ -100,7 +100,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
                                    r, XPUAPIErrorMsg[r]));
   }
 #else
-  void operator()(const platform::XPUPlace& place) {
+  void operator()(const platform::XPUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -109,7 +109,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void operator()(const platform::CUDAPlace& place) {
+  void operator()(const platform::CUDAPlace& place) const {
     platform::CUDADeviceContext* ctx =
         dynamic_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
@@ -117,7 +117,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
     blas.AXPY(numel_, 1., x_, y_);
   }
 #else
-  void operator()(const platform::CUDAPlace& place) {
+  void operator()(const platform::CUDAPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -126,7 +126,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #ifdef PADDLE_WITH_MLU
-  void operator()(const platform::MLUPlace& place) {
+  void operator()(const platform::MLUPlace& place) const {
     // TODO(fwg): SUPPORT it
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
@@ -134,7 +134,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
         place));
   }
 #else
-  void operator()(const platform::MLUPlace& place) {
+  void operator()(const platform::MLUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -143,7 +143,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  void operator()(const platform::NPUPlace& place) {
+  void operator()(const platform::NPUPlace& place) const {
     // TODO(zhiqiu): SUPPORT it
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
@@ -151,7 +151,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
         place));
   }
 #else
-  void operator()(const platform::NPUPlace& place) {
+  void operator()(const platform::NPUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -159,21 +159,21 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
-  void operator()(const platform::NPUPinnedPlace& place) {
+  void operator()(const platform::NPUPinnedPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
   // there is NO blas in CUDAPinnedPlace
-  void operator()(const platform::CUDAPinnedPlace& place) {
+  void operator()(const platform::CUDAPinnedPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
   // there is NO support in IPUPlace
-  void operator()(const platform::IPUPlace& place) {
+  void operator()(const platform::IPUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -183,7 +183,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
  private:
   int64_t numel_;
   const T* x_;
-  T* y_;
+  mutable T* y_;
 };
 
 #ifdef PADDLE_WITH_XPU
@@ -248,7 +248,7 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     TensorAddFunctor<cpp_type> func(                                 \
         numel, src_tensor.data<cpp_type>(),                          \
         dst_tensor->mutable_data<cpp_type>(place));                  \
-    boost::apply_visitor(func, place);                               \
+    platform::VisitPlace(place, func);                               \
     return;                                                          \
   }
 

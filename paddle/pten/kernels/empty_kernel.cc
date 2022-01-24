@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(paddle::framework::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename Context>

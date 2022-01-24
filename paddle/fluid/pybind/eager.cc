@@ -108,25 +108,20 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
   paddle::platform::Place place = impl_ptr->place();
   paddle::framework::LoDTensor temp_tensor = paddle::framework::LoDTensor();
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::XPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPlace>(&temp_tensor, array, place,
+                                              zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(&temp_tensor, array, place,
+                                                    zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::NPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "

@@ -70,7 +70,8 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
     sum_runner.Run(stream);
 
     Tensor local_true_num;
-    TensorCopySync(sumed_true_num, platform::CPUPlace(), &local_true_num);
+    paddle::framework::TensorCopySync(sumed_true_num, platform::CPUPlace(),
+                                      &local_true_num);
     auto true_num = *local_true_num.data<int64_t>();
 
     out->Resize(framework::make_ddim({true_num, rank}));

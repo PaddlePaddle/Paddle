@@ -14,10 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class CPUDeviceContext;
 }  // namespace platform

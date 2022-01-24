@@ -43,7 +43,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class Tensor;
 class ProgramDesc;
 class Scope;
 }  // namespace framework

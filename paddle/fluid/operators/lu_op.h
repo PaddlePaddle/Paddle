@@ -86,7 +86,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  TensorCopy(*in, place, out);
+  paddle::framework::TensorCopy(*in, place, out);
 
   Tensor slice_tensor(dtype), pad_tensor(dtype);
   slice_tensor.mutable_data<T>(slice_dims, place);
@@ -220,11 +220,8 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
                 const framework::Tensor& src2, framework::Tensor* out) {
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
-  pten::AddKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), *pt_y.get(), -1,
-                                    pt_z.get());
+
+  pten::AddKernel<T, DeviceContext>(dev_ctx, src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T>
@@ -232,11 +229,8 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
                 const framework::Tensor& src2, framework::Tensor* out) {
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
-  pten::SubtractKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), *pt_y.get(), -1,
-                                         pt_z.get());
+
+  pten::SubtractKernel<T, DeviceContext>(dev_ctx, src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T, size_t D>
@@ -413,7 +407,7 @@ void LU_Unpack(const DeviceContext& dev_ctx, const framework::Tensor* LU,
   batchsize = std::max(static_cast<int>(batchsize), 1);
   arange<DeviceContext>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (is_gpu_place(dev_ctx.GetPlace())) {
+  if (platform::is_gpu_place(dev_ctx.GetPlace())) {
     framework::TensorCopy(rowtensor, dev_ctx.GetPlace(), &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }

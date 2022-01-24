@@ -108,8 +108,10 @@ class HistogramCUDAKernel : public framework::OpKernel<T> {
       input_max_scala.device(*place) = input_x.maximum();
 
       Tensor input_min_cpu, input_max_cpu;
-      TensorCopySync(input_min_t, platform::CPUPlace(), &input_min_cpu);
-      TensorCopySync(input_max_t, platform::CPUPlace(), &input_max_cpu);
+      paddle::framework::TensorCopySync(input_min_t, platform::CPUPlace(),
+                                        &input_min_cpu);
+      paddle::framework::TensorCopySync(input_max_t, platform::CPUPlace(),
+                                        &input_max_cpu);
 
       output_min = input_min_cpu.data<T>()[0];
       output_max = input_max_cpu.data<T>()[0];

@@ -77,8 +77,10 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
   input_min_scala.device(*place) = input_x.minimum();
 
   Tensor input_min_cpu, input_max_cpu;
-  TensorCopySync(input_max_t, platform::CPUPlace(), &input_max_cpu);
-  TensorCopySync(input_min_t, platform::CPUPlace(), &input_min_cpu);
+  paddle::framework::TensorCopySync(input_max_t, platform::CPUPlace(),
+                                    &input_max_cpu);
+  paddle::framework::TensorCopySync(input_min_t, platform::CPUPlace(),
+                                    &input_min_cpu);
 
   InputT input_min = input_min_cpu.data<InputT>()[0];
 

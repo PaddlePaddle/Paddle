@@ -41,8 +41,8 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
     MPDType cpu_scale_data;
     if (platform::is_xpu_place(scale->place())) {
       memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_scale_data),
-                   BOOST_GET_CONST(platform::XPUPlace, scale->place()),
-                   static_cast<const void*>(scale_data), sizeof(MPDType));
+                   scale->place(), static_cast<const void*>(scale_data),
+                   sizeof(MPDType));
 
     } else {
       cpu_scale_data = (*scale_data);
@@ -87,8 +87,7 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
           dev_ctx.Wait();
         }
         memory::Copy(platform::CPUPlace(), &cpu_found_inf_data,
-                     BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
-                     found_inf_data, sizeof(bool));
+                     dev_ctx.GetPlace(), found_inf_data, sizeof(bool));
       }
 
       if (cpu_found_inf_data) {
@@ -142,9 +141,8 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
-                 found_inf_data, platform::CPUPlace(), &cpu_found_inf_data,
-                 sizeof(bool));
+    memory::Copy(dev_ctx.GetPlace(), found_inf_data, platform::CPUPlace(),
+                 &cpu_found_inf_data, sizeof(bool));
   }
 };
 

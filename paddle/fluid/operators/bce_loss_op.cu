@@ -91,8 +91,8 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor*> outs = {dx};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto functor = BCELossGradFunctor<T>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kTernary, T, T>(dev_ctx, ins, &outs, functor);
   }
 };
 

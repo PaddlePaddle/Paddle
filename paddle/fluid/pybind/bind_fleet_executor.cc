@@ -58,13 +58,21 @@ void BindFleetExecutor(py::module* m) {
   py::class_<DistModelConfig>(*m, "DistModelConfig")
       .def(py::init<>())
       .def_readwrite("model_dir", &DistModelConfig::model_dir)
+      .def_readwrite("program_desc", &DistModelConfig::program_desc)
+      .def_readwrite("scope", &DistModelConfig::scope)
+      .def_readwrite("place", &DistModelConfig::place)
+      .def_readwrite("device_id", &DistModelConfig::device_id)
       .def_readwrite("trainer_endpoints", &DistModelConfig::trainer_endpoints)
       .def_readwrite("current_endpoint", &DistModelConfig::current_endpoint)
       .def_readwrite("nranks", &DistModelConfig::nranks)
       .def_readwrite("local_rank", &DistModelConfig::local_rank)
-      .def_readwrite("device_id", &DistModelConfig::device_id)
       .def_readwrite("mp_degree", &DistModelConfig::mp_degree)
-      .def_readwrite("pp_degree", &DistModelConfig::pp_degree);
+      .def_readwrite("pp_degree", &DistModelConfig::pp_degree)
+      .def_readwrite("mp_ring_id", &DistModelConfig::mp_ring_id)
+      .def_readwrite("pp_upstream_ring_id",
+                     &DistModelConfig::pp_upstream_ring_id)
+      .def_readwrite("pp_downstream_ring_id",
+                     &DistModelConfig::pp_downstream_ring_id);
 
   py::class_<DistModel>(*m, "DistModel")
       .def(py::init<const DistModelConfig&>())

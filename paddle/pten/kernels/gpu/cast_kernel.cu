@@ -17,9 +17,9 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
@@ -44,7 +44,9 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   out->mutable_data<OutT>();
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                   InT,
+                                                   OutT>(
       dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
 }
 

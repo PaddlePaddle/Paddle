@@ -246,7 +246,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int bytes = rois_batch_id_list.numel() * sizeof(int);
     auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gplace = ctx.GetPlace();
     memory::Copy(gplace, roi_id_data, cplace, rois_batch_id_data, bytes,
                  dev_ctx.stream());
 
@@ -322,7 +322,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int bytes = rois_batch_id_list.numel() * sizeof(int);
       auto roi_ptr = memory::Alloc(dev_ctx, bytes);
       int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-      const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+      const auto gplace = ctx.GetPlace();
       memory::Copy(gplace, roi_id_data, cplace, rois_batch_id_data, bytes,
                    dev_ctx.stream());
 

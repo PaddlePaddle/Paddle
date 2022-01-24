@@ -31,7 +31,6 @@ namespace paddle {
 namespace framework {
 
 class OpKernelType;
-class Tensor;
 class Variable;
 
 void TransformData(const OpKernelType &expected_kernel_type,

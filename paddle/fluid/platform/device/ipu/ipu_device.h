@@ -21,23 +21,11 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-enum class DeviceType { IpuModel = 0, Cpu, Ipu, OfflineIpu, Sim };
+// get the number of all avaliable IPUs
+int GetNumDevices();
 
-class Device {
- public:
-  Device() {}
-  explicit Device(const popart::DeviceInfo& device_info);
-
-  int getId() const { return id_; }
-  bool isAttached() const { return is_attached_; }
-  DeviceType getType() const { return device_type_; }
-
- private:
-  int id_;
-  bool is_attached_;
-  DeviceType device_type_;
-  /* TODO:: Add more elements in the future */
-};
+// get the device id of all avaliable IPUs
+std::vector<int> GetDeviceIds();
 
 }  // namespace ipu
 }  // namespace platform

@@ -283,7 +283,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # param initialization sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
             assert Weight_var.name not in dist_op_context.already_init_sync_vars
             dist_op_context.already_init_sync_vars.add(Weight_var.name)
             param = startup_block.var(Weight_var.name)

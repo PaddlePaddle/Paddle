@@ -29,9 +29,12 @@
 
 DECLARE_bool(use_mkldnn);
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 }  // namespace framework
 namespace platform {
