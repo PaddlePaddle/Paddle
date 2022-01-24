@@ -88,13 +88,6 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
   input_tensor->set_lod(dst_lod);
   return true;
 }
-
-template <typename T>
-int VectorReducer(const std::vector<T> &vec) {
-  return std::accumulate(vec.begin(), vec.end(), 1,
-                         [](T a, T b) { return a * b; });
-}
-
 }  // namespace
 
 bool DistModel::Init() {
@@ -410,6 +403,14 @@ bool DistModel::PrepareFeedAndFetch() {
       idx_to_fetches_[idx] = op->Input("X")[0];
     }
   }
+  if (feeds_.size() == 0) {
+    LOG(ERROR) << "No feed ops in the inf program, please check the program.";
+    return false;
+  }
+  if (fetches_.size() == 0) {
+    LOG(ERROR) << "No fetch ops in the inf program, please check the program.";
+    return false;
+  }
   return true;
 }
 
@@ -488,7 +489,7 @@ bool DistModel::FetchResult(const framework::LoDTensor &fetch,
   auto shape = framework::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());
   const T *data = fetch.data<T>();
-  int num_elems = VectorReducer(shape);
+  int64_t num_elems = fetch.numel();
   output_data->data.Resize(num_elems * sizeof(T));
   // The output of fetch op is always on the cpu, no need switch on place
   memcpy(output_data->data.data(), data, num_elems * sizeof(T));
