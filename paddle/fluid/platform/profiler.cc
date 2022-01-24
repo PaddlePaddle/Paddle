@@ -31,7 +31,7 @@ limitations under the License. */
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
                             "Enable rpc profiler or not.");
 
-DEFINE_bool(enable_host_event_recorder_hook, false,
+DEFINE_bool(enable_host_event_recorder_hook, true,
             "enable HostEventRecorder, hook Profiler");
 
 namespace paddle {
