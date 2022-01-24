@@ -1342,16 +1342,6 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-#ifdef PADDLE_WITH_IPU
-  if (kernel_iter == kernels.end() &&
-      platform::is_ipu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing IPU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
       platform::is_npu_place(expected_kernel_key.place_)) {

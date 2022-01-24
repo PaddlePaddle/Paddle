@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <popart/devicemanager.hpp>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
