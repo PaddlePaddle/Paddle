@@ -102,6 +102,7 @@ std::string DistModelDTypeToString(DistModelDataType dtype) {
     case DistModelDataType::INT8:
       return "int8";
   }
+  return "NOT SUPPORT DTYPE";
 }
 
 }  // namespace
@@ -411,16 +412,16 @@ bool DistModel::PrepareFeedAndFetch() {
       feed_names_[var_name] = idx;
       idx_to_feeds_[idx] = var_name;
       framework::VarDesc *real_var = program_->Block(0).FindVar(var_name);
-      switch (real_var->GetType()) {
-        case proto::VarType::FP32:
-          feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT32});
-          break;
-        case proto::VarType::INT32:
-          feeds_to_dtype_.insert({var_name, DistModelDataType::INT32});
-          break;
-        case proto::VarType::INT64:
-          feeds_to_dtype_.insert({var_name, DistModelDataType::INT64});
-          break;
+      if (real_var->GetDataType() == proto::VarType::FP32) {
+        feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT32});
+      } else if (real_var->GetDataType() == proto::VarType::INT32) {
+        feeds_to_dtype_.insert({var_name, DistModelDataType::INT32});
+      } else if (real_var->GetDataType() == proto::VarType::INT64) {
+        feeds_to_dtype_.insert({var_name, DistModelDataType::INT64});
+      } else {
+        LOG(ERROR) << "Don't support feed var dtype for: "
+                   << real_var->GetDataType();
+        return false;
       }
     } else if (op->Type() == "fetch") {
       VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
