@@ -350,7 +350,7 @@ void LaunchKernel(const KPDevice &ctx,
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
   }
 
   for (int i = 0; i < Arity; i++) {

@@ -1,3 +1,5 @@
+add_subdirectory(dynload)
+
 add_subdirectory(cpu)
 
 if(WITH_XPU)
