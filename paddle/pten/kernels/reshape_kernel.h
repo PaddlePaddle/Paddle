@@ -39,7 +39,7 @@ DenseTensor Reshape(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& shape) {
   auto out_meta = InferMetaFromVecValue(x.meta(), shape);
-  auto dense_out = Empty<Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = Empty(dev_ctx, std::move(out_meta));
   ReshapeKernel<Context>(dev_ctx, x, ScalarArray(shape), &dense_out);
   return dense_out;
 }

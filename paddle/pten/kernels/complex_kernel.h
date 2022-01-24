@@ -33,7 +33,7 @@ template <typename T,
               bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   auto out_meta = UnchangedInferMeta(x.meta());
-  auto dense_out = pten::Empty<Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
   ConjKernel<T>(dev_ctx, x, &dense_out);
   return dense_out;
 }

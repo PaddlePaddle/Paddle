@@ -42,7 +42,7 @@ DenseTensor Full(const Context& dev_ctx,
                  Backend backend = Backend::CPU,  // Is backend needed here?
                  DataLayout layout = DataLayout::NCHW) {
   auto out_meta = CreateInferMeta(shape, dtype, layout);
-  auto dense_out = Empty<Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = Empty(dev_ctx, std::move(out_meta));
   FullKernel<T, Context>(dev_ctx, shape, val, &dense_out);
   return dense_out;
 }
@@ -56,7 +56,7 @@ DenseTensor FullLike(
     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
     DataLayout layout = DataLayout::UNDEFINED) {
   auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
-  auto dense_out = Empty<Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = Empty(dev_ctx, std::move(out_meta));
   FullLikeKernel<T, Context>(dev_ctx, val, &dense_out);
   return dense_out;
 }

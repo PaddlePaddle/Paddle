@@ -36,7 +36,7 @@ DenseTensor Concat(const Context& dev_ctx,
   }
 
   auto out_meta = ConcatInferMeta(x_meta, axis.to<int>(), true);
-  auto dense_out = pten::Empty<Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
   ConcatKernel<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
