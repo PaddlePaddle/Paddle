@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,25 +14,25 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/hostdevice.h"
 
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
 
-using float16 = paddle::platform::float16;
+using float16 = pten::dtype::float16;
 template <typename T>
-using complex = paddle::platform::complex<T>;
+using complex = pten::dtype::complex<T>;
 
 template <typename T>
 struct NumTraits;
 
 template <>
-struct NumTraits<paddle::platform::bfloat16>
-    : GenericNumTraits<paddle::platform::bfloat16> {
+struct NumTraits<pten::dtype::bfloat16>
+    : GenericNumTraits<pten::dtype::bfloat16> {
   enum {
     IsSigned = true,
     IsInteger = false,
@@ -40,23 +40,23 @@ struct NumTraits<paddle::platform::bfloat16>
     RequireInitialization = false
   };
 
-  HOSTDEVICE static inline paddle::platform::bfloat16 epsilon() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x3400);
+  HOSTDEVICE static inline pten::dtype::bfloat16 epsilon() {
+    return pten::dtype::raw_uint16_to_bfloat16(0x3400);
   }
-  HOSTDEVICE static inline paddle::platform::bfloat16 dummy_precision() {
-    return paddle::platform::bfloat16(1e-5f);
+  HOSTDEVICE static inline pten::dtype::bfloat16 dummy_precision() {
+    return pten::dtype::bfloat16(1e-5f);
   }
-  HOSTDEVICE static inline paddle::platform::bfloat16 highest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
+  HOSTDEVICE static inline pten::dtype::bfloat16 highest() {
+    return pten::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
-  HOSTDEVICE static inline paddle::platform::bfloat16 lowest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
+  HOSTDEVICE static inline pten::dtype::bfloat16 lowest() {
+    return pten::dtype::raw_uint16_to_bfloat16(0xff7f);
   }
-  HOSTDEVICE static inline paddle::platform::bfloat16 infinity() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
+  HOSTDEVICE static inline pten::dtype::bfloat16 infinity() {
+    return pten::dtype::raw_uint16_to_bfloat16(0x7f80);
   }
-  HOSTDEVICE static inline paddle::platform::bfloat16 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
+  HOSTDEVICE static inline pten::dtype::bfloat16 quiet_NaN() {
+    return pten::dtype::raw_uint16_to_bfloat16(0xffc1);
   }
 };
 
@@ -114,20 +114,20 @@ struct NumTraits<float16> : GenericNumTraits<float16> {
   };
 
   HOSTDEVICE static inline float16 epsilon() {
-    return paddle::platform::raw_uint16_to_float16(0x0800);
+    return pten::dtype::raw_uint16_to_float16(0x0800);
   }
   HOSTDEVICE static inline float16 dummy_precision() { return float16(1e-2f); }
   HOSTDEVICE static inline float16 highest() {
-    return paddle::platform::raw_uint16_to_float16(0x7bff);
+    return pten::dtype::raw_uint16_to_float16(0x7bff);
   }
   HOSTDEVICE static inline float16 lowest() {
-    return paddle::platform::raw_uint16_to_float16(0xfbff);
+    return pten::dtype::raw_uint16_to_float16(0xfbff);
   }
   HOSTDEVICE static inline float16 infinity() {
-    return paddle::platform::raw_uint16_to_float16(0x7c00);
+    return pten::dtype::raw_uint16_to_float16(0x7c00);
   }
   HOSTDEVICE static inline float16 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_float16(0x7c01);
+    return pten::dtype::raw_uint16_to_float16(0x7c01);
   }
 };
 
@@ -136,96 +136,86 @@ namespace numext {
 //////////// bfloat methods /////////////
 
 template <>
-HOSTDEVICE inline bool(isnan)(const paddle::platform::bfloat16& a) {
-  return (paddle::platform::isnan)(a);
+HOSTDEVICE inline bool(isnan)(const pten::dtype::bfloat16& a) {
+  return (pten::dtype::isnan)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isinf)(const paddle::platform::bfloat16& a) {
-  return (paddle::platform::isinf)(a);
+HOSTDEVICE inline bool(isinf)(const pten::dtype::bfloat16& a) {
+  return (pten::dtype::isinf)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isfinite)(const paddle::platform::bfloat16& a) {
-  return (paddle::platform::isfinite)(a);
+HOSTDEVICE inline bool(isfinite)(const pten::dtype::bfloat16& a) {
+  return (pten::dtype::isfinite)(a);
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 exp(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::expf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 exp(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::expf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 expm1(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::expm1f(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 expm1(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::expm1f(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 erf(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::erff(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 erf(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::erff(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 log(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::logf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 log(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::logf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 tanh(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::tanhf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 tanh(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::tanhf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 sqrt(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::sqrtf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 sqrt(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::sqrtf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 ceil(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::ceilf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 ceil(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::ceilf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 floor(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::floorf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 floor(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::floorf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 round(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::roundf(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 round(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::roundf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 pow(
-    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
-  return paddle::platform::bfloat16(
+HOSTDEVICE inline pten::dtype::bfloat16 pow(const pten::dtype::bfloat16& a,
+                                            const pten::dtype::bfloat16& b) {
+  return pten::dtype::bfloat16(
       ::powf(static_cast<float>(a), static_cast<float>(b)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 abs(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::fabs(static_cast<float>(a)));
+HOSTDEVICE inline pten::dtype::bfloat16 abs(const pten::dtype::bfloat16& a) {
+  return pten::dtype::bfloat16(::fabs(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 mini(
-    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
+HOSTDEVICE inline pten::dtype::bfloat16 mini(const pten::dtype::bfloat16& a,
+                                             const pten::dtype::bfloat16& b) {
   return b < a ? b : a;
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 maxi(
-    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
+HOSTDEVICE inline pten::dtype::bfloat16 maxi(const pten::dtype::bfloat16& a,
+                                             const pten::dtype::bfloat16& b) {
   return a < b ? b : a;
 }
 
@@ -233,17 +223,17 @@ HOSTDEVICE inline paddle::platform::bfloat16 maxi(
 
 template <>
 HOSTDEVICE inline bool(isnan)(const complex<float>& a) {
-  return (paddle::platform::isnan)(a);
+  return (pten::dtype::isnan)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isinf)(const complex<float>& a) {
-  return (paddle::platform::isinf)(a);
+  return (pten::dtype::isinf)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isfinite)(const complex<float>& a) {
-  return (paddle::platform::isfinite)(a);
+  return (pten::dtype::isfinite)(a);
 }
 
 template <>
@@ -256,17 +246,17 @@ HOSTDEVICE inline complex<float> exp(const complex<float>& a) {
 
 template <>
 HOSTDEVICE inline complex<float> log(const complex<float>& a) {
-  return paddle::platform::log(a);
+  return pten::dtype::log(a);
 }
 
 template <>
 HOSTDEVICE inline complex<float> tanh(const complex<float>& a) {
-  return paddle::platform::tanh(a);
+  return pten::dtype::tanh(a);
 }
 
 template <>
 HOSTDEVICE inline complex<float> sqrt(const complex<float>& a) {
-  return paddle::platform::sqrt(a);
+  return pten::dtype::sqrt(a);
 }
 
 template <>
@@ -287,29 +277,29 @@ HOSTDEVICE inline complex<float> round(const complex<float>& a) {
 template <>
 HOSTDEVICE inline complex<float> pow(const complex<float>& a,
                                      const complex<float>& b) {
-  return paddle::platform::pow(a, b);
+  return pten::dtype::pow(a, b);
 }
 
 template <>
 HOSTDEVICE inline float abs(const complex<float>& a) {
-  return paddle::platform::abs(a);
+  return pten::dtype::abs(a);
 }
 
 //////////// complex<double> methods /////////////
 
 template <>
 HOSTDEVICE inline bool(isnan)(const complex<double>& a) {
-  return (paddle::platform::isnan)(a);
+  return (pten::dtype::isnan)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isinf)(const complex<double>& a) {
-  return (paddle::platform::isinf)(a);
+  return (pten::dtype::isinf)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isfinite)(const complex<double>& a) {
-  return (paddle::platform::isfinite)(a);
+  return (pten::dtype::isfinite)(a);
 }
 
 template <>
@@ -322,17 +312,17 @@ HOSTDEVICE inline complex<double> exp(const complex<double>& a) {
 
 template <>
 HOSTDEVICE inline complex<double> log(const complex<double>& a) {
-  return paddle::platform::log(a);
+  return pten::dtype::log(a);
 }
 
 template <>
 HOSTDEVICE inline complex<double> tanh(const complex<double>& a) {
-  return paddle::platform::tanh(a);
+  return pten::dtype::tanh(a);
 }
 
 template <>
 HOSTDEVICE inline complex<double> sqrt(const complex<double>& a) {
-  return paddle::platform::sqrt(a);
+  return pten::dtype::sqrt(a);
 }
 
 template <>
@@ -353,29 +343,29 @@ HOSTDEVICE inline complex<double> round(const complex<double>& a) {
 template <>
 HOSTDEVICE inline complex<double> pow(const complex<double>& a,
                                       const complex<double>& b) {
-  return paddle::platform::pow(a, b);
+  return pten::dtype::pow(a, b);
 }
 
 template <>
 HOSTDEVICE inline double abs(const complex<double>& a) {
-  return paddle::platform::abs(a);
+  return pten::dtype::abs(a);
 }
 
 //////////// float16 methods /////////////
 
 template <>
 HOSTDEVICE inline bool(isnan)(const float16& a) {
-  return (paddle::platform::isnan)(a);
+  return (pten::dtype::isnan)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isinf)(const float16& a) {
-  return (paddle::platform::isinf)(a);
+  return (pten::dtype::isinf)(a);
 }
 
 template <>
 HOSTDEVICE inline bool(isfinite)(const float16& a) {
-  return (paddle::platform::isfinite)(a);
+  return (pten::dtype::isfinite)(a);
 }
 
 template <>
