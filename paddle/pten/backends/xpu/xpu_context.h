@@ -14,14 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-// #ifdef PADDLE_WITH_XPU
-
 #include <memory>
 #include "paddle/pten/backends/xpu/forwards.h"
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/device_context.h"
 
-// TODO(wilber): remove all fluid headers
 #include "paddle/pten/backends/xpu/xpu_header.h"
 #include "paddle/pten/backends/xpu/xpu_info.h"
 
@@ -68,18 +65,9 @@ class XPUContext : public DeviceContext {
 
   void set_bkcl_context(xpu::BKCLContext_t context);
 
-  // TODO(wilber): add
-  // void SetHostAllocator(Allocator*);
-
-  // const Allocator& GetHostAllocator() const;
-
-  // void HostAlloc(TensorBase*);
-
  private:
   struct XPUImpl;
   std::unique_ptr<XPUImpl> impl_;
 };
 
 }  // namespace pten
-
-// #endif  // PADDLE_WITH_XPU

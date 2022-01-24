@@ -17,7 +17,6 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/pten/backends/cpu/forwards.h"
-#include "paddle/pten/core/candidate/allocator.h"
 #include "paddle/pten/core/device_context.h"
 
 // TODO(wilber): Do we need to use place in pten kernel?
@@ -27,7 +26,6 @@ namespace pten {
 
 struct CPUContextResource {
   Eigen::DefaultDevice* device{nullptr};
-  Allocator* host_allocator{nullptr};
 };
 
 class CPUContext : public DeviceContext {

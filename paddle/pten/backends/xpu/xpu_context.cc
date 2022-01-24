@@ -65,6 +65,7 @@ struct XPUContext::XPUImpl {
                             << static_cast<int>(place_.device);
 
     context_ = xpu::create_context();
+    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
   }
 
@@ -73,23 +74,31 @@ struct XPUContext::XPUImpl {
                    const XPUPlace& place = XPUPlace(0))
       : res_(ctx_res), place_(place) {
     context_ = res_.context;
+    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
   }
 
   ~XPUImpl() {
-    // TODO(xpu): Why not delete resource?
+    if (res_.context == nullptr && context_ != nullptr) {
+      xpu::destroy_context(context_);
+      context_ = nullptr;
+    }
   }
 
   Place GetPlace() const { return place_; }
 
   backends::xpu::XPUVersion GetXpuVersion() const { return xpu_version_; }
 
-  xpu::Context* GetXContext() const { return context_; }
+  xpu::Context* GetXContext() const {
+    PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
+    return context_;
+  }
 
   xpu::BKCLContext_t GetBkclContext() const { return bkcl_context_; }
 
   void Wait() const {
     backends::xpu::SetXPUDeviceId(place_.GetDeviceId());
+    PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
   }
 
@@ -107,7 +116,6 @@ struct XPUContext::XPUImpl {
   XPUPlace place_;
   backends::xpu::XPUVersion xpu_version_;
   xpu::Context* context_{nullptr};
-  Allocator* host_allocator_{nullptr};
   // NOTE: Distributed communicator, distributed framework manages its
   // resources, XPUContext only holds references.
   xpu::BKCLContext_t bkcl_context_{nullptr};
@@ -158,17 +166,5 @@ void XPUContext::set_x_context(xpu::Context* context) {
 void XPUContext::set_bkcl_context(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
-
-// void SetHostAllocator(Allocator*) {
-
-// }
-
-// const Allocator& GetHostAllocator() const {
-
-// }
-
-// void HostAlloc(TensorBase*) {
-
-// }
 
 }  // namespace pten

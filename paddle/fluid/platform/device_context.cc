@@ -245,53 +245,14 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {
-  // context_ = xpu::create_context();
-  // xpu_version_ = get_xpu_version(place_.device);
-}
+XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
-  // platform::XPUDeviceGuard guard(place.device);
-
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
                           << static_cast<int>(place.device);
-
-  // context_ = xpu::create_context();
-  // const int MAX_XPU_NUM = 16;
-  // static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
-
-  // int l3_size = 13.5 * 1024 * 1024;
-  // if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-  //   l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
-  // }
-
-  // auto selected_xpus = GetXPUSelectedDevices();
-  // for (unsigned int i = 0; i < selected_xpus.size(); i++) {
-  //   if (place.device == selected_xpus[i]) {
-  //     if (l3ptrs[place.device] == nullptr) {
-  //       xpu_malloc(static_cast<void**>(&l3ptrs[place.device]), l3_size,
-  //                  XPU_MEM_L3);
-  //     }
-  //     if (l3ptrs[place.device] != nullptr) {
-  //       context_->_l3_mgr.set(l3ptrs[place.device], l3_size);
-  //       VLOG(3) << "xpu place " << place.device << " set l3 size " <<
-  //       l3_size;
-  //     }
-  //     break;
-  //   }
-  // }
 }
-
-// void XPUDeviceContext::Wait() const {
-//   platform::SetXPUDeviceId(place_.device);
-//   xpu_wait(context_->xpu_stream);
-// }
-
-// Place XPUDeviceContext::GetPlace() const { return place_; }
-
-// xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
