@@ -34,7 +34,7 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
   auto grad_dense =
       std::dynamic_pointer_cast<pten::DenseTensor>(meta->Grad().impl());
-  T* ptr = grad_dense->mutable_data<T>();
+  T* ptr = grad_dense->data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
   if (paddle::platform::is_gpu_place(grad_dense->place())) {
@@ -67,7 +67,7 @@ template <typename T>
 bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
   // TODO(jiabin): Support Selected Rows later
   auto dense_t = std::dynamic_pointer_cast<pten::DenseTensor>(target.impl());
-  T* ptr = dense_t->mutable_data<T>();
+  T* ptr = dense_t->data<T>();
 
   std::vector<T> host_data(dense_t->numel());
   if (paddle::platform::is_gpu_place(dense_t->place())) {

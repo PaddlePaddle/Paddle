@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace paddle {
 namespace operators {

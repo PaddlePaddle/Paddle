@@ -328,7 +328,7 @@ struct ReduceConfig {
     if (should_reduce_again) {
       tmp->ResizeAndAllocate(pten::framework::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
-      output_data = tmp->mutable_data<Ty>();
+      output_data = tmp->mutable_data<Ty>(place);
     } else {
       output_data = y_data;
     }
@@ -1032,7 +1032,7 @@ static
                             pten::framework::make_ddim(
                                 {static_cast<int64_t>(temp_storage_bytes)})));
 
-  auto* temp_storage = tmp.mutable_data<uint8_t>();
+  auto* temp_storage = tmp.mutable_data<uint8_t>(place);
 
   cub::DeviceReduce::Reduce(temp_storage,
                             temp_storage_bytes,
@@ -1070,8 +1070,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
-  // Allocate memory
-  y->mutable_data<Ty>();
+  y->mutable_data<Ty>(x.place());
 
   auto x_dim = pten::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
@@ -1088,7 +1087,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
       pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
 
   auto x_data = x.data<Tx>();
-  auto y_data = y->mutable_data<Ty>();
+  auto y_data = y->data<Ty>();
 
   auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(x.place()));

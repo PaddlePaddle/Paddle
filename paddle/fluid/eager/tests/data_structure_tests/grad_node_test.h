@@ -41,7 +41,7 @@ class GradTestNode : public egr::GradNodeBase {
             paddle::platform::CPUPlace())
             .get(),
         meta);
-    auto* dt_ptr = dt->mutable_data<float>();
+    auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
     egr::EagerTensor et1(dt);
     std::vector<std::vector<egr::EagerTensor>> res = {{et1}};

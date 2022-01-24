@@ -1,3 +1,6 @@
+# utils used for compatible for fluid op system
+add_subdirectory(compat)
+
 if(WITH_GPU)
   cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
 elseif(WITH_ROCM)
@@ -8,7 +11,6 @@ endif()
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce convert_utils)
 cc_library(kernel_context SRCS kernel_context.cc DEPS enforce pten_context)
-cc_library(arg_map_context SRCS arg_map_context.cc DEPS enforce)
 
 cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)
 cc_library(tensor_meta SRCS tensor_meta.cc DEPS enforce mixed_vector)
@@ -16,8 +18,8 @@ cc_library(lod_utils SRCS lod_utils.cc DEPS enforce mixed_vector)
 cc_library(dense_tensor SRCS dense_tensor.cc DEPS convert_utils tensor_meta tensor_base)
 cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 
-
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
+cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
@@ -27,6 +29,8 @@ if(WITH_GPU)
 elseif(WITH_ROCM)
   hip_test(dim_test SRCS dim_test.cu DEPS ddim)
 endif()
+
+cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector enforce ddim)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
