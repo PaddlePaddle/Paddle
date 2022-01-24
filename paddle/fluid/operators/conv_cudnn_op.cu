@@ -667,8 +667,17 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                                    workspace_size, ctx);
 #else
       using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-      data_algo =
-          search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
+
+      // We found that when filter_dims[0] == 512 && filter_dims[1] == 256 on
+      // V100, the performance
+      // of convolution 0 algorithm is better for input data
+      if (dev_ctx.GetComputeCapability() == 70 && filter_dims[0] == 512 &&
+          filter_dims[1] == 256 && !deterministic && !exhaustive_search) {
+        data_algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
+      } else {
+        data_algo =
+            search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
+      }
       workspace_size =
           std::max(workspace_size, search1::GetWorkspaceSize(args1, data_algo));
 #endif

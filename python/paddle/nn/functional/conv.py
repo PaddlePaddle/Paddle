@@ -326,38 +326,18 @@ def conv1d(x,
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
-    use_dgrad_engine = False
 
-    #When num_filters == 512, use dgrad_engine<float, int=512, ..., bool=1> has better performance
-    if num_filters == 512:
-        use_dgrad_engine = True
-
-    #When use_dgrad_engine is true, the original dimension is expanded
-    if use_dgrad_engine:
-        if len(padding) == 2:
-            padding = padding + [0] * 2
-        elif len(padding) == 1:
-            padding = padding + [0]
-        else:
-            raise ValueError(
-                "The size of padding's dimension should be 1 or 2. But got padding={}".
-                format(padding))
-
-        stride = convert_to_list(stride, 1, 'stride') + [1]
-        dilation = convert_to_list(dilation, 1, 'dilation') + [1]
-        weight = unsqueeze(weight, axis=[-1])
+    if len(padding) == 2:
+        padding = [0] * 2 + padding
+    elif len(padding) == 1:
+        padding = [0] + padding
     else:
-        if len(padding) == 2:
-            padding = [0] * 2 + padding
-        elif len(padding) == 1:
-            padding = [0] + padding
-        else:
-            raise ValueError(
-                "The size of padding's dimension should be 1 or 2. But got padding={}".
-                format(padding))
-        stride = [1] + convert_to_list(stride, 1, 'stride')
-        dilation = [1] + convert_to_list(dilation, 1, 'dilation')
-        weight = unsqueeze(weight, axis=[-2])
+        raise ValueError(
+            "The size of padding's dimension should be 1 or 2. But got padding={}".
+            format(padding))
+    stride = [1] + convert_to_list(stride, 1, 'stride')
+    dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"
 
@@ -375,9 +355,6 @@ def conv1d(x,
             l_type = 'conv2d'
 
     squeeze_aixs = -3 if channel_last else -2
-    if use_dgrad_engine:
-        squeeze_aixs += 1
-
     x = unsqueeze(x, axis=[squeeze_aixs])
 
     if in_dygraph_mode():
