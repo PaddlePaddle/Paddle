@@ -115,4 +115,14 @@ using conj_kernel = void (*)(const DeviceContext&,
                              const DenseTensor&,
                              DenseTensor*);
 
+/* -------------- Grad Kernel ----------------- */
+using matmul_grad_kernel = void (*)(const DeviceContext&,
+                                    const DenseTensor&,
+                                    const DenseTensor&,
+                                    const DenseTensor&,
+                                    bool,
+                                    bool,
+                                    DenseTensor*,
+                                    DenseTensor*);
+
 }  // namespace pten
