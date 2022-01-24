@@ -467,7 +467,7 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
     cudaMemset(p_reindex_x, 0, bs * sizeof(T));
     thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
 
-    auto* sample_index = ctx.Output<Tensor>("Sample_index");
+    auto* sample_index = ctx.Output<Tensor>("Sample_Index");
     sample_index->Resize({static_cast<int>(subset.size())});
     T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
     const size_t& sample_bytes = subset.size() * sizeof(T);

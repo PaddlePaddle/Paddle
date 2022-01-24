@@ -87,7 +87,7 @@ def graph_sample_neighbors(sorted_src,
         outputs={
             "Out_Src": edge_src,
             "Out_Dst": edge_dst,
-            "Sample_index": sample_index,
+            "Sample_Index": sample_index,
             "Reindex_X": reindex_nodes,
             "Out_Eids": edge_eids
         },

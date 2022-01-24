@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+void input_shape_check(const framework::DDim& dims, std::string tensor_name) {
+  if (dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(dims[1], 1, platform::errors::InvalidArgument(
+                                      "The last dim of %s should be 1 when it "
+                                      "is 2D, but we get %d",
+                                      tensor_name, dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dims.size(), 1,
+        platform::errors::InvalidArgument(
+            "The %s should be 1D, when it is not 2D, but we get %d",
+            tensor_name, dims.size()));
+  }
+}
+
 class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -31,11 +46,16 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
                    "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasOutput("Out_Dst"), "Output", "Out_Dst",
                    "GraphSampleNeighbors");
-    OP_INOUT_CHECK(ctx->HasOutput("Sample_index"), "Output", "Sample_index",
+    OP_INOUT_CHECK(ctx->HasOutput("Sample_Index"), "Output", "Sample_Index",
                    "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasOutput("Reindex_X"), "Output", "Reindex_X",
                    "GraphSampleNeighbors");
-    // 是否限制所有输入输出均为1维向量，或者2维向量第二维为1.
+
+    // Restrict all the inputs as 1-dim tensor, or 2-dim tensor with the second
+    // dim as 1.
+    input_shape_check(ctx->GetInputDim("Src"), "Src");
+    input_shape_check(ctx->GetInputDim("Dst_Count"), "Dst_Count");
+    input_shape_check(ctx->GetInputDim("X"), "X");
 
     const std::vector<int>& sample_sizes =
         ctx->Attrs().Get<std::vector<int>>("sample_sizes");
@@ -48,6 +68,7 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
     if (return_eids) {
       OP_INOUT_CHECK(ctx->HasInput("Src_Eids"), "Input", "Src_Eids",
                      "GraphSampleNeighbors");
+      input_shape_check(ctx->GetInputDim("Src_Eids"), "Src_Eids");
       OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
                      "GraphSampleNeighbors");
       ctx->SetOutputDim("Out_Eids", {-1});
@@ -55,7 +76,7 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Out_Src", {-1, 1});
     ctx->SetOutputDim("Out_Dst", {-1, 1});
-    ctx->SetOutputDim("Sample_index", {-1});
+    ctx->SetOutputDim("Sample_Index", {-1});
 
     auto dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Reindex_X", dims);
@@ -73,18 +94,18 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
 class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Src", "The src index tensor after sorted by dst.");
+    AddInput("Src", "The src index tensor of graph edges after sorted by dst.");
     AddInput("Src_Eids", "The eids of the input graph edges.").AsDispensable();
     AddInput("Dst_Count",
-             "The indegree cumsum of dst intex, starts from 0, end with number "
-             "of edges");
+             "The cumulative sum of the number of src neighbors of dst index, "
+             "starts from 0, end with number of edges");
     AddInput("X", "The input center nodes index tensor.");
     AddOutput("Out_Src",
               "The output src edges tensor after sampling and reindex.");
     AddOutput("Out_Dst",
               "The output dst edges tensor after sampling and reindex.");
-    AddOutput("Sample_index",
-              "The original index of the sampling nodes and center nodes.");
+    AddOutput("Sample_Index",
+              "The original index of the center nodes and sampling nodes");
     AddOutput("Reindex_X", "The reindex node id of the input nodes.");
     AddOutput("Out_Eids", "The eids of the sample edges.").AsIntermediate();
     AddAttr<std::vector<int>>(
@@ -109,5 +130,5 @@ using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(graph_sample_neighbors, ops::GraphSampleNeighborsOP,
                   ops::GraphSampleNeighborsOpMaker);
 REGISTER_OP_CPU_KERNEL(graph_sample_neighbors,
-                       ops::GraphSampleNeighborsOpKernel<CPU, int>,
+                       ops::GraphSampleNeighborsOpKernel<CPU, int32_t>,
                        ops::GraphSampleNeighborsOpKernel<CPU, int64_t>);

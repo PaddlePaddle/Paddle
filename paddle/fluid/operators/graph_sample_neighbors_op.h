@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <numeric>
+#include <random>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -28,39 +29,41 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <class bidiiter>
-void sample_unique(bidiiter begin, bidiiter end, int num_samples) {
-  size_t left = std::distance(begin, end);
-  unsigned int seed = left;
-  std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> dice_distribution(0, left);
+void sample_unique_neighbors(bidiiter begin, bidiiter end, int num_samples) {
+  int left_num = std::distance(begin, end);
+  std::random_device rd;
+  std::mt19937 rng{rd()};
+  std::uniform_int_distribution<int> dice_distribution(
+      0, std::numeric_limits<int>::max());
   for (int i = 0; i < num_samples; i++) {
     bidiiter r = begin;
-    int random_step = dice_distribution(rng);
+    int random_step = dice_distribution(rng) % left_num;
     std::advance(r, random_step);
     std::swap(*begin, *r);
     ++begin;
-    --left;
+    --left_num;
   }
 }
 
 template <class bidiiter>
-void sample_unique_with_eids(bidiiter src_begin, bidiiter src_end,
-                             bidiiter eid_begin, bidiiter eid_end,
-                             int num_samples) {
-  size_t left = std::distance(src_begin, src_end);
-  unsigned int seed = left;
-  std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> dice_distribution(0, left);
+void sample_unique_neighbors_with_eids(bidiiter src_begin, bidiiter src_end,
+                                       bidiiter eid_begin, bidiiter eid_end,
+                                       int num_samples) {
+  int left_num = std::distance(src_begin, src_end);
+  std::random_device rd;
+  std::mt19937 rng{rd()};
+  std::uniform_int_distribution<int> dice_distribution(
+      0, std::numeric_limits<int>::max());
   for (int i = 0; i < num_samples; i++) {
     bidiiter r1 = src_begin, r2 = eid_begin;
-    int random_step = dice_distribution(rng);
+    int random_step = dice_distribution(rng) % left_num;
     std::advance(r1, random_step);
     std::advance(r2, random_step);
     std::swap(*src_begin, *r1);
     std::swap(*eid_begin, *r2);
     ++src_begin;
     ++eid_begin;
-    --left;
+    --left_num;
   }
 }
 
@@ -117,11 +120,12 @@ void sample_neighbors(const T* src, const T* dst_count, const T* src_eids,
       std::copy(src + begin, src + end, out_src_vec[i].begin());
       if (return_eids) {
         std::copy(src_eids + begin, src_eids + end, out_eids_vec[i].begin());
-        sample_unique_with_eids(out_src_vec[i].begin(), out_src_vec[i].end(),
-                                out_eids_vec[i].begin(), out_eids_vec[i].end(),
-                                k);
+        sample_unique_neighbors_with_eids(
+            out_src_vec[i].begin(), out_src_vec[i].end(),
+            out_eids_vec[i].begin(), out_eids_vec[i].end(), k);
       } else {
-        sample_unique(out_src_vec[i].begin(), out_src_vec[i].end(), k);
+        sample_unique_neighbors(out_src_vec[i].begin(), out_src_vec[i].end(),
+                                k);
       }
       *(output_counts->data() + i) = k;
     } else {
@@ -254,6 +258,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     auto unique_dst_merge_ptr = unique_dst_merge.begin();
     auto src_merge_ptr = src_merge.begin();
     auto dst_sample_counts_merge_ptr = dst_sample_counts_merge.begin();
+    // TODO(daisiming): We may try to use std::move in the future.
     for (size_t i = 0; i < num_layers; i++) {
       if (i == 0) {
         unique_dst_merge_ptr = std::copy(dst_vec[i].begin(), dst_vec[i].end(),
@@ -337,7 +342,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     }
 
     // 8. Get outputs.
-    auto* sample_index = ctx.Output<Tensor>("Sample_index");
+    auto* sample_index = ctx.Output<Tensor>("Sample_Index");
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
     sample_index->Resize({static_cast<int>(unique_nodes.size())});
