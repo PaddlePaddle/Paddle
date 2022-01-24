@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_CUSTOM_KERNEL
-
 #include "paddle/fluid/framework/custom_kernel.h"
 #include <dirent.h>
 #include <algorithm>
@@ -402,5 +400,3 @@ void LoadCustomKernel(const std::string& libs_path) {
 
 }  // namespace framework
 }  // namespace paddle
-
-#endif  // PADDLE_WITH_CUSTOM_KERNEL

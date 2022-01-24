@@ -40,8 +40,7 @@ void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
              const std::vector<paddle::Tensor>& fake_input_vec,
              bool fake_attr_bool, int fake_attr_int, float fake_attr_float,
              double fake_attr_double, int64_t fake_attr_int64,
-             paddle::platform::float16 fake_attr_f16,
-             pten::DataType fake_attr_dtype,
+             pten::dtype::float16 fake_attr_f16, pten::DataType fake_attr_dtype,
              const pten::Scalar& fake_attr_scalar,
              const pten::ScalarArray& fake_attr_scalar_array,
              const std::vector<int64_t>& fake_attr_int64_vec,
@@ -183,7 +182,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   float fake_attr_float = 2.0;
   double fake_attr_double = 3.0;
   int64_t fake_attr_int64 = 4;
-  paddle::platform::float16 fake_attr_f16 = paddle::platform::float16(5);
+  pten::dtype::float16 fake_attr_f16 = pten::dtype::float16(5);
   pten::DataType fake_attr_dtype = pten::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
   tmp_tensor.mutable_data<uint8_t>({1}, pten::TransToFluidPlace(backend));

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_WITH_CUSTOM_KERNEL
 
 #include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/core/kernel_factory.h"
@@ -70,5 +69,3 @@ class OpKernelInfoHelper {
 
 }  // namespace framework
 }  // namespace paddle
-
-#endif  // PADDLE_WITH_CUSTOM_KERNEL

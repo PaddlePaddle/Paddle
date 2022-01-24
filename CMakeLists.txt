@@ -95,10 +95,6 @@ if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
-if(LINUX)
-    set(WITH_CUSTOM_KERNEL ON)  # CUSTOM KERNEL support only Linux on stage.1
-endif()
-
 if(WIN32)
     option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
 

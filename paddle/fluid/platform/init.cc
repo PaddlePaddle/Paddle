@@ -53,9 +53,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/fluid/framework/custom_kernel.h"
-#endif
 
 DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
@@ -228,7 +226,6 @@ void InitDevices(const std::vector<int> devices) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
-#ifdef PADDLE_WITH_CUSTOM_KERNEL
   const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
   if (!custom_kernel_root_p) {
     VLOG(3) << "Env [CUSTOM_DEVICE_ROOT] is not set.";
@@ -241,7 +238,6 @@ void InitDevices(const std::vector<int> devices) {
       VLOG(3) << "ENV [CUSTOM_DEVICE_ROOT] is empty.";
     }
   }
-#endif
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN

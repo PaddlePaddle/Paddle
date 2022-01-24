@@ -15,9 +15,7 @@ endif()
 cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor pten_context kernel_factory)
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
-if (WITH_CUSTOM_KERNEL)
-  cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor)
-endif()
+cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor)
 
 set(api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
