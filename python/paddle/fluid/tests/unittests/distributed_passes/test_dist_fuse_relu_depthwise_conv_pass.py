@@ -23,9 +23,8 @@ from dist_pass_test_base import DistPassTestBase
 
 
 class ReluDepthwiseConvNet(nn.Layer):
-    def __init__(self, name_scope=None, dtype="float32"):
-        super(ReluDepthwiseConvNet, self).__init__(
-            name_scope=name_scope, dtype=dtype)
+    def __init__(self):
+        super(ReluDepthwiseConvNet, self).__init__()
 
         self.conv1 = nn.Conv2D(3, 9, (3, 3))
         self.relu = nn.ReLU()
@@ -74,13 +73,16 @@ class TestFuseReluDepthwiseConvPass(DistPassTestBase):
         return main_program, startup_program, [image], [loss], reader
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([new_pass("fuse_relu_depthwise_conv_pass")])
+        pass_manager = PassManager([new_pass("fuse_relu_depthwise_conv")])
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 
+        op_type = []
         for op in main_prog.global_block().ops:
             if op.type == "depthwise_conv2d":
-                assert op.desc.attr("fuse_relu_before_depthwise_conv") == True
+                self.assertTrue(op.desc.attr("fuse_relu_before_depthwise_conv"))
+            op_type.append(op.type)
+        self.assertTrue("depthwise_conv2d" in op_type)
 
     def test_relu_depthwise_conv(self):
         self.check_main()
