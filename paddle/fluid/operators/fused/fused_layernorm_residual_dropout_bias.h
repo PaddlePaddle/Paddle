@@ -36,13 +36,12 @@ using LayerNormScaleBiasT =
  */
 
 template <typename T, int VecSize, typename U,
-          bool ScaleBiasWithSameTypeX = false, bool x_is_vec = false>
+          bool ScaleBiasWithSameTypeX = false>
 __device__ void CalcLayernormY(
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias, const T *x,
     T *y, const int row_id, const int col_id, const int cols,
-    const LayerNormParamType<T> mean_val, const LayerNormParamType<T> invvar,
-    platform::AlignedVector<T, VecSize> *input_vec = nullptr) {
+    const LayerNormParamType<T> mean_val, const LayerNormParamType<T> invvar) {
   using LoadT = platform::AlignedVector<T, VecSize>;
   using StoreT = platform::AlignedVector<T, VecSize>;
   using LoadU = platform::AlignedVector<U, VecSize>;
@@ -61,12 +60,7 @@ __device__ void CalcLayernormY(
           static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(0);
     }
 
-    if (!x_is_vec) {
-      // vectorize load data from global
-      platform::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
-    } else {
-      x_vec = *input_vec;
-    }
+    platform::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
 
     if (scale != nullptr) {
       platform::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
@@ -352,136 +346,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
       platform::Store<T, VecSize>(x[it], y_ptr + row * COLS_ + col * VecSize);
       col += THREADS_PER_ROW;
     }
-  }
-}
-
-/**
- * @brief layernorm(residual + dropout(src + bias));
- * @param
- * rows: batch_size * seq_len
- * cols: feature_size or hidden_size
- * src: [rows, cols], inputs
- * bias: [cols], linear bias, can be null
- * residual:[rows, cols]
- * mask: [rows, cols], dropout result
- * dst: [rows, cols], residual + dropout(src+bias)
- * layernorm_dst: [rows, cols], layernorm result
- * layernorm_bias: [cols], layernorm bias, can be null
- * scale: [cols]: layernorm scale, can be null
- * means: [rows]: layernorm means
- * vars: [rows]: layernorm vars
- */
-template <typename T, typename MaskType, int VecSize, typename U,
-          bool ScaleBiasWithSameTypeX = false, bool ComputeLayerNorm = true>
-__global__ void FusedLayernormResidualDropoutBiasOneRound(
-    const size_t rows, const size_t cols, uint64_t seed,
-    const float dropout_prob, const bool is_upscale_in_train,
-    const bool is_test, const uint64_t increment, const float epsilon,
-    const T *src, const T *residual, const T *bias,
-    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
-    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
-    MaskType *mask, T *dst, T *layernorm_dst, LayerNormParamType<T> *mean,
-    LayerNormParamType<T> *var) {
-  int tid = threadIdx.x;
-  int row_id = blockIdx.x;
-  int idx = row_id * cols + tid;
-  curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
-
-  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
-
-  __shared__ U mean_share;
-  __shared__ U var_share;
-  __shared__ U shared_mean[32];
-  __shared__ U shared_var[32];
-
-  U mean_val = 0;
-  U var_val = 0;
-
-  //
-  int col_id = tid * VecSize;
-
-  using LoadT = platform::AlignedVector<T, VecSize>;
-  using StoreT = platform::AlignedVector<T, VecSize>;
-  using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
-
-  LoadT src_vec;
-  LoadT residual_vec;
-  LoadT bias_vec;
-#pragma unroll
-  for (int ii = 0; ii < VecSize; ii++) {
-    bias_vec[ii] = static_cast<T>(0);
-    residual_vec[ii] = static_cast<T>(0);
-  }
-  // vectorize load data from global
-  platform::Load<T, VecSize>(&src[row_id * cols + col_id], &src_vec);
-  if (residual) {
-    platform::Load<T, VecSize>(&residual[row_id * cols + col_id],
-                               &residual_vec);
-  }
-
-  if (bias) {
-    platform::Load<T, VecSize>(&bias[col_id], &bias_vec);
-  }
-
-  MaskStoreT mask_vec;
-  if (!is_test) {
-    float rand[VecSize];
-    RandVec<VecSize>(&state, rand);
-#pragma unroll
-    for (int ii = 0; ii < VecSize; ii++) {
-      mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
-    }
-  } else {
-#pragma unroll
-    for (int ii = 0; ii < VecSize; ii++) {
-      mask_vec[ii] = static_cast<MaskType>(1);
-    }
-  }
-
-  StoreT dest_vec;
-
-#pragma unroll
-  for (int ii = 0; ii < VecSize; ii++) {
-    T tmp = src_vec[ii] + bias_vec[ii];
-    dest_vec[ii] =
-        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
-    if (ComputeLayerNorm) {
-      U tmp = static_cast<U>(dest_vec[ii]);
-      mean_val += tmp;
-      var_val += (tmp * tmp);
-    }
-  }
-
-  // store result to global
-  platform::Store<T, VecSize>(dest_vec, &dst[row_id * cols + col_id]);
-  if (!is_test) {
-    platform::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
-  }
-
-  if (ComputeLayerNorm) {
-    // for ln
-    mean_val = BlockReduceSum<U>(mean_val, shared_mean);
-    var_val = BlockReduceSum<U>(var_val, shared_var);
-    if (threadIdx.x == 0) {
-      auto scale =
-          static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
-              static_cast<float>(1.) / static_cast<float>(cols));
-      auto tmp = mean_val * static_cast<U>(scale);
-      mean[row_id] = mean_share = static_cast<U>(tmp);
-      var_share = static_cast<U>(var_val * static_cast<U>(scale) -
-                                 mean_share * mean_share);
-      var_share = var_share > U(0) ? var_share : U(0);
-      var[row_id] = var_share;
-    }
-    __syncthreads();
-
-    mean_val = mean_share;
-    U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
-    // calculate layernorm_dst
-    CalcLayernormY<T, VecSize, U, ScaleBiasWithSameTypeX, true>(
-        scale, layernorm_bias, nullptr, layernorm_dst, row_id, tid, cols,
-        mean_val, invvar, &dest_vec);
   }
 }
 
