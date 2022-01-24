@@ -15,7 +15,6 @@
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include <memory>
 #include "paddle/pten/api/ext/exception.h"
-#include "paddle/pten/core/candidate/allocator.h"
 
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
