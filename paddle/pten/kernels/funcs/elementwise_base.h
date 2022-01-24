@@ -516,9 +516,9 @@ template <typename InT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
 
-    const paddle::framework::Array<const _ptr_ InT *__restrict__,
-                                   MAX_NUM_INPUTS> &in,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
+        &in,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
@@ -552,8 +552,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    paddle::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS> ins,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS> ins,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -592,11 +592,10 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
-
   auto numel = (*outs)[0]->numel();
-  paddle::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
+  pten::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
       ins_data;
-  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
     ins_data[i] = ins[i]->data<InT>();
