@@ -75,6 +75,10 @@ def GetAutoGradMetaName(string):
     return f"{string}_autograd_meta"
 
 
+def GetAutoGradMetaVectorName(string):
+    return f"{string}_autograd_meta_vec"
+
+
 ######################
 ###  File Readers  ###
 ######################
@@ -219,10 +223,6 @@ def ParseYamlBackward(args_str, returns_str):
 def ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
                             forward_returns_list, orig_forward_inputs_list,
                             orig_forward_attrs_list, orig_forward_returns_list):
-    # inputs_list          = [ [input_name, input_type, orig_position], ...]
-    # attrs_list           = [ [attr_name, attr_type, default_value, orig_position], ...]
-    # forward_returns_list = [ [ret_name, ret_type, orig_position] ...]
-    # orig_returns_list    = [ [ret_type, orig_position], ...]
     for i in range(len(forward_inputs_list)):
         forward_input_name = forward_inputs_list[i][0]
         forward_input_type = forward_inputs_list[i][1]
@@ -270,9 +270,6 @@ def ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
 
 def BackwardValidationCheck(backward_fwd_input_map, backward_grad_input_map,
                             backward_attrs_list):
-    # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
-    # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
-    # backward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
 
     # Check Order: TensorWrappers, GradTensors, Attributes
     max_fwd_input_position = -1
@@ -291,10 +288,6 @@ def BackwardValidationCheck(backward_fwd_input_map, backward_grad_input_map,
 
 
 def DetermineForwardPositionMap(forward_inputs_list, forward_returns_list):
-    # inputs_list          = [ [input_name, input_type, orig_position], ...]
-    # forward_returns_list = [ [ret_name, ret_type, orig_position] ...]
-
-    # forward_position_map = { "name" : [type, fwd_position] ...}
     forward_inputs_position_map = {}
     forward_outputs_position_map = {}
     for i in range(len(forward_inputs_list)):
@@ -318,15 +311,6 @@ def DetermineForwardPositionMap(forward_inputs_list, forward_returns_list):
 
 def SlotNameMatching(backward_inputs_list, backward_returns_list,
                      forward_inputs_position_map, forward_outputs_position_map):
-
-    # backward_inputs_list  = [ [input_name, input_type, orig_position], ...]
-    # backward_returns_list = [ [ret_name, ret_type, orig_position], ...]
-    # forward_inputs_position_map  = { "name" : [type, fwd_position] }
-    # forward_outputs_position_map = { "name" : [type, fwd_position] }
-
-    # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
-    # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
-    # backward_grad_output_map = { "name" : [type, fwd_position, orig_position] ...}
 
     backward_fwd_input_map = {}
     backward_grad_input_map = {}
@@ -580,7 +564,14 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     compute_require_grad_args_list = ["trace_backward"]
     for name, (ttype, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        input_autograd_meta = f"    auto* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+        if IsPlainTensorType(ttype):
+            input_autograd_meta = f"    egr::EagerTensor* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+        else:
+            assert IsVectorTensorType(ttype)
+            input_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
+            input_autograd_meta = f"    std::vector<egr::EagerTensor*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
+            input_autograd_meta += f"    std::vector<egr::EagerTensor*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+
         inputs_autograd_meta_list.append(input_autograd_meta)
         compute_require_grad_args_list.append(input_autograd_meta_name)
     inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
@@ -592,11 +583,23 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     num_fwd_outputs = len(forward_outputs_position_map.keys())
     for name, (rtype, pos) in forward_outputs_position_map.items():
         output_autograd_meta_name = GetAutoGradMetaName(name)
+        output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
         if num_fwd_outputs == 1:
-            output_autograd_meta = f"    auto* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs);"
+            if IsPlainTensorType(rtype):
+                output_autograd_meta = f"    egr::EagerTensor* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs);"
+            else:
+                assert IsVectorTensorType(rtype)
+                output_autograd_meta = f"    std::vector<egr::EagerTensor*> {output_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({outputs});\n"
+                output_autograd_meta += f"    std::vector<egr::EagerTensor*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
         else:
             # Tuple api_result
-            outputs_autograd_meta = f"    auto* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs[{pos}]);"
+            if IsPlainTensorType(rtype):
+                outputs_autograd_meta = f"    egr::EagerTensor* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs[{pos}]);"
+            else:
+                assert IsVectorTensorType(rtype)
+                output_autograd_meta = f"    std::vector<egr::EagerTensor*> {output_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta(outputs[{pos}]);\n"
+                output_autograd_meta += f"    std::vector<egr::EagerTensor*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+
         outputs_autograd_meta_list.append(output_autograd_meta)
         pass_stop_gradient_args_list.append(output_autograd_meta_name)
 
@@ -786,7 +789,6 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     
     auto outputs = {};
     
-    // Node Creation
 {}
 
     // Returns
@@ -903,17 +905,10 @@ if __name__ == "__main__":
         # Collect Forward Inputs/Outputs
         forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForwardFromBackward(
             bwd_forward_str)
-        print("Parsed Forward Inputs List: ", forward_inputs_list)
-        print("Prased Forward Attrs List: ", forward_attrs_list)
-        print("Parsed Forward Returns List: ", forward_returns_list)
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list = ParseYamlForward(
             fwd_args_str, fwd_returns_str)
-        print("Parsed Original Forward Inputs List: ", orig_forward_inputs_list)
-        print("Prased Original Forward Attrs List: ", orig_forward_attrs_list)
-        print("Parsed Original Forward Returns List: ",
-              orig_forward_returns_list)
 
         # Forward Validation Checks
         ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
@@ -924,25 +919,15 @@ if __name__ == "__main__":
         # Parse Backward Inputs/Outputs
         backward_inputs_list, backward_attrs_list, backward_returns_list = ParseYamlBackward(
             bwd_args_str, bwd_returns_str)
-        print("Parsed Backward Inputs List: ", backward_inputs_list)
-        print("Prased Backward Attrs List: ", backward_attrs_list)
-        print("Parsed Backward Returns List: ", backward_returns_list)
 
         # Determine Forward Inputs/Outputs Position
         forward_inputs_position_map, forward_outputs_position_map = DetermineForwardPositionMap(
             forward_inputs_list, forward_returns_list)
-        print("Generated Forward Input Position Map: ",
-              forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              forward_outputs_position_map)
 
         # SlotName Matching
         backward_fwd_input_map, backward_grad_input_map, backward_grad_output_map = SlotNameMatching(
             backward_inputs_list, backward_returns_list,
             forward_inputs_position_map, forward_outputs_position_map)
-        print("Generated Backward Fwd Input Map: ", backward_fwd_input_map)
-        print("Generated Backward Grad Input Map: ", backward_grad_input_map)
-        print("Generated Backward Grad Output Map: ", backward_grad_output_map)
 
         # Backward Validation Check
         BackwardValidationCheck(backward_fwd_input_map, backward_grad_input_map,
@@ -951,13 +936,11 @@ if __name__ == "__main__":
         # Node Declaration Generation
         node_declaration_str += GenerateNodeDeclaration(
             fwd_api_name, backward_fwd_input_map, backward_attrs_list)
-        print("Generated Node Declaration: ", node_declaration_str)
 
         node_definition_str += GenerateNodeDefinition(
             fwd_api_name, bwd_api_name, backward_fwd_input_map,
             backward_grad_input_map, backward_grad_output_map,
             backward_attrs_list)
-        print("Generated Node Definition: ", node_definition_str)
 
         # Node Definition Generation
         definition_declaration_pair = GenerateForwardDefinition(
@@ -965,8 +948,6 @@ if __name__ == "__main__":
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
             backward_grad_output_map, backward_attrs_list)
-        print("Generated Forward Definition: ", forward_definition_str)
-        print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]
         forward_declaration_str += definition_declaration_pair[1]
 

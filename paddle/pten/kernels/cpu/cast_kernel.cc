@@ -36,7 +36,7 @@ void CastKernelImpl(const CPUContext& dev_ctx,
   auto numel = x.numel();
   auto* in_end = in_begin + numel;
 
-  auto* out_begin = out->mutable_data<OutT>();
+  auto* out_begin = out->mutable_data<OutT>(dev_ctx.GetPlace());
 
   paddle::platform::Transform<CPUContext> trans;
   trans(dev_ctx,
