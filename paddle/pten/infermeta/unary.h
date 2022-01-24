@@ -62,5 +62,6 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
 
 std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
                                             const ScalarArray& num_or_sections,
-                                            const Scalar& axis);
+                                            const Scalar& axis,
+                                            bool is_runtime);
 }  // namespace pten

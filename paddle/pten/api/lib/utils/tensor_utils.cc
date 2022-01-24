@@ -197,7 +197,8 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
     for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
-        if (!platform::is_same_place(tensor.place(), expected_place)) {
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
           framework::LoDTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
@@ -216,7 +217,8 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
     for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
-        if (!platform::is_same_place(tensor.place(), expected_place)) {
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
           framework::LoDTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
