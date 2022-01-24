@@ -1,5 +1,9 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
+This file is inspired by
+
+    https://github.com/quiver-team/torch-quiver/blob/main/srcs/cpp/src/quiver/cuda/quiver_sample.cu
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -12,7 +16,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <curand_kernel.h>
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -25,11 +28,13 @@ limitations under the License. */
 #include <thrust/unique.h>
 #include <ostream>
 
-#if defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#include <curand_kernel.h>
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
+#include <hiprand_kernel.h>
 #endif
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -47,9 +52,9 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct MaxByFunctor {
+struct MaxFunctor {
   T cap;
-  HOSTDEVICE explicit inline MaxByFunctor(T cap) { this->cap = cap; }
+  HOSTDEVICE explicit inline MaxFunctor(T cap) { this->cap = cap; }
   HOSTDEVICE inline T operator()(T x) const {
     if (x > cap) {
       return cap;
@@ -78,10 +83,16 @@ __global__ void GraphSampleNeighborsCUDAKernel(
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
-
+#ifdef PADDLE_WITH_CUDA
   curandState rng;
   curand_init(rand_seed * gridDim.x + blockIdx.x,
               threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+#endif
+#ifdef PADDLE_WITH_HIP
+  hiprandState rng;
+  hiprand_init(rand_seed * gridDim.x + blockIdx.x,
+               threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+#endif
 
   while (out_row < last_row) {
     const int64_t row = in_rows[out_row];
@@ -167,7 +178,7 @@ void sample_neighbors(const framework::ExecutionContext& ctx, const T* src,
   // 2. Apply sample size k.
   if (k >= 0) {
     thrust::transform(output_counts->begin(), output_counts->end(),
-                      output_counts->begin(), MaxByFunctor<T>(k));
+                      output_counts->begin(), MaxFunctor<T>(k));
   }
 
   // 3. Get the number of total sample neighbors and some necessary datas.
