@@ -105,6 +105,14 @@ std::string DistModelDTypeToString(DistModelDataType dtype) {
   return "NOT SUPPORT DTYPE";
 }
 
+bool IsPPFirstStage(const DistModelConfig &config) {
+  return config.local_rank - config.mp_degree < 0;
+}
+
+bool IsPPLastStage(const DistModelConfig &config) {
+  return config.local_rank + config.mp_degree >= config.nranks;
+}
+
 }  // namespace
 
 bool DistModel::Init() {
@@ -196,9 +204,8 @@ bool DistModel::CommInit() {
                  comm_init_block, config_.mp_ring_id);
   }
   if (config_.pp_degree > 1) {
-    // NOTE: the last pp stage doesn't need init pp comm
     VLOG(3) << "Init comm group for pp.";
-    if (config_.local_rank - config_.mp_degree >= 0) {
+    if (!IsPPFirstStage(config_)) {
       PADDLE_ENFORCE_EQ(config_.pp_upstream_ring_id >= 0, true,
                         platform::errors::InvalidArgument(
                             "pp upstream ring id must be provided for "
@@ -211,7 +218,7 @@ bool DistModel::CommInit() {
                    comm_init_block, config_.pp_upstream_ring_id);
     }
 
-    if (config_.local_rank + config_.mp_degree < config_.nranks) {
+    if (!IsPPLastStage(config_)) {
       PADDLE_ENFORCE_EQ(config_.pp_downstream_ring_id >= 0, true,
                         platform::errors::InvalidArgument(
                             "pp downstream ring id must be provided for "
@@ -439,13 +446,38 @@ bool DistModel::PrepareFeedAndFetch() {
       idx_to_fetches_[idx] = op->Input("X")[0];
     }
   }
-  if (feeds_.size() == 0) {
-    LOG(ERROR) << "No feed ops in the inf program, please check the program.";
-    return false;
-  }
-  if (fetches_.size() == 0) {
-    LOG(ERROR) << "No fetch ops in the inf program, please check the program.";
-    return false;
+
+  if (config_.pp_degree == 1) {
+    if (feeds_.size() == 0) {
+      LOG(ERROR) << "No feed ops in the inf program, please check the program.";
+      return false;
+    }
+    if (fetches_.size() == 0) {
+      LOG(ERROR) << "No fetch op in the inf program, please check the program.";
+      return false;
+    }
+  } else {
+    if (IsPPFirstStage(config_)) {
+      if (feeds_.size() == 0) {
+        LOG(ERROR) << "Feed ops are needed for the first pp stage.";
+        return false;
+      } else {
+        LOG(WARNING) << "No feed ops in non-first pp stage.";
+      }
+    } else if (IsPPLastStage(config_)) {
+      if (fetches_.size() == 0) {
+        LOG(ERROR) << "Fetch op is needed for the last pp stage.";
+        return false;
+      } else {
+        LOG(WARNING) << "No fetch op in non-last pp stage.";
+      }
+    }
+    if (!IsPPFirstStage(config_) && feeds_.size() > 0) {
+      LOG(WARNING) << "Feed op is found in the non-first stage of pp.";
+    }
+    if (!IsPPLastStage(config_) && fetches_.size() > 0) {
+      LOG(WARNING) << "Fetch op is found in the non-last stage of pp.";
+    }
   }
   return true;
 }
