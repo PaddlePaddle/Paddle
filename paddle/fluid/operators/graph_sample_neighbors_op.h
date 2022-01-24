@@ -296,7 +296,6 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       auto* out_eids = ctx.Output<Tensor>("Out_Eids");
       out_eids->Resize({static_cast<int>(eids_merge.size())});
       T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
-      memset(p_out_eids, 0, eids_merge.size() * sizeof(T));
       std::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
     }
 
@@ -336,7 +335,6 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     // 7. Get Reindex_X.
     auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
-    memset(p_reindex_x, 0, bs * sizeof(T));
     for (size_t i = 0; i < bs; i++) {
       p_reindex_x[i] = node_map[p_vertices[i]];
     }
@@ -351,12 +349,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
     T* p_out_src = out_src->mutable_data<T>(ctx.GetPlace());
     T* p_out_dst = out_dst->mutable_data<T>(ctx.GetPlace());
-    const size_t& sample_bytes = unique_nodes.size() * sizeof(T);
-    memset(p_sample_index, 0, sample_bytes);
     std::copy(unique_nodes.begin(), unique_nodes.end(), p_sample_index);
-    const size_t& memset_bytes = src_merge.size() * sizeof(T);
-    memset(p_out_src, 0, memset_bytes);
-    memset(p_out_dst, 0, memset_bytes);
     std::copy(src_merge.begin(), src_merge.end(), p_out_src);
     std::copy(dst_merge.begin(), dst_merge.end(), p_out_dst);
   }

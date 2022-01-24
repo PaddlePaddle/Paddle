@@ -442,7 +442,6 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
       auto* out_eids = ctx.Output<Tensor>("Out_Eids");
       out_eids->Resize({static_cast<int>(eids_merge.size())});
       T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
-      cudaMemset(p_out_eids, 0, eids_merge.size() * sizeof(T));
       thrust::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
     }
 
@@ -464,14 +463,11 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
                     &reindex_nodes, bs);
     auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
-    cudaMemset(p_reindex_x, 0, bs * sizeof(T));
     thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
 
     auto* sample_index = ctx.Output<Tensor>("Sample_Index");
     sample_index->Resize({static_cast<int>(subset.size())});
     T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
-    const size_t& sample_bytes = subset.size() * sizeof(T);
-    cudaMemset(p_sample_index, 0, sample_bytes);
     thrust::copy(subset.begin(), subset.end(), p_sample_index);  // Done!
 
     // 5. Reindex dst_merge.
@@ -505,8 +501,6 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
     T* p_out_src = out_src->mutable_data<T>(ctx.GetPlace());
     T* p_out_dst = out_dst->mutable_data<T>(ctx.GetPlace());
     const size_t& memset_bytes = src_merge.size() * sizeof(T);
-    cudaMemset(p_out_src, 0, memset_bytes);  // hipMemset
-    cudaMemset(p_out_dst, 0, memset_bytes);
     thrust::copy(src_merge.begin(), src_merge.end(), p_out_src);
     thrust::copy(dst_merge.begin(), dst_merge.end(), p_out_dst);
   }
