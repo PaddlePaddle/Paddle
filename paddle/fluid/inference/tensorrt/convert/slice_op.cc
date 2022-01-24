@@ -82,7 +82,7 @@ class SliceOpConverter : public OpConverter {
           engine_->SetTensorDynamicRange(shuffler_slice->getOutput(0),
                                          out_scale);
           shuffler_slice->setName(
-              ("SpecialSlice_interleaved: Shuffle: (Output: " + output_name +
+              ("SpecialSlice_interleaved: transpose: (Output: " + output_name +
                ")")
                   .c_str());
           plugin_inputs.emplace_back(shuffler_slice->getOutput(0));
