@@ -42,9 +42,10 @@ struct is_pod<pten::dtype::bfloat16> {
 template <>
 struct is_floating_point<pten::dtype::bfloat16>
     : std::integral_constant<
-          bool, std::is_same<pten::dtype::bfloat16,
-                             typename std::remove_cv<
-                                 pten::dtype::bfloat16>::type>::value> {};
+          bool,
+          std::is_same<
+              pten::dtype::bfloat16,
+              typename std::remove_cv<pten::dtype::bfloat16>::type>::value> {};
 
 template <>
 struct is_signed<pten::dtype::bfloat16> {
