@@ -41,7 +41,7 @@ void CastKernel(const Context& dev_ctx,
           reinterpret_cast<const XPUInTDType*>(in_data),
           out->mutable_data<float>(dev_ctx.GetPlace()),
           numel);
-
+      break;
     case pten::DataType::FLOAT16:
       r = xpu::cast_v2<XPUInTDType, float16>(
           dev_ctx.x_context(),
