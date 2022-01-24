@@ -19,6 +19,7 @@ from ..fluid.layers import nn, utils
 
 import paddle
 from paddle.common_ops_import import *
+from paddle import _C_ops
 
 __all__ = [ #noqa
     'file_label_loader',
