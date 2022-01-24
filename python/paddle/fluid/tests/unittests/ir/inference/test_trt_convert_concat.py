@@ -32,7 +32,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
             for i in range(len(program_config.ops))
         ]
         #The input dimension should be less than or equal to the set axis.
-        if len(inputs['concat_input1'].shape) <= attrs[0]['axis']:
+        if len(inputs['concat_input1'].shape) == 1:
             return False
 
         return True
