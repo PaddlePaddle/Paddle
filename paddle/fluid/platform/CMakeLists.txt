@@ -75,7 +75,7 @@ IF(WITH_GPU OR WITH_ROCM)
 ENDIF()
 
 IF(WITH_IPU)
-    set(IPU_CTX_DEPS ipu_backend)
+    set(IPU_CTX_DEPS ipu_info)
 ELSE()
     set(IPU_CTX_DEPS)
 ENDIF(WITH_IPU)

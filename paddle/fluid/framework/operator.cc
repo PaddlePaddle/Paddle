@@ -1344,7 +1344,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
-      is_ipu_place(expected_kernel_key.place_)) {
+      platform::is_ipu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing IPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

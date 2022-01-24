@@ -18,13 +18,6 @@
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
-namespace framework {
-class Tensor;
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 class IpuRuntimeOp : public framework::OperatorBase {
