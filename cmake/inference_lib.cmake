@@ -189,6 +189,7 @@ copy(inference_lib_dist
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+
 if(WIN32)
     if(WITH_STATIC_LIB)
         set(paddle_inference_lib $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib
@@ -313,6 +314,12 @@ add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/*.pb.h
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
+        )
+
+set(module "string")
+copy(fluid_lib_dist
+        SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/*.h ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/tinyformat/*.h 
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
         )
 
 set(module "imperative")
