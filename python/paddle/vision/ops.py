@@ -867,127 +867,6 @@ def read_file(filename, name=None):
     return out
 
 
-def file_label_loader(data_root, indices, name=None):
-    """
-    Reads a batch of data, outputs the bytes contents of a file
-    as a uint8 Tensor with one dimension.
-
-    Args:
-        data_root (str): root directory of data
-        indices (list of int): batch indices of samples
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-    """
-    from paddle.vision.datasets import DatasetFolder
-    data_folder = DatasetFolder(data_root)
-    samples = [s[0] for s in data_folder.samples]
-    targets = [s[1] for s in data_folder.samples]
-
-    if in_dygraph_mode():
-        return _C_ops.file_label_loader(indices, 'files', samples, 'labels', targets)
-
-    inputs = {"Indices": indices}
-    attrs = {
-        'files': samples,
-        'labels': targets,
-    }
-
-    helper = LayerHelper("file_label_loader", **locals())
-    image = helper.create_variable(
-        name=unique_name.generate("file_label_loader"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype='uint8')
-    
-    label = helper.create_variable(
-        name=unique_name.generate("file_label_loader"),
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        dtype='int')
-
-    helper.append_op(
-        type="file_label_loader",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Image": image,
-                 "Label": label})
-
-    return image, label
-
-
-def file_label_reader(file_root,
-                      batch_size=1,
-                      shuffle=False,
-                      drop_last=False):
-    """
-    Reads and outputs the bytes contents of a file as a uint8 Tensor
-    with one dimension.
-
-    Args:
-        filename (str): Path of the file to be read.
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A uint8 tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import cv2
-            import paddle
-
-            image = paddle.vision.ops.file_label_reader('/workspace/datasets/ILSVRC2012/val/', 2)
-
-    """
-    from paddle.vision.datasets import DatasetFolder
-    data_folder = DatasetFolder(file_root)
-    samples = [s[0] for s in data_folder.samples]
-    targets = [s[1] for s in data_folder.samples]
-
-    if in_dygraph_mode():
-        return _C_ops.file_label_loader(list(arange(batch_size)), "files",
-                                        samples, "labels", labels)
-
-    def _reader(indices):
-        return file_label_loader(file_root, indices)
-
-    return paddle.io.data_reader(_reader,
-                                 batch_size=batch_size,
-                                 num_samples=len(samples),
-                                 shuffle=shuffle,
-                                 drop_last=drop_last)
-    # inputs = dict()
-    # attrs = {
-    #     'root_dir': file_root,
-    #     'batch_size': batch_size,
-    #     'files': samples,
-    #     'labels': targets,
-    #     'reader_id': unq_reader_id,
-    # }
-    #
-    # helper = LayerHelper("file_label_reader", **locals())
-    # out = helper.create_variable(
-    #     name=unique_name.generate("file_label_reader"),
-    #     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-    #     dtype='uint8')
-    #
-    # label = helper.create_variable(
-    #     name=unique_name.generate("file_label_reader"),
-    #     type=core.VarDesc.VarType.LOD_TENSOR,
-    #     dtype='int')
-    #
-    # helper.append_op(
-    #     type="file_label_reader",
-    #     inputs=inputs,
-    #     attrs=attrs,
-    #     outputs={"Out": out,
-    #              "Label": label
-    #              })
-
-    return out, label
-
-
 def image_decode(x, mode='unchanged', num_threads=2, name=None):
     """
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
@@ -1025,8 +904,11 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
     local_rank = paddle.distributed.get_rank()
 
     if in_dygraph_mode():
+        out = core.VarBase(core.VarDesc.VarType.UINT8, [],
+                           unique_name.generate("image_decode"),
+                           core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         return _C_ops.batch_decode(
-                x, "mode", mode, "num_threads", num_threads,
+                x, out, "mode", mode, "num_threads", num_threads,
                 "local_rank", local_rank)
 
     inputs = {'X': x}
@@ -1093,8 +975,11 @@ def image_decode_random_crop(x,
     """
     local_rank = paddle.distributed.get_rank()
     if in_dygraph_mode():
+        out = core.VarBase(core.VarDesc.VarType.UINT8, [],
+                unique_name.generate("image_decode_random_crop"),
+                core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         return _C_ops.batch_decode_random_crop(
-                x, "mode", mode, "num_threads", num_threads,
+                x, out, "mode", mode, "num_threads", num_threads,
                 "aspect_ratio_min", aspect_ratio_min,
                 "aspect_ratio_max", aspect_ratio_max,
                 "area_min", area_min, "area_max", area_max,
@@ -1123,6 +1008,13 @@ def image_decode_random_crop(x,
 
 
 def random_flip(x, batch_size, prob=0.5, name=None):
+    if in_dygraph_mode():
+        p = np.random.uniform(0., 1., [batch_size])
+        for i in range(batch_size):
+            if p[i] < prob:
+                x[i] = paddle.flip(x[i], -1)
+        return x
+
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
 

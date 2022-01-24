@@ -61,8 +61,10 @@ def _generate_stream_id():
 
 
 def map(map_func, inputs):
-    assert not in_dygraph_mode(), \
-            "paddle.io.map can only be used in static mode"
+    inputs = _to_list(inputs)
+    if in_dygraph_mode():
+        return map_func(*inputs)
+
     helper = LayerHelper("map", **locals())
 
     # build map block
@@ -71,7 +73,6 @@ def map(map_func, inputs):
         program_id = _hash_with_id(main_program, map_func)
         map_block = main_program.current_block()
 
-        inputs = _to_list(inputs)
         program_inputs = [
             map_block.create_var(
                 name=unique_name.generate("map_sub"),

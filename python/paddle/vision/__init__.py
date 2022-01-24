@@ -17,6 +17,7 @@ from . import models  # noqa: F401
 from . import transforms  # noqa: F401
 from . import datasets  # noqa: F401
 from . import ops  # noqa: F401
+from . import reader # noqa: F401
 from .image import set_image_backend  # noqa: F401
 from .image import get_image_backend  # noqa: F401
 from .image import image_load  # noqa: F401
