@@ -45,13 +45,15 @@ def graph_sample_neighbors(sorted_src,
                                               "return_eids", True)
             return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
         else:
-            empty_eid = paddle.to_tensor([], dtype=sorted_src.dtype)
             edge_src, edge_dst, sample_index, reindex_nodes, _ = \
-                _C_ops.graph_sample_neighbors(sorted_src, empty_eid,
+                _C_ops.graph_sample_neighbors(sorted_src, None,
                                               dst_cumsum_counts, nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", False)
             return edge_src, edge_dst, sample_index, reindex_nodes
+
+    check_variable_and_dtype(sorted_src, "Src", ("int32", "int64"),
+                             "graph_sample_neighbors")
 
     if return_eids:
         if sorted_eids is None:
@@ -59,12 +61,7 @@ def graph_sample_neighbors(sorted_src,
                              f"if return_eids is True.")
         check_variable_and_dtype(sorted_eids, "Src_Eids", ("int32", "int64"),
                                  "graph_sample_neighbors")
-    else:
-        sorted_eids = paddle.static.data(
-            name="eid", shape=[-1], dtype=sorted_src.dtype)
 
-    check_variable_and_dtype(sorted_src, "Src", ("int32", "int64"),
-                             "graph_sample_neighbors")
     check_variable_and_dtype(dst_cumsum_counts, "Dst_Count", ("int32", "int64"),
                              "graph_sample_neighbors")
     check_variable_and_dtype(nodes, "X", ("int32", "int64"),

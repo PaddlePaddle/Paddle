@@ -24,8 +24,6 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Src"), "Input", "Src",
                    "GraphSampleNeighbors");
-    OP_INOUT_CHECK(ctx->HasInput("Src_Eids"), "Input", "Src_Eids",
-                   "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasInput("Dst_Count"), "Input", "Dst_Count",
                    "GraphSampleNeighbors");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphSampleNeighbors");
@@ -48,6 +46,8 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
             "But received 'sample_sizes' is empty."));
     const bool& return_eids = ctx->Attrs().Get<bool>("return_eids");
     if (return_eids) {
+      OP_INOUT_CHECK(ctx->HasInput("Src_Eids"), "Input", "Src_Eids",
+                     "GraphSampleNeighbors");
       OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
                      "GraphSampleNeighbors");
       ctx->SetOutputDim("Out_Eids", {-1});
@@ -74,7 +74,7 @@ class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Src", "The src index tensor after sorted by dst.");
-    AddInput("Src_Eids", "The eids of the input graph edges.");
+    AddInput("Src_Eids", "The eids of the input graph edges.").AsDispensable();
     AddInput("Dst_Count",
              "The indegree cumsum of dst intex, starts from 0, end with number "
              "of edges");

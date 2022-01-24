@@ -47,6 +47,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         self.dst_src_dict = dst_src_dict
 
     def test_sample_result(self):
+        paddle.disable_static()
         sorted_src = paddle.to_tensor(self.sorted_src, dtype="int64")
         dst_cumsum_counts = paddle.to_tensor(
             self.dst_cumsum_counts, dtype="int64")
@@ -80,6 +81,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_uva_sample_result(self):
+        paddle.disable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
             sorted_src = to_uva_tensor(
                 self.sorted_src.astype(self.sorted_src.dtype), 0)
@@ -94,8 +96,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                                                        nodes, self.sample_sizes,
                                                        sorted_eids=sorted_edges_id,
                                                        return_eids=True)
-
-            # Reindex edge_src and edge_dst to original index.
             edge_src = edge_src.reshape([-1])
             edge_dst = edge_dst.reshape([-1])
             sample_index = sample_index.reshape([-1])
@@ -108,15 +108,108 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 edge_src_n = edge_src[edge_dst == n]
                 if edge_src_n.shape[0] == 0:
                     continue
-                # Ensure no repetitive sample neighbors.
                 self.assertTrue(
                     edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0])
-                # Ensure the correct sample size.
                 self.assertTrue(
                     edge_src_n.shape[0] == self.sample_sizes[0] or
                     edge_src_n.shape[0] == len(self.dst_src_dict[n]))
                 in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
-                # Ensure the correct sample neighbors.
+                self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
+
+    def test_sample_result_static_with_eids(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            sorted_src = paddle.static.data(
+                name="src",
+                shape=self.sorted_src.shape,
+                dtype=self.sorted_src.dtype)
+            sorted_eids = paddle.static.data(
+                name="eids",
+                shape=self.sorted_edges_id.shape,
+                dtype=self.sorted_edges_id.dtype)
+            dst_cumsum_counts = paddle.static.data(
+                name="dst",
+                shape=self.dst_cumsum_counts.shape,
+                dtype=self.dst_cumsum_counts.dtype)
+            nodes = paddle.static.data(
+                name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype)
+
+            edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
+                paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
+                                                       nodes, self.sample_sizes,
+                                                       sorted_eids, True)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'src': self.sorted_src,
+                'eids': self.sorted_edges_id,
+                'dst': self.dst_cumsum_counts,
+                'nodes': self.nodes
+            },
+                          fetch_list=[edge_src, edge_dst, sample_index])
+
+            edge_src, edge_dst, sample_index = ret
+            edge_src = edge_src.reshape([-1])
+            edge_dst = edge_dst.reshape([-1])
+            sample_index = sample_index.reshape([-1])
+
+            for i in range(len(edge_src)):
+                edge_src[i] = sample_index[edge_src[i]]
+                edge_dst[i] = sample_index[edge_dst[i]]
+
+            for n in self.nodes:
+                edge_src_n = edge_src[edge_dst == n]
+                if edge_src_n.shape[0] == 0:
+                    continue
+                self.assertTrue(
+                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0])
+                self.assertTrue(
+                    edge_src_n.shape[0] == self.sample_sizes[0] or
+                    edge_src_n.shape[0] == len(self.dst_src_dict[n]))
+                in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
+                self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
+
+    def test_sample_result_static_without_eids(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            sorted_src = paddle.static.data(
+                name="src",
+                shape=self.sorted_src.shape,
+                dtype=self.sorted_src.dtype)
+            dst_cumsum_counts = paddle.static.data(
+                name="dst",
+                shape=self.dst_cumsum_counts.shape,
+                dtype=self.dst_cumsum_counts.dtype)
+            nodes = paddle.static.data(
+                name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype)
+            edge_src, edge_dst, sample_index, reindex_nodes = \
+                paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
+                                                       nodes, self.sample_sizes)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'src': self.sorted_src,
+                'dst': self.dst_cumsum_counts,
+                'nodes': self.nodes
+            },
+                          fetch_list=[edge_src, edge_dst, sample_index])
+            edge_src, edge_dst, sample_index = ret
+            edge_src = edge_src.reshape([-1])
+            edge_dst = edge_dst.reshape([-1])
+            sample_index = sample_index.reshape([-1])
+
+            for i in range(len(edge_src)):
+                edge_src[i] = sample_index[edge_src[i]]
+                edge_dst[i] = sample_index[edge_dst[i]]
+
+            for n in self.nodes:
+                edge_src_n = edge_src[edge_dst == n]
+                if edge_src_n.shape[0] == 0:
+                    continue
+                self.assertTrue(
+                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0])
+                self.assertTrue(
+                    edge_src_n.shape[0] == self.sample_sizes[0] or
+                    edge_src_n.shape[0] == len(self.dst_src_dict[n]))
+                in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
 

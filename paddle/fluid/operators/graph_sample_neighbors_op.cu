@@ -319,14 +319,12 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get inputs.
     auto* src = ctx.Input<Tensor>("Src");
-    auto* src_eids = ctx.Input<Tensor>("Src_Eids");
     auto* dst_count = ctx.Input<Tensor>("Dst_Count");
     auto* vertices = ctx.Input<Tensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 
     const T* src_data = src->data<T>();
-    const T* src_eids_data = src_eids->data<T>();
     const T* dst_count_data = dst_count->data<T>();
     const T* p_vertices = vertices->data<T>();
     const int bs = vertices->dims()[0];
@@ -349,22 +347,45 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
 
     const size_t num_layers = sample_sizes.size();
     bool is_last_layer = false;
-    for (int i = 0; i < num_layers; i++) {
-      if (i == num_layers - 1) {
-        is_last_layer = true;
+
+    if (return_eids) {
+      auto* src_eids = ctx.Input<Tensor>("Src_Eids");
+      const T* src_eids_data = src_eids->data<T>();
+      for (int i = 0; i < num_layers; i++) {
+        if (i == num_layers - 1) {
+          is_last_layer = true;
+        }
+        if (inputs.size() == 0) {
+          break;
+        }
+        if (i > 0) {
+          dst_vec.emplace_back(inputs);
+        }
+        sample_neighbors<T>(ctx, src_data, dst_count_data, src_eids_data,
+                            &inputs, &outputs, &output_counts, &outputs_eids,
+                            sample_sizes[i], is_last_layer, return_eids);
+        outputs_vec.emplace_back(outputs);
+        output_counts_vec.emplace_back(output_counts);
+        outputs_eids_vec.emplace_back(outputs_eids);
       }
-      if (inputs.size() == 0) {
-        break;
+    } else {
+      for (int i = 0; i < num_layers; i++) {
+        if (i == num_layers - 1) {
+          is_last_layer = true;
+        }
+        if (inputs.size() == 0) {
+          break;
+        }
+        if (i > 0) {
+          dst_vec.emplace_back(inputs);
+        }
+        sample_neighbors<T>(ctx, src_data, dst_count_data, nullptr, &inputs,
+                            &outputs, &output_counts, &outputs_eids,
+                            sample_sizes[i], is_last_layer, return_eids);
+        outputs_vec.emplace_back(outputs);
+        output_counts_vec.emplace_back(output_counts);
+        outputs_eids_vec.emplace_back(outputs_eids);
       }
-      if (i > 0) {
-        dst_vec.emplace_back(inputs);
-      }
-      sample_neighbors<T>(ctx, src_data, dst_count_data, src_eids_data, &inputs,
-                          &outputs, &output_counts, &outputs_eids,
-                          sample_sizes[i], is_last_layer, return_eids);
-      outputs_vec.emplace_back(outputs);
-      output_counts_vec.emplace_back(output_counts);
-      outputs_eids_vec.emplace_back(outputs_eids);
     }
 
     // 3. Concat intermediate sample results
