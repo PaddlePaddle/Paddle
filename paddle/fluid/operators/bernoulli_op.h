@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -15,6 +15,8 @@
 #include <glog/logging.h>
 
 #include "paddle/fluid/distributed/fleet_executor/dist_model.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -68,7 +70,13 @@ bool DistModel::Init() {
     program_.reset(config_.program_desc);
     scope_.reset(config_.scope);
   }
+  if (!PrepareFeedAndFetch()) {
+    return false;
+  }
   if (!CommInit()) {
+    return false;
+  }
+  if (!PrepareFleetExe()) {
     return false;
   }
   return true;
@@ -298,8 +306,57 @@ bool DistModel::LoadParameters() {
   return true;
 }
 
-void DistModel::Run(const std::vector<paddle::framework::Tensor> &input_data,
-                    std::vector<paddle::framework::Tensor> *output_data) {
+bool DistModel::PrepareFleetExe() {
+  task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
+  if (config_.local_rank - config_.mp_degree >= 0) {
+    task_node_->AddUpstreamTask(config_.local_rank - config_.mp_degree);
+  }
+  if (config_.local_rank + config_.mp_degree < config_.nranks) {
+    task_node_->AddDownstreamTask(config_.local_rank + config_.mp_degree);
+  }
+  task_node_->SetType("Compute");
+  task_node_->Init();
+  executor_desc_ = FleetExecutorDesc();
+  executor_desc_.set_cur_rank(config_.local_rank);
+  std::unordered_map<int64_t, int64_t> id_to_rank;
+  for (int i = 0; i < config_.nranks; ++i) {
+    RankInfo *rank_info = executor_desc_.add_cluster_info();
+    rank_info->set_rank(i);
+    rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    id_to_rank.insert({i, i});
+  }
+  fleet_exe.reset(new FleetExecutor(executor_desc_));
+  fleet_exe->Init("inference", *(program_.get()), scope_.get(), place_, 1,
+                  {task_node_.get()}, id_to_rank);
+  return true;
+}
+
+bool DistModel::PrepareFeedAndFetch() {
+  for (auto *op : program_->Block(0).AllOps()) {
+    if (op->Type() == "feed") {
+      VLOG(3) << "feed op with feed var: " << op->Output("Out")[0];
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
+        feeds_.resize(idx + 1);
+      }
+      feeds_[idx] = op;
+      feed_names_[op->Output("Out")[0]] = idx;
+      idx_to_feeds_[idx] = op->Output("Out")[0];
+    } else if (op->Type() == "fetch") {
+      VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
+      }
+      fetches_[idx] = op;
+      id_to_fetches_[idx] = op->Input("X")[0];
+    }
+  }
+  return true;
+}
+
+void DistModel::Run(const std::vector<DistModelTensor> &input_data,
+                    std::vector<DistModelTensor> *output_data) {
   /* TODO(fleet exe dev): implement this funct */
 }
 

@@ -18,6 +18,7 @@ import unittest
 import paddle
 from paddle.fluid import core
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
@@ -42,8 +43,9 @@ def get_dist_prog(train_program,
     parallelizer._dist_context = dist_context
 
     # serial forward & backward completion
-    complete_train_program = auto.complete_annotation(
-        train_program, dist_context
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program
     ) if complete_train_program is None else complete_train_program
 
     # parallelizer._apply_serial_forward_pass(complete_train_program,
