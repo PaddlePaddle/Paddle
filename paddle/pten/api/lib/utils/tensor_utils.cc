@@ -178,24 +178,15 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   }
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
 
-  paddle::framework::proto::VarType::Type data_type;
-  auto* first_var = variable_list.front();
-  if (first_var->IsType<framework::LoDTensor>()) {
-    const auto& tensor = first_var->Get<framework::LoDTensor>();
-    data_type = tensor.type();
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupport casting input `%s` type to VectorTensor when call pt "
-        "kernel.",
-        framework::ToTypeName(first_var->Type())));
-  }
-
   std::vector<int64_t> vector_data;
   vector_data.reserve(variable_list.size());
 
-  if (data_type == paddle::framework::proto::VarType::INT64) {
-    for (auto* var : variable_list) {
-      if (var->IsType<framework::LoDTensor>()) {
+  for (auto* var : variable_list) {
+    paddle::framework::proto::VarType::Type data_type;
+    if (var->IsType<framework::LoDTensor>()) {
+      const auto& tensor = var->Get<framework::LoDTensor>();
+      data_type = tensor.type();
+      if (data_type == paddle::framework::proto::VarType::INT64) {
         const auto& tensor = var->Get<framework::LoDTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
@@ -205,17 +196,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupport casting input `%s` type to VectorTensor when call pt "
-            "kernel.",
-            framework::ToTypeName(var->Type())));
-      }
-    }
-
-  } else if (data_type == paddle::framework::proto::VarType::INT32) {
-    for (auto* var : variable_list) {
-      if (var->IsType<framework::LoDTensor>()) {
+      } else if (data_type == paddle::framework::proto::VarType::INT32) {
         const auto& tensor = var->Get<framework::LoDTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
@@ -226,18 +207,18 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
           vector_data.push_back(*tensor.data<int32_t>());
         }
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupport casting input `%s` type to VectorTensor when call pt "
-            "kernel.",
-            framework::ToTypeName(var->Type())));
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "Data type error. When cast a LoDTensor to VectorTensor, "
+            "the data type of LoDTensor must be int32 or int64, "
+            "but now data type is %s.",
+            data_type));
       }
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport casting input `%s` type to VectorTensor when call pt "
+          "kernel.",
+          framework::ToTypeName(var->Type())));
     }
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Data type error. When cast a LoDTensor to VectorTensor, "
-        "the data type of LoDTensor must be int32 or int64, "
-        "but now data type is %s.",
-        data_type));
   }
 
   return {vector_data};
