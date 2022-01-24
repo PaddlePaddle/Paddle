@@ -15,9 +15,9 @@
 #include "paddle/pten/kernels/scale_kernel.h"
 
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
@@ -61,5 +61,5 @@ PT_REGISTER_KERNEL(scale,
                    ALL_LAYOUT,
                    pten::ScaleKernel,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int64_t) {}
