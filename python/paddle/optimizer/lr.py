@@ -16,6 +16,8 @@ import math
 import numpy
 import warnings
 from paddle import Tensor
+import paddle.fluid.core as core
+from ..fluid.framework import _in_eager_mode
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -398,7 +400,7 @@ class NaturalExpDecay(LRScheduler):
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
-        gamma (float, optional): A Ratio to update the learning rate. Default: 0.1.
+        gamma (float, optional): A Ratio to update the learning rate, should greater than 0.0 to make learning rate decay. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -456,6 +458,7 @@ class NaturalExpDecay(LRScheduler):
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
+        assert gamma > 0.0, " 'gamma' must be a positive number so that the learning rate will decay."
         self.gamma = gamma
         super(NaturalExpDecay, self).__init__(learning_rate, last_epoch,
                                               verbose)
@@ -573,7 +576,7 @@ class PolynomialDecay(LRScheduler):
         learning_rate (float): The initial learning rate. It is a python float number.
         decay_steps(int): The decay step size. It determines the decay cycle. It must be a positive integer.
         end_lr(float, optional): The minimum final learning rate. Default: 0.0001.
-        power(float, optional): Power of polynomial. Default: 1.0.
+        power(float, optional): Power of polynomial, should greater than 0.0 to get learning rate decay. Default: 1.0.
         cycle(bool, optional): Whether the learning rate rises again. If True, then the learning rate will rise when it decrease
             to ``end_lr`` .  If False, the learning rate is monotone decreasing. Default: False.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
@@ -644,6 +647,7 @@ class PolynomialDecay(LRScheduler):
             decay_steps, int), " 'decay_steps' must be a positive integer."
         self.decay_steps = decay_steps
         self.end_lr = end_lr
+        assert power > 0.0, " 'power' must be greater than 0.0 so that the learning rate will decay."
         self.power = power
         self.cycle = cycle
         super(PolynomialDecay, self).__init__(learning_rate, last_epoch,
@@ -820,7 +824,7 @@ class ExponentialDecay(LRScheduler):
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
         gamma (float): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` .
-            It should be less than 1.0.
+            It should be in interval (0.0, 1.0).
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -878,6 +882,7 @@ class ExponentialDecay(LRScheduler):
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
+        assert gamma > 0.0 and gamma < 1.0, " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
         self.gamma = gamma
         super(ExponentialDecay, self).__init__(learning_rate, last_epoch,
                                                verbose)
@@ -1352,8 +1357,12 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
+        if _in_eager_mode():
+            tmp = core.eager.EagerTensor
+        else:
+            tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
-        if isinstance(metrics, (Tensor, numpy.ndarray)):
+        if isinstance(metrics, (tmp, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, "the metrics.shape " \
                                                                       "should be (1L,), but the current metrics.shape is {}. Maybe that " \
                                                                       "you should call paddle.mean to process it first.".format(

@@ -26,11 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

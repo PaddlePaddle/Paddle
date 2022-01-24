@@ -326,6 +326,9 @@ class OpTest(unittest.TestCase):
         def is_npu_op_test():
             return hasattr(cls, "use_npu") and cls.use_npu == True
 
+        def is_mlu_op_test():
+            return hasattr(cls, "use_mlu") and cls.use_mlu == True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -348,7 +351,8 @@ class OpTest(unittest.TestCase):
                 and not is_xpu_op_test() \
                 and not is_mkldnn_op_test() \
                 and not is_rocm_op_test() \
-                and not is_npu_op_test():
+                and not is_npu_op_test() \
+                and not is_mlu_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -1297,7 +1301,8 @@ class OpTest(unittest.TestCase):
         # No effect on original OpTest
         # Currently not support ParallelExecutor on XPUPlace.
         if not paddle.is_compiled_with_xpu(
-        ) and not paddle.is_compiled_with_npu():
+        ) and not paddle.is_compiled_with_npu(
+        ) and not paddle.is_compiled_with_mlu():
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
@@ -1547,11 +1552,9 @@ class OpTest(unittest.TestCase):
                 delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
-
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set,
                                             user_defined_grad_outputs)
-
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
         fp32_analytic_grads = []

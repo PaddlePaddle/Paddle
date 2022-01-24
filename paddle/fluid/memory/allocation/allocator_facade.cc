@@ -94,7 +94,7 @@ class CUDAGraphAllocator
   class PrivateAllocation : public Allocation {
    public:
     PrivateAllocation(CUDAGraphAllocator* allocator,
-                      AllocationPtr underlying_allocation)
+                      DecoratedAllocationPtr underlying_allocation)
         : Allocation(
               underlying_allocation->ptr(), underlying_allocation->base_ptr(),
               underlying_allocation->size(), underlying_allocation->place()),
@@ -103,7 +103,7 @@ class CUDAGraphAllocator
 
    private:
     std::shared_ptr<Allocator> allocator_;
-    AllocationPtr underlying_allocation_;
+    DecoratedAllocationPtr underlying_allocation_;
   };
 
   explicit CUDAGraphAllocator(const std::shared_ptr<Allocator>& allocator)
@@ -116,12 +116,14 @@ class CUDAGraphAllocator
   }
 
  protected:
-  Allocation* AllocateImpl(size_t size) {
+  pten::Allocation* AllocateImpl(size_t size) {
     VLOG(10) << "Allocate " << size << " for CUDA Graph";
-    return new PrivateAllocation(this, underlying_allocator_->Allocate(size));
+    return new PrivateAllocation(this,
+                                 static_unique_ptr_cast<Allocation>(
+                                     underlying_allocator_->Allocate(size)));
   }
 
-  void FreeImpl(Allocation* allocation) {
+  void FreeImpl(pten::Allocation* allocation) {
     VLOG(10) << "delete for CUDA Graph";
     delete allocation;
   }
@@ -322,7 +324,7 @@ class AllocatorFacadePrivate {
     return static_cast<platform::CUDADeviceContext*>(pool.Get(place))->stream();
   }
 
-  void RecordStream(std::shared_ptr<Allocation> allocation,
+  void RecordStream(std::shared_ptr<pten::Allocation> allocation,
                     const gpuStream_t& stream) {
     if (allocation->size() == 0) {
       return;
@@ -339,7 +341,7 @@ class AllocatorFacadePrivate {
   }
 
   const gpuStream_t& GetStream(
-      const std::shared_ptr<Allocation>& allocation) const {
+      const std::shared_ptr<pten::Allocation>& allocation) const {
     const StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
         dynamic_cast<const StreamSafeCUDAAllocation*>(allocation.get());
     PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
@@ -391,10 +393,10 @@ class AllocatorFacadePrivate {
     bool IsAllocThreadSafe() const override { return true; }
 
    protected:
-    Allocation* AllocateImpl(size_t size) override {
+    pten::Allocation* AllocateImpl(size_t size) override {
       return new Allocation(nullptr, 0, place_);
     }
-    void FreeImpl(Allocation* allocation) override { delete allocation; }
+    void FreeImpl(pten::Allocation* allocation) override { delete allocation; }
 
    private:
     platform::Place place_;
@@ -811,8 +813,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return m_->GetAllocator(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -820,9 +821,9 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
-std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
+std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size) {
-  return std::shared_ptr<Allocation>(Alloc(place, size));
+  return std::shared_ptr<pten::Allocation>(Alloc(place, size));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
@@ -836,8 +837,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -857,8 +857,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Release(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -866,7 +865,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
       ->Release(place);
 }
 
-std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
+std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, const platform::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
@@ -884,14 +883,14 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
   }
 #endif
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
-  return std::shared_ptr<Allocation>(Alloc(place, size, s));
+  return std::shared_ptr<pten::Allocation>(Alloc(place, size, s));
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
 }
 
 bool AllocatorFacade::InSameStream(
-    const std::shared_ptr<Allocation>& allocation,
+    const std::shared_ptr<pten::Allocation>& allocation,
     const platform::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
@@ -933,7 +932,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
   }
 #endif
 
-  platform::CUDAPlace p = BOOST_GET_CONST(platform::CUDAPlace, place);
+  platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
         ->Allocate(size);
@@ -962,7 +961,7 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
   return m_->GetAllocator(place, stream)->Release(place);
 }
 
-void AllocatorFacade::RecordStream(std::shared_ptr<Allocation> allocation,
+void AllocatorFacade::RecordStream(std::shared_ptr<pten::Allocation> allocation,
                                    const gpuStream_t& stream) {
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
@@ -983,7 +982,7 @@ void AllocatorFacade::RecordStream(std::shared_ptr<Allocation> allocation,
 }
 
 const gpuStream_t& AllocatorFacade::GetStream(
-    const std::shared_ptr<Allocation>& allocation) const {
+    const std::shared_ptr<pten::Allocation>& allocation) const {
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
       platform::errors::Unimplemented(

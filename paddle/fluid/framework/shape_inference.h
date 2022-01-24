@@ -102,6 +102,8 @@ class InferShapeContext {
 
   virtual bool IsRuntime() const = 0;
 
+  virtual bool IsRunMKLDNNKernel() const = 0;
+
   virtual std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string &name) const = 0;
   virtual std::vector<InferShapeVarPtr> GetOutputVarPtrs(

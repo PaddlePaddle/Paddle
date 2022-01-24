@@ -235,7 +235,6 @@ class HeterContext {
       }
       VLOG(3) << "heter_context unique keys with dynamic mf dimention";
     }
-
     for (std::thread& t : threads) {
       t.join();
     }

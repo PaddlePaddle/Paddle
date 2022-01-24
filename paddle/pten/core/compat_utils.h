@@ -31,10 +31,6 @@ namespace pten {
 
 class CompatibleDenseTensorUtils {
  public:
-  static Storage* UnsafeGetMutableStorage(DenseTensor* tensor) {
-    return tensor->storage_.get();
-  }
-
   static DenseTensorMeta* GetMutableMeta(DenseTensor* tensor) {
     return &(tensor->meta_);
   }
@@ -42,10 +38,7 @@ class CompatibleDenseTensorUtils {
   // only can deal with SharedStorage now
   static void ClearStorage(DenseTensor* tensor) {
     // use static_cast to improve performance, replace by dynamic_cast later
-    if (tensor->storage_ != nullptr) {
-      static_cast<paddle::experimental::SharedStorage*>(tensor->storage_.get())
-          ->Reset();
-    }
+    tensor->MoveMemoryHolder();
   }
 
   static DenseTensor Slice(const DenseTensor& tensor,

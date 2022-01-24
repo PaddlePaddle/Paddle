@@ -33,6 +33,24 @@ bool CheckXPUStatusFailure(T value, const std::string& msg) {
   }
 }
 
+template <typename T>
+bool CheckXDNNStatusSuccess(T value, const std::string& msg = "success") {
+  PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
+  return true;
+}
+
+template <typename T>
+bool CheckXDNNStatusFailure(T value, const std::string& msg) {
+  try {
+    PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
+    return false;
+  } catch (paddle::platform::EnforceNotMet& error) {
+    std::string ex_msg = error.what();
+    std::cout << ex_msg << std::endl;
+    return ex_msg.find(msg) != std::string::npos;
+  }
+}
+
 TEST(enforce, xpu_status) {
   EXPECT_TRUE(CheckXPUStatusSuccess(static_cast<int>(XPU_SUCCESS)));
   EXPECT_TRUE(CheckXPUStatusFailure(static_cast<int>(XPUERR_INVALID_DEVICE),
@@ -113,4 +131,16 @@ TEST(enforce, bkcl_status) {
   EXPECT_TRUE(CheckXPUStatusFailure(BKCL_SYSTEM_ERROR, "BKCL_SYSTEM_ERROR"));
   EXPECT_TRUE(
       CheckXPUStatusFailure(BKCL_INTERNAL_ERROR, "BKCL_INTERNAL_ERROR"));
+}
+
+TEST(enforce, xdnn_status) {
+  EXPECT_TRUE(CheckXDNNStatusSuccess(xpu::Error_t::SUCCESS));
+  EXPECT_TRUE(CheckXDNNStatusFailure(xpu::Error_t::INVALID_PARAM,
+                                     "XDNN_INVALID_PARAM"));
+  EXPECT_TRUE(CheckXDNNStatusFailure(xpu::Error_t::RUNTIME_ERROR,
+                                     "XDNN_RUNTIME_ERROR"));
+  EXPECT_TRUE(CheckXDNNStatusFailure(xpu::Error_t::NO_ENOUGH_WORKSPACE,
+                                     "XDNN_NO_ENOUGH_WORKSPACE"));
+  EXPECT_TRUE(CheckXDNNStatusFailure(xpu::Error_t::NOT_IMPLEMENT,
+                                     "XDNN_NOT_IMPLEMENT"));
 }

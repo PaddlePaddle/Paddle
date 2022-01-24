@@ -31,20 +31,10 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
   const auto& dev_ctx = ctx.template device_context<DeviceContext>();
   const auto place = ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, out, y};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
                                                 dx, DivGradXFunctor<T>());

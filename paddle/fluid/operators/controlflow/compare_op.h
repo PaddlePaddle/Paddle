@@ -25,31 +25,31 @@ namespace operators {
 template <typename T>
 struct LessThanFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a < b; }
+  HOSTDEVICE bool operator()(const T a, const T b) const { return a < b; }
 };
 
 template <typename T>
 struct LessEqualFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a <= b; }
+  HOSTDEVICE bool operator()(const T a, const T b) const { return a <= b; }
 };
 
 template <typename T>
 struct GreaterThanFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a > b; }
+  HOSTDEVICE bool operator()(const T a, const T b) const { return a > b; }
 };
 
 template <typename T>
 struct GreaterEqualFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a >= b; }
+  HOSTDEVICE bool operator()(const T a, const T b) const { return a >= b; }
 };
 
 template <typename T>
 struct EqualFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const {
+  HOSTDEVICE bool operator()(const T a, const T b) const {
     if (std::is_floating_point<T>::value) {
       // This branch will be optimized while compiling if T is integer. It is
       // safe to cast a and b to double.
@@ -63,7 +63,7 @@ struct EqualFunctor {
 template <typename T>
 struct NotEqualFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const {
+  HOSTDEVICE bool operator()(const T a, const T b) const {
     return !EqualFunctor<T>()(a, b);
   }
 };

@@ -77,6 +77,27 @@ namespace pten {
     }                                                                   \
   }
 
+#define PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type)     \
+  template <typename... Tail>                                              \
+  struct KernelCallHelper<paddle::optional<const tensor_type&>, Tail...> { \
+    template <int dev_ctx_idx,                                             \
+              int in_idx,                                                  \
+              int attr_idx,                                                \
+              int out_idx,                                                 \
+              typename... PreviousArgs>                                    \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {      \
+      static_assert(attr_idx == 0,                                         \
+                    "Kernel's Input should appear before Attributes.");    \
+      static_assert(out_idx == 0,                                          \
+                    "Kernel's Input should appear before Outputs.");       \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);         \
+      auto arg = ctx->OptionalInputAt<tensor_type>(range.first);           \
+      KernelCallHelper<Tail...>::                                          \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(    \
+              ctx, pargs..., arg);                                         \
+    }                                                                      \
+  }
+
 #define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)        \
   template <typename... Tail>                                              \
   struct KernelCallHelper<const std::vector<tensor_type>&, Tail...> {      \
@@ -190,6 +211,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   /* Input Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);

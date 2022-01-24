@@ -232,6 +232,9 @@ class KernelFactory {
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 
+  paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash> SelectKernelMap(
+      const std::string& kernel_name) const;
+
  private:
   KernelFactory() = default;
 

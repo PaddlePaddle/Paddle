@@ -82,14 +82,11 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
                       platform::errors::InvalidArgument(
                           "The running enviroment is not on the GPU place."));
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, out_place), out_data,
-                 BOOST_GET_CONST(platform::CUDAPlace, in1_place), in1_data,
+    memory::Copy(out_place, out_data, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, out_place),
-                 out_data + in1_value.numel(),
-                 BOOST_GET_CONST(platform::CUDAPlace, in2_place), in2_data,
+    memory::Copy(out_place, out_data + in1_value.numel(), in2_place, in2_data,
                  in2_value.numel() * sizeof(T), context.stream());
   }
 };
@@ -218,9 +215,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, in2_place),
-                 in2_data + input2_offset,
-                 BOOST_GET_CONST(platform::CUDAPlace, in1_place), in1_data,
+    memory::Copy(in2_place, in2_data + input2_offset, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
   }
 };

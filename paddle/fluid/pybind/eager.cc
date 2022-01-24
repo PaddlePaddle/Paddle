@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
+#include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -49,6 +49,7 @@ PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eager_tensor)) egr::EagerTensor();
+    Py_INCREF(obj);
   }
   return obj;
 }
@@ -109,25 +110,20 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
   paddle::platform::Place place = impl_ptr->place();
   paddle::framework::LoDTensor temp_tensor = paddle::framework::LoDTensor();
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::XPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPlace>(&temp_tensor, array, place,
+                                              zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(&temp_tensor, array, place,
+                                                    zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        &temp_tensor, array, BOOST_GET_CONST(platform::NPUPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(&temp_tensor, array, place,
+                                             zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -732,7 +728,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
-static void eagertensor_dealloc(EagerTensorObject* self) {
+static void EagerTensorDealloc(EagerTensorObject* self) {
   self->eager_tensor.~EagerTensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
@@ -745,71 +741,44 @@ PyNumberMethods number_methods;
 PySequenceMethods sequence_methods;
 PyMappingMethods mapping_methods;
 
-PyTypeObject eager_tensor_type = {
-    PyVarObject_HEAD_INIT(NULL, 0) "core_avx.eager.EagerTensor", /* tp_name */
-    sizeof(EagerTensorObject),       /* tp_basicsize */
-    0,                               /* tp_itemsize */
-    (destructor)eagertensor_dealloc, /* tp_dealloc */
-    0,                               /* tp_vectorcall_offset */
-    0,                               /* tp_getattr */
-    0,                               /* tp_setattr */
-    0,                               /* tp_reserved */
-    0,                               /* tp_repr */
-    &number_methods,                 /* tp_as_number */
-    &sequence_methods,               /* tp_as_sequence */
-    &mapping_methods,                /* tp_as_mapping */
-    0,                               /* tp_hash  */
-    0,                               /* tp_call */
-    0,                               /* tp_str */
-    0,                               /* tp_getattro */
-    0,                               /* tp_setattro */
-    0,                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
-        Py_TPFLAGS_HEAPTYPE, /* tp_flags */
-    0,                       /* tp_doc */
-    0,                       /* tp_traverse */
-    0,                       /* tp_clear */
-    0,                       /* tp_richcompare */
-    0,                       /* tp_weaklistoffset */
-    0,                       /* tp_iter */
-    0,                       /* tp_iternext */
-    variable_methods,        /* tp_methods */
-    0,                       /* tp_members */
-    variable_properties,     /* tp_getset */
-    0,                       /* tp_base */
-    0,                       /* tp_dict */
-    0,                       /* tp_descr_get */
-    0,                       /* tp_descr_set */
-    0,                       /* tp_dictoffset */
-    EagerTensorInit,         /* tp_init */
-    0,                       /* tp_alloc */
-    EagerTensorNew,          /* tp_new */
-    0,                       /* tp_free */
-    0,                       /* tp_is_gc */
-    0,                       /* tp_bases */
-    0,                       /* tp_mro */
-    0,                       /* tp_cache */
-    0,                       /* tp_subclasses */
-    0,                       /* tp_weaklist */
-    0,                       /* tp_del */
-    0,                       /* tp_version_tag */
-    0                        /* tp_finalize */
-};
-
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
-  p_eager_tensor_type = &eager_tensor_type;
-  if (PyType_Ready(&eager_tensor_type) < 0) {
+  auto& internals = pybind11::detail::get_internals();
+  auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
+      internals.default_metaclass->tp_alloc(internals.default_metaclass, 0));
+  heap_type->ht_name = ToPyObject("EagerTensor");
+  heap_type->ht_qualname = ToPyObject("EagerTensor");
+  auto type = &heap_type->ht_type;
+  type->tp_name = "EagerTensor";
+  type->tp_basicsize = sizeof(EagerTensorObject);
+  type->tp_dealloc = (destructor)EagerTensorDealloc;
+  type->tp_as_number = &number_methods;
+  type->tp_as_sequence = &sequence_methods;
+  type->tp_as_mapping = &mapping_methods;
+  type->tp_methods = variable_methods;
+  type->tp_getset = variable_properties;
+  type->tp_init = EagerTensorInit;
+  type->tp_new = EagerTensorNew;
+  Py_INCREF(internals.instance_base);
+  type->tp_base = reinterpret_cast<PyTypeObject*>(internals.instance_base);
+  type->tp_flags |=
+      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
+#if PY_VERSION_HEX >= 0x03050000
+  type->tp_as_async = &heap_type->as_async;
+#endif
+  p_eager_tensor_type = type;
+
+  if (PyType_Ready(type) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEager(PyType_Ready)."));
     return;
   }
 
-  Py_INCREF(&eager_tensor_type);
+  Py_INCREF(type);
   if (PyModule_AddObject(m.ptr(), "EagerTensor",
-                         reinterpret_cast<PyObject*>(&eager_tensor_type)) < 0) {
-    Py_DECREF(&eager_tensor_type);
+                         reinterpret_cast<PyObject*>(type)) < 0) {
+    Py_DECREF(type);
     Py_DECREF(m.ptr());
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEager(PyModule_AddObject)."));

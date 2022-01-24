@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, _in_eager_mode
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, _in_eager_mode, EagerParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -149,7 +149,7 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        if _in_eager_mode():
+        if core._in_eager_mode():
             base_tensor = core.eager.EagerTensor
         else:
             base_tensor = core.VarBase
@@ -238,7 +238,7 @@ def monkey_patch_varbase():
         """
         if framework.in_dygraph_mode():
             if grad_tensor is not None:
-                if _in_eager_mode():
+                if core._in_eager_mode():
                     assert isinstance(
                         grad_tensor, core.eager.EagerTensor
                     ), "The type of grad_tensor must be paddle.Tensor"
@@ -250,7 +250,7 @@ def monkey_patch_varbase():
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
 
-            if _in_eager_mode():
+            if core._in_eager_mode():
                 if grad_tensor is None:
                     grad_tensor = []
                 else:
@@ -258,7 +258,7 @@ def monkey_patch_varbase():
             if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                if _in_eager_mode():
+                if core._in_eager_mode():
                     core.eager.run_backward([scaled_loss], grad_tensor,
                                             retain_graph)
                 else:
@@ -266,7 +266,7 @@ def monkey_patch_varbase():
                                               retain_graph,
                                               framework._dygraph_tracer())
             else:
-                if _in_eager_mode():
+                if core._in_eager_mode():
                     core.eager.run_backward([self], grad_tensor, retain_graph)
                 else:
                     core.dygraph_run_backward([self], [grad_tensor],
@@ -305,7 +305,7 @@ def monkey_patch_varbase():
                 # [500.]
 
         """
-        if _in_eager_mode():
+        if core._in_eager_mode():
             if not self.grad._is_initialized():
                 return None
             # TODO(wanghuancoder) support SELECTED_ROWS
@@ -587,7 +587,7 @@ def monkey_patch_varbase():
                 #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        if _in_eager_mode():
+        if core._in_eager_mode():
             from paddle.tensor.to_string import eager_tensor_to_string
             return eager_tensor_to_string(self)
         else:
@@ -619,7 +619,7 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        if _in_eager_mode():
+        if core._in_eager_mode():
             new_varbase = core.eager.EagerTensor()
         else:
             new_varbase = core.VarBase()
@@ -635,9 +635,13 @@ def monkey_patch_varbase():
     def __nonzero__(self):
         numel = np.prod(self.shape)
         assert numel == 1, "When Variable is used as the condition of if/while , Variable can only contain one element."
-        tensor = self.value().get_tensor()
-        assert tensor._is_initialized(), "tensor not initialized"
-        return bool(np.all(tensor.__array__() > 0))
+        if core._in_eager_mode():
+            assert self._is_initialized(), "tensor not initialized"
+            return bool(np.all(self.numpy() > 0))
+        else:
+            tensor = self.value().get_tensor()
+            assert tensor._is_initialized(), "tensor not initialized"
+            return bool(np.all(tensor.__array__() > 0))
 
     def __bool__(self):
         return self.__nonzero__()
@@ -758,10 +762,18 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def _grad_ivar(self):
-        if self.grad._is_initialized():
-            return self.grad
+        if self.grad is not None:
+            if self.grad._is_initialized():
+                return self.grad
+        return None
+
+    @framework.dygraph_only
+    def _set_grad_ivar(self, value):
+        if isinstance(self, EagerParamBase):
+            self.grad = value
         else:
-            return None
+            raise TypeError(
+                "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
     def clear_gradient(self, set_to_zero=True):
@@ -769,6 +781,14 @@ def monkey_patch_varbase():
             self._zero_grads()
         else:
             self._clear_gradient()
+
+    @framework.dygraph_only
+    def clone(self):
+        return _C_ops_.assign(self)
+
+    @framework.dygraph_only
+    def value(self):
+        return self
 
     if core._in_eager_mode() and not hasattr(core, "eager"):
         return
@@ -790,7 +810,10 @@ def monkey_patch_varbase():
 
     if core._in_eager_mode():
         setattr(core.eager.EagerTensor, "_grad_ivar", _grad_ivar)
+        setattr(core.eager.EagerTensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.EagerTensor, "clear_gradient", clear_gradient)
+        setattr(core.eager.EagerTensor, "clone", clone)
+        setattr(core.eager.EagerTensor, "value", value)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

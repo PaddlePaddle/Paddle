@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import os
-import sys
 from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
@@ -78,9 +77,6 @@ class TestFleetWithASPSharding(unittest.TestCase):
         return avg_cost, dist_strategy, input_x, input_y
 
     def test_with_asp_sharding(self):
-        if sys.platform == 'win32':
-            return
-        print(sys.platform)
         fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy, input_x, input_y = self.net(train_prog,

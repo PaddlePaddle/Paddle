@@ -22,6 +22,7 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
@@ -152,8 +153,9 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     parallelizer._dist_context = dist_context
 
     # serial forward & backward completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -299,7 +301,6 @@ class TestMLPReshard(unittest.TestCase):
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))

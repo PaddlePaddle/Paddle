@@ -21,9 +21,6 @@ namespace platform {
 namespace ipu {
 namespace {
 
-using framework::Attribute;
-using framework::AttributeMap;
-
 Node *fill_constant_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   if (op->HasInput("ShapeTensor") && !op->Input("ShapeTensor").empty()) {
@@ -133,6 +130,14 @@ Node *reshape_handler(Graph *graph, Node *node) {
   return new_node_reshape;
 }
 
+Node *flatten2_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  return CreateBaseOp(
+      graph, node, "popart_flatten", {GetInputVarNode("X", node)},
+      {GetOutputVarNode("Out", node)}, {{"axis", int64_t(axis)}});
+}
+
 Node *gather_handler(Graph *graph, Node *node) {
   auto new_node_gather =
       CreateBaseOp(graph, node, "popart_gather",
@@ -169,7 +174,8 @@ Node *cast_handler(Graph *graph, Node *node) {
   return new_node_cast;
 }
 
-Node *lookup_table_handler(Graph *graph, Node *node) {
+Node *lookup_table_op_handler(Graph *graph, Node *node,
+                              const std::string &type) {
   auto *op = node->Op();
   auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
   auto w_shape_ = GetInputVarNode("W", node)->Var()->GetShape();
@@ -183,7 +189,7 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
     auto concat_const =
         CreateConst(graph, node, {}, {}, {{"value", const_value_},
                                           {"dims", const_shape_},
-                                          {"dtype", ONNXDataType::FLOAT}});
+                                          {"dtype", GetOutputVarDtype(node)}});
     auto axes =
         CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{0}},
                                           {"dims", std::vector<int64_t>{1}},
@@ -247,14 +253,26 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
     w_node = GetInputVarNode("W", node);
   }
 
-  auto squeeze = CreateBaseOp(graph, node, "popart_squeeze",
-                              {GetInputVarNode("Ids", node)}, {},
-                              {{"axes", std::vector<int64_t>{-1}}});
+  // lookup_table and lookup_table_v2
+  auto ids = GetInputVarNode("Ids", node);
+  if (type == "v1") {
+    ids = CreateBaseOp(graph, node, "popart_squeeze",
+                       {GetInputVarNode("Ids", node)}, {},
+                       {{"axes", std::vector<int64_t>{-1}}});
+    ids = ids->outputs[0];
+  }
 
-  auto gather =
-      CreateBaseOp(graph, node, "popart_gather", {w_node, squeeze->outputs[0]},
-                   {GetOutputVarNode("Out", node)}, {});
+  auto gather = CreateBaseOp(graph, node, "popart_gather", {w_node, ids},
+                             {GetOutputVarNode("Out", node)}, {});
   return gather;
+}
+
+Node *lookup_table_handler(Graph *graph, Node *node) {
+  return lookup_table_op_handler(graph, node, "v1");
+}
+
+Node *lookup_table_v2_handler(Graph *graph, Node *node) {
+  return lookup_table_op_handler(graph, node, "v2");
 }
 
 Node *unsqueeze_handler(Graph *graph, Node *node) {
@@ -336,11 +354,32 @@ Node *slice_handler(Graph *graph, Node *node) {
     auto attr = MakeConstAttrMap<int>(axes_, {dim}, ONNXDataType::INT32);
     axes = CreateConst(graph, node, {}, {}, attr);
   }
-  auto new_node = CreateBaseOp(
-      graph, node, "popart_slice",
-      {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
-      node->outputs);
-  return new_node;
+
+  auto decrease_axis_ =
+      BOOST_GET_CONST(std::vector<int>, op->GetAttr("decrease_axis"));
+  auto input_shape_ = GetInputVarNode("Input", node)->Var()->GetShape();
+  auto output_shape_ = GetOutputVarNode("Out", node)->Var()->GetShape();
+  if (decrease_axis_.size() == 0) {
+    return CreateBaseOp(
+        graph, node, "popart_slice",
+        {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
+        node->outputs);
+  } else if (output_shape_ == std::vector<int64_t>{0} ||
+             input_shape_.size() > output_shape_.size()) {
+    auto slice = CreateBaseOp(
+        graph, node, "popart_slice",
+        {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]}, {},
+        {});
+    return CreateBaseOp(graph, node, "popart_squeeze", {slice->outputs[0]},
+                        {GetOutputVarNode("Out", node)},
+                        {{"axes", std::vector<int64_t>{decrease_axis_.begin(),
+                                                       decrease_axis_.end()}}});
+  } else {
+    return CreateBaseOp(
+        graph, node, "popart_slice",
+        {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
+        node->outputs);
+  }
 }
 
 Node *expand_handler(Graph *graph, Node *node) {
@@ -373,11 +412,94 @@ Node *expand_handler(Graph *graph, Node *node) {
   return new_node;
 }
 
+Node *assign_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_identity",
+                      {GetInputVarNode("X", node)},
+                      {GetOutputVarNode("Out", node)}, {});
+}
+
+Node *fill_any_like_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
+  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
+  auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto x_dtype = static_cast<framework::proto::VarType::Type>(dtype);
+  size_t size = 1;
+  for (auto &dim : x_shape) {
+    size *= dim;
+  }
+
+  Attribute out_value;
+  switch (x_dtype) {
+    case framework::proto::VarType::FP32:
+      out_value = std::vector<float>(size, value);
+      break;
+    case framework::proto::VarType::FP64:
+      out_value = std::vector<double>(size, value);
+      break;
+    case framework::proto::VarType::INT32:
+      out_value = std::vector<int>(size, value);
+      break;
+    case framework::proto::VarType::INT64:
+      out_value = std::vector<int64_t>(size, value);
+      break;
+    case framework::proto::VarType::BOOL:
+      out_value = std::vector<int64_t>(size, value);
+      break;
+    default:
+      PADDLE_THROW(
+          platform::errors::Unimplemented("fill_any_like dtype: %d", x_dtype));
+  }
+  return CreateConst(graph, node, node->inputs, node->outputs,
+                     AttributeMap{
+                         {"value", out_value},
+                         {"dims", x_shape},
+                         {"dtype", VarType2OnnxDtype(dtype)},
+                     });
+}
+
+Node *one_hot_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto depth = BOOST_GET_CONST(int, op->GetAttr("depth"));
+  auto allow_out_of_range =
+      BOOST_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
+  if (allow_out_of_range) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Do not support allow_out_of_range=True"));
+  } else {
+    auto depth_tensor = CreateConst(graph, node, {}, {},
+                                    {{"value", std::vector<int64_t>{depth}},
+                                     {"dims", std::vector<int64_t>{1}},
+                                     {"dtype", ONNXDataType::INT64}});
+    auto value_tensor =
+        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0, 1}},
+                                          {"dims", std::vector<int64_t>{2}},
+                                          {"dtype", ONNXDataType::FLOAT}});
+    return CreateBaseOp(graph, node, "popart_onehot",
+                        {GetInputVarNode("X", node), depth_tensor->outputs[0],
+                         value_tensor->outputs[0]},
+                        {GetOutputVarNode("Out", node)},
+                        {{"axis", int64_t{-1}}});
+  }
+}
+
+Node *split_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto sections = BOOST_GET_CONST(std::vector<int>, op->GetAttr("sections"));
+  return CreateBaseOp(
+      graph, node, "popart_split", {GetInputVarNode("X", node)}, node->outputs,
+      {{"num_outputs", int64_t(sections.size())},
+       {"axis", int64_t(axis)},
+       {"split", std::vector<int64_t>{sections.begin(), sections.end()}}});
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
 REGISTER_HANDLER(transpose2, transpose_handler);
 REGISTER_HANDLER(reshape2, reshape_handler);
+REGISTER_HANDLER(flatten2, flatten2_handler);
 REGISTER_HANDLER(gather, gather_handler);
 REGISTER_HANDLER(squeeze2, squeeze_handler);
 REGISTER_HANDLER(cast, cast_handler);
@@ -388,6 +510,11 @@ REGISTER_HANDLER(stack, stack_handler);
 REGISTER_HANDLER(shape, shape_handler);
 REGISTER_HANDLER(slice, slice_handler);
 REGISTER_HANDLER(expand, expand_handler);
+REGISTER_HANDLER(assign, assign_handler);
+REGISTER_HANDLER(fill_any_like, fill_any_like_handler);
+REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
+REGISTER_HANDLER(split, split_handler);
+REGISTER_HANDLER(one_hot, one_hot_handler);
 
 }  // namespace
 }  // namespace ipu

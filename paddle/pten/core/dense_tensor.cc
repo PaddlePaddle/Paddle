@@ -15,22 +15,28 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/convert_utils.h"
 
+namespace paddle {
+namespace framework {
+extern void TensorCopy(const pten::DenseTensor& src,
+                       const paddle::platform::Place& dst_place,
+                       pten::DenseTensor* dst);
+}
+}
+
 namespace pten {
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         const DenseTensorMeta& meta)
+DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         DenseTensorMeta&& meta)
+DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
     : meta_(std::move(meta)),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
@@ -70,6 +76,12 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   return *this;
 }
 
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+  meta_ = std::move(other.meta_);
+  storage_.swap(other.storage_);
+  return *this;
+}
+
 int64_t DenseTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;
@@ -101,7 +113,8 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes + meta_.offset || storage_->size() == 0) {
+  if (!storage_->data() || storage_->size() < bytes + meta_.offset ||
+      storage_->size() == 0) {
     VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
              << ", new size: " << bytes;
     storage_->Realloc(bytes);
@@ -194,7 +207,7 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
                                storage_ won't be initialized until the first
    call to mutable_data(place)
    */
-void DenseTensor::Resize(const DDim& dims) {
+void DenseTensor::ResizeAndAllocate(const DDim& dims) {
   meta_.dims = dims;
   if (storage_ != nullptr) {
     mutable_data();
@@ -281,6 +294,9 @@ const paddle::platform::Place& DenseTensor::place() const {
       storage_,
       paddle::platform::errors::PreconditionNotMet(
           "Tensor not initialized yet when Tensor::place() is called."));
+  if (storage_->data_shared()) {
+    return storage_->data_shared()->place();
+  }
   return storage_->place();
 }
 
@@ -429,6 +445,10 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+        paddle::platform::CPUPlace());
+  }
   if (storage_ != nullptr && tensor.storage_ != nullptr) {
     storage_->set_data_shared(tensor.storage_->data_shared());
   }
@@ -506,6 +526,121 @@ size_t DenseTensor::NumElements(size_t level) const {
 
   // the last offset is the end of last element
   return (meta_.lod)[level].size() - 1;
+}
+
+DenseTensor& DenseTensor::Resize(const DDim& dims) {
+  meta_.dims = dims;
+  return *this;
+}
+
+DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
+  check_memory_size();
+  PADDLE_ENFORCE_GE(begin_idx,
+                    0,
+                    paddle::platform::errors::OutOfRange(
+                        "The start row index must be greater than 0."
+                        "But received the start index is d%.",
+                        begin_idx));
+  PADDLE_ENFORCE_LE(end_idx,
+                    meta_.dims[0],
+                    paddle::platform::errors::OutOfRange(
+                        "The end row index is out of bound."));
+  PADDLE_ENFORCE_LT(
+      begin_idx,
+      end_idx,
+      paddle::platform::errors::InvalidArgument(
+          "The start row index must be less than the end row index."
+          "But received the start index = %d, the end index = %d.",
+          begin_idx,
+          end_idx));
+
+  if (meta_.dims[0] == 1) {
+    return *this;
+  } else {
+    size_t base = numel() / meta_.dims[0];
+    DenseTensor dst;
+    dst.storage_ = pten::make_intrusive<paddle::experimental::SharedStorage>(
+        storage_->data_shared());
+    dst.meta_.layout = meta_.layout;
+    dst.meta_.dtype = meta_.dtype;
+    DDim dst_dims = meta_.dims;
+    dst_dims[0] = end_idx - begin_idx;
+    dst.Resize(dst_dims);
+    dst.meta_.offset = meta_.offset + begin_idx * base * SizeOf(dtype());
+    return dst;
+  }
+}
+
+std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
+                                            int64_t axis) const {
+  check_memory_size();
+
+  PADDLE_ENFORCE_GE(meta_.dims.size(),
+                    0,
+                    paddle::platform::errors::OutOfRange(
+                        "split expects at least a 1-dimensional tensor"));
+
+  PADDLE_ENFORCE_GE(
+      split_size,
+      0,
+      paddle::platform::errors::OutOfRange(
+          "split expects split_size be non-negative, but got split_size is %d",
+          split_size));
+
+  int64_t numel_size = meta_.dims[axis];
+
+  int64_t num_splits = 1;
+  if (split_size != 0) {
+    num_splits =
+        std::max<int64_t>((numel_size + split_size - 1) / split_size, 1);
+  }
+
+  std::vector<DenseTensor> splits(num_splits);
+  int64_t last_split_size = split_size - (split_size * num_splits - numel_size);
+
+  for (int64_t i = 0; i < num_splits; ++i) {
+    int64_t length = i < num_splits - 1 ? split_size : last_split_size;
+    splits[i] = Slice(i * split_size, i * split_size + length);
+  }
+  return splits;
+}
+
+std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
+                                            int64_t axis) const {
+  check_memory_size();
+  PADDLE_ENFORCE_GE(meta_.dims.size(),
+                    0,
+                    paddle::platform::errors::OutOfRange(
+                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      chunks,
+      0,
+      paddle::platform::errors::OutOfRange(
+          "chunks expects to be greater than 0, but got chunks is %d", chunks));
+
+  int64_t numel_size = meta_.dims[axis];
+  int64_t split_size = (numel_size + chunks - 1) / chunks;
+  return Split(split_size, axis);
+}
+
+DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
+  src.check_memory_size();
+  // Preserve LoD
+  auto lod = meta_.lod;
+  *this = src;
+  meta_.lod = lod;
+  return *this;
+}
+
+DenseTensor& DenseTensor::ShareInplaceVersionCounterWith(
+    const DenseTensor& src) {
+  PADDLE_ENFORCE_NOT_NULL(
+      inplace_version_counter_,
+      paddle::platform::errors::PreconditionNotMet(
+          "Tensor does not hold inplace_version_counter_."));
+
+  inplace_version_counter_ = src.inplace_version_counter_;
+  return *this;
 }
 
 }  // namespace pten
