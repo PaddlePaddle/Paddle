@@ -17,6 +17,9 @@
 #include "gtest/gtest.h"
 #include "paddle/pten/core/ddim.h"
 
+namespace pten {
+namespace tests {
+
 TEST(DDim, Equality) {
   // construct a DDim from an initialization list
   pten::framework::DDim ddim = pten::framework::make_ddim({9, 1, 5});
@@ -81,3 +84,6 @@ TEST(DDim, Print) {
   ss << ddim;
   EXPECT_EQ("2, 3, 4", ss.str());
 }
+
+}  // namespace tests
+}  // namespace pten
