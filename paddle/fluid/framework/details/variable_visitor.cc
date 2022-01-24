@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 
 namespace pten {
 class DenseTensor;

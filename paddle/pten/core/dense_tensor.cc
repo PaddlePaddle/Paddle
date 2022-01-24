@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/convert_utils.h"
@@ -113,7 +113,8 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes + meta_.offset || storage_->size() == 0) {
+  if (!storage_->data() || storage_->size() < bytes + meta_.offset ||
+      storage_->size() == 0) {
     VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
              << ", new size: " << bytes;
     storage_->Realloc(bytes);

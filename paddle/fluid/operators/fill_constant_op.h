@@ -102,7 +102,6 @@ class FillConstantKernel : public framework::OpKernel<T> {
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(ctx.GetPlace());
     int actual_place = place_type;
 
     if (actual_place == -1) {
@@ -123,12 +122,14 @@ class FillConstantKernel : public framework::OpKernel<T> {
                                                                  : "<T>");
       tensor->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(platform::CPUPlace());
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
 #else
@@ -138,9 +139,11 @@ class FillConstantKernel : public framework::OpKernel<T> {
     } else if (actual_place == 2) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(platform::CUDAPinnedPlace(), data_type);
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+      math::SetConstant<platform::CUDAPinnedDeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(platform::CUDAPinnedPlace());
+      functor(
+          reinterpret_cast<const platform::CUDAPinnedDeviceContext &>(dev_ctx),
+          tensor, static_cast<T>(value));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));
@@ -149,6 +152,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_XPU
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::XPUDeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
 #else

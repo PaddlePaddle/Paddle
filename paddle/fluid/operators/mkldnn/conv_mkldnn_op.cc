@@ -516,6 +516,10 @@ class ConvMKLDNNHandlerT
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_hardswish,
                                      fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "mish") {
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_mish, fuse_alpha,
+                                     fuse_beta);
     } else if (fuse_activation == "hard_sigmoid") {
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_linear,

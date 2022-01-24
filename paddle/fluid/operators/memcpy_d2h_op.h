@@ -16,12 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
 namespace pten {
 class DenseTensor;
 }  // namespace pten

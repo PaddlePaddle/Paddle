@@ -25,6 +25,7 @@
 
 namespace mlir {
 namespace pd {
+
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
   addOperations<
@@ -69,7 +70,7 @@ mlir::OpFoldResult ConstantOp::fold(
     ::llvm::ArrayRef<mlir::Attribute> operands) {
   return value();
 }
-
+/*
 LogicalResult ElementwiseAdd::inferReturnTypes(
     MLIRContext *context,
     Optional<Location> location,
@@ -165,7 +166,7 @@ void FusedRepeatedFCRelu::getCanonicalizationPatterns(
 void BatchNormOp::getCanonicalizationPatterns(
     mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseBatchNormWithConvPattern>(context);
-}
+}*/
 
 }  // namespace pd
 }  // namespace mlir

@@ -164,7 +164,7 @@ void MatMulFunction(const Context& dev_ctx,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(paddle::framework::make_ddim(out_dims));
+    Out->ResizeAndAllocate(pten::framework::make_ddim(out_dims));
     Out->mutable_data<T>();
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -242,7 +242,7 @@ void MatMulFunction(const Context& dev_ctx,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(paddle::framework::make_ddim(out_dims));
+    Out->ResizeAndAllocate(pten::framework::make_ddim(out_dims));
     Out->mutable_data<T>();
 
     if (trans_x) {
@@ -330,7 +330,7 @@ void MatMulFunction(const Context& dev_ctx,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(paddle::framework::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(pten::framework::make_ddim(out_broadcast_dims));
   Out->mutable_data<T>();
 
   const int batch_dim = ndim - 2;
@@ -493,12 +493,12 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_NE(paddle::framework::product(x.dims()),
+  PADDLE_ENFORCE_NE(pten::framework::product(x.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(X) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  PADDLE_ENFORCE_NE(paddle::framework::product(y.dims()),
+  PADDLE_ENFORCE_NE(pten::framework::product(y.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(Y) dims size must not be equal 0,"

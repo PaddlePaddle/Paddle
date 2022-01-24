@@ -40,10 +40,10 @@ enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
 using ConditionalT =
-    typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
+    typename std::conditional_t<Num == 1, T, pten::framework::Array<T, Num>>;
 
 namespace funcs {
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 struct ElemwiseGradNoBroadcast {
@@ -307,9 +307,9 @@ inline DDim trim_trailing_singular_dims(const DDim &dims) {
     trim_dims[i] = dims[i];
   }
   if (trim_dims.size() == 0) {
-    return DDim(paddle::framework::make_dim());
+    return DDim(pten::framework::make_dim());
   }
-  DDim actual_dims = paddle::framework::make_ddim(trim_dims);
+  DDim actual_dims = pten::framework::make_ddim(trim_dims);
   return actual_dims;
 }
 
@@ -381,7 +381,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(paddle::framework::product(x_dim));
+  size_t N = static_cast<size_t>(pten::framework::product(x_dim));
   paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -475,7 +475,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+      pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -498,7 +498,7 @@ struct ElementwiseWriteDataCaller {
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, 1> outs,
+      pten::framework::Array<_ptr_ OutT *, 1> outs,
       OutT src[VecSize],
       int block_offset,
       int num) {
@@ -515,6 +515,7 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
+
     const paddle::framework::Array<const _ptr_ InT *__restrict__,
                                    MAX_NUM_INPUTS> &in,
     paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
@@ -591,6 +592,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
+
   auto numel = (*outs)[0]->numel();
   paddle::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
       ins_data;
