@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
@@ -47,39 +48,34 @@ class SigmoidCrossEntropyWithLogitsXPUKernel : public framework::OpKernel<T> {
     // allocate temp memory
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int* hit = RAII_GUARD.alloc_l3_or_gm<int>(input->numel());
+    PADDLE_ENFORCE_NOT_NULL(
+        hit, platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
 
     int r = xpu::sigmoid_cross_entropy_with_logits(
         dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
         reinterpret_cast<const XPUType*>(label->data<T>()),
         reinterpret_cast<XPUType*>(output->data<T>()), 1, input->numel(), hit,
         ignore_index);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU sigmoid_cross_entropy_with_logits "
-                                   "kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
     if (normalize) {
       int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
+      PADDLE_ENFORCE_NOT_NULL(
+          non_zero,
+          platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
       int r = xpu::nonzero_count(dev_ctx.x_context(),
                                  reinterpret_cast<const XPUType*>(hit),
                                  non_zero, input->numel());
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU nonzero_count "
-                                            "kernel return wrong value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
       int non_zero_cpu = 0;
       memory::Copy(platform::CPUPlace(), static_cast<void*>(&non_zero_cpu),
-                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
-                   static_cast<void*>(non_zero), sizeof(int));
+                   context.GetPlace(), static_cast<void*>(non_zero),
+                   sizeof(int));
       r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(output->data<T>()),
                      reinterpret_cast<XPUType*>(output->data<T>()),
                      input->numel(), false,
                      1.0f / static_cast<float>(non_zero_cpu), 0.0f);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU scale "
-                                            "kernel return wrong value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
 };
@@ -110,6 +106,8 @@ class SigmoidCrossEntropyWithLogitsGradXPUKernel
     // allocate temp memory
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int* hit = RAII_GUARD.alloc_l3_or_gm<int>(input->numel());
+    PADDLE_ENFORCE_NOT_NULL(
+        hit, platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
 
     int r = xpu::sigmoid_cross_entropy_with_logits_grad(
         dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
@@ -117,34 +115,25 @@ class SigmoidCrossEntropyWithLogitsGradXPUKernel
         reinterpret_cast<const XPUType*>(dy->data<T>()),
         reinterpret_cast<XPUType*>(dx->data<T>()), 1, input->numel(), hit,
         ignore_index);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU sigmoid_cross_entropy_with_logits_grad "
-                                   "kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
     if (normalize) {
       int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
-      // template<typename T> DLL_EXPORT int nonzero_count(Context* ctx, const
-      // T* x, int* y, int len);
+      PADDLE_ENFORCE_NOT_NULL(
+          non_zero,
+          platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
       int r = xpu::nonzero_count(dev_ctx.x_context(),
                                  reinterpret_cast<const XPUType*>(hit),
                                  non_zero, input->numel());
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU nonzero_count "
-                                            "kernel return wrong value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
       int non_zero_cpu = 0;
       memory::Copy(platform::CPUPlace(), static_cast<void*>(&non_zero_cpu),
-                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
-                   static_cast<void*>(non_zero), sizeof(int));
+                   context.GetPlace(), static_cast<void*>(non_zero),
+                   sizeof(int));
       r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(dx->data<T>()),
                      reinterpret_cast<XPUType*>(dx->data<T>()), input->numel(),
                      false, 1.0f / static_cast<float>(non_zero_cpu), 0.0f);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU scale "
-                                            "kernel return wrong value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
 };
