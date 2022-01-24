@@ -89,6 +89,7 @@ class DistModel {
   std::vector<framework::OpDesc*> feeds_;
   std::map<std::string, int64_t> feed_names_;
   std::map<int64_t, std::string> idx_to_feeds_;
+  std::map<std::string, DistModelDataType> feeds_to_dtype_;
   std::vector<framework::OpDesc*> fetches_;
   std::map<int64_t, std::string> idx_to_fetches_;
   DistModelConfig config_;

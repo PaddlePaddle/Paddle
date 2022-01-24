@@ -88,6 +88,22 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
   input_tensor->set_lod(dst_lod);
   return true;
 }
+
+std::string DistModelDTypeToString(DistModelDataType dtype) {
+  switch (dtype) {
+    case DistModelDataType::FLOAT32:
+      return "float32";
+    case DistModelDataType::FLOAT16:
+      return "float16";
+    case DistModelDataType::INT64:
+      return "int64";
+    case DistModelDataType::INT32:
+      return "int32";
+    case DistModelDataType::INT8:
+      return "int8";
+  }
+}
+
 }  // namespace
 
 bool DistModel::Init() {
@@ -391,8 +407,21 @@ bool DistModel::PrepareFeedAndFetch() {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
-      feed_names_[op->Output("Out")[0]] = idx;
-      idx_to_feeds_[idx] = op->Output("Out")[0];
+      std::string var_name = op->Output("Out")[0];
+      feed_names_[var_name] = idx;
+      idx_to_feeds_[idx] = var_name;
+      framework::VarDesc *real_var = program_->Block(0).FindVar(var_name);
+      switch (real_var->GetType()) {
+        case proto::VarType::FP32:
+          feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT32});
+          break;
+        case proto::VarType::INT32:
+          feeds_to_dtype_.insert({var_name, DistModelDataType::INT32});
+          break;
+        case proto::VarType::INT64:
+          feeds_to_dtype_.insert({var_name, DistModelDataType::INT64});
+          break;
+      }
     } else if (op->Type() == "fetch") {
       VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
       int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
@@ -435,6 +464,13 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
       LOG(ERROR) << "The input name: " << target_name
                  << " cannot be found in the program."
                  << " DistModel loads data failed.";
+      return false;
+    }
+    if (input_data[i].dtype != feeds_to_dtype_[target_name]) {
+      LOG(ERROR) << "Feed var: " << target_name << "'s expected dtype is: "
+                 << DistModelDTypeToString(feeds_to_dtype_[target_name])
+                 << ". But received dtype is: "
+                 << DistModelDTypeToString(input_data[i].dtype) << ".";
       return false;
     }
     int feed_idx = feed_names_[target_name];
