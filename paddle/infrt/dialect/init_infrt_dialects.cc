@@ -23,12 +23,10 @@
 #include "paddle/infrt/dialect/tensor_shape.h"
 
 namespace infrt {
-
-void RegisterCinnDialects(mlir::DialectRegistry& registry) {  // NOLINT
-  registry.insert<ts::TensorShapeDialect>();
-  registry.insert<dialect::INFRTDialect>();
-  registry.insert<dt::DTDialect>();
-  registry.insert<mlir::pd::PaddleDialect>();
+void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
+  registry.insert<ts::TensorShapeDialect,
+                  dialect::INFRTDialect,
+                  dt::DTDialect,
+                  mlir::pd::PaddleDialect>();
 }
-
 }  // namespace infrt

@@ -37,9 +37,6 @@ namespace paddle {
 namespace framework {
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

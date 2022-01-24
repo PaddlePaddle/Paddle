@@ -75,7 +75,8 @@ TEST(dense_tensor, ctor) {
   const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
 
   auto check_dense_tensor = [](const DenseTensor& t,
                                const DenseTensorMeta& m) -> bool {
@@ -95,10 +96,6 @@ TEST(dense_tensor, ctor) {
 
   DenseTensor tensor_1(alloc, DenseTensorMeta(meta));
   check_dense_tensor(tensor_0, meta);
-
-  DenseTensor tensor_2(make_intrusive<TensorStorage>(alloc), meta);
-  CHECK_NOTNULL(tensor_2.mutable_data<int8_t>());
-  check_dense_tensor(tensor_2, meta);
 }
 
 TEST(dense_tensor, resize) {
@@ -108,17 +105,15 @@ TEST(dense_tensor, resize) {
   const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
   DenseTensor tensor_0(alloc, meta);
 
   CHECK_EQ(tensor_0.capacity(), 2u);
-  tensor_0.Resize({1, 2, 3});
+  tensor_0.ResizeAndAllocate({1, 2, 3});
   CHECK_EQ(tensor_0.capacity(), 6u);
   tensor_0.mutable_data<int8_t>();
   CHECK_EQ(tensor_0.capacity(), 6u);
-
-  auto storage = tensor_0.release();
-  CHECK_EQ(storage->size(), 6u);
 }
 
 TEST(dense_tensor, shallow_copy) {
@@ -128,12 +123,12 @@ TEST(dense_tensor, shallow_copy) {
   const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
   DenseTensor tensor_0(alloc, meta);
 
   DenseTensor tensor_1(tensor_0);
   CHECK(tensor_0.meta() == tensor_1.meta());
-  CHECK(tensor_0.release() == tensor_1.release());
 }
 
 }  // namespace tests

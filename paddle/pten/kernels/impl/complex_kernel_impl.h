@@ -21,7 +21,9 @@
 namespace pten {
 
 template <typename T, typename Context>
-void Conj(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+void ConjKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = out->mutable_data<T>();

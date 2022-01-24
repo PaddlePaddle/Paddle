@@ -54,7 +54,7 @@ TEST(Generated, Sigmoid) {
   RunBackward(target_tensors, {});
 
   VLOG(6) << "Finish Backward";
-  eager_test::CompareGradVariableWithValue<float>(tensor, 0.25);
+  eager_test::CompareGradTensorWithValue<float>(tensor, 0.25);
 }
 
 TEST(Generated, Matmul_v2) {
@@ -85,8 +85,8 @@ TEST(Generated, Matmul_v2) {
   std::vector<egr::EagerTensor> target_tensors = {output_tensor};
   RunBackward(target_tensors, {});
 
-  eager_test::CompareGradVariableWithValue<float>(X, 2.0 * 20);
-  eager_test::CompareGradVariableWithValue<float>(Y, 3.0 * 4);
+  eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
+  eager_test::CompareGradTensorWithValue<float>(Y, 3.0 * 4);
 }
 
 TEST(Generated, ElementwiseAdd) {
@@ -116,8 +116,8 @@ TEST(Generated, ElementwiseAdd) {
   std::vector<egr::EagerTensor> target_tensors = {output_tensor};
   RunBackward(target_tensors, {});
 
-  eager_test::CompareGradVariableWithValue<float>(X, 1.0);
-  eager_test::CompareGradVariableWithValue<float>(Y, 1.0);
+  eager_test::CompareGradTensorWithValue<float>(X, 1.0);
+  eager_test::CompareGradTensorWithValue<float>(Y, 1.0);
 }
 
 }  // namespace egr

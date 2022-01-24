@@ -32,7 +32,6 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
@@ -41,12 +40,12 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/array.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/cast_kernel.h"
-#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -119,7 +118,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
 
 // convert dims from vector to array
 template <typename T, size_t ElementCount, typename VectorLikeType>
-static inline paddle::framework::Array<T, ElementCount> VectorToArray(
+static inline pten::framework::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
   PADDLE_ENFORCE_LE(vec.size(),
                     ElementCount,
@@ -129,7 +128,7 @@ static inline paddle::framework::Array<T, ElementCount> VectorToArray(
                         vec.size(),
                         ElementCount));
   size_t n = static_cast<size_t>(vec.size());
-  paddle::framework::Array<T, ElementCount> ret;
+  pten::framework::Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) {
     ret[i] = vec[i];
   }
@@ -163,7 +162,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
 
 }  // namespace details
 
-constexpr int kMaxRank = paddle::framework::DDim::kMaxRank;
+constexpr int kMaxRank = pten::framework::DDim::kMaxRank;
 
 enum ReduceType {
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
@@ -203,9 +202,9 @@ struct IndexCalculator {
   }
 
   int dim;
-  paddle::framework::Array<int, kMaxRank> dims;
-  paddle::framework::Array<int, kMaxRank> strides;
-  paddle::framework::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
+  pten::framework::Array<int, kMaxRank> dims;
+  pten::framework::Array<int, kMaxRank> strides;
+  pten::framework::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
 };
 
 template <bool ReduceLastDim = false>
@@ -327,7 +326,7 @@ struct ReduceConfig {
                      const paddle::platform::Place& place,
                      pten::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(paddle::framework::make_ddim(
+      tmp->ResizeAndAllocate(pten::framework::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
       output_data = tmp->mutable_data<Ty>();
     } else {
@@ -1030,7 +1029,7 @@ static
   pten::DenseTensor tmp = pten::DenseTensor(
       pten::make_intrusive<paddle::experimental::SharedStorage>(place),
       pten::DenseTensorMeta(pten::DataType::UINT8,
-                            paddle::framework::make_ddim(
+                            pten::framework::make_ddim(
                                 {static_cast<int64_t>(temp_storage_bytes)})));
 
   auto* temp_storage = tmp.mutable_data<uint8_t>();
@@ -1062,23 +1061,6 @@ static
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
-static void AsyncCopy(const pten::DenseTensor& src, pten::DenseTensor* dst) {
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  const paddle::platform::CUDADeviceContext* dev_ctx;
-  if (paddle::platform::is_gpu_place(dst->place()) ||
-      paddle::platform::is_npu_place(dst->place())) {
-    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(dst->place()));
-
-  } else {
-    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(src.place()));
-  }
-
-  pten::Copy(*dev_ctx, src, false, dst);
-}
-
 template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
@@ -1091,7 +1073,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   // Allocate memory
   y->mutable_data<Ty>();
 
-  auto x_dim = paddle::framework::vectorize<int>(x.dims());
+  auto x_dim = pten::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
   int numel = x.numel();
@@ -1111,13 +1093,10 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(x.place()));
   if (config.reduce_num == 1) {
-    auto out_dims = y->dims();
-    if (x.dtype() == y->dtype()) {
-      AsyncCopy(x, y);
-      y->Resize(out_dims);
-    } else {
-      pten::CastKernel<Tx>(*dev_ctx, x, y->dtype(), y);
-    }
+    std::vector<const DenseTensor*> inputs = {&x};
+    std::vector<DenseTensor*> outputs = {y};
+    funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
+        *dev_ctx, inputs, &outputs, transform);
     return;
   }
 

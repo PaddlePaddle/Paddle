@@ -53,7 +53,7 @@ struct ExpFunctor {
 
   HOSTDEVICE explicit inline ExpFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(details::Exp(x));
   }
 };
@@ -67,7 +67,7 @@ struct IdentityFunctor {
 
   HOSTDEVICE explicit inline IdentityFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(x);
   }
 };
@@ -85,7 +85,7 @@ struct DivideFunctor {
 
   HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((MPType)(1.0 / n)) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(static_cast<MPType>(x) * n_inv);
   }
 
@@ -102,7 +102,7 @@ struct InverseFunctor {
 
   HOSTDEVICE explicit inline InverseFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(-x);
   }
 };
@@ -116,7 +116,7 @@ struct SquareFunctor {
 
   HOSTDEVICE explicit inline SquareFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(x) * static_cast<Ty>(x);
   }
 };
@@ -130,7 +130,7 @@ template <typename T>
 struct MinFunctor {
   inline T initial() { return static_cast<T>(std::numeric_limits<T>::max()); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
     return (b < a) ? b : a;
   }
 };
@@ -144,7 +144,7 @@ struct MaxFunctor {
     return static_cast<T>(std::numeric_limits<T>::lowest());
   }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
     return (b > a) ? b : a;
   }
 };
@@ -156,7 +156,7 @@ template <typename T>
 struct AddFunctor {
   inline T initial() { return static_cast<T>(0.0f); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
     return b + a;
   }
 };
@@ -168,7 +168,7 @@ template <typename T>
 struct MulFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
     return b * a;
   }
 };
@@ -180,7 +180,7 @@ template <typename T>
 struct LogicalOrFunctor {
   inline T initial() { return static_cast<T>(false); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
     return b || a;
   }
 };
@@ -192,7 +192,7 @@ template <typename T>
 struct LogicalAndFunctor {
   inline T initial() { return static_cast<T>(true); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
     return b && a;
   }
 };
@@ -204,7 +204,7 @@ template <typename T>
 struct SubFunctor {
   inline T initial() { return static_cast<T>(0.0f); }
 
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a - b; }
 };
 
 /**
@@ -214,7 +214,7 @@ template <typename T, typename Enable = void>
 struct DivFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
 };
 
 template <typename T>
@@ -222,7 +222,7 @@ struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
   inline T initial() { return static_cast<T>(1.0f); }
 
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     // For int32/int64, need to check whether the divison is zero.
     PADDLE_ENFORCE_NE(b, 0,
                       platform::errors::InvalidArgument(
@@ -239,7 +239,7 @@ template <typename T>
 struct FloorDivFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
     PADDLE_ENFORCE_NE(b, 0,
                       platform::errors::InvalidArgument(
                           "Integer division by zero encountered "

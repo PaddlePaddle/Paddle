@@ -91,9 +91,8 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
       }
     }
 
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), data,
-                 platform::CPUPlace(), reinterpret_cast<void *>(data_cpu.get()),
-                 size * sizeof(T));
+    memory::Copy(ctx.GetPlace(), data, platform::CPUPlace(),
+                 reinterpret_cast<void *>(data_cpu.get()), size * sizeof(T));
   }
 };
 

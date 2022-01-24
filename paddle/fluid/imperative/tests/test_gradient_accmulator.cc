@@ -176,8 +176,8 @@ static bool IsEqualVar(const framework::Variable& var1,
     return false;
   }
 
-  auto* t1_p = t1.data<void>();
-  auto* t2_p = t2.data<void>();
+  auto* t1_p = t1.data();
+  auto* t2_p = t2.data();
   return std::memcmp(t1_p, t2_p,
                      t1.numel() * framework::SizeOfType(t1.type())) == 0;
 }

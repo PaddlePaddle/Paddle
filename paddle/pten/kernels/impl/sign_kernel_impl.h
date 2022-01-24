@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -23,7 +23,9 @@ limitations under the License. */
 namespace pten {
 
 template <typename T, typename Context>
-void Sign(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+void SignKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
   out->mutable_data<T>();
   auto eigen_out = pten::EigenVector<T>::Flatten(*out);
   auto eigen_x = pten::EigenVector<T>::Flatten(x);

@@ -25,8 +25,7 @@ namespace kps = paddle::operators::kernel_primitives;
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>
 void LaunchBroadcastElementwiseCudaKernel(
-    const platform::CUDADeviceContext &ctx,
-    const std::vector<const framework::Tensor *> &ins,
+    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
   std::vector<const pten::DenseTensor *> pt_inputs;
   std::vector<pten::DenseTensor *> pt_outputs;
@@ -58,8 +57,7 @@ void LaunchBroadcastElementwiseCudaKernel(
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
-    const platform::CUDADeviceContext &cuda_ctx,
-    const std::vector<const framework::Tensor *> &ins,
+    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
   std::vector<const pten::DenseTensor *> pt_inputs;
   std::vector<pten::DenseTensor *> pt_outputs;
@@ -85,7 +83,7 @@ void LaunchElementwiseCudaKernel(
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
   pten::LaunchElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-      cuda_ctx, pt_inputs, &pt_outputs, axis, func);
+      ctx, pt_inputs, &pt_outputs, axis, func);
 }
 
 }  // namespace operators

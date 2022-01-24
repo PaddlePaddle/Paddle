@@ -30,7 +30,6 @@ using DeviceContext = paddle::platform::DeviceContext;
 using add_kernel = void (*)(const DeviceContext&,
                             const DenseTensor&,
                             const DenseTensor&,
-                            int,
                             DenseTensor*);
 
 using cast_kernel = void (*)(const DeviceContext&,
@@ -38,10 +37,14 @@ using cast_kernel = void (*)(const DeviceContext&,
                              DataType,
                              DenseTensor*);
 
+using concat_kernel = void (*)(const DeviceContext&,
+                               const std::vector<DenseTensor>&,
+                               const Scalar&,
+                               DenseTensor*);
+
 using divide_kernel = void (*)(const DeviceContext&,
                                const DenseTensor&,
                                const DenseTensor&,
-                               int,
                                DenseTensor*);
 
 using dot_kernel = void (*)(const DeviceContext&,
@@ -77,13 +80,11 @@ using mean_kernel = void (*)(const DeviceContext&,
                              const DenseTensor&,
                              const std::vector<int64_t>&,
                              bool,
-                             bool,
                              DenseTensor*);
 
 using multiply_kernel = void (*)(const DeviceContext&,
                                  const DenseTensor&,
                                  const DenseTensor&,
-                                 int,
                                  DenseTensor*);
 
 using reshape_kernel = void (*)(const DeviceContext&,
@@ -102,14 +103,12 @@ using sum_kernel = void (*)(const DeviceContext&,
                             const DenseTensor&,
                             const std::vector<int64_t>&,
                             bool,
-                            bool,
                             DataType,
                             DenseTensor*);
 
 using subtract_kernel = void (*)(const DeviceContext&,
                                  const DenseTensor&,
                                  const DenseTensor&,
-                                 int,
                                  DenseTensor*);
 
 using conj_kernel = void (*)(const DeviceContext&,

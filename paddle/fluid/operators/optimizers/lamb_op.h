@@ -17,9 +17,11 @@ limitations under the License. */
 #include <Eigen/Dense>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/operators/math/squared_l2_norm.h"
 #include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -383,8 +385,8 @@ struct LambParamUpateFunctor
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     MT lr = *lr_;
-    MT pn = *param_norm_;
-    MT tn = *trust_ratio_div_norm_;
+    MT pn = Eigen::numext::sqrt(*param_norm_);
+    MT tn = Eigen::numext::sqrt(*trust_ratio_div_norm_);
 
     MT r = (pn > static_cast<MT>(0) && tn > static_cast<MT>(0))
                ? pn / tn
@@ -488,13 +490,15 @@ class LambOpKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
+    auto numel = param.numel();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
     auto trust_ratio_div =
         ctx.AllocateTmpTensor<MT, DeviceContext>(param.dims(), dev_ctx);
+    auto* trust_ratio_div_ptr = trust_ratio_div.template data<MT>();
 
-    const void* param_ptr = param.template data<void>();
+    const void* param_ptr = param.data();
     const void* master_param_ptr =
-        master_param ? master_param->template data<void>() : nullptr;
+        master_param ? master_param->data() : nullptr;
     void* param_out_ptr = param_out.template mutable_data<T>(ctx.GetPlace());
     void* master_param_out_ptr =
         master_param_out
@@ -521,7 +525,7 @@ class LambOpKernel : public framework::OpKernel<T> {
             grad.template data<T>(),
             static_cast<const MT*>(IsMultiPrecision ? master_param_ptr
                                                     : param_ptr),
-            trust_ratio_div.template data<MT>(), skip_update_flag);
+            trust_ratio_div_ptr, skip_update_flag);
         for_range(moment_update_functor);
         beta1_pow_out.template mutable_data<MT>(platform::CPUPlace())[0] =
             beta1 * beta1_pow.template data<MT>()[0];
@@ -545,7 +549,7 @@ class LambOpKernel : public framework::OpKernel<T> {
             grad.template data<T>(),
             static_cast<const MT*>(IsMultiPrecision ? master_param_ptr
                                                     : param_ptr),
-            trust_ratio_div.template data<MT>(), skip_update_flag);
+            trust_ratio_div_ptr, skip_update_flag);
         for_range(moment_update_functor);
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
@@ -638,34 +642,29 @@ class LambOpKernel : public framework::OpKernel<T> {
 
     // Update parameter
     auto p_norm_t = ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
+    auto* p_norm_ptr = p_norm_t.template data<MT>();
+
     auto trust_ratio_div_norm_t =
         ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
-
-    auto p_norm = framework::EigenScalar<MT>::From(p_norm_t);
-    auto trust_ratio_div_norm =
-        framework::EigenScalar<MT>::From(trust_ratio_div_norm_t);
-    auto t = framework::EigenVector<MT>::Flatten(trust_ratio_div);
+    auto* trust_ratio_div_norm_ptr = trust_ratio_div_norm_t.template data<MT>();
 
     // TODO(zengjinle): remove the following Eigen operations when
     // *skip_update == true.
-    auto* place = dev_ctx.eigen_device();
-    if (IsMultiPrecision) {
-      auto mp = framework::EigenVector<MT>::Flatten(*master_param);
-      p_norm.device(*place) = mp.square().sum().sqrt();
-    } else {
-      auto p = framework::EigenVector<MT>::Flatten(param);
-      p_norm.device(*place) = p.square().sum().sqrt();
-    }
-    trust_ratio_div_norm.device(*place) = t.square().sum().sqrt();
+    memory::Buffer buffer(dev_ctx.GetPlace());
+    math::SquaredL2Norm(
+        dev_ctx, reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
+                                                              : param_ptr),
+        p_norm_ptr, numel, &buffer);
+    math::SquaredL2Norm(dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr,
+                        numel, &buffer);
 
 #define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)         \
   do {                                                                       \
     LambParamUpateFunctor<T, MT, IsMultiPrecision, __should_update_beta_pow> \
     param_update_functor(                                                    \
         lr.template data<MT>(), static_cast<const T*>(param_ptr),            \
-        static_cast<const MT*>(master_param_ptr),                            \
-        p_norm_t.template data<MT>(), trust_ratio_div.template data<MT>(),   \
-        trust_ratio_div_norm_t.template data<MT>(),                          \
+        static_cast<const MT*>(master_param_ptr), p_norm_ptr,                \
+        trust_ratio_div_ptr, trust_ratio_div_norm_ptr,                       \
         static_cast<T*>(param_out_ptr),                                      \
         static_cast<MT*>(master_param_out_ptr), skip_update_flag);           \
     if (__should_update_beta_pow) {                                          \

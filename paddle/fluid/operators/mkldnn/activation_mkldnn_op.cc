@@ -16,10 +16,12 @@
 #include "paddle/fluid/operators/mkldnn/softplus_mkldnn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class MKLDNNDeviceContext;
 }  // namespace platform
@@ -236,6 +238,10 @@ using HardSwishMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
 
 template <typename T>
+using MishMKLDNNFunctor =
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
+
+template <typename T>
 using SigmoidMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
 
@@ -271,6 +277,10 @@ using SwishMKLDNNGradFunctor =
 template <typename T>
 using HardSwishMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
+
+template <typename T>
+using MishMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
 using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
@@ -339,6 +349,8 @@ REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradUseOutFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sqrt, SqrtMKLDNNFunctor,
                                        SqrtMKLDNNGradUseOutFunctor);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(mish, MishMKLDNNFunctor,
+                                       MishMKLDNNGradFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

@@ -116,7 +116,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_XPU
-  if (is_xpu_place(expected_kernel_key.place_) &&
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
        paddle::platform::is_in_xpu_black_list(op.Type()))) {
@@ -129,7 +129,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
-      is_npu_place(expected_kernel_key.place_)) {
+      paddle::platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -173,9 +173,8 @@ static void PreparedOpRunImpl(
   paddle::framework::Scope scope;
 
   EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
-                                         op.Type());
-  static_cast<const paddle::framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+                                         op.Type(), &kernel_type);
+  op.Info().infer_shape_(&infer_shape_ctx);
 
   func(EagerExecutionContext(op, scope, *dev_ctx, ctx, ins, outs, attrs,
                              default_attrs));

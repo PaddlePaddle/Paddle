@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode, in_dygraph_mode
 
 
 class MyLayer(fluid.Layer):
@@ -31,7 +32,7 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeNamedSubLayers(unittest.TestCase):
-    def test_named_sublayers(self):
+    def func_test_named_sublayers(self):
         with fluid.dygraph.guard():
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
@@ -56,9 +57,14 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
                 [l for _, l in list(model.named_sublayers(include_self=True))],
                 [model] + expected_sublayers)
 
+    def test_named_sublayers(self):
+        with _test_eager_guard():
+            self.func_test_named_sublayers()
+        self.func_test_named_sublayers()
+
 
 class TestImperativeNamedParameters(unittest.TestCase):
-    def test_named_parameters(self):
+    def func_test_named_parameters(self):
         with fluid.dygraph.guard():
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
@@ -75,7 +81,12 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             self.assertListEqual(expected_named_parameters, named_parameters)
 
-    def test_dir_layer(self):
+    def test_named_parameters(self):
+        with _test_eager_guard():
+            self.func_test_named_parameters()
+        self.func_test_named_parameters()
+
+    def func_test_dir_layer(self):
         with fluid.dygraph.guard():
 
             class Mymodel(fluid.dygraph.Layer):
@@ -109,6 +120,11 @@ class TestImperativeNamedParameters(unittest.TestCase):
                             "model should contain buffer: h_0")
             self.assertTrue("weight" in expected_members,
                             "model should contain parameter: weight")
+
+    def test_dir_layer(self):
+        with _test_eager_guard():
+            self.func_test_dir_layer()
+        self.func_test_dir_layer()
 
 
 if __name__ == '__main__':

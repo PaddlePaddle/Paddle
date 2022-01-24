@@ -305,7 +305,8 @@ std::string CtrCommonAccessor::parse_to_string(const float* v, int param) {
   auto show = common_feature_value.show(const_cast<float*>(v));
   auto click = common_feature_value.click(const_cast<float*>(v));
   auto score = show_click_score(show, click);
-  if (score >= _config.embedx_threshold()) {
+  if (score >= _config.embedx_threshold() &&
+      param > common_feature_value.embedx_w_index()) {
     for (auto i = common_feature_value.embedx_w_index();
          i < common_feature_value.dim(); ++i) {
       os << " " << v[i];

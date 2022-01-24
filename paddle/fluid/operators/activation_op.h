@@ -1412,6 +1412,46 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+// mish(x) = x * tanh(softplus(x))
+// softplus(x) = x, if x > threshold
+//             = ln(1 + exp(x)), otherwise
+template <typename T>
+struct MishFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) {
+    auto sp = (x > static_cast<T>(threshold))
+                  .select(x, (static_cast<T>(1) + x.exp()).log());
+    out.device(d) = x * sp.tanh();
+  }
+};
+
+// dx = dout * (tanh(sp) + x * (1 - tanh(sp) ** 2) * (1 - exp(-sp)))
+// sp = softplus(x)
+template <typename T>
+struct MishGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) {
+    auto sp = (x > static_cast<T>(threshold))
+                  .select(x, (static_cast<T>(1) + x.exp()).log());
+    auto gsp = static_cast<T>(1) - (-sp).exp();
+    auto tsp = sp.tanh();
+    dx.device(d) = dout * (tsp + x * (static_cast<T>(1) - tsp * tsp) * gsp);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // softsign(x) = x / (1 + |x|)
 template <typename T>
 struct SoftsignFunctor : public BaseActivationFunctor<T> {
@@ -2656,8 +2696,8 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =
@@ -2711,8 +2751,8 @@ class PowGradKernel
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =
@@ -2841,4 +2881,5 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                      \
   __macro(thresholded_relu, ThresholdedRelu, ThresholdedReluFunctor,          \
           ThresholdedReluGradFunctor);                                        \
+  __macro(mish, Mish, MishFunctor, MishGradFunctor);                          \
   __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);

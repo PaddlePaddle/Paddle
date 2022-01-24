@@ -63,12 +63,12 @@ class DenseTensor : public TensorBase,
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
-  DenseTensor(const std::shared_ptr<Allocator>& a, const DenseTensorMeta& meta);
+  DenseTensor(Allocator* a, const DenseTensorMeta& meta);
 
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
-  DenseTensor(const std::shared_ptr<Allocator>& a, DenseTensorMeta&& meta);
+  DenseTensor(Allocator* a, DenseTensorMeta&& meta);
 
   /// \brief Use existing storage space to create dense tensor. This interface
   /// can be used to deliberately create an uninitialized dense tensor.
@@ -96,6 +96,8 @@ class DenseTensor : public TensorBase,
 
   /// \brief DenseTensor shallow copy assignment.
   DenseTensor& operator=(const DenseTensor& other);
+
+  DenseTensor& operator=(DenseTensor&& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~DenseTensor() = default;
@@ -157,6 +159,8 @@ class DenseTensor : public TensorBase,
   /// \param dims The new dims of the dense tensor.
   /// \param lod The new lod of the dense tensor.
   // void Resize(const DDim& dims);
+  void ResizeAndAllocate(const DDim& dims);
+
   DenseTensor& Resize(const DDim& dims);
 
   /// \brief Change the lod information in the metadata.
@@ -167,12 +171,6 @@ class DenseTensor : public TensorBase,
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
   size_t capacity() const { return storage_->size(); }
-
-  /// \brief Release the storage area for other purposes. Because of the
-  /// destruction of encapsulation, we do not support two dense tensors directly
-  /// sharing the same intrusive pointer.
-  /// \return The rvalue of instrusize pointer releated to the released storage.
-  intrusive_ptr<Storage> release() { return std::move(storage_); }
 
   /// \brief Get the mutable data pointer value of type T.
   /// Memory allocation may occur when calling this interface:
@@ -204,7 +202,7 @@ class DenseTensor : public TensorBase,
  private:
   friend class CompatibleDenseTensorUtils;
 
- private:
+ protected:
   DenseTensorMeta meta_;
   intrusive_ptr<Storage> storage_;
 
@@ -228,7 +226,7 @@ class DenseTensor : public TensorBase,
   explicit DenseTensor(const paddle::framework::proto::VarType::Type& dtype);
 
   inline bool IsInitialized() const {
-    return storage_ != nullptr && storage_->data() != nullptr;
+    return storage_ != nullptr && storage_->data_shared() != nullptr;
   }
 
   template <typename T>
@@ -256,18 +254,6 @@ class DenseTensor : public TensorBase,
                      paddle::framework::proto::VarType::Type type,
                      const paddle::platform::Stream& stream);
 
-  /*! The internal of two tensors share the same memory block. */
-  DenseTensor& ShareDataWith(const DenseTensor& src);
-
-  /*! The internal of two tensors share the same inplace version counter. */
-  DenseTensor& ShareInplaceVersionCounterWith(const DenseTensor& src);
-
-  DenseTensor Slice(int64_t begin_idx, int64_t end_idx) const;
-
-  std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
-
-  std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
-
   /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
    */
   paddle::framework::proto::VarType::Type type() const;
@@ -288,17 +274,17 @@ class DenseTensor : public TensorBase,
     meta_.offset = 0;
   }
 
-  void ShareBufferWith(const DenseTensor& tensor) {
-    storage_ = std::move(copy_intrusive(tensor.storage_));
-    meta_.offset = tensor.meta().offset;
-  }
+  void ShareBufferWith(const DenseTensor& tensor);
 
   void ShareDataTypeWith(const DenseTensor& tensor) {
     meta_.dtype = tensor.meta().dtype;
   }
 
   bool IsSharedBufferWith(const DenseTensor& src) const {
-    return IsSharedWith(src);
+    if (storage_ == nullptr || src.storage_ == nullptr) return false;
+    if (storage_->data_shared() == src.storage_->data_shared()) return true;
+
+    return false;
   }
 
   const std::shared_ptr<paddle::memory::Allocation> Holder() const {
@@ -325,7 +311,19 @@ class DenseTensor : public TensorBase,
     return *inplace_version_counter_;
   }
 
- private:
+  /*! The internal of two tensors share the same memory block. */
+  DenseTensor& ShareDataWith(const DenseTensor& src);
+
+  /*! The internal of two tensors share the same inplace version counter. */
+  DenseTensor& ShareInplaceVersionCounterWith(const DenseTensor& src);
+
+  DenseTensor Slice(int64_t begin_idx, int64_t end_idx) const;
+
+  std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
+
+  std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
+
+ protected:
   std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 
 /* @jim19930609: This is a hack
@@ -365,6 +363,7 @@ class DenseTensor : public TensorBase,
 
      Will be adjusted/removed/moved in the near future
    */
+ public:
   explicit DenseTensor(const LoD& lod);
 
   void set_lod(const LoD& lod);

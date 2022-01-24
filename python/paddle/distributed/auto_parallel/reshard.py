@@ -26,6 +26,9 @@ from .dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from .process_group import new_process_group, ProcessGroup, _g_process_group_map
 
+# NOTE: If op in _g_special_ops, it will not be resharded. 
+_g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
+
 
 class AllGatherOpDesc:
     """
@@ -966,6 +969,17 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
     while idx < len(block.ops):
         pre_op_count = len(block.ops)
         op = block.ops[idx]
+
+        def _is_special_op(op):
+            global _g_special_ops
+            if op.type in _g_special_ops:
+                return True
+            return False
+
+        if _is_special_op(op):
+            idx += 1
+            continue
+
         dist_op = dist_context.get_dist_op_for_program(op)
         if dist_op is not None:
             idx_offset = 0

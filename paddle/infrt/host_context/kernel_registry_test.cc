@@ -18,7 +18,8 @@
 
 #include "paddle/infrt/host_context/kernel_utils.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 int add_i32(int a, int b) { return a + b; }
 
@@ -44,4 +45,5 @@ TEST(KernelRegistry, basic) {
   ASSERT_EQ(results[0]->get<int>(), 3);
 }
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

@@ -20,9 +20,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Variable;
-class LoDTensor;
 }  // namespace framework
 }  // namespace paddle
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace distributed {
@@ -103,19 +106,16 @@ void SerializeLodTensor(framework::Variable* var,
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
-    iobuf->append(reinterpret_cast<const char*>(tensor->data<void>()),
-                  data_len);
+    iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
-    char* temp_ptr =
-        new char[tensor->numel() * framework::SizeOfType(tensor->type())];
+    char* temp_ptr = new char[tensor->numel() *
+                              framework::SizeOfType(tensor->type())];  // NOLINT
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
@@ -147,19 +147,16 @@ void SerializeSelectedRows(framework::Variable* var,
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
-    iobuf->append(reinterpret_cast<const char*>(tensor->data<void>()),
-                  data_len);
+    iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
-    char* temp_ptr =
-        new char[tensor->numel() * framework::SizeOfType(tensor->type())];
+    char* temp_ptr = new char[tensor->numel() *
+                              framework::SizeOfType(tensor->type())];  // NOLINT
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(temp_ptr), data_len);
@@ -208,7 +205,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
 }
 
 void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
-                          butil::IOBufBytesIterator& io_buffer_itr,
+                          butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
                           const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
@@ -233,30 +230,30 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
 
   // IO Buffer
   if (platform::is_cpu_place(place)) {
-    unsigned long data_len;
-    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
+    unsigned long data_len;                                 // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);  // NOLINT
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
   } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-    unsigned long data_len;
-    char* temp_ptr =
-        new char[tensor->numel() * framework::SizeOfType(tensor->type())];
-    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
-    io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);
+    unsigned long data_len;  // NOLINT
+    char* temp_ptr = new char[tensor->numel() *
+                              framework::SizeOfType(tensor->type())];  // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);             // NOLINT
+    io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);         // NOLINT
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
-                 platform::CPUPlace(), (void*)temp_ptr,
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        place, tensor_data, platform::CPUPlace(), (void*)temp_ptr,  // NOLINT
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     delete[] temp_ptr;
 #endif
   }
 }
 
-void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
-                             butil::IOBufBytesIterator& io_buffer_itr,
-                             const platform::DeviceContext& ctx) {
+void DeserializeSelectedRows(
+    framework::Variable* var, const VarMsg& msg,
+    butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
+    const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
   auto* slr = var->GetMutable<framework::SelectedRows>();
   framework::Tensor* tensor = slr->mutable_value();
@@ -273,20 +270,19 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
       tensor->mutable_data(place, VarMessageToVarType(msg.data_type()));
   // IO Buffer
   if (platform::is_cpu_place(place)) {
-    unsigned long data_len;
-    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
+    unsigned long data_len;                                 // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);  // NOLINT
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
   } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-    char* temp_ptr =
-        new char[tensor->numel() * framework::SizeOfType(tensor->type())];
-    unsigned long data_len;
-    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);
+    char* temp_ptr = new char[tensor->numel() *
+                              framework::SizeOfType(tensor->type())];  // NOLINT
+    unsigned long data_len;                                            // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);             // NOLINT
     io_buffer_itr.copy_and_forward(temp_ptr, data_len);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
-                 platform::CPUPlace(), temp_ptr,
+    memory::Copy(place, tensor_data, platform::CPUPlace(), temp_ptr,
                  tensor->numel() * framework::SizeOfType(tensor->type()),
                  stream);
     delete[] temp_ptr;

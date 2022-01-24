@@ -21,9 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -142,26 +140,42 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
+    int axis = ctx.Attr<int>("axis");
     if (Type() == "elementwise_add") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("add", {"X", "Y"}, {"axis"}, {"Out"});
+        if (axis == -1) {
+          return framework::KernelSignature("add", {"X", "Y"}, {}, {"Out"});
+        }
+        return framework::KernelSignature("add_raw", {"X", "Y"}, {"axis"},
+                                          {"Out"});
       }
     }
     if (Type() == "elementwise_sub") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("subtract", {"X", "Y"}, {"axis"},
+        if (axis == -1) {
+          return framework::KernelSignature("subtract", {"X", "Y"}, {},
+                                            {"Out"});
+        }
+        return framework::KernelSignature("subtract_raw", {"X", "Y"}, {"axis"},
                                           {"Out"});
       }
     }
     if (Type() == "elementwise_div") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("divide", {"X", "Y"}, {"axis"},
+        if (axis == -1) {
+          return framework::KernelSignature("divide", {"X", "Y"}, {}, {"Out"});
+        }
+        return framework::KernelSignature("divide_raw", {"X", "Y"}, {"axis"},
                                           {"Out"});
       }
     }
     if (Type() == "elementwise_mul") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("multiply", {"X", "Y"}, {"axis"},
+        if (axis == -1) {
+          return framework::KernelSignature("multiply", {"X", "Y"}, {},
+                                            {"Out"});
+        }
+        return framework::KernelSignature("multiply_raw", {"X", "Y"}, {"axis"},
                                           {"Out"});
       }
     }

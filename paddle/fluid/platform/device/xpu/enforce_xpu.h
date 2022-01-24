@@ -113,6 +113,23 @@ inline const char* bkclGetErrorString(BKCLResult_t stat) {
   }
 }
 
+inline const char* xdnnGetErrorString(int stat) {
+  switch (stat) {
+    case xpu::Error_t::SUCCESS:
+      return "XDNN_SUCCESS";
+    case xpu::Error_t::INVALID_PARAM:
+      return "XDNN_INVALID_PARAM";
+    case xpu::Error_t::RUNTIME_ERROR:
+      return "XDNN_RUNTIME_ERROR";
+    case xpu::Error_t::NO_ENOUGH_WORKSPACE:
+      return "XDNN_NO_ENOUGH_WORKSPACE";
+    case xpu::Error_t::NOT_IMPLEMENT:
+      return "XDNN_NOT_IMPLEMENT";
+    default:
+      return "Unknown XDNN status";
+  }
+}
+
 inline std::string build_xpu_error_msg(int stat) {
   std::string msg("XPU Error <" + std::to_string(stat) + ">, ");
   return msg + xpuGetErrorString(stat) + " ";
@@ -121,6 +138,10 @@ inline std::string build_xpu_error_msg(int stat) {
 inline std::string build_xpu_error_msg(BKCLResult_t stat) {
   std::string msg("BKCL Error, ");
   return msg + bkclGetErrorString(stat) + " ";
+}
+
+inline std::string build_xpu_xdnn_error_msg(int stat, std::string msg) {
+  return msg + " XDNN Error, " + xdnnGetErrorString(stat) + " ";
 }
 
 namespace details {
@@ -154,6 +175,16 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
           ::paddle::platform::build_xpu_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                  \
     }                                                         \
+  } while (0)
+
+#define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                          \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    if (UNLIKELY(__cond__ != xpu::Error_t::SUCCESS)) {                  \
+      auto __summary__ = paddle::platform::errors::External(            \
+          ::paddle::platform::build_xpu_xdnn_error_msg(__cond__, MSG)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                            \
+    }                                                                   \
   } while (0)
 
 }  // namespace platform

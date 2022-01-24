@@ -193,6 +193,22 @@ std::string join_strings(const Container& strs, const std::string& delim) {
   return str;
 }
 
+template <class Container, class DelimT, class ConvertFunc>
+std::string join_strings(const Container& strs, DelimT&& delim,
+                         ConvertFunc&& func) {
+  std::stringstream ss;
+  size_t i = 0;
+  for (const auto& elem : strs) {
+    if (i > 0) {
+      ss << delim;
+    }
+    ss << func(elem);
+    ++i;
+  }
+
+  return ss.str();
+}
+
 // A helper class for reading lines from file. A line buffer is maintained. It
 // doesn't need to know the maximum possible length of a line.
 
