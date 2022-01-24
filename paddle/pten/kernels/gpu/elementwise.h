@@ -137,7 +137,6 @@ HOSTDEVICE constexpr decltype(auto) apply(F &&f, Tuple &&t) {
           std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
 }
 
-// FORWARD CODE
 template <typename OutT,
           int VecSize,
           typename Functor,
@@ -152,7 +151,6 @@ struct SameDimsElementwisePrimitiveCaller {
   }
 };
 
->>>>>>> fix complilation error of multiple outputs
 template <typename InT,
           typename OutT,
           int VecSize,
@@ -953,9 +951,8 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    pten::funcs::
-        LaunchSameDimsElementwiseCudaKernel<Functor, NumOuts>(
-            ctx, ins, outs, func);
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<Functor, NumOuts>(
+        ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
