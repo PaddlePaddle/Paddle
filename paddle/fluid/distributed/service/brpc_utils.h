@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace butil {
 class IOBuf;
@@ -78,11 +78,11 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const framework::Scope* scope);
 
 void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
-                          butil::IOBufBytesIterator& iobuf,
+                          butil::IOBufBytesIterator& iobuf,  // NOLINT
                           const platform::DeviceContext& ctx);
 
 void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
-                             butil::IOBufBytesIterator& iobuf,
+                             butil::IOBufBytesIterator& iobuf,  // NOLINT
                              const platform::DeviceContext& ctx);
 
 std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port);
