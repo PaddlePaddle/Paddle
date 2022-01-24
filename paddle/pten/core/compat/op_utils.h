@@ -22,17 +22,36 @@ limitations under the License. */
 #include "paddle/pten/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace pten {
 
 class DefaultKernelSignatureMap {
  public:
   static DefaultKernelSignatureMap& Instance();
 
-  bool Has(const std::string& op_type) const;
+  bool Has(const std::string& op_type) const {
+    return map_.count(op_type) > 0;
+  }
 
-  const KernelSignature& Get(const std::string& op_type) const;
+  const KernelSignature& Get(const std::string& op_type) const {
+    auto it = map_.find(op_type);
+    PADDLE_ENFORCE_NE(
+        it,
+        map_.end(),
+        paddle::platform::errors::NotFound(
+            "Operator `%s`'s kernel signature is not registered.", op_type));
+    return it->second;
+  }
 
-  void Insert(std::string op_type, KernelSignature signature);
+  void Insert(std::string op_type, KernelSignature signature) {
+    PADDLE_ENFORCE_NE(
+      Has(op_type),
+      true,
+      paddle::platform::errors::AlreadyExists(
+          "Operator (%s)'s Kernel Siginature has been registered.", op_type));
+    map_.insert({std::move(op_type), std::move(signature)});
+  }
 
  private:
   DefaultKernelSignatureMap() = default;
@@ -46,13 +65,50 @@ class OpUtilsMap {
  public:
   static OpUtilsMap& Instance();
 
-  bool Contains(const std::string& op_type) const;
+  bool Contains(const std::string& op_type) const {
+    return name_map_.count(op_type) || arg_mapping_fn_map_.count(op_type);
+  }
 
-  void InsertApiName(std::string op_type, std::string api_name);
-  void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn);
+  void InsertApiName(std::string op_type, std::string api_name) {
+    PADDLE_ENFORCE_EQ(
+      name_map_.count(op_type),
+      0UL,
+      paddle::platform::errors::AlreadyExists(
+          "Operator (%s)'s api name has been registered.", op_type));
+    name_map_.insert({std::move(op_type), std::move(api_name)});
+  }
 
-  std::string GetApiName(const std::string& op_type) const;
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const;
+  void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
+    PADDLE_ENFORCE_EQ(
+      arg_mapping_fn_map_.count(op_type),
+      0UL,
+      paddle::platform::errors::AlreadyExists(
+          "Operator (%s)'s argu,emt mapping function has been registered.",
+          op_type));
+    arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
+  }
+
+  std::string GetApiName(const std::string& op_type) const {
+    auto it = name_map_.find(op_type);
+    if (it == name_map_.end()) {
+      return "deprecated";
+    } else {
+      return it->second;
+    }
+  }
+
+  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const {
+    auto it = arg_mapping_fn_map_.find(op_type);
+    if (it == arg_mapping_fn_map_.end()) {
+      auto func =
+          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
+        return DefaultKernelSignatureMap::Instance().Get(op_type);
+      };
+      return func;
+    } else {
+      return it->second;
+    }
+  }
 
  private:
   OpUtilsMap() = default;

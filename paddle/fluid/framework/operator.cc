@@ -31,7 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
