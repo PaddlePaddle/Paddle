@@ -14,8 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdlib.h>
+#include <functional>
 #include <numeric>
+#include <random>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -31,9 +32,11 @@ template <class bidiiter>
 void sample_unique(bidiiter begin, bidiiter end, int num_samples) {
   size_t left = std::distance(begin, end);
   unsigned int seed = left;
+  std::mt19937 rng(seed);
+  std::uniform_int_distribution<int> dice_distribution(0, left);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r = begin;
-    int random_step = rand_r(&seed) % left;
+    int random_step = dice_distribution(rng);
     std::advance(r, random_step);
     std::swap(*begin, *r);
     ++begin;
