@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/core/allocator.h"
 
 DECLARE_string(allocator_strategy);
@@ -148,9 +149,13 @@ class Allocator : public pten::Allocator {
  public:
   static void AllocationDeleter(pten::Allocation* allocation) {
     if (platform::is_gpu_place(allocation->place())) {
+      /*
       int dev_id = allocation->place().GetDeviceId();
+
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
                    allocation->size());
+                   */
+      platform::RecordInstantEvent alloc_size("free alloc_size");
     }
     Allocator* allocator =
         static_cast<Allocation*>(allocation)->TopDecoratedAllocator();

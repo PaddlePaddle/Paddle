@@ -845,12 +845,17 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   AllocationPtr allocation = m_->GetAllocator(place, size)->Allocate(size);
   if (platform::is_gpu_place(place)) {
+    platform::RecordInstantEvent alloc_size("alloc_size");
+    platform::RecordInstantEvent max_alloc_size("max_alloc_size");
+    /*
     int dev_id = place.GetDeviceId();
+
     int64_t alloc_size =
         STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
                      allocation->size());
     STAT_INT_UPDATE_MAXIMUM(
         "STAT_gpu" + std::to_string(dev_id) + "_max_alloc_size", alloc_size);
+    */
   }
 
   return allocation;
