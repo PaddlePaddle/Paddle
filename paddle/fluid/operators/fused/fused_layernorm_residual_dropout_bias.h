@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 
 #define DIVUP(x, y) (((x) + ((y)-1)) / (y))
+#define COLS_ 1024
 
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
@@ -59,7 +60,7 @@ __device__ void CalcLayernormY(
       bias_vec[ii] =
           static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(0);
     }
-
+    // vectorize load data from global
     platform::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
 
     if (scale != nullptr) {
@@ -174,7 +175,6 @@ __global__ void FusedLayernormResidualDropoutBias(
  * mean_out_: [rows]: layernorm means
  * var_out_: [rows]: layernorm vars
 */
-#define COLS_ 1024
 template <
     typename T, typename U, typename ScaleT = U, typename MaskType = uint8_t,
     int VecSize = 8, int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
@@ -422,7 +422,6 @@ void LaunchLayernormResidualDropoutBias(
       const int WARPS_M = 4;
       const int WARPS_N = 1;
       const int THREADS_PER_WARP = 32;
-      // VecSize * sizeof(T) == BYTES_PER_LDG
       const int BYTES_PER_LDG = 16;
       const int VecSize = BYTES_PER_LDG / sizeof(T);
 
