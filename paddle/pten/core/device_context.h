@@ -19,7 +19,7 @@ limitations under the License. */
 // TODO(wilber): Do we need to use place in pten kernel?
 #include "paddle/pten/common/place.h"
 
-#include "paddle/pten/core/candidate/allocator.h"
+#include "paddle/pten/core/allocator.h"
 
 namespace pten {
 class TensorBase;

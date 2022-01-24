@@ -65,30 +65,30 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/fluid/platform/dynload/curand.h"
-#include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/pten/backends/dynload/cublas.h"
+#include "paddle/pten/backends/dynload/cudnn.h"
+#include "paddle/pten/backends/dynload/curand.h"
+#include "paddle/pten/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/pten/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/hipfft.h"
-#include "paddle/fluid/platform/dynload/hiprand.h"
-#include "paddle/fluid/platform/dynload/miopen.h"
-#include "paddle/fluid/platform/dynload/rocblas.h"
+#include "paddle/pten/backends/dynload/hipfft.h"
+#include "paddle/pten/backends/dynload/hiprand.h"
+#include "paddle/pten/backends/dynload/miopen.h"
+#include "paddle/pten/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/pten/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
 
@@ -880,7 +880,7 @@ inline bool is_error(cudnnStatus_t stat) {
 inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
   std::ostringstream sout;
   sout << "CUDNN error(" << stat << "), "
-       << platform::dynload::cudnnGetErrorString(stat) << ". "
+       << pten::dynload::cudnnGetErrorString(stat) << ". "
        << GetExternalErrorMsg(stat);
   return sout.str();
 }
@@ -945,7 +945,7 @@ inline bool is_error(ncclResult_t nccl_result) {
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
   std::ostringstream sout;
   sout << "NCCL error(" << nccl_result << "), "
-       << platform::dynload::ncclGetErrorString(nccl_result) << ". ";
+       << pten::dynload::ncclGetErrorString(nccl_result) << ". ";
   if (errno == ENOSPC || errno == EAGAIN) {
     std::string detail(strerror(errno));
     detail += "\nPlease try one of the following solutions:";
@@ -1090,7 +1090,7 @@ inline bool is_error(miopenStatus_t stat) {
 
 inline std::string build_rocm_error_msg(miopenStatus_t stat) {
   std::string msg(" Miopen error, ");
-  return msg + platform::dynload::miopenGetErrorString(stat) + " ";
+  return msg + pten::dynload::miopenGetErrorString(stat) + " ";
 }
 
 /***** ROCBLAS ERROR *****/
@@ -1132,7 +1132,7 @@ inline bool is_error(ncclResult_t nccl_result) {
 
 inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
   std::string msg(" Rccl error, ");
-  return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
+  return msg + pten::dynload::ncclGetErrorString(nccl_result) + " ";
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
@@ -1141,7 +1141,7 @@ inline bool is_error(hipfftResult_t stat) { return stat != HIPFFT_SUCCESS; }
 
 inline std::string build_rocm_error_msg(hipfftResult_t stat) {
   std::string msg(" HIPFFT error, ");
-  return msg + platform::dynload::hipfftGetErrorString(stat) + " ";
+  return msg + pten::dynload::hipfftGetErrorString(stat) + " ";
 }
 
 namespace details {
