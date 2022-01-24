@@ -502,7 +502,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               args.cdesc.desc(), args.wdesc.desc(), kNUM_CUDNN_BWD_FILTER_ALGS,
               &perf_count, perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
-      workspace_size = GetWorkspaceSize(args, algo);
+      workspace_size = (perf_results.get())[best_algo_idx].memory;
+
       if (workspace_size > workspace_size_limit) {
         workspace_size = workspace_size_limit;
 #if CUDNN_VERSION >= 8000
