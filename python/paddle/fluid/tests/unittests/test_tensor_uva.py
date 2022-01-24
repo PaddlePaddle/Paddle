@@ -15,7 +15,6 @@
 import paddle
 import unittest
 import numpy as np
-from paddle.fluid.core import to_uva_tensor
 
 
 class TestTensorCopyFrom(unittest.TestCase):
@@ -37,7 +36,7 @@ class TestUVATensorFromNumpy(unittest.TestCase):
             ]
             for dtype in dtype_list:
                 data = np.random.randint(10, size=[4, 5]).astype(dtype)
-                tensor = to_uva_tensor(data, 0)
+                tensor = paddle.fluid.core.to_uva_tensor(data, 0)
                 self.assertTrue(tensor.place.is_gpu_place())
                 self.assertTrue(np.allclose(tensor.numpy(), data))
 

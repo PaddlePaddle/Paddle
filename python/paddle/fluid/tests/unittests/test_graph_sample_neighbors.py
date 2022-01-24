@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.core import to_uva_tensor
 
 
 class TestGraphSampleNeighbors(unittest.TestCase):
@@ -83,9 +82,9 @@ class TestGraphSampleNeighbors(unittest.TestCase):
     def test_uva_sample_result(self):
         paddle.disable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
-            sorted_src = to_uva_tensor(
+            sorted_src = paddle.fluid.core.to_uva_tensor(
                 self.sorted_src.astype(self.sorted_src.dtype), 0)
-            sorted_edges_id = to_uva_tensor(
+            sorted_edges_id = paddle.fluid.core.to_uva_tensor(
                 self.sorted_edges_id.astype(self.sorted_edges_id.dtype), 0)
             dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
             nodes = paddle.to_tensor(self.nodes)
