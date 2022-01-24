@@ -25,7 +25,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, concat) {
   // 1. create tensor
@@ -35,13 +35,15 @@ TEST(DEV_API, concat) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   pten::DenseTensor dense_y(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 10; ++j) {
@@ -50,15 +52,11 @@ TEST(DEV_API, concat) {
     }
   }
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   std::vector<pten::DenseTensor> inputs = {dense_x, dense_y};
 
   // 2. test API
-  auto out = pten::Concat<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), inputs, 0);
+  pten::CPUContext dev_ctx;
+  auto out = pten::Concat<float>(dev_ctx, inputs, 0);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
