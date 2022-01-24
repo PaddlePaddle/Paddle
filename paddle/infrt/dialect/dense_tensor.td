@@ -112,11 +112,11 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   let verifier = ?;
 }
 
-def GetParamOp : DT_Op<"get_param", [NoSideEffect]> {
-  let summary = "dt.get_param operation";
+def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
+  let summary = "dt.tensor_map_get_tensor operation";
 
   let description = [{
-    An operation that can get a tensor from TensorMap.
+    An operation that can get a tensor from a TensorMap.
   }];
 
   // input path of model params.
@@ -127,6 +127,18 @@ def GetParamOp : DT_Op<"get_param", [NoSideEffect]> {
   let results = (outs TensorType:$output);
   let assemblyFormat = "`(` $map `,` $name `)` attr-dict `->` type($output)";
   let verifier = ?;
+}
+
+def TensorMapGetSizeOp : DT_Op<"tensor_map_get_size", [NoSideEffect]> {
+  let summary = "ddt.tensor_map_get_size operation";
+
+  let description = [{
+    An operation that get the size of a TensorMap.
+  }];
+
+  let arguments = (ins TensorMapType:$map);
+  let results = (outs I32:$size);
+  let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
 }
 
 def GetTensorShapeOp : DT_Op<"get_tensor_shape", [NoSideEffect]> {

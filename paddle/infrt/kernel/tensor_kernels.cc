@@ -53,10 +53,13 @@ TensorMap LoadParams(const std::string &path) {
   return *(infrt::tensor::LoadParams(path));
 }
 
-DenseHostTensor GetParam(TensorMap map, Attribute<std::string> nameAttr) {
+DenseHostTensor TensorMapGetTensor(TensorMap map,
+                                   Attribute<std::string> nameAttr) {
   auto &name = nameAttr.get();
   return *(map[name]);
 }
+
+int32_t TensorMapGetSize(TensorMap map) { return map.size(); }
 
 DenseHostTensor ShallowCopyTensor(DenseHostTensor v) { return v; }
 
@@ -115,8 +118,13 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
                       INFRT_KERNEL(FillTensorWithConstant<float>));
   registry->AddKernel("dt.fill_tensor_with_constant.f64",
                       INFRT_KERNEL(FillTensorWithConstant<double>));
+
+  // TensorMap related methods.
   registry->AddKernel("dt.load_params", INFRT_KERNEL(LoadParams));
-  registry->AddKernel("dt.get_param", INFRT_KERNEL(GetParam));
+  registry->AddKernel("dt.tensor_map_get_tensor",
+                      INFRT_KERNEL(TensorMapGetTensor));
+  registry->AddKernel("dt.tensor_map_get_size", INFRT_KERNEL(TensorMapGetSize));
+
   registry->AddKernel("dt.shallow_copy_tensor",
                       INFRT_KERNEL(ShallowCopyTensor));
 

@@ -28,8 +28,9 @@
 #include "paddle/infrt/tensor/dense_tensor_view.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+// Disabled temporarily for failed compile, will enable latter.
+// #include "paddle/pten/backends/cpu/cpu_context.h"
+// #include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace host_context {
