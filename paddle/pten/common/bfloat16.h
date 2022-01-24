@@ -21,7 +21,7 @@
 #endif
 #endif
 
-#include "paddle/utils/Core"
+#include "paddle/pten/include/Core"
 
 namespace pten {
 namespace dtype {
