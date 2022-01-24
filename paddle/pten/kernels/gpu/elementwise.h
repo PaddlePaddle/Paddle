@@ -137,7 +137,7 @@ struct DimensionsTransform {
     out_dims = pten::framework::vectorize<int64_t>(dims);
     in_dims.resize(N);
     if (ins.size() == 1) {
-      // when ins.size() = 1, broadcast input to output set N = in.size() + 1
+      // when ins.size() = 1, broadcast input to output
       in_dims[0] = pten::framework::vectorize<int64_t>(ins[0]->dims());
       in_dims[1] = out_dims;
       // Add out_dims to in_dims to avoid errors in dims merging
