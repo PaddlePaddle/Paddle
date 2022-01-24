@@ -1527,7 +1527,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 #else
       if (dtype != framework::proto::VarType::FP32) {
-        VLOG(3) << "reduce op input data type must be float32 using TensorRT < 7.0";
+        VLOG(3)
+            << "reduce op input data type must be float32 using TensorRT < 7.0";
         return false;
       }
 #endif
