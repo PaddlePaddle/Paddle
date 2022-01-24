@@ -1190,13 +1190,14 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         return loss.numpy()
 
     def test_with_state_dict(self):
-        with fluid.dygraph.guard():
-            out_use_state_dict = self.check_with_opt_state_dict(
-                use_save_load=True)
-            out_no_state_dict = self.check_with_opt_state_dict(
-                use_save_load=False)
-        self.assertTrue(
-            np.allclose(out_use_state_dict[0], out_no_state_dict[0]))
+        if core.is_compiled_with_cuda():
+            with fluid.dygraph.guard():
+                out_use_state_dict = self.check_with_opt_state_dict(
+                    use_save_load=True)
+                out_no_state_dict = self.check_with_opt_state_dict(
+                    use_save_load=False)
+            self.assertTrue(
+                np.allclose(out_use_state_dict[0], out_no_state_dict[0]))
 
 
 if __name__ == '__main__':
