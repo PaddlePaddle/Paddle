@@ -39,9 +39,9 @@ static void VecCastKernel(const platform::CUDADeviceContext &ctx, const InT *x,
   auto main_offset = n / (VecSize * thread) * VecSize * thread;
   auto stream = ctx.stream();
   using FunctorT = CastFunctor<InT, OutT>;
-  framework::Array<const InT *__restrict__, 1> in_arr;
+  pten::framework::Array<const InT *__restrict__, 1> in_arr;
   in_arr[0] = x;
-  framework::Array<OutT *, 1> out_arr;
+  pten::framework::Array<OutT *, 1> out_arr;
   out_arr[0] = y;
   pten::funcs::VectorizedElementwiseKernel<
       InT, OutT, FunctorT, 1, 1, VecSize><<<block, thread, 0, stream>>>(

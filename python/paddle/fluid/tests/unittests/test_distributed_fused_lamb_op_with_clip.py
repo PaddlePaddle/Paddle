@@ -37,6 +37,8 @@ def remove_file_if_exists(file_name):
 def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
     if not paddle.is_compiled_with_cuda():
         return
+    if os.name == 'nt':
+        return
     args = locals()
     log_dir = 'log_{}'.format(os.getpid())
     cmd = [
