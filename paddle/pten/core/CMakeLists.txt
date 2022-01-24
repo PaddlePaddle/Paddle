@@ -23,12 +23,6 @@ cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
-cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-if(WITH_GPU)
-  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-elseif(WITH_ROCM)
-  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
-endif()
 
 cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector enforce ddim)
 

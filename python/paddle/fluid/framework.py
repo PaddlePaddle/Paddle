@@ -1763,7 +1763,10 @@ class Variable(object):
         Examples:
           .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
@@ -1773,7 +1776,8 @@ class Variable(object):
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
             raise Exception("SelectedRows DO NOT supprt lod")
-
+        if self.type == core.VarDesc.VarType.STRINGS:
+            return None
         return self.desc.lod_level()
 
     @property
