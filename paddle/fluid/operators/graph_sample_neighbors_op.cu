@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 This file is inspired by
 
@@ -28,13 +28,12 @@ limitations under the License. */
 #include <thrust/unique.h>
 #include <ostream>
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#include <curand_kernel.h>
-#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+#else
+#include <cuda_runtime.h>
+#include <curand_kernel.h>
 #endif
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -83,15 +82,14 @@ __global__ void GraphSampleNeighborsCUDAKernel(
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
-#ifdef PADDLE_WITH_CUDA
-  curandState rng;
-  curand_init(rand_seed * gridDim.x + blockIdx.x,
-              threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
-#endif
 #ifdef PADDLE_WITH_HIP
   hiprandState rng;
   hiprand_init(rand_seed * gridDim.x + blockIdx.x,
                threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+#else
+  curandState rng;
+  curand_init(rand_seed * gridDim.x + blockIdx.x,
+              threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
 #endif
 
   while (out_row < last_row) {
@@ -112,16 +110,24 @@ __global__ void GraphSampleNeighborsCUDAKernel(
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
         output_idxs[out_row_start + idx] = idx;
       }
+#ifdef PADDLE_WITH_CUDA
       __syncwarp();
+#endif
 
       for (int idx = k + threadIdx.x; idx < deg; idx += WARP_SIZE) {
+#ifdef PADDLE_WITH_HIP
+        const int num = hiprand(&rng) % (idx + 1);
+#else
         const int num = curand(&rng) % (idx + 1);
+#endif
         if (num < k) {
           paddle::platform::CudaAtomicMax(output_idxs + out_row_start + num,
                                           idx);
         }
       }
+#ifdef PADDLE_WITH_CUDA
       __syncwarp();
+#endif
 
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
         const T perm_idx = output_idxs[out_row_start + idx] + in_row_start;
@@ -154,7 +160,9 @@ __global__ void GetDstEdgeCUDAKernel(const int64_t num_rows, const T* in_rows,
     for (int idx = threadIdx.x; idx < dst_sample_size; idx += WARP_SIZE) {
       outputs[out_row_start + idx] = row;
     }
+#ifdef PADDLE_WITH_CUDA
     __syncwarp();
+#endif
 
     out_row += BLOCK_WARPS;
   }

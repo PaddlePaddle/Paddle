@@ -52,10 +52,10 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
         nodes = paddle.to_tensor(self.nodes)
 
-        return_eids = False
         edge_src, edge_dst, sample_index, reindex_nodes = \
             paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
-                                                   nodes, self.sample_sizes)
+                                                   nodes, self.sample_sizes,
+                                                   return_eids=False)
         # Reindex edge_src and edge_dst to original index.
         edge_src = edge_src.reshape([-1])
         edge_dst = edge_dst.reshape([-1])
@@ -89,7 +89,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
             nodes = paddle.to_tensor(self.nodes)
 
-            return_eids = True
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
                 paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
                                                        nodes, self.sample_sizes,
