@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#include "paddle/pten/core/lod_utils.h"
+
 namespace pten {
 class DenseTensor;
 }  // namespace pten
@@ -122,7 +124,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
           input->lod(), *in_idx, (*in_idx) + 1, 0);
       auto &lod_length = lod_and_offset.first;
 
-      framework::AppendLoD(out_lod, lod_length);
+      pten::AppendLoD(out_lod, lod_length);
 
       size_t start_offset = lod_and_offset.second.first;
       size_t end_offset = lod_and_offset.second.second;

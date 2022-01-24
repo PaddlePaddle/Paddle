@@ -238,6 +238,10 @@ using HardSwishMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
 
 template <typename T>
+using MishMKLDNNFunctor =
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
+
+template <typename T>
 using SigmoidMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
 
@@ -273,6 +277,10 @@ using SwishMKLDNNGradFunctor =
 template <typename T>
 using HardSwishMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
+
+template <typename T>
+using MishMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
 using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
@@ -341,6 +349,8 @@ REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradUseOutFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sqrt, SqrtMKLDNNFunctor,
                                        SqrtMKLDNNGradUseOutFunctor);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(mish, MishMKLDNNFunctor,
+                                       MishMKLDNNGradFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

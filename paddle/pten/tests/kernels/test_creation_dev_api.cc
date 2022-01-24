@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/full_kernel.h"
 
@@ -26,19 +27,14 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, empty) {
   // 1. create input
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
 
   // 2. test API
-  auto out = pten::Empty<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      {3, 2},
-      pten::DataType::INT32);
+  auto out = pten::Empty<float>(dev_ctx, {3, 2}, pten::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -59,13 +55,9 @@ TEST(DEV_API, empty_like) {
   auto* dense_x_data = dense_x.mutable_data<float>();
   dense_x_data[0] = 0;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::EmptyLike<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+  pten::CPUContext dev_ctx;
+  auto out = pten::EmptyLike<float>(dev_ctx, dense_x);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -79,16 +71,9 @@ TEST(DEV_API, full) {
   // 1. create input
   float val = 1.0;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Full<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      {3, 2},
-      val,
-      pten::DataType::FLOAT32);
+  pten::CPUContext dev_ctx;
+  auto out = pten::Full<float>(dev_ctx, {3, 2}, val, pten::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -115,15 +100,10 @@ TEST(DEV_API, full_like) {
   dense_x_data[0] = 0;
   float val = 1.0;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
 
   // 2. test API
-  auto out = pten::FullLike<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      val);
+  auto out = pten::FullLike<float>(dev_ctx, dense_x, val);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

@@ -545,6 +545,8 @@ PADDLE_DEFINE_EXPORTED_double(
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
+PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
+
 /**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
