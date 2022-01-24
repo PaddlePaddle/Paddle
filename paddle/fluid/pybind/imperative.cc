@@ -2601,6 +2601,7 @@ void BindImperative(py::module *m_ptr) {
           }
           return new_tensor;
         },
+        py::arg("obj"), py::arg("device_id") = 0,
         py::return_value_policy::reference, R"DOC()DOC");
 #endif
 

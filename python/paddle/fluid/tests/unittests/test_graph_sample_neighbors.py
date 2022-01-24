@@ -38,19 +38,19 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         dst_cumsum_counts = np.cumsum(dst_count)
         dst_cumsum_counts = np.insert(dst_cumsum_counts, 0, 0)
 
-        self.sorted_src = sorted_edges[:, 0]
-        self.dst_cumsum_counts = dst_cumsum_counts
-        self.sorted_edges_id = sorted_edges_id
-        self.nodes = np.unique(np.random.randint(num_nodes, size=5))
+        self.sorted_src = sorted_edges[:, 0].astype("int64")
+        self.dst_cumsum_counts = dst_cumsum_counts.astype("int64")
+        self.sorted_edges_id = sorted_edges_id.astype("int64")
+        self.nodes = np.unique(np.random.randint(
+            num_nodes, size=5)).astype("int64")
         self.sample_sizes = [5, 5]
         self.dst_src_dict = dst_src_dict
 
     def test_sample_result(self):
         paddle.disable_static()
-        sorted_src = paddle.to_tensor(self.sorted_src, dtype="int64")
-        dst_cumsum_counts = paddle.to_tensor(
-            self.dst_cumsum_counts, dtype="int64")
-        nodes = paddle.to_tensor(self.nodes, dtype="int64")
+        sorted_src = paddle.to_tensor(self.sorted_src)
+        dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
+        nodes = paddle.to_tensor(self.nodes)
 
         return_eids = False
         edge_src, edge_dst, sample_index, reindex_nodes = \
@@ -83,9 +83,9 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         paddle.disable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
             sorted_src = paddle.fluid.core.to_uva_tensor(
-                self.sorted_src.astype(self.sorted_src.dtype), 0)
+                self.sorted_src.astype(self.sorted_src.dtype))
             sorted_edges_id = paddle.fluid.core.to_uva_tensor(
-                self.sorted_edges_id.astype(self.sorted_edges_id.dtype), 0)
+                self.sorted_edges_id.astype(self.sorted_edges_id.dtype))
             dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
             nodes = paddle.to_tensor(self.nodes)
 

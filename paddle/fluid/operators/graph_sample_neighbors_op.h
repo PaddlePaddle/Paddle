@@ -71,8 +71,8 @@ template <typename T>
 void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
                      std::vector<T>* inputs, std::vector<T>* outputs,
                      std::vector<T>* output_counts,
-                     std::vector<T>* outputs_eids, int k, bool is_last_layer,
-                     bool return_eids) {
+                     std::vector<T>* outputs_eids, int k, bool is_first_layer,
+                     bool is_last_layer, bool return_eids) {
   const size_t bs = inputs->size();
   // Allocate the memory of outputs
   // Collect the neighbors size
@@ -100,6 +100,13 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
       out_eids.resize(cap);
       out_eids_vec.emplace_back(out_eids);
     }
+  }
+  if (is_first_layer) {
+    PADDLE_ENFORCE_GT(total_neighbors, 0,
+                      platform::errors::InvalidArgument(
+                          "The input nodes `X` should have at "
+                          "least one neighbors, but none of the "
+                          "input nodes have neighbors"));
   }
   output_counts->resize(bs);
   outputs->resize(total_neighbors);
@@ -173,7 +180,7 @@ template <typename DeviceContext, typename T>
 class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // 1. Get inputs.
+    // 1. Get sample neighbors operators' inputs.
     auto* src = ctx.Input<Tensor>("Src");
     auto* dst_count = ctx.Input<Tensor>("Dst_Count");
     auto* vertices = ctx.Input<Tensor>("X");
@@ -185,13 +192,13 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     const T* p_vertices = vertices->data<T>();
     const size_t bs = vertices->dims()[0];
 
-    // 2. Get unique inputs X.
+    // 2. Get unique input nodes(X).
     std::vector<T> inputs(bs);
     std::copy(p_vertices, p_vertices + bs, inputs.begin());
     auto unique_inputs_end = std::unique(inputs.begin(), inputs.end());
     inputs.resize(std::distance(inputs.begin(), unique_inputs_end));
 
-    // 3. Sample neighbors.
+    // 3. Sample neighbors. We should distinguish w/o "Src_Eids".
     std::vector<T> outputs;
     std::vector<T> output_counts;
     std::vector<T> outputs_eids;
@@ -202,7 +209,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     std::vector<std::vector<T>> outputs_eids_vec;
 
     const size_t num_layers = sample_sizes.size();
-    bool is_last_layer = false;
+    bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
       auto* src_eids = ctx.Input<Tensor>("Src_Eids");
@@ -216,10 +223,12 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
         }
         if (i > 0) {
           dst_vec.emplace_back(inputs);
+          is_first_layer = false;
         }
         SampleNeighbors<T>(src_data, dst_count_data, src_eids_data, &inputs,
                            &outputs, &output_counts, &outputs_eids,
-                           sample_sizes[i], is_last_layer, return_eids);
+                           sample_sizes[i], is_first_layer, is_last_layer,
+                           return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);
@@ -233,18 +242,19 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
           break;
         }
         if (i > 0) {
+          is_first_layer = false;
           dst_vec.emplace_back(inputs);
         }
         SampleNeighbors<T>(src_data, dst_count_data, nullptr, &inputs, &outputs,
                            &output_counts, &outputs_eids, sample_sizes[i],
-                           is_last_layer, return_eids);
+                           is_first_layer, is_last_layer, return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);
       }
     }
 
-    // 4. Concat intermediate sample results
+    // 4. Concat intermediate sample results.
     int64_t unique_dst_size = 0, src_size = 0;
     for (size_t i = 0; i < num_layers; i++) {
       unique_dst_size += dst_vec[i].size();
@@ -278,7 +288,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    // 5. Whether return Eids
+    // 5. Return eids results.
     if (return_eids) {
       std::vector<T> eids_merge(src_size);
       auto eids_merge_ptr = eids_merge.begin();
@@ -305,7 +315,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet(
             "Number of sample edges dismatch, the sample kernel has error."));
 
-    // 6. Reindex.
+    // 6. Reindex edges.
     std::unordered_map<T, T> node_map;
     std::vector<T> unique_nodes;
     size_t reindex_id = 0;
@@ -331,14 +341,14 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    // 7. Get Reindex_X.
+    // 7. Get Reindex_X for input nodes.
     auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     for (size_t i = 0; i < bs; i++) {
       p_reindex_x[i] = node_map[p_vertices[i]];
     }
 
-    // 8. Get outputs.
+    // 8. Get operator's outputs.
     auto* sample_index = ctx.Output<Tensor>("Sample_Index");
     auto* out_src = ctx.Output<Tensor>("Out_Src");
     auto* out_dst = ctx.Output<Tensor>("Out_Dst");
