@@ -101,6 +101,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
+#ifdef PADDLE_WITH_MKLDNN
       // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC.
       bool should_rotate =
@@ -119,15 +120,18 @@ class ElementwiseOp : public framework::OperatorWithKernel {
           y_dims = framework::make_ddim(vdims);
         }
       }
+#endif
 
       GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
+#ifdef PADDLE_WITH_MKLDNN
       // Now rotate shape back if needed (NHWC -> NCHW)
       if (should_rotate) {
         std::rotate(out_dims_array.begin() + 1, out_dims_array.end() - 1,
                     out_dims_array.end());
       }
+#endif
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
       // to do
       ctx->ShareLoD("X", /*->*/ "Out");
