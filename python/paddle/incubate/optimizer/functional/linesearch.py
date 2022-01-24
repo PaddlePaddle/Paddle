@@ -128,7 +128,7 @@ def bracket(state, phi, c, iter_count):
         # Sets [prev_c, c] to [c, rho*c] if B3 is true.
         prev_c = ternary(B3_cond, c, prev_c)
         c = ternary(B3_cond, rho * c, c)
-
+        print(f'expanding  c: {c.numpy()}')
         # Calculates the function values and gradients.
         f, g = vjp(phi, c)
         iter_count.increment()
@@ -184,23 +184,30 @@ def bisect(state, phi, a, b, ifcond, iter_count):
     #
     # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
 
-    falling = make_const(f0, True, dtype='bool')
+    # falling = make_const(f0, True, dtype='bool')
+    pred = ifcond
     while True:
-        d = (1 - theta) * a + theta * b
+        # d = (1.0 - theta) * a + theta * b
+        d = a + theta * (b - a)
 
         f, g = vjp(phi, d)
         iter_count.increment()
         state.nf += 1
         state.ng += 1
 
-        falling = falling & (g < .0)
+        hi = f > f0 + epsilon_k
+        falling = g < .0    
+        # falling = falling & (g < .0)
 
-        pred = ifcond & falling
+        print(f'hi : {hi.numpy()}')
+        pred = pred & falling & hi
         if any_active_with_predicates(state.state, pred):
+            print(f'f = {f.numpy()}   f0 = {f0.numpy()}   eps_k = {epsilon_k.numpy()}')
             hi = f > f0 + epsilon_k
             lo = ~hi
             a = ternary(lo & pred, d, a)
             b = ternary(hi & pred, d, b)
+            print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
         else:
             break
 
@@ -265,7 +272,7 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     # S3. Otherwise, [a, b] = [A, B]
     c = secant(phi, a, b)
 
-    A, B = update(state, phi, a, b, c, ifcond, iter_count)
+    A, B, f_A, f_B = update(state, phi, a, b, c, ifcond, iter_count)
 
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
@@ -281,14 +288,16 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     r = ternary(S3_cond, A, r)
 
     # Outputs of S2 and S3
-    a, b = update(state, phi, A, B, c, ifcond, iter_count)
+    a, b, f_a, f_b = update(state, phi, A, B, c, ifcond, iter_count)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
     S2_or_S3 = S2_cond | S3_cond
     a = ternary(S2_or_S3, a, A)
     b = ternary(S2_or_S3, b, B)
+    f_a = ternary(S2_or_S3, f_a, f_A)
+    f_b = ternary(S2_or_S3, f_b, f_B)
 
-    return [a, b]
+    return (a, b, f_a, f_b) 
 
 
 def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
@@ -618,6 +627,9 @@ def hz_linesearch(state,
 
     # Marks invalid inputs
     invalid_input = paddle.isinf(fk) | (deriv >= .0)
+    rising = deriv >= .0
+    print(f'deriv >= 0:  {rising.numpy()}')
+    print(f'isinf : {paddle.isinf(fk).numpy()}')
     state.state = update_state(state.state, invalid_input, 'failed')
 
     # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
@@ -635,11 +647,13 @@ def hz_linesearch(state,
     # Initializes stop flags
     stopped = make_const(fk, False, dtype='bool')
 
+    import traceback
     try:
         # Generates initial step sizes
         c = initial(state)
         ls_stepsize = c
         iter_count.increment()
+        print(f'ls  \nc: {c.numpy()}')
 
         # Initial stopping test. Those already converged instances are likely
         # to succeed.
@@ -654,6 +668,7 @@ def hz_linesearch(state,
 
             # Applies secant2 to the located intervals
             a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
+            print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
 
             new_stopped = ~stopped & stopping_condition(state, phi, b, deriv)
             stopped = stopped | new_stopped
@@ -674,9 +689,10 @@ def hz_linesearch(state,
 
             # Goes to next iteration
             a_j, b_j = a, b
-
     except StopCounterException:
+        traceback.print_exc()
         pass
+        
 
     # Changes state due to failed line search
     state.state = update_state(state.state, ~stopped, 'failed')

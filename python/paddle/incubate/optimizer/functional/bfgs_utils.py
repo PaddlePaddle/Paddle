@@ -254,4 +254,5 @@ class StopCounter(object):
         if self.count < self.end:
             self.count += 1
         else:
+            print(f'Count stops at {self.count}!')
             raise StopCounterException()

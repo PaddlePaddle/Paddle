@@ -108,7 +108,6 @@ def quadratic_gen(shape, dtype):
     center = paddle.rand(shape, dtype=dtype)
     hessian_shape = shape + shape[-1:]
     rotation = paddle.rand(hessian_shape, dtype=dtype)
-    # hessian = paddle.einsum('...ik, ...jk', rotation, rotation)
     hessian = paddle.matmul(rotation, rotation, transpose_y=True)
 
     if shape[-1] > 1:
@@ -118,7 +117,7 @@ def quadratic_gen(shape, dtype):
         f = lambda x: paddle.sum((x - center) * hessian.squeeze(-1) * (x - center), axis=-1)
         return f, center
 
-    def f(x):
+    def quad(x):
         # (TODO:Tongxin) einsum may internally rely on dy2static which
         # does not support higher order gradients. 
         # y = paddle.einsum('...i, ...ij, ...j',
@@ -133,7 +132,7 @@ def quadratic_gen(shape, dtype):
             y = y.reshape([1])
         return y
 
-    return f, center
+    return quad, center
 
 
 class TestBFGS(unittest.TestCase):
@@ -143,10 +142,10 @@ class TestBFGS(unittest.TestCase):
     def gen_configs(self):
         dtypes = ['float32', 'float64']
         shapes = {
-            # '1d2v': [2],
+            '1d2v': [2],
             '2d2v': [2, 2],
             '1d50v': [50],
-            '10d10v': [10, 10],
+            '10d10v': [5, 10],
             '1d1v': [1],
             '2d1v': [2, 1],
         }
