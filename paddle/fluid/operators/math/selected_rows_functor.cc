@@ -488,7 +488,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
   void operator()(const platform::XPUDeviceContext& context,
                   const pten::SelectedRows& input, pten::SelectedRows* output,
                   const bool sorted_result = false) {
-    Vector<int64_t> input_rows(input.rows());
+    framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
