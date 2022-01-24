@@ -412,11 +412,11 @@ bool DistModel::PrepareFeedAndFetch() {
       feed_names_[var_name] = idx;
       idx_to_feeds_[idx] = var_name;
       framework::VarDesc *real_var = program_->Block(0).FindVar(var_name);
-      if (real_var->GetDataType() == proto::VarType::FP32) {
+      if (real_var->GetDataType() == framework::proto::VarType::FP32) {
         feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT32});
-      } else if (real_var->GetDataType() == proto::VarType::INT32) {
+      } else if (real_var->GetDataType() == framework::proto::VarType::INT32) {
         feeds_to_dtype_.insert({var_name, DistModelDataType::INT32});
-      } else if (real_var->GetDataType() == proto::VarType::INT64) {
+      } else if (real_var->GetDataType() == framework::proto::VarType::INT64) {
         feeds_to_dtype_.insert({var_name, DistModelDataType::INT64});
       } else {
         LOG(ERROR) << "Don't support feed var dtype for: "
@@ -462,13 +462,13 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
     }
     std::string target_name = input_data[i].name;
     if (feed_names_.find(target_name) == feed_names_.end()) {
-      LOG(ERROR) << "The input name: " << target_name
-                 << " cannot be found in the program."
+      LOG(ERROR) << "The input name [" << target_name
+                 << "] cannot be found in the program."
                  << " DistModel loads data failed.";
       return false;
     }
     if (input_data[i].dtype != feeds_to_dtype_[target_name]) {
-      LOG(ERROR) << "Feed var: " << target_name << "'s expected dtype is: "
+      LOG(ERROR) << "Feed var [" << target_name << "] expected dtype is: "
                  << DistModelDTypeToString(feeds_to_dtype_[target_name])
                  << ". But received dtype is: "
                  << DistModelDTypeToString(input_data[i].dtype) << ".";
@@ -486,7 +486,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
   output_data->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
     int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
-    VLOG(3) << "Fetching data for " << idx_to_fetches_[idx];
+    VLOG(3) << "Fetching data for [" << idx_to_fetches_[idx] << "]";
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx), i,
         platform::errors::InvalidArgument(
