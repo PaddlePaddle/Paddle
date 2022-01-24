@@ -333,7 +333,7 @@ else()
      endif()
 endif()
 
-if(WITH_HETERPS)
+if(WITH_HETERPS AND WITH_PSLIB)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
