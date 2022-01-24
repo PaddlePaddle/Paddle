@@ -2572,8 +2572,8 @@ void BindImperative(py::module *m_ptr) {
           auto new_tensor = std::shared_ptr<imperative::VarBase>(
               new imperative::VarBase(tracer->GenerateUniqueName()));
           auto array = obj.cast<py::array>();
-          if (py::isinstance<py::array_t<int>>(array)) {
-            SetUVATensorFromPyArray<int>(new_tensor, array, device_id);
+          if (py::isinstance<py::array_t<int32_t>>(array)) {
+            SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
           } else if (py::isinstance<py::array_t<int64_t>>(array)) {
             SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
           } else if (py::isinstance<py::array_t<float>>(array)) {

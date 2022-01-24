@@ -34,8 +34,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/graph_sample_neighbors_imp.h"
 #include "paddle/fluid/operators/graph_sample_neighbors_op.h"
-#include "paddle/fluid/operators/graph_sample_neighbors_reindex.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
