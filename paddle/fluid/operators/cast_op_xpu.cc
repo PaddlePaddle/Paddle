@@ -37,7 +37,8 @@ class CastXPUKernel : public framework::OpKernel<InT> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    auto out_type = static_cast<var_type::Type>(context.Attr<int>("out_dtype"));
+    auto out_dtype =
+        static_cast<var_type::Type>(context.Attr<int>("out_dtype"));
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
@@ -47,7 +48,7 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
     // call pten kernel
-    pten::CastKernel<T>(
+    pten::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in, pt_out_dtype, out);
