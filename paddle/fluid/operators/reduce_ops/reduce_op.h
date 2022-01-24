@@ -556,7 +556,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         if (!reduce_all) {
           return framework::KernelSignature(
-              "sum", {"X"}, {"dim", "keep_dim", "out_dtype"}, {"Out"});
+              "sum", {"X"}, {"dim", "out_dtype", "keep_dim"}, {"Out"});
         }
         return framework::KernelSignature(
             "sum_raw", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
