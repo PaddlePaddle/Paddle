@@ -44,7 +44,10 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     // call pten kernel
-    pten::ScaleKernel<T>(dev_ctx, *in, scale, bias, bias_after_scale, out);
+    pten::ScaleKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, scale, bias, bias_after_scale, out);
   }
 };
 
