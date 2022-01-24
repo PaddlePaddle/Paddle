@@ -60,6 +60,36 @@ DenseHostTensor GetParam(TensorMap map, Attribute<std::string> nameAttr) {
 
 DenseHostTensor ShallowCopyTensor(DenseHostTensor v) { return v; }
 
+template <typename T>
+void NaiveElementwiseAdd(const DenseHostTensor &x,
+                         const DenseHostTensor &y,
+                         DenseHostTensor *out) {
+  CHECK_EQ(x.shape().GetNumElements(), y.shape().GetNumElements());
+
+  // Infer shape
+  *out = DenseHostTensor(x.shape(), GetDType<T>());
+
+  const T *x_data = static_cast<T *>(x.raw_data());
+  const T *y_data = static_cast<T *>(y.raw_data());
+  T *out_data = static_cast<T *>(out->raw_data());
+  for (size_t i = 0, n = x.shape().GetNumElements(); i < n; i++) {
+    out_data[i] = x_data[i] + y_data[i];
+  }
+}
+
+//! A naive implementation for x matmul w
+template <typename T>
+void NaiveMatmul(const DenseHostTensor &x,
+                 const DenseHostTensor &w,
+                 DenseHostTensor *out) {
+  CHECK_EQ(x.shape().GetRank(), 2);
+  CHECK_EQ(w.shape().GetRank(), 2);
+  CHECK_EQ(x.shape().GetDim(x.shape().GetRank() - 1),
+           w.shape().GetDim(x.shape().GetDim(0)));
+  std::vector<int64_t> out_dims({x.shape().GetDim(0), w.shape().GetDim(1)});
+  *out = DenseHostTensor(TensorShape(out_dims), GetDType<T>());
+}
+
 /// ===== Kernel end ====
 
 void RegisterTensorKernels(host_context::KernelRegistry *registry) {
@@ -75,6 +105,11 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
   registry->AddKernel("dt.get_param", INFRT_KERNEL(GetParam));
   registry->AddKernel("dt.shallow_copy_tensor",
                       INFRT_KERNEL(ShallowCopyTensor));
+
+  // Naive kernels.
+  registry->AddKernel("dt.naive_elementwise_add.f32",
+                      INFRT_KERNEL(NaiveElementwiseAdd<float>));
+  registry->AddKernel("dt.naive_matmul.f32", INFRT_KERNEL(NaiveMatmul<float>));
 }
 
 }  // namespace kernel

@@ -141,10 +141,38 @@ def GetTensorShapeOp : DT_Op<"get_tensor_shape", [NoSideEffect]> {
   let assemblyFormat = "$input attr-dict `:` type($input) `->` type($output)";
 }
 
+class NaiveElementwiseAddOp<string dtype> :
+    DT_Op<"naive_elementwise_add." # dtype, [NoSideEffect]> {
+  let summary = "dt.naive_elementwise_add operation";
+
+  let description = [{
+    Naive elementwise_add operation.
+    Just for testing.
+  }];
+  let arguments = (ins TensorType:$a, TensorType:$b);
+  let results = (outs TensorType:$output);
+  let assemblyFormat = "`(` $a `,` $b `)` attr-dict `:` `(` type($a) `,` type($b) `)` `->` type($output)";
+}
+
+class NaiveMatmulOp<string dtype> :
+    DT_Op<"naive_matmul." # dtype, [NoSideEffect]> {
+  let summary = "dt.naive_matmul operation";
+
+  let description = [{
+    Naive matmul operation.
+    Just for testing.
+  }];
+  let arguments = (ins TensorType:$x, TensorType:$w);
+  let results = (outs TensorType:$output);
+  let assemblyFormat = "`(` $x `,` $w `)` attr-dict `:` `(` type($x) `,` type($w) `)` `->` type($output)";
+}
+
 foreach dtype = ["ui8", "ui16", "ui32", "ui64", "i32", "f32", "f64", "i64"] in {
   def DT_CreateUninitTensorOp_#dtype : CreateUninitTensorOp<dtype>;
   def DT_FillTensorOp_#dtype : FillTensorWithConstantOp<dtype>;
   def DT_SetTensorOp_#dtype : SetTensorOp<dtype>;
+  def DT_NaiveElementwiseAddOp_#dtype : NaiveElementwiseAddOp<dtype>;
+  def DT_NaiveMatmulOp_#dtype : NaiveMatmulOp<dtype>;
 }
 
 #endif  // DT_OPS

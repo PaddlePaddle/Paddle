@@ -84,11 +84,23 @@ class Value : public common::Object {
 
   template <typename T>
   const T& get() const {
+    CHECK(data.template is<T>());
     return data.get<T>();
   }
+
   template <typename T>
   T& get() {
+    CHECK(data.template is<T>());
     return data.get<T>();
+  }
+
+  //! Get the value if assigned before or return a default value instead.
+  template <class T>
+  T& get_or_default() {
+    if (!data.template is<T>()) {
+      this->set(T{});
+    }
+    return get<T>();
   }
 
   template <typename T>
@@ -126,6 +138,7 @@ class ValueRef : common::Shared<Value> {
   using common::Shared<Value>::Reset;
   using common::Shared<Value>::operator->;
   using common::Shared<Value>::operator*;
+
   //! Get a readonly data.
   template <typename T>
   const T& get() const {
