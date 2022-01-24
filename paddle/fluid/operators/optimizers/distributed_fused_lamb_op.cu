@@ -83,9 +83,15 @@ static bool IsFinite(const platform::CUDADeviceContext &dev_ctx,
                      const float *ptr) {
   auto stream = dev_ctx.stream();
   float cpu_value;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&cpu_value, ptr, sizeof(float),
+                                            hipMemcpyDeviceToHost, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
+#else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&cpu_value, ptr, sizeof(float),
                                              cudaMemcpyDeviceToHost, stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+#endif
   LOG(INFO) << "NAN_INF indicator value: " << cpu_value;
   return isfinite(cpu_value);
 }
@@ -622,9 +628,15 @@ static std::string GetMinMaxStr(const T *x, size_t n,
     CubDeviceReduce(x, ret + 1, n, cub::Max(), std::numeric_limits<T>::lowest(),
                     stream, &cub_buffer);
     T ret_cpu[2];
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&ret_cpu[0], ret, 2 * sizeof(T),
+                                              hipMemcpyDeviceToHost, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret_cpu[0], ret, 2 * sizeof(T),
                                                cudaMemcpyDeviceToHost, stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+#endif
     return std::string("{\"min\": ") + NumToString(ret_cpu[0]) +
            " , \"max\": " + NumToString(ret_cpu[1]) + "}";
   } else {
