@@ -46,5 +46,54 @@ inline std::string build_xpu_xdnn_error_msg(int stat, std::string msg) {
   return pten::backends::xpu::build_xpu_xdnn_error_msg(stat, msg);
 }
 
+namespace details {
+
+template <typename T>
+struct ExternalApiType {};
+
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
+  }
+
+DEFINE_EXTERNAL_API_TYPE(int, XPU_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
+
+#undef DEFINE_EXTERNAL_API_TYPE
+
+}  // namespace details
+
+#define PADDLE_ENFORCE_XPU_SUCCESS(COND)                      \
+  do {                                                        \
+    auto __cond__ = (COND);                                   \
+    using __XPU_STATUS_TYPE__ = decltype(__cond__);           \
+    constexpr auto __success_type__ =                         \
+        ::paddle::platform::details::ExternalApiType<         \
+            __XPU_STATUS_TYPE__>::kSuccess;                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {             \
+      auto __summary__ = paddle::platform::errors::External(  \
+          ::paddle::platform::build_xpu_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                  \
+    }                                                         \
+  } while (0)
+
+#define PADDLE_ENFORCE_XDNN_NOT_NULL(ptr)                                    \
+  do {                                                                       \
+    PADDLE_ENFORCE_NOT_NULL(                                                 \
+        ptr, ::paddle::platform::errors::Fatal("XPU memory is not enough")); \
+  } while (0)
+
+#define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                          \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    if (UNLIKELY(__cond__ != xpu::Error_t::SUCCESS)) {                  \
+      auto __summary__ = paddle::platform::errors::External(            \
+          ::paddle::platform::build_xpu_xdnn_error_msg(__cond__, MSG)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                            \
+    }                                                                   \
+  } while (0)
+
 }  // namespace platform
 }  // namespace paddle
