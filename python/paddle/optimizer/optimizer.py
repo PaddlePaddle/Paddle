@@ -258,7 +258,8 @@ class Optimizer(object):
                 state_dict[var_tmp.name] = var_tmp
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
-            state_dict["master_weights"] = self._master_weights
+            if len(self._master_weights) != 0:
+                state_dict["master_weights"] = self._master_weights
         # global step if use lr decay
         if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
