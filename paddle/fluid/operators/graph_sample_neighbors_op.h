@@ -14,11 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdlib>
+#include <stdlib.h>
 #include <numeric>
 #include <unordered_map>
 #include <vector>
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
@@ -32,9 +31,11 @@ template <class bidiiter>
 void sample_unique(bidiiter begin, bidiiter end, int num_samples) {
   size_t left = std::distance(begin, end);
   unsigned int seed = left;
+  std::mt19937 rng(seed);
+  std::uniform_int_distribution<int> dice_distribution(0, left);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r = begin;
-    int random_step = rand_r(&seed) % left;
+    int random_step = dice_distribution(rng);
     std::advance(r, random_step);
     std::swap(*begin, *r);
     ++begin;
@@ -48,9 +49,11 @@ void sample_unique_with_eids(bidiiter src_begin, bidiiter src_end,
                              int num_samples) {
   size_t left = std::distance(src_begin, src_end);
   unsigned int seed = left;
+  std::mt19937 rng(seed);
+  std::uniform_int_distribution<int> dice_distribution(0, left);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r1 = src_begin, r2 = eid_begin;
-    int random_step = rand_r(&seed) % left;
+    int random_step = dice_distribution(rng);
     std::advance(r1, random_step);
     std::advance(r2, random_step);
     std::swap(*src_begin, *r1);
