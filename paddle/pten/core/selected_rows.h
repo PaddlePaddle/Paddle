@@ -32,7 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
-class SelectedRows {
+class SelectedRows : public TensorBase,
+                     public TypeInfoTraits<TensorBase, SelectedRows> {
   /*
    * @brief We can use the SelectedRows structure to reproduce a sparse table.
    *  A sparse table is a key-value structure that the key is an `int64_t`,
@@ -60,8 +61,6 @@ class SelectedRows {
     value_.reset(new pten::DenseTensor());
     rwlock_.reset(new RWLock);
   }
-
-  const pten::Place& place() const { return value_->place(); }
 
   const pten::DenseTensor& value() const { return *value_; }
 
@@ -148,6 +147,41 @@ class SelectedRows {
     dims[0] = height_;
     return pten::framework::make_ddim(dims);
   }
+
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return "SelectedRows"; }
+
+  /// \brief Returns the number of elements contained in tensor.
+  /// \return The number of elements contained in tensor.
+  int64_t numel() const override { return value_->numel(); };
+
+  /// \brief Returns the dims of the tensor.
+  /// \return The dims of the tensor.
+  const DDim& dims() const noexcept override {
+    return value_->dims();
+    // return paddle::framework::make_ddim(dims);
+  }
+
+  /// \brief Returns the data type of the tensor.
+  /// \return The data type of the tensor.
+  DataType dtype() const noexcept override { return value_->dtype(); }
+
+  /// \brief Returns the data layout of the tensor.
+  /// \return The data layout of the tensor.
+  DataLayout layout() const noexcept override { return value_->layout(); }
+
+  /// \brief Returns the data place of the tensor.
+  /// \return The data place of the tensor.
+  const Place& place() const override { return value_->place(); };
+
+  /// \brief Test whether the metadata is valid.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept override { return value_->valid(); }
+
+  /// \brief Test whether the storage is allocated.
+  /// return Whether the storage is allocated.
+  bool initialized() const override { return value_->initialized(); }
 
  private:
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
