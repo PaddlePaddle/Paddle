@@ -23,6 +23,9 @@ limitations under the License. */
 
 #include <boost/variant.hpp>
 
+namespace egr {
+class EagerTensor;
+}
 namespace paddle {
 namespace framework {
 // The order should be as same as framework.proto
@@ -54,7 +57,6 @@ class VarBase;
 class OpBase;
 class GradOpNode;
 class Tracer;
-class egr::EagerTensor;
 
 using WeakNameVarBaseMap =
     std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;
