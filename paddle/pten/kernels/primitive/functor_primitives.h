@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace pten {
@@ -227,7 +227,7 @@ struct DivFunctor<T,
     // For int32/int64, need to check whether the divison is zero.
     PADDLE_ENFORCE_NE(b,
                       0,
-                      platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
     return a / b;
@@ -244,7 +244,7 @@ struct FloorDivFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     PADDLE_ENFORCE_NE(b,
                       0,
-                      platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
     return static_cast<T>(std::trunc(a / b));
