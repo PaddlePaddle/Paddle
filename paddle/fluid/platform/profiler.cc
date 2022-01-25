@@ -64,6 +64,9 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
+using HostTraceEventRecorder = HostEventRecorder<CommonEvent>;
+using HostTraceEventSection = HostEventSection<CommonEvent>;
+
 RecordEvent::RecordEvent(const char *name, const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
@@ -152,15 +155,15 @@ void RecordEvent::End() {
   uint64_t end_ns = PosixInNsec();
   if (LIKELY(FLAGS_enable_host_event_recorder_hook)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
-                                                   start_ns_, end_ns, role_);
+      HostTraceEventRecorder::GetInstance().RecordEvent(
+          shallow_copy_name_, start_ns_, end_ns, role_);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
-                                                     role_);
+        HostTraceEventRecorder::GetInstance().RecordEvent(*name_, start_ns_,
+                                                          end_ns, role_);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
-                                                     role_, *attr_);
+        HostTraceEventRecorder::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, *attr_);
         delete attr_;
       }
       delete name_;
@@ -182,12 +185,20 @@ void RecordEvent::End() {
 }
 
 RecordInstantEvent::RecordInstantEvent(const char *name, const EventRole role) {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook) {
+    dynload::nvtxRangePushA(name);
+    dynload::nvtxRangePop();
+  }
+#endif
+#endif
   if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
     return;
   }
   auto start_end_ns = PosixInNsec();
-  HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
-                                               role);
+  HostTraceEventRecorder::GetInstance().RecordEvent(name, start_end_ns,
+                                                    start_end_ns, role);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -281,8 +292,8 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
-    HostEventRecorder::GetInstance().RecordEvent(name, 0, 0,
-                                                 EventRole::kOrdinary);
+    HostTraceEventRecorder::GetInstance().RecordEvent(name, 0, 0,
+                                                      EventRole::kOrdinary);
     return;
   }
   GetEventList().Record(EventType::kMark, name, g_thread_id);
@@ -337,14 +348,14 @@ void ResetProfiler() {
   }
 }
 
-static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart();
-static void DockHostEventRecorderDevicePart(
+static std::map<uint64_t, ThreadEvents> DockHostTraceEventRecorderHostPart();
+static void DockHostTraceEventRecorderDevicePart(
     const std::map<uint64_t, ThreadEvents> &thr_events);
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {
   SynchronizeAllDevice();
-  auto thr_events = DockHostEventRecorderHostPart();
+  auto thr_events = DockHostTraceEventRecorderHostPart();
   MemEvenRecorder::Instance().Flush();
 
   std::lock_guard<std::mutex> l(profiler_mu);
@@ -356,7 +367,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
     tracer->Disable();
-    DockHostEventRecorderDevicePart(thr_events);
+    DockHostTraceEventRecorderDevicePart(thr_events);
     tracer->GenEventKernelCudaElapsedTime();
     tracer->GenProfile(profile_path);
   }
@@ -379,7 +390,7 @@ void CompleteProfilerEvents(proto::Profile *tracer_profile,
                             std::vector<std::vector<Event>> *time_events,
                             std::vector<std::vector<MemEvent>> *mem_events) {
   SynchronizeAllDevice();
-  auto thr_events = DockHostEventRecorderHostPart();
+  auto thr_events = DockHostTraceEventRecorderHostPart();
   MemEvenRecorder::Instance().Flush();
 
   std::lock_guard<std::mutex> l(profiler_mu);
@@ -391,7 +402,7 @@ void CompleteProfilerEvents(proto::Profile *tracer_profile,
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled() && tracer_profile != nullptr) {
     tracer->Disable();
-    DockHostEventRecorderDevicePart(thr_events);
+    DockHostTraceEventRecorderDevicePart(thr_events);
     tracer->GenEventKernelCudaElapsedTime();
     *tracer_profile = tracer->GetProfile();
   }
@@ -466,11 +477,13 @@ void NvprofEnableRecordEvent() {
 
 void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
-void EnableHostEventRecorder() { FLAGS_enable_host_event_recorder_hook = true; }
+void EnableHostTraceEventRecorder() {
+  FLAGS_enable_host_event_recorder_hook = true;
+}
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec = HostTraceEventRecorder::GetInstance().GatherEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -482,7 +495,7 @@ std::string PrintHostEvents() {
   return oss.str();
 }
 
-static void EmulateEventPushAndPop(const HostEventSection &host_sec,
+static void EmulateEventPushAndPop(const HostTraceEventSection &host_sec,
                                    std::map<uint64_t, ThreadEvents> *out) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
@@ -530,7 +543,7 @@ static void EmulateEventPushAndPop(const HostEventSection &host_sec,
   }
 }
 
-static void EmulateCPURecordsAdd(const HostEventSection &host_sec) {
+static void EmulateCPURecordsAdd(const HostTraceEventSection &host_sec) {
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer == nullptr) {
     return;
@@ -553,18 +566,18 @@ static void EmulateCorrelation(
   tracer->AddAnnotations(thr_events);
 }
 
-static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
+static std::map<uint64_t, ThreadEvents> DockHostTraceEventRecorderHostPart() {
   std::map<uint64_t, ThreadEvents> thr_events;
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec = HostTraceEventRecorder::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return std::move(thr_events);
 }
 
-static void DockHostEventRecorderDevicePart(
+static void DockHostTraceEventRecorderDevicePart(
     const std::map<uint64_t, ThreadEvents> &thr_events) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
