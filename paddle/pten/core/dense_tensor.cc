@@ -126,6 +126,19 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
+void DenseTensor::set_meta(const DenseTensorMeta& meta) {
+  PADDLE_ENFORCE(
+      meta.valid(),
+      paddle::platform::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims = meta.dims;
+  meta_.dtype = meta.dtype;
+  meta_.is_scalar = meta.is_scalar;
+  meta_.layout = meta.layout;
+  meta_.lod = meta.lod;
+  meta_.offset = meta.offset;
+}
+
 /* @jim19930609: This interface will be further modified util we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
@@ -231,9 +244,14 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
           "Only the offset is supported to zero when the holder is reset."));
 
   if (holder_) {
+    // TODO(zyfncg): The change of static_cast<> in check will recover back
+    // when SetAllocationForOutputTenosr is deleted.
+    // Now the numel() may return -1, and will cast to a very large number when
+    // compare with a data with unsigned long type, this will make checking
+    // failed, so it's a temporary solution to deal with this problem.
     PADDLE_ENFORCE_LE(
-        numel() * SizeOf(dtype()) + meta_.offset,
-        holder->size(),
+        numel() * static_cast<int64_t>(SizeOf(dtype())),
+        static_cast<int64_t>(holder->size()),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
   }

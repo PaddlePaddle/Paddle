@@ -244,10 +244,10 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     } else {
       return MakePtenDenseTensor(tensor);
     }
-  } else if (variable.IsType<framework::SelectedRows>()) {
+  } else if (variable.IsType<pten::SelectedRows>()) {
     // TODO(chenweihang): now we don't deal with row and height
     // by xiaowei's advice
-    const auto& tensor = variable.Get<framework::SelectedRows>();
+    const auto& tensor = variable.Get<pten::SelectedRows>();
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
       framework::Tensor tmp_tensor;
       paddle::framework::TensorCopySync(
@@ -272,8 +272,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
     return MakePtenDenseTensor(*tensor, arg_def);
-  } else if (variable->template IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->template GetMutable<framework::SelectedRows>();
+  } else if (variable->template IsType<pten::SelectedRows>()) {
+    auto* tensor = variable->template GetMutable<pten::SelectedRows>();
     // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
     // here the row and height will lost in output!
     return MakePtenDenseTensor(tensor->value(), arg_def);
@@ -372,8 +372,8 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
       tensor->set_type(dtype);
     }
 
-  } else if (variable->IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->GetMutable<framework::SelectedRows>();
+  } else if (variable->IsType<pten::SelectedRows>()) {
+    auto* tensor = variable->GetMutable<pten::SelectedRows>();
     auto dtype = pten::TransToProtoVarType(src->dtype());
 
     if (!tensor->value().IsInitialized()) {

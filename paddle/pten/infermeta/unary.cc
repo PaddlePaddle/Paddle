@@ -232,6 +232,16 @@ DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
   return InferMetaFromVecValue(x_meta, shape.GetData());
 }
 
+/*  Why not use ReduceInferMeta directly?
+    Because we need make InferMetaFunction's args follow the design of api.yaml
+*/
+DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
+                             const std::vector<int64_t>& axis,
+                             DataType dtype,
+                             bool keep_dim) {
+  return ReduceInferMeta(x_meta, axis, keep_dim, dtype);
+}
+
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
                                 bool keep_dim,

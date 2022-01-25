@@ -32,7 +32,6 @@
 #include "paddle/fluid/distributed/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/threadpool.h"
@@ -43,6 +42,7 @@
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/pten/backends/dynload/port.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace distributed {

@@ -60,6 +60,11 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 bool keep_dim,
                                 DataType dtype = DataType::UNDEFINED);
 
+DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
+                             const std::vector<int64_t>& axis,
+                             DataType dtype,
+                             bool keep_dim);
+
 std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
                                             const ScalarArray& num_or_sections,
                                             const Scalar& axis,
