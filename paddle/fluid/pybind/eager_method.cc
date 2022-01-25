@@ -121,6 +121,30 @@ static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_tensor_method_reconstruct_from_(EagerTensorObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor src_tensor =
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  std::string orig_name = self->eager_tensor.name();
+  VLOG(6) << "Start Reconstructing Tensor from" << src_tensor.name() << " to "
+          << orig_name;
+  self->eager_tensor.copy_(src_tensor, blocking);
+  // Steal Tensor from src tensor
+  self->eager_tensor.set_tensor(src_tensor.Tensor());
+
+  // Recover source name
+  self->eager_tensor.set_name(orig_name);
+
+  VLOG(6) << "Finished Reconstructing Tensor from" << src_tensor.name()
+          << " to " << self->eager_tensor.name();
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
@@ -386,6 +410,9 @@ PyMethodDef variable_methods[] = {
     {"_copy_to", (PyCFunction)(void (*)(void))eager_tensor_method__copy_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"copy_", (PyCFunction)(void (*)(void))eager_tensor_method_copy_,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"reconstruct_from_",
+     (PyCFunction)(void (*)(void))eager_tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grads", (PyCFunction)(void (*)(void))eager_tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},

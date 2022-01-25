@@ -102,8 +102,8 @@ using scale_kernel = void (*)(const DeviceContext&,
 using sum_kernel = void (*)(const DeviceContext&,
                             const DenseTensor&,
                             const std::vector<int64_t>&,
-                            bool,
                             DataType,
+                            bool,
                             DenseTensor*);
 
 using subtract_kernel = void (*)(const DeviceContext&,
@@ -114,5 +114,15 @@ using subtract_kernel = void (*)(const DeviceContext&,
 using conj_kernel = void (*)(const DeviceContext&,
                              const DenseTensor&,
                              DenseTensor*);
+
+/* -------------- Grad Kernel ----------------- */
+using matmul_grad_kernel = void (*)(const DeviceContext&,
+                                    const DenseTensor&,
+                                    const DenseTensor&,
+                                    const DenseTensor&,
+                                    bool,
+                                    bool,
+                                    DenseTensor*,
+                                    DenseTensor*);
 
 }  // namespace pten
