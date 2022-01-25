@@ -43,8 +43,8 @@ class PsPassTestBase(unittest.TestCase):
         ] + [
             "-m", "launch", "--log_dir", config['log_dir'], "--worker_num",
             config['worker_num'], "--server_num", config['server_num'],
-            "../ps/ps_dnn_trainer.py", "-m", "benchmark.yaml", "--run_minimize",
-            config['run_minimize'], "--run_single_pass",
+            "../ps/ps_dnn_trainer.py", "-m", config['ps_mode_config'],
+            "--run_minimize", config['run_minimize'], "--run_single_pass",
             config['run_single_pass'], "--debug_new_pass",
             config['debug_new_pass'], "--debug_new_minimize",
             config['debug_new_minimize'], "--applied_pass_name",

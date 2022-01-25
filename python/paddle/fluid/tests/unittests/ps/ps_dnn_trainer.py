@@ -16,10 +16,10 @@ from __future__ import print_function
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.ps.utils.ps_program_builder import *
 import paddle.distributed.fleet as fleet
-from ..ps_dnn_model import StaticModel
 import argparse
 import time
 import sys
+import yaml, six, copy
 import paddle
 import os
 import warnings
@@ -27,6 +27,8 @@ import logging
 import ast
 import numpy as np
 import struct
+sys.path.append("..")
+from ps_dnn_model import StaticModel
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))
@@ -277,13 +279,18 @@ class DnnTrainer(object):
         self.model = None
         self.pure_bf16 = self.config['pure_bf16']
 
-    def init_fleet_with_gloo(self, use_gloo=True):
+    def init_fleet_with_gloo(self, use_gloo=False):
         if use_gloo:
             os.environ["PADDLE_WITH_GLOO"] = "1"
             role = role_maker.PaddleCloudRoleMaker()
             fleet.init(role)
         else:
             fleet.init()
+
+        if fleet.is_server():
+            logger.info("server: {} started".format(fleet.server_index()))
+        else:
+            logger.info("worker: {} started".format(fleet.worker_index()))
 
     def run_minimize(self):
         self.init_fleet_with_gloo()
@@ -299,8 +306,8 @@ class DnnTrainer(object):
         if self.config['debug_new_minimize'] == 1:
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(self.model._cost, None, optimizer,
-                                         strategy)
+            ps_optimizer._set_basic_info(self.model._cost, None,
+                                         inner_optimizer, strategy)
             ps_optimizer.minimize_impl(self.model._cost)
         else:
             import paddle.distributed.fleet as fleet
@@ -310,12 +317,14 @@ class DnnTrainer(object):
         if fleet.is_server():
             _main_file = "run_minimize" + "_debug_new_minimize: " + str(
                 self.config['debug_new_minimize']) + "_server_main.prototxt"
+            debug_program(_main_file, self.model._cost.block.program, 0)
         elif fleet.is_worker():
             _main_file = "run_minimize" + "_debug_new_minimize: " + str(
                 self.config['debug_new_minimize']) + "_worker_main.prototxt"
-        debug_program(_main_file, self.model._cost.block.program)
+            debug_program(_main_file, self.model._cost.block.program, 1)
 
     def run_single_pass(self):
+        self.init_fleet_with_gloo()
         self.model = get_model(config)
         input_data = self.model.create_feeds()
         metrics = self.model.net(input_data)
@@ -357,10 +366,6 @@ class DnnTrainer(object):
 
 
 if __name__ == "__main__":
-    if fleet.is_server():
-        logger.info("server: {} started".format(fleet.server_index()))
-    else:
-        logger.info("worker: {} started".format(fleet.worker_index()))
     paddle.enable_static()
     config = parse_args()
     os.environ["CPU_NUM"] = str(config.get("runner.thread_num"))

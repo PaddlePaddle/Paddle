@@ -27,6 +27,7 @@ from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 class TestPsTrainerPass(PsPassTestBase):
     def init(self):
         self.config = {}
+        self.config['ps_mode_config'] = "../ps/cpu_async.yaml"
         self.config['worker_num'] = "1"
         self.config['server_num'] = "1"
         self.config['run_minimize'] = "0"
@@ -45,6 +46,7 @@ class TestPsTrainerPass(PsPassTestBase):
     def check(self):
         pass
 
+    '''
     def test_ps_optimizer_minimize(self):
         self.init()
         self.config['run_minimize'] = '1'
@@ -60,18 +62,23 @@ class TestPsTrainerPass(PsPassTestBase):
         self.ps_launch(self.config)
 
         self.check()
+    '''
 
     def test_append_send_ops_pass(self):
         self.init()
         self.config['run_single_pass'] = '1'
+        self.config['applied_pass_name'] = "append_send_ops_pass"
 
         self.config['debug_new_pass'] = '0'
-        self.config['log_dir'] = "../ps/log_old"
+        self.config['log_dir'] = "../ps/log_old" + self.config[
+            'applied_pass_name']
+        remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.config['debug_new_pass'] = '1'
-        self.config['applied_pass_name'] = "append_send_ops_pass"
-        self.config['log_dir'] = "../ps/log_new"
+        self.config['log_dir'] = "../ps/log_new" + self.config[
+            'applied_pass_name']
+        remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.check()

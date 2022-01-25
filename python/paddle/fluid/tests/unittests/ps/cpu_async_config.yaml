@@ -26,8 +26,9 @@ hyper_parameters:
 runner:
   geo_step: 400
   sync_mode: "async"  # sync / async / geo / heter
+  thread_num: 16
   use_gpu: 0
   
-  model_path: "ps_dnn_model.py"
+  model_path: "../ps_dnn_model.py"
 
   
