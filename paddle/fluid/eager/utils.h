@@ -170,6 +170,16 @@ class EagerUtils {
 
   static void CheckAndRetainGrad(const egr::EagerTensor& tensor);
   static void CheckAndRetainGrad(const std::vector<egr::EagerTensor>& tensors);
+
+  static paddle::experimental::Tensor SyncToPtenTensors(
+      const egr::EagerTensor& tensor);
+  static std::vector<paddle::experimental::Tensor> SyncToPtenTensors(
+      const std::vector<egr::EagerTensor>& tensors);
+
+  static egr::EagerTensor CreateEagerTensorFromTensor(
+      const paddle::experimental::Tensor& tensor);
+  static std::vector<egr::EagerTensor> CreateEagerTensorFromTensor(
+      const std::vector<paddle::experimental::Tensor>& tensors);
 };
 
 }  // namespace egr

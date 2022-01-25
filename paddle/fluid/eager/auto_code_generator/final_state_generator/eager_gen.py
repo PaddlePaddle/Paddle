@@ -15,6 +15,7 @@
 import yaml
 import re
 import argparse
+import os
 
 
 def ParseArguments():
@@ -93,8 +94,8 @@ def ReadBwdFile(filepath):
     contents = yaml.load(f)
     ret = {}
     for content in contents:
-        assert 'grad_api' in content.keys()
-        api_name = content['grad_api']
+        assert 'backward_api' in content.keys()
+        api_name = content['backward_api']
         ret[api_name] = content
     return ret
 
@@ -435,10 +436,10 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
             aname, GetConstReference(atype), aname, saved_attr_name, aname)
 
         ATTRIBUTE_MEMBER_TEMPLATE = """
-   {} {};
+   {} {} = {};
 """
         attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-            GetConstReference(atype), saved_attr_name)
+            GetConstReference(atype), saved_attr_name, default_val)
     # End: SetAttributes & Attribute Members
 
     NODE_DECLARATION_TEMPLATE = """
@@ -491,15 +492,15 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
         tensor_wrapper_name = GetSavedName(name)
         if is_fwd_input:
             grad_api_args[
-                grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, true)"
+                grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, true) )"
         else:
             grad_api_args[
-                grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, false)"
+                grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, false) )"
 
     for _, (_, fwd_position,
             grad_api_position) in backward_grad_input_map.items():
         grad_api_args[
-            grad_api_position] = f"*grads[{fwd_position}].Tensor().get()"
+            grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( *grads[{fwd_position}] )"
 
     for name, _, _, grad_api_position in backward_attrs_list:
         saved_attribute_name = GetSavedName(name)
@@ -615,7 +616,7 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     # SetAttributes
     set_attributes_list = []
     for name, _, _, _ in backward_attrs_list:
-        set_attributes = "        grad_node->SetAttribute{name}({name});"
+        set_attributes = f"        grad_node->SetAttribute{name}({name});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
 
@@ -727,7 +728,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_args_list = ["" for i in range(num_inputs)]
     inputs_call_list = ["" for i in range(num_inputs)]
     for name, (ttype, pos) in forward_inputs_position_map.items():
-        inputs_call_list[pos] = f"*{name}.Tensor().get()"
+        inputs_call_list[pos] = f"egr::EagerUtils::SyncToPtenTensors({name})"
         if IsPlainTensorType(ttype):
             inputs_args_list[pos] = f"const egr::EagerTensor& {name}"
         else:
@@ -905,10 +906,17 @@ if __name__ == "__main__":
         # Collect Forward Inputs/Outputs
         forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForwardFromBackward(
             bwd_forward_str)
+        print("Parsed Forward Inputs List: ", forward_inputs_list)
+        print("Prased Forward Attrs List: ", forward_attrs_list)
+        print("Parsed Forward Returns List: ", forward_returns_list)
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list = ParseYamlForward(
             fwd_args_str, fwd_returns_str)
+        print("Parsed Original Forward Inputs List: ", orig_forward_inputs_list)
+        print("Prased Original Forward Attrs List: ", orig_forward_attrs_list)
+        print("Parsed Original Forward Returns List: ",
+              orig_forward_returns_list)
 
         # Forward Validation Checks
         ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
@@ -919,15 +927,25 @@ if __name__ == "__main__":
         # Parse Backward Inputs/Outputs
         backward_inputs_list, backward_attrs_list, backward_returns_list = ParseYamlBackward(
             bwd_args_str, bwd_returns_str)
+        print("Parsed Backward Inputs List: ", backward_inputs_list)
+        print("Prased Backward Attrs List: ", backward_attrs_list)
+        print("Parsed Backward Returns List: ", backward_returns_list)
 
         # Determine Forward Inputs/Outputs Position
         forward_inputs_position_map, forward_outputs_position_map = DetermineForwardPositionMap(
             forward_inputs_list, forward_returns_list)
+        print("Generated Forward Input Position Map: ",
+              forward_inputs_position_map)
+        print("Generated Forward Output Position Map: ",
+              forward_outputs_position_map)
 
         # SlotName Matching
         backward_fwd_input_map, backward_grad_input_map, backward_grad_output_map = SlotNameMatching(
             backward_inputs_list, backward_returns_list,
             forward_inputs_position_map, forward_outputs_position_map)
+        print("Generated Backward Fwd Input Map: ", backward_fwd_input_map)
+        print("Generated Backward Grad Input Map: ", backward_grad_input_map)
+        print("Generated Backward Grad Output Map: ", backward_grad_output_map)
 
         # Backward Validation Check
         BackwardValidationCheck(backward_fwd_input_map, backward_grad_input_map,
@@ -936,11 +954,13 @@ if __name__ == "__main__":
         # Node Declaration Generation
         node_declaration_str += GenerateNodeDeclaration(
             fwd_api_name, backward_fwd_input_map, backward_attrs_list)
+        print("Generated Node Declaration: ", node_declaration_str)
 
         node_definition_str += GenerateNodeDefinition(
             fwd_api_name, bwd_api_name, backward_fwd_input_map,
             backward_grad_input_map, backward_grad_output_map,
             backward_attrs_list)
+        print("Generated Node Definition: ", node_definition_str)
 
         # Node Definition Generation
         definition_declaration_pair = GenerateForwardDefinition(
@@ -948,6 +968,8 @@ if __name__ == "__main__":
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
             backward_grad_output_map, backward_attrs_list)
+        print("Generated Forward Definition: ", forward_definition_str)
+        print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]
         forward_declaration_str += definition_declaration_pair[1]
 
@@ -956,6 +978,12 @@ if __name__ == "__main__":
     nodes_cc_path = args.nodes_cc_path
     forwards_h_path = args.forwards_h_path
     forwards_cc_path = args.forwards_cc_path
+
+    for path in [
+            nodes_cc_path, nodes_h_path, forwards_h_path, forwards_cc_path
+    ]:
+        if os.path.exists(path):
+            os.remove(path)
 
     GenerateNodeCCFile(nodes_cc_path, node_definition_str)
     GenerateNodeHFile(nodes_h_path, node_declaration_str)
