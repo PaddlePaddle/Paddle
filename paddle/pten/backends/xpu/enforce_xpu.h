@@ -189,6 +189,16 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
     }                                                                      \
   } while (0)
 
+#define PADDLE_ENFORCE_XDNN_NOT_NULL(ptr)                    \
+  do {                                                       \
+    if (UNLIKELY(ptr == nullptr)) {                          \
+      auto __summary__ = paddle::platform::errors::External( \
+          ::pten::backends::xpu::build_xpu_xdnn_error_msg(   \
+              __cond__, "XPU memory is not enough"));        \
+      __THROW_ERROR_INTERNAL__(__summary__);                 \
+    }                                                        \
+  } while (0)
+
 }  // namespace xpu
 }  // namespace backends
 }  // namespace pten

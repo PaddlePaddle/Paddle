@@ -57,7 +57,8 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     T* clip_logits_data =
         clip_logits.mutable_data<T>(context.GetPlace(), len * sizeof(T));
 
-    if (dev_ctx.xpu_version() == paddle::platform::XPUVersion::XPU2 &&
+    if (platform::get_xpu_version(context.GetPlace().GetDeviceId()) ==
+            pten::backends::xpu::XPUVersion::XPU2 &&
         soft_label) {
       r = xpu::soft_softmax_with_cross_entropy(
           dev_ctx.x_context(), clip_logits_data, labels->data<T>(),
