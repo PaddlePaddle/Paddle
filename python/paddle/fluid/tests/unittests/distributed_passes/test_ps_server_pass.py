@@ -23,8 +23,8 @@ import paddle.fluid as fluid
 
 
 class TestPsServerPass(PsPassTestBase):
-    def init(self, pass_name):
-        self.pass_name = pass_name
+    def init(self):
+        pass
 
     def setUp(self):
         print('setUp...')
@@ -33,7 +33,7 @@ class TestPsServerPass(PsPassTestBase):
         print('tearDown...')
 
     def test_add_lr_decay_table_passs(self):
-        self.init("add_lr_decay_table_passs")
+        pass
 
 
 if __name__ == '__main__':

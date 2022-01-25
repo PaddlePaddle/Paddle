@@ -37,7 +37,6 @@ class PsPassTestBase(unittest.TestCase):
         print('Ps tearDown...')
 
     def ps_launch(self):
-        self.init()
         cmd = [
             sys.executable,
             "-u",
