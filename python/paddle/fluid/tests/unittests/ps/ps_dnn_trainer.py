@@ -16,7 +16,7 @@ from __future__ import print_function
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.ps.utils.ps_program_builder import *
 import paddle.distributed.fleet as fleet
-from .ps_dnn_model import StaticModel
+from ps_dnn_model import StaticModel
 import argparse
 import time
 import sys

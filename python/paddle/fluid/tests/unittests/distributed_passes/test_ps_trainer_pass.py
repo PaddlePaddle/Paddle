@@ -50,11 +50,13 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['run_minimize'] = '1'
 
         self.config['debug_new_minimize'] = '0'
-        self.config['log_dir'] = "../ps/log_old"
+        self.config['log_dir'] = "/log_old"
+        remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.config['debug_new_minimize'] = '1'
-        self.config['log_dir'] = "../ps/log_new"
+        self.config['log_dir'] = "/log_new"
+        remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.check()
