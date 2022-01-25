@@ -189,7 +189,8 @@ struct ThreadEventSection {
 
 class ThreadEventRecorder {
  public:
-  ThreadEventRecorder();
+  ThreadEventRecorder() { thread_id_ = GetCurrentThreadSysId(); }
+
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 
  public:
@@ -239,7 +240,19 @@ class HostEventRecorder {
 
   // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
-  HostEventSection GatherEvents();
+  HostEventSection GatherEvents() {
+    auto thr_recorders =
+        ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
+    HostEventSection host_sec;
+    host_sec.process_id = GetProcessId();
+    host_sec.thr_sections.reserve(thr_recorders.size());
+    for (auto &kv : thr_recorders) {
+      auto &thr_recorder = kv.second.get();
+      host_sec.thr_sections.emplace_back(
+          std::move(thr_recorder.GatherEvents()));
+    }
+    return host_sec;
+  }
 
  private:
   using ThreadEventRecorderRegistry =
@@ -253,23 +266,6 @@ class HostEventRecorder {
         .GetMutableCurrentThreadData();
   }
 };
-
-ThreadEventRecorder::ThreadEventRecorder() {
-  thread_id_ = GetCurrentThreadSysId();
-}
-
-HostEventSection HostEventRecorder::GatherEvents() {
-  auto thr_recorders =
-      ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
-  HostEventSection host_sec;
-  host_sec.process_id = GetProcessId();
-  host_sec.thr_sections.reserve(thr_recorders.size());
-  for (auto &kv : thr_recorders) {
-    auto &thr_recorder = kv.second.get();
-    host_sec.thr_sections.emplace_back(std::move(thr_recorder.GatherEvents()));
-  }
-  return host_sec;
-}
 
 }  // namespace platform
 }  // namespace paddle
