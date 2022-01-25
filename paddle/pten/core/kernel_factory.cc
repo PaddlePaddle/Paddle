@@ -15,7 +15,7 @@
 #include "paddle/pten/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -64,8 +64,8 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),
-                    paddle::platform::errors::NotFound(
-                        "The kernel `%s` is not registered.", kernel_name));
+                    pten::errors::NotFound("The kernel `%s` is not registered.",
+                                           kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
@@ -78,7 +78,7 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
-      paddle::platform::errors::NotFound(
+      pten::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered.",
           kernel_key,
           kernel_name));

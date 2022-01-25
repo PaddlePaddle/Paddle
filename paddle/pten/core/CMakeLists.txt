@@ -9,12 +9,16 @@ else()
   cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
 
-cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce convert_utils)
-cc_library(kernel_context SRCS kernel_context.cc DEPS enforce pten_context)
+cc_library(errors SRCS errors.cc)
+set(pten_enforce_deps errors flags)
+cc_library(pten_enforce INTERFACE SRCS enforce.cc DEPS ${pten_enforce_deps})
 
-cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)
-cc_library(tensor_meta SRCS tensor_meta.cc DEPS enforce mixed_vector)
-cc_library(lod_utils SRCS lod_utils.cc DEPS enforce mixed_vector)
+cc_library(kernel_factory SRCS kernel_factory.cc DEPS pten_enforce convert_utils)
+cc_library(kernel_context SRCS kernel_context.cc DEPS pten_enforce pten_context)
+
+cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS pten_enforce)
+cc_library(tensor_meta SRCS tensor_meta.cc DEPS pten_enforce mixed_vector)
+cc_library(lod_utils SRCS lod_utils.cc DEPS pten_enforce mixed_vector)
 cc_library(dense_tensor SRCS dense_tensor.cc DEPS convert_utils tensor_meta tensor_base)
 cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 
@@ -24,12 +28,6 @@ cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector en
 
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
-cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-if(WITH_GPU)
-  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-elseif(WITH_ROCM)
-  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
-endif()
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
