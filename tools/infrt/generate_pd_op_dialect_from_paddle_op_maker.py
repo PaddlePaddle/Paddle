@@ -22,6 +22,7 @@ def get_original_ops():
     all_ops, _, _ = core.op_supported_infos('CPU', core.VarDesc.VarType.FP16)
     grad_ops = []
     original_ops = []
+    necessary_ops = ["scale"]
 
     for op in all_ops:
         if op.endswith("_grad"):
@@ -30,6 +31,8 @@ def get_original_ops():
             grad_ops.append(op)
     for op in all_ops:
         if str(op + "_grad") in grad_ops:
+            original_ops.append(op)
+        elif op in necessary_ops:
             original_ops.append(op)
 
     print("Grad ops num: " + str(len(grad_ops)))
@@ -132,7 +135,8 @@ def convert_op_proto_into_mlir(op_descs):
     ]
     skipped_attr_list = [
         "trainable_statistics", "use_global_stats", "is_test", "use_mkldnn",
-        "use_cudnn"
+        "use_cudnn", "op_device", "op_namescope", "op_role", "mkldnn_data_type",
+        "with_quant_attr", "use_quantizer"
     ]
     original_ops_ = get_original_ops()
     automatically_generated_op_dialect = []
@@ -259,6 +263,19 @@ def convert_op_proto_into_mlir(op_descs):
 
         end_ = "\n#endif  // PD_OPS"
         ops_mlir_file.write(end_)
+
+    # 4. generate OpBuildTable.inc
+    op_builder_table_file = "../../tools/infrt/OpBuildTable.inc"
+    handler_iters_str_ = []
+    for op_type, op_proto in op_descs.items():
+        if (op_type in skipped_op_list) or (op_type not in original_ops_):
+            continue
+        handler_iter = "import_handler_map_[\"" + op_type + "\"]=&OpGenImpl::buildOperation<mlir::pd::" + op_type.capitalize(
+        ) + "Op>;\n"
+        handler_iters_str_.append(handler_iter)
+
+    with open(op_builder_table_file, 'w') as op_builer_file:
+        op_builer_file.writelines(handler_iters_str_)
 
 
 if __name__ == "__main__":
