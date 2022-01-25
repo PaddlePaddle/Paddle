@@ -260,7 +260,8 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
       paddle::framework::DataTypeToString(data_type), place));
 }
 
-void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
+void VariableAdd(const egr::EagerTensor& src_tensor,
+                 egr::EagerTensor* dst_tensor) {
   auto& src = src_tensor.Var();
   auto* dst = dst_tensor->MutableVar();
 
