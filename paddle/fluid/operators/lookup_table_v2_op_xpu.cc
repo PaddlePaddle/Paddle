@@ -97,12 +97,10 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
         platform::errors::OutOfRange(
             "Number of ids greater than int32_t::max , please check "
             "number of ids in LookupTableV2GradXPUKernel."));
-
     std::vector<int64_t> ids;
     ids.resize(ids_numel);
 
     bool is_sparse = context.Attr<bool>("is_sparse");
-
     if (is_sparse) {
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
