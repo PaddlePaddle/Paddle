@@ -373,11 +373,11 @@ if load_noavx:
 
 def set_paddle_custom_device_lib_path(lib_path):
     custom_device_root = os.environ.get('CUSTOM_DEVICE_ROOT', None)
-    if custom_device_root != None:
+    if custom_device_root is not None:
         # use setted environment value
         if not os.path.exists(custom_device_root):
-            raise Exception("Error: Invalid CUSTOM_DEVICE_ROOT: " +
-                            custom_device_root + ", path "
+            raise Exception("Error: Invalid CUSTOM_DEVICE_ROOT:[" +
+                            custom_device_root + "], path "
                             "not exist. Please check.\n")
     elif os.path.exists(lib_path):
         # set CUSTOM_DEVICE_ROOT default path

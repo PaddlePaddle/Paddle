@@ -12,6 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include "paddle/fluid/framework/custom_kernel.h"
 #include <dirent.h>
 #include <algorithm>
@@ -336,6 +341,7 @@ void RegisterKernelWithMetaInfoMap(
 }
 
 void LoadCustomKernelLib(const std::string& dso_lib_path) {
+#ifdef _LINUX
   void* dso_handle = nullptr;
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
   dso_handle = dlopen(dso_lib_path.c_str(), dynload_flags);
@@ -358,6 +364,10 @@ void LoadCustomKernelLib(const std::string& dso_lib_path) {
   auto& op_kernel_info_map = func();
   RegisterKernelWithMetaInfoMap(op_kernel_info_map);
   LOG(INFO) << "Successed in loading custom kernels in lib: " << dso_lib_path;
+#else
+  VLOG(3) << "Unsupported: Custom kernel is only implemented on Linux.";
+#endif
+  return;
 }
 
 // List all libs with given path

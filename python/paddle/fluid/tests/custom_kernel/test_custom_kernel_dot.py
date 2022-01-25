@@ -26,7 +26,7 @@ class TestCustomKernelDot1(unittest.TestCase):
     def test_dot_run_form_error_dir(self):
         INVALID_PATH = '/1/2/invalid_path'
         os.environ['CUSTOM_DEVICE_ROOT'] = INVALID_PATH
-        err_msg = 'Error: Invalid CUSTOM_DEVICE_ROOT: ' + INVALID_PATH + ', path not exist. Please check.'
+        err_msg = 'Error: Invalid CUSTOM_DEVICE_ROOT:[' + INVALID_PATH + '], path not exist. Please check.'
         try:
             import paddle
         except Exception as e:
@@ -94,6 +94,8 @@ class TestCustomKernelDot3(unittest.TestCase):
             np.array_equal(out.numpy(), result),
             "custom kernel dot out: {},\n numpy dot out: {}".format(out.numpy(),
                                                                     result))
+        cmd = 'rm -rf {}'.format(default_path)
+        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
 
 
 if __name__ == '__main__':

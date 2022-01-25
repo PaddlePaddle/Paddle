@@ -12,6 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include "paddle/fluid/framework/custom_kernel.h"
 
 #include <glog/logging.h>
@@ -26,6 +31,7 @@ limitations under the License. */
 #include "paddle/pten/infermeta/binary.h"
 #include "paddle/utils/small_vector.h"
 
+#ifdef _LINUX
 // user kernel function
 namespace custom_kernel {
 
@@ -274,3 +280,4 @@ TEST(OpKernelInfoHelper, op_kernel_info_help_getters) {
   EXPECT_EQ(2, static_cast<int>(output_defs.size()));
   EXPECT_EQ(11, static_cast<int>(attribute_defs.size()));
 }
+#endif
