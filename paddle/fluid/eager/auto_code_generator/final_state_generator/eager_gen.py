@@ -72,6 +72,16 @@ def GetConstReference(string):
     return ret
 
 
+def RemoveConstAndReference(string):
+    ret = string
+    if string.startswith("const "):
+        ret = ret[6:]
+    if string.endswith("&"):
+        ret = ret[:-1]
+
+    return ret
+
+
 def GetAutoGradMetaName(string):
     return f"{string}_autograd_meta"
 
@@ -439,7 +449,7 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
    {} {} = {};
 """
         attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-            GetConstReference(atype), saved_attr_name, default_val)
+            RemoveConstAndReference(atype), saved_attr_name, default_val)
     # End: SetAttributes & Attribute Members
 
     NODE_DECLARATION_TEMPLATE = """
@@ -490,17 +500,18 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     for name, (_, is_fwd_input,
                grad_api_position), in backward_fwd_input_map.items():
         tensor_wrapper_name = GetSavedName(name)
-        if is_fwd_input:
-            grad_api_args[
-                grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, true) )"
-        else:
-            grad_api_args[
-                grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, false) )"
-
-    for _, (_, fwd_position,
-            grad_api_position) in backward_grad_input_map.items():
         grad_api_args[
-            grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( *grads[{fwd_position}] )"
+            grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr) )"
+
+    for _, (ttype, fwd_position,
+            grad_api_position) in backward_grad_input_map.items():
+        if IsPlainTensorType(ttype):
+            grad_api_args[
+                grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( grads[{fwd_position}][0] )"
+        else:
+            assert IsVectorTensorType(ttype)
+            grad_api_args[
+                grad_api_position] = f"egr::EagerUtils::SyncToPtenTensors( grads[{fwd_position}] )"
 
     for name, _, _, grad_api_position in backward_attrs_list:
         saved_attribute_name = GetSavedName(name)
@@ -508,35 +519,28 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     grad_api_args_str = ", ".join(grad_api_args)
 
     # Construct grad_api returns
-    num_outputs = len(backward_grad_output_map.keys())
-    returns_list = ["" for i in range(num_outputs)]
+    num_bwd_outputs = len(backward_grad_output_map.keys())
+    returns_str = f"std::vector<std::vector<egr::EagerTensor>> returns({num_bwd_outputs});\n"
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_output_map.items():
         # Infer Grad API Return Type
-        if num_outputs == 1:
+        if num_bwd_outputs == 1:
             # Single tensor output, return as is
             if IsPlainTensorType(ttype):
-                returns_list[0] = "{grad_api_returns}"
+                returns_str += "returns[0] = { egr::EagerUtils::CreateEagerTensorFromTensor(grad_api_returns) };\n"
             else:
                 assert IsVectorTensorType(ttype)
-                returns_list[0] = "grad_api_returns"
+                returns_str += "returns[0] = egr::EagerUtils::CreateEagerTensorFromTensor(grad_api_returns);\n"
         else:
             # Rearrange output order accordingly
-            if IsPlainTensorType(ttype):
-                returns_list[
-                    fwd_position] = f"{{ grad_api_returns[{grad_api_position}] }}"
-            else:
-                assert IsVectorTensorType(ttype)
-                returns_list[
-                    fwd_position] = f"grad_api_returns[{grad_api_position}]"
-    returns_str = ", ".join(returns_list)
-    returns_str = f"{{ {returns_str} }}"
+            returns_str += f"returns[{fwd_position}] = egr::EagerUtils::CreateEagerTensorFromTensor( grad_api_returns[{grad_api_position}] );\n"
+    returns_str += f"return returns;\n"
 
     FUNCTION_TEMPLATE = """
 std::vector<std::vector<egr::EagerTensor>> GradNode{}::operator()(const std::vector<std::vector<egr::EagerTensor>>& grads) {{
     // Call grad_api function
-    auto grad_api_returns = {}({});
-    return {};
+    auto grad_api_returns = paddle::experimental::{}({});
+    {}
 }}
   """
 
@@ -566,12 +570,12 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     for name, (ttype, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
         if IsPlainTensorType(ttype):
-            input_autograd_meta = f"    egr::EagerTensor* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+            input_autograd_meta = f"    egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
         else:
             assert IsVectorTensorType(ttype)
             input_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
-            input_autograd_meta = f"    std::vector<egr::EagerTensor*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
-            input_autograd_meta += f"    std::vector<egr::EagerTensor*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+            input_autograd_meta = f"    std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
+            input_autograd_meta += f"    std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
 
         inputs_autograd_meta_list.append(input_autograd_meta)
         compute_require_grad_args_list.append(input_autograd_meta_name)
@@ -587,19 +591,19 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
         output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
         if num_fwd_outputs == 1:
             if IsPlainTensorType(rtype):
-                output_autograd_meta = f"    egr::EagerTensor* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs);"
+                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&outputs);"
             else:
                 assert IsVectorTensorType(rtype)
-                output_autograd_meta = f"    std::vector<egr::EagerTensor*> {output_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({outputs});\n"
-                output_autograd_meta += f"    std::vector<egr::EagerTensor*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{outputs});\n"
+                output_autograd_meta += f"    std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
         else:
             # Tuple api_result
             if IsPlainTensorType(rtype):
-                outputs_autograd_meta = f"    egr::EagerTensor* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(outputs[{pos}]);"
+                outputs_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&outputs[{pos}]);"
             else:
                 assert IsVectorTensorType(rtype)
-                output_autograd_meta = f"    std::vector<egr::EagerTensor*> {output_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta(outputs[{pos}]);\n"
-                output_autograd_meta += f"    std::vector<egr::EagerTensor*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&outputs[{pos}]);\n"
+                output_autograd_meta += f"    std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
         outputs_autograd_meta_list.append(output_autograd_meta)
         pass_stop_gradient_args_list.append(output_autograd_meta_name)
@@ -622,8 +626,11 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
 
     # SetTensorWrappers
     set_tensor_wrappers_list = []
-    for name, (_, _, _) in backward_fwd_input_map.items():
-        set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name});"
+    for name, (_, is_fwd_input, _) in backward_fwd_input_map.items():
+        if is_fwd_input:
+            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+        else:
+            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -747,7 +754,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_call_args_str = ", ".join(inputs_call_list)
 
     # Forward Full Logic
-    forward_call_str = f"auto api_result = {fwd_api_name}({inputs_call_args_str});"
+    forward_call_str = f"auto api_result = paddle::experimental::{fwd_api_name}({inputs_call_args_str});"
 
     # Get return type list & outputs
     num_outputs = len(forward_outputs_position_map.keys())
@@ -814,7 +821,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/nodes/nodes.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
 """
     file_contents += node_definition_str
@@ -837,8 +844,8 @@ def GenerateNodeHFile(filepath, node_declaration_str):
 
 def GenerateForwardCCFile(filepath, forward_definition_str):
     file_contents = """
-#include "paddle/fluid/eager/api/generated/eager_generated/dygraph_forward_api.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/nodes/nodes.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/legacy/op_runner.h"
