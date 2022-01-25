@@ -108,8 +108,8 @@ class OptimizerWithMixedPrecision(object):
         """
         return self._scaled_loss
 
-    def _step_supports_amp_scaling(self):
-        return getattr(self._optimizer, "_step_supports_amp_scaling", False)
+    def _supports_check_nan_inf(self):
+        return getattr(self._optimizer, "_supports_check_nan_inf", False)
 
     def _init_amp_var(self):
         self._loss_scaling = layers.create_global_var(
@@ -205,18 +205,15 @@ class OptimizerWithMixedPrecision(object):
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
-            if self._step_supports_amp_scaling():
+            if self._supports_check_nan_inf():
                 self._add_cast_ops_to_startup_program(startup_program)
         return params_grads
 
     def _add_cast_ops_to_startup_program(self, startup_program):
-        if not self._to_fp16_var_names:
-            return
-
-        names = list(self._to_fp16_var_names)
+        names = list(self._to_fp16_var_names) if self._to_fp16_var_names else []
         names.sort()
-        if startup_program is None:
-            startup_program = default_startup_program()
+        startup_program = default_startup_program(
+        ) if startup_program is None else startup_program
         block = startup_program.global_block()
         param_names = [p.name for p in block.all_parameters()]
         for name in names:
@@ -329,7 +326,7 @@ class OptimizerWithMixedPrecision(object):
         if not self._use_dynamic_loss_scaling and self._init_loss_scaling == 1.0:
             return self._optimizer.apply_gradients(params_grads)
 
-        if self._step_supports_amp_scaling():
+        if self._supports_check_nan_inf():
             self._optimizer._set_scale(self._loss_scaling)
             optimize_ops = self._optimizer.apply_gradients(params_grads)
             found_inf = self._optimizer._found_inf
@@ -423,7 +420,7 @@ class OptimizerWithMixedPrecision(object):
         return found_inf
 
     def _add_dynamic_loss_scaling(self, params_grads, found_inf):
-        if self._step_supports_amp_scaling():
+        if self._supports_check_nan_inf():
             with self._train_program._optimized_guard([]):
                 update_loss_scaling(
                     [],

@@ -160,6 +160,7 @@ def run_model(use_distributed_lamb, use_fp16, broadcast_master_param, **kwargs):
                                                         clip_after_allreduce)
 
             optimizer = optimizer_class(**kwargs)
+            get_parameter = optimizer._get_parameter
             amp_list = paddle.static.amp.AutoMixedPrecisionLists(
                 custom_white_list=[
                     'batch_norm', 'batch_norm_grad', 'conv2d', 'conv2d_grad'
@@ -219,6 +220,18 @@ def run_model(use_distributed_lamb, use_fp16, broadcast_master_param, **kwargs):
         exe.run(startup)
         if use_fp16:
             optimizer.amp_init(place)
+
+        master_p_ts = []
+        for p in params:
+            p_ts = get_parameter(p.name)
+            assert len(p_ts) == 2
+            if p_ts[1] is not None:
+                master_p_ts.append(p_ts[1])
+        if use_fp16:
+            assert len(master_p_ts) > 0
+        else:
+            assert len(master_p_ts) == 0
+
         for feed in reader():
             fetches = exe.run(main, feed=feed, fetch_list=fetch_list)
     return fetches

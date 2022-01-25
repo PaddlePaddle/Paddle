@@ -68,7 +68,7 @@ class DistributedFusedLamb(Optimizer):
         self._ring_id = 0
         self._broadcast_master_param = broadcast_master_param
         self.helper = LayerHelper('distributed_fused_lamb')
-        self._step_supports_amp_scaling = True  # very import flag for AMP 
+        self._supports_check_nan_inf = True  # very import flag for AMP
 
         main_block = self.helper.main_program.global_block()
         self._found_inf = main_block.create_var(
@@ -83,9 +83,6 @@ class DistributedFusedLamb(Optimizer):
         if not isinstance(scale, Variable):
             scale = self._create_scale_from_constant(scale)
         self._scale = scale
-
-    def _set_ring_id(self, ring_id):
-        self.ring_id = ring_id
 
     def _create_scale_from_constant(self, value):
         name = unique_name.generate('global_scale')
