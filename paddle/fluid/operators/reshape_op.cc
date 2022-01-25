@@ -395,7 +395,8 @@ class ReshapeKernel {
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::ReshapeKernel(dev_ctx, *in, pt_scalar_shape, out);
+      pten::ReshapeKernel(static_cast<const pten::XPUContext &>(dev_ctx), *in,
+                          pt_scalar_shape, out);
     }
 #endif
   }
@@ -422,7 +423,8 @@ class ReshapeGradKernel {
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::ReshapeGradKernel(dev_ctx, *d_out, d_x);
+      pten::ReshapeGradKernel(static_cast<const pten::XPUContext &>(dev_ctx),
+                              *d_out, d_x);
     }
 #endif
   }
@@ -449,7 +451,8 @@ class ReshapeDoubleGradKernel {
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::ReshapeDoubleGradKernel(dev_ctx, *dd_x, dd_out);
+      pten::ReshapeDoubleGradKernel(
+          static_cast<const pten::XPUContext &>(dev_ctx), *dd_x, dd_out);
     }
 #endif
   }

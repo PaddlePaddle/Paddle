@@ -13,28 +13,45 @@
 // limitations under the License.
 
 #include "paddle/pten/core/device_context.h"
+#include "paddle/pten/api/ext/exception.h"
 
 namespace pten {
 
 struct DeviceContext::Impl {
-  Allocator* allocator_{nullptr};
-
   Impl() = default;
   ~Impl() = default;
 
-  void SetAllocator(Allocator* allocator) { allocator_ = allocator; }
+  void SetDeviceAllocator(Allocator* allocator) {
+    device_allocator_ = allocator;
+  }
 
-  const Allocator& GetAllocator() const { return *allocator_; }
+  void SetHostAllocator(Allocator* allocator) { host_allocator_ = allocator; }
+
+  const Allocator& GetDeviceAllocator() const {
+    PD_CHECK(device_allocator_ != nullptr, "the device_allocator is nullptr.");
+    return *device_allocator_;
+  }
+
+  const Allocator& GetHostAllocator() const {
+    PD_CHECK(host_allocator_ != nullptr, "the host_allocator is nullptr.");
+    return *host_allocator_;
+  }
 
   // TODO(Wilber): Add impl. It seems that tensorbase not have interface to
   // communicate with allocator.
-  void Alloc(TensorBase* tensor) {}
+  void HostAlloc(TensorBase* tensor) {}
+  void DeviceAlloc(TensorBase* tensor) {}
+
+  Allocator* device_allocator_{nullptr};
+  Allocator* host_allocator_{nullptr};
 };
 
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
-  impl_->SetAllocator(const_cast<Allocator*>(&other.GetAllocator()));
+  impl_->SetDeviceAllocator(
+      const_cast<Allocator*>(&other.GetDeviceAllocator()));
+  impl_->SetHostAllocator(const_cast<Allocator*>(&other.GetHostAllocator()));
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -43,14 +60,26 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
 
 DeviceContext::~DeviceContext() = default;
 
-void DeviceContext::SetAllocator(Allocator* allocator) {
-  impl_->SetAllocator(allocator);
+void DeviceContext::SetHostAllocator(Allocator* allocator) {
+  impl_->SetHostAllocator(allocator);
 }
 
-const Allocator& DeviceContext::GetAllocator() const {
-  return impl_->GetAllocator();
+void DeviceContext::SetDeviceAllocator(Allocator* allocator) {
+  impl_->SetDeviceAllocator(allocator);
 }
 
-void DeviceContext::Alloc(TensorBase* tensor) { impl_->Alloc(tensor); }
+const Allocator& DeviceContext::GetHostAllocator() const {
+  return impl_->GetHostAllocator();
+}
+
+const Allocator& DeviceContext::GetDeviceAllocator() const {
+  return impl_->GetDeviceAllocator();
+}
+
+void DeviceContext::HostAlloc(TensorBase* tensor) { impl_->HostAlloc(tensor); }
+
+void DeviceContext::DeviceAlloc(TensorBase* tensor) {
+  impl_->DeviceAlloc(tensor);
+}
 
 }  // namespace pten
