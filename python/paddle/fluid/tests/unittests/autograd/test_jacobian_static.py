@@ -389,7 +389,8 @@ class TestHessianFloat64(unittest.TestCase):
         else:
             feeds = {'x': inps}
         pd_hess = exe.run(main, feed=feeds, fetch_list=[full_hessian])[0]
-        
+        print(f'pd_hess {pd_hess}')
+        print(f'np_hess {np_hess}')
         self.assertTrue(
             np.allclose(pd_hess, np_hess, self.rtol, self.atol))
 
