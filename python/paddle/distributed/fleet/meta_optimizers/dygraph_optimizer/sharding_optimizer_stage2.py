@@ -109,8 +109,8 @@ class ShardingOptimizerStage2(Optimizer):
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
                                                       paddle.get_device(),
                                                       self.group)
-            if optim._parameter_list and isinstance(optim._parameter_list[0],
-                                                    dict):
+            if self._optim._parameter_list and isinstance(
+                    self._optim._parameter_list[0], dict):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = ShardingClipGrad(
