@@ -437,7 +437,7 @@ class DataLoader(object):
         return self.__iter__()
 
     @staticmethod
-    def build_pipeline(func, *args, **kwargs):
+    def from_pipeline(func, *args, **kwargs):
         with Pipeline() as pipeline:
             outputs = func(*args, **kwargs)
             pipeline.set_outputs(outputs)

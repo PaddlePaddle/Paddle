@@ -66,6 +66,7 @@ class Pipeline:
             
         local_rank = paddle.distributed.get_rank()
         paddle.disable_static("gpu:" + str(local_rank))
+        print("main_program", self._main_program.block(0))
 
     def set_outputs(self, outputs):
         if isinstance(outputs, Sequence):
@@ -128,5 +129,5 @@ class Pipeline:
     def next(self):
         return self.__next__()
 
-    # def __del__(self):
-    #     core._shutdown_dataloader()
+    def __del__(self):
+        core._shutdown_dataloader()
