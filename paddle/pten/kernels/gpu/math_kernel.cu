@@ -27,10 +27,10 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {

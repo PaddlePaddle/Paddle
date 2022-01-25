@@ -33,8 +33,8 @@ template <typename Func>
 static void VisitVariable(Variable* var, Func* func) {
   if (var->IsType<LoDTensor>()) {
     (*func)(var->GetMutable<LoDTensor>());
-  } else if (var->IsType<SelectedRows>()) {
-    (*func)(var->GetMutable<SelectedRows>());
+  } else if (var->IsType<pten::SelectedRows>()) {
+    (*func)(var->GetMutable<pten::SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "VisitVariable is not supported for type %s.",
@@ -46,8 +46,8 @@ template <typename Func>
 static void VisitVariable(const Variable& var, Func* func) {
   if (var.IsType<LoDTensor>()) {
     (*func)(var.Get<LoDTensor>());
-  } else if (var.IsType<SelectedRows>()) {
-    (*func)(var.Get<SelectedRows>());
+  } else if (var.IsType<pten::SelectedRows>()) {
+    (*func)(var.Get<pten::SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "VisitVariable is not supported for type %s.", ToTypeName(var.Type())));
@@ -59,7 +59,7 @@ struct TensorVisitor {
 
   void operator()(LoDTensor* tensor) { result_ = tensor; }
 
-  void operator()(SelectedRows* selected_rows) {
+  void operator()(pten::SelectedRows* selected_rows) {
     result_ = selected_rows->mutable_value();
   }
 
@@ -85,8 +85,8 @@ struct ShareDimsAndLoDVisitor {
     tensor->Resize(val.dims());
   }
 
-  void operator()(const SelectedRows& val) {
-    auto* selected_rows = trg_->GetMutable<SelectedRows>();
+  void operator()(const pten::SelectedRows& val) {
+    auto* selected_rows = trg_->GetMutable<pten::SelectedRows>();
     selected_rows->set_rows(val.rows());
     selected_rows->set_height(val.height());
     selected_rows->mutable_value()->Resize(val.value().dims());
@@ -131,8 +131,8 @@ struct EnforceShapeAndDTypeEQVisitor {
             "The layout of the two variables' tensors tensor is not equal."));
   }
 
-  void operator()(const SelectedRows& src) {
-    auto& selected_rows = dst_->Get<SelectedRows>();
+  void operator()(const pten::SelectedRows& src) {
+    auto& selected_rows = dst_->Get<pten::SelectedRows>();
     PADDLE_ENFORCE_EQ(
         src.place().GetType(), selected_rows.place().GetType(),
         platform::errors::PreconditionNotMet(
