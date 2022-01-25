@@ -64,7 +64,7 @@ class TestCustomKernelDot2(unittest.TestCase):
                     paddle_lib_path = lib_dir
         default_path = os.path.sep.join(
             [paddle_lib_path, '..', '..', 'paddle-plugins'])
-        # move so to defalut path
+        # copy so to defalut path
         cmd = 'mkdir -p {} && cp ./*.so {}'.format(default_path, default_path)
         subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
         # test dot run
@@ -87,13 +87,13 @@ class TestCustomKernelDot2(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if os.name == 'nt' or sys.platform.startswith('darwin'):
+        # only support Linux now
+        exit()
     # compile so and set to current path
     cur_dir = os.path.dirname(os.path.abspath(__file__))
-    if os.name == 'nt':
-        exit()
-    else:
-        # --inplace to place output so file to current dir
-        cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
-            cur_dir, sys.executable)
-        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+    # --inplace to place output so file to current dir
+    cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
+        cur_dir, sys.executable)
+    subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
     unittest.main()
