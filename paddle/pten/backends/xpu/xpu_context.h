@@ -14,13 +14,60 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
+#include <memory>
+#include "paddle/pten/backends/xpu/forwards.h"
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/device_context.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/backends/xpu/xpu_header.h"
+#include "paddle/pten/backends/xpu/xpu_info.h"
+
+namespace xpu = baidu::xpu::api;
 
 namespace pten {
-using XPUContext = paddle::platform::XPUDeviceContext;
-}  // namespace pten
 
-#endif  // PADDLE_WITH_XPU
+struct XPUContextResource {
+  xpu::Context* context{nullptr};
+};
+
+class XPUContext : public DeviceContext {
+ public:
+  // NOTE: DeviceContext hold resources. Used in training scenarios.
+  XPUContext();
+
+  explicit XPUContext(const XPUPlace&);
+
+  // NOTE: Share the same underlying resources, please ensure that resources are
+  // not released.
+  XPUContext(const XPUContext&);
+
+  XPUContext(XPUContext&&);
+
+  virtual ~XPUContext();
+
+  Place GetPlace() const override;
+
+  backends::xpu::XPUVersion xpu_version() const;
+
+  xpu::Context* x_context() const;
+
+  // Return bkcl context.
+  xpu::BKCLContext_t bkcl_context() const;
+
+  // Wait for all operations completion in the stream.
+  void Wait() const override;
+
+ public:
+  // NOTE: External users manage resources. Used in inference scenarios.
+  explicit XPUContext(const XPUContextResource&);
+
+  void set_x_context(xpu::Context*);
+
+  void set_bkcl_context(xpu::BKCLContext_t context);
+
+ private:
+  struct XPUImpl;
+  std::unique_ptr<XPUImpl> impl_;
+};
+
+}  // namespace pten
