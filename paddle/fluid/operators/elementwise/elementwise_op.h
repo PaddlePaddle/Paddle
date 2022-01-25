@@ -354,6 +354,18 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
                                      tensor.place(), tensor.layout());
     }
   }
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add_grad") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "add_grad", {"X", "Y", framework::GradVarName("Out")}, {"axis"},
+            {framework::GradVarName("X"), framework::GradVarName("Y")});
+      }
+    }
+
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
+  }
 };
 
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
@@ -522,11 +534,9 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *dx =
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    if (dx != nullptr) {
-      auto &dout =
-          *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-      dx->set_lod(dout.lod());
-    }
+    auto &dout =
+        *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    pten::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };
 

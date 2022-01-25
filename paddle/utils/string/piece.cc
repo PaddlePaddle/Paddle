@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/string/piece.h"
+#include "paddle/utils/string/piece.h"
 
 #include <string.h>
 #include <algorithm>
@@ -76,9 +76,11 @@ bool HasPrefix(Piece s, Piece x) {
 }
 
 bool HasSuffix(Piece s, Piece x) {
-  return !x.len() ? true : ((s.len() >= x.len()) &&
-                            (memcmp(s.data() + (s.len() - x.len()), x.data(),
-                                    x.len()) == 0));
+  return !x.len()
+             ? true
+             : ((s.len() >= x.len()) &&
+                (memcmp(s.data() + (s.len() - x.len()), x.data(), x.len()) ==
+                 0));
 }
 
 Piece SkipPrefix(Piece s, size_t n) {

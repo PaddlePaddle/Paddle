@@ -14,6 +14,7 @@
 
 import contextlib
 import paddle
+from paddle.static import gradients
 from ..fluid import framework
 from ..fluid.dygraph import grad
 from ..tensor.creation import assign
@@ -904,3 +905,122 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
         vhp = grad_fn(jac, xs, v)
         outputs, vhp = return_fn(outputs), return_fn(vhp)
     return outputs, vhp
+
+
+class Jacobian(object):
+    r"""
+    Object that represents the Jacobian matrix of a muli-input multi-output 
+    function.
+
+    The Jacobian values are lazily evaluated if accessed through indices.
+    In contrast, slicing access would trigger evaluating the full matrix
+    if it's not already computed.
+
+    Examples:
+        .. code-block:: python
+            import paddle        
+            import numpy as np
+
+            def func(xs):
+                x, y = xs
+                return paddle.matmul(x, y)
+            
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.program_guard(main, startup):
+                x = paddle.static.data(name='x', shape=[2, 2], dtype='float32')
+                JJ = paddle.autograd.functional.Jacobian(func, [x, x])
+                nrow, ncol = JJ.shape()
+                full_jacobian = JJ[:]
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup)
+
+            feeds = {'x': np.array([[2., 2.], [2., 1.]]).astype('float32')}
+            jacobian = exe.run(main, feed=feeds, fetch_list=[full_jacobian])[0]
+            print(jacobian)
+            # [[4. 2. 2. 0. 4. 2. 2. 0.]
+            #  [2. 3. 0. 2. 2. 3. 0. 2.]
+            #  [2. 0. 3. 2. 2. 0. 3. 2.]
+            #  [0. 2. 2. 2. 0. 2. 2. 2.]]
+    """
+
+    def __init__(self, func, inputs, batch=False):
+        r"""Constructing a Jacobian matrix.
+
+        Parameters:
+            func (Callable): a Python function that takes as input a Tensor
+                or a Tensor list and outputs a Tensor or a Tensor list.
+            inputs (Tensor|list[Tensor]): a Tensor or a list of Tensors as
+                `func`'s input.
+            batch (bool):  if True the 0'th axis is considered the batch
+                dimension, both on input and output.
+        """
+
+        def enable_grads(inputs):
+            if isinstance(inputs, (list, tuple)):
+                for x in inputs:
+                    x.stop_gradient = False
+            else:
+                assert isinstance(inputs, paddle.fluid.framework.Variable), (
+                    f"Expecting {inputs} to be paddle.fluid.framework.Variable,"
+                    f" however it's found to be a(n) {type(inputs)}.")
+                inputs.stop_gradient = False
+            return inputs
+
+        self.batch = batch
+        self.xs = enable_grads(inputs)
+        ys = func(inputs)
+        if not isinstance(ys, list):
+            ys = [ys]
+        self.y = self.flatten_all(ys)
+        self.ydim = self.y.shape[-1]
+        self.xdim = self.flatten_all(inputs).shape[-1]
+        self.bdim = self.y.shape[0]
+        self.jacobian = {}
+
+    def flatten(self, x):
+        to = [x.shape[0], -1] if self.batch else [-1]
+        return x.reshape(to)
+
+    def flatten_all(self, xs):
+        return paddle.concat([self.flatten(x) for x in xs], axis=-1)
+
+    def shape(self):
+        return (self.ydim, self.xdim)
+
+    def __getitem__(self, tup):
+        if hasattr(tup, '__iter__'):
+            i, j = tup
+        else:
+            i, j = tup, None
+
+        if isinstance(i, slice):
+            slicing = True
+        else:
+            slicing = False
+
+        if slicing:
+            if 'full' not in self.jacobian:
+                rows = [
+                    self.flatten_all(gradients(self.y[..., i], self.xs))
+                    for i in range(self.ydim)
+                ]
+                self.jacobian['full'] = paddle.stack(rows)
+            return self.jacobian['full'][i]
+
+        assert 0 <= i < self.ydim, f"Jacobian index i={i} is not valid."
+        assert (j is None) or (
+            0 <= j < self.xdim), f"Jacobian index j={j} is not valid."
+        if 'full' in self.jacobian:
+            JJ = self.jacobian['full']
+        else:
+            JJ = self.jacobian
+            if i not in self.jacobian:
+                self.jacobian[i] = self.flatten_all(
+                    gradients(self.y[..., i], self.xs))
+
+        if j is None:
+            return JJ[i]
+        else:
+            return JJ[i][..., j]
