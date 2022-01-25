@@ -45,7 +45,8 @@ namespace cub = hipcub;
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/gpu/elementwise.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
+
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
@@ -1253,24 +1254,6 @@ void Reduce(const GPUContext& dev_ctx,
             x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
   }
 }
-
-template <typename InT, typename Functor>
-void ReduceGrad(const GPUContext& dev_ctx,
-                DenseTensor* d_out,
-                DenseTensor* d_x,
-                DataType out_dtype,
-                Functor functor) {
-  std::vector<const DenseTensor*> inputs = {d_out};
-  std::vector<DenseTensor*> outputs = {d_x};
-  PD_VISIT_ALL_TYPES(
-      out_dtype, "LaunchBroadcastElementwiseCudaKernel", ([&] {
-        LaunchBroadcastElementwiseCudaKernel<pten::ElementwiseType::kUnary,
-                                             InT,
-                                             data_t>(
-            dev_ctx, inputs, &outputs, 0, functor);
-      }));
-}
-
 }  // namespace pten
 
 #endif
