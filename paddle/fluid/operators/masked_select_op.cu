@@ -46,10 +46,10 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto input = ctx.Input<framework::Tensor>(framework::GradVarName("Y"));
     auto mask = ctx.Input<framework::Tensor>("Mask");
-    auto x = context.Input<framework::Tensor>("X");
+    auto x = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
-    auto& dev_ctx = context.device_context<DeviceContext>();
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
     pten::MaskedSelectGradKernel<T>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
