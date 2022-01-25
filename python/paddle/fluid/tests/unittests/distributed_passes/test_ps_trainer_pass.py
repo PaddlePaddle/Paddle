@@ -26,14 +26,15 @@ from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 class TestPsTrainerPass(PsPassTestBase):
     def init(self):
-        self.worker_num = "1"
-        self.server_num = "1"
-        self.run_minimize = "0"
-        self.run_single_pass = "0"
-        self.debug_new_minimize = "0"
-        self.debug_new_pass = "0"
-        self.applied_pass_name = ""
-        self.log_dir = ""
+        self.config = {}
+        self.config['worker_num'] = "1"
+        self.config['server_num'] = "1"
+        self.config['run_minimize'] = "0"
+        self.config['run_single_pass'] = "0"
+        self.config['debug_new_minimize'] = "0"
+        self.config['debug_new_pass'] = "0"
+        self.config['log_dir'] = ""
+        self.config['applied_pass_name'] = ""
 
     def setUp(self):
         print('setUp...')
@@ -46,29 +47,29 @@ class TestPsTrainerPass(PsPassTestBase):
 
     def test_ps_optimizer_minimize(self):
         self.init()
-        self.run_minimize = 1
+        self.config['run_minimize'] = 1
 
         self.debug_new_minimize = 0
-        self.log_dir = "./log_old"
-        self.ps_launch()
+        self.config['log_dir'] = "./log_old"
+        self.ps_launch(self.config)
 
-        self.debug_new_minimize = 1
-        self.log_dir = "./log_new"
-        self.ps_launch()
+        self.config['debug_new_minimize'] = 1
+        self.config['log_dir'] = "./log_new"
+        self.ps_launch(self.config)
 
         self.check()
 
     def test_append_send_ops_pass(self):
         self.run_single_pass = 1
 
-        self.debug_new_pass = 0
-        self.log_dir = "log_old"
-        self.ps_launch()
+        self.config['debug_new_pass'] = 0
+        self.config['log_dir'] = "log_old"
+        self.ps_launch(self.config)
 
-        self.debug_new_pass = 1
-        self.applied_pass_name = "append_send_ops_pass"
-        self.log_dir = "log_new"
-        self.ps_launch()
+        self.config['debug_new_pass'] = 1
+        self.config['applied_pass_name'] = "append_send_ops_pass"
+        self.config['log_dir'] = "log_new"
+        self.ps_launch(self.config)
 
         self.check()
 

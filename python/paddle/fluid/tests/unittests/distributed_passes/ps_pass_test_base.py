@@ -28,7 +28,7 @@ import paddle.distributed.fleet as fleet
 
 class PsPassTestBase(unittest.TestCase):
     def init(self):
-        pass
+        raise NotImplementedError
 
     def setUp(self):
         print('Ps setUp...')
@@ -36,18 +36,19 @@ class PsPassTestBase(unittest.TestCase):
     def tearDown(self):
         print('Ps tearDown...')
 
-    def ps_launch(self):
+    def ps_launch(self, config):
         cmd = [
             sys.executable,
             "-u",
         ] + [
-            "-m", "launch", "--log_dir", self.log_dir, "--worker_num",
-            self.worker_num, "--server_num", self.server_num,
+            "-m", "launch", "--log_dir", config['log_dir'], "--worker_num",
+            config['worker_num'], "--server_num", config['server_num'],
             "../ps/ps_dnn_trainer.py", "-m", "benchmark.yaml", "--run_minimize",
-            self.run_minimize, "--run_single_pass", self.run_single_pass,
-            "--debug_new_pass", self.debug_new_pass, "--debug_new_minimize",
-            self.debug_new_minimize, "--applied_pass_name",
-            self.applied_pass_name
+            config['run_minimize'], "--run_single_pass",
+            config['run_single_pass'], "--debug_new_pass",
+            config['debug_new_pass'], "--debug_new_minimize",
+            config['debug_new_minimize'], "--applied_pass_name",
+            config['applied_pass_name']
         ]
         cmd = [shlex.quote(c) for c in cmd]
         prepare_python_path_and_return_module(__file__)
