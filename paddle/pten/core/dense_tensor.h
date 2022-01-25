@@ -70,17 +70,8 @@ class DenseTensor : public TensorBase,
   /// \param meta The meta data of dense tensor.
   DenseTensor(Allocator* a, DenseTensorMeta&& meta);
 
-  /// \brief Use existing storage space to create dense tensor. This interface
-  /// can be used to deliberately create an uninitialized dense tensor.
-  /// \param storage The existing storage.
-  /// \param meta The meta data of dense tensor.
-  DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
-
-  /// \brief Use existing storage space to create dense tensor. This interface
-  /// can be used to deliberately create an uninitialized dense tensor.
-  /// \param storage The existing storage.
-  /// \param meta The meta data of dense tensor.
-  DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
+  DenseTensor(const std::shared_ptr<pten::Allocation>& holder,
+              const DenseTensorMeta& meta);
 
   /// \brief Because dense tensor is a kind of container, we give a default
   /// constructor to use for stl container. But the dense tensor created with
@@ -146,9 +137,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
-  bool initialized() const override {
-    return storage_ != nullptr && storage_->data() != nullptr;
-  }
+  bool initialized() const override { return holder_ && holder_->ptr(); }
 
   /// \brief Check if storage is shared with other objects.
   /// \return Whether the storage is shared with other objects.
@@ -170,25 +159,7 @@ class DenseTensor : public TensorBase,
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
-  size_t capacity() const { return storage_->size(); }
-
-  /// \brief Get the mutable data pointer value of type T.
-  /// Memory allocation may occur when calling this interface:
-  /// 1. When the storage size is not enough to meet the current shape of the
-  /// data.
-  /// \return The mutable data pointer value of type T.
-  template <typename T>
-  T* mutable_data();
-
-  /// \brief Get the mutable data pointer value of raw type.
-  /// Memory allocation may occur when calling this interface:
-  /// 1. When the storage size is not enough to meet the current shape of the
-  /// data.
-  /// 2. When more request_bytes parameters are used to reserve the data
-  /// storage.
-  /// param request_bytes The bytes to reserve the data storage.
-  /// \return The mutable data pointer value of type T.
-  void* mutable_data(size_t request_bytes = 0);
+  size_t capacity() const { return holder_->size(); }
 
   /// \brief Get the const data pointer value of type T.
   /// \return The const data pointer value of type T.
@@ -204,7 +175,7 @@ class DenseTensor : public TensorBase,
 
  protected:
   DenseTensorMeta meta_;
-  intrusive_ptr<Storage> storage_;
+  std::shared_ptr<pten::Allocation> holder_;
 
   /* --------------------------- */
   /*   From framework::Tensor    */
@@ -223,11 +194,21 @@ class DenseTensor : public TensorBase,
 
   /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
    */
-  explicit DenseTensor(const paddle::framework::proto::VarType::Type& dtype);
+  explicit DenseTensor(paddle::framework::proto::VarType::Type dtype);
 
-  inline bool IsInitialized() const {
-    return storage_ != nullptr && storage_->data_shared() != nullptr;
-  }
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
+
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
+
+  inline bool IsInitialized() const { return holder_ != nullptr; }
 
   template <typename T>
   T* data();
@@ -270,7 +251,7 @@ class DenseTensor : public TensorBase,
   void set_layout(const paddle::framework::DataLayout layout);
 
   void clear() {
-    storage_.reset();
+    holder_.reset();
     meta_.offset = 0;
   }
 
@@ -281,31 +262,24 @@ class DenseTensor : public TensorBase,
   }
 
   bool IsSharedBufferWith(const DenseTensor& src) const {
-    if (storage_ == nullptr || src.storage_ == nullptr) return false;
-    if (storage_->data_shared() == src.storage_->data_shared()) return true;
-
-    return false;
+    return holder_ && holder_ == src.Holder();
   }
 
-  const std::shared_ptr<paddle::memory::Allocation> Holder() const {
-    return storage_ == nullptr ? nullptr : std::move(storage_->data_shared());
-  }
+  const std::shared_ptr<pten::Allocation>& Holder() const { return holder_; }
 
   void set_offset(size_t offset) { meta_.offset = offset; }
   size_t offset() const { return meta_.offset; }
 
-  std::shared_ptr<paddle::memory::Allocation> MoveMemoryHolder() {
-    return storage_ == nullptr ? nullptr
-                               : std::move(storage_->move_data_shared());
+  std::shared_ptr<pten::Allocation> MoveMemoryHolder() {
+    return std::move(holder_);
   }
 
-  void ResetHolder(const std::shared_ptr<paddle::memory::Allocation>& holder);
+  void ResetHolder(const std::shared_ptr<pten::Allocation>& holder);
 
-  void ResetHolderWithType(
-      const std::shared_ptr<paddle::memory::Allocation>& holder,
-      const paddle::framework::proto::VarType::Type& type);
+  void ResetHolderWithType(const std::shared_ptr<pten::Allocation>& holder,
+                           paddle::framework::proto::VarType::Type type);
 
-  void set_type(const paddle::framework::proto::VarType::Type& type);
+  void set_type(paddle::framework::proto::VarType::Type type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;

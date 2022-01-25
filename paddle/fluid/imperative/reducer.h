@@ -33,11 +33,6 @@
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-
-}  // namespace platform
-
 namespace imperative {
 class ParallelContext;
 class VarBase;

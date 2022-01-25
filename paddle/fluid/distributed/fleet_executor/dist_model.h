@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/distributed/fleet_executor/dist_model_tensor_wrapper.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
@@ -56,8 +57,8 @@ class DistModel {
  public:
   explicit DistModel(const DistModelConfig& config) : config_(config) {}
   bool Init();
-  void Run(const std::vector<paddle::framework::Tensor>& input_data,
-           std::vector<paddle::framework::Tensor>* output_data);
+  void Run(const std::vector<DistModelTensor>& input_data,
+           std::vector<DistModelTensor>* output_data);
   ~DistModel() = default;
 
  private:

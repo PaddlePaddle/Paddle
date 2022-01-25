@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/roll_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/core/array.h"
 
 namespace paddle {
 namespace operators {
@@ -28,9 +28,9 @@ using LoDTensor = framework::LoDTensor;
 
 template <typename T, size_t Rank>
 __global__ void RollCudaKernel(const T* input, T* output, int64_t N,
-                               paddle::framework::Array<int64_t, Rank> shifts,
-                               paddle::framework::Array<int64_t, Rank> strides,
-                               paddle::framework::Array<int64_t, Rank> sizes) {
+                               pten::framework::Array<int64_t, Rank> shifts,
+                               pten::framework::Array<int64_t, Rank> strides,
+                               pten::framework::Array<int64_t, Rank> sizes) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
@@ -101,9 +101,9 @@ class RollKernel<platform::CUDADeviceContext, T>
 
 #define CALL_ROLL_CUDA_KERNEL(N)                                               \
   case N: {                                                                    \
-    paddle::framework::Array<int64_t, N> _strides;                             \
-    paddle::framework::Array<int64_t, N> _shifts;                              \
-    paddle::framework::Array<int64_t, N> _sizes;                               \
+    pten::framework::Array<int64_t, N> _strides;                               \
+    pten::framework::Array<int64_t, N> _shifts;                                \
+    pten::framework::Array<int64_t, N> _sizes;                                 \
     for (size_t idx = 0; idx < N; ++idx) {                                     \
       _strides[idx] = strides[idx];                                            \
       _shifts[idx] = shifts[idx];                                              \

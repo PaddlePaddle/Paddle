@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -54,7 +53,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -75,6 +74,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/pten/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
 #endif
@@ -129,6 +129,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -1092,7 +1093,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("recursive_sequence_lengths",
            [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
-             LoD lod = ConvertToLengthBasedLoD(self.lod());
+             LoD lod = pten::ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
@@ -1755,20 +1756,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
-  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
-      .value("XPU1", platform::XPUVersion::XPU1)
-      .value("XPU2", platform::XPUVersion::XPU2)
+  py::enum_<pten::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", pten::backends::xpu::XPUVersion::XPU1)
+      .value("XPU2", pten::backends::xpu::XPUVersion::XPU2)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+  m.def(
+      "get_xpu_device_op_support_types",
+      [](const std::string &op_name, pten::backends::xpu::XPUVersion version) {
+        return platform::get_xpu_op_support_type(op_name, version);
+      });
+  m.def("get_xpu_device_op_list", [](pten::backends::xpu::XPUVersion version) {
+    return platform::get_xpu_op_list(version);
+  });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
-    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+    return platform::get_xpu_version(place.device) >
+           pten::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
-    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+    return platform::get_xpu_version(place.device) >
+           pten::backends::xpu::XPUVersion::XPU1;
   });
 #endif
 

@@ -24,7 +24,7 @@
 #pragma once
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 template <typename T>
 HOSTDEVICE T DmcnGetGradientWeight(T argmax_h, T argmax_w, const int h,

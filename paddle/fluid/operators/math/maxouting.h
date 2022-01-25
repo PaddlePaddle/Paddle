@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
