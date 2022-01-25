@@ -312,7 +312,6 @@ class TestMLPReshard(unittest.TestCase):
             del _g_process_group_map[key]
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
                 dist_params_grads)
-        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
@@ -328,11 +327,12 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 1
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id, True)
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
         print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # check send and recv result

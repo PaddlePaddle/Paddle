@@ -894,6 +894,7 @@ def _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
     for idx, item in enumerate(dist_params_grads):
         if item[0].name not in param_grad_map.keys():
             need_remove_idx.append(idx)
+
     for idx in need_remove_idx[::-1]:
         dist_params_grads.pop(idx)
 
