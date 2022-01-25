@@ -488,20 +488,24 @@ bool DistModel::PrepareFeedAndFetch() {
         LOG(ERROR) << "Feed ops are needed for the first pp stage.";
         return false;
       }
-    } else if (!IsPPFirstStage(config_) && feeds_.size() > 0) {
-      LOG(WARNING) << "Feed op is found in the non-first stage of pp.";
-    } else if (!IsPPFirstStage(config_) && feeds_.size() == 0) {
-      LOG(INFO) << "No feed ops in non-first pp stage.";
+    } else {
+      if (feeds_.size() > 0) {
+        LOG(WARNING) << "Feed op is found in the non-first stage of pp.";
+      } else {
+        LOG(INFO) << "No feed ops in non-first pp stage.";
+      }
     }
     if (IsPPLastStage(config_)) {
       if (fetches_.size() == 0) {
         LOG(ERROR) << "Fetch op is needed for the last pp stage.";
         return false;
       }
-    } else if (!IsPPLastStage(config_) && fetches_.size() > 0) {
-      LOG(WARNING) << "Fetch op is found in the non-last stage of pp.";
-    } else if (!IsPPLastStage(config_) && fetches_.size() == 0) {
-      LOG(INFO) << "No fetch op in non-last pp stage.";
+    } else {
+      if (fetches_.size() > 0) {
+        LOG(WARNING) << "Fetch op is found in the non-last stage of pp.";
+      } else {
+        LOG(INFO) << "No fetch op in non-last pp stage.";
+      }
     }
   }
   return true;
