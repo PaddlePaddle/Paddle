@@ -86,9 +86,9 @@ int ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
 
 class OpGenImpl {
  public:
-  explicit OpGenImpl(const mlir::MLIRContext &context)
-      : context_(context), builder_(&context) {
-    module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(&context));
+  explicit OpGenImpl(mlir::MLIRContext *context)
+      : context_(context), builder_(context) {
+    module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context));
     InitHandlerMap();
   }
   mlir::ModuleOp ImportPaddleModel(
@@ -98,7 +98,7 @@ class OpGenImpl {
     llvm::SmallVector<mlir::Type, 4> operandTypes;
     llvm::SmallVector<mlir::Type, 4> resultTypes;
     // update inputs and outputs
-    operandTypes.push_back(infrt::dt::TensorMapType::get(&context_));
+    operandTypes.push_back(infrt::dt::TensorMapType::get(context_));
     for (auto &op_desc : main_block_.ops()) {
       if (op_desc.type() != "feed" && op_desc.type() != "fetch") {
         continue;
@@ -146,7 +146,7 @@ class OpGenImpl {
     // create main op
     const std::string &name = "main_graph";
     auto mainFunc = mlir::FuncOp::create(
-        mlir::UnknownLoc::get(&context_),
+        mlir::UnknownLoc::get(context_),
         name,
         /*type=*/builder_.getFunctionType({operandTypes}, {resultTypes}),
         /*attrs=*/{});
@@ -155,7 +155,7 @@ class OpGenImpl {
     builder_.setInsertionPointToStart(&mainFunc.body().back());
 
     // update inputs
-    operandTypes.push_back(infrt::dt::TensorMapType::get(&context_));
+    operandTypes.push_back(infrt::dt::TensorMapType::get(context_));
     for (auto &op_desc : main_block_.ops()) {
       if (op_desc.type() == "feed") {
         for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
@@ -186,7 +186,7 @@ class OpGenImpl {
                         &precision_);
         mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
         auto op = builder_.create<infrt::dt::GetParamOp>(
-            mlir::UnknownLoc::get(&context_), type_, map, name);
+            mlir::UnknownLoc::get(context_), type_, map, name);
         params_map_.insert(std::pair<std::string, mlir::Value>(
             var_desc.name(), op.getOperation()->getResult(0)));
       }
@@ -207,7 +207,7 @@ class OpGenImpl {
           // varibale name
           std::string input_var_name = in.arguments(0);
           // update model outpus
-          mlir::Location loc = mlir::UnknownLoc::get(&context_);
+          mlir::Location loc = mlir::UnknownLoc::get(context_);
           llvm::SmallVector<mlir::Value, 4> operands;
 
           operands.push_back((params_map_[input_var_name]));
@@ -230,7 +230,7 @@ class OpGenImpl {
   template <typename T>
   void buildOperation(const infrt::paddle::framework_proto::OpDesc &op_) {
     auto op_name = T::getOperationName();
-    mlir::Location loc = mlir::UnknownLoc::get(&context_);
+    mlir::Location loc = mlir::UnknownLoc::get(context_);
 
     llvm::SmallVector<mlir::Value, 4> operands;
     // op inputs
@@ -306,7 +306,7 @@ class OpGenImpl {
           break;
         }
         case infrt::paddle::framework_proto::AttrType::STRING: {
-          string data = op_.attrs(attrs_num).s();
+          std::string data = op_.attrs(attrs_num).s();
           auto value_ = builder_.getStringAttr(data);
           auto name_ = builder_.getStringAttr(attr_name_);
           auto attr_ = mlir::NamedAttribute(name_, value_);
@@ -377,7 +377,7 @@ class OpGenImpl {
   void InitHandlerMap() {
 #include "tools/infrt/OpBuildTable.inc"
   }
-  mlir::MLIRContext &context_;
+  mlir::MLIRContext* context_;
   mlir::ModuleOp module_;
   mlir::OpBuilder builder_;
   std::map<std::string, mlir::Value> params_map_;
@@ -398,95 +398,11 @@ class OpGenImpl {
                                                 "use_quantizer"};
 };
 
-llvm::raw_ostream &printIndent(int indent = 0) {
-  for (int i = 0; i < indent; ++i) llvm::outs() << "    ";
-  return llvm::outs();
-}
-void printOperation(mlir::Operation *op, int indent);
-void printRegion(const mlir::Region &region, int indent);
-void printBlock(const mlir::Block &block, int indent);
-
-void printOperation(mlir::Operation *op, int indent) {
-  llvm::Optional<mlir::ModuleOp> module_op = llvm::None;
-  if (llvm::isa<mlir::ModuleOp>(op))
-    module_op = llvm::dyn_cast<mlir::ModuleOp>(op);
-  llvm::Optional<mlir::FuncOp> func_op = llvm::None;
-  if (llvm::isa<mlir::FuncOp>(op)) func_op = llvm::dyn_cast<mlir::FuncOp>(op);
-
-  printIndent(indent) << "op: '" << op->getName();
-  // This getName is inherited from Operation::getName
-  if (module_op) {
-    printIndent() << "@" << module_op->getName();
-  }
-  // This getName is inherited from SymbolOpInterfaceTrait::getName,
-  // which return value of "sym_name" in ModuleOp or FuncOp attributes.
-  if (func_op) {
-    printIndent() << "@" << func_op->getName();
-  }
-  printIndent() << "' with " << op->getNumOperands() << " operands"
-                << ", " << op->getNumResults() << " results"
-                << ", " << op->getAttrs().size() << " attributes"
-                << ", " << op->getNumRegions() << " regions"
-                << ", " << op->getNumSuccessors() << " successors\n";
-  if (!op->getAttrs().empty()) {
-    printIndent(indent) << op->getAttrs().size() << " attributes:\n";
-    for (mlir::NamedAttribute attr : op->getAttrs()) {
-      printIndent(indent + 1) << "- {" << attr.getName() << " : "
-                              << attr.getValue() << "}\n";
-    }
-  }
-
-  if (op->getNumRegions() > 0) {
-    printIndent(indent) << op->getNumRegions() << " nested regions:\n";
-    for (mlir::Region &region : op->getRegions()) {
-      printRegion(region, indent + 1);
-    }
-  }
-}
-
-void printRegion(const mlir::Region &region, int indent) {
-  printIndent(indent) << "Region with " << region.getBlocks().size()
-                      << " blocks:\n";
-  for (mlir::Block &block : region.getBlocks()) {
-    printBlock(block, indent + 1);
-  }
-}
-
-void dumpBlock(const mlir::Block &block) {
-  std::cout << "dump block begin" << endl;
-  llvm::raw_ostream &os = llvm::errs();
-  mlir::Operation *parentOp = block.getParentOp();
-  if (!parentOp) {
-    os << "<<UNLINKED BLOCK>>\n";
-    return;
-  }
-  while (auto *nextOp = parentOp->getParentOp()) parentOp = nextOp;
-  mlir::AsmState state(parentOp);
-  auto range = llvm::make_range(block.getOperations().begin(),
-                                std::prev(block.getOperations().end(), 0));
-  for (auto &op : range) {
-    os << op << "\n";
-  }
-  std::cout << endl << "dump block end" << endl;
-}
-
-void printBlock(const mlir::Block &block, int indent) {
-  printIndent(indent) << "Block with " << block.getNumArguments()
-                      << " arguments"
-                      << ", " << block.getNumSuccessors() << " successors"
-                      << ", " << block.getOperations().size()
-                      << " operations\n";
-
-  for (mlir::Operation &operation : block.getOperations()) {
-    printOperation(&operation, indent + 1);
-  }
-}
-
 int main(int argc, char **argv) {
   // parse paddle model path
   cl::ParseCommandLineOptions(argc, argv, "paddle-mlir");
   if (paddleModelDir.empty()) {
-    std::cout << "ERROR: paddle model path can't be empty." << endl;
+    std::cout << "ERROR: paddle model path can't be empty." << std::endl;
     return 1;
   }
 
@@ -540,6 +456,6 @@ int main(int argc, char **argv) {
   context->getOrLoadDialect<infrt::dt::DTDialect>();
   context->getOrLoadDialect<mlir::pd::PaddleDialect>();
 
-  OpGenImpl myGen(*context);
+  OpGenImpl myGen(context);
   myGen.ImportPaddleModel(program_proto);
 }
