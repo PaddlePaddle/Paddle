@@ -50,11 +50,11 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['run_minimize'] = '1'
 
         self.config['debug_new_minimize'] = '0'
-        self.config['log_dir'] = "./log_old"
+        self.config['log_dir'] = "../ps/log_old"
         self.ps_launch(self.config)
 
         self.config['debug_new_minimize'] = '1'
-        self.config['log_dir'] = "./log_new"
+        self.config['log_dir'] = "../ps/log_new"
         self.ps_launch(self.config)
 
         self.check()
@@ -64,12 +64,12 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['run_single_pass'] = '1'
 
         self.config['debug_new_pass'] = '0'
-        self.config['log_dir'] = "log_old"
+        self.config['log_dir'] = "../ps/log_old"
         self.ps_launch(self.config)
 
         self.config['debug_new_pass'] = '1'
         self.config['applied_pass_name'] = "append_send_ops_pass"
-        self.config['log_dir'] = "log_new"
+        self.config['log_dir'] = "../ps/log_new"
         self.ps_launch(self.config)
 
         self.check()
