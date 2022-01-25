@@ -194,7 +194,8 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
     if (UNLIKELY(ptr == nullptr)) {                          \
       auto __summary__ = paddle::platform::errors::External( \
           ::pten::backends::xpu::build_xpu_xdnn_error_msg(   \
-              __cond__, "XPU memory is not enough"));        \
+              baidu::xpu::api::Error_t::NO_ENOUGH_WORKSPACE, \
+              "XPU memory is not enough"));                  \
       __THROW_ERROR_INTERNAL__(__summary__);                 \
     }                                                        \
   } while (0)
