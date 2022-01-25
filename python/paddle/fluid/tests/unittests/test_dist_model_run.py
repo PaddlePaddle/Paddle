@@ -39,8 +39,8 @@ class TestDistModelRun(unittest.TestCase):
         x_data = np.random.randn(28, 28).astype('float32')
         y_data = np.random.randint(0, 9, size=[28, 1]).astype('int64')
         exe.run(paddle.static.default_main_program(),
-                feed={'img': x_data,
-                      'label': y_data},
+                feed={'x': x_data,
+                      'y': y_data},
                 fetch_list=[avg_loss])
         paddle.static.save_inference_model(path_prefix, [x, y], [avg_loss], exe)
 
@@ -58,17 +58,15 @@ class TestDistModelRun(unittest.TestCase):
         dist_y = core.DistModelTensor(y_tensor, 'y')
         input_data = [dist_x, dist_y]
         output_rst = dist.run(input_data)
-        dist_model_rst = output_rst[0]
+        dist_model_rst = output_rst[0].as_ndarray().ravel().tolist()
         print("dist model rst:", dist_model_rst)
 
         # step 4: use framework's api to inference with fake data
         [inference_program, feed_target_names, fetch_targets] = (
             paddle.static.load_inference_model(path_prefix, exe))
-        image_tensor = np.random.randn(28, 28).astype('float32')
-        label_tensor = np.random.randint(0, 9, size=[28, 1]).astype('int64')
         results = exe.run(inference_program,
-                          feed={'x': image_tensor,
-                                'y': label_tensor},
+                          feed={'x': x_tensor,
+                                'y': y_tensor},
                           fetch_list=fetch_targets)
         load_inference_model_rst = results[0]
         print("load inference model api rst:", load_inference_model_rst)
@@ -76,7 +74,9 @@ class TestDistModelRun(unittest.TestCase):
         # step 5: compare two results
         self.assertTrue(np.allclose(dist_model_rst, load_inference_model_rst))
 
-        # step 6: clean up the env, delete the saved model and params
+        # step 6: clean up the env, delete the saved model and params\
+        os.remove(path_prefix + '.pdiparams')
+        os.remove(path_prefix + '.pdmodel')
         os.rmdir(folder)
 
 
