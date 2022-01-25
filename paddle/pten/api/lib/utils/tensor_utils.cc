@@ -245,8 +245,8 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
       tensor->set_type(dtype);
     }
 
-  } else if (variable->IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->GetMutable<framework::SelectedRows>();
+  } else if (variable->IsType<pten::SelectedRows>()) {
+    auto* tensor = variable->GetMutable<pten::SelectedRows>();
     auto dtype = pten::TransToProtoVarType(src->dtype());
 
     if (!tensor->value().IsInitialized()) {
