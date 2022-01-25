@@ -18,7 +18,7 @@
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -28,7 +28,7 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
+  using float16 = typename XPUTypeTrait<pten::platform::float16>::Type;
 
   auto* in_data = x.data<T>();
   auto numel = x.numel();
@@ -47,7 +47,7 @@ void CastKernel(const Context& dev_ctx,
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           reinterpret_cast<float16*>(
-              out->mutable_data<paddle::platform::float16>(dev_ctx.GetPlace())),
+              out->mutable_data<pten::platform::float16>(dev_ctx.GetPlace())),
           numel);
       break;
     case pten::DataType::INT64:
@@ -79,7 +79,7 @@ void CastKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      platform::errors::External(
+      pten::errors::External(
           "XPU CAST API return wrong value[%d %s].", r, XPUAPIErrorMsg[r]));
 }
 }  // namespace pten
@@ -90,7 +90,7 @@ PT_REGISTER_KERNEL(cast,
                    pten::CastKernel,
                    int32_t,
                    float,
-                   paddle::platform::float16,
+                   pten::platform::float16,
                    int64_t,
                    bool) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
