@@ -63,6 +63,7 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
           pten::TransToFluidPlace(backend)),
       pten::DenseTensorMeta());
   UnchangedInferMeta(*dense_x, dense_out.get());
+  dense_out->mutable_data(pten::TransToFluidPlace(backend));
   kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
   out.set_impl(dense_out);
