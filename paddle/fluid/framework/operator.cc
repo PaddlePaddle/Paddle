@@ -1153,6 +1153,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
+      dev_ctx = pool.Get(kernel_type_->place_);
 
       pt_kernel_name = pt_kernel_signature_->name;
       pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
@@ -1205,6 +1206,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!run_pten_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
+      dev_ctx = pool.Get(kernel_type_->place_);
     }
   }
 
@@ -1222,10 +1224,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
-
-  if (!run_pten_kernel_ && !(kernel_type_->place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(kernel_type_->place_);
-  }
 
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
