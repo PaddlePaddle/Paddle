@@ -68,5 +68,12 @@ struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
 
+#ifdef PADDLE_WITH_XPU
+template <>
+struct ConvertToPtenContext<platform::XPUDeviceContext> {
+  using TYPE = pten::XPUContext;
+};
+#endif
+
 }  // namespace framework
 }  // namespace paddle

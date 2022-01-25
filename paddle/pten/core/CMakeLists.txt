@@ -22,7 +22,7 @@ cc_library(lod_utils SRCS lod_utils.cc DEPS pten_enforce mixed_vector)
 cc_library(dense_tensor SRCS dense_tensor.cc DEPS convert_utils tensor_meta tensor_base)
 cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 
-cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base dense_tensor)
+cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector enforce ddim)
 

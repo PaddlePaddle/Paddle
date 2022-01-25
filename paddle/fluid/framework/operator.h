@@ -118,7 +118,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+  return var.IsType<LoDTensor>() || var.IsType<pten::SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
@@ -473,7 +473,7 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::SelectedRows>();
+    return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
   }
 
  private:

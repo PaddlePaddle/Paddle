@@ -1217,23 +1217,27 @@ PYBIND11_MODULE(core_noavx, m) {
           }));
 #endif
 
-  py::class_<SelectedRows>(m, "SelectedRows")
+  py::class_<pten::SelectedRows>(m, "SelectedRows")
       .def("__init__",
-           [](SelectedRows &instance) { new (&instance) SelectedRows(); })
+           [](pten::SelectedRows &instance) {
+             new (&instance) pten::SelectedRows();
+           })
       .def("__init__",
-           [](SelectedRows &instance, const std::vector<int64_t> rows,
+           [](pten::SelectedRows &instance, const std::vector<int64_t> rows,
               const int64_t &height) {
-             new (&instance) SelectedRows(rows, height);
+             new (&instance) pten::SelectedRows(rows, height);
            })
       .def("get_tensor",
-           [](SelectedRows &self) { return self.mutable_value(); },
+           [](pten::SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
       .def("numel",
-           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
-      .def("set_height", &SelectedRows::set_height)
-      .def("height", &SelectedRows::height)
+           [](pten::SelectedRows &self) -> int64_t {
+             return self.value().numel();
+           })
+      .def("set_height", &pten::SelectedRows::set_height)
+      .def("height", &pten::SelectedRows::height)
       .def("set_rows",
-           [](SelectedRows &self, std::vector<int64_t> rows) {
+           [](pten::SelectedRows &self, std::vector<int64_t> rows) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
@@ -1241,8 +1245,9 @@ PYBIND11_MODULE(core_noavx, m) {
         self.set_rows(new_rows);
 #endif
            })
-      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
-      .def("rows", [](SelectedRows &self) {
+      .def("sync_index",
+           [](pten::SelectedRows &instance) { instance.SyncIndex(); })
+      .def("rows", [](pten::SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
         new_rows.reserve(rows.size());
@@ -1291,8 +1296,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
       .def("get_selected_rows",
-           [](Variable &self) -> SelectedRows * {
-             return self.GetMutable<SelectedRows>();
+           [](Variable &self) -> pten::SelectedRows * {
+             return self.GetMutable<pten::SelectedRows>();
            },
            py::return_value_policy::reference)
       .def("get_lod_tensor_array",
@@ -1757,27 +1762,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
-  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
-      .value("XPU1", platform::XPUVersion::XPU1)
-      .value("XPU2", platform::XPUVersion::XPU2)
+  py::enum_<pten::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", pten::backends::xpu::XPUVersion::XPU1)
+      .value("XPU2", pten::backends::xpu::XPUVersion::XPU2)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
-  m.def("get_xpu_device_op_support_types",
-        [](const std::string &op_name, platform::XPUVersion version) {
-          return platform::get_xpu_op_support_type(op_name, version);
-        });
-  m.def("get_xpu_device_op_list", [](platform::XPUVersion version) {
+  m.def(
+      "get_xpu_device_op_support_types",
+      [](const std::string &op_name, pten::backends::xpu::XPUVersion version) {
+        return platform::get_xpu_op_support_type(op_name, version);
+      });
+  m.def("get_xpu_device_op_list", [](pten::backends::xpu::XPUVersion version) {
     return platform::get_xpu_op_list(version);
   });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
-    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+    return platform::get_xpu_version(place.device) >
+           pten::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
-    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+    return platform::get_xpu_version(place.device) >
+           pten::backends::xpu::XPUVersion::XPU1;
   });
 #endif
 

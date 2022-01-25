@@ -47,6 +47,10 @@ bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                                                               stream);
 }
 
+void* GetBasePtr(const std::shared_ptr<Allocation>& allocation) {
+  return allocation::AllocatorFacade::Instance().GetBasePtr(allocation);
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
                     const gpuStream_t& stream) {
