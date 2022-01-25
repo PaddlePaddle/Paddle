@@ -34,7 +34,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
   auto micro_id = -1;
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   if (platform::is_cpu_place(tensor->place())) {
-    auto data = reinterpret_cast<const float*>(tensor->data<void>());
+    auto data = reinterpret_cast<const float*>(tensor->data());
     micro_id = static_cast<int>(data[0]);
   } else {
 #ifdef PADDLE_WITH_CUDA
@@ -43,11 +43,9 @@ int GetMicroId(const platform::DeviceContext& ctx,
     char* temp_ptr = temp.data();
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(), temp_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 tensor->data<void>(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
+        tensor->numel() * framework::SizeOfType(tensor->type()), stream);
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     micro_id = static_cast<int>(temp_ptr_float[0]);
 #endif

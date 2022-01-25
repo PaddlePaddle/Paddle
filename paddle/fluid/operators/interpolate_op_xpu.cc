@@ -35,7 +35,7 @@ inline std::vector<int> get_new_shape_xpu(
         platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
     if (platform::is_xpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
       vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -52,7 +52,8 @@ inline std::vector<T> get_new_data_from_tensor_xpu(
   auto* new_data = new_data_tensor->data<T>();
   framework::Tensor cpu_starts_tensor;
   if (platform::is_xpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                                      &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());

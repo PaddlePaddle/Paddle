@@ -48,6 +48,7 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'ipu_shard_guard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -77,6 +78,7 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
+_already_patch_eager_tensor = False
 _global_flags_ = core.globals()
 core._disable_eager_mode()
 
@@ -85,6 +87,13 @@ core._disable_eager_mode()
 def _test_eager_guard(tracer=None):
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
+    global _already_patch_eager_tensor
+    if not _already_patch_eager_tensor:
+        from .dygraph.varbase_patch_methods import monkey_patch_varbase
+        monkey_patch_varbase()
+        from .dygraph import monkey_patch_math_varbase
+        monkey_patch_math_varbase()
+        _already_patch_eager_tensor = True
     if tracer is None:
         core._set_eager_tracer(_dygraph_tracer_)
     else:
@@ -94,6 +103,65 @@ def _test_eager_guard(tracer=None):
     finally:
         core._disable_eager_mode()
         _C_ops.switch_to_core_ops()
+
+
+global_ipu_index = None
+global_ipu_stage = None
+ipu_index_attr_name = 'ipu_index'
+ipu_stage_attr_name = 'ipu_stage'
+
+
+@signature_safe_contextmanager
+def ipu_shard_guard(index=None, stage=None):
+    """
+    Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
+
+    Args:
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+            The default value is None, which means the Op only run on IPU 0.
+        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+            The sharded model will be computed from small to large. The default value is None, 
+            which means no pipelining computation order and run Ops in terms of graph.
+    
+    **Note**:
+    Only if the enable_manual_shard=True, the ‘index’ is able to be set not None. Please refer 
+    to :code:`paddle.static.IpuStrategy` . 
+    Only if the enable_pipelining=True, the ‘stage’ is able to be set not None. Please refer 
+    to :code:`paddle.static.IpuStrategy` .
+    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
+    duplicated index.
+
+    Examples:
+        .. code-block:: python
+
+            # required: ipu
+
+            import paddle
+            paddle.enable_static()
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            with paddle.static.ipu_shard_guard(index=0, stage=0):
+                b = a + 1
+            with paddle.static.ipu_shard_guard(index=1, stage=1):
+                c = b + 1
+            with paddle.static.ipu_shard_guard(index=0, stage=2):
+                d = c + 1
+    """
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can not use this function since PaddlePaddle is not compiled with IPU"
+        )
+
+    global global_ipu_index
+    global global_ipu_stage
+    prev_ipu_index = global_ipu_index
+    prev_ipu_stage = global_ipu_stage
+    global_ipu_index = index
+    global_ipu_stage = stage
+    try:
+        yield
+    finally:
+        global_ipu_index = prev_ipu_index
+        global_ipu_stage = prev_ipu_stage
 
 
 def require_version(min_version, max_version=None):
@@ -1695,7 +1763,10 @@ class Variable(object):
         Examples:
           .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
@@ -1705,7 +1776,8 @@ class Variable(object):
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
             raise Exception("SelectedRows DO NOT supprt lod")
-
+        if self.type == core.VarDesc.VarType.STRINGS:
+            return None
         return self.desc.lod_level()
 
     @property
@@ -2564,6 +2636,15 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+
+            # proto.attrs doesn't include ipu_index
+            if core.is_compiled_with_ipu():
+                if global_ipu_index is not None:
+                    self._update_desc_attr(ipu_index_attr_name,
+                                           global_ipu_index)
+                if global_ipu_stage is not None:
+                    self._update_desc_attr(ipu_stage_attr_name,
+                                           global_ipu_stage)
 
             self.desc.check_attrs()
             if self._has_kernel(type):
@@ -6837,7 +6918,7 @@ def _get_paddle_place(place):
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
                           core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
-                          core.MLUPlace)):
+                          core.IPUPlace, core.MLUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6892,6 +6973,18 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
+    # IPU
+    avaliable_ipu_place = re.match(r'ipu:\d+', place)
+    if avaliable_ipu_place:
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with IPU".format(avaliable_ipu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.IPUPlace(device_id)
+
     # MLU
     avaliable_mlu_place = re.match(r'mlu:\d+', place)
     if avaliable_mlu_place:
@@ -6905,7 +6998,7 @@ def _get_paddle_place(place):
         return core.MLUPlace(device_id)
 
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, MLUPlace and NPUPlace, but received {}.".
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlace, MLUPlace and NPUPlace, but received {}.".
         format(place))
 
 

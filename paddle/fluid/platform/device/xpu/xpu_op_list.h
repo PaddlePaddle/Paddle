@@ -12,6 +12,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 
@@ -19,6 +20,9 @@ namespace paddle {
 namespace platform {
 
 using pOpKernelType = paddle::framework::OpKernelType;
+using vartype = paddle::framework::proto::VarType;
+using XPUOpListMap =
+    std::unordered_map<std::string, std::vector<vartype::Type>>;
 
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type);
 bool is_in_xpu_black_list(const std::string& op_name);
@@ -28,6 +32,9 @@ bool is_xpu_kp_support_op(const std::string& op_name,
                           const pOpKernelType& type);
 bool is_in_xpu_kpwhite_list(const std::string& op_name);
 #endif
+std::vector<vartype::Type> get_xpu_op_support_type(const std::string& op_name,
+                                                   XPUVersion version);
+XPUOpListMap get_xpu_op_list(XPUVersion version);
 
 }  // namespace platform
 }  // namespace paddle

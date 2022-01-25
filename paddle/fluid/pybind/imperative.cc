@@ -170,24 +170,18 @@ static void InitVarBaseAndTensor(
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::XPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::CUDAPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy);
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(tensor, array, place,
+                                                    zero_copy);
   } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::NPUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::MLUPlace, place), zero_copy);
+    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -792,7 +786,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -827,7 +821,7 @@ void BindImperative(py::module *m_ptr) {
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
-          void *data_ptr = t.data<void>();
+          void *data_ptr = t.data();
           size_t data_size = t.numel() * framework::SizeOfType(t.type());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
@@ -1259,7 +1253,8 @@ void BindImperative(py::module *m_ptr) {
                                       ->GetMutable<framework::LoDTensor>();
                auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
                    tracer->ExpectedPlace());
-               TensorFromVector(list_select_idxs, *dev_ctx, idx_tensor);
+               paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
+                                                   idx_tensor);
 
                imperative::NameVarBaseMap ins = {{"X", {self}},
                                                  {"Index", {select_index}}};
@@ -1857,7 +1852,7 @@ void BindImperative(py::module *m_ptr) {
              // 1. get LoDTensor
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
-             void *data_ptr = t->data<void>();
+             void *data_ptr = t->data();
              size_t data_size = t->numel() * framework::SizeOfType(t->type());
              auto shared_writer_holder =
                  memory::allocation::AllocateMemoryMapWriterAllocation(
@@ -1876,6 +1871,61 @@ void BindImperative(py::module *m_ptr) {
 #endif
            },
            py::return_value_policy::reference)
+#if defined(PADDLE_WITH_CUDA)
+      .def("_uva",
+           [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
+             PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
+                               platform::errors::InvalidArgument(
+                                   "Unified virtual addressing only support "
+                                   "CPU Tensor currently."));
+             platform::DeviceContextPool &pool =
+                 platform::DeviceContextPool::Instance();
+             auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
+             VLOG(4) << "Init the DeviceContext, and the place is "
+                     << dev_ctx->GetPlace();
+             auto *self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             // Register the cpu memory as the cuda host memory
+             const auto &data_numel = self_tensor->numel();
+             const size_t &need_allocate_size =
+                 data_numel * framework::SizeOfType(self_tensor->type());
+             void *data_ptr = self_tensor->data();
+             auto result = cudaHostRegister(data_ptr, need_allocate_size,
+                                            cudaHostRegisterDefault);
+             if (cudaSuccess != result) {
+               VLOG(4) << "UVA(unified virtual addressing) failed allocate:"
+                       << need_allocate_size << ", the error code:" << result;
+             }
+
+             // Get device pointer from the function of cudaHostGetDevicePointer
+             void *cuda_device_pointer = nullptr;
+             cudaHostGetDevicePointer(
+                 reinterpret_cast<void **>(&cuda_device_pointer),
+                 reinterpret_cast<void *>(data_ptr), 0);
+
+             // Reset the memory with device pointer
+             std::shared_ptr<memory::allocation::Allocation> holder =
+                 std::make_shared<memory::allocation::Allocation>(
+                     cuda_device_pointer, need_allocate_size,
+                     platform::CUDAPlace(device_id));
+             self_tensor->ResetHolderWithType(holder, self_tensor->type());
+           },
+           py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
+        Returns self tensor with the UVA(unified virtual addressing).
+
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
+        Examples:
+            .. code-block:: python
+
+              # required: gpu
+              import paddle
+              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+              x._uva()
+              print(x)
+       )DOC")
+#endif
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
@@ -1988,6 +2038,29 @@ void BindImperative(py::module *m_ptr) {
              dst_->ShareDataTypeWith(*src);
            })
       .def("_is_shared_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
+           })
+      .def("_share_underline_tensor_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
+             dst_->ShareDataTypeWith(*src);
+             dst_->Resize(src->dims());
+           })
+      .def("_is_shared_underline_tensor_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
              auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();

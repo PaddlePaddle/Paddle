@@ -41,7 +41,11 @@ void CPUBfloat16PlacementPass::SetMkldnnDataType(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    GET_IR_NODE_FROM_SUBGRAPH(op_in, op_in, bfloat16_placement_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(op, op, bfloat16_placement_pattern);
+
+    // Only float input can be converted to bfloat16
+    if (op_in->Var()->GetDataType() != proto::VarType::FP32) return;
 
     if ((op->Op()->HasAttr("mkldnn_data_type") ||
          op->Op()->HasProtoAttr("mkldnn_data_type")) &&

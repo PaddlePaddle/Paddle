@@ -22,11 +22,9 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace operators {

@@ -1,12 +1,19 @@
 IF(WITH_IPU)
   FILE(GLOB POPART_CANONICALIZATION_SRC ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/device/ipu/popart_canonicalization/*.cc)
-  cc_library(ipu_device SRCS device.cc DEPS enforce popart)
-  cc_library(ipu_utils SRCS ipu_utils.cc DEPS memory framework_proto popart)
-  cc_library(ipu_strategy SRCS ipu_strategy.cc DEPS popart graph framework_proto enforce)
-  cc_library(ipu_optimizer SRCS ipu_optimizer.cc DEPS popart enforce)
-  cc_library(ipu_executor SRCS ipu_executor.cc DEPS ipu_optimizer ipu_utils popart graph framework_proto)
-  cc_library(popart_canonicalization_utils SRCS ${POPART_CANONICALIZATION_SRC} DEPS framework_proto enforce ipu_utils)
-  cc_library(ipu_compiler SRCS ipu_compiler.cc DEPS popart graph ipu_utils graph_helper)
-  cc_library(ipu_backend SRCS ipu_backend.cc DEPS popart ipu_compiler graph framework_proto enforce ipu_utils ipu_strategy ipu_device ipu_executor graph_helper)
+  list(APPEND PADDLE_IPU_SRC ${POPART_CANONICALIZATION_SRC})
+  set(PADDLE_IPU_LIB "${CMAKE_CURRENT_BINARY_DIR}/libpaddle_ipu.so" CACHE STRING "")
+  set(PADDLE_IPU_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "")
+  set(IPU_BACKEND_SRC
+    "ipu_device.cc"
+    "ipu_strategy.cc"
+    "ipu_executor.cc"
+    "ipu_compiler.cc"
+    "ipu_backend.cc"
+    "ipu_utils.cc"
+  )
+
+  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart graph framework_proto enforce graph_helper timer)
   cc_library(ipu_info SRCS ipu_info.cc DEPS ipu_backend)
+  cc_library(paddle_ipu SHARED SRCS ${PADDLE_IPU_SRC} DEPS popart)
+  add_dependencies(paddle_ipu ipu_backend)
 ENDIF()

@@ -14,8 +14,11 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 #include "gflags/gflags.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
 PADDLE_DEFINE_EXPORTED_string(
@@ -56,7 +59,7 @@ int GetRuntimeVersion() {
 /**************************** Device Management **************************/
 
 static int GetDeviceCountImpl() {
-  const auto *xpu_visible_devices = std::getenv("XPU_VISIBLE_DEVICES");
+  const auto* xpu_visible_devices = std::getenv("XPU_VISIBLE_DEVICES");
   if (xpu_visible_devices != nullptr) {
     std::string xpu_visible_devices_str(xpu_visible_devices);
     if (std::all_of(xpu_visible_devices_str.begin(),
@@ -114,28 +117,39 @@ std::vector<int> GetXPUSelectedDevices() {
 
 /**************************** Memory Management **************************/
 
-void MemcpySyncH2D(void *dst, const void *src, size_t count, int dev_id) {
-  platform::XPUDeviceGuard guard(dev_id);
+void MemcpySyncH2D(void* dst, const void* src, size_t count,
+                   const platform::XPUPlace& dst_place) {
+  platform::XPUDeviceGuard guard(dst_place.device);
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
 }
 
-void MemcpySyncD2H(void *dst, const void *src, size_t count, int dev_id) {
-  platform::XPUDeviceGuard guard(dev_id);
+void MemcpySyncD2H(void* dst, const void* src, size_t count,
+                   const platform::XPUPlace& src_place) {
+  platform::XPUDeviceGuard guard(src_place.device);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetByPlace(src_place);
+  dev_ctx->Wait();
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
 }
 
-void MemcpySyncD2D(void *dst, int dst_id, const void *src, int src_id,
+// if src.device == dst.device and you need sync , after call this function,
+// need to call xpu_wait()
+void MemcpySyncD2D(void* dst, const platform::XPUPlace& dst_place,
+                   const void* src, const platform::XPUPlace& src_place,
                    size_t count) {
   int dev_id = GetXPUCurrentDeviceId();
-  if (dst_id == dev_id && src_id == dev_id) {
-    platform::XPUDeviceGuard guard(dev_id);
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_DEVICE));
+  if (dst_place.device == dev_id && src_place.device == dev_id) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.GetByPlace(src_place);
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        xpu::copy(dev_ctx->x_context(), static_cast<const int8_t*>(src),
+                  static_cast<int8_t*>(dst), count),
+        "copy ");
   } else {
     PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy_peer(dst_id, dst, src_id, src, count));
+        xpu_memcpy_peer(dst_place.device, dst, src_place.device, src, count));
   }
 }
 

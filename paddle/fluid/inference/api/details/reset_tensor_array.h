@@ -21,9 +21,12 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Scope;
 class SelectedRows;
 }  // namespace framework

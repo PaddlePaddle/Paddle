@@ -27,18 +27,16 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/pten/include/core.h"
-
 DECLARE_bool(use_mkldnn);
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -155,25 +153,21 @@ class PreparedOp {
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
              const framework::KernelSignature& kernel_signature,
-             const pten::Kernel& pt_kernel,
-             pten::KernelContext* pt_kernel_context,
-             platform::DeviceContext* dev_ctx);
+             const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
-                            const framework::AttributeMap& default_attrs,
-                            pten::KernelContext* pt_kernel_context = nullptr);
+                            const framework::AttributeMap& default_attrs);
 
   static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
                             const NameVarMap<VariableWrapper>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
-                            const framework::AttributeMap& default_attrs,
-                            pten::KernelContext* pt_kernel_context = nullptr);
+                            const framework::AttributeMap& default_attrs);
 
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs,
@@ -199,9 +193,6 @@ class PreparedOp {
   bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   pten::Kernel pt_kernel_;
-  // In order to reduce the compatibility phase
-  // performance overhead, temporarily cache KernelContext
-  pten::KernelContext* pt_kernel_context_;
 };
 
 }  // namespace imperative

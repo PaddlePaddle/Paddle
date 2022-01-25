@@ -108,8 +108,6 @@ class PSGPUWrapper {
     running_ = false;
     VLOG(3) << "begin stop pre_build_threads_";
     pre_build_threads_.join();
-    VLOG(3) << "begin stop build_threads_";
-    build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
@@ -362,7 +360,6 @@ class PSGPUWrapper {
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
-  std::thread build_threads_;
   bool running_ = false;
 
  protected:

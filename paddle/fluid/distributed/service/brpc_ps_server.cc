@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include <thread>  // NOLINT
 #include "butil/object_pool.h"
+#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
@@ -117,6 +118,11 @@ int32_t BrpcPsService::initialize() {
   _service_handler_map[PS_START_PROFILER] = &BrpcPsService::start_profiler;
   _service_handler_map[PS_STOP_PROFILER] = &BrpcPsService::stop_profiler;
   _service_handler_map[PS_PUSH_GLOBAL_STEP] = &BrpcPsService::push_global_step;
+  auto &profiler = CostProfiler::instance();
+  profiler.register_profiler("pserver_server_pull_dense");
+  profiler.register_profiler("pserver_server_push_dense");
+  profiler.register_profiler("pserver_server_pull_sparse");
+  profiler.register_profiler("pserver_server_push_sparse");
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
@@ -190,6 +196,7 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
         "PsRequestMessage.datas is requeired at least 1 for num of dense");
     return 0;
   }
+  CostTimer timer("pserver_server_pull_dense");
   uint32_t num = *(const uint32_t *)request.params(0).c_str();
   if (num < 0) {
     set_response_code(response, -1,
@@ -246,6 +253,7 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
     return 0;
   }
 
+  CostTimer timer("pserver_server_push_dense");
   /*
   Push Content:
   |--num--|---valuesData---|
@@ -356,6 +364,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
     return 0;
   }
 
+  CostTimer timer("pserver_server_pull_sparse");
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
   auto dim = table->value_accesor()->select_dim();
 
@@ -396,6 +405,7 @@ int32_t BrpcPsService::push_sparse(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
+  CostTimer timer("pserver_server_push_sparse");
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
   /*
   Push Content:

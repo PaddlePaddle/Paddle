@@ -64,9 +64,7 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
     const T* dy = OG->data<T>();
     T dy0_value;
     xpu_wait(dev_ctx.x_context()->xpu_stream);
-    memory::Copy(platform::CPUPlace(), &dy0_value,
-                 BOOST_GET_CONST(platform::XPUPlace, OG->place()), dy,
-                 sizeof(T));
+    memory::Copy(platform::CPUPlace(), &dy0_value, OG->place(), dy, sizeof(T));
     float dy0_fp32 = static_cast<float>(dy0_value);
     dy0_fp32 = dy0_fp32 / static_cast<float>(IG->numel());
 

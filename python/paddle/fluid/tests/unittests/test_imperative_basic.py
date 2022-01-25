@@ -267,7 +267,7 @@ class TestImperative(unittest.TestCase):
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp
+            y = paddle.add(l0(x), tmp)
             o = l1(y)
             o.backward()
 
@@ -285,7 +285,7 @@ class TestImperative(unittest.TestCase):
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp
+            y = paddle.add(l0(x), tmp)
             o = l1(y)
             o.backward()
 
@@ -306,7 +306,7 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(tmp.stop_gradient)
                 self.assertTrue(tmp2.stop_gradient is False)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp2
+            y = paddle.add(l0(x), tmp2)
             o = l1(y)
             o.backward()
 
@@ -321,7 +321,7 @@ class TestImperative(unittest.TestCase):
                 with paddle.set_grad_enabled(True):
                     self.assertTrue(paddle.is_grad_enabled())
 
-    def test_sum_op(self):
+    def func_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
             inputs = []
@@ -329,7 +329,7 @@ class TestImperative(unittest.TestCase):
                 tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs.append(tmp)
-            ret = fluid.layers.sums(inputs)
+            ret = paddle.add_n(inputs)
             loss = fluid.layers.reduce_sum(ret)
             loss.backward()
         with fluid.dygraph.guard():
@@ -338,7 +338,7 @@ class TestImperative(unittest.TestCase):
                 tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs2.append(tmp)
-            ret2 = fluid.layers.sums(inputs2)
+            ret2 = paddle.add_n(inputs2)
             loss2 = fluid.layers.reduce_sum(ret2)
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             loss2.backward()
@@ -348,6 +348,11 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.allclose(ret2.numpy(), x * 10))
             a = inputs2[0].gradient()
             self.assertTrue(np.allclose(inputs2[0].gradient(), x))
+
+    def test_sum_op(self):
+        with _test_eager_guard():
+            self.func_sum_op()
+        self.func_sum_op()
 
     def func_empty_var(self):
         with fluid.dygraph.guard():
@@ -948,7 +953,8 @@ class TestMetaclass(unittest.TestCase):
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
         if core._in_eager_mode():
             self.assertEqual(
-                type(paddle.fluid.core.eager.EagerTensor).__name__, 'type')
+                type(paddle.fluid.core.eager.EagerTensor).__name__,
+                'pybind11_type')
         else:
             self.assertEqual(
                 type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')

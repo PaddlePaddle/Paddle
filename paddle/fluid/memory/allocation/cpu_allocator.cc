@@ -24,7 +24,7 @@ namespace allocation {
 
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 
-void CPUAllocator::FreeImpl(Allocation *allocation) {
+void CPUAllocator::FreeImpl(pten::Allocation *allocation) {
   void *p = allocation->ptr();
 #ifdef _WIN32
   _aligned_free(p);
@@ -34,7 +34,7 @@ void CPUAllocator::FreeImpl(Allocation *allocation) {
   delete allocation;
 }
 
-Allocation *CPUAllocator::AllocateImpl(size_t size) {
+pten::Allocation *CPUAllocator::AllocateImpl(size_t size) {
   void *p;
 #ifdef _WIN32
   p = _aligned_malloc(size, kAlignment);

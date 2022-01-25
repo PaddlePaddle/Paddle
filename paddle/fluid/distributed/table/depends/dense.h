@@ -99,6 +99,7 @@ class DSGD : public DenseOptimizer {
 };
 
 // adam optimizer for dense tensor
+// TODO(zhaocaibei123): add CHECK(common_dense_table.task_pool_size_) == 1
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
@@ -131,6 +132,8 @@ class DAdam : public DenseOptimizer {
     epsilon = 1.0e-8;
   }
 
+  // make sure common_dense_table.task_pool_size_ == 1;
+  // otherwise, task_pool_size_ times beta1_pow/beta2_pow multiplication
   void update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
@@ -221,45 +224,35 @@ class DAdamD2Sum : public DenseOptimizer {
   void update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
-    std::vector<float> grad, grad2, scale;
-    grad.resize(update_numel);
-    grad2.resize(update_numel);
-    scale.resize(update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_ada_g2sum(ada_g2sum + begin, 1,
+                                              update_numel);
 
-    auto blas = GetBlas<float>();
-    // copy grad
-    blas.VCOPY(update_numel, update_values + begin, grad.data());
-    blas.VCOPY(update_numel, update_values + begin, grad2.data());
+    Eigen::Map<Eigen::MatrixXf> mat_ada_d2sum(ada_d2sum + begin, 1,
+                                              update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_mom_velocity(mom_velocity + begin, 1,
+                                                 update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_w(param + begin, 1, update_numel);
 
-    // d2sum
-    blas.SCAL(update_numel, ada_decay_rate[0], ada_d2sum + begin);
-    ADD<float>(update_numel, ada_d2sum + begin, 1, ada_d2sum + begin);
+    Eigen::Map<const Eigen::MatrixXf> mat_grad(update_values + begin, 1,
+                                               update_numel);
 
-    // g2sum
-    blas.SCAL(update_numel, ada_decay_rate[0], ada_g2sum + begin);
-    blas.VSQUARE(update_numel, grad2.data(), grad2.data());
-    blas.VADD(update_numel, ada_g2sum + begin, grad2.data(), ada_g2sum + begin);
+    mat_ada_d2sum = (mat_ada_d2sum * ada_decay_rate[0]).array() + 1;
+    mat_ada_g2sum =
+        (mat_ada_g2sum * ada_decay_rate[0]) + mat_grad.cwiseProduct(mat_grad);
 
-    // mom
-    blas.SCAL(update_numel, mom_decay_rate[0], mom_velocity + begin);
-    blas.SCAL(update_numel, 1 - mom_decay_rate[0], grad.data());
-    blas.VADD(update_numel, mom_velocity + begin, grad.data(),
-              mom_velocity + begin);
+    thread_local std::vector<float> scale_vec;
+    scale_vec.resize(update_numel);
+    Eigen::Map<Eigen::MatrixXf> scale(scale_vec.data(), 1, update_numel);
+    memcpy(scale_vec.data(), mat_ada_d2sum.data(),
+           sizeof(float) * update_numel);
 
-    // scale
-    float* scale_ = scale.data();
-    blas.VDIV(update_numel, ada_g2sum + begin, ada_d2sum + begin, scale_);
-    ADD<float>(update_numel, scale_, ada_epsilon[0], scale_);
-    DIV<float>(update_numel, 1 + ada_epsilon[0], scale_, scale_);
-    SQRT<float>(update_numel, scale_, scale_);
+    scale = scale.array() * ada_epsilon[0];
+    scale = (mat_ada_d2sum + scale).cwiseQuotient(mat_ada_g2sum + scale);
+    scale = scale.cwiseSqrt();
+    mat_mom_velocity =
+        (mat_mom_velocity - mat_grad) * mom_decay_rate[0] + mat_grad;
 
-    blas.SCAL(update_numel, learning_rate[0], scale_);
-
-    // TODO(zhaocaibei123): check if there exists elementwise_multiply in blas
-    // TODO(zhaocaibei123): blas.VMUL
-    ELE_MUL<float>(update_numel, scale_, mom_velocity + begin, scale_);
-
-    blas.VSUB(update_numel, param + begin, scale_, param + begin);
+    mat_w -= learning_rate[0] * mat_mom_velocity.cwiseProduct(scale);
   }
 
   float* learning_rate;

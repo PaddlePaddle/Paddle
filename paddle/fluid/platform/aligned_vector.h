@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/hostdevice.h"
-#define CHAR_BIT 8
+#include "paddle/pten/core/hostdevice.h"
+
 namespace paddle {
 namespace platform {
 

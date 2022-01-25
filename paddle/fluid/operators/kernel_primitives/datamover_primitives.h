@@ -20,6 +20,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +86,7 @@ struct FastDivMod {
 template <int kDims>
 struct BroadcastConfig {
   FastDivMod divmoders[kDims];
-  uint32_t strides[framework::DDim::kMaxRank];
+  uint32_t strides[pten::framework::DDim::kMaxRank];
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,

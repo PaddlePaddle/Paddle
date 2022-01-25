@@ -75,9 +75,10 @@ class LoadOpKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "seek witn tensor must great than or equal to 0"));
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-      DeserializeFromStream(fin, tensor, dev_ctx, seek, shape);
+      paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx, seek,
+                                               shape);
     } else {
-      DeserializeFromStream(fin, tensor, dev_ctx);
+      paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx);
     }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
