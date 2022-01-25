@@ -21,6 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from .ps_pass_test_base import *
+from ..ps.ps_dnn_model import DnnTrainer
 
 
 class TestPsTrainerPass(PsPassTestBase):
@@ -39,13 +41,29 @@ class TestPsTrainerPass(PsPassTestBase):
     def check(self):
         pass
 
-    def test_append_send_ops_pass(self):
-        self.init("")
-        self.debug_pass = 0
+    def test_ps_optimizer_minimize(self):
+        self.run_minimize = 1
+
+        self.debug_new_minimize = 0
+        self.log_dir = "log_old"
         self.ps_launch()
 
-        self.init("append_send_ops_pass")
-        self.debug_pass = 1
+        self.debug_new_minimize = 1
+        self.log_dir = "log_new"
+        self.ps_launch()
+
+        self.check()
+
+    def test_append_send_ops_pass(self):
+        self.run_single_pass = 1
+
+        self.debug_new_pass = 0
+        self.log_dir = "log_old"
+        self.ps_launch()
+
+        self.debug_new_pass = 1
+        self.applied_pass_name = "append_send_ops_pass"
+        self.log_dir = "log_new"
         self.ps_launch()
 
         self.check()

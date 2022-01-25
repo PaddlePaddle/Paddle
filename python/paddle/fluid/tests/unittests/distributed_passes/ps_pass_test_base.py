@@ -30,7 +30,12 @@ class PsPassTestBase(unittest.TestCase):
     def init(self):
         self.worker_num = 2
         self.server_num = 2
-        self.debug_pass = True
+        self.run_minimize = 0
+        self.run_single_pass = 0
+        self.debug_new_minimize = 0
+        self.debug_new_pass = 0
+        self.applied_pass_name = ""
+        self.log_dir = ""
 
     def setUp(self):
         print('Ps setUp...')
@@ -43,9 +48,13 @@ class PsPassTestBase(unittest.TestCase):
             sys.executable,
             "-u",
         ] + coverage_args + [
-            "-m", "launch", "--worker_num", self.worker_num, "--server_num",
-            self.server_num, "../ps/ps_dnn_trainer.py", "-m", "benchmark.yaml",
-            "--debug_pass", self.debug_pass
+            "-m", "launch", "--log_dir", self.log_dir, "--worker_num",
+            self.worker_num, "--server_num", self.server_num,
+            "../ps/ps_dnn_trainer.py", "-m", "benchmark.yaml", "--run_minimize",
+            self.run_minimize, "--run_single_pass", self.run_single_pass,
+            "--debug_new_pass", self.debug_new_pass, "--debug_new_minimize",
+            self.debug_new_minimize, "--applied_pass_name",
+            self.applied_pass_name
         ]
         cmd = [shlex.quote(c) for c in cmd]
         prepare_python_path_and_return_module(__file__)

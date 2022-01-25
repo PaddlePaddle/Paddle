@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.ps.utils.ps_program_builder import *
 import paddle.distributed.fleet as fleet
 from .ps_dnn_model import StaticModel
 import argparse
@@ -234,7 +235,16 @@ def parse_args():
         help="whether use bf16")
 
     parser.add_argument(
-        '--debug_pass', type=int, default=1, help="test single pass")
+        '--run_minimize', type=int, default=0, help="test single pass")
+    parser.add_argument(
+        '--run_single_pass', type=int, default=0, help="test single pass")
+    parser.add_argument(
+        '--debug_new_minimize', type=int, default=0, help="test single pass")
+    parser.add_argument(
+        '--debug_new_pass', type=int, default=0, help="test single pass")
+    parser.add_argument(
+        '--applied_pass_name', type=str, default="", help="test single pass")
+
     args = parser.parse_args()
     args.abs_dir = os.path.dirname(os.path.abspath(args.config_yaml))
     yaml_helper = YamlHelper()
@@ -242,7 +252,11 @@ def parse_args():
     config["yaml_path"] = args.config_yaml
     config["config_abs_dir"] = args.abs_dir
     config["pure_bf16"] = args.pure_bf16
-    config['debug_pass'] = args.debug_pass
+    config['run_minimize'] = args.run_minimize
+    config['run_single_pass'] = args.run_single_pass
+    config['debug_new_minimize'] = args.debug_new_minimize
+    config['debug_new_pass'] = args.debug_new_pass
+    config['applied_pass_name'] = args.applied_pass_name
     yaml_helper.print_yaml(config)
     return config
 
@@ -263,27 +277,6 @@ class DnnTrainer(object):
         self.model = None
         self.pure_bf16 = self.config['pure_bf16']
 
-    def run(self):
-        self.init_fleet_with_gloo()
-        if self.config['debug_pass'] == 0:
-            self.create_network_old()
-        else:
-            self.create_network_new()
-        if fleet.is_server():
-            with open("./{}_server_main_program.prototxt".format(
-                    fleet.worker_index()), 'w+') as f:
-                f.write(str(paddle.static.default_main_program()))
-            with open("./{}_server_startup_program.prototxt".format(
-                    fleet.worker_index()), 'w+') as f:
-                f.write(str(paddle.static.default_startup_program()))
-        elif fleet.is_worker():
-            with open("./{}_worker_main_program.prototxt".format(
-                    fleet.worker_index()), 'w+') as f:
-                f.write(str(paddle.static.default_main_program()))
-            with open("./{}_worker_startup_program.prototxt".format(
-                    fleet.worker_index()), 'w+') as f:
-                f.write(str(paddle.static.default_startup_program()))
-
     def init_fleet_with_gloo(self, use_gloo=True):
         if use_gloo:
             os.environ["PADDLE_WITH_GLOO"] = "1"
@@ -292,32 +285,75 @@ class DnnTrainer(object):
         else:
             fleet.init()
 
-    def create_network_new(self):
+    def run_minimize(self):
+        self.init_fleet_with_gloo()
         self.model = get_model(self.config)
         logger.info("cpu_num: {}".format(os.getenv("CPU_NUM")))
-
+        self.input_data = self.model.create_feeds()
+        self.metrics = self.model.net(self.input_data)
         strategy = get_strategy(self.config)
         learning_rate = self.config.get(
             "hyper_parameters.optimizer.learning_rate")
-        optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
+        inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
 
-        from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
-        ps_optimizer = ParameterServerOptimizer(optimizer)
-        ps_optimizer._set_basic_info(self._cost, None, optimizer, strategy)
-        ps_optimizer.minimize_impl(self._cost)
+        if self.config['debug_new_minimize'] == 1:
+            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
+            ps_optimizer = ParameterServerOptimizer(inner_optimizer)
+            ps_optimizer._set_basic_info(self.model._cost, None, optimizer,
+                                         strategy)
+            ps_optimizer.minimize_impl(self.model._cost)
+        else:
+            import paddle.distributed.fleet as fleet
+            optimizer = fleet.distributed_optimizer(inner_optimizer, strategy)
+            optimizer.minimize(self.model._cost)
 
-    def create_network_old(self):
-        self.model = get_model(self.config)
-        logger.info("cpu_num: {}".format(os.getenv("CPU_NUM")))
+        if fleet.is_server():
+            _main_file = "run_minimize" + "_debug_new_minimize: " + str(
+                self.config['debug_new_minimize']) + "_server_main.prototxt"
+        elif fleet.is_worker():
+            _main_file = "run_minimize" + "_debug_new_minimize: " + str(
+                self.config['debug_new_minimize']) + "_worker_main.prototxt"
+        debug_program(_main_file, self.model._cost.block.program)
 
-        strategy = get_strategy(self.config)
-        learning_rate = self.config.get(
-            "hyper_parameters.optimizer.learning_rate")
-        optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
+    def run_single_pass(self):
+        self.model = get_model(config)
+        input_data = self.model.create_feeds()
+        metrics = self.model.net(input_data)
+        loss = self.model._cost
+        strategy = get_strategy(config)
+        learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
+        inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
+        if self.config['debug_new_pass'] == 1:
+            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
+            ps_optimizer = ParameterServerOptimizer(inner_optimizer)
+            ps_optimizer._set_basic_info(loss, None, inner_optimizer, strategy)
+            inner_opt.minimize(loss)
+            ps_optimizer.init_ps_pass_context(loss, None)
+            _main = ps_optimizer.context['cloned_main']
 
-        import paddle.distributed.fleet as fleet
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(self._cost)
+            append_send_ops_pass = new_pass(config["applied_pass_name"],
+                                            ps_optimizer.context)
+            append_send_ops_pass.apply([_main], [], ps_optimizer.context)
+
+        else:
+            from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
+            compiled_config = public.CompileTimeStrategy(
+                loss.block.program, None, strategy, role_maker)
+            compiled_config.strategy = strategy
+            _main = compiled_config.origin_main_program.clone()
+            _startup = compiled_config.origin_startup_program.clone()
+            from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
+            _main = worker.append_send_ops_pass(_main, compiled_config)
+
+        if fleet.is_server():
+            _main_file = str(config[
+                "applied_pass_name"]) + "debug_new_pass: " + str(self.config[
+                    'debug_new_pass']) + "_server_main.prototxt"
+        elif fleet.is_worker():
+            _main_file = str(config[
+                "applied_pass_name"]) + "debug_new_pass: " + str(self.config[
+                    'debug_new_pass']) + "_worker_main.prototxt"
+        debug_program(_main_file, _main)
 
 
 if __name__ == "__main__":
@@ -325,4 +361,7 @@ if __name__ == "__main__":
     config = parse_args()
     os.environ["CPU_NUM"] = str(config.get("runner.thread_num"))
     benchmark_main = DnnTrainer(config)
-    benchmark_main.run()
+    if config['run_single_pass'] == 1:
+        benchmark_main.run_single_pass()
+    elif config['run_minimize'] == 1:
+        benchmark_main.run_minimize()
