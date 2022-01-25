@@ -224,6 +224,14 @@ class Gloo(object):
             self._worker_comm = gloo
         # TODO (sandyhouse): initialize gloo for server and all
 
+        # the closing of kv server may cause gloo init failure 
+        # since it depend on the full mesh connection
+        # e.g. 0 connected with 1,2,3 while 2-3 not connected yet
+        # TODO(kuizhiqing)
+        if start_http_server:
+            http_server_d["running"] = False
+            http_server.join()
+
     def _get_rank_nodes(self, role):
         nodes = 0
         rank = -1

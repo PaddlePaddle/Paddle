@@ -23,7 +23,7 @@
 #include "paddle/pten/core/sparse_csr_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 

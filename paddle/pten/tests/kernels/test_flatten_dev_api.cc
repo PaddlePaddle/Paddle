@@ -47,7 +47,8 @@ TEST(DEV_API, flatten) {
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   for (int i = 0; i < dense_x.numel(); i++) {
     dense_x_data[i] = i;
