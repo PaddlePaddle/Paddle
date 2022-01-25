@@ -40,8 +40,8 @@ class ReluDepthwiseConvNet(nn.Layer):
 
 class TestFuseReluDepthwiseConvPass(DistPassTestBase):
     def init(self):
-        self.atol = 1e-5
-        self.rtol = 1e-5
+        self.atol = 1e-4
+        self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[3, 224, 224]):
         image = paddle.static.data(
