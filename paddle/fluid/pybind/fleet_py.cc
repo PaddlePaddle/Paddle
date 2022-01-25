@@ -29,15 +29,15 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/distributed/common/sparse_sharding_merge.h"
-#include "paddle/fluid/distributed/communicator_common.h"
-#include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
-#include "paddle/fluid/distributed/service/communicator.h"
-#include "paddle/fluid/distributed/service/env.h"
-#include "paddle/fluid/distributed/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/service/graph_py_service.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;

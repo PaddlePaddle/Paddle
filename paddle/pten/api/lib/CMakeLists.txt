@@ -38,7 +38,7 @@ endif()
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
-  COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file} 
+  COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
                  --api_yaml_path ${api_yaml_file}
                  --api_header_path ${api_header_file_tmp}
                  --api_source_path ${api_source_file_tmp}
@@ -51,7 +51,7 @@ add_custom_command(
 # generate backward api
 add_custom_command(
   OUTPUT ${bw_api_header_file} ${bw_api_source_file} ${bw_api_header_file_tmp} ${bw_api_source_file_tmp}
-  COMMAND ${PYTHON_EXECUTABLE} ${bw_api_gen_file} 
+  COMMAND ${PYTHON_EXECUTABLE} ${bw_api_gen_file}
                  --backward_yaml_path ${bw_api_yaml_file}
                  --backward_header_path ${bw_api_header_file_tmp}
                  --backward_source_path ${bw_api_source_file_tmp}
@@ -63,4 +63,4 @@ add_custom_command(
 
 cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)
-cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta)
+cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta pten_function_api)

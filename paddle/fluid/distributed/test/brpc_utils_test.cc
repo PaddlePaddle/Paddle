@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/distributed/service/brpc_utils.h"
+#include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
