@@ -17,7 +17,8 @@
 
 template <typename T>
 using CUDAReduceSumGradKernel =
-    ops::ReduceCudaGradKernel<T, kps::IdentityFunctor>;
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
+                          ops::SumGradFunctor, true>;
 
 REGISTER_OP_CUDA_KERNEL(
     reduce_sum_grad, CUDAReduceSumGradKernel<bool>,
