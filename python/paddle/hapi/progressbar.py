@@ -21,6 +21,7 @@ import sys
 import time
 import numpy as np
 from collections import namedtuple
+import struct
 
 __all__ = []
 
@@ -78,6 +79,19 @@ class ProgressBar(object):
 
     def update(self, current_num, values={}):
         now = time.time()
+
+        def convert_uint16_to_float(in_list):
+            in_list = np.asarray(in_list)
+            out = np.vectorize(
+                lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+                otypes=[np.float32])(in_list.flat)
+            return np.reshape(out, in_list.shape)
+
+        for i, (k, val) in enumerate(values):
+            if k == "loss":
+                val = val if isinstance(val, list) else [val]
+                if isinstance(val[0], np.uint16):
+                    values[i] = ("loss", list(convert_uint16_to_float(val)))
 
         if current_num:
             time_per_unit = (now - self._start) / current_num
