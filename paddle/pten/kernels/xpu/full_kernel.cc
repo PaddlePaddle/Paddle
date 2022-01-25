@@ -88,6 +88,9 @@ void FullLikeKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(std::isnan(value),
                     false,
                     pten::errors::InvalidArgument("The filled value is NaN."));
+  PADDLE_ENFORCE_EQ(std::isinf(value),
+                    false,
+                    pten::errors::InvalidArgument("The filled value is Inf."));
 
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   int ret = xpu::constant(dev_ctx.x_context(),
