@@ -41,9 +41,6 @@ class TestEagerTraceOp(unittest.TestCase):
             paddle.fluid.framework._dygraph_tracer().trace_op(
                 'instance_norm', {'Scale': [scale],
                                   'X': [x]}, {'Y': [x]}, {})
-            paddle.fluid.framework._dygraph_tracer().trace_op(
-                'coalesce_tensor', {'Input': [x]}, {'Output': [x]},
-                {'dtype': int(core.VarDesc.VarType.FP32)})
 
 
 if __name__ == "__main__":

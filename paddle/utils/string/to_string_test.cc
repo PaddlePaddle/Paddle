@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #include <gtest/gtest.h>
 
 constexpr char kOutputString[] = "User Defined Output";

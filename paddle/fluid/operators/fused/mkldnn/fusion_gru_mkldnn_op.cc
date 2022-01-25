@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
 
@@ -41,7 +42,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
             ctx.InputName("X") + ctx.InputName("WeightH")) {
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
 
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       // oneDNN kernel has hardcoded activation functions
       PADDLE_ENFORCE_EQ(
           ctx.Attr<std::string>("gate_activation"), "sigmoid",
