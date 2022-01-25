@@ -278,12 +278,12 @@ class DnnTrainer(object):
         self.train_result_dict["speed"] = []
         self.model = None
         self.pure_bf16 = self.config['pure_bf16']
+        self.role_maker = role_maker.PaddleCloudRoleMaker()
 
     def init_fleet_with_gloo(self, use_gloo=False):
         if use_gloo:
             os.environ["PADDLE_WITH_GLOO"] = "1"
-            role = role_maker.PaddleCloudRoleMaker()
-            fleet.init(role)
+            fleet.init(self.role_maker)
         else:
             fleet.init()
 
@@ -334,12 +334,14 @@ class DnnTrainer(object):
         strategy = get_strategy(config)
         learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
+        startup_program = paddle.static.default_startup_program()
+        inner_optimizer.minimize(loss, startup_program)
         if self.config['debug_new_pass'] == 1:
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(loss, None, inner_optimizer, strategy)
-            inner_opt.minimize(loss)
-            ps_optimizer.init_ps_pass_context(loss, None)
+            ps_optimizer._set_basic_info(loss, startup_program, inner_optimizer,
+                                         strategy)
+            ps_optimizer._init_ps_pass_context(loss, startup_program)
             _main = ps_optimizer.context['cloned_main']
 
             append_send_ops_pass = new_pass(config["applied_pass_name"],
@@ -349,7 +351,7 @@ class DnnTrainer(object):
         else:
             from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
             compiled_config = public.CompileTimeStrategy(
-                loss.block.program, None, strategy, role_maker)
+                loss.block.program, startup_program, strategy, self.role_maker)
             compiled_config.strategy = strategy
             _main = compiled_config.origin_main_program.clone()
             _startup = compiled_config.origin_startup_program.clone()
