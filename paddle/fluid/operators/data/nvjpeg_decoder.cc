@@ -41,7 +41,7 @@ NvjpegDecoder::NvjpegDecoder(std::string mode, int dev_id)
 
   // create decode params, decoder and state
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsCreate(handle_, &decode_params_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderCreate(handle_, NVJPEG_BACKEND_DEFAULT, &decoder_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderCreate(handle_, NVJPEG_BACKEND_HYBRID, &decoder_));
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderStateCreate(handle_, decoder_, &state_));
 
   // create device & pinned buffer

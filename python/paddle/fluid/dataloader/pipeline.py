@@ -30,6 +30,9 @@ __all__ = ["Pipeline"]
 CleanupFuncRegistrar.register(core._shutdown_dataloader)
 
 
+AVAILABLE_OP_TYPES = ['data_reader', 'map']
+
+
 class Pipeline:
     """
     Data pipeline
@@ -66,7 +69,17 @@ class Pipeline:
             
         local_rank = paddle.distributed.get_rank()
         paddle.disable_static("gpu:" + str(local_rank))
-        print("main_program", self._main_program.block(0))
+
+        self._check_op_type()
+
+    def _check_op_type(self):
+        for op in self._main_program.block(0).ops:
+            if op.type not in ['data_reader', 'map']:
+                raise RuntimeError(
+                    "pipeline given to DataLoader.from_pipeline should be "
+                    "composed of reader OPs and map OP, other OPs(e.g. "
+                    "decoder OPs or Paddle OPs) should be run under "
+                    "paddle.io.map")
 
     def set_outputs(self, outputs):
         if isinstance(outputs, Sequence):

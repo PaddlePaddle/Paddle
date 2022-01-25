@@ -1007,18 +1007,18 @@ def image_decode_random_crop(x,
     return out
 
 
-def random_flip(x, batch_size, prob=0.5, name=None):
+def random_flip(x, prob=0.5, name=None):
+    if prob < 0. or prob > 1.:
+        raise ValueError("prob should in (0, 1) in random_flip")
+
     if in_dygraph_mode():
-        p = np.random.uniform(0., 1., [batch_size])
+        p = np.random.uniform(0., 1., x.shape[0:1])
         for i in range(batch_size):
             if p[i] < prob:
                 x[i] = paddle.flip(x[i], -1)
         return x
 
-    if prob < 0. or prob > 1.:
-        raise ValueError("prob should in (0, 1) in random_flip")
-
-    p = paddle.uniform([batch_size, 1], min=0., max=1.)
+    p = paddle.uniform([layers.shape(x)[0], 1], min=0., max=1.)
     ie = layers.IfElse(p < prob)
     with ie.true_block():
         out = ie.input(x)
