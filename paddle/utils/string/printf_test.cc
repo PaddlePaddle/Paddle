@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/printf.h"
 
 #include <string>
 
@@ -25,7 +25,7 @@ TEST(StringPrintf, StringPrintf) {
   int hour = 14;
   int min = 44;
   EXPECT_EQ(std::string("Wednesday, July 27, 14:44"),
-            paddle::string::Sprintf("%s, %s %d, %.2d:%.2d", weekday, month, day,
-                                    hour, min));
+            paddle::string::Sprintf(
+                "%s, %s %d, %.2d:%.2d", weekday, month, day, hour, min));
   EXPECT_EQ(std::string(""), paddle::string::Sprintf());
 }

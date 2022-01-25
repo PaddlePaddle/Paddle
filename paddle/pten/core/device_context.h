@@ -57,19 +57,38 @@ class DeviceContext {
    *
    * @param allocator
    */
-  void SetAllocator(Allocator*);
+  void SetDeviceAllocator(Allocator*);
 
   /**
-   * @brief Get the const Allocator object.
+   * @brief Get the const deveice-releated Allocator object.
    *
    * @return Allocator
    */
-  const Allocator& GetAllocator() const;
+  const Allocator& GetDeviceAllocator() const;
 
   /**
-   * @brief Allocate memory for tensor.
+   * @brief Allocate device memory for tensor.
    */
-  void Alloc(pten::TensorBase*);
+  void DeviceAlloc(pten::TensorBase*);
+
+  /**
+   * @brief Set the host Allocator object.
+   *
+   * @param allocator
+   */
+  void SetHostAllocator(Allocator*);
+
+  /**
+   * @brief Get the const host Allocator object.
+   *
+   * @return Allocator
+   */
+  const Allocator& GetHostAllocator() const;
+
+  /**
+   * @brief Allocate host memory for tensor.
+   */
+  void HostAlloc(pten::TensorBase*);
 
   // TODO(wilber): Just for the convenience of migrating the code, it will be
   // modified or removed later.

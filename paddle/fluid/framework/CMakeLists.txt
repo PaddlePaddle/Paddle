@@ -383,7 +383,7 @@ cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
-cc_library(selected_rows_utils SRCS selected_rows_utils.cc DEPS tensor)
+cc_library(selected_rows_utils SRCS selected_rows_utils.cc DEPS selected_rows)
 cc_test(selected_rows_utils_test SRCS selected_rows_utils_test.cc DEPS selected_rows_utils)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto op_kernel_type)
@@ -392,10 +392,6 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 
 cc_test(inlined_vector_test SRCS inlined_vector_test.cc)
-
-if (NOT WIN32)
-cc_test(rw_lock_test SRCS rw_lock_test.cc)
-endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
