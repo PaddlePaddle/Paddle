@@ -64,10 +64,9 @@ void FullLikeKernel(const Context& dev_ctx,
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<
-          std::is_same<T, paddle::platform::float16>::value,
-          float,
-          T>::type>::type;
+      typename std::conditional<std::is_same<T, pten::platform::float16>::value,
+                                float,
+                                T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
 
@@ -77,7 +76,7 @@ void FullLikeKernel(const Context& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",
@@ -86,22 +85,21 @@ void FullLikeKernel(const Context& dev_ctx,
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
 
-  PADDLE_ENFORCE_EQ(
-      std::isnan(value),
-      false,
-      paddle::platform::errors::InvalidArgument("The filled value is NaN."));
+  PADDLE_ENFORCE_EQ(std::isnan(value),
+                    false,
+                    pten::errors::InvalidArgument("The filled value is NaN."));
 
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   int ret = xpu::constant(dev_ctx.x_context(),
                           out_data,
                           out->numel(),
                           static_cast<XPUInTDType>(value));
-  PADDLE_ENFORCE_EQ(ret,
-                    XPU_SUCCESS,
-                    paddle::platform::errors::External(
-                        "XPU CONSTANT API return wrong value[%d %s].",
-                        ret,
-                        XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      pten::errors::External("XPU CONSTANT API return wrong value[%d %s].",
+                             ret,
+                             XPUAPIErrorMsg[ret]));
 }
 
 }  // namespace pten
@@ -117,10 +115,10 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::platform::float16,
+                   pten::platform::bfloat16,
+                   pten::platform::complex<float>,
+                   pten::platform::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    XPU,
@@ -129,4 +127,4 @@ PT_REGISTER_KERNEL(full_like,
                    float,
                    int,
                    int64_t,
-                   paddle::platform::float16) {}
+                   pten::platform::float16) {}
