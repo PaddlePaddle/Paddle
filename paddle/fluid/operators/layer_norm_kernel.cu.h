@@ -181,10 +181,10 @@ template <typename T, typename U, typename ScaleT = U, int VecSize = 8,
           int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
           int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
 __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
-    void *__restrict__ y_, void *__restrict__ mean_out_,
-    void *__restrict__ var_out_, const void *__restrict__ x_,
-    const void *__restrict__ gamma_, const void *__restrict__ beta_,
-    const float epsilon, int rows, int cols) {
+    int rows, int cols, const float epsilon, const T *__restrict__ x_ptr,
+    const ScaleT *__restrict__ gamma_ptr, const ScaleT *__restrict__ beta_ptr,
+    U *__restrict__ mean_out_ptr, U *__restrict__ var_out_ptr,
+    T *__restrict__ y_ptr) {
   using Vec = platform::AlignedVector<T, VecSize>;
   using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
 
@@ -198,19 +198,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
   const int c = warp_n * THREADS_PER_WARP + lane;  // lane
   const int r = bidx * ROWS_PER_CTA + warp_m;      // row id
 
-  const T *x_ptr = static_cast<const T *>(x_);
-  const ScaleT *g_ptr = static_cast<const ScaleT *>(gamma_);
-  const ScaleT *b_ptr = static_cast<const ScaleT *>(beta_);
-  T *y_ptr = static_cast<T *>(y_);
-  U *mean_out_ptr = static_cast<U *>(mean_out_);
-  U *var_out_ptr = static_cast<U *>(var_out_);
-
   Vec_scale gamma[LDGS];
   Vec_scale beta[LDGS];
 #pragma unroll
   for (int it = 0, col = c; it < LDGS; it++) {
-    platform::Load<ScaleT, VecSize>(g_ptr + col * VecSize, &gamma[it]);
-    platform::Load<ScaleT, VecSize>(b_ptr + col * VecSize, &beta[it]);
+    platform::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+    platform::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
     col += THREADS_PER_ROW;
   }
 

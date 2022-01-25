@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define DIVUP(x, y) (((x) + ((y)-1)) / (y))
-
 template <typename T>
 void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *input,
@@ -129,19 +127,22 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
       const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
       const int ROWS_PER_CTA = WARPS_M;
 
-      const int grid = DIVUP(batch_size, ROWS_PER_CTA);
+      const int grid = static_cast<int>(
+          std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));
       if (is_scale_bias_same_dtype_with_x) {
         ln_fwd_1024_kernel<T, U, T, VecSize, WARPS_M, WARPS_N,
                            BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
-            static_cast<void *>(y_data), static_cast<void *>(mean_data),
-            static_cast<void *>(var_data), static_cast<const void *>(x_data),
-            void_scale_data, void_bias_data, epsilon, batch_size, feature_size);
+            batch_size, feature_size, epsilon, x_data,
+            static_cast<const T *>(void_scale_data),
+            static_cast<const T *>(void_bias_data), mean_data, var_data,
+            y_data);
       } else {
         ln_fwd_1024_kernel<T, U, U, VecSize, WARPS_M, WARPS_N,
                            BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
-            static_cast<void *>(y_data), static_cast<void *>(mean_data),
-            static_cast<void *>(var_data), static_cast<const void *>(x_data),
-            void_scale_data, void_bias_data, epsilon, batch_size, feature_size);
+            batch_size, feature_size, epsilon, x_data,
+            static_cast<const U *>(void_scale_data),
+            static_cast<const U *>(void_bias_data), mean_data, var_data,
+            y_data);
       }
     } else {
       if (is_scale_bias_same_dtype_with_x) {
