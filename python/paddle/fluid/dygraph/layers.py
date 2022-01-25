@@ -1094,7 +1094,7 @@ class Layer(object):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
-                if in_declarative_mode() and not framework.in_dygraph_mode():
+                if in_declarative_mode():
                     return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
@@ -1104,7 +1104,7 @@ class Layer(object):
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                if in_declarative_mode() and not framework.in_dygraph_mode():
+                if in_declarative_mode():
                     return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
@@ -1176,11 +1176,16 @@ class Layer(object):
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if _buffers[name] is None or type(_buffers[
-                                name]) == core.VarBase:
+                        if in_declarative_mode() and _buffers[name] is None:
+                            raise RuntimeError(
+                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
+                                'not allowed to be set to Variable when self.{0} is None.'.
+                                format(name))
+                        elif _buffers[name] is None or type(
+                                getattr(self, name)) == core.VarBase:
                             _buffers[name] = assign(value)
                         else:
-                            assign(value, _buffers[name])
+                            assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
@@ -1271,6 +1276,34 @@ class Layer(object):
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
+    def _obtain_parameters_buffers(self,
+                                   destination=None,
+                                   include_sublayers=True,
+                                   structured_name_prefix=""):
+        """
+        The difference from state_dict() is that state_dict_hook will not be called, 
+        but the original types of parameters and buffers will be maintained.
+        """
+        if destination is None:
+            destination = collections.OrderedDict()
+        for name, data in self._parameters.items():
+            if data is not None:
+                destination[structured_name_prefix + name] = data
+        for name, buffer in self._buffers.items():
+            if buffer is not None and name not in self._non_persistable_buffer_names_set:
+                destination[structured_name_prefix + name] = buffer
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    destination_temp = destination.copy()
+                    destination_temp.update(
+                        layer_item._obtain_parameters_buffers(
+                            destination_temp, include_sublayers,
+                            structured_name_prefix + layer_name + "."))
+                    destination = destination_temp
+        return destination
+
     def _state_dict_impl(self,
                          destination=None,
                          include_sublayers=True,
@@ -1308,7 +1341,6 @@ class Layer(object):
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer))
                     destination = destination_temp
-
         for state_dict_hook in self._state_dict_hooks.values():
             hook_result = state_dict_hook(destination)
             if hook_result is not None:
@@ -1536,6 +1568,8 @@ class Layer(object):
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
+
+        self._dtype = dtype
 
     def _to_impl(self,
                  device=None,

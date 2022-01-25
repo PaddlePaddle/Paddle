@@ -18,7 +18,8 @@
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/test_kernels.h"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 // ----INFRTDialect definition begin----
 void INFRTDialect::initialize() {
@@ -124,4 +125,5 @@ void INFRTDialect::printType(mlir::Type type,
 
 // ----INFRTDialect definition end----
 
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt

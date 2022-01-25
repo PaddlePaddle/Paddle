@@ -23,21 +23,24 @@ import logging
 import pickle
 import time
 import paddle
+from paddle.fluid.backward import append_backward
 from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from paddle.fluid import program_guard
+from paddle.distributed.passes import new_pass, PassContext
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
-from .completion import complete_annotation, complete_backward_annotation, complete_update_annotation
+from .completion import Completer
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .process_group import get_process_group
-from .process_group import get_world_process_groups
+from .process_group import get_world_process_group
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
+from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
 from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from .cluster import Cluster
@@ -45,6 +48,7 @@ from .mapper import mapping
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
 from .planner import Planner
+from paddle.distributed.passes import new_pass, PassContext
 
 _logger = get_logger(logging.INFO)
 
@@ -76,6 +80,8 @@ class AutoParallelizer:
             self._enable_auto_mapping = False
         else:
             self._enable_auto_mapping = True
+        self._pass_context = PassContext()
+
         self._need_rank_mapping = os.getenv("PADDLE_NEED_RANK_MAPPING")
         self._need_rank_mapping = True if self._need_rank_mapping and \
             self._need_rank_mapping.lower() == 'true' else False
@@ -91,77 +97,77 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _apply_serial_forward_pass(self, main_program, startup_program):
-
-        # apply amp forward pass
+    def _apply_pre_optimization_passes(self, main_program, startup_program,
+                                       loss, params_grads, no_grad_set):
+        # apply amp pass
         if self._dist_strategy.amp:
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp_pass",
-                                              self._dist_strategy.amp_configs)
-            auto_parallel_amp_pass.apply_forward(main_program, startup_program,
-                                                 self._pass_context)
+            config = copy.deepcopy(self._dist_strategy.amp_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["loss"] = loss
+            auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+            auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                         self._pass_context)
 
-        # apply recompute forward pass
+        # apply recompute pass
         if self._dist_strategy.recompute:
-            auto_parallel_recompute_pass = new_pass(
-                "auto_parallel_recompute_pass",
-                self._dist_strategy.recompute_configs)
-            auto_parallel_recompute_pass.apply_forward(
-                main_program, startup_program, self._pass_context)
+            config = copy.deepcopy(self._dist_strategy.recompute_configs)
+            config["dist_context"] = self._dist_context
+            config["no_grad_set"] = copy.deepcopy(no_grad_set)
+            config["loss"] = loss
+            auto_parallel_recompute_pass = new_pass("auto_parallel_recompute",
+                                                    config)
+            auto_parallel_recompute_pass.apply(
+                [main_program], [startup_program], self._pass_context)
 
     def _generate_backward(self, main_program, startup_program, loss,
                            parameter_list, no_grad_set, callbacks):
 
-        # apply recompute backward pass
-        if self._dist_strategy.recompute:
-            assert auto_parallel_recompute_pass
-            auto_parallel_recompute_pass.apply_forward(
-                main_program, startup_program, parameter_list, no_grad_set,
-                self._pass_context)
-        else:
-            from paddle.fluid.backward import append_backward
-            with program_guard(main_program, startup_program):
-                params_grads = append_backward(
-                    loss,
-                    parameter_list,
-                    no_grad_set,
-                    callbacks,
-                    distop_context=self._dist_context.dist_op_context)
-            complete_backward_annotation(
-                main_program, dist_context=self._dist_context)
-
-        # apply amp forward pass
-        if self._dist_strategy.amp:
-            assert auto_parallel_amp_pass
-            auto_parallel_amp_pass.apply_backward(main_program, startup_program,
-                                                  self._pass_context)
+        with program_guard(main_program, startup_program):
+            params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                callbacks,
+                distop_context=self._dist_context.dist_op_context)
+        self._completer = Completer(self._dist_context)
+        self._completer.complete_backward_annotation(main_program)
 
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
 
-        if self._dist_strategy.sharding:
-            auto_parallel_sharding_pass = new_pass(
-                "auto_parallel_sharding_pass", self._dist_strategy)
-            params_grads = auto_parallel_sharding_pass.apply(
-                main_program, startup_program, params_grads, self._pass_context)
-
-        if self._dist_strategy.gradient_merge:
-            auto_parallel_gradient_merge_pass = new_pass(
-                "auto_parallel_gradient_merge_pass",
-                self._dist_strategy.gradient_merge_configs)
-            auto_parallel_gradient_merge_pass.apply(
-                main_program, startup_program, params_grads, self._pass_context)
-
-        else:
-            with program_guard(main_program, startup_program):
-                optimizer = copy.deepcopy(self._optimizer)
-                optimize_ops = optimizer.apply_gradients(params_grads)
+        with program_guard(main_program, startup_program):
+            optimize_ops = copy.deepcopy(self._optimizer).apply_gradients(
+                params_grads)
 
         # update completion 
-        complete_update_annotation(
-            main_program, dist_context=self._dist_context)
+        self._completer = Completer(self._dist_context)
+        self._completer.complete_update_annotation(main_program)
 
         return optimize_ops
+
+    def _apply_post_optimization_passes(self, main_program, startup_program,
+                                        rank, params_grads):
+
+        if self._dist_strategy.sharding:
+            config = copy.deepcopy(self._dist_strategy.sharding_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["global_rank"] = rank
+            auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
+                                                   config)
+            auto_parallel_sharding_pass.apply(
+                [main_program], [startup_program], self._pass_context)
+
+        if self._dist_strategy.gradient_merge:
+            config = copy.deepcopy(self._dist_strategy.gradient_merge_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            auto_parallel_gradient_merge_pass = new_pass(
+                "auto_parallel_gradient_merge_pass", config)
+            auto_parallel_gradient_merge_pass.apply(
+                [main_program], [startup_program], self._pass_context)
 
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
         completed_main_program = None
@@ -173,22 +179,23 @@ class AutoParallelizer:
             # Annotation completion
             self._dist_context = DistributedContext()
             _logger.info("Start annotation dist attr.")
-            completed_main_program = complete_annotation(serial_main_program,
-                                                         self._dist_context)
+            self._completer = Completer(self._dist_context)
+            completed_main_program = self._completer.complete_forward_annotation(
+                serial_main_program)
         else:
             completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)
 
-        # serial forward pass
-        self._apply_serial_forward_pass(completed_main_program,
-                                        serial_startup_program)
         # serial backward pass
         params_grads = self._generate_backward(
             completed_main_program, serial_startup_program, serial_loss,
             self._parameter_list, self._no_grad_set, self._callbacks)
 
+        # serial forward pass
+        self._apply_pre_optimization_passes(completed_main_program,
+                                            serial_startup_program, serial_loss,
+                                            params_grads, self._no_grad_set)
         # Logical partition 
-        rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
             completed_main_program, serial_startup_program, params_grads)
@@ -204,6 +211,8 @@ class AutoParallelizer:
 
         reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
 
+        self._apply_post_optimization_passes(dist_main_prog, dist_startup_prog,
+                                             rank, dist_params_grads)
         g_process_group_map = None
         if not relaunch_phase:
             g_process_group_map = copy.deepcopy(_g_process_group_map)
@@ -233,7 +242,7 @@ class AutoParallelizer:
             assert self._cluster is not None, \
                 "The cluster must not be none when using auto mapping."
             dist_programs = {}
-            world_process_group = get_world_process_groups()
+            world_process_group = get_world_process_group()
             dist_context = None
             # auto search
             if self._dist_strategy.auto_search:

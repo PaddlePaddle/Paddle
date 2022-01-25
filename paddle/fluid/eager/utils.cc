@@ -99,7 +99,12 @@ std::pair<size_t, size_t> EagerUtils::OutRankInfo(
 
 std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
     const egr::EagerTensor& target) {
-  return unsafe_autograd_meta(target)->GetMutableGradNode();
+  auto* meta = nullable_autograd_meta(target);
+  if (meta) {
+    return meta->GetMutableGradNode();
+  } else {
+    return nullptr;
+  }
 }
 
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
@@ -266,6 +271,7 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
 void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
+    VLOG(6) << "RetainGradForTensor: " << tensor.name();
     egr::egr_utils_api::RetainGradForTensor(tensor);
   }
 }
@@ -274,7 +280,7 @@ void EagerUtils::CheckAndRetainGrad(
     const std::vector<egr::EagerTensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
-      VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
+      VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
     }
   }

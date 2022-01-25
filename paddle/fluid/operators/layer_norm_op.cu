@@ -64,8 +64,8 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     auto *mean_data = mean->mutable_data<U>(ctx.GetPlace());
     auto *var_data = var->mutable_data<U>(ctx.GetPlace());
 
-    auto *void_scale_data = (scale == nullptr ? nullptr : scale->data<void>());
-    auto *void_bias_data = (bias == nullptr ? nullptr : bias->data<void>());
+    auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
+    auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
 
     framework::proto::VarType::Type x_dtype = x->type();
     framework::proto::VarType::Type scale_bias_dtype;

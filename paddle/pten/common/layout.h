@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+// Note: Here the DataLayout is public api for external users, the prefix `k`
+// maybe confuse users, so we use all uppercase names
 enum class DataLayout {
   UNDEFINED = 0,
   // TODO(chenweihang): keep ANY for compatibility, remove it later
@@ -26,28 +28,67 @@ enum class DataLayout {
   NCHW,
   MKLDNN,
   NUM_DATA_LAYOUTS,
-  // See Note [ Why we need ALL in baisc kernel key member? ]
+  // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_LAYOUT = UNDEFINED,
+  // Note: Unify pten DataLayout and fluid::framework::DataLayout,
+  // for compatible with fluid DataLayout, here need prefix `k`
+  // Note: The original `kAnyLayout (enum value 2)` is a strange design.
+  // `kAnyLayout` originally cannot represent any kind of Layout,
+  // at the same time, it can also represent any Layout.
+  // Strictly, it means "default" or "undefined" layout,
+  // and should not be mixed with other meaningful layouts.
+  kAnyLayout = ANY,
+  kNHWC = NHWC,
+  kNCHW = NCHW,
+  kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
 };
 
-inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
-  switch (layout) {
-    case DataLayout::UNDEFINED:
-      os << "Undefined";
-      break;
-    case DataLayout::NHWC:
-      os << "NHWC";
-      break;
-    case DataLayout::NCHW:
-      os << "NCHW";
-      break;
-    case DataLayout::MKLDNN:
-      os << "MKLDNN";
-      break;
-    default:
-      PD_THROW(
-          "Invalid enum data layout type `", static_cast<int>(layout), "`.");
+}  // namespace experimental
+
+// In order to be compatible with the fluid implementation
+namespace framework {
+
+using DataLayout = paddle::experimental::DataLayout;
+
+inline DataLayout StringToDataLayout(const std::string& str) {
+  std::string s(str);
+  for (size_t i = 0; i < s.size(); ++i) {
+    s[i] = toupper(s[i]);
   }
+
+  if (s == "NHWC") {
+    return DataLayout::kNHWC;
+  } else if (s == "NCHW") {
+    return DataLayout::kNCHW;
+  } else if (s == "ANYLAYOUT") {
+    return DataLayout::kAnyLayout;
+  } else if (s == "MKLDNNLAYOUT") {
+    return DataLayout::kMKLDNN;
+  } else {
+    PD_THROW("Unknown data layout type string: ", s, ".");
+  }
+}
+
+inline std::string DataLayoutToString(const DataLayout& layout) {
+  switch (layout) {
+    case DataLayout::kNHWC:
+      return "NHWC";
+    case DataLayout::kNCHW:
+      return "NCHW";
+    case DataLayout::kAnyLayout:
+      return "Undefined(AnyLayout)";
+    case DataLayout::kMKLDNN:
+      return "MKLDNN";
+    default:
+      PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
+  }
+}
+}  // namespace framework
+
+namespace experimental {
+
+inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
+  os << framework::DataLayoutToString(layout);
   return os;
 }
 

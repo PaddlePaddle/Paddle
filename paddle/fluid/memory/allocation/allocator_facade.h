@@ -42,6 +42,7 @@ using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
 class AllocatorFacadePrivate;
 class AllocatorFacade {
  public:
+  using Allocation = pten::Allocation;
   AllocatorFacade(const AllocatorFacade& o) = delete;
   const AllocatorFacade& operator=(const AllocatorFacade& o) = delete;
   ~AllocatorFacade();
@@ -49,6 +50,8 @@ class AllocatorFacade {
   static AllocatorFacade& Instance();
 
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+
+  void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
@@ -61,6 +64,10 @@ class AllocatorFacade {
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size,
                                           const platform::Stream& stream);
+
+  bool InSameStream(const std::shared_ptr<Allocation>& allocation,
+                    const platform::Stream& stream);
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to platform::Stream if needed.
   AllocationPtr Alloc(const platform::Place& place, size_t size,

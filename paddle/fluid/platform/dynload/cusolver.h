@@ -17,28 +17,14 @@ limitations under the License. */
 #include <cusolverDn.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cusolver.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-extern std::once_flag cusolver_dso_flag;
-extern void *cusolver_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP(__name)                   \
-  struct DynLoad__##__name {                                         \
-    template <typename... Args>                                      \
-    cusolverStatus_t operator()(Args... args) {                      \
-      using cusolverFunc = decltype(&::__name);                      \
-      std::call_once(cusolver_dso_flag, []() {                       \
-        cusolver_dso_handle =                                        \
-            paddle::platform::dynload::GetCusolverDsoHandle();       \
-      });                                                            \
-      static void *p_##__name = dlsym(cusolver_dso_handle, #__name); \
-      return reinterpret_cast<cusolverFunc>(p_##__name)(args...);    \
-    }                                                                \
-  };                                                                 \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP(__name)   \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define CUSOLVER_ROUTINE_EACH(__macro)  \
@@ -62,7 +48,7 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnCheevd);            \
   __macro(cusolverDnZheevd);
 
-CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
+CUSOLVER_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 
 #if CUDA_VERSION >= 9020
 #define CUSOLVER_ROUTINE_EACH_R1(__macro) \
@@ -71,12 +57,18 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnSpotrsBatched);       \
   __macro(cusolverDnDpotrsBatched);       \
   __macro(cusolverDnSgesvdj_bufferSize);  \
+  __macro(cusolverDnSgetrf_bufferSize);   \
+  __macro(cusolverDnDgetrf_bufferSize);   \
+  __macro(cusolverDnCgetrf_bufferSize);   \
+  __macro(cusolverDnZgetrf_bufferSize);   \
   __macro(cusolverDnSgeqrf_bufferSize);   \
   __macro(cusolverDnDgeqrf_bufferSize);   \
   __macro(cusolverDnCgeqrf_bufferSize);   \
   __macro(cusolverDnZgeqrf_bufferSize);   \
   __macro(cusolverDnSorgqr_bufferSize);   \
   __macro(cusolverDnDorgqr_bufferSize);   \
+  __macro(cusolverDnSormqr_bufferSize);   \
+  __macro(cusolverDnDormqr_bufferSize);   \
   __macro(cusolverDnCungqr_bufferSize);   \
   __macro(cusolverDnZungqr_bufferSize);   \
   __macro(cusolverDnDestroyGesvdjInfo);   \
@@ -84,16 +76,22 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnDgesvdj_bufferSize);  \
   __macro(cusolverDnSgesvdj);             \
   __macro(cusolverDnDgesvdj);             \
+  __macro(cusolverDnSgetrf);              \
+  __macro(cusolverDnDgetrf);              \
+  __macro(cusolverDnCgetrf);              \
+  __macro(cusolverDnZgetrf);              \
   __macro(cusolverDnSgeqrf);              \
   __macro(cusolverDnDgeqrf);              \
   __macro(cusolverDnCgeqrf);              \
   __macro(cusolverDnZgeqrf);              \
   __macro(cusolverDnSorgqr);              \
   __macro(cusolverDnDorgqr);              \
+  __macro(cusolverDnSormqr);              \
+  __macro(cusolverDnDormqr);              \
   __macro(cusolverDnCungqr);              \
   __macro(cusolverDnZungqr);
 
-CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
+CUSOLVER_ROUTINE_EACH_R1(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif
 
 #if CUDA_VERSION >= 9020
@@ -105,10 +103,10 @@ CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
   __macro(cusolverDnDsyevj);              \
   __macro(cusolverDnDestroySyevjInfo);
 
-CUSOLVER_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
+CUSOLVER_ROUTINE_EACH_R2(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif
 
-#undef DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

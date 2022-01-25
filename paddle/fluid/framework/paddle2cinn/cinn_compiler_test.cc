@@ -293,3 +293,6 @@ TEST(CinnCompilerTest, Compile) {
 
 USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
+USE_OP(mul);
+USE_OP(relu);
+USE_OP(elementwise_add);

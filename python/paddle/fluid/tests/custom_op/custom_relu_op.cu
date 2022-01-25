@@ -70,3 +70,22 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
 
   return {grad_x};
 }
+
+std::vector<paddle::Tensor> relu_cuda_backward_without_x(
+    const paddle::Tensor& out, const paddle::Tensor& grad_out) {
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU, out.shape());
+
+  int numel = out.size();
+  int block = 512;
+  int grid = (numel + block - 1) / block;
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      out.type(), "relu_cuda_backward_kernel", ([&] {
+        relu_cuda_backward_kernel<data_t><<<grid, block, 0, out.stream()>>>(
+            grad_out.data<data_t>(),
+            out.data<data_t>(),
+            grad_x.mutable_data<data_t>(out.place()),
+            numel);
+      }));
+
+  return {grad_x};
+}

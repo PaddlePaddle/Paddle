@@ -13,13 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/enforce.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/enforce.h"
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace platform {

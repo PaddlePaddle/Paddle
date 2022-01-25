@@ -38,6 +38,16 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
   task_id_ = task_node_cnt++;
 }
 
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
+    : program_(program), rank_(rank), task_id_(rank) {
+  max_run_times_ = 1;
+  max_slot_nums_ = 1;
+  LOG(INFO)
+      << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
+      << rank
+      << ". And the TaskNode's max_run_time and max_slot_num will be set to 1.";
+}
+
 void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
   program_ = program;
 }

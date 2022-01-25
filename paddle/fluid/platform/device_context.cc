@@ -10,6 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+#include <memory>
 #include <set>
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -24,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/ipu/ipu_backend.h"
 #endif
 #include "glog/logging.h"
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -131,7 +133,7 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   return it->second.get().get();
 }
 
-template <typename DevCtx, typename PlaceType>
+template <typename DevCtx>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         map_ptr,
@@ -140,7 +142,7 @@ inline void EmplaceDeviceContext(
   map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
                      // lazy evaluation. i.e., only create device context at
                      // first `Get`
-                     return PtrType(new DevCtx(BOOST_GET_CONST(PlaceType, p)));
+                     return PtrType(new DevCtx(p));
                    }));
 }
 
@@ -158,13 +160,13 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<MKLDNNDeviceContext>(&device_contexts_, p);
 #else
-      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<CPUDeviceContext>(&device_contexts_, p);
 #endif
     } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<CUDADeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("CUDAPlace is not supported. Please "
@@ -172,8 +174,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
-          &device_contexts_, p);
+      EmplaceDeviceContext<CUDAPinnedDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
@@ -181,7 +182,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
-      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<XPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
@@ -189,7 +190,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_mlu_place(p)) {
 #ifdef PADDLE_WITH_MLU
-      EmplaceDeviceContext<MLUDeviceContext, MLUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<MLUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("MLUPlace is not supported. Please "
@@ -197,7 +198,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_ipu_place(p)) {
 #ifdef PADDLE_WITH_IPU
-      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<IPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("IPUPlace is not supported. Please "
@@ -205,7 +206,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<NPUDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported. Please "
@@ -213,8 +214,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_pinned_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
-          &device_contexts_, p);
+      EmplaceDeviceContext<NPUPinnedDeviceContext>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "
@@ -225,19 +225,9 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
+CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-Place CPUDeviceContext::GetPlace() const { return place_; }
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
@@ -256,75 +246,14 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() {
-  context_ = xpu::create_context();
-  xpu_version_ = get_xpu_version(place_.device);
-}
+XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
-XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: " << place_.device;
-
-  context_ = xpu::create_context();
-  const int MAX_XPU_NUM = 16;
-  static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
-
-  int l3_size = 13.5 * 1024 * 1024;
-  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-    l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
-  }
-
-  auto selected_xpus = GetXPUSelectedDevices();
-  for (unsigned int i = 0; i < selected_xpus.size(); i++) {
-    if (place.device == selected_xpus[i]) {
-      if (l3ptrs[place.device] == nullptr) {
-        xpu_malloc(static_cast<void**>(&l3ptrs[place.device]), l3_size,
-                   XPU_MEM_L3);
-      }
-      if (l3ptrs[place.device] != nullptr) {
-        context_->_l3_mgr.set(l3ptrs[place.device], l3_size);
-        VLOG(3) << "xpu place " << place.device << " set l3 size " << l3_size;
-      }
-      break;
-    }
-  }
-
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
+                          << static_cast<int>(place.device);
 }
-
-void XPUDeviceContext::Wait() const {
-  int ret = xpu_set_device(place_.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  xpu_wait(context_->xpu_stream);
-}
-
-Place XPUDeviceContext::GetPlace() const { return place_; }
-
-xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -484,6 +413,7 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitCuBlasContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+  InitCuSparseContext();
   InitCuSolverContext();
 #endif
 }
@@ -513,6 +443,7 @@ CUDAContext::~CUDAContext() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+  DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
 }
@@ -528,7 +459,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   driver_version_ = GetGPUDriverVersion(place_.device);
   runtime_version_ = GetGPURuntimeVersion(place_.device);
 
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
+                          << static_cast<int>(place_.device)
                           << ", GPU Compute Capability: "
                           << compute_capability_ / 10 << "."
                           << compute_capability_ % 10
@@ -541,12 +473,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   size_t version_major, version_minor, version_patch;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
       &version_major, &version_minor, &version_patch));
-  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                           << ", MIOpen Version: " << version_major << "."
                           << version_minor << "." << version_patch;
 #else
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
-  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
                           << (cudnn_dso_ver % 1000) / 100 << ".";
 #endif
@@ -562,7 +494,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 #endif
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place_.device
+          << "WARNING: device: " << static_cast<int>(place_.device)
           << ". The installed Paddle is compiled with CUDA "
           << compile_cuda_version / 10 << "." << compile_cuda_version % 10
           << ", but CUDA runtime version in your machine is "
@@ -629,6 +561,9 @@ rocblas_handle CUDADeviceContext::cublas_handle() const {
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
+}
+cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
+  return context()->CusparseHandle()->GetCusparseHandle();
 }
 #endif
 
@@ -868,15 +803,6 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   }
   return num_entries;
 }
-
-// TODO(jczaja): Replace with C++20 equivalents when applicable
-#ifdef _WIN32
-#define likely(expr) (expr)
-#define unlikely(expr) (expr)
-#else
-#define likely(expr) (__builtin_expect(!!(expr), 1))
-#define unlikely(expr) (__builtin_expect(!!(expr), 0))
-#endif
 
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {

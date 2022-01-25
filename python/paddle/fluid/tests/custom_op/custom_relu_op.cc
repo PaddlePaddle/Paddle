@@ -105,3 +105,49 @@ PD_BUILD_GRAD_OP(custom_relu)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackward));
+
+std::vector<paddle::Tensor> relu_cpu_backward_without_x(
+    const paddle::Tensor& out, const paddle::Tensor& grad_out) {
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+
+  PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
+                               relu_cpu_backward_kernel<data_t>(
+                                   grad_out.data<data_t>(),
+                                   out.data<data_t>(),
+                                   grad_x.mutable_data<data_t>(out.place()),
+                                   out.size());
+                             }));
+
+  return {grad_x};
+}
+
+std::vector<paddle::Tensor> relu_cuda_backward_without_x(
+    const paddle::Tensor& out, const paddle::Tensor& grad_out);
+
+std::vector<paddle::Tensor> ReluBackwardWithoutX(
+    const paddle::Tensor& out, const paddle::Tensor& grad_out) {
+  if (out.place() == paddle::PlaceType::kCPU) {
+    return relu_cpu_backward_without_x(out, grad_out);
+  } else if (out.place() == paddle::PlaceType::kGPU) {
+    return relu_cuda_backward_without_x(out, grad_out);
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+std::vector<std::vector<int64_t>> ReluBackwardWithoutXInferShape(
+    const std::vector<int64_t>& out_shape,
+    const std::vector<int64_t>& grad_out_shape) {
+  return {out_shape};
+}
+
+PD_BUILD_OP(custom_relu_no_x_in_backward)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ReluForward));
+
+PD_BUILD_GRAD_OP(custom_relu_no_x_in_backward)
+    .Inputs({"Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ReluBackwardWithoutX))
+    .SetInferShapeFn(PD_INFER_SHAPE(ReluBackwardWithoutXInferShape));

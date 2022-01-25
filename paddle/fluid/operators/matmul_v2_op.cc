@@ -194,9 +194,32 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                                             "received %d",
                                             reshape_out_size));
 
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
+      // -1);
+      // PADDLE_ENFORCE_LE(num_negative, 1,
+      //                   platform::errors::InvalidArgument(
+      //                       "The max number of -1 in fused_reshape_Out is 1 "
+      //                       "but received %d.",
+      //                       num_negative));
+
+      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
+      // if (it_zero != reshape_out.end()) {
+      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
+      //     if (reshape_out[i] == 0) {
+      //       PADDLE_ENFORCE_LT(
+      //           i, ddim_out.size(),
+      //           platform::errors::InvalidArgument(
+      //               "The index of 0 in fused_reshape_Out ",
+      //               "should be less than output dim size, ",
+      //               "but the index is %d and output dim size is %d", i,
+      //               ddim_out.size()));
+      //       reshape_out[i] = ddim_out.at(i);
+      //     }
+      //   }
+      // }
 
       // if "-1" is present then one of reshape dims must be infered
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
@@ -366,6 +389,14 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
                                      tensor.place(), tensor.layout());
     }
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "matmul_grad", {"X", "Y", framework::GradVarName("Out")},
+        {"trans_x", "trans_y"},
+        {framework::GradVarName("X"), framework::GradVarName("Y")});
+  }
 };
 
 template <typename T>
@@ -407,6 +438,13 @@ class MatMulV2OpDoubleGrad : public framework::OperatorWithKernel {
         (context->HasInput("DDY") || context->HasInput("DDX"))) {
       context->ShareDim("DOut", "DDOut");
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "matmul_double_grad", {"X", "Y", "DOut", "DDX", "DDY"},
+        {"trans_x", "trans_y"}, {"DX", "DY", "DDOut"});
   }
 };
 
@@ -476,6 +514,15 @@ class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
     if (context->HasOutput("D_DDY_out")) {
       context->ShareDim("Y", "D_DDY_out");
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "matmul_triple_grad",
+        {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
+        {"trans_x", "trans_y"},
+        {"D_X_out", "D_Y_out", "D_DOut_out", "D_DDX_out", "D_DDY_out"});
   }
 };
 

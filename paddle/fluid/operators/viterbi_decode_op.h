@@ -112,12 +112,13 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   }
 }
 
-template <typename DeviceContext, template <typename T> typename CompareFunctor,
+template <typename DeviceContext,
+          template <typename InT, typename OutT> typename CompareFunctor,
           typename T>
 struct GetMask {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
                   const Tensor& rhs, Tensor* mask) {
-    SameDimsBinaryOP<int64_t, CompareFunctor<int64_t>, T>(lhs, rhs, mask);
+    SameDimsBinaryOP<int64_t, CompareFunctor<int64_t, T>, T>(lhs, rhs, mask);
   }
 };
 
@@ -150,9 +151,12 @@ struct GetInputIndex<false> {
                   const std::vector<int>& output_strides, int output_idx,
                   int* index_array, int* lhs_idx, int* rhs_idx) {
     int out_dims_size = output_strides.size();
-    *lhs_idx = GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
-    *rhs_idx = GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
-    UpdateElementwiseIndexArray(output_dims.data(), out_dims_size, index_array);
+    *lhs_idx =
+        pten::GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
+    *rhs_idx =
+        pten::GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
+    pten::UpdateElementwiseIndexArray(output_dims.data(), out_dims_size,
+                                      index_array);
   }
 };
 

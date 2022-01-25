@@ -36,7 +36,12 @@ class Storage : public intrusive_ref_counter<Storage> {
   Storage() = default;
   Storage(const Storage&) = delete;
 
-  /* --------- shared_ptr<Allocation> -------- */
+  /* @jim19930609: Following interfaces will be modified/replaced/removed
+                   as soon as the new Allocation - Allocator design get
+     finalized.
+    */
+
+  /*   --------- shared_ptr<Allocation> -------- */
   // Initialize a Storage with unique Allocation
   explicit Storage(std::shared_ptr<paddle::memory::Allocation>&& data)
       : data_(std::move(data)) {}
@@ -47,13 +52,18 @@ class Storage : public intrusive_ref_counter<Storage> {
 
   void* data() const {
     return data_ ? reinterpret_cast<void*>(
-                       reinterpret_cast<uintptr_t>(data_->ptr()) + offset_)
+                       reinterpret_cast<uintptr_t>(data_->ptr()))
                  : nullptr;
   }
 
-  const std::shared_ptr<paddle::memory::Allocation> data_shared() const {
+  const std::shared_ptr<paddle::memory::Allocation>& data_shared() const {
     return data_;
   }
+
+  virtual void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) = 0;
+
+  virtual std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() = 0;
 
   virtual void ReallocShared(size_t n) {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -71,7 +81,6 @@ class Storage : public intrusive_ref_counter<Storage> {
   virtual void Realloc(size_t n) = 0;
 
  protected:
-  size_t offset_{0};
   std::shared_ptr<paddle::memory::Allocation> data_;
 };
 
@@ -79,17 +88,16 @@ class TensorStorage : public Storage {
  public:
   using Place = paddle::platform::Place;
 
-  explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
+  explicit TensorStorage(Allocator* a) : alloc_(a) {}
 
-  TensorStorage(const std::shared_ptr<Allocator>& a, size_t size)
-      : Storage(paddle::memory::AllocShared(a->place(), size)), alloc_(a) {
+  TensorStorage(Allocator* a, size_t size)
+      : Storage(a->Allocate(size)), alloc_(a) {
     size_ = data_->size();
   }
 
   void Clear() override {
     data_ = nullptr;
     size_ = 0;
-    offset_ = 0;
   }
 
   void Realloc(size_t size) override;
@@ -101,24 +109,30 @@ class TensorStorage : public Storage {
   size_t size() const noexcept override { return size_; }
 
   const Place& place() const override {
-    if (!data_ && !alloc_) {
+    if (!data_) {
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unable to visit place: either data_ or alloc_ has to be initialized "
           "first."));
     }
-    if (data_) {
-      return data_->place();
-    }
-    return alloc_->place();
+    return data_->place();
   }
 
   bool OwnsMemory() const noexcept override { return true; }
-  const std::shared_ptr<Allocator>& allocator() const noexcept {
-    return alloc_;
+
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    CHECK(holder);
+    data_ = holder;
+    size_ = holder->size();
+  }
+
+  std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    return std::move(data_);
   }
 
  private:
-  const std::shared_ptr<Allocator> alloc_;
+  Allocator* alloc_;
   int64_t size_{0};
 };
 

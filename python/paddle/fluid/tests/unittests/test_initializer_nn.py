@@ -54,7 +54,7 @@ class TestConstantInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=init_inst)
-        num_ops = 2 if dtype in ["float16"] else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -103,9 +103,7 @@ class TestConstantInitializer(unittest.TestCase):
         """Test constant initializer with float16
         """
         block = self.test_constant_initializer_default_value_static("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_constant_initializer_static("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
         self.test_constant_initializer_default_value_dygraph("float16")
         self.test_constant_initializer_dygraph("float16")
 
@@ -402,7 +400,7 @@ class TestNormal(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Normal(2.3, 1.9))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -417,13 +415,11 @@ class TestNormal(unittest.TestCase):
         """Test normal initializer with float16
         """
         block = self.test_normal_initializer("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_normal_initializer_bf16(self):
         """Test normal initializer with bfloat16
         """
         block = self.test_normal_initializer("uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_normal_initializer_dygraph(self):
         """Test normal initializer in dygraph model.

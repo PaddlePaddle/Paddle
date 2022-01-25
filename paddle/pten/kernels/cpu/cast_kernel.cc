@@ -36,7 +36,7 @@ void CastKernelImpl(const CPUContext& dev_ctx,
   auto numel = x.numel();
   auto* in_end = in_begin + numel;
 
-  auto* out_begin = out->mutable_data<OutT>();
+  auto* out_begin = out->mutable_data<OutT>(dev_ctx.GetPlace());
 
   paddle::platform::Transform<CPUContext> trans;
   trans(dev_ctx,
@@ -46,12 +46,11 @@ void CastKernelImpl(const CPUContext& dev_ctx,
         CastOpTransformFunctor<InT, OutT>());
 }
 
-template <typename T, typename ContextT>
-void Cast(const ContextT& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DataType in_dtype,
-          DenseTensor* out) {
+template <typename T, typename Context>
+void CastKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DataType out_dtype,
+                DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
                        CastKernelImpl<T, data_t>(dev_ctx, x, out);
                      }));
@@ -59,20 +58,20 @@ void Cast(const ContextT& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(cast,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::Cast,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       int16_t,
-                       bool,
-                       uint8_t,
-                       paddle::platform::float16,
-                       paddle::platform::bfloat16,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {
+PT_REGISTER_KERNEL(cast,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::CastKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int16_t,
+                   bool,
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }

@@ -31,12 +31,13 @@ class Dirac(Initializer):
 
     .. math::
 
-        Assuming:  N=min(in\_channels, out\_channels)
-
         X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N
+    
+    where, ``N`` is the minimum value of ``in_channels`` and ``out_channels``
 
     Args:
-        groups(int): 0-dimension of the Tensor will be divided by groups, each group has the same value.
+        groups(int, optional): 0-dimension of the Tensor will be divided by groups, 
+            each group has the same value. Default: 1.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 

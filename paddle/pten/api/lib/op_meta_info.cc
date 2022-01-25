@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/custom_operator.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace paddle {
 
@@ -74,7 +74,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
   PADDLE_ENFORCE_EQ(
       info_vector.size(),
       index_,
-      platform::errors::PreconditionNotMet(
+      pten::errors::PreconditionNotMet(
           "The operator %s's meta info register failed. "
           "Please make sure you call marcos as order `PD_BUILD_OP`, "
           "`PD_BUILD_GRAD_OP`, `PD_BUILD_DOUBLE_GRAD_OP`.",
@@ -88,7 +88,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
     case 2:
       name_ = name_ + "_grad_grad";
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Not support index `%d` when construct OpMetaInfoBuilder, "
           "now only support `0, 1, 2`.",
           index_));
@@ -122,13 +122,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
-  PADDLE_ENFORCE_EQ(
-      index_,
-      0UL,
-      platform::errors::Unimplemented(
-          "Currently, the InferShapeFn setting of Grad Op is not supported, "
-          "And backward Tensor `X@GRAD` will use the shape of forward Tensor "
-          "`X` by default."));
   info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
   return *this;
 }
@@ -137,7 +130,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   PADDLE_ENFORCE_EQ(
       index_,
       0UL,
-      platform::errors::Unimplemented(
+      pten::errors::Unimplemented(
           "Currently, the InferDtypeFn setting of Grad Op is not supported, "
           "And backward Tensor `X@GRAD` will use the dtype of forward Tensor "
           "`X` by default."));

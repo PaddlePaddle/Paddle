@@ -29,7 +29,6 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import Shar
 
 seed = 2021
 epoch = 2
-batch_size = 32
 linear_size = 1000
 
 strategy = fleet.DistributedStrategy()
@@ -86,6 +85,7 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
 
 def train_mlp(model,
               sharding_stage,
+              batch_size=100,
               use_pure_fp16=False,
               accumulate_grad=False,
               opt_group=False):
@@ -103,16 +103,13 @@ def train_mlp(model,
     if sharding_stage == 2:
         optimizer = ShardingOptimizerStage2(
             params=model.parameters(), optim=optimizer, group=group)
-        if accumulate_grad:
-            model = ShardingStage2(
-                model,
-                optimizer,
-                group=group,
-                buffer_max_size=2**21,
-                accumulate_grads=accumulate_grad)
-        else:
-            model = ShardingStage2(
-                model, optimizer, group=group, buffer_max_size=2**21)
+
+        model = ShardingStage2(
+            model,
+            optimizer,
+            group=group,
+            buffer_max_size=2**21,
+            accumulate_grads=batch_size == 20)
     else:
         optimizer = fleet.distributed_optimizer(optimizer)
         model = fleet.distributed_model(model)
@@ -145,12 +142,13 @@ def train_mlp(model,
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             avg_loss.backward()
 
+            if not accumulate_grad:
+                optimizer.step()
+                optimizer.clear_grad()
+
+        if accumulate_grad:
             optimizer.step()
             optimizer.clear_grad()
-
-            if accumulate_grad and batch_id == 2:
-                return model.parameters()
-
     return model.parameters()
 
 
@@ -161,31 +159,36 @@ def test_dp_stage2():
     mlp2 = MLP()
     mlp3 = MLP()
     mlp4 = MLP()
+    mlp5 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
+    mlp5.set_state_dict(state_dict)
+
     dp_params = train_mlp(
-        mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=True)
+        mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=False)
     stage2_params = train_mlp(
-        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=True)
+        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=False)
     for i in range(len(dp_params)):
-        for j in range(len(stage2_params)):
-            if dp_params[i].name == stage2_params[j].name:
-                np.testing.assert_allclose(
-                    dp_params[i].numpy(), stage2_params[j].numpy(), rtol=1e-6)
+        np.testing.assert_allclose(
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6)
 
     stage2_params = train_mlp(mlp3, sharding_stage=2)
     stage2_accumulate_grad = train_mlp(
-        mlp4, sharding_stage=2, accumulate_grad=True)
+        mlp4, sharding_stage=2, batch_size=20, accumulate_grad=True)
     for i in range(len(stage2_params)):
-        for j in range(len(stage2_accumulate_grad)):
-            if stage2_params[i].name == stage2_accumulate_grad[j].name:
-                np.testing.assert_allclose(
-                    stage2_params[i].numpy(),
-                    stage2_accumulate_grad[j].numpy(),
-                    rtol=1e-6)
+        np.testing.assert_allclose(
+            stage2_params[i].numpy(),
+            stage2_accumulate_grad[i].numpy(),
+            rtol=1e-5,
+            atol=1e-5)
 
+    stage2_params = train_mlp(
+        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=True)
+    for i in range(len(dp_params)):
+        np.testing.assert_allclose(
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6)
     return
 
 

@@ -20,7 +20,6 @@ class ExecutionContext;
 }  // namespace framework
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 }  // namespace platform
 }  // namespace paddle
 

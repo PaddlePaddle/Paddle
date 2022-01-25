@@ -13,12 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
-using namespace mlir;  // NOLINT
-
-namespace infrt::dialect {
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/basic_kernels.hpp.inc"
-}  // namespace infrt::dialect

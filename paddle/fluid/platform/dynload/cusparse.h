@@ -17,44 +17,50 @@ limitations under the License. */
 #include <cusparse.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/cusparse.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-extern std::once_flag cusparse_dso_flag;
-extern void *cusparse_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP(__name)                   \
-  struct DynLoad__##__name {                                         \
-    template <typename... Args>                                      \
-    cusparseStatus_t operator()(Args... args) {                      \
-      using cusparseFunc = decltype(&::__name);                      \
-      std::call_once(cusparse_dso_flag, []() {                       \
-        cusparse_dso_handle =                                        \
-            paddle::platform::dynload::GetCusparseDsoHandle();       \
-      });                                                            \
-      static void *p_##__name = dlsym(cusparse_dso_handle, #__name); \
-      return reinterpret_cast<cusparseFunc>(p_##__name)(args...);    \
-    }                                                                \
-  };                                                                 \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP(__name)   \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
-#if !defined(PADDLE_WITH_ARM) && !defined(_WIN32)
-// APIs available after CUDA 11.0
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
+// The generic APIs is supported from CUDA10.1
+#if CUDA_VERSION >= 10010
 #define CUSPARSE_ROUTINE_EACH(__macro) \
   __macro(cusparseCreate);             \
-  __macro(cusparseCreateCsr);          \
-  __macro(cusparseCreateDnMat);        \
-  __macro(cusparseSpMM_bufferSize);    \
-  __macro(cusparseSpMM);               \
-  __macro(cusparseDestroySpMat);       \
-  __macro(cusparseDestroyDnMat);       \
-  __macro(cusparseDestroy);
+  __macro(cusparseSetStream);          \
+  __macro(cusparseCreateMatDescr);     \
+  __macro(cusparseDestroy);            \
+  __macro(cusparseSnnz);               \
+  __macro(cusparseDnnz);               \
+  __macro(cusparseSetMatType);         \
+  __macro(cusparseSetMatIndexBase);
 
-CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
+CUSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
+
+// APIs available after CUDA 11.2
+#if CUDA_VERSION >= 11020
+#define CUSPARSE_ROUTINE_EACH_11020(__macro) \
+  __macro(cusparseCreateCsr);                \
+  __macro(cusparseCreateCoo);                \
+  __macro(cusparseCreateDnMat);              \
+  __macro(cusparseSpMM_bufferSize);          \
+  __macro(cusparseSpMM);                     \
+  __macro(cusparseDestroySpMat);             \
+  __macro(cusparseDestroyDnMat);             \
+  __macro(cusparseCooSetPointers);           \
+  __macro(cusparseCsrSetPointers);           \
+  __macro(cusparseDenseToSparse_bufferSize); \
+  __macro(cusparseDenseToSparse_analysis);   \
+  __macro(cusparseDenseToSparse_convert);    \
+  __macro(cusparseSparseToDense_bufferSize); \
+  __macro(cusparseSparseToDense);
+
+CUSPARSE_ROUTINE_EACH_11020(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 
 // APIs available after CUDA 11.3
 #if CUDA_VERSION >= 11030
@@ -63,12 +69,13 @@ CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
   __macro(cusparseSDDMM_preprocess);      \
   __macro(cusparseSDDMM);
 
-CUSPARSE_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
+CUSPARSE_ROUTINE_EACH_R2(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
+#endif
 #endif
 #endif
 #endif
 
-#undef DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

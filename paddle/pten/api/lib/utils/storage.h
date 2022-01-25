@@ -37,7 +37,18 @@ class ExternalStorage : public pten::Storage {
   void Clear() override {
     data_ = nullptr;
     size_ = 0;
-    offset_ = 0;
+  }
+
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    CHECK(holder);
+    data_ = holder;
+    size_ = holder->size();
+  }
+
+  std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    return std::move(data_);
   }
 
   size_t size() const noexcept override { return size_; }
@@ -57,13 +68,11 @@ class ExternalStorage : public pten::Storage {
 class SharedStorage : public pten::Storage {
  public:
   explicit SharedStorage(
-      const std::shared_ptr<paddle::memory::Allocation>& allocation,
-      size_t offset)
+      const std::shared_ptr<paddle::memory::Allocation>& allocation)
       : Storage(allocation) {
     CHECK(allocation);
     place_ = allocation->place();
     size_ = allocation->size();
-    offset_ = offset;
   }
 
   // In order to be compatible with the original Tensor design and execution
@@ -86,8 +95,27 @@ class SharedStorage : public pten::Storage {
     size_ = 0;
   }
 
-  size_t size() const noexcept override { return size_; }
-  const paddle::platform::Place& place() const override { return place_; }
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    data_ = holder;
+    if (holder) {
+      size_ = holder->size();
+      place_ = holder->place();
+    }
+  }
+
+  std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    place_ = Place();
+    return std::move(data_);
+  }
+
+  size_t size() const noexcept override {
+    return data_ ? data_->size() : size_;
+  }
+  const paddle::platform::Place& place() const override {
+    return data_ ? data_->place() : place_;
+  }
   bool OwnsMemory() const noexcept override { return false; }
 
   const std::shared_ptr<paddle::memory::Allocation>& GetAllocation() {
@@ -95,12 +123,10 @@ class SharedStorage : public pten::Storage {
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
-  void ResetAllocation(std::shared_ptr<paddle::memory::Allocation> allocation,
-                       size_t offset) {
+  void ResetAllocation(std::shared_ptr<paddle::memory::Allocation> allocation) {
     data_ = allocation;
     size_ = allocation->size();
     place_ = allocation->place();
-    offset_ = offset;
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance

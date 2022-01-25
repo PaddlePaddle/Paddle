@@ -35,7 +35,8 @@ VirtualMemoryAutoGrowthBestFitAllocator::
       alignment_(alignment),
       place_(place) {}
 
-Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
+pten::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
+    size_t size) {
   std::lock_guard<SpinLock> guard(spinlock_);
   size = AlignedSize(size, alignment_);
   auto result = AllocFromFreeBlocks(size);
@@ -48,7 +49,8 @@ Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
   return result;
 }
 
-void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
+void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(
+    pten::Allocation *allocation) {
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   TryMergeBlock2Blocks(block_it);
@@ -225,7 +227,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
   }
 }
 
-Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
+pten::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
     size_t size) {
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   if (iter != free_blocks_.end()) {

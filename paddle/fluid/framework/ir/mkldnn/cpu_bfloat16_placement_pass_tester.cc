@@ -68,7 +68,7 @@ ProgramDesc BuildProgramDesc() {
   for (auto& v :
        std::vector<std::string>({"a", "b", "c", "f", "g", "h", "k", "l", "m",
                                  "n", "o", "p", "r", "s"})) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
 
   SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"});
@@ -86,9 +86,8 @@ ProgramDesc BuildProgramDesc() {
 }
 
 void MainTest(std::initializer_list<std::string> bfloat16_enabled_op_types,
-              unsigned expected_bfloat16_data_type_count) {
-  auto prog = BuildProgramDesc();
-
+              unsigned expected_bfloat16_data_type_count,
+              const ProgramDesc& prog) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_placement_pass");
@@ -110,8 +109,8 @@ void MainTest(std::initializer_list<std::string> bfloat16_enabled_op_types,
   EXPECT_EQ(bfloat16_data_type_count, expected_bfloat16_data_type_count);
 }
 
-void DefaultAttrTest(unsigned expected_bfloat16_data_type_count) {
-  auto prog = BuildProgramDesc();
+void DefaultAttrTest(unsigned expected_bfloat16_data_type_count,
+                     const ProgramDesc& prog) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_placement_pass");
   graph.reset(pass->Apply(graph.release()));
@@ -128,15 +127,39 @@ void DefaultAttrTest(unsigned expected_bfloat16_data_type_count) {
 }
 
 TEST(Bfloat16PlacementPass, enable_all) {
-  MainTest({"conv2d", "pool2d", "gelu", "concat", "sum"}, 8);
+  MainTest({"conv2d", "pool2d", "gelu", "concat", "sum"}, 8,
+           BuildProgramDesc());
 }
 
 TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
   // 2 conv2d + 2 pool2 - 1 orphaned conv2d
-  MainTest({"conv2d", "pool2d"}, 3);
+  MainTest({"conv2d", "pool2d"}, 3, BuildProgramDesc());
 }
 
-TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(10); }
+TEST(Bfloat16PlacementPass, default_attr_value) {
+  DefaultAttrTest(10, BuildProgramDesc());
+}
+
+ProgramDesc BuildProgramDescWithDataType() {
+  ProgramDesc prog;
+
+  for (auto& v : std::vector<std::string>({"a", "b", "c", "d", "e"})) {
+    if (v == "a") {
+      prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::INT32);
+    } else {
+      prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
+    }
+  }
+
+  SetOp(&prog, "conv2d", "conv1", {"a"}, {"b"});
+  SetOp(&prog, "pool2d", "pool1", {"b"}, {"c"});
+  SetOp(&prog, "concat", "concat1", {"c", "d"}, {"e"});
+  return prog;
+}
+
+TEST(Bfloat16PlacementPass, check_data_types) {
+  DefaultAttrTest(2, BuildProgramDescWithDataType());
+}
 
 }  // namespace ir
 }  // namespace framework

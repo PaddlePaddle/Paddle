@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -21,34 +22,36 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace distributed {
-
-std::unique_ptr<Carrier> FleetExecutor::carrier_;
 
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
   PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
                                  "Error occurs while parsing string to proto"));
+  // Message bus will be created and inited only once
+  GlobalVal<MessageBus>::Create();
+  InitMessageBus();
+}
+
+FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
+    : exe_desc_(exe_desc) {
+  // Message bus will be created and inited only once
+  GlobalVal<MessageBus>::Create();
+  InitMessageBus();
 }
 
 FleetExecutor::~FleetExecutor() {
-  root_scope_->DropKids();
-  GetCarrier()->Release();
-}
-
-Carrier* FleetExecutor::GetCarrier() {
-  PADDLE_ENFORCE_NOT_NULL(carrier_.get(), platform::errors::NotFound(
-                                              "Carrier has not been created."));
-  return carrier_.get();
+  for (const auto& carrier_id : carrier_ids_) {
+    GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
+  }
 }
 
 void FleetExecutor::Init(
-    const framework::ProgramDesc& program_desc, framework::Scope* scope,
-    const platform::Place& place, const std::vector<TaskNode*>& task_nodes,
+    const std::string& carrier_id, const framework::ProgramDesc& program_desc,
+    framework::Scope* scope, const platform::Place& place,
+    int64_t num_micro_batches, const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
   PADDLE_ENFORCE_GT(task_nodes.size(), 0,
                     platform::errors::InvalidArgument(
@@ -73,30 +76,23 @@ void FleetExecutor::Init(
   for (auto& unique_op : ops) {
     unique_op.release();
   }
-  root_scope_ = scope;
-  place_ = place;
-  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
-                                           "root_scope_ can not be nullptr"));
-  minibatch_scope_ = &root_scope_->NewScope();
-  int64_t num_micro_batches = exe_desc_.num_micro_batches();
-  microbatch_scopes_.resize(num_micro_batches);
-  for (int i = 0; i < num_micro_batches; ++i) {
-    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
-    CopyParameters(i, program_desc);
-  }
   VLOG(5) << runtime_graph_->DebugString();
-  msg_bus_ = std::make_shared<MessageBus>();
-  CreateCarrier();
-  InitCarrier();
-  InitMessageBus();
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier_ids_.insert(carrier_id);
+  // Set current running carrier
+  GlobalVal<std::string>::Set(new std::string(carrier_id));
+  InitCarrier(carrier, scope, place, num_micro_batches, program_desc);
+  GlobalVal<MessageBus>::Get()->Barrier();
 }
 
-void FleetExecutor::InitCarrier() {
-  if (!GetCarrier()->IsInit()) {
-    GetCarrier()->SetMsgBus(msg_bus_);
-    GetCarrier()->Init(exe_desc_.cur_rank(), runtime_graph_, root_scope_,
-                       minibatch_scope_, microbatch_scopes_, place_);
-  }
+void FleetExecutor::InitCarrier(Carrier* carrier, framework::Scope* scope,
+                                const platform::Place& place,
+                                int64_t num_micro_batches,
+                                const framework::ProgramDesc& program_desc) {
+  carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
+                runtime_graph_->interceptor_id_to_node(), program_desc, scope,
+                num_micro_batches, place);
 }
 
 void FleetExecutor::InitMessageBus() {
@@ -129,48 +125,17 @@ void FleetExecutor::InitMessageBus() {
   VLOG(3) << "The number of ranks are "
           << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
-  if (!msg_bus_->IsInit()) {
-    msg_bus_->Init(cur_rank, rank_to_addr, addr);
-  }
+  GlobalVal<MessageBus>::Get()->Init(cur_rank, rank_to_addr, addr);
 }
 
-void FleetExecutor::Run() {
-  // Run
-  PADDLE_ENFORCE_EQ(
-      GetCarrier()->IsInit(), true,
-      platform::errors::Unavailable("Carrier has not been init yet."));
-  PADDLE_ENFORCE_EQ(
-      msg_bus_->IsInit(), true,
-      platform::errors::Unavailable("MessageBus has not been init yet."));
-  GetCarrier()->Start();
-  for (auto* micro_scop : microbatch_scopes_) {
-    // By default, we should delete all kid scopes after run executor because
-    // some operators may create local scope when running, such as while_op.
-    // But when while_op also create a local executor to run it's sub block,
-    // the sub scopes it created should not be dropped immediately, because
-    // while_grad_op will use some variables created during while_op run, so
-    // we need to keep the kids and wait for the outer executor to drop them.
-    micro_scop->DropKids();
+void FleetExecutor::Run(const std::string& carrier_id) {
+  Carrier* carrier = GlobalMap<std::string, Carrier>::Get(carrier_id);
+  // Set current running carrier
+  if (*GlobalVal<std::string>::Get() != carrier_id) {
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    GlobalVal<MessageBus>::Get()->Barrier();
   }
-}
-
-void FleetExecutor::CopyParameters(int microbatch_id,
-                                   const framework::ProgramDesc& program) {
-  auto& global_block = program.Block(0);
-
-  for (auto& var : global_block.AllVars()) {
-    if (var->Persistable() && microbatch_id == 0) {
-      auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(5) << "Create persistable var: " << var->Name()
-              << ", which pointer is " << ptr;
-    } else if (!var->Persistable()) {
-      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
-      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
-              << microbatch_id << ", which pointer is " << ptr << ".";
-      InitializeVariable(ptr, var->GetType());
-    }
-  }
+  carrier->Start();
 }
 
 }  // namespace distributed

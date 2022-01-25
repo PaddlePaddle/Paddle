@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,6 +66,15 @@ class TestStackOpBase(XPUOpTest):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
+    def test_check_grad(self):
+        if self.dtype == 'int64' or self.dtype == 'int32':
+            pass
+        else:
+            if paddle.is_compiled_with_xpu():
+                paddle.enable_static()
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(place, self.get_x_names(), 'Y')
+
 
 class TestStackOp1(TestStackOpBase):
     def initParameters(self):
@@ -81,10 +90,16 @@ class TestStackOp3(TestStackOpBase):
     def initParameters(self):
         self.axis = -1
 
+    def test_check_grad(self):
+        pass
+
 
 class TestStackOp4(TestStackOpBase):
     def initParameters(self):
         self.axis = -4
+
+    def test_check_grad(self):
+        pass
 
 
 class TestStackOp5(TestStackOpBase):
@@ -113,7 +128,7 @@ class TestStackOpint(TestStackOpBase):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'int'
+        self.dtype = 'int32'
 
     def initParameters(self):
         self.num_inputs = 16

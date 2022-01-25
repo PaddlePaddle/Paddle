@@ -169,7 +169,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
       std::vector<const LoDTensor *> lodtensor_ptrs;
       lodtensor_ptrs.push_back(&(BOOST_GET(LoDTensor, val.at(fetch_idx))));
       LoDTensor var;
-      var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
       ret.emplace_back(var);
     } else {
       auto array = BOOST_GET(LoDTensorArray, val.at(fetch_idx));
@@ -179,7 +179,8 @@ FetchResultType AsyncSSAGraphExecutor::Run(
         std::vector<const LoDTensor *> lodtensor_ptrs;
         lodtensor_ptrs.push_back(&array[i]);
         item_array.emplace_back();
-        item_array.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+        MergeLoDTensor(&(item_array.back()), lodtensor_ptrs,
+                       platform::CPUPlace());
       }
       ret.emplace_back(item_array);
     }

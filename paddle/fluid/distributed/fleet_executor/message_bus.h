@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -23,7 +24,7 @@
     !defined(PADDLE_WITH_ASCEND_CL)
 #include "brpc/channel.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "paddle/fluid/distributed/fleet_executor/message_service.h"
 #endif
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
@@ -51,13 +52,15 @@ class MessageBus final {
   // called by Interceptor, send InterceptorMessage to dst
   bool Send(int64_t dst_rank, const InterceptorMessage& interceptor_message);
 
+  void IncreaseBarrierCount();
+  void Barrier();
+  bool DispatchMsgToCarrier(const InterceptorMessage& interceptor_message);
+
  private:
   DISABLE_COPY_AND_ASSIGN(MessageBus);
 
   // function keep listen the port and handle the message
   void ListenPort();
-
-  void TestConnection();
 
   const std::string& GetAddr(int64_t rank) const;
 
@@ -80,10 +83,15 @@ class MessageBus final {
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  InterceptorMessageServiceImpl interceptor_message_service_;
+  MessageServiceImpl message_service_;
   // brpc server
   brpc::Server server_;
 #endif
+
+  // for barrier
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  int count_{0};
 };
 
 }  // namespace distributed

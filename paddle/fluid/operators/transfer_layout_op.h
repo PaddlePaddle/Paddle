@@ -21,15 +21,12 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -66,7 +63,7 @@ class TransferLayoutFunctor {
         // Just set layout/format. No real transform occur
 
         auto out_format = platform::MKLDNNFormatForSize(
-            in_tensor.dims().size(), ToMKLDNNFormat(in_layout));
+            in_tensor.dims().size(), framework::ToMKLDNNFormat(in_layout));
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
@@ -78,7 +75,7 @@ class TransferLayoutFunctor {
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        innerTransDataLayoutFromMKLDNN(
+        paddle::framework::innerTransDataLayoutFromMKLDNN(
             in_layout, paddle::platform::MKLDNNDeviceContext::tls()
                            .get_cur_paddle_data_layout(),
             in_tensor, &out_tensor, dev_ctx_.GetPlace());
