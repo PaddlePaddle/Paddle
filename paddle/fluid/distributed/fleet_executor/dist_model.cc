@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <glog/logging.h>
+#include <chrono>  // NOLINT
 
 #include "paddle/fluid/distributed/fleet_executor/dist_model.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
@@ -66,9 +67,11 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                               "DistModelTensor contains no data."));
 
   if (platform::is_cpu_place(place)) {
+    VLOG(3) << "Loading data for CPU.";
     std::memcpy(static_cast<void *>(input_tensor_ptr), input_data.data.data(),
                 input_data.data.length());
   } else if (platform::is_gpu_place(place)) {
+    VLOG(3) << "Loading data for GPU.";
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
@@ -112,6 +115,24 @@ bool IsPPFirstStage(const DistModelConfig &config) {
 bool IsPPLastStage(const DistModelConfig &config) {
   return config.local_rank + config.mp_degree >= config.nranks;
 }
+
+class DistModelTimer {
+ public:
+  void tic() { tic_time = std::chrono::high_resolution_clock::now(); }
+  double toc() {
+    std::chrono::high_resolution_clock::time_point toc_time =
+        std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_elapse =
+        std::chrono::duration_cast<std::chrono::duration<double>>(toc_time -
+                                                                  tic_time);
+    double time_elapse_in_ms =
+        static_cast<double>(time_elapse.count()) * 1000.0;
+    return time_elapse_in_ms;
+  }
+
+ private:
+  std::chrono::high_resolution_clock::time_point tic_time;
+};
 
 }  // namespace
 
@@ -576,19 +597,32 @@ bool DistModel::FetchResult(const framework::LoDTensor &fetch,
 
 bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
                     std::vector<DistModelTensor> *output_data) {
+  // TODO(fleet exe dev): support pipeline inf mode
+  VLOG(3) << "DistModel run for once.";
+
+  DistModelTimer timer;
+  timer.tic();
+
   if (!FeedData(input_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at feeding data.";
     return false;
   }
-  VLOG(3) << "Finish loading data.";
+  double feed_elapse = timer.toc();
+  VLOG(3) << "Finish loading data, cost " << feed_elapse << "ms.";
 
   fleet_exe->Run(carrier_id_);
+  double fleet_exe_elapse = timer.toc();
+  VLOG(3) << "Finish FleetExe running, cost " << fleet_exe_elapse - feed_elapse
+          << "ms.";
 
   if (!FetchResults(output_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at fetching result.";
     return false;
   }
-  VLOG(3) << "Finish fetching data.";
+  double fetch_elapse = timer.toc();
+  VLOG(3) << "Finish fetching data, cost " << fetch_elapse - fleet_exe_elapse
+          << "ms.";
+  VLOG(3) << "DistModel finish inf, cost " << fetch_elapse << "ms";
   return true;
 }
 
