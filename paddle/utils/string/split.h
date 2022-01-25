@@ -13,4 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/utils/string/to_string.h"
+#include <sstream>
+#include <string>
+#include <vector>
+
+namespace paddle {
+namespace string {
+
+static inline std::vector<std::string> Split(std::string const& original,
+                                             char separator) {
+  std::vector<std::string> results;
+  std::string token;
+  std::istringstream is(original);
+  while (std::getline(is, token, separator)) {
+    if (!token.empty()) {
+      results.push_back(token);
+    }
+  }
+  return results;
+}
+
+}  // namespace string
+}  // namespace paddle
