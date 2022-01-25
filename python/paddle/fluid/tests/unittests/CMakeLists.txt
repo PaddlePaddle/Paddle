@@ -152,6 +152,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_model_tensor)
 endif()
 
 # Temporally disable test_deprecated_decorator

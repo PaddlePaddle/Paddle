@@ -121,6 +121,7 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
     // stride must not be zero
     if (starts[axis_index] < 0) {
       starts[axis_index] = starts[axis_index] + axis_size;
+      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
     }
     if (ends[axis_index] < 0) {
       if (!(ends[axis_index] == -1 &&
@@ -137,11 +138,6 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       } else {
         ends[axis_index] = starts[axis_index] + 1;
       }
-    }
-
-    if ((starts[axis_index] < 0) && (axis_size > 0)) {
-      starts[axis_index] += axis_size;
-      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
     }
 
     if (strides[axis_index] < 0) {

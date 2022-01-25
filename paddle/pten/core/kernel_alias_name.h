@@ -20,10 +20,10 @@ namespace pten {
 // the key is kernel_name in fluid, the value is the kernel_name in pten
 // the key is sorted by key's alphabet
 const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
-    {"elementwise_add", "add"},
-    {"elementwise_div", "divide"},
-    {"elementwise_mul", "muliply"},
-    {"elementwise_sub", "subtract"},
+    {"elementwise_add", "add_raw"},
+    {"elementwise_div", "divide_raw"},
+    {"elementwise_mul", "muliply_raw"},
+    {"elementwise_sub", "subtract_raw"},
     {"fill_any_like", "full_like"},
     {"fill_constant", "full"},
     {"flatten_contiguous_range", "flatten"},
@@ -32,8 +32,8 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"matmul_v2_grad", "matmul_grad"},
     {"matmul_v2_grad_grad", "matmul_double_grad"},
     {"matmul_v2_triple_grad", "matmul_triple_grad"},
-    {"reduce_mean", "mean"},
-    {"reduce_sum", "sum"},
+    {"reduce_mean", "mean_raw"},
+    {"reduce_sum", "sum_raw"},
     {"reshape2", "reshape"},
     {"reshape2_grad", "reshape_grad"},
     {"reshape2_grad_grad", "reshape_double_grad"},

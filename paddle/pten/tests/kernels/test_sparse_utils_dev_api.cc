@@ -101,19 +101,14 @@ TEST(DEV_API, to_sparse_coo) {
 
   std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* cpu = pool.Get(paddle::platform::CPUPlace());
-  auto* cuda = pool.Get(paddle::platform::CUDAPlace());
-  auto* dev_ctx_cuda = static_cast<paddle::platform::CUDADeviceContext*>(cuda);
-  auto* dev_ctx_cpu = static_cast<paddle::platform::CPUDeviceContext*>(cpu);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  pten::CPUContext dev_ctx_cpu;
+  auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
 
   // 1. test cpu
-  auto cpu_sparse_out = DenseToSparseCoo<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx_cpu)),
-      dense_x,
-      sparse_dim);
-  CheckResult<float, int64_t>(dev_ctx_cpu,
+  auto cpu_sparse_out =
+      DenseToSparseCoo<float>(dev_ctx_cpu, dense_x, sparse_dim);
+  CheckResult<float, int64_t>(&dev_ctx_cpu,
                               cpu_sparse_out,
                               non_zero_data,
                               indices_data,
@@ -122,10 +117,8 @@ TEST(DEV_API, to_sparse_coo) {
 
   // 2. test cuda
   pten::Copy(*dev_ctx_cuda, dense_x, true, &d_dense_x);
-  auto sparse_out = DenseToSparseCoo<float>(
-      *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
-      d_dense_x,
-      sparse_dim);
+  auto sparse_out =
+      DenseToSparseCoo<float>(*dev_ctx_cuda, d_dense_x, sparse_dim);
 
   CheckResult<float, int64_t>(dev_ctx_cuda,
                               sparse_out,
@@ -163,17 +156,14 @@ TEST(DEV_API, to_sparse_coo_hybird) {
 
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto* cpu = pool.Get(paddle::platform::CPUPlace());
   auto* cuda = pool.Get(paddle::platform::CUDAPlace());
   auto* dev_ctx_cuda = static_cast<paddle::platform::CUDADeviceContext*>(cuda);
-  auto* dev_ctx_cpu = static_cast<paddle::platform::CPUDeviceContext*>(cpu);
+  pten::CPUContext dev_ctx_cpu;
 
   // 1. test cpu
-  auto cpu_sparse_out = DenseToSparseCoo<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx_cpu)),
-      dense_x,
-      sparse_dim);
-  CheckResult<float, int64_t>(dev_ctx_cpu,
+  auto cpu_sparse_out =
+      DenseToSparseCoo<float>(dev_ctx_cpu, dense_x, sparse_dim);
+  CheckResult<float, int64_t>(&dev_ctx_cpu,
                               cpu_sparse_out,
                               non_zero_data,
                               indices_data,
@@ -255,6 +245,7 @@ TEST(DEV_API, to_sparse_coo_performance) {
       *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
       d_dense_x,
       sparse_dim);
+
   std::vector<int64_t> indices_data(non_zero_num * 2);
   memcpy(&indices_data[0], &rows_data[0], non_zero_num * sizeof(int64_t));
   memcpy(&indices_data[non_zero_num],
@@ -285,8 +276,7 @@ TEST(DEV_API, sparse_coo_to_dense) {
 
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto* cpu = pool.Get(paddle::platform::CPUPlace());
-  auto* dev_ctx_cpu = static_cast<paddle::platform::CPUDeviceContext*>(cpu);
+  pten::CPUContext dev_ctx_cpu;
 
   DDim dense_dims = framework::make_ddim({rows, cols});
   DenseTensor dense_indices(
@@ -321,8 +311,7 @@ TEST(DEV_API, sparse_coo_to_dense) {
 
   SparseCooTensor coo(dense_indices, dense_elements, dense_dims);
 
-  auto dense_out = SparseCooToDense<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx_cpu)), coo);
+  auto dense_out = SparseCooToDense<float>(dev_ctx_cpu, coo);
 
   int cmp = memcmp(
       &dense_data[0][0], dense_out.data<float>(), sizeof(float) * rows * cols);

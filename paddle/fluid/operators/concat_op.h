@@ -22,54 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
 
+#include "paddle/pten/kernels/concat_kernel.h"
+#include "paddle/pten/kernels/funcs/concat_funcs.h"
+
 namespace paddle {
 namespace operators {
-static inline framework::DDim ComputeAndCheckShape(
-    const bool is_runtime, const std::vector<framework::DDim>& inputs_dims,
-    const size_t axis) {
-  const size_t n = inputs_dims.size();
-  auto out_dims = inputs_dims[0];
-  size_t in_zero_dims_size = out_dims.size();
-  for (size_t i = 1; i < n; i++) {
-    PADDLE_ENFORCE_EQ(inputs_dims[i].size(), out_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "The shape of input[0] and input[%d] "
-                          "is expected to be equal."
-                          "But received input[0]'s shape = "
-                          "[%s], input[%d]'s shape = [%s].",
-                          i, inputs_dims[0], i, inputs_dims[i]));
-    for (size_t j = 0; j < in_zero_dims_size; j++) {
-      if (j == axis) {
-        if (is_runtime) {
-          out_dims[axis] += inputs_dims[i][j];
-        } else {
-          if (inputs_dims[i][j] == -1 || out_dims[j] == -1) {
-            out_dims[axis] = -1;
-          } else {
-            out_dims[axis] += inputs_dims[i][j];
-          }
-        }
-      } else {
-        bool check_shape =
-            is_runtime || (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
-        if (check_shape) {
-          // check all shape in run time
-          PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],
-                            platform::errors::InvalidArgument(
-                                "The %d-th dimension of input[0] and input[%d] "
-                                "is expected to be equal."
-                                "But received input[0]'s shape = "
-                                "[%s], input[%d]'s shape = [%s].",
-                                j, i, inputs_dims[0], i, inputs_dims[i]));
-        }
-        if (!is_runtime && out_dims[j] == -1 && inputs_dims[i][j] > 0) {
-          out_dims[j] = inputs_dims[i][j];
-        }
-      }
-    }
-  }
-  return out_dims;
-}
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
@@ -109,67 +66,24 @@ class ConcatKernel : public framework::OpKernel<T> {
         ins_dims[i] = ins[i]->dims();
       }
 
-      framework::DDim out_dims = ComputeAndCheckShape(true, ins_dims, axis);
+      framework::DDim out_dims =
+          pten::funcs::ComputeAndCheckShape(true, ins_dims, axis);
       out->Resize(out_dims);
     }
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    // If axis is 0, the lod of the output is not the same as inputs.
-    if (axis == 0 && ins[0]->lod().size() > 0) {
-      size_t lod_size_0 = ins[0]->lod().size();
-      size_t lod_size = lod_size_0;
-      for (size_t i = 1; i < ins.size(); ++i) {
-        if (ins[i]->lod().size() > 0) {
-          PADDLE_ENFORCE_EQ(
-              ins[i]->lod().size(), lod_size_0,
-              platform::errors::Unimplemented(
-                  "The lod level of all input LoDTensors should be same. "
-                  "Maybe different lod level of input LoDTensors can concat,"
-                  "it is not supported currently. The lod level of %dth input "
-                  "is %d and first input is %d.",
-                  i, ins[i]->lod().size(), lod_size_0));
-        } else {
-          lod_size = 0;
-          break;
-        }
-      }
-      if (lod_size) {
-        auto* out_lod = out->mutable_lod();
-        for (size_t i = 1; i < ins.size(); ++i) {
-          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
-          AppendLoD(out_lod, in_lod);
-        }
-      }
+    // call new kernel
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    std::vector<pten::DenseTensor> pt_ins;
+    for (auto& in : ins) {
+      pt_ins.push_back(*in);
     }
 
-    // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && ins.size() < 10) {
-      size_t output_offset = 0;
-      for (auto* in : ins) {
-        if (!in || in->numel() == 0UL) {
-          continue;
-        }
-        auto in_stride = framework::stride_numel(in->dims());
-        auto out_stride = framework::stride_numel(out->dims());
-        StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
-                                    out->data<T>() + output_offset, out_stride,
-                                    in->data<T>(), in_stride, in_stride[axis]);
-        output_offset += in_stride[axis];
-      }
-    } else {
-      std::vector<framework::Tensor> inputs;
-      for (size_t j = 0; j < ins.size(); ++j) {
-        if (ins[j] && ins[j]->numel() > 0) {
-          inputs.push_back(*ins[j]);
-        } else {
-          continue;
-        }
-      }
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
-      concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
-    }
+    pten::ConcatKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        pt_ins, axis, out);
   }
 };
 

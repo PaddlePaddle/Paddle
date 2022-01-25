@@ -25,7 +25,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, mean) {
   // 1. create tensor
@@ -42,17 +42,11 @@ TEST(DEV_API, mean) {
     dense_x_data[i] = i * 1.0;
     sum += i * 1.0;
   }
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   std::vector<int64_t> dims = {0, 1};
+
   // 2. test API
-  auto out = pten::Mean<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dims,
-      false);
+  pten::CPUContext dev_ctx;
+  auto out = pten::Mean<float>(dev_ctx, dense_x, dims, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);

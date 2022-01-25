@@ -34,6 +34,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
+from .dist_default import DistributedDefaultImpl0
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
@@ -143,6 +144,68 @@ def _update_dims_mapping_for_matmul(dist_op):
     return changed
 
 
+def _is_auto_compatible_for_matmul(dist_op):
+    op_desc = dist_op.serial_op.desc
+    op_dist_attr = dist_op.dist_attr
+    x_name = op_desc.input('X')[0]
+    y_name = op_desc.input('Y')[0]
+    out_name = op_desc.output('Out')[0]
+    # Deep copy these dims_mappings for keeping them unchanged.
+    x_dims_mapping = copy.deepcopy(op_dist_attr.get_input_dims_mapping(x_name))
+    y_dims_mapping = copy.deepcopy(op_dist_attr.get_input_dims_mapping(y_name))
+    out_dims_mapping = copy.deepcopy(
+        op_dist_attr.get_output_dims_mapping(out_name))
+    x_dims_mapping_len = len(x_dims_mapping)
+    y_dims_mapping_len = len(y_dims_mapping)
+    out_dims_mapping_len = len(out_dims_mapping)
+
+    # Add dim mapping to Make sure the length dims_mapping be at least 2
+    if x_dims_mapping_len == 1:
+        x_dims_mapping.insert(0, -1)
+    if y_dims_mapping_len == 1:
+        y_dims_mapping.insert(1, -1)
+
+    # Deal with dim > 2 and take care of broadcasting
+    if out_dims_mapping_len > 2:
+        broadcast_x_dims_mapping = []
+        broadcast_y_dims_mapping = []
+        broadcast_out_dims_mapping = []
+
+        for i in range(out_dims_mapping_len - x_dims_mapping_len):
+            broadcast_x_dims_mapping.append(out_dims_mapping[i])
+        for i in range(x_dims_mapping_len - 2):
+            broadcast_x_dims_mapping.append(x_dims_mapping[i])
+
+        for i in range(out_dims_mapping_len - y_dims_mapping_len):
+            broadcast_y_dims_mapping.append(out_dims_mapping[i])
+        for i in range(y_dims_mapping_len - 2):
+            broadcast_y_dims_mapping.append(y_dims_mapping[i])
+
+        for i in range(out_dims_mapping_len - 2):
+            broadcast_out_dims_mapping.append(out_dims_mapping[i])
+
+        is_same = ((broadcast_x_dims_mapping == broadcast_y_dims_mapping) and
+                   (broadcast_x_dims_mapping == broadcast_out_dims_mapping))
+        if not is_same:
+            return False
+
+    # The following which uses negative index can be work
+    # when len(out_dims_mapping) > 2 and len(out_dims_mapping) <=2
+    is_same = (x_dims_mapping[-1] == y_dims_mapping[-2])
+    if not is_same:
+        return False
+
+    is_same = (x_dims_mapping[-2] == out_dims_mapping[-2])
+    if not is_same:
+        return False
+
+    is_same = (y_dims_mapping[-1] == out_dims_mapping[-1])
+    if not is_same:
+        return False
+
+    return True
+
+
 def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     # by now the backward function only insert the gradient allreduce for dist op itself
@@ -194,10 +257,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     Y_var_dim_mapping = dist_attr.get_input_dims_mapping(Y_var.name)
     process_mesh_shape = dist_attr.process_mesh.topology
     process_mesh_group = dist_attr.process_mesh.processes
-    assert len(
-        Y_var_dim_mapping
-    ) == 2, "dist matmual only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
-        Y_var.name, Y_var_dim_mapping)
+    # assert len(
+    #     Y_var_dim_mapping
+    # ) == 2, "dist matmual only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
+    #     Y_var.name, Y_var_dim_mapping)
     Y_var_partitioned = False
     for dim in Y_var_dim_mapping:
         if dim >= 0 and process_mesh_shape[dim] > 0:
@@ -388,20 +451,17 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
 
 
 class DistributedMatmul(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedMatmul, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedMatmul, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("matmul",
-                                             DistributedMatmul("matmul"))
+register_distributed_operator_impl_container(DistributedMatmul("matmul"))
 
 
 # ColumnParallel
 class DistributedMatmulImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulImpl0, self).__init__()
-        self._name = name
+        super(DistributedMatmulImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -414,8 +474,8 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_dim_shard(y_dims_mapping[0]) or is_dim_replicate(y_dims_mapping[
-                1]):
+        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
+                -1]):
             return False
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
@@ -435,83 +495,11 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        y_name = op_desc.input('Y')[0]
-        out_name = op_desc.output('Out')[0]
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
-
-        assert len(x_dims_mapping) >= len(
-            y_dims_mapping), "now just support x dims > y dims"
-        if len(y_dims_mapping) != 2:
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
             return False
-
-        if len(x_dims_mapping) == len(y_dims_mapping) and len(
-                x_dims_mapping) == 4:
-            if x_dims_mapping[:2] != y_dims_mapping[:2]:
-                return False
-            if x_dims_mapping[:2] != out_dims_mapping[:2]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-        elif len(x_dims_mapping) != len(y_dims_mapping) and len(
-                x_dims_mapping) == 3:
-            if x_dims_mapping[0] != out_dims_mapping[0]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        if is_dim_replicate(out_dims_mapping[-1]):
+        if not _is_auto_compatible_for_matmul(dist_op):
             return False
-
-        for mapping in out_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        input_dims_mapping = []
-        ordered_input_shard_dims_mapping = []
-
-        for dim in (x_dims_mapping + y_dims_mapping):
-            input_dims_mapping.append(dim)
-
-        for item in input_dims_mapping:
-            if item not in ordered_input_shard_dims_mapping and item != -1:
-                ordered_input_shard_dims_mapping.append(item)
-
-        for mapping in out_dims_mapping:
-            if mapping not in input_dims_mapping:
-                return False
-
-        if is_dim_shard(x_dims_mapping[0]):
-            order_index = 0
-            for idx, item in enumerate(out_dims_mapping):
-                if item != -1:
-                    if item != ordered_input_shard_dims_mapping[order_index]:
-                        return False
-                    else:
-                        order_index += 1
-            if order_index != len(ordered_input_shard_dims_mapping):
-                return False
-
-        if is_dim_shard(x_dims_mapping[-1]):
-            return False
-        if is_dim_shard(y_dims_mapping[0]) or is_dim_replicate(y_dims_mapping[
-                1]):
-            return False
-        for mapping in x_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        if is_dim_shard(x_dims_mapping[0]):
-            for mapping in y_dims_mapping[1:]:
-                if is_dim_shard(mapping) and mapping == x_dims_mapping[0]:
-                    return False
-
         return True
 
     def update_dims_mapping(self, dist_op):
@@ -635,6 +623,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         # c_identity
         identity_op_dist_attr = OperatorDistributedAttribute()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        identity_op_dist_attr.impl_type = op_dist_attr.impl_type
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         # input
         input_varname = c_identity_op.desc.input_arg_names()[0]
@@ -653,6 +642,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         # matmul
         matmul_op_dist_attr = OperatorDistributedAttribute()
         matmul_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        matmul_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         # input
         for input_varname in matmul_op.desc.input_arg_names():
@@ -692,8 +682,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 # RowParallel
 class DistributedMatmulImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulImpl1, self).__init__()
-        self._name = name
+        super(DistributedMatmulImpl1, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -729,93 +718,12 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        y_name = op_desc.input('Y')[0]
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
-
-        if op_desc.attr('transpose_X') or op_desc.attr('transpose_Y'):
-            return False
-        out_name = op_desc.output('Out')[0]
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        # for gpt2, x dims > y dims, this is a temporary solution
-        assert len(x_dims_mapping) >= len(
-            y_dims_mapping), "now just support x dims > y dims"
-        if len(y_dims_mapping) != 2:
-            return False
-        if len(x_dims_mapping) == len(y_dims_mapping) and len(
-                x_dims_mapping) == 4:
-            if x_dims_mapping[:2] != y_dims_mapping[:2]:
-                return False
-            if x_dims_mapping[:2] != out_dims_mapping[:2]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-        elif len(x_dims_mapping) != len(y_dims_mapping) and len(
-                x_dims_mapping) == 3:
-            if x_dims_mapping[0] != out_dims_mapping[0]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        if is_dim_shard(out_dims_mapping[-1]):
-            return False
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in out_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        if is_dim_replicate(x_dims_mapping[-1]):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
             return False
 
-        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
-                -1]):
+        if not _is_auto_compatible_for_matmul(dist_op):
             return False
-
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in x_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        x_shard_dim_count = 0
-        x_shard_dims = []
-        y_shard_dim_count = 0
-        y_shard_dims = []
-        for dim in x_dims_mapping:
-            if is_dim_shard(dim):
-                x_shard_dim_count += 1
-                x_shard_dims.append(dim)
-
-        for dim in y_dims_mapping:
-            if is_dim_shard(dim):
-                y_shard_dim_count += 1
-                y_shard_dims.append(dim)
-
-        if not x_shard_dims and not y_shard_dims:
-            return False
-
-        if x_shard_dims[-1] != y_shard_dims[0]:
-            return False
-
-        if x_shard_dim_count == y_shard_dim_count:
-            for dim in out_dims_mapping:
-                if is_dim_shard(dim):
-                    return False
-            if x_shard_dims != y_shard_dims:
-                return False
-        else:
-            if x_shard_dim_count < y_shard_dim_count:
-                return False
-            output_shard_dims = []
-            for dim in out_dims_mapping:
-                if is_dim_shard(dim):
-                    output_shard_dims.append(dim)
-            if not output_shard_dims or output_shard_dims[0] != x_shard_dims[0]:
-                return False
 
         return True
 
@@ -933,6 +841,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         # matmul
         matmul_op_dist_attr = OperatorDistributedAttribute()
         matmul_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        matmul_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
@@ -951,6 +860,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         # allreduce
         allreduce_op_dist_attr = OperatorDistributedAttribute()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
             input_var = main_block.var(input_varname)
@@ -980,8 +890,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 # ReplicateParallel
 class DistributedMatmulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulImpl2, self).__init__()
-        self._name = name
+        super(DistributedMatmulImpl2, self).__init__(name)
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -1020,56 +929,11 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        y_name = op_desc.input('Y')[0]
-        out_name = op_desc.output('Out')[0]
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
-        assert len(x_dims_mapping) >= len(
-            y_dims_mapping
-        ), "now just support x dims > y dims,but x:{0} and y:{1}".format(
-            x_dims_mapping, y_dims_mapping)
-        if len(y_dims_mapping) != 2:
-            return False
-        if len(x_dims_mapping) == len(y_dims_mapping) and len(
-                x_dims_mapping) == 4:
-            if x_dims_mapping[:2] != y_dims_mapping[:2]:
-                return False
-            if x_dims_mapping[:2] != out_dims_mapping[:2]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-        elif len(x_dims_mapping) != len(y_dims_mapping) and len(
-                x_dims_mapping) == 3:
-            if x_dims_mapping[0] != out_dims_mapping[0]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        if is_dim_shard(out_dims_mapping[-1]):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
             return False
 
-        if is_valid_list_index(out_dims_mapping,
-                               -2) and is_dim_shard(out_dims_mapping[-2]):
-            return False
-
-        if is_dim_shard(x_dims_mapping[-1]):
-            return False
-
-        if is_valid_list_index(x_dims_mapping,
-                               -2) and is_dim_shard(x_dims_mapping[-2]):
-            return False
-
-        if is_dim_shard(y_dims_mapping[-1]):
-            return False
-
-        if is_valid_list_index(y_dims_mapping,
-                               -2) and is_dim_shard(y_dims_mapping[-2]):
+        if not _is_auto_compatible_for_matmul(dist_op):
             return False
 
         return True
@@ -1080,6 +944,10 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         if dim_changed:
             changed = True
         return changed
+
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -1095,20 +963,17 @@ register_distributed_operator_impl("matmul",
 
 
 class DistributedMatmulV2(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedMatmulV2, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedMatmulV2, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("matmul_v2",
-                                             DistributedMatmulV2("matmul_v2"))
+register_distributed_operator_impl_container(DistributedMatmulV2("matmul_v2"))
 
 
 # ColumnParallel
 class DistributedMatmulV2Impl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl0, self).__init__()
-        self._name = name
+        super(DistributedMatmulV2Impl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -1121,8 +986,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_dim_shard(y_dims_mapping[0]) or is_dim_replicate(y_dims_mapping[
-                1]):
+        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
+                -1]):
             return False
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
@@ -1142,84 +1007,12 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        y_name = op_desc.input('Y')[0]
-        out_name = op_desc.output('Out')[0]
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
-
-        if op_desc.attr('trans_x') or op_desc.attr('trans_y'):
-            return False
-        assert len(x_dims_mapping) >= len(
-            y_dims_mapping), "now just support x dims > y dims"
-        if len(y_dims_mapping) != 2:
-            return False
-        if len(x_dims_mapping) == len(y_dims_mapping) and len(
-                x_dims_mapping) == 4:
-            if x_dims_mapping[:2] != y_dims_mapping[:2]:
-                return False
-            if x_dims_mapping[:2] != out_dims_mapping[:2]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-        elif len(x_dims_mapping) != len(y_dims_mapping) and len(
-                x_dims_mapping) == 3:
-            if x_dims_mapping[0] != out_dims_mapping[0]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        if is_dim_replicate(out_dims_mapping[-1]):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
             return False
 
-        for mapping in out_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-        input_dims_mapping = []
-        ordered_input_shard_dims_mapping = []
-
-        for dim in (x_dims_mapping + y_dims_mapping):
-            input_dims_mapping.append(dim)
-
-        for item in input_dims_mapping:
-            if item not in ordered_input_shard_dims_mapping and item != -1:
-                ordered_input_shard_dims_mapping.append(item)
-
-        for mapping in out_dims_mapping:
-            if mapping not in input_dims_mapping:
-                return False
-
-        if is_dim_shard(x_dims_mapping[0]):
-            order_index = 0
-            for idx, item in enumerate(out_dims_mapping):
-                if item != -1:
-                    if item != ordered_input_shard_dims_mapping[order_index]:
-                        return False
-                    else:
-                        order_index += 1
-            if order_index != len(ordered_input_shard_dims_mapping):
-                return False
-
-        if is_dim_shard(x_dims_mapping[-1]):
+        if not _is_auto_compatible_for_matmul(dist_op):
             return False
-
-        if is_dim_shard(y_dims_mapping[0]) or is_dim_replicate(y_dims_mapping[
-                1]):
-            return False
-
-        for mapping in x_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        if is_dim_shard(x_dims_mapping[0]):
-            for mapping in y_dims_mapping[1:]:
-                if is_dim_shard(mapping) and mapping == x_dims_mapping[0]:
-                    return False
 
         return True
 
@@ -1342,6 +1135,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         # c_identity
         identity_op_dist_attr = OperatorDistributedAttribute()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        identity_op_dist_attr.impl_type = op_dist_attr.impl_type
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         # input
         input_varname = c_identity_op.desc.input_arg_names()[0]
@@ -1359,6 +1153,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         # matmulv2
         matmulv2_op_dist_attr = OperatorDistributedAttribute()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_v2_op.desc.input_arg_names():
             if input_varname in src_op.desc.input_arg_names():
@@ -1395,8 +1190,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 # RowParallel
 class DistributedMatmulV2Impl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl1, self).__init__()
-        self._name = name
+        super(DistributedMatmulV2Impl1, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -1432,93 +1226,13 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        y_name = op_desc.input('Y')[0]
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
-        if op_desc.attr('trans_x') or op_desc.attr('trans_y'):
-            return False
-        out_name = op_desc.output('Out')[0]
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        assert len(x_dims_mapping) >= len(
-            y_dims_mapping), "now just support x dims > y dims"
-        if len(y_dims_mapping) != 2:
-            return False
-        if len(x_dims_mapping) == len(y_dims_mapping) and len(
-                x_dims_mapping) == 4:
-            if x_dims_mapping[:2] != y_dims_mapping[:2]:
-                return False
-            if x_dims_mapping[:2] != out_dims_mapping[:2]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        elif len(x_dims_mapping) != len(y_dims_mapping) and len(
-                x_dims_mapping) == 3:
-            if x_dims_mapping[0] != out_dims_mapping[0]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        if is_dim_shard(out_dims_mapping[-1]):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
             return False
 
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in out_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        if is_dim_replicate(x_dims_mapping[-1]):
+        if not _is_auto_compatible_for_matmul(dist_op):
             return False
 
-        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
-                -1]):
-            return False
-
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in x_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
-
-        x_shard_dim_count = 0
-        x_shard_dims = []
-        y_shard_dim_count = 0
-        y_shard_dims = []
-        for dim in x_dims_mapping:
-            if is_dim_shard(dim):
-                x_shard_dim_count += 1
-                x_shard_dims.append(dim)
-
-        for dim in y_dims_mapping:
-            if is_dim_shard(dim):
-                y_shard_dim_count += 1
-                y_shard_dims.append(dim)
-
-        if not x_shard_dims and not y_shard_dims:
-            return False
-
-        if x_shard_dims[-1] != y_shard_dims[0]:
-            return False
-
-        if x_shard_dim_count == y_shard_dim_count:
-            for dim in out_dims_mapping:
-                if is_dim_shard(dim):
-                    return False
-            if x_shard_dims != y_shard_dims:
-                return False
-        else:
-            if x_shard_dim_count < y_shard_dim_count:
-                return False
-            output_shard_dims = []
-            for dim in out_dims_mapping:
-                if is_dim_shard(dim):
-                    output_shard_dims.append(dim)
-            if not output_shard_dims or output_shard_dims[0] != x_shard_dims[0]:
-                return False
         return True
 
     def update_dims_mapping(self, dist_op):
@@ -1631,6 +1345,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # matmulv2
         matmulv2_op_dist_attr = OperatorDistributedAttribute()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_v2_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
@@ -1649,6 +1364,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # allreduce
         allreduce_op_dist_attr = OperatorDistributedAttribute()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
             input_var = main_block.var(input_varname)
@@ -1678,8 +1394,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 # ReplicateParallel
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl2, self).__init__()
-        self._name = name
+        super(DistributedMatmulV2Impl2, self).__init__(name)
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -1720,57 +1435,11 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        y_name = op_desc.input('Y')[0]
-        out_name = op_desc.output('Out')[0]
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
-        assert len(x_dims_mapping) >= len(
-            y_dims_mapping
-        ), "now just support x dims > y dims,but x:{0} and y:{1}".format(
-            x_dims_mapping, y_dims_mapping)
-        if len(y_dims_mapping) != 2:
-            return False
-        if len(x_dims_mapping) == len(y_dims_mapping) and len(
-                x_dims_mapping) == 4:
-            if x_dims_mapping[:2] != y_dims_mapping[:2]:
-                return False
-            if x_dims_mapping[:2] != out_dims_mapping[:2]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        elif len(x_dims_mapping) != len(y_dims_mapping) and len(
-                x_dims_mapping) == 3:
-            if x_dims_mapping[0] != out_dims_mapping[0]:
-                return False
-            x_dims_mapping = x_dims_mapping[-2:]
-            y_dims_mapping = y_dims_mapping[-2:]
-            out_dims_mapping = out_dims_mapping[-2:]
-
-        if is_dim_shard(out_dims_mapping[-1]):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
             return False
 
-        if is_valid_list_index(out_dims_mapping,
-                               -2) and is_dim_shard(out_dims_mapping[-2]):
-            return False
-
-        if is_dim_shard(x_dims_mapping[-1]):
-            return False
-
-        if is_valid_list_index(x_dims_mapping,
-                               -2) and is_dim_shard(x_dims_mapping[-2]):
-            return False
-
-        if is_dim_shard(y_dims_mapping[-1]):
-            return False
-
-        if is_valid_list_index(y_dims_mapping,
-                               -2) and is_dim_shard(y_dims_mapping[-2]):
+        if not _is_auto_compatible_for_matmul(dist_op):
             return False
 
         return True
@@ -1781,6 +1450,10 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         if dim_changed:
             changed = True
         return changed
+
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
