@@ -24,7 +24,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -123,7 +123,7 @@ class KernelContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Attribute cast error in Op Kernel Context."));
     }
   }

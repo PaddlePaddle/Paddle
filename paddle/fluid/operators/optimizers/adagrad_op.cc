@@ -111,7 +111,7 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 template <typename T>
 struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::SelectedRows& grad,
+                  const pten::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     // 1. g_m.rows = set(g.rows)
