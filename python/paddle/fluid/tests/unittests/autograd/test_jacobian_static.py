@@ -342,5 +342,71 @@ class TestJacobianFloat64(unittest.TestCase):
             pd_f, np_f, [self.D, self.E], np.dtype('float64'), batch=True)
 
 
+class TestHessianFloat64(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        paddle.enable_static()
+        if fluid.core.is_compiled_with_cuda():
+            self.place = fluid.CUDAPlace(0)
+        else:
+            self.place = fluid.CPUPlace()
+        self.np_dtype = np.float32
+        self.A = np.array([[1., 2.]]).astype('float64')
+        self.B = np.array([[1., 2.], [2., 1.]]).astype('float64')
+        self.C = np.array([[2., 2.], [2., 1.]]).astype('float64')
+        self.D = np.array(
+            [[[2., 2.], [2., 1.]], [[1., 2.], [2., 1.]]]).astype('float64')
+        self.E = np.array(
+            [[[3., 4.], [2., 3.]], [[2., 1.], [1., 3.]]]).astype('float64')
+        self.eps = 1e-7
+        self.rtol = 1e-6
+        self.atol = 1e-6
+
+    def run_test_by_fullmatrix(self, pd_f, inps, np_hess, dtype, batch=False):
+        def make_tensors(inps):
+            if isinstance(inps, list):
+                xs = [
+                    paddle.static.data(
+                        f'x{i}', inp.shape, dtype=inp.dtype)
+                    for i, inp in enumerate(inps)
+                ]
+            else:
+                xs = paddle.static.data(
+                    name='x', shape=inps.shape, dtype=inps.dtype)
+            return xs
+
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            xs = make_tensors(inps)
+            HH = paddle.autograd.functional.Hessian(pd_f, xs, batch=batch)
+            nrow, ncol = HH.shape()
+            full_hessian = HH[:]
+        exe = fluid.Executor(self.place)
+        exe.run(startup)
+        if isinstance(inps, list):
+            feeds = {f'x{i}': x for i, x in enumerate(inps)}
+        else:
+            feeds = {'x': inps}
+        pd_hess = exe.run(main, feed=feeds, fetch_list=[full_hessian])[0]
+        
+        self.assertTrue(
+            np.allclose(pd_hess, np_hess, self.rtol, self.atol))
+
+    def test_square(self):
+        def pd_f(x):
+            """Input is a square matrix."""
+            return paddle.matmul(x, x.T)
+
+        def np_hess(x):
+            dim = x.shape[0]
+            f_xx_upperleft = 2 * np.eye(dim, dtype=np.dtype('float64'))
+            f_xx = np.zeros([dim*dim, dim*dim], dtype=np.dtype('float64'))
+            f_xx[:dim, :dim] = f_xx_upperleft
+            return f_xx
+
+        self.run_test_by_fullmatrix(pd_f, self.B, np_hess(self.B), np.dtype('float64'))
+
+
 if __name__ == "__main__":
     unittest.main()
