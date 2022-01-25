@@ -674,8 +674,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       // do nothing
-    } else if (var->IsType<SelectedRows>()) {
-      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<pten::SelectedRows>()) {
+      TensorRecordStream(
+          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {

@@ -33,8 +33,8 @@ const paddle::framework::Tensor* GetTensorFromVar(
     const paddle::framework::Variable& var) {
   if (var.IsType<paddle::framework::LoDTensor>()) {
     return &(var.Get<paddle::framework::LoDTensor>());
-  } else if (var.IsType<paddle::framework::SelectedRows>()) {
-    return &(var.Get<paddle::framework::SelectedRows>().value());
+  } else if (var.IsType<pten::SelectedRows>()) {
+    return &(var.Get<pten::SelectedRows>().value());
   } else {
     return nullptr;
   }

@@ -27,7 +27,7 @@
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
