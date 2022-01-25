@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,8 +20,7 @@ import unittest
 import numpy as np
 
 
-# use dot <CPU, ANY, INT8> as test case.
-class TestCustomKernelDot(unittest.TestCase):
+class TestCustomKernelLoad(unittest.TestCase):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,12 +30,30 @@ class TestCustomKernelDot(unittest.TestCase):
             cur_dir, sys.executable)
         subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
 
-        # set environment for loading and registering compiled custom kernels
-        # only valid in current process
-        os.environ['CUSTOM_DEVICE_ROOT'] = cur_dir
+        # get paddle lib path and place so
+        paddle_lib_path = ''
+        site_dirs = site.getsitepackages() if hasattr(
+            site, 'getsitepackages'
+        ) else [x for x in sys.path if 'site-packages' in x]
+        for site_dir in site_dirs:
+            lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
+            if os.path.exists(lib_dir):
+                paddle_lib_path = lib_dir
+                break
+        if paddle_lib_path == '':
+            if hasattr(site, 'USER_SITE'):
+                lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
+                if os.path.exists(lib_dir):
+                    paddle_lib_path = lib_dir
+        self.default_path = os.path.sep.join(
+            [paddle_lib_path, '..', '..', 'paddle-plugins'])
+        # copy so to defalut path
+        cmd = 'mkdir -p {} && cp ./*.so {}'.format(self.default_path,
+                                                   self.default_path)
+        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
 
-    def test_custom_kernel_dot_run(self):
-        # test dot run
+    def test_custom_kernel_dot_load(self):
+        # test dot load
         x_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
         y_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
@@ -53,7 +70,8 @@ class TestCustomKernelDot(unittest.TestCase):
                                                                     result))
 
     def tearDown(self):
-        del os.environ['CUSTOM_DEVICE_ROOT']
+        cmd = 'rm -rf {}'.format(self.default_path)
+        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
 
 
 if __name__ == '__main__':
