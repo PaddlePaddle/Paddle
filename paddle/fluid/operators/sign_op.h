@@ -35,7 +35,11 @@ class SignKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(x->place());
 
     // call new kernel
-    pten::SignKernel<T, DeviceContext>(dev_ctx, *x, out);
+    pten::SignKernel<T, typename paddle::framework::ConvertToPtenContext<
+                            DeviceContext>::TYPE>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, out);
   }
 };
 

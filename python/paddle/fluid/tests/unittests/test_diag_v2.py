@@ -41,7 +41,7 @@ class TestDiagV2Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_config(self):
         pass

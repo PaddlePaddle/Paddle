@@ -36,7 +36,8 @@ TEST(AccumulationNode, EagerTensor) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<paddle::platform::float16>()[0] = 10.0;
+  dt0->mutable_data<paddle::platform::float16>(
+      paddle::platform::CPUPlace())[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
@@ -45,7 +46,8 @@ TEST(AccumulationNode, EagerTensor) {
           .get(),
       meta);
 
-  dt1->mutable_data<paddle::platform::float16>()[0] = 20.0;
+  dt1->mutable_data<paddle::platform::float16>(
+      paddle::platform::CPUPlace())[0] = 20.0;
   EagerTensor et1 = EagerTensor(dt1);
 
   std::shared_ptr<pten::DenseTensor> grad_dt =
