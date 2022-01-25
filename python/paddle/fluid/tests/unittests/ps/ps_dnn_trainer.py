@@ -357,6 +357,10 @@ class DnnTrainer(object):
 
 
 if __name__ == "__main__":
+    if fleet.is_server():
+        logger.info("server: {} started".format(fleet.server_index()))
+    else:
+        logger.info("worker: {} started".format(fleet.worker_index()))
     paddle.enable_static()
     config = parse_args()
     os.environ["CPU_NUM"] = str(config.get("runner.thread_num"))

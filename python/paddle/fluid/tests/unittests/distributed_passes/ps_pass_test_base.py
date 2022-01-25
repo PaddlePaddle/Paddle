@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import os
 import random
 import sys
@@ -20,9 +19,10 @@ import pickle
 import shlex
 import shutil
 import inspect
+import unittest
 import numpy as np
 from collections import OrderedDict
-from .dist_pass_test_base import prepare_python_path_and_return_module
+from dist_pass_test_base import prepare_python_path_and_return_module
 import paddle.distributed.fleet as fleet
 
 
@@ -47,7 +47,7 @@ class PsPassTestBase(unittest.TestCase):
         cmd = [
             sys.executable,
             "-u",
-        ] + coverage_args + [
+        ] + [
             "-m", "launch", "--log_dir", self.log_dir, "--worker_num",
             self.worker_num, "--server_num", self.server_num,
             "../ps/ps_dnn_trainer.py", "-m", "benchmark.yaml", "--run_minimize",
