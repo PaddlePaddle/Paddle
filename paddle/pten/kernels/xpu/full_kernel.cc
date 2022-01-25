@@ -61,6 +61,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DenseTensor* out) {
   auto value = val.to<float>();
+  using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<
@@ -84,7 +85,23 @@ void FullLikeKernel(const Context& dev_ctx,
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-  FullValueXPU<T>(dev_ctx, out, value);
+
+  PADDLE_ENFORCE_EQ(
+      std::isnan(value),
+      false,
+      paddle::platform::errors::InvalidArgument("The filled value is NaN."));
+
+  auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
+  int ret = xpu::constant(dev_ctx.x_context(),
+                          out_data,
+                          out->numel(),
+                          static_cast<XPUInTDType>(value));
+  PADDLE_ENFORCE_EQ(ret,
+                    XPU_SUCCESS,
+                    paddle::platform::errors::External(
+                        "XPU CONSTANT API return wrong value[%d %s].",
+                        ret,
+                        XPUAPIErrorMsg[ret]));
 }
 
 }  // namespace pten
@@ -104,3 +121,12 @@ PT_REGISTER_KERNEL(full,
                    paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
+
+PT_REGISTER_KERNEL(full_like,
+                   XPU,
+                   ALL_LAYOUT,
+                   pten::FullLikeKernel,
+                   float,
+                   int,
+                   int64_t,
+                   paddle::platform::float16) {}
