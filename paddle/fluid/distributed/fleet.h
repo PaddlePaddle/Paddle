@@ -36,7 +36,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class Tensor;
 class Scope;
 class SelectedRows;
 class Variable;
@@ -50,7 +49,7 @@ class PSCore;
 
 using framework::LoDTensor;
 using framework::Scope;
-using framework::SelectedRows;
+using pten::SelectedRows;
 using framework::Variable;
 
 using RpcCtxMap = std::unordered_map<std::string, CommContext>;

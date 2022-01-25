@@ -24,6 +24,8 @@ limitations under the License. */
 #include <unistd.h>
 #elif defined(_MSC_VER)
 #include <processthreadsapi.h>
+#else
+#include <unistd.h>
 #endif
 #include "paddle/fluid/platform/macros.h"  // import DISABLE_COPY_AND_ASSIGN
 

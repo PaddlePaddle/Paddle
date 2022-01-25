@@ -41,7 +41,7 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    TensorCopySync(*ids, platform::CPUPlace(), &index_t_cpu);
+    paddle::framework::TensorCopySync(*ids, platform::CPUPlace(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = ctx.cuda_device_context().stream();
     platform::CUDAPlace place = ctx.GetPlace();
@@ -84,7 +84,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
     auto cols = d_ins[idx]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    TensorCopySync(*ids, platform::CPUPlace(), &index_t_cpu);
+    paddle::framework::TensorCopySync(*ids, platform::CPUPlace(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = ctx.cuda_device_context().stream();

@@ -98,7 +98,7 @@ struct OneHotGenerator<platform::CUDADeviceContext, T> {
 
     Tensor input_tensor;
     input_tensor.mutable_data<T>(Out->dims(), platform::CUDAPlace());
-    TensorCopy(*Out, context.GetPlace(), &input_tensor);
+    paddle::framework::TensorCopy(*Out, context.GetPlace(), &input_tensor);
     math::set_constant(context, Out, 0.0);
     OneHotCUDAKernel<
         T, thread_size><<<block_size, thread_size, 0, context.stream()>>>(

@@ -734,11 +734,6 @@ class GeneralRoleMaker(RoleMakerBase):
             self._rank = all_list.index(self._cur_endpoint)
             self._size = len(all_list)
             self._worker_endpoints = worker_endpoints
-            if self._http_server is not None:
-                # set running status to False
-                self._http_server_d["running"] = False
-                # wait until child process exits
-                self._http_server.join()
             self._role_is_generated = True
 
     def all_gather(self, input):

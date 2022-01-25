@@ -16,6 +16,8 @@ import math
 import numpy
 import warnings
 from paddle import Tensor
+import paddle.fluid.core as core
+from ..fluid.framework import _in_eager_mode
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -1355,8 +1357,12 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
+        if _in_eager_mode():
+            tmp = core.eager.EagerTensor
+        else:
+            tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
-        if isinstance(metrics, (Tensor, numpy.ndarray)):
+        if isinstance(metrics, (tmp, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, "the metrics.shape " \
                                                                       "should be (1L,), but the current metrics.shape is {}. Maybe that " \
                                                                       "you should call paddle.mean to process it first.".format(

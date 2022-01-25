@@ -86,7 +86,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  TensorCopy(*in, place, out);
+  paddle::framework::TensorCopy(*in, place, out);
 
   Tensor slice_tensor(dtype), pad_tensor(dtype);
   slice_tensor.mutable_data<T>(slice_dims, place);
@@ -221,7 +221,11 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  pten::AddKernel<T, DeviceContext>(dev_ctx, src1, src2, -1, out);
+  pten::AddRawKernel<
+      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPtenContext<
+          DeviceContext>::TYPE&>(dev_ctx),
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T>
@@ -230,7 +234,11 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  pten::SubtractKernel<T, DeviceContext>(dev_ctx, src1, src2, -1, out);
+  pten::SubtractRawKernel<
+      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPtenContext<
+          DeviceContext>::TYPE&>(dev_ctx),
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T, size_t D>

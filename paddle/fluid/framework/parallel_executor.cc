@@ -1048,7 +1048,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
             << " data (" << pair.first << "), dim:" << pair.second.dims()
             << ", place: " << pair.second.place();
-    auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
+    auto lod_tensors = SplitLoDTensor(pair.second, member_->places_);
     bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
     if (!is_persistable && num_places != lod_tensors.size() &&
         !allow_partial_feed) {

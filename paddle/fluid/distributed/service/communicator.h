@@ -193,15 +193,15 @@ inline void MergeVars(const std::string &var_name,
       result.device(*cpu_ctx.eigen_device()) =
           result / static_cast<T>(vars.size());
     }
-  } else if (var0->IsType<framework::SelectedRows>()) {
-    auto &slr0 = var0->Get<framework::SelectedRows>();
-    auto *out_slr = out_var->GetMutable<framework::SelectedRows>();
+  } else if (var0->IsType<pten::SelectedRows>()) {
+    auto &slr0 = var0->Get<pten::SelectedRows>();
+    auto *out_slr = out_var->GetMutable<pten::SelectedRows>();
     out_slr->mutable_rows()->clear();
     out_slr->mutable_value()->mutable_data<T>({{}}, cpu_place);
-    std::vector<const paddle::framework::SelectedRows *> inputs;
+    std::vector<const pten::SelectedRows *> inputs;
     inputs.reserve(vars.size());
     for (auto &var : vars) {
-      inputs.push_back(&var->Get<framework::SelectedRows>());
+      inputs.push_back(&var->Get<pten::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     if (merge_add) {
@@ -453,6 +453,18 @@ class AsyncCommunicator : public Communicator {
 
   void PushDensePostProcessing();
 
+  void PullSparseToTensorSync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, bool is_training,
+      std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
+      std::vector<framework::LoDTensor *> *outputs);      // NOLINT
+
+  void PushSparseFromTensorAsync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
+      const framework::LoDTensor *shows, const framework::LoDTensor *clicks,
+      std::vector<framework::LoDTensor *> *outputs);
+
  protected:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
@@ -467,6 +479,7 @@ class AsyncCommunicator : public Communicator {
   bool need_global_step_ = false;
   bool independent_recv_ = true;
   int parallel_task_nums_ = 0;
+  int32_t sleep_seconds_before_fail_exit_;
 
   std::unique_ptr<std::thread> main_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};

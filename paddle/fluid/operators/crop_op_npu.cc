@@ -29,7 +29,8 @@ class CropNPUKernel : public framework::OpKernel<T> {
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
       auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
-      TensorToVector(*offsets_tensor, ctx.device_context(), &offset_list);
+      paddle::framework::TensorToVector(*offsets_tensor, ctx.device_context(),
+                                        &offset_list);
       if (offset_list.empty()) {
         offset_list.resize(x->dims().size(), 0);
       }

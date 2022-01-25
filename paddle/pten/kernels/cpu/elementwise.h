@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 #include "paddle/fluid/operators/math/blas.h"
@@ -44,7 +45,10 @@ struct SameDimsAddFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VADD(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VADD(x.numel(),
+              x.data<T>(),
+              y.data<T>(),
+              z->mutable_data<T>(dev_ctx.GetPlace()));
   }
 };
 
@@ -57,7 +61,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    z->mutable_data<T>();
+    z->mutable_data<T>(dev_ctx.GetPlace());
     auto eigen_x = pten::EigenVector<T>::Flatten(x);
     auto eigen_y = pten::EigenVector<T>::Flatten(y);
     auto eigen_z = pten::EigenVector<T>::Flatten(*z);
@@ -85,7 +89,10 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VSUB(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VSUB(x.numel(),
+              x.data<T>(),
+              y.data<T>(),
+              z->mutable_data<T>(dev_ctx.GetPlace()));
   }
 };
 
@@ -140,7 +147,10 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VDIV(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VDIV(x.numel(),
+              x.data<T>(),
+              y.data<T>(),
+              z->mutable_data<T>(dev_ctx.GetPlace()));
   }
 };
 
@@ -163,7 +173,10 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VMUL(x.numel(), x.data<T>(), y.data<T>(), z->mutable_data<T>());
+    blas.VMUL(x.numel(),
+              x.data<T>(),
+              y.data<T>(),
+              z->mutable_data<T>(dev_ctx.GetPlace()));
   }
 };
 
@@ -279,7 +292,7 @@ void CommonForwardBroadcastCPU(const DenseTensor& x,
   PADDLE_ENFORCE_NOT_NULL(y_data,
                           paddle::platform::errors::InvalidArgument(
                               "The input Y should not be empty."));
-  OutType* out_data = z->mutable_data<OutType>();
+  OutType* out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   const int out_size = std::accumulate(
       out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
@@ -360,7 +373,7 @@ void ElementwiseCompute(const CPUContext& dev_ctx,
                         int axis,
                         Functor func,
                         DenseTensor* z) {
-  z->mutable_data<OutType>();
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;
@@ -582,8 +595,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext& ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << paddle::framework::make_ddim(x_dims_array)
-          << " ydim:" << paddle::framework::make_ddim(y_dims_array);
+          << pten::framework::make_ddim(x_dims_array)
+          << " ydim:" << pten::framework::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -691,6 +704,96 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext& ctx,
         dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
         dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
   }
+}
+
+// NOTE(dzhwinter): Only used in elementwise_add, elementwise_sub.
+// explicit gradient can cut off X, Y, Out from gradient op
+// In elementwise_add, elementwise_sub, we use dout as fake X, Y, Out to reuse
+// elementwise code.
+template <typename T, typename DX_OP, typename DY_OP>
+void ElemwiseExplicitGradCompute(const CPUContext& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& out,
+                                 const DenseTensor& dout,
+                                 int axis,
+                                 DenseTensor* dx,
+                                 DenseTensor* dy,
+                                 DX_OP dx_op,
+                                 DY_OP dy_op) {
+  const DDim& x_dim = x.dims();
+  const DDim& y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    pten::funcs::ElemwiseGradComputeNoBroadcast<CPUContext, T, DX_OP, DY_OP>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        dout,
+        dout,
+        out,
+        dout,
+        axis,
+        dx,
+        dy,
+        dx_op,
+        dy_op);
+  } else {
+    ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP>(dev_ctx,
+                                                      x_dim,
+                                                      y_dim,
+                                                      dout,
+                                                      dout,
+                                                      out,
+                                                      dout,
+                                                      axis,
+                                                      dx,
+                                                      dy,
+                                                      dx_op,
+                                                      dy_op);
+  }
+}
+
+// Add Grad
+
+template <typename T>
+struct IdentityGrad {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
+};
+
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value>::type
+elementwise_add_grad(const CPUContext& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const DenseTensor& out,
+                     const DenseTensor& dout,
+                     DenseTensor* dx,
+                     DenseTensor* dy,
+                     int axis = -1) {
+  auto blas = paddle::operators::math::GetBlas<CPUContext, T>(ctx);
+  if (dx) {
+    blas.VCOPY(
+        dout.numel(), dout.data<T>(), dx->mutable_data<T>(ctx.GetPlace()));
+  }
+
+  if (dy) {
+    blas.VCOPY(
+        dout.numel(), dout.data<T>(), dy->mutable_data<T>(ctx.GetPlace()));
+  }
+}
+
+template <typename T>
+typename std::enable_if<!std::is_floating_point<T>::value>::type
+elementwise_add_grad(const CPUContext& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const DenseTensor& out,
+                     const DenseTensor& dout,
+                     DenseTensor* dx,
+                     DenseTensor* dy,
+                     int axis = -1) {
+  ElemwiseExplicitGradCompute<T, IdentityGrad<T>, IdentityGrad<T>>(
+      ctx, x, y, out, dout, axis, dx, dy, IdentityGrad<T>(), IdentityGrad<T>());
 }
 
 }  // namespace pten

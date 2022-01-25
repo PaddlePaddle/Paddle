@@ -22,7 +22,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/pten/common/bfloat16.h"
 namespace pten {
 
 template <typename T, typename Context>
@@ -33,7 +33,7 @@ void ScaleKernel(const Context& dev_ctx,
                  bool bias_after_scale,
                  DenseTensor* out) {
   // calc
-  out->mutable_data<T>();
+  out->mutable_data<T>(dev_ctx.GetPlace());
   auto eigen_out = pten::EigenVector<T>::Flatten(*out);
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();

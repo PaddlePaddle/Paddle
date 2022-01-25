@@ -81,7 +81,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
 
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
-    TensorCopy(*x, context.GetPlace(), &x_tmp);
+    paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
@@ -129,10 +129,10 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
-    ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CUDADeviceContext, T,
-                         int64_t>(context, &eigenvalue_tensor, &tol_tensor,
-                                  axis, GreaterThanFunctor<T>(),
-                                  &compare_result);
+    ElementwiseComputeEx<GreaterThanFunctor<T, int64_t>,
+                         platform::CUDADeviceContext, T, int64_t>(
+        context, &eigenvalue_tensor, &tol_tensor, axis,
+        GreaterThanFunctor<T, int64_t>(), &compare_result);
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);

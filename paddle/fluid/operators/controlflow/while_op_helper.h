@@ -22,9 +22,12 @@
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/platform/variant.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class Tensor;
 class ProgramDesc;
 }  // namespace framework
 }  // namespace paddle

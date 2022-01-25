@@ -20,20 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-
-namespace paddle {
-namespace platform {
-struct bfloat16;
-template <typename T>
-struct complex;
-struct float16;
-template <typename T>
-struct complex;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace framework {

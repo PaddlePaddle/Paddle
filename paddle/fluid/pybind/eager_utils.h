@@ -37,6 +37,8 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
                                                             ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
+std::vector<framework::LoDTensor> CastPyArg2VectorOfTensor(PyObject* obj,
+                                                           ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
