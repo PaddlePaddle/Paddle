@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/communicator_common.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -626,9 +627,8 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
-  std::unordered_map<
-      std::string,
-      std::shared_ptr<BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>>
+  std::unordered_map<std::string, paddle::framework::Channel<
+                                      std::shared_ptr<std::vector<int64_t>>>>
       sparse_id_queues_;
 };
 

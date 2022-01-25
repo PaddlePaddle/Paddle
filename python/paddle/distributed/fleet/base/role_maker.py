@@ -172,6 +172,8 @@ class Gloo(object):
             self._nodes_comm = gloo
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
+        self.http_server_d = http_server_d
+
         def __start_kv_server(http_server_d, size_d):
             print("start http_server: {}, {}".format(port, size_d))
             from paddle.distributed.fleet.utils.http_server import KVServer

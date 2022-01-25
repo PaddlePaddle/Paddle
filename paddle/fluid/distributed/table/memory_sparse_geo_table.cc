@@ -20,7 +20,9 @@ namespace distributed {
 int32_t MemorySparseGeoTable::push_sparse_param(const uint64_t* keys,
                                                 const float* values,
                                                 size_t num) {
-  VLOG(0) << "debug zcb begin push_sparse_param";
+  VLOG(5) << "DEBUG MemorySparseGeoTable::push_sparse_param begin "
+             "push_sparse_param "
+          << num;
   auto shard_num = _task_pool_size;
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(shard_num);
@@ -29,7 +31,8 @@ int32_t MemorySparseGeoTable::push_sparse_param(const uint64_t* keys,
     auto y = keys[x] % shard_num;
     offset_bucket[y].push_back(x);
     if (x < 10) {
-      VLOG(0) << "debug zcb key: " << keys[x] << " shard: " << y;
+      VLOG(5) << "DEBUG MemorySparseGeoTable::push_sparse_param key: "
+              << keys[x] << " shard: " << y;
     }
   }
 
@@ -48,11 +51,12 @@ int32_t MemorySparseGeoTable::push_sparse_param(const uint64_t* keys,
             feature_value.resize(_dim);
             std::copy_n(values + _dim * offset, _dim, feature_value.data());
             if (i < 10) {
-              VLOG(0) << "debug zcb push_sparse_param key " << id
-                      << " value[0]: " << (values + _dim * offset)[0]
+              VLOG(5) << "MemorySparseGeoTable::push_sparse_param "
+                         "push_sparse_param key "
+                      << id << " value[0]: " << (values + _dim * offset)[0]
                       << " data: " << feature_value.data()[0]
-                      << " value[-1]: " << (values + _dim * offset)[9]
-                      << " data: " << feature_value.data()[9];
+                      << " value[-1]: " << (values + _dim * offset)[_dim - 1]
+                      << " data: " << feature_value.data()[_dim - 1];
             }
           }
           return 0;
@@ -69,8 +73,9 @@ int32_t MemorySparseGeoTable::pull_geo_param(const uint32_t trainer_id,
                                              std::vector<float>* values,
                                              std::vector<uint64_t>* ids) {
   _geo_recorder->GetAndClear(trainer_id, ids);
-  VLOG(0) << "debug zcb pull_geo_param trainer_id " << trainer_id << " id[0]"
-          << (*ids)[0] << " id_num: " << ids->size();
+  VLOG(5)
+      << "DEBUG MemorySparseGeoTable::pull_geo_param pull_geo_param trainer_id "
+      << trainer_id << " id_num: " << ids->size();
 
   std::vector<uint32_t> frequencies;
   frequencies.resize(ids->size(), 1);
@@ -87,7 +92,8 @@ int32_t MemorySparseGeoTable::pull_geo_param(const uint32_t trainer_id,
 
 int32_t MemorySparseGeoTable::push_sparse(const uint64_t* keys,
                                           const float* values, size_t num) {
-  VLOG(0) << "debug zcb push_sparse keys[0]" << keys[0] << " key_num: " << num;
+  VLOG(5) << "DEBUG MemorySparseGeoTable::push_sparse keys[0]" << keys[0]
+          << " key_num: " << num;
   std::vector<uint64_t> ids;
   ids.resize(num);
   std::copy_n(keys, num, ids.begin());
@@ -109,34 +115,6 @@ int32_t MemorySparseGeoTable::initialize() {
   }
 
   _local_shards.reset(new shard_type[_task_pool_size]);
-
-  /*
-  auto accessor = _config.accessor();
-  std::vector<uint64_t> feasigns;
-
-  for (size_t x = 0; x < accessor.fea_dim(); ++x) {
-    if (x % _shard_num == _shard_idx) {
-      feasigns.push_back(x);
-    }
-  }
-  VLOG(3) << "has " << feasigns.size() << " ids need to be pre inited";
-
-
-  auto buckets = bucket(feasigns.size(), 10);
-  for (int x = 0; x < 10; ++x) {
-    auto bucket_feasigns = buckets[x + 1] - buckets[x];
-    std::vector<uint64_t> ids(bucket_feasigns);
-    std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
-              ids.begin());
-
-    std::vector<uint32_t> fres;
-    fres.resize(ids.size(), 1);
-
-    auto pull_value = PullSparseValue(ids, fres, _dim);
-    std::vector<float> pulls;
-    pulls.resize(bucket_feasigns * _dim);
-    _pull_sparse(pulls.data(), pull_value);
-  }*/
   return 0;
 }
 
@@ -174,11 +152,9 @@ int32_t MemorySparseGeoTable::pull_sparse(float* pull_values,
             }
             memcpy(select_data, itr.value().data(), _dim * sizeof(float));
 
-            if (i < 5) {
-              VLOG(0) << "debug zcb pull_sparse key: " << key
-                      << " select_data[0] " << select_data[0]
-                      << " value[0]: " << itr.value().data()[0];
-            }
+            VLOG(5) << "DEBUG MemorySparseGeoTable::pull_sparse key: " << key
+                    << " select_data[0] " << select_data[0]
+                    << " value[0]: " << itr.value().data()[0];
           }
           return 0;
         });
@@ -214,7 +190,7 @@ int32_t MemorySparseGeoTable::_push_sparse(const uint64_t* keys,
             const float* update_data = values + push_data_idx * _dim;
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
-              VLOG(0) << "sparse geo table push not found key!!!";
+              VLOG(0) << "sparse geo table push not found key!!! " << key;
               auto& feature_value = local_shard[key];
               feature_value.resize(_dim);
               memset(feature_value.data(), 0, sizeof(float) * _dim);
@@ -223,16 +199,12 @@ int32_t MemorySparseGeoTable::_push_sparse(const uint64_t* keys,
 
             auto& feature_value = itr.value();
             float* value_data = feature_value.data();
-            if (i < 5) {
-              VLOG(0) << "debug zcb push_sparse before key: " << key
-                      << " update_data[0] " << update_data[0]
-                      << " value[0]: " << value_data[0];
-            }
+            VLOG(5) << "DEBUG MemorySparseGeoTable::_push_sparse before key: "
+                    << key << " update_data[0] " << update_data[0]
+                    << " value[0]: " << value_data[0];
             blas.VADD(_dim, update_data, value_data, value_data);
-            if (i < 5) {
-              VLOG(0) << "debug zcb push_sparse after key: " << key
-                      << " value[0]: " << value_data[0];
-            }
+            VLOG(5) << "DEBUG MemorySparseGeoTable::_push_sparse after key: "
+                    << key << " value[0]: " << value_data[0];
           }
           return 0;
         });
