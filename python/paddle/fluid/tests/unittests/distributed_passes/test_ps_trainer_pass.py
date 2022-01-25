@@ -21,8 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from .ps_pass_test_base import *
-from ..ps.ps_dnn_model import DnnTrainer
+from ps_pass_test_base import PsPassTestBase
+from paddle.fluid.tests.unittests.ps.ps_dnn_model import DnnTrainer
 
 
 class TestPsTrainerPass(PsPassTestBase):
