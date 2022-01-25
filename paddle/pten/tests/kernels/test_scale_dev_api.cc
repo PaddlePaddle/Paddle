@@ -25,7 +25,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, scale) {
   // 1. create tensor
@@ -36,7 +36,8 @@ TEST(DEV_API, scale) {
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
@@ -68,7 +69,8 @@ TEST(DEV_API, scale_host) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
@@ -77,7 +79,7 @@ TEST(DEV_API, scale_host) {
                           pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                 framework::make_ddim({1}),
                                                 pten::DataLayout::NCHW));
-  scale.mutable_data<float>()[0] = 2;
+  scale.data<float>()[0] = 2;
   float bias = 1;
   bool bias_after_scale = true;
 
