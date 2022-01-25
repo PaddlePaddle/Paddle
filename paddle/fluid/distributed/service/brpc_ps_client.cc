@@ -213,6 +213,7 @@ int32_t BrpcPsClient::initialize() {
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_client_pull_dense");
   profiler.register_profiler("pserver_client_pull_sparse");
+  profiler.register_profiler("pserver_client_pull_sparse_param");
   profiler.register_profiler("pserver_client_pull_sparse_local");
   profiler.register_profiler("pserver_client_push_sparse");
   profiler.register_profiler("pserver_client_push_sparse_parse");
@@ -1000,6 +1001,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse_param(float **select_values,
                                                      const uint64_t *keys,
                                                      size_t num,
                                                      bool is_training) {
+  auto timer = std::make_shared<CostTimer>("pserver_client_pull_sparse_param");
   size_t request_call_num = _server_channels.size();
 
   auto shard_sorted_kvs = std::make_shared<
