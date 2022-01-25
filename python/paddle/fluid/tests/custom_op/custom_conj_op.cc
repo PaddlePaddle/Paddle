@@ -76,9 +76,7 @@ std::vector<paddle::Tensor> ConjFunction(const paddle::Tensor& x) {
   PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(
       x.type(), "ConjCPUKernel", ([&] {
         ConjCPUKernel<data_t>(
-            x.data<data_t>(),
-            x.size(),
-            out.mutable_data<data_t>(paddle::PlaceType::kCPU));
+            x.data<data_t>(), x.size(), out.mutable_data<data_t>());
       }));
 
   return {out};
