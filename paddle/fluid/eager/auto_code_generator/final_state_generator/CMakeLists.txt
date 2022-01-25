@@ -9,7 +9,7 @@ set(forwards_h_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager
 set(nodes_cc_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/node.cc")
 set(nodes_h_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/node.h")
 
-execute_process(
+add_custom_target(eager_final_state_codegen
     COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/eager_gen.py" 
             "--api_yaml_path=${api_yaml_path}"
             "--backward_yaml_path=${backward_yaml_path}"
@@ -21,4 +21,5 @@ execute_process(
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_h_path} ${forwards_h_path}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_nodes_cc_path} ${nodes_cc_path}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_nodes_h_path} ${nodes_h_path}
+    VERBATIM
 )
