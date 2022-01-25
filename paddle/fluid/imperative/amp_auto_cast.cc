@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
-
 #include <memory>
 #include <string>
-
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/imperative/var_helper.h"
 
+namespace egr {
+class EagerTensor;
+}
 namespace paddle {
 namespace imperative {
 
@@ -96,18 +98,20 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   return os;
 }
 
-inline std::string GetDtypeStr(
-    const std::shared_ptr<imperative::VarBase>& var) {
-  return framework::DataTypeToString(var->DataType());
+template <typename VarType>
+inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
+  return framework::DataTypeToString(GetDataType(var));
 }
-
-inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
-  if (platform::is_gpu_place(var->Place()) ||
-      platform::is_cuda_pinned_place(var->Place()) ||
-      platform::is_xpu_place(var->Place())) {
+template <typename VarType>
+inline bool NeedCast(const std::shared_ptr<VarType>& var) {
+  auto place = GetPlaceFromVar(var->Var());
+  auto data_type = GetDtypeFromVar(var->Var());
+  if (paddle::platform::is_gpu_place(place) ||
+      paddle::platform::is_cuda_pinned_place(place) ||
+      paddle::platform::is_xpu_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
-    if (var->DataType() == framework::proto::VarType::FP32 ||
-        var->DataType() == framework::proto::VarType::FP16) {
+    if (data_type == paddle::framework::proto::VarType::FP32 ||
+        data_type == paddle::framework::proto::VarType::FP16) {
       return true;
     }
   }
@@ -116,16 +120,17 @@ inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
 
 // NOTE: Trace a cast op, so if a var is casted from fp32 to fp16, then the grad
 // var will be cast back from fp16 to fp32 during backward phase.
-static inline std::shared_ptr<imperative::VarBase> CastToType(
-    const std::shared_ptr<VarBase>& var,
+template <typename VarType>
+static inline std::shared_ptr<VarType> CastToType(
+    const std::shared_ptr<VarType>& var,
     const framework::proto::VarType::Type dst_type) {
   const auto& tracer = imperative::GetCurrentTracer();
-  imperative::NameVarBaseMap ins = {{"X", {var}}};
+  imperative::NameVarMap<VarType> ins = {{"X", {var}}};
   framework::AttributeMap attrs = {{"in_dtype", var->DataType()},
                                    {"out_dtype", dst_type}};
-  auto out = std::shared_ptr<imperative::VarBase>(
-      new imperative::VarBase(tracer->GenerateUniqueName()));
-  imperative::NameVarBaseMap outs = {{"Out", {out}}};
+  auto out =
+      std::shared_ptr<VarType>(new VarType(tracer->GenerateUniqueName()));
+  imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
 
   {
     AutoCastGuard guard(tracer, AmpLevel::O0);
@@ -134,32 +139,34 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
 
   return out;
 }
-
-static inline std::shared_ptr<imperative::VarBase> CastToFP16(
-    const std::shared_ptr<VarBase>& var) {
+template <typename VarType>
+static inline std::shared_ptr<VarType> CastToFP16(
+    const std::shared_ptr<VarType>& var) {
   auto dst_type = framework::proto::VarType::FP16;
-  if (NeedCast(var) && (var->DataType() != dst_type)) {
+  if (NeedCast(var) && (GetDataType(var) != dst_type)) {
     return CastToType(var, dst_type);
   }
   return var;
 }
 
-static inline std::shared_ptr<imperative::VarBase> CastToFP32(
+template <typename VarType>
+static inline std::shared_ptr<VarType> CastToFP32(
     const std::shared_ptr<VarBase>& var) {
   auto dst_type = framework::proto::VarType::FP32;
-  if (NeedCast(var) && (var->DataType() != dst_type)) {
+  if (NeedCast(var) && (GetDataType(var) != dst_type)) {
     return CastToType(var, dst_type);
   }
   return var;
 }
 
+template <typename VarType>
 static inline framework::proto::VarType::Type GetPromoteType(
-    const std::string& op_type, const NameVarBaseMap& ins) {
+    const std::string& op_type, const NameVarMap<VarType>& ins) {
   auto dst_type = framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& var : pair.second) {
-      if (var->DataType() == framework::proto::VarType::FP32) {
-        dst_type = var->DataType();
+      if (GetDataType(var) == framework::proto::VarType::FP32) {
+        dst_type = GetDataType(var);
         break;
       }
     }
@@ -170,7 +177,8 @@ static inline framework::proto::VarType::Type GetPromoteType(
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
       if (pair.first == "X" &&
-          pair.second.front()->DataType() == framework::proto::VarType::FP16) {
+          GetDataType(*pair.second.front()) ==
+              framework::proto::VarType::FP16) {
         dst_type = framework::proto::VarType::FP16;
       }
     }
@@ -179,9 +187,10 @@ static inline framework::proto::VarType::Type GetPromoteType(
   return dst_type;
 }
 
-NameVarBaseMap AutoCastInputs(const std::string& op_type,
-                              const NameVarBaseMap& ins) {
-  NameVarBaseMap new_ins(ins);
+template <typename VarType>
+NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
+                                   const NameVarMap<VarType>& ins) {
+  NameVarMap<VarType> new_ins(ins);
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
@@ -252,9 +261,10 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   return new_ins;
 }
 
-NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
-                                  const NameVarBaseMap& ins) {
-  NameVarBaseMap new_ins(ins);
+template <typename VarType>
+NameVarType<VarType> CastPureFp16Inputs(const std::string& op_type,
+                                        const NameVarType<VarType>& ins) {
+  NameVarType<VarType> new_ins(ins);
   auto dst_type = framework::proto::VarType::FP16;
   if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
       AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {

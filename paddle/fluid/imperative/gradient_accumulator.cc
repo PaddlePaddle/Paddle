@@ -214,9 +214,13 @@ void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
   func(dev_ctx, src, dst);
 }
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
-  auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
-  auto& src_tensor = src.Get<framework::LoDTensor>();
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(egr::EagerTensor* dst);
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(framework::Variable* dst);
+
+template <typname VarType>
+void TensorAdd(const VarType& src, VarType* dst) {
+  auto* dst_tensor = GetInnerDstTensor(dst);
+  auto& src_tensor = GetInnerSrcTensor(src);
 
   auto numel = src_tensor.numel();
 

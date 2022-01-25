@@ -147,10 +147,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
   return gcs_.at(place).get();
 }
 
-void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+template <typename VarType>
+void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
+                     const NameVarMap<VarType>& outs,
+                     framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward,
-                     const std::map<std::string, std::string>& inplace_map) {
+                     const std::map<std::string, std::string>& inplace_map = {},
+                     paddle::framework::AttributeMap* default_attrs = nullptr,
+                     bool override_default_attr_map = true) {
   platform::RecordEvent op_type_record_event(type);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
@@ -168,18 +172,23 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     }
   }
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
-  const auto& op_info = op->Info();
-  auto* attr_checker = op_info.Checker();
-  if (attr_checker) {
-    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+  if (override_default_attr_map) {
+    const auto& op_info = op->Info();
+    auto* attr_checker = op_info.Checker();
+    if (attr_checker) {
+      attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+    }
+
+    static paddle::framework::AttributeMap empty_attrs_map = {};
+    default_attrs = attr_checker == nullptr
+                        ? &empty_attrs_map
+                        : &attr_checker->GetDefaultAttrMap();
+    PADDLE_ENFORCE_NOT_NULL(default_attrs,
+                            paddle::platform::errors::PermissionDenied(
+                                "Detected default_attrs = nullptr."));
   }
 
-  static paddle::framework::AttributeMap empty_attrs_map = {};
-  const paddle::framework::AttributeMap& default_attrs =
-      attr_checker == nullptr ? empty_attrs_map
-                              : attr_checker->GetDefaultAttrMap();
-
-  NameVarBaseMap new_ins = ins;
+  NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
@@ -219,7 +228,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 #endif
     }
 
-    OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
+    OpBase::Run(*op, new_ins, outs, attrs, (*default_attrs), place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
@@ -256,6 +265,17 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
           inplace_map);
 }
 
+void Tracer::TraceOp(
+    const std::string& type, const NameTensorMap& ins,
+    const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+    const paddle::platform::Place& place,
+    paddle::framework::AttributeMap* default_attrs,
+    bool override_default_attr_map,
+    const std::map<std::string, std::string>& inplace_map = {}) {
+  TraceOp(type, ins, outs, std::move(attrs), place, false, inplace_map,
+          default_attrs, override_default_attr_map);
+}
+
 void Tracer::SetExpectedPlace(platform::Place place) {
   expected_place_ = place;
 }
@@ -276,6 +296,17 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
     }
   }
   return false;
+}
+
+bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
+                                 const NameTensorMap& outs,
+                                 bool trace_backward) {
+  if (!trace_backward) {
+    return false;
+  } else {
+    VLOG(10) << "Should Not reach this in eager mode";
+    return false;
+  }
 }
 
 }  // namespace imperative

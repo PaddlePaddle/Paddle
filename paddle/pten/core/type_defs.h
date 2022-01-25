@@ -46,6 +46,9 @@ using Attribute = boost::variant<boost::blank,
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 
+namespace egr {
+class EagerTensor;
+}
 namespace imperative {
 
 class VariableWrapper;
@@ -71,6 +74,12 @@ template <>
 struct NameVarMapTrait<VariableWrapper> {
   using Type = std::map<std::string, SavedVariableWrapperList>;
 };
+
+template <>
+struct NameVarMapTrait<egr::EagerTensor> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;
+};
 }  // namespace details
 
 template <typename T>
@@ -78,6 +87,7 @@ using NameVarMap = typename details::NameVarMapTrait<T>::Type;
 
 using NameVarBaseMap = NameVarMap<VarBase>;
 using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+using NameTensorMap = NameVarMap<egr::EagerTensor>;
 
 using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
 

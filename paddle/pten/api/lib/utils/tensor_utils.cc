@@ -346,12 +346,7 @@ void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
 void ReMakePtenDenseTensorBase(const paddle::framework::Tensor& src,
                                pten::DenseTensor* dst) {
   VLOG(3) << "ReMakePtenDenseTensor based Tensor.";
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
-  meta->dims = src.dims();
-  meta->dtype = pten::TransToPtenDataType(src.type());
-  meta->layout = src.layout();
-  meta->offset = src.offset();
-  dst->ResetHolder(src.Holder());
+  *dst = src;
 }
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,

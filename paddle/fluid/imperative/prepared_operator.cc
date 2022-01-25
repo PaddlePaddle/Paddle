@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/imperative/prepared_operator.h"
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
@@ -99,6 +100,12 @@ static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
       }
     }
   }
+}
+
+template <>
+static void HandleComplexGradToRealGrad(
+    const NameVarMap<egr::EagerTensor>& outs) {
+  // TODO(jiabin): Support Complex here.
 }
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -263,6 +270,15 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                       default_attrs);
 }
 
+PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerTensor>& ins,
+                               const NameVarMap<egr::EagerTensor>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<egr::EagerTensor>(ins, outs, op, place, attrs,
+                                       default_attrs);
+}
 template <typename VarType>
 void PreparePtenData(const pten::Kernel& pt_kernel,
                      const framework::KernelSignature& pt_kernel_signature,
@@ -603,6 +619,21 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);
+  }
+}
+
+void PreparedOp::Run(const NameVarMap<egr::EagerTensor>& ins,
+                     const NameVarMap<egr::EagerTensor>& outs,
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
+  if (run_pten_kernel_) {
+    PreparedOpRunPtImpl<egr::EagerTensor>(
+        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
+        outs, attrs, default_attrs);
+  } else {
+    PreparedOpRunImpl<egr::EagerTensor>(op_, ctx_, kernel_type_, func_,
+                                        dev_ctx_, ins, outs, attrs,
+                                        default_attrs);
   }
 }
 
