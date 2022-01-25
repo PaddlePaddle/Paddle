@@ -39,6 +39,18 @@ class ExternalStorage : public pten::Storage {
     size_ = 0;
   }
 
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    CHECK(holder);
+    data_ = holder;
+    size_ = holder->size();
+  }
+
+  std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    return std::move(data_);
+  }
+
   size_t size() const noexcept override { return size_; }
   const paddle::platform::Place& place() const override {
     PADDLE_ENFORCE_NOT_NULL(
@@ -83,8 +95,27 @@ class SharedStorage : public pten::Storage {
     size_ = 0;
   }
 
-  size_t size() const noexcept override { return size_; }
-  const paddle::platform::Place& place() const override { return place_; }
+  void set_data_shared(
+      const std::shared_ptr<paddle::memory::Allocation>& holder) override {
+    data_ = holder;
+    if (holder) {
+      size_ = holder->size();
+      place_ = holder->place();
+    }
+  }
+
+  std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    place_ = Place();
+    return std::move(data_);
+  }
+
+  size_t size() const noexcept override {
+    return data_ ? data_->size() : size_;
+  }
+  const paddle::platform::Place& place() const override {
+    return data_ ? data_->place() : place_;
+  }
   bool OwnsMemory() const noexcept override { return false; }
 
   const std::shared_ptr<paddle::memory::Allocation>& GetAllocation() {

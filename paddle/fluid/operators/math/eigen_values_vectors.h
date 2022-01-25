@@ -211,8 +211,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
             info_ptr);
       }
       int error_info = 0;
-      memory::Copy(platform::CPUPlace(), &error_info,
-                   BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+      memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(),
                    info_ptr, sizeof(int), dev_ctx.stream());
       CheckEighResult(i, error_info);
     }

@@ -1641,6 +1641,32 @@ PDNode *patterns::Slice::operator()() {
   return slice_out;
 }
 
+PDNode *patterns::NearestInterp::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto nearest_interp_op =
+      pattern->NewNode(nearest_interp_op_repr())
+          ->assert_is_ops({"nearest_interp", "nearest_interp_v2"});
+
+  auto nearest_interp_in =
+      pattern->NewNode(nearest_interp_in_repr())
+          ->AsInput()
+          ->assert_is_ops_input({"nearest_interp", "nearest_interp_v2"}, "X");
+  auto nearest_interp_out =
+      pattern->NewNode(nearest_interp_out_repr())
+          ->AsOutput()
+          ->assert_is_ops_output({"nearest_interp", "nearest_interp_v2"},
+                                 "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({nearest_interp_in});
+  nearest_interp_op->LinksFrom({nearest_interp_in})
+      .LinksTo({nearest_interp_out});
+  next_op->LinksFrom({nearest_interp_out});
+  return nearest_interp_out;
+}
+
 PDNode *patterns::Matmul::operator()() {
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
 
@@ -2376,15 +2402,8 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
 PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
-  std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
-                                       "fc", "matmul", "pool2d", "prior_box",
-                                       "reshape2", "transpose2", "fusion_gru",
-                                       "fusion_lstm", "multi_gru", "slice"});
-  if (!quantize_enabled_op_types.empty()) {
-    supported_op_types = quantize_enabled_op_types;
-  }
-  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  auto *op =
+      pattern->NewNode(op_repr())->assert_is_ops(quantize_enabled_op_types);
   return op;
 }
 
@@ -2422,11 +2441,13 @@ PDNode *patterns::Bfloat16Placement::operator()(
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
+  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
            node->Op()->Type() == "reshape2";
   });
+  op->LinksFrom({op_in});
   return op;
 }
 

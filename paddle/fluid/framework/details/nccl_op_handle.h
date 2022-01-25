@@ -102,7 +102,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
 
     for (auto& p : dev_ctxes_) {
-      int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
+      int dev_id = p.first.device;
       if (inter_events_.find(dev_id) != inter_events_.end()) {
         continue;
       }
@@ -133,7 +133,7 @@ class NCCLOpHandleBase : public OpHandleBase {
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -181,7 +181,7 @@ class NCCLOpHandleBase : public OpHandleBase {
   void InterReduce(platform::Place place, const void* sendbuff, void* recvbuff,
                    size_t count, ncclDataType_t datatype, ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -213,7 +213,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_NOT_NULL(
         nccl_ctxs_, platform::errors::NotFound(
                         "Can't get exter %d nccl contexts.", run_order_));
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -246,7 +246,7 @@ class NCCLOpHandleBase : public OpHandleBase {
   void InterBroadCast(platform::Place place, void* sendbuff, size_t count,
                       ncclDataType_t datatype, ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;

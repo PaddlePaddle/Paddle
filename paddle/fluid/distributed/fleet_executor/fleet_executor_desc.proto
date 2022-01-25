@@ -23,5 +23,4 @@ message RankInfo {
 message FleetExecutorDesc {
   optional int64 cur_rank = 1 [ default = 0 ]; // Rank id of current processor
   repeated RankInfo cluster_info = 2;
-  optional int64 num_micro_batches = 3 [ default = 1 ];
 }

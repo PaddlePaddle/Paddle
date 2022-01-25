@@ -32,7 +32,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/tensor.h"
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {

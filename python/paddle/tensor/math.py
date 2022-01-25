@@ -1118,6 +1118,38 @@ def mm(input, mat2, name=None):
     Returns:
         Tensor: The product Tensor.
 
+    ::
+
+        * example 1:
+
+        input: [B, ..., M, K], mat2: [B, ..., K, N]
+        out: [B, ..., M, N]
+
+        * example 2:
+
+        input: [B, M, K], mat2: [B, K, N]
+        out: [B, M, N]
+
+        * example 3:
+
+        input: [B, M, K], mat2: [K, N]
+        out: [B, M, N]
+
+        * example 4:
+
+        input: [M, K], mat2: [K, N]
+        out: [M, N]
+
+        * example 5:
+
+        input: [B, M, K], mat2: [K]
+        out: [B, M]
+
+        * example 6:
+
+        input: [K], mat2: [K]
+        out: [1]
+
     Examples:
         .. code-block:: python
 
@@ -3527,8 +3559,8 @@ def gcd(x, y, name=None):
         If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        x (Tensor): An N-D Tensor, the data type is int32，int64. 
+        y (Tensor): An N-D Tensor, the data type is int32，int64. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3589,8 +3621,8 @@ def gcd(x, y, name=None):
 
         return x
     else:
-        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
-        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        check_variable_and_dtype(x, 'x', ['int32', 'int64'], 'gcd')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'gcd')
         out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
         return out
 
@@ -3605,8 +3637,8 @@ def lcm(x, y, name=None):
         If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        x (Tensor): An N-D Tensor, the data type is int32，int64. 
+        y (Tensor): An N-D Tensor, the data type is int32，int64. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

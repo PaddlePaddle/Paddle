@@ -536,6 +536,14 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(TypeError, test_error_model)
 
+        def test_error_distributed_model():
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.DataParallel(model)
+            with fluid.dygraph.guard():
+                model = paddle.amp.decorate(models=model, level='O2')
+
+        self.assertRaises(RuntimeError, test_error_distributed_model)
+
         def test_error_optimizer():
             class MyOptimizer(object):
                 def __init__(self):

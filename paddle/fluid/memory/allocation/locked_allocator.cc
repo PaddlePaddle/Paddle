@@ -37,12 +37,12 @@ LockedAllocator::LockedAllocator(
   }
 }
 
-void LockedAllocator::FreeImpl(Allocation *allocation) {
+void LockedAllocator::FreeImpl(pten::Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   underlying_allocator_->Free(allocation);
 }
 
-Allocation *LockedAllocator::AllocateImpl(size_t size) {
+pten::Allocation *LockedAllocator::AllocateImpl(size_t size) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   return underlying_allocator_->Allocate(size).release();
 }

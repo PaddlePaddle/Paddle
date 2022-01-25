@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/common/place.h"
 
 namespace paddle {
 namespace operators {
@@ -48,7 +49,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     return;
   }
 
-  bool cpu_place = context.GetPlace().type() == typeid(platform::CPUPlace);
+  bool cpu_place = context.GetPlace().GetType() == pten::AllocationType::CPU;
   if (cpu_place) {
     auto dims = input->dims();
     auto* segment_ids = segment->data<IndexT>();

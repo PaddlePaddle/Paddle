@@ -28,7 +28,7 @@ namespace operators {
 template <typename T>
 struct EqualReduceFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const {
+  HOSTDEVICE bool operator()(const T a, const T b) const {
     if (std::is_floating_point<T>::value) {
       // This branch will be optimized while compiling if T is integer. It is
       // safe to cast a and b to double.

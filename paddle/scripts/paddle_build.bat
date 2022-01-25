@@ -42,7 +42,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -325,7 +329,11 @@ echo    ========================================
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+echo %task_name%|findstr wincheck_inference >nul && (
+    call "D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+) || (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+)
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
@@ -505,8 +513,12 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
-wmic process where name="cmake.exe" call terminate 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -650,6 +662,7 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
+set FLAGS_use_curand=True
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -968,7 +981,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL

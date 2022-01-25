@@ -26,9 +26,9 @@ namespace math {
 template <typename T>
 struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const framework::SelectedRows& input2,
-                  framework::SelectedRows* output) {
+                  const pten::SelectedRows& input1,
+                  const pten::SelectedRows& input2,
+                  pten::SelectedRows* output) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
         in1_height, input2.height(),
@@ -82,14 +82,11 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
                       platform::errors::InvalidArgument(
                           "The running enviroment is not on the GPU place."));
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, out_place), out_data,
-                 BOOST_GET_CONST(platform::CUDAPlace, in1_place), in1_data,
+    memory::Copy(out_place, out_data, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, out_place),
-                 out_data + in1_value.numel(),
-                 BOOST_GET_CONST(platform::CUDAPlace, in2_place), in2_data,
+    memory::Copy(out_place, out_data + in1_value.numel(), in2_place, in2_data,
                  in2_value.numel() * sizeof(T), context.stream());
   }
 };
@@ -120,7 +117,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
 template <typename T>
 struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
+                  const pten::SelectedRows& input1,
                   const framework::Tensor& input2, framework::Tensor* output) {
     auto in1_height = input1.height();
     auto in2_dims = input2.dims();
@@ -185,9 +182,8 @@ template struct SelectedRowsAddTensor<platform::CUDADeviceContext,
 template <typename T>
 struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const int64_t input2_offset,
-                  framework::SelectedRows* input2) {
+                  const pten::SelectedRows& input1, const int64_t input2_offset,
+                  pten::SelectedRows* input2) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
         in1_height, input2->height(),
@@ -218,9 +214,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, in2_place),
-                 in2_data + input2_offset,
-                 BOOST_GET_CONST(platform::CUDAPlace, in1_place), in1_data,
+    memory::Copy(in2_place, in2_data + input2_offset, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
   }
 };
@@ -255,8 +249,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  const pten::SelectedRows& input1, framework::Tensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
@@ -325,24 +318,23 @@ __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
 
 template <typename T>
 struct MergeAdd<platform::CUDADeviceContext, T> {
-  framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
-                                     const framework::SelectedRows& input,
-                                     const bool sorted_result = false) {
-    framework::SelectedRows out;
+  pten::SelectedRows operator()(const platform::CUDADeviceContext& context,
+                                const pten::SelectedRows& input,
+                                const bool sorted_result = false) {
+    pten::SelectedRows out;
     (*this)(context, input, &out);
     return out;
   }
 
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output,
+                  const pten::SelectedRows& input, pten::SelectedRows* output,
                   const bool sorted_result = false) {
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
 
-    framework::SelectedRows& out = *output;
+    pten::SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
     framework::Vector<int64_t> merge_rows(merge_rows_cpu);
@@ -373,14 +365,14 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
   }
 
   void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output,
+                  const std::vector<const pten::SelectedRows*>& inputs,
+                  pten::SelectedRows* output,
                   const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
     }
-    const framework::SelectedRows* has_value_input = nullptr;
+    const pten::SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
       if (in->rows().size() > 0) {
         has_value_input = in;
@@ -393,7 +385,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     }
     auto input_width = has_value_input->value().dims()[1];
     auto input_height = has_value_input->height();
-    framework::SelectedRows& out = *output;
+    pten::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
@@ -504,7 +496,7 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
 template <typename T>
 struct UpdateToTensor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const ScatterOps& op, const framework::SelectedRows& input1,
+                  const ScatterOps& op, const pten::SelectedRows& input1,
                   framework::Tensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.

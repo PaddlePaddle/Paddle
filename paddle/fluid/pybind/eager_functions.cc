@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace pybind {
@@ -42,6 +41,8 @@ namespace pybind {
 namespace py = ::pybind11;
 
 extern PyTypeObject* p_eager_tensor_type;
+extern PyTypeObject* g_multidevicefeedreader_pytype;
+extern PyTypeObject* g_orderedmultidevicefeedreader_pytype;
 
 size_t PyArray_Size_(PyObject* numpy_data) {
   size_t res = 1;
@@ -53,7 +54,7 @@ size_t PyArray_Size_(PyObject* numpy_data) {
   return res;
 }
 
-class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
+class EagerNumpyAllocation : public pten::Allocation {
  public:
   explicit EagerNumpyAllocation(PyObject* numpy_data, pten::DataType dtype)
       : Allocation(
@@ -147,6 +148,31 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_read_next_eager_tensor_list(PyObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+  std::vector<egr::EagerTensor> eager_tensor_list;
+  eager_tensor_list.reserve(tensor_list.size());
+  auto func = [](framework::Tensor& tensor) {
+    egr::EagerTensor eager_tensor(
+        egr::Controller::Instance().GenerateUniqueName());
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&eager_tensor);
+    autograd_meta->SetPersistable(false);
+    autograd_meta->SetStopGradient(true);
+    auto tmp = std::move(tensor);
+    eager_tensor.set_impl(
+        std::move(paddle::experimental::MakePtenDenseTensor(tmp)));
+    return eager_tensor;
+  };
+  for (auto& tensor : tensor_list) {
+    eager_tensor_list.emplace_back(func(tensor));
+  }
+  return ToPyObject(eager_tensor_list);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -159,6 +185,9 @@ PyMethodDef variable_functions[] = {
     {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"tensor_copy", (PyCFunction)(void (*)(void))eager_api_tensor_copy,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"read_next_eager_tensor_list",
+     (PyCFunction)(void (*)(void))eager_api_read_next_eager_tensor_list,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

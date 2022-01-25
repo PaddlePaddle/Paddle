@@ -121,6 +121,7 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
     // stride must not be zero
     if (starts[axis_index] < 0) {
       starts[axis_index] = starts[axis_index] + axis_size;
+      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
     }
     if (ends[axis_index] < 0) {
       if (!(ends[axis_index] == -1 &&
@@ -137,11 +138,6 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       } else {
         ends[axis_index] = starts[axis_index] + 1;
       }
-    }
-
-    if ((starts[axis_index] < 0) && (axis_size > 0)) {
-      starts[axis_index] += axis_size;
-      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
     }
 
     if (strides[axis_index] < 0) {
@@ -376,7 +372,8 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         auto* out_tensor = &out_array->at(out_offset);
 
         out_tensor->set_lod(in_tensor.lod());
-        TensorCopy(in_tensor, context.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                      out_tensor);
       }
 
     } else {
@@ -608,7 +605,8 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
                   in_offset));
 
           d_out_tensor->set_lod(in_tensor.lod());
-          TensorCopy(in_tensor, context.GetPlace(), d_out_tensor);
+          paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                        d_out_tensor);
 
         } else {
           d_out_tensor->Resize(dim);

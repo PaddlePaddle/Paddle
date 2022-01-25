@@ -34,7 +34,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
             "The place of ExecutionContext should be CUDAPlace."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).device;
+    int dev_id = ctx.GetPlace().device;
     int root_dev_id = ctx.Attr<int>("root");
 
     auto in = ctx.Input<framework::Tensor>("X");
@@ -46,7 +46,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
             "because this op can only be an In-Place operation."));
     void* send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
-        send_recv_buffer, in->data<void>(),
+        send_recv_buffer, in->data(),
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 

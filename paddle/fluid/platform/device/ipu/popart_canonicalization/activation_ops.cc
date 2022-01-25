@@ -48,7 +48,37 @@ Node *sqrt_handler(Graph *graph, Node *node) {
 }
 
 Node *gelu_handler(Graph *graph, Node *node) {
-  return activation_op_handler(graph, node, "popart_gelu_v2");
+  auto *op = node->Op();
+  auto approximate_ = BOOST_GET_CONST(bool, op->GetAttr("approximate"));
+  if (approximate_) {
+    return activation_op_handler(graph, node, "popart_gelu_v2");
+  } else {
+    auto sqrt2 = CreateConst(graph, node, {}, {},
+                             {{"value", std::vector<float>{1.4142135623730951}},
+                              {"dims", std::vector<int64_t>{1}},
+                              {"dtype", GetOutputVarDtype(node)}});
+    auto zero_point_five =
+        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0.5}},
+                                          {"dims", std::vector<int64_t>{1}},
+                                          {"dtype", GetOutputVarDtype(node)}});
+    auto one =
+        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{1}},
+                                          {"dims", std::vector<int64_t>{1}},
+                                          {"dtype", GetOutputVarDtype(node)}});
+    auto div =
+        CreateBaseOp(graph, node, "popart_div",
+                     {GetInputVarNode("X", node), sqrt2->outputs[0]}, {}, {});
+    auto erf =
+        CreateBaseOp(graph, node, "popart_erf", {div->outputs[0]}, {}, {});
+    auto add = CreateBaseOp(graph, node, "popart_add",
+                            {erf->outputs[0], one->outputs[0]}, {}, {});
+    auto mul1 =
+        CreateBaseOp(graph, node, "popart_mul",
+                     {GetInputVarNode("X", node), add->outputs[0]}, {}, {});
+    return CreateBaseOp(graph, node, "popart_mul",
+                        {mul1->outputs[0], zero_point_five->outputs[0]},
+                        {GetOutputVarNode("Out", node)}, {});
+  }
 }
 
 Node *log_softmax_handler(Graph *graph, Node *node) {

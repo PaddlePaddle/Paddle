@@ -49,7 +49,6 @@ egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
   egr::EagerTensor out = egr::EagerTensor();
   out.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensor));
   auto meta = EagerUtils::autograd_meta(&out);
-
   if (is_leaf) {
     auto accumulation_node = std::make_shared<GradNodeAccumulation>();
     meta->SetGradNode(accumulation_node);

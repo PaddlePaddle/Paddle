@@ -22,14 +22,14 @@
 namespace pten {
 
 template <typename T, typename Context>
-void Flatten(const Context& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out) {
+void FlattenKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int start_axis,
+                   int stop_axis,
+                   DenseTensor* out) {
   auto out_dims = out->dims();
   pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_dims);
+  out->ResizeAndAllocate(out_dims);
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
@@ -42,82 +42,78 @@ void FlattenWithXShape(const Context& dev_ctx,
                        int stop_axis,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  Flatten<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
   funcs::SetXShape(x, xshape);
 }
 
 }  // namespace pten
 
-PT_REGISTER_CTX_KERNEL(flatten,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::Flatten,
-                       float,
-                       double,
-                       uint8_t,
-                       int8_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(flatten,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::FlattenKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
-PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::FlattenWithXShape,
-                       float,
-                       double,
-                       uint8_t,
-                       int8_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(flatten_with_xshape,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::FlattenWithXShape,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_CTX_KERNEL(flatten,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::Flatten,
-                       float,
-                       paddle::platform::float16,
-                       double,
-                       uint8_t,
-                       int8_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(flatten,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::FlattenKernel,
+                   float,
+                   paddle::platform::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
-PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::FlattenWithXShape,
-                       float,
-                       paddle::platform::float16,
-                       double,
-                       uint8_t,
-                       int8_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(flatten_with_xshape,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::FlattenWithXShape,
+                   float,
+                   paddle::platform::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_CTX_KERNEL(flatten,
-                       XPU,
-                       ALL_LAYOUT,
-                       pten::Flatten,
-                       float,
-                       paddle::platform::float16,
-                       double,
-                       uint8_t,
-                       int8_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(flatten,
+                   XPU,
+                   ALL_LAYOUT,
+                   pten::FlattenKernel,
+                   float,
+                   paddle::platform::float16,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
-PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
-                       XPU,
-                       ALL_LAYOUT,
-                       pten::FlattenWithXShape,
-                       float,
-                       paddle::platform::float16,
-                       double,
-                       uint8_t,
-                       int8_t,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(flatten_with_xshape,
+                   XPU,
+                   ALL_LAYOUT,
+                   pten::FlattenWithXShape,
+                   float,
+                   paddle::platform::float16,
+                   int8_t,
+                   int,
+                   int64_t) {}
 #endif

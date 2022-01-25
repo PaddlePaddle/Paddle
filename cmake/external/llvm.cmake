@@ -1,7 +1,7 @@
 include(FetchContent)
 
-set(LLVM_DOWNLOAD_URL https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11.tar.gz)
-set(LLVM_MD5 39d32b6be466781dddf5869318dcba53)
+set(LLVM_DOWNLOAD_URL https://paddle-inference-dist.bj.bcebos.com/infrt/llvm_b5149f4e66a49a98b67e8e2de4e24a4af8e2781b.tar.gz)
+set(LLVM_MD5 022819bb5760817013cf4b8a37e97d5e)
 
 set(FETCHCONTENT_BASE_DIR ${THIRD_PARTY_PATH}/llvm)
 set(FETCHCONTENT_QUIET OFF)
@@ -51,7 +51,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # To build with MLIR, the LLVM is build from source code using the following flags:
 
 #[==[
-cmake -G Ninja ../llvm \
+cmake ../llvm  -G "Unix Makefiles" \
   -DLLVM_ENABLE_PROJECTS="mlir;clang" \
   -DLLVM_BUILD_EXAMPLES=OFF \
   -DLLVM_TARGETS_TO_BUILD="X86" \
@@ -59,8 +59,10 @@ cmake -G Ninja ../llvm \
   -DLLVM_ENABLE_ASSERTIONS=ON \
   -DLLVM_ENABLE_ZLIB=OFF \
   -DLLVM_ENABLE_RTTI=ON \
+  -DLLVM_INSTALL_UTILS=ON \
+  -DCMAKE_INSTALL_PREFIX=./install
 #]==]
-# The matched llvm-project version is f9dc2b7079350d0fed3bb3775f496b90483c9e42 (currently a temporary commit)
+# The matched llvm-project version is b5149f4e66a49a98b67e8e2de4e24a4af8e2781b (currently a temporary commit)
 
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -75,7 +77,7 @@ add_definitions(${LLVM_DEFINITIONS})
 
 
 # The minimum needed libraries for MLIR IR parse and transform.
-set(MLIR_IR_LIBS MLIRAnalysis MLIRStandardOps MLIRPass MLIRParser MLIRDialect MLIRIR MLIROptLib)
+set(MLIR_IR_LIBS MLIRAnalysis MLIRPass MLIRParser MLIRDialect MLIRIR MLIROptLib)
 
 
 # tb_base is the name of a xxx.td file (without the .td suffix)
@@ -89,6 +91,7 @@ function(mlir_tablegen_on td_base)
   mlir_tablegen(${td_base}.cpp.inc -gen-op-defs)
   if (mlir_tablegen_on_DIALECT)
     mlir_tablegen(${td_base}_dialect.hpp.inc --gen-dialect-decls -dialect=${mlir_tablegen_on_DIALECT})
+    mlir_tablegen(${td_base}_dialect.cpp.inc --gen-dialect-defs -dialect=${mlir_tablegen_on_DIALECT})
   endif()
   add_public_tablegen_target(${td_base}_IncGen)
   add_custom_target(${td_base}_inc DEPENDS ${td_base}_IncGen)

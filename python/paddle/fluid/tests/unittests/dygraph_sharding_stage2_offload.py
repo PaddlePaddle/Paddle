@@ -49,7 +49,7 @@ def train_mlp(model, offload=False):
     optimizer = ShardingOptimizerStage2(
         params=model.parameters(), optim=optimizer, offload=offload)
     model = ShardingStage2(
-        model, optimizer, buffer_max_size=2**21, accumulate_grads=True)
+        model, optimizer, buffer_max_size=2**21, accumulate_grads=False)
 
     train_reader = paddle.batch(
         reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
@@ -98,12 +98,11 @@ def test_sharding_stage2_offload():
     mlp_offload_params = train_mlp(mlp_offload, offload=True)
 
     for i in range(len(mlp_params)):
-        for j in range(len(mlp_offload_params)):
-            if mlp_params[i].name == mlp_offload_params[j].name:
-                np.testing.assert_allclose(
-                    mlp_params[i].numpy(),
-                    mlp_offload_params[j].numpy(),
-                    rtol=1e-6)
+        np.testing.assert_allclose(
+            mlp_params[i].numpy(),
+            mlp_offload_params[i].numpy(),
+            rtol=5e-3,
+            atol=5e-3)
     return
 
 

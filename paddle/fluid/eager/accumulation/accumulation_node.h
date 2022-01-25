@@ -32,7 +32,7 @@ class GradNodeAccumulation : public GradNodeBase {
   void RetainGrad(
       const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
 
-  egr::EagerTensor Grad() { return accumulated_grad; }
+  egr::EagerTensor* Grad() { return &accumulated_grad; }
 
  private:
   egr::EagerTensor accumulated_grad;

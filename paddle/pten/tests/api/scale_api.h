@@ -23,8 +23,7 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace paddle {
@@ -63,7 +62,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   auto kernel_context = pten::KernelContext(dev_ctx);
 
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
-  kernel_context.EmplaceBackInput(dense_x);
+  kernel_context.EmplaceBackInput(dense_x.get());
 
   kernel_context.EmplaceBackAttr(pten::Scalar(scale));
   kernel_context.EmplaceBackAttr(bias);
@@ -74,7 +73,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(kernel_backend)),
       std::move(out_meta));
-  kernel_context.EmplaceBackOutput(dense_out);
+  kernel_context.EmplaceBackOutput(dense_out.get());
 
   Tensor out;
   out.set_impl(dense_out);
@@ -92,42 +91,42 @@ static void ScaleCPU(DataType kernel_dtype,
                      pten::DenseTensor* dense_out) {
   switch (kernel_dtype) {
     case pten::DataType::FLOAT64: {
-      pten::Scale<double>(
+      pten::ScaleKernel<double>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::FLOAT32: {
-      pten::Scale<float>(
+      pten::ScaleKernel<float>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::BFLOAT16: {
-      pten::Scale<paddle::platform::bfloat16>(
+      pten::ScaleKernel<paddle::platform::bfloat16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT64: {
-      pten::Scale<int64_t>(
+      pten::ScaleKernel<int64_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT32: {
-      pten::Scale<int32_t>(
+      pten::ScaleKernel<int32_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT16: {
-      pten::Scale<int16_t>(
+      pten::ScaleKernel<int16_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT8: {
-      pten::Scale<int8_t>(
+      pten::ScaleKernel<int8_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::UINT8: {
-      pten::Scale<uint8_t>(
+      pten::ScaleKernel<uint8_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
@@ -151,42 +150,42 @@ static void ScaleGPU(DataType kernel_dtype,
                      pten::DenseTensor* dense_out) {
   switch (kernel_dtype) {
     case pten::DataType::FLOAT64: {
-      pten::Scale<double>(
+      pten::ScaleKernel<double>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::FLOAT32: {
-      pten::Scale<float>(
+      pten::ScaleKernel<float>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::FLOAT16: {
-      pten::Scale<paddle::platform::float16>(
+      pten::ScaleKernel<paddle::platform::float16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT64: {
-      pten::Scale<int64_t>(
+      pten::ScaleKernel<int64_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT32: {
-      pten::Scale<int32_t>(
+      pten::ScaleKernel<int32_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT16: {
-      pten::Scale<int16_t>(
+      pten::ScaleKernel<int16_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::INT8: {
-      pten::Scale<int8_t>(
+      pten::ScaleKernel<int8_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     case pten::DataType::UINT8: {
-      pten::Scale<uint8_t>(
+      pten::ScaleKernel<uint8_t>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }

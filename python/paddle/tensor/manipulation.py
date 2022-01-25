@@ -1838,7 +1838,7 @@ def expand_as(x, y, name=None):
             "you must set its stop_gradient to be False by "
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
-    inputs = {"X": [x]}
+    inputs = {"X": [x], "Y": [y]}
 
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')

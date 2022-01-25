@@ -413,7 +413,24 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     if (op_with_kernel == nullptr) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+      // fit for pten
+      if (instr_node.PtenKernel() && instr_node.PtenKernel()->IsValid()) {
+        VLOG(4) << "Run pten kernel: " << op->Type();
+        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                << &instr_node.DeviceContext();
+        pten::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPtenKernelContext(
+            *instr_node.InnerRuntimeContext().get(),
+            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+            &pt_kernel_context);
+
+        (*instr_node.PtenKernel())(&pt_kernel_context);
+
+        op_with_kernel->WriteBackToOutputs(
+            instr_node.InnerRuntimeContext().get(), &pt_kernel_context);
+      } else {
+        instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+      }
     }
   }
 
@@ -659,8 +676,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       // do nothing
-    } else if (var->IsType<SelectedRows>()) {
-      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<pten::SelectedRows>()) {
+      TensorRecordStream(
+          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {

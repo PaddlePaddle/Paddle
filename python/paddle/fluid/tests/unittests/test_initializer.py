@@ -65,7 +65,7 @@ class TestConstantInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.ConstantInitializer())
-        num_ops = 2 if dtype == "float16" else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -84,7 +84,7 @@ class TestConstantInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.ConstantInitializer(2.3))
-        num_ops = 2 if dtype == "float16" else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -94,10 +94,8 @@ class TestConstantInitializer(unittest.TestCase):
     def test_constant_initializer_fp16(self):
         """Test constant initializer with float16
         """
-        block = self.test_constant_initializer_default_value("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
-        block = self.test_constant_initializer("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
+        self.test_constant_initializer_default_value("float16")
+        self.test_constant_initializer("float16")
 
     def test_constant_initializer_bf16(self):
         """Test constant initializer with bfloat16
@@ -246,7 +244,7 @@ class TestNormalInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.NormalInitializer(2.3, 1.9, 123))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -258,14 +256,12 @@ class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_fp16(self):
         """Test normal initializer with float16
         """
-        block = self.test_normal_initializer("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
+        self.test_normal_initializer("float16")
 
     def test_normal_initializer_bf16(self):
         """Test normal initializer with bfloat16
         """
-        block = self.test_normal_initializer("uint16")
-        self.assertTrue(check_cast_op(block.ops[1]))
+        self.test_normal_initializer("uint16")
 
 
 class TestXavierInitializer(unittest.TestCase):
