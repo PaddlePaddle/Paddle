@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/operators/math/squared_l2_norm.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace operators {
