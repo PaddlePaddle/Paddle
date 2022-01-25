@@ -24,12 +24,12 @@ limitations under the License. */
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/utils/rw_lock.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
 class SelectedRows : public TensorBase,
@@ -52,19 +52,19 @@ class SelectedRows : public TensorBase,
  public:
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
-    value_.reset(new pten::DenseTensor());
+    value_.reset(new DenseTensor());
     rwlock_.reset(new RWLock);
   }
 
   SelectedRows() {
     height_ = 0;
-    value_.reset(new pten::DenseTensor());
+    value_.reset(new DenseTensor());
     rwlock_.reset(new RWLock);
   }
 
-  const pten::DenseTensor& value() const { return *value_; }
+  const DenseTensor& value() const { return *value_; }
 
-  pten::DenseTensor* mutable_value() { return value_.get(); }
+  DenseTensor* mutable_value() { return value_.get(); }
 
   int64_t height() const { return height_; }
 
@@ -108,8 +108,8 @@ class SelectedRows : public TensorBase,
    * @return a list of pair which contains the non-exists key and the index in
    * the value
    */
-  void Get(const pten::DenseTensor& ids,
-           pten::DenseTensor* value,
+  void Get(const DenseTensor& ids,
+           DenseTensor* value,
            bool auto_grown = false,
            bool is_test = false);
 
@@ -190,7 +190,7 @@ class SelectedRows : public TensorBase,
   paddle::framework::Vector<int64_t> rows_;
   std::unordered_map<int64_t, int64_t>
       id_to_index_;  // should not be used when rows_ has duplicate member
-  std::unique_ptr<pten::DenseTensor> value_{nullptr};
+  std::unique_ptr<DenseTensor> value_{nullptr};
   int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
 };

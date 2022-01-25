@@ -27,7 +27,7 @@ cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 
-cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector enforce ddim)
+cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector pten_enforce ddim)
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
     add_dependencies(dense_tensor mkldnn)
