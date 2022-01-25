@@ -293,6 +293,7 @@ class DnnTrainer(object):
             logger.info("worker: {} started".format(fleet.worker_index()))
 
     def run_minimize(self):
+        logger.info("entering run_minimize")
         self.init_fleet_with_gloo()
         self.model = get_model(self.config)
         logger.info("cpu_num: {}".format(os.getenv("CPU_NUM")))
@@ -324,6 +325,7 @@ class DnnTrainer(object):
             debug_program(_main_file, self.model._cost.block.program, 1)
 
     def run_single_pass(self):
+        logger.info("entering run_single_pass")
         self.init_fleet_with_gloo()
         self.model = get_model(config)
         input_data = self.model.create_feeds()
