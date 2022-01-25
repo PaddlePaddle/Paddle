@@ -197,9 +197,8 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
           out_var->GetMutable<paddle::framework::LoDTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
-      auto& in_sele_rows = in_var->Get<paddle::framework::SelectedRows>();
-      auto out_sele_rows =
-          out_var->GetMutable<paddle::framework::SelectedRows>();
+      auto& in_sele_rows = in_var->Get<pten::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<pten::SelectedRows>();
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
@@ -368,8 +367,8 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
                                      "Input variable should not be null"));
     if (var->IsType<paddle::framework::LoDTensor>()) {
       return var->Get<paddle::framework::LoDTensor>().dims();
-    } else if (var->IsType<paddle::framework::SelectedRows>()) {
-      return var->Get<paddle::framework::SelectedRows>().GetCompleteDims();
+    } else if (var->IsType<pten::SelectedRows>()) {
+      return var->Get<pten::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(paddle::platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
@@ -385,8 +384,8 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   void SetDim(paddle::framework::Variable* var, const DDim& dim) {
     if (var->IsType<paddle::framework::LoDTensor>()) {
       var->GetMutable<paddle::framework::LoDTensor>()->Resize(dim);
-    } else if (var->IsType<paddle::framework::SelectedRows>()) {
-      var->GetMutable<paddle::framework::SelectedRows>()->set_height(dim[0]);
+    } else if (var->IsType<pten::SelectedRows>()) {
+      var->GetMutable<pten::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(paddle::platform::errors::PermissionDenied(
           "Variable type_id %s, expect LoDTensor/SelectedRows."));
