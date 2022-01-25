@@ -99,6 +99,12 @@ using scale_kernel = void (*)(const DeviceContext&,
                               bool,
                               DenseTensor*);
 
+using split_kernel = void (*)(const DeviceContext&,
+                              const DenseTensor&,
+                              const ScalarArray&,
+                              const Scalar&,
+                              std::vector<DenseTensor*>);
+
 using sum_kernel = void (*)(const DeviceContext&,
                             const DenseTensor&,
                             const std::vector<int64_t>&,

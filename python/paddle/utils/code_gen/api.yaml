@@ -161,6 +161,15 @@
   kernel :
     func : scale
 
+- api : split
+  args : (const Tensor& x, const ScalarArray& num_or_sections, const Scalar& axis)
+  output : std::vector<Tensor>
+  infer_meta :
+    func : SplitInferMeta
+    param : [x, num_or_sections, axis, true]
+  kernel :
+    func : split
+
 - api : subtract
   args : (const Tensor& x, const Tensor& y)
   output : Tensor

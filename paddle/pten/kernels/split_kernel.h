@@ -30,4 +30,29 @@ void SplitKernel(const Context& dev_ctx,
                  const Scalar& axis,
                  std::vector<DenseTensor*> out);
 
+template <typename T, typename Context>
+std::vector<DenseTensor> Split(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const ScalarArray& num_or_sections,
+                               const Scalar& axis) {
+  auto out_meta = SplitInferMeta(x.meta(), num_or_sections, axis, true);
+
+  std::vector<DenseTensor> result;
+  result.reserve(out_meta.size());
+  for (size_t i = 0; i < out_meta.size(); ++i) {
+    auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta[i]));
+    result.push_back(dense_out);
+  }
+
+  std::vector<DenseTensor*> outs;
+  outs.reserve(out_meta.size());
+  for (size_t i = 0; i < out_meta.size(); ++i) {
+    outs.push_back(&result[i]);
+  }
+
+  SplitKernel<T, Context>(dev_ctx, x, num_or_sections, axis, outs);
+
+  return result;
+}
+
 }  // namespace pten
