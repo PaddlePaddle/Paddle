@@ -162,7 +162,12 @@ void BindFleetExecutor(py::module* m) {
   py::class_<DistModel>(*m, "DistModel")
       .def(py::init<const DistModelConfig&>())
       .def("init", &DistModel::Init)
-      .def("run", &DistModel::Run, py::call_guard<py::gil_scoped_release>());
+      .def("run",
+           [](DistModel& self, const std::vector<DistModelTensor>& inputs) {
+             std::vector<DistModelTensor> outputs;
+             self.Run(inputs, &outputs);
+             return outputs;
+           });
 
   py::class_<DistModelDataBuf>(*m, "DistModelDataBuf")
       .def(py::init<size_t>())
