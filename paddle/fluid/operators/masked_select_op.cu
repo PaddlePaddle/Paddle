@@ -46,40 +46,14 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto input = ctx.Input<framework::Tensor>(framework::GradVarName("Y"));
     auto mask = ctx.Input<framework::Tensor>("Mask");
+    auto x = context.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* mask_data = mask->data<bool>();
-    auto* input_data = input->data<T>();
-    auto* out_data = out->mutable_data<T>(ctx.GetPlace());
 
-    auto input_size = input->numel();
-    auto mask_size = mask->numel();
-    auto mask_dim = mask->dims();
-
-    auto out_size = mask_size;
-
-    Tensor mask_array;
-    Tensor mask_prefix_sum;
-    mask_array.Resize(mask_dim);
-    mask_prefix_sum.Resize(mask_dim);
-
-    int32_t* mask_array_data = mask_array.mutable_data<int32_t>(ctx.GetPlace());
-    int32_t* mask_prefix_sum_data =
-        mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
-    int threads = 512;
-    int grid = (mask_size + threads - 1) / threads;
-    auto stream = ctx.cuda_device_context().stream();
-    SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
-                                               mask_size);
-
-    thrust::device_ptr<int32_t> mask_array_dev_ptr =
-        thrust::device_pointer_cast(mask_array_data);
-    thrust::device_vector<int32_t> mask_array_vec(
-        mask_array_dev_ptr, mask_array_dev_ptr + mask_size);
-    thrust::exclusive_scan(thrust::device, mask_array_vec.begin(),
-                           mask_array_vec.end(), mask_prefix_sum_data);
-
-    SelectGradWithPrefixMask<T><<<grid, threads, 0, stream>>>(
-        mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::MaskedSelectGradKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *input, *x, *mask, out);
   }
 };
 }  // namespace operators
