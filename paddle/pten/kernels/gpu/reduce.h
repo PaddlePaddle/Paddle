@@ -37,10 +37,10 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/pten/core/array.h"
+#include "paddle/pten/core/enforce.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
@@ -94,7 +94,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
     PADDLE_ENFORCE_EQ(reduce_rank,
                       rank / 2,
-                      paddle::platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "ReduceOp: invalid reduce rank. When rank = %d, "
                           "reduce_rank must be %d, but got %d.",
                           rank,
@@ -106,7 +106,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
     PADDLE_ENFORCE_EQ(
         reduce_rank == lower_rank || reduce_rank == upper_rank,
         true,
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
             "must be %d or %d, but got %d.",
             rank,
@@ -122,7 +122,7 @@ static inline pten::framework::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
   PADDLE_ENFORCE_LE(vec.size(),
                     ElementCount,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "Cub reduce Array: size not match. Received "
                         "vec.size() %d > ElementCount %d.",
                         vec.size(),
@@ -149,7 +149,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
     for (auto e : dims) {
       PADDLE_ENFORCE_LT(e,
                         dim_size,
-                        paddle::platform::errors::InvalidArgument(
+                        pten::errors::InvalidArgument(
                             "ReduceOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
@@ -328,7 +328,7 @@ struct ReduceConfig {
     if (should_reduce_again) {
       tmp->ResizeAndAllocate(pten::framework::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
-      output_data = tmp->mutable_data<Ty>();
+      output_data = tmp->mutable_data<Ty>(place);
     } else {
       output_data = y_data;
     }
@@ -1032,7 +1032,7 @@ static
                             pten::framework::make_ddim(
                                 {static_cast<int64_t>(temp_storage_bytes)})));
 
-  auto* temp_storage = tmp.mutable_data<uint8_t>();
+  auto* temp_storage = tmp.mutable_data<uint8_t>(place);
 
   cub::DeviceReduce::Reduce(temp_storage,
                             temp_storage_bytes,
@@ -1057,7 +1057,7 @@ static
                                int reduce_num,
                                const paddle::platform::Place& place,
                                gpuStream_t stream) {
-  PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+  PADDLE_THROW(pten::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
@@ -1070,8 +1070,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
-  // Allocate memory
-  y->mutable_data<Ty>();
+  y->mutable_data<Ty>(x.place());
 
   auto x_dim = pten::framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
@@ -1088,7 +1087,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
       pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
 
   auto x_data = x.data<Tx>();
-  auto y_data = y->mutable_data<Ty>();
+  auto y_data = y->data<Ty>();
 
   auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(x.place()));
