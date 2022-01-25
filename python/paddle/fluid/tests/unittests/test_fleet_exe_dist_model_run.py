@@ -45,7 +45,7 @@ class TestDistModelRun(unittest.TestCase):
         paddle.static.save_inference_model(path_prefix, [x, y], [avg_loss], exe)
         print('save model to', path_prefix)
 
-        # step 2: prepare data for the test
+        # step 2: prepare fake data for the test
         x_tensor = np.random.randn(28, 28).astype('float32')
         y_tensor = np.random.randint(0, 9, size=[28, 1]).astype('int64')
 
