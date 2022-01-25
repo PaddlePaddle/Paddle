@@ -23,9 +23,12 @@ paddle.enable_static()
 
 class TestDistModelRun(unittest.TestCase):
     def test_dist_model_run(self):
-        path_prefix = './dist_model_run_test/inf'
+        # step 0: declare folder to save the model and params
+        folder = './dist_model_run_test/'
+        file = 'inf'
+        path_prefix = folder + file
 
-        # saving the inference model and params
+        # step 1: saving the inference model and params
         x = paddle.static.data(name='x', shape=[28, 28], dtype='float32')
         y = paddle.static.data(name='y', shape=[28, 1], dtype='int64')
         predict = paddle.static.nn.fc(x, 10, activation='softmax')
@@ -41,11 +44,11 @@ class TestDistModelRun(unittest.TestCase):
                 fetch_list=[avg_loss])
         paddle.static.save_inference_model(path_prefix, [x, y], [avg_loss], exe)
 
-        # data for the test
+        # step 2: prepare data for the test
         x_tensor = np.random.randn(28, 28).astype('float32')
         y_tensor = np.random.randint(0, 9, size=[28, 1]).astype('int64')
 
-        # init the dist model and run
+        # step 3: init the dist model to inference with fake data
         config = core.DistModelConfig()
         config.model_dir = path_prefix
         config.place = 'GPU'
@@ -58,7 +61,7 @@ class TestDistModelRun(unittest.TestCase):
         dist_model_rst = output_rst[0]
         print("dist model rst:", dist_model_rst)
 
-        # use framework's api to inference
+        # step 4: use framework's api to inference with fake data
         [inference_program, feed_target_names, fetch_targets] = (
             paddle.static.load_inference_model(path_prefix, exe))
         image_tensor = np.random.randn(28, 28).astype('float32')
@@ -68,13 +71,13 @@ class TestDistModelRun(unittest.TestCase):
                                 'y': label_tensor},
                           fetch_list=fetch_targets)
         load_inference_model_rst = results[0]
-        print("laod inference model api rst:", load_inference_model_rst)
+        print("load inference model api rst:", load_inference_model_rst)
 
-        # compare two results
+        # step 5: compare two results
         self.assertTrue(np.allclose(dist_model_rst, load_inference_model_rst))
 
-        # delete the saved model and params
-        os.rmdir("./dist_model_run_test/")
+        # step 6: clean up the env, delete the saved model and params
+        os.rmdir(folder)
 
 
 if __name__ == '__main__':
