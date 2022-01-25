@@ -277,7 +277,6 @@ def convert_op_proto_into_mlir(op_descs):
     with open(op_builder_table_file, 'w') as op_builer_file:
         op_builer_file.writelines(handler_iters_str_)
 
-
 if __name__ == "__main__":
     all_op_protos_dict = get_all_ops_desc()
     convert_op_proto_into_mlir(all_op_protos_dict)
