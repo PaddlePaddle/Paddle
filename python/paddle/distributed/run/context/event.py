@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .context import Context
-from . import controllers
 
-# initialize the context to run
-ctx = Context()
-
-# initialize the selected controller
-c = controllers.init(ctx)
-
-# run the pods
-c.run()
-
-# manager or just wait pod
-c.tach()
+class Event(object):
+    def __init__(self, kind="status", message="", fatal=False):
+        self.kind = kind
+        self.message = message
+        self.fatal = fatal

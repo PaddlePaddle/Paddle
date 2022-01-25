@@ -23,12 +23,12 @@ class Status(object):
         pass
 
 
-class _PodProto(object):
+class PodSepc(object):
     def __init__(self):
         self.name = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
-        self.spec = ""
-        self.enable_elastic = False
+
+        self.endpoints = []
 
         # by controller
         self.init_containers: List[Container] = []
@@ -37,41 +37,37 @@ class _PodProto(object):
         self.status: Status = None
         self.rank = 0
         self.replicas = 0  # number of containers
+        self.init_timeout = 120  # 2 min timeout for each init container
+
+
+class Pod(PodSepc):
+    def __init__(self):
+        super().__init__()
 
     def json(self):
         pass
 
-    def add_container(self, c, is_init=False):
-        assert (isinstance(c, Container))
-        if is_init:
-            self.init_containers.append(c)
-        else:
-            self.containers.append(c)
-
-    def add(self, item):
-        if isinstance(c, Container):
-            self.containers.append(c)
-
     def __str__(self):
         return "Pod: {}, replicas {}".format(self.name, self.replicas)
 
-
-class Pod(_PodProto):
-    def create(self):
+    def deploy(self):
         for i in self.init_containers:
-            i.run()
+            i.start(self.init_timeout)
 
-        for i in self.containers:
-            i.run()
+        for c in self.containers:
+            c.start()
 
-    def stop(self):
-        pass
+    def stop(self, sigint):
+        for c in self.containers:
+            force = True if sigint == 9 else False
+            c.terminate(force)
+
+    def join(self):
+        for c in self.containers:
+            c.wait(None)
 
     def status(self):
         return None
-
-    def detach(self):
-        pass
 
     def logs(self):
         pass

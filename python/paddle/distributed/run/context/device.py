@@ -16,19 +16,12 @@ import paddle.fluid as fluid
 
 import os
 
-from enum import IntEnum
-from enum import unique
 
-
-@unique
-class DeviceType(IntEnum):
-    UNKNOWN = 0
-    CPU = 1
-    GPU = 2
-    XPU = 3
-    NPU = 4
-    DCU = 5
-    NIC = 6
+class DeviceType:
+    CPU = 'cpu'
+    GPU = 'gpu'
+    XPU = 'xpu'
+    NPU = 'npu'
 
 
 class Device(object):
@@ -67,3 +60,6 @@ class Device(object):
             dev.count = len(dev.labels)
 
         return dev
+
+    def labels_string(self):
+        return ",".join(self.labels)

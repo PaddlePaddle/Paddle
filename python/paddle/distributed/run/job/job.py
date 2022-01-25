@@ -13,27 +13,18 @@
 # limitations under the License.
 
 
-class JobContext(object):
-    def __init__(self):
-        pass
-
-    def get_pod_spec(self):
-        pass
+class JobMode:
+    COLLECTIVE = 'collective'
+    PS = 'ps'
+    HETER = 'heter'
 
 
 class Job(object):
     def __init__(self):
         self.replicas = 0
+        self.elastic = False
+        self.mode = JobMode.COLLECTIVE
+
         self.ips = []
         self.ports = []
         self.endpoints = []
-
-        self.pods = []
-        self.master = ''
-        self.replicas = 0  # number of pods
-
-    def ip_ports(self):
-        return [
-            "{}:{}".format(self.ips[i], self.ports[i])
-            for i in range(len(self.ips))
-        ]

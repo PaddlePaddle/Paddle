@@ -15,6 +15,8 @@
 from http.server import HTTPServer
 import http.server as SimpleHTTPServer
 
+from multiprocessing import Process
+
 import threading
 import json
 
@@ -35,7 +37,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.do_POST()
 
     def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
+        content_length = int(self.headers['Content-Length'] or 0)
         try:
             value = self.rfile.read(content_length)
             with self.server.kv_lock:
@@ -53,27 +55,48 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if value:
             self.wfile.write(value)
 
+    def log_message(self, format, *args):
+        return
+
 
 class KVServer(HTTPServer, object):
     def __init__(self, port):
         super(KVServer, self).__init__(('', port), KVHandler)
         self.kv_lock = threading.Lock()
-        self.kv = {}
+        self.kv = {'/healthy': b'ok'}
         self.port = port
+        self.stopped = False
+        self.started = False
 
     def start(self):
         self.listen_thread = threading.Thread(target=self.serve_forever)
         self.listen_thread.start()
+        self.started = True
 
     def stop(self):
         self.shutdown()
         self.listen_thread.join()
         self.server_close()
+        self.stopped = True
+
+
+class PKVServer():
+    def __init__(self, port):
+        self._server = KVServer(port)
+
+    def start(self):
+        self.server = Process(target=self._server.start)
+        self.server.daemon = True
+        self.server.start()
+
+    def stop(self):
+        self._server.stop()
+        self.server.join()
 
 
 if __name__ == '__main__':
-    kv = KVServer(8090)
+    kv = PKVServer(8090)
     kv.start()
     import time
-    print("serve at 8090 for 600 s")
+    #print("serve at 8090 for 600 s")
     time.sleep(600)

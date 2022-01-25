@@ -33,6 +33,10 @@ class Node(object):
         except:
             return '127.0.0.1'
 
+    def get_free_ports(self, n=1):
+        self.free_ports += [self.get_free_port() for i in range(n)]
+        return self.free_ports
+
     @classmethod
     def get_free_port(self):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
@@ -41,6 +45,15 @@ class Node(object):
             s.bind(('', 0))
             return s.getsockname()[1]
 
-    def get_free_ports(self, n=1):
-        self.free_ports += [self.get_free_port() for i in range(n)]
-        return self.free_ports
+    @classmethod
+    def is_server_ready(self, ip, port):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            sock.settimeout(1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if hasattr(socket, 'SO_REUSEPORT'):
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            result = sock.connect_ex((ip, int(port)))
+            if result == 0:
+                return True
+            else:
+                return False

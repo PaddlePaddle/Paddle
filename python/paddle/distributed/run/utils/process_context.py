@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import subprocess
-import os, sys, signal
+import os, sys, signal, time
 
 
 class ProcessContext(object):
@@ -43,11 +43,11 @@ class ProcessContext(object):
             preexec_fn=self._preexec_fn or pre_fn)
 
     def _close_std(self):
-        if self._stdout:
+        if self._stdout != sys.stdout:
             self._stdout.close()
 
-        if self._stdin:
-            self._stdin.close()
+        if self._stderr != sys.stderr:
+            self._stderr.close()
 
     def alive(self):
         return self._proc and self._proc.poll() is None
@@ -58,13 +58,16 @@ class ProcessContext(object):
     def start(self):
         self._start()
 
-    def stop(self, force=False, max_retry=3):
+    def terminate(self, force=False, max_retry=3):
         for i in range(max_retry):
             if self.alive():
                 if self._group:
                     os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
                 else:
                     self._proc.terminate()
+                time.sleep(0.2)
+            else:
+                break
 
         if force and self.alive():
             self._proc.kill()
@@ -72,3 +75,6 @@ class ProcessContext(object):
         self._close_std()
 
         return self.alive()
+
+    def wait(self, timeout=None):
+        self._proc.wait(timeout)

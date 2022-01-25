@@ -14,12 +14,25 @@
 
 __all__ = []
 
-from .ip import get_local_ip
-
 
 def log(ctx):
     ctx.logger.debug("int args {}".format(ctx.args).replace(", ", "\n"))
     ctx.logger.debug("int envs {}".format(ctx.envs))
 
 
-enabled_plugins = [log, get_local_ip]
+def fill_job(ctx):
+    if ctx.args.host:
+        ctx.node.ip = ctx.args.host
+        ctx.envs["POD_IP"] = ctx.args.host
+
+
+def process_args(ctx):
+    # reset device by args
+    argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
+    if argdev:
+        ctx.node.device.labels = argdev.split(',')
+        ctx.node.device.count = len(ctx.node.device.labels)
+        ctx.logger.debug('device reset by args {}'.format(argdev))
+
+
+enabled_plugins = [log, fill_job, process_args]

@@ -13,79 +13,67 @@
 # limitations under the License.
 
 import sys
+import signal
 
 from paddle.distributed.run.job import Job
 from paddle.distributed.run.job import Pod
 from paddle.distributed.run.job import Container
 
-from paddle.distributed.run.utils.kv_client import KVClient
-from paddle.distributed.run.utils.kv_server import KVServer
+from .store import Store
 
 import time
 
 
-class Controller(object):
+class ControllerBase(object):
     def __init__(self, ctx):
+        signal.signal(signal.SIGTERM, self.signal_handler)
+        signal.signal(signal.SIGABRT, self.signal_handler)
+        signal.signal(signal.SIGINT, self.signal_handler)
+
         self.ctx = ctx
-        self._kv_server = None
 
-        self.pod = Pod()
+        self.store = Store(self.ctx)
+
         self.job = Job()
-
-        self.ctx.logger.debug(self.pod)
+        self.pod = Pod()
 
         self.build_job()
         self.build_pod()
 
-    def _run_kv_server(self, port=None):
-        if self._kv_server:
-            return
+        self.join_server = None
 
-        port = port if port else self.ctx.node.get_free_port()
-        self._kv_server = KVServer(port)
-        self._kv_server.start()
+    def signal_handler(self, sigint, frame):
+        self.ctx.logger.info("Termiating with signal {}".format(sigint))
+        self.sigint = sigint
+        self.ctx.running = False
+        self.stop(sigint)
+        time.sleep(1)
+        sys.exit(sigint)
 
-        host = self.ctx.node.ip
-        self.job.master = "{}:{}".format(host, port)
-        self.ctx.logger.debug("KV server start at {}".format(port))
+    def tach(self):
+        self.pod.join()
+        self.store.stop_server()
 
-    def _stop_kv_server(self):
-        if not self._kv_server:
-            return
+    def run(self):
+        self.ctx.logger.debug("Run pod {}".format(self.pod))
 
-        self._kv_server.stop()
-        self.ctx.logger.debug("KV server stopped")
+        if not self.pod.containers:
+            raise "No containers in the pod"
 
-    def sync_pods(self):
+        self.ctx.logger.debug(self.pod.containers[0])
+        self.pod.deploy()
 
-        if self.pod.rank == 0:
-            self._run_kv_server()
+    def stop(self, sigint=None):
+        self.store.stop_server()
+        self.pod.stop(sigint)
 
-        cli = KVClient(self.job.master)
 
-        host = self.ctx.node.ip
-        replicas = self.ctx.node.device.count  # self.pod.replicas
-        eps = [
-            "{}:{}".format(host, p)
-            for p in self.ctx.node.get_free_ports(replicas)
-        ]
+'''
+Controller API for customization
+'''
 
-        self.ctx.logger.debug("eps {}".format(eps))
 
-        prefix = "/workers/"
-        assert cli.put("{}{}".format(prefix, self.pod.name), ",".join(eps))
-
-        while True:
-            ret = cli.get_prefix(prefix)
-            print("ret", ret)
-            if len(ret) == self.job.replicas:
-                break
-            else:
-                time.sleep(1)
-
-        if self.pod.rank == 0:
-            self._stop_kv_server()
-
+class Controller(ControllerBase):
     def build_job(self):
         pass
 
@@ -97,14 +85,21 @@ class Controller(object):
         entrypoint.extend(self.ctx.args.training_script_args)
         return entrypoint
 
-    def _build_container(self, entrypoint=None, envs={}, use_ctx_env=True):
+    def build_container(self, entrypoint=None, envs={}, use_ctx_env=True):
         c = Container()
         c.entrypoint = entrypoint or self._get_entrypoint()
-        c.env = self.ctx.envs
+        c.env = self.ctx.get_envs()
         c.update_env(envs)
-
         return c
 
-    def run(self):
-        self.ctx.logger.info("env {}".format(self.pod.containers[0].env))
-        self.pod.create()
+    def add_container(self, c, is_init=False):
+        if is_init:
+            self.pod.init_containers.append(c)
+        else:
+            self.pod.containers.append(c)
+
+    def pod_replicas(self):
+        if self.ctx.args.nproc_per_node:
+            return int(self.ctx.args.nproc_per_node)
+        else:
+            return self.ctx.node.device.count

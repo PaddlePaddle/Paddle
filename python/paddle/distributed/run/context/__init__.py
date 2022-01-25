@@ -27,9 +27,16 @@ class Context(object):
         self.envs = self.fetch_envs()
         self.node = self.fetch_node_info()
         self.logger = self.get_logger()
+        self.events = []
+
+        # global status flag
+        self.running = True
 
         if enable_plugin:
             self._enable_plugin()
+
+    def get_envs(self):
+        return self.envs.copy()
 
     def _enable_plugin(self):
         for pl in plugins.enabled_plugins:
@@ -41,21 +48,17 @@ class Context(object):
         base_group = parser.add_argument_group("Base Parameters")
 
         base_group.add_argument(
-            "--log",
+            "--master",
             type=str,
-            default="INFO",
-            help="The path for each process's log. Default --log_dir=log/")
+            default=None,
+            help="The master/rendezvous server, ip:port")
+
         base_group.add_argument(
-            "--log_dir",
-            type=str,
-            default="log",
-            help="The path for each process's log. Default --log_dir=log/")
+            "--rank", type=int, default=-1, help="The peer rank")
+
         base_group.add_argument(
-            "--backend",
-            type=str,
-            default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-            help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
-            "Default value is auto which perfers nccl or bkcl.")
+            "--log", type=str, default="INFO", help="Log level. Default INFO")
+
         base_group.add_argument(
             "--nproc_per_node",
             type=int,
@@ -65,10 +68,23 @@ class Context(object):
             " bound to one or average number of gpus.")
 
         base_group.add_argument(
+            "--log_dir",
+            type=str,
+            default="log",
+            help="The path for each process's log. Default --log_dir=log/")
+        '''
+        base_group.add_argument(
+            "--backend",
+            type=str,
+            default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
+            help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+            "Default value is auto which perfers nccl or bkcl.")
+        base_group.add_argument(
             "--run_mode",
             type=str,
             default=None,
             help="run mode of job, can be:collective/ps/ps-heter")
+        '''
 
         base_group.add_argument(
             "--gpus",
@@ -176,7 +192,8 @@ class Context(object):
             "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
 
         elastic_group.add_argument("--job_id", type=str, help="job unique id")
-        elastic_group.add_argument("--np", type=int, help="job pod/node number")
+        elastic_group.add_argument(
+            "--np", type=int, help="number of peer, job pod/node number")
         elastic_group.add_argument(
             "--scale", type=int, default=0, help="scale np")
         elastic_group.add_argument(

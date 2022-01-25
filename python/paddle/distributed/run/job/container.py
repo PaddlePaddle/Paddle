@@ -16,6 +16,7 @@ from collections import OrderedDict
 from paddle.distributed.run.utils.process_context import ProcessContext
 
 import os, copy, sys
+import time
 '''
 A container can be run by process or just a callable function
 '''
@@ -38,21 +39,38 @@ class Container(object):
         self.stdin = None
         self.stdout = sys.stdout
         self.stderr = sys.stderr
-        self.env = os.environ
+        self.env = {}
         self.proc = None
+        self.grace_period = 10
 
     def update_env(self, env={}, **kwargs):
         self.env.update(env)
         self.env.update(kwargs)
 
-    def run(self):
+    def start(self, timeout=-1):
+        st = time.time()
+
+        if self.proc and self.proc.alive():
+            return True
+
         self.proc = ProcessContext(
             self.entrypoint, env=self.env, out=self.stdout, err=self.stderr)
         self.proc.start()
 
-    def exit(self):
-        if self.proc.alive():
-            self.proc.stop()
+        while timeout > 0 and time.time() - st < timeout:
+            if self.proc.alive():
+                time.sleep(0.1)
+                continue
+            if self.proc.exit_code() == 0:
+                return True
+            return False
+
+    def terminate(self, force=False):
+        if self.proc and self.proc.alive():
+            return self.proc.terminate(force)
+
+    def wait(self, timeout=None):
+        self.proc.wait(timeout)
 
     def status(self):
         if not self.proc:
@@ -63,6 +81,9 @@ class Container(object):
             return ContainerStatus.COMPLETED
         else:
             return ContainerStatus.UNKNOWN
+
+    def __str__(self):
+        return 'Container {} {} {}'.format(self.env, self.entrypoint, self.rank)
 
     def logs(self):
         pass

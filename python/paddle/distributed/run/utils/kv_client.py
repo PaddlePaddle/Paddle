@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import requests
+import time
 
 
 class KVClient(object):
@@ -24,9 +25,7 @@ class KVClient(object):
         key = key if key.startswith('/') else "/{}".format(key)
         u = "{}{}".format(self.endpoint, key)
         try:
-            print("putt", u, value)
             r = requests.post(u, data=value, timeout=3)
-            print(r.status_code, r.text)
             if r.status_code == 200:
                 return True
         except:
@@ -53,6 +52,12 @@ class KVClient(object):
         except:
             return ""
 
+    def wait_server_ready(self, timeout=3):
+        end = time.time() + timeout
+        while time.time() < end:
+            if self.get("/healthy") == "ok":
+                return True
+
 
 if __name__ == '__main__':
     cli = KVClient("http://localhost:8090")
@@ -67,3 +72,5 @@ if __name__ == '__main__':
     cli.put("key", "value")
     print(cli.get("key"))
     assert cli.get("key") == "value"
+    print(cli.get("/healthy"))
+    assert cli.get("/healthy") == "ok"
