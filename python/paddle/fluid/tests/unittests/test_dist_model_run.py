@@ -43,6 +43,7 @@ class TestDistModelRun(unittest.TestCase):
                       'y': y_data},
                 fetch_list=[avg_loss])
         paddle.static.save_inference_model(path_prefix, [x, y], [avg_loss], exe)
+        print('save model to', path_prefix)
 
         # step 2: prepare data for the test
         x_tensor = np.random.randn(28, 28).astype('float32')
@@ -74,10 +75,11 @@ class TestDistModelRun(unittest.TestCase):
         # step 5: compare two results
         self.assertTrue(np.allclose(dist_model_rst, load_inference_model_rst))
 
-        # step 6: clean up the env, delete the saved model and params\
+        # step 6: clean up the env, delete the saved model and params
         os.remove(path_prefix + '.pdiparams')
         os.remove(path_prefix + '.pdmodel')
         os.rmdir(folder)
+        print('cleaned up the env')
 
 
 if __name__ == '__main__':
