@@ -26,16 +26,20 @@ from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 class TestPsTrainerPass(PsPassTestBase):
     def init(self):
-        pass
+        self.worker_num = 2
+        self.server_num = 2
+        self.run_minimize = 0
+        self.run_single_pass = 0
+        self.debug_new_minimize = 0
+        self.debug_new_pass = 0
+        self.applied_pass_name = ""
+        self.log_dir = ""
 
     def setUp(self):
         print('setUp...')
 
     def tearDown(self):
         print('tearDown...')
-
-    def check_rename_program_file(self):
-        pass
 
     def check(self):
         pass
