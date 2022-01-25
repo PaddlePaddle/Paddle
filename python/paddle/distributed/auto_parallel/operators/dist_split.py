@@ -27,17 +27,15 @@ from .dist_default import DistributedDefaultImpl0
 
 class DistributedSplit(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedSplit, self).__init__()
-        self._name = op_type
+        super(DistributedSplit, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("split", DistributedSplit("split"))
+register_distributed_operator_impl_container(DistributedSplit("split"))
 
 
 class DistributedSplitImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedSplitImpl, self).__init__()
-        self._name = name
+        super(DistributedSplitImpl, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
