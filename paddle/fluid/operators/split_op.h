@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
-
+#include "paddle/pten/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
 static inline std::vector<framework::DDim> UpdateOutsDims(
@@ -142,20 +142,20 @@ class SplitOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    std::vector<const framework::Tensor*> shape_refer;
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
-      shape_refer.emplace_back(outs[j]);
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && outs.size() < 10) {
-      StridedMemcpyWithAxis0<T>(dev_ctx, *in, shape_refer, &outs);
-    } else {
-      math::SplitFunctor<DeviceContext, T> functor;
-      functor(dev_ctx, *in, shape_refer, axis, &outs);
+
+    if (num > 0) {
+      sections = {num};
     }
+    // call pten kernel
+    pten::SplitKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, sections, axis, outs);
   }
 };
 
