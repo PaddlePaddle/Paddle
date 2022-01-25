@@ -51,6 +51,8 @@ class AllocatorFacade {
 
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
+  void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
+
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size);
