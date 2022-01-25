@@ -505,6 +505,12 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+  /**
+   * Place type: Return the expected memory location if the Tensor is
+   * uninitialized.
+   */
+  PlaceType place_{PlaceType::kUNK};
 };
 
 }  // namespace experimental

@@ -62,7 +62,7 @@ class DistModelDataBuf {
   void Free();
   void* data_{nullptr};
   size_t length_{0};
-  bool memory_owned_{false};
+  bool memory_owned_{true};
 };
 
 struct DistModelTensor {

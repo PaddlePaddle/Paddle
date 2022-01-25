@@ -125,6 +125,19 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
+void DenseTensor::set_meta(const DenseTensorMeta& meta) {
+  PADDLE_ENFORCE(
+      meta.valid(),
+      paddle::platform::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims = meta.dims;
+  meta_.dtype = meta.dtype;
+  meta_.is_scalar = meta.is_scalar;
+  meta_.layout = meta.layout;
+  meta_.lod = meta.lod;
+  meta_.offset = meta.offset;
+}
+
 /* @jim19930609: This interface will be further modified util we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
