@@ -17,13 +17,12 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
-
-#include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
 
@@ -64,7 +63,7 @@ class InferMetaContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Attribute cast error in InferMeta Context."));
     }
   }
@@ -196,7 +195,7 @@ class MetaFunctionMap {
     PADDLE_ENFORCE_NE(
         it,
         meta_fn_map_.end(),
-        paddle::platform::errors::NotFound(
+        pten::errors::NotFound(
             "`%s`'s Series Kernel's InferMetaFn is not registered.",
             kernel_name_prefix));
     return it->second;
