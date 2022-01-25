@@ -202,7 +202,7 @@ void RefcountedMemoryMapAllocation::close() {
         shm_unlink(ipc_name_.c_str()), -1,
         platform::errors::Unavailable(
             "could not unlink the shared memory file ", ipc_name_));
-    VLOG(6) << "shm_unlink file: " << ipc_name;
+    VLOG(6) << "shm_unlink file: " << ipc_name_;
   }
 
   PADDLE_ENFORCE_NE(
