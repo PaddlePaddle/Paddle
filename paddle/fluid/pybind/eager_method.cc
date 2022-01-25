@@ -34,6 +34,10 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+extern void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
+                                          const pybind11::object& array,
+                                          bool zero_copy);
+
 extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
@@ -114,6 +118,30 @@ static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
       ->SetPersistable(
           egr::EagerUtils::autograd_meta(&(self->eager_tensor))->Persistable());
   return ToPyObject(cp_tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_method_reconstruct_from_(EagerTensorObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor src_tensor =
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  std::string orig_name = self->eager_tensor.name();
+  VLOG(6) << "Start Reconstructing Tensor from" << src_tensor.name() << " to "
+          << orig_name;
+  self->eager_tensor.copy_(src_tensor, blocking);
+  // Steal Tensor from src tensor
+  self->eager_tensor.set_tensor(src_tensor.Tensor());
+
+  // Recover source name
+  self->eager_tensor.set_name(orig_name);
+
+  VLOG(6) << "Finished Reconstructing Tensor from" << src_tensor.name()
+          << " to " << self->eager_tensor.name();
+  Py_INCREF(Py_None);
+  return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -359,6 +387,20 @@ static PyObject* eager_tensor_method_get_underline_tensor(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+// NOTE(wuweilong): Set value and not change self's original place
+static PyObject* eager_tensor_method_set_value(EagerTensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Value " << self->eager_tensor.name();
+  pybind11::object numpy_value =
+      pybind11::object(pybind11::handle(PyTuple_GET_ITEM(args, 0)), true);
+  InitEagerTensorWithNumpyValue(self, numpy_value, false);
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -368,6 +410,9 @@ PyMethodDef variable_methods[] = {
     {"_copy_to", (PyCFunction)(void (*)(void))eager_tensor_method__copy_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"copy_", (PyCFunction)(void (*)(void))eager_tensor_method_copy_,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"reconstruct_from_",
+     (PyCFunction)(void (*)(void))eager_tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grads", (PyCFunction)(void (*)(void))eager_tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -392,6 +437,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"get_tensor",
      (PyCFunction)(void (*)(void))eager_tensor_method_get_underline_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_set_value", (PyCFunction)(void (*)(void))eager_tensor_method_set_value,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
