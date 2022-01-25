@@ -1,9 +1,7 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto simple_threadpool)
-proto_library(error_codes_proto SRCS error_codes.proto)
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
 endif(WITH_GPU)
-
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -28,10 +26,9 @@ endif()
 cc_library(flags SRCS flags.cc DEPS gflags boost)
 cc_library(denormal SRCS denormal.cc DEPS)
 
-cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
-set(enforce_deps flags errors boost flags)
+set(enforce_deps flags errors boost flags pten_enforce)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
