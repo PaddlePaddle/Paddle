@@ -1190,6 +1190,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         pt_kernel_.reset(
             new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
                 pt_kernel_name, pt_cpu_kernel_key)));
+
+        dev_ctx = pool.Get(platform::CPUPlace());
+
         if (pt_kernel_->IsValid()) {
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
@@ -1220,7 +1223,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
 
-  if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
+  if (!run_pten_kernel_ && !(kernel_type_->place_ == dev_ctx->GetPlace())) {
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
