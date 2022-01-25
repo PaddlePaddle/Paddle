@@ -28,14 +28,7 @@ else
     echo "========================================="
 fi
 
-if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-    echo "========================================="
-    echo "The following unittests have been disabled:"
-    echo ${disable_ut_quickly}
-    echo "========================================="
-else
-    disable_ut_quickly=''
-fi
+disable_ut_quicklydisable_ut_quickly='disable_ut'
 
 # check added ut
 

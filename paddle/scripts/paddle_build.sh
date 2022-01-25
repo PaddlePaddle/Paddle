@@ -1077,15 +1077,7 @@ function collect_failed_tests() {
 
 # getting qucik disable ut list 
 function get_quickly_disable_ut() {
-    python -m pip install requests
-    if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-        echo "========================================="
-        echo "The following unittests have been disabled:"
-        echo ${disable_ut_quickly}
-        echo "========================================="
-    else
-        disable_ut_quickly='disable_ut'
-    fi
+    disable_ut_quicklydisable_ut_quickly='disable_ut'
 }
 
 function card_test() {
@@ -1728,7 +1720,7 @@ set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
