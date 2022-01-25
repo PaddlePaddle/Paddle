@@ -75,9 +75,9 @@ TEST(GradNodeInfo, GradNodeBase) {
 
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
-  grad_test_node0->SetGradInMeta(metas, 0);
+  grad_test_node0->SetGradInMeta(&metas, 0);
   grad_test_node0->SetGradInMeta(auto_grad1.get(), 1);
-  grad_test_node0->SetGradOutMeta(metas, 0);
+  grad_test_node0->SetGradOutMeta(&metas, 0);
   grad_test_node0->SetGradOutMeta(auto_grad1.get(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[0].Size(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[1].Size(), 1);
@@ -149,7 +149,7 @@ TEST(GradNodeInfo, Edge) {
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
   // Uninitialized AutogradMeta indicates
-  mt_grad_node->SetGradInMeta(metas, 0);
+  mt_grad_node->SetGradInMeta(&metas, 0);
   CHECK(grad_node->InputMeta()[0].IsStopGradient(0) == true);
   VLOG(6) << "Test Get/Set Edge Rank Info";
   CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(1));
