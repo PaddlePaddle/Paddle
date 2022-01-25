@@ -56,6 +56,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
+extern int show_all_var;
 namespace paddle {
 namespace pybind {
 
@@ -869,6 +870,8 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
+  m.def("change_imperative_show_val_state",
+        []() { show_all_var = !show_all_var; });
   m.def("_set_eager_tracer",
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           egr::Controller::Instance().SetCurrentTracer(tracer);

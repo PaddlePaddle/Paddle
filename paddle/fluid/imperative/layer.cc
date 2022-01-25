@@ -35,6 +35,9 @@
 #include "paddle/fluid/framework/var_type.h"
 
 DECLARE_bool(use_mkldnn);
+
+extern int show_all_var;
+
 namespace paddle {
 namespace imperative {
 
@@ -93,7 +96,8 @@ void show_var(const std::string& var_name, VarBaseType* var_base) {
   static std::vector<std::string> to_show_names(0);
   static bool inited_var_name_list = false;
   char* show_all = std::getenv("SHOW_ALL_VAR");
-  if (show_all == nullptr || strcmp(show_all, "0") == 0) {
+
+  if (!show_all_var && (show_all == nullptr || strcmp(show_all, "0") == 0)) {
     char* var_name_list = std::getenv("VAR_NAMES");
     if (var_name_list != nullptr && !inited_var_name_list) {
       to_show_names = split_str(var_name_list, ',');
