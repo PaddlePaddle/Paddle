@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <cstring>
 #include <string>
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace string {
@@ -75,7 +73,9 @@ char* LineFileReader::getdelim(FILE* f, char delim) {
     return _buffer;
   } else {
     _length = 0;
-    CHECK(feof(f));
+    int code = feof(f);
+    (void)code;
+    assert(code);
     return NULL;
   }
 #else
