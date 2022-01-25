@@ -106,7 +106,7 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     if (is_sparse) {
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
-      framework::SelectedRows &tmp_d_table = *d_table;
+      pten::SelectedRows &tmp_d_table = *d_table;
       framework::TensorToVector(*ids_t, dev_ctx, &ids);
 
       tmp_d_table.set_rows(ids);
