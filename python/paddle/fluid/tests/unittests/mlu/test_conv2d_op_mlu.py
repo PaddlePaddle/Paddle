@@ -34,7 +34,7 @@ def create_test_channel_last_class(parent):
             self.data_format = "NHWC"
 
         def init_test_case_2(self):
-            N, H, W, C = self.input_size
+            N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
     cls_name = "{0}_{1}".format(parent.__name__, "ChannelLast")
@@ -77,16 +77,17 @@ def create_test_fp16_class(parent):
 class TestConv2DOp(OpTest):
     def set_mlu(self):
         self.__class__.use_mlu = True
+        self.place = paddle.device.MLUPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32
 
     def init_data_format(self):
-        self.data_format = "NHWC"
+        self.data_format = "NCHW"
 
     def setUp(self):
         self.set_mlu()
-        self.__class__.op_type = "conv2d"
+        self.op_type = "conv2d"
         self.init_data_format()
         self.init_dtype()
         self.init_group()
@@ -124,13 +125,13 @@ class TestConv2DOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(fluid.MLUPlace(0), atol=1e-2)
+        self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            fluid.MLUPlace(0), {'Input', 'Filter'},
+            self.place, {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
             numeric_place=paddle.CPUPlace())
@@ -139,7 +140,7 @@ class TestConv2DOp(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            fluid.MLUPlace(0), ['Input'],
+            self.place, ['Input'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Filter']),
@@ -149,7 +150,7 @@ class TestConv2DOp(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            fluid.MLUPlace(0), ['Filter'],
+            self.place, ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']),
@@ -158,9 +159,9 @@ class TestConv2DOp(OpTest):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_dilation(self):
@@ -174,9 +175,9 @@ class TestWithPad(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
 
@@ -184,9 +185,9 @@ class TestWithStride(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
-        self.input_size = [2, 6, 6, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 6, 6]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
 
@@ -194,10 +195,10 @@ class TestWithGroup(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
+        self.input_size = [2, 3, 5, 5]  # NCHW
         self.group = 3
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [18, f_c, 3, 3]
 
 
@@ -205,12 +206,15 @@ class TestWith1x1(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
+        # FIXME: Supporting group = 3 in this case.
+        # NOTE(wangran16): There is an unknown error (acl error code is : 507015) 
+        # when group = 3, which needs to be fixed.
         self.groups = 1
 
 
@@ -218,9 +222,9 @@ class TestWithDepthWise5x5(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 10, 10, 4]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 4, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [8, f_c, 5, 5]
 
     def init_group(self):
@@ -231,9 +235,9 @@ class TestWithDepthWise7x7(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
-        self.input_size = [2, 10, 10, 8]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 8, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [16, f_c, 7, 7]
 
     def init_group(self):
@@ -244,9 +248,9 @@ class TestWithDilation(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 10, 10, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [12, f_c, 3, 3]
 
     def init_dilation(self):
@@ -262,9 +266,9 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [100, 1, 1, 1]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [100, 1, 1, 1]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
@@ -274,6 +278,7 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
 class TestConv2DOp_v2(OpTest):
     def set_mlu(self):
         self.__class__.use_mlu = True
+        self.place = paddle.device.MLUPlace(0)
 
     def setUp(self):
         self.set_mlu()
@@ -315,13 +320,13 @@ class TestConv2DOp_v2(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.MLUPlace(0), atol=1e-2)
+        self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            paddle.MLUPlace(0), {'Input', 'Filter'},
+            self.place, {'Input', 'Filter'},
             'Output',
             max_relative_error=0.02,
             numeric_place=paddle.CPUPlace())
@@ -330,7 +335,7 @@ class TestConv2DOp_v2(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            paddle.MLUPlace(0), ['Input'],
+            self.place, ['Input'],
             'Output',
             max_relative_error=0.02,
             no_grad_set=set(['Filter']),
@@ -340,7 +345,7 @@ class TestConv2DOp_v2(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            paddle.MLUPlace(0), ['Filter'],
+            self.place, ['Filter'],
             'Output',
             no_grad_set=set(['Input']),
             numeric_place=paddle.CPUPlace())
@@ -348,9 +353,9 @@ class TestConv2DOp_v2(OpTest):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 2]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 4, 3]
 
     def init_dilation(self):
@@ -367,7 +372,7 @@ class TestConv2DOp_v2(OpTest):
         self.padding_algorithm = "EXPLICIT"
 
     def init_data_format(self):
-        self.data_format = "NHWC"
+        self.data_format = "NCHW"
 
     def init_test_case_2(self):
         pass
@@ -382,9 +387,9 @@ class TestConv2DOp_AsyPadding(TestConv2DOp_v2):
 class TestWithPad_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_paddings(self):
@@ -395,9 +400,9 @@ class TestWithPad_AsyPadding(TestConv2DOp_v2):
 class TestWithStride_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [2, 2]
-        self.input_size = [2, 6, 6, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 6, 6]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_paddings(self):
@@ -409,19 +414,19 @@ class TestWithGroup_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 2]
-        self.input_size = [2, 5, 5, 3]  # NHWC
+        self.input_size = [2, 3, 5, 5]  # NCHW
         self.group = 3
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 4, 3]
 
 
 class TestWith1x1_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
@@ -435,9 +440,9 @@ class TestWith1x1_AsyPadding(TestConv2DOp_v2):
 class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [3, 10, 10, 4]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [3, 4, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [16, f_c, 3, 3]
 
     # TODO(MLU): Depthwise opration does not support dilation yet
@@ -456,9 +461,9 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
 class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [2, 10, 10, 4]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 4, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [8, f_c, 5, 5]
 
     def init_group(self):
@@ -472,9 +477,9 @@ class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
 class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [2, 2]
-        self.input_size = [2, 10, 10, 8]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 8, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [16, f_c, 7, 7]
 
     def init_group(self):
@@ -488,9 +493,9 @@ class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
 class TestWithDilation_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [2, 10, 10, 3]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [2, 3, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
 
     def init_dilation(self):
@@ -509,9 +514,9 @@ class TestWithDilation_AsyPadding(TestConv2DOp_v2):
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [100, 1, 1, 1]  # NHWC
-        assert np.mod(self.input_size[3], self.groups) == 0
-        f_c = self.input_size[3] // self.groups
+        self.input_size = [100, 1, 1, 1]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
