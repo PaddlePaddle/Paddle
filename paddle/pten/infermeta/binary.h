@@ -42,6 +42,10 @@ DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
                                 bool trans_y);
 
 DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
-                                     const DenseTensorMeta& y_meta,
-                                     int axis);
+                                     const DenseTensorMeta& y_meta);
+
+DenseTensorMeta ElementwiseRawInferMeta(const DenseTensorMeta& x_meta,
+                                        const DenseTensorMeta& y_meta,
+                                        int axis);
+
 }  // namespace pten
