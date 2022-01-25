@@ -159,6 +159,18 @@ def _is_auto_compatible_for_matmul(dist_op):
     y_dims_mapping_len = len(y_dims_mapping)
     out_dims_mapping_len = len(out_dims_mapping)
 
+    # NOTE: Partition is not supported if matmul op has trans.
+    if op_desc.type() == "matmul_v2":
+        if op_desc.attr('trans_x') or op_desc.attr('trans_y'):
+            if x_dims_mapping[-2:] != [-1, -1] or y_dims_mapping[
+                    -2:] != [-1, -1]:
+                return False
+    elif op_desc.type() == "matmul":
+        if op_desc.attr('transpose_X') or op_desc.attr('transpose_Y'):
+            if x_dims_mapping[-2:] != [-1, -1] or y_dims_mapping[
+                    -2:] != [-1, -1]:
+                return False
+
     # Add dim mapping to Make sure the length dims_mapping be at least 2
     if x_dims_mapping_len == 1:
         x_dims_mapping.insert(0, -1)

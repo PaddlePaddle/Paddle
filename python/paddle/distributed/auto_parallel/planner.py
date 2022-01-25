@@ -84,34 +84,22 @@ class PlanFilter:
 
     @staticmethod
     def check_dims_mapping_for_special_op(op, op_dist_attr, vars):
-        if op.type == "layer_norm":
-            bias_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("Bias")[0])
-            scale_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("Scale")[0])
-            x_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("X")[0])
-            mean_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Mean")[0])
-            variance_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Variance")[0])
-            y_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Y")[0])
-            if x_dims_mapping != y_dims_mapping:
-                return False
-
-            if scale_dims_mapping[0] != x_dims_mapping[-1]:
-                return False
-
-            if bias_dims_mapping[0] != y_dims_mapping[-1]:
-                return False
-
-            if mean_dims_mapping[0] != x_dims_mapping[0]:
-                return False
-
-            if variance_dims_mapping[0] != x_dims_mapping[0]:
-                return False
-
+        # NOTE: Those ops has some partition limits, and will be solved when corresponding dist op implemented in the future. 
+        if op.type == "elementwise_add" or op.type == 'layer_norm' or op.type == "softmax_with_cross_entropy":
+            for name in op.input_arg_names:
+                for item in op_dist_attr.get_input_dims_mapping(name):
+                    if item != -1:
+                        return False
+            for name in op.output_arg_names:
+                for item in op_dist_attr.get_output_dims_mapping(name):
+                    if item != -1:
+                        return False
+        if op.type == "lookup_table_v2":
+            for name in op.input_arg_names:
+                if name == 'pos_embeddings':
+                    for item in op_dist_attr.get_input_dims_mapping(name):
+                        if item != -1:
+                            return False
         return True
 
 
