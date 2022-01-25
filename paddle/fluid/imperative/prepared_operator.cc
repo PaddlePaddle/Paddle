@@ -47,8 +47,8 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   if (var.IsType<framework::LoDTensor>()) {
     return &(var.Get<framework::LoDTensor>());
-  } else if (var.IsType<framework::SelectedRows>()) {
-    return &(var.Get<framework::SelectedRows>().value());
+  } else if (var.IsType<pten::SelectedRows>()) {
+    return &(var.Get<pten::SelectedRows>().value());
   } else {
     return nullptr;
   }
@@ -369,6 +369,10 @@ static void BuildDygraphPtenKernelContext(
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (outs_vector[offset] == nullptr) {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+        continue;
+      }
       auto* var = outs_vector[offset]->MutableVar();
       framework::Tensor* tensor_out = nullptr;
       if (var->template IsType<framework::LoDTensor>()) {
