@@ -32,7 +32,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
             for i in range(len(program_config.ops))
         ]
         #The input dimension should be less than or equal to the set axis.
-        if len(inputs['concat_input1'].shape) == 1:
+        if len(inputs['concat_input1'].shape) <= attrs[0]['axis']:
             return False
 
         return True
@@ -71,7 +71,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.zeros([1]).astype(np.int32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [2, 3, 4]:
             for num_input in [0, 1]:
                 for batch in [1, 2, 4]:
                     for axis in [-1, 0, 1, 2, 3]:
