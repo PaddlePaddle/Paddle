@@ -143,6 +143,7 @@ inline void EmplaceDeviceContext(
         // first `Get`
         auto* dev_ctx = new DevCtx(p);
         if (is_gpu_place(p)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
           PADDLE_ENFORCE_NOT_NULL(
               cuda_ctx,
@@ -152,6 +153,7 @@ inline void EmplaceDeviceContext(
               memory::allocation::AllocatorFacade::Instance()
                   .GetAllocator(p, cuda_ctx->context()->RawStream())
                   .get());
+#endif
         } else {
           dev_ctx->SetDeviceAllocator(
               memory::allocation::AllocatorFacade::Instance()

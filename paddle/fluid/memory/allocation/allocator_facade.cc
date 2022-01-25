@@ -840,9 +840,9 @@ void* AllocatorFacade::GetBasePtr(
   return m_->GetBasePtr(allocation);
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, const gpuStream_t& stream) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       FLAGS_use_system_allocator == false) {
 #ifdef PADDLE_WITH_CUDA
@@ -853,9 +853,9 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 #endif
     return m_->GetAllocator(place, stream, /*create_if_not_found=*/true);
   }
-#endif
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
+#endif
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
     const platform::Place& place) {
