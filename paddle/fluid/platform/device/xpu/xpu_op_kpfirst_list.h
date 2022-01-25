@@ -27,15 +27,8 @@ using XPUKernelSet =
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
 XPUOpMap& get_kp_ops() {
-  // KL1支持的op，通过op_name, data_type, place来索引
   static XPUOpMap s_xpu_kp_kernels{
-      {"elementwise_add_grad",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
-      {"elementwise_add",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
-      // AddMore
+      // TODO(Liu-xiandong)
   };
 
   return s_xpu_kp_kernels;
