@@ -31,7 +31,7 @@ class GradientAccumulator {
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<framework::LoDTensor>()) {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
-      } else if (var->Var().IsType<framework::SelectedRows>()) {
+      } else if (var->Var().IsType<pten::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(

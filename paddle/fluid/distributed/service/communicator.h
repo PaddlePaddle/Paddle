@@ -193,15 +193,15 @@ inline void MergeVars(const std::string &var_name,
       result.device(*cpu_ctx.eigen_device()) =
           result / static_cast<T>(vars.size());
     }
-  } else if (var0->IsType<framework::SelectedRows>()) {
-    auto &slr0 = var0->Get<framework::SelectedRows>();
-    auto *out_slr = out_var->GetMutable<framework::SelectedRows>();
+  } else if (var0->IsType<pten::SelectedRows>()) {
+    auto &slr0 = var0->Get<pten::SelectedRows>();
+    auto *out_slr = out_var->GetMutable<pten::SelectedRows>();
     out_slr->mutable_rows()->clear();
     out_slr->mutable_value()->mutable_data<T>({{}}, cpu_place);
-    std::vector<const paddle::framework::SelectedRows *> inputs;
+    std::vector<const pten::SelectedRows *> inputs;
     inputs.reserve(vars.size());
     for (auto &var : vars) {
-      inputs.push_back(&var->Get<framework::SelectedRows>());
+      inputs.push_back(&var->Get<pten::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     if (merge_add) {
