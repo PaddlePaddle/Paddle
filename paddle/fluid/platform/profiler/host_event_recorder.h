@@ -14,52 +14,16 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstring>
-#include <mutex>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/common_event.h"
 
 namespace paddle {
 namespace platform {
-
-struct CommonEvent {
- public:
-  CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {}
-
-  CommonEvent(std::function<void *(size_t)> &arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, const std::string &attr_str)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
-    strncpy(buf, name_str.c_str(), name_str.length() + 1);
-    name = buf;
-    buf = static_cast<char *>(arena_allocator(attr_str.length() + 1));
-    strncpy(buf, attr_str.c_str(), attr_str.length() + 1);
-    attr = buf;
-  }
-
-  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
-    strncpy(buf, name_str.c_str(), name_str.length() + 1);
-    name = buf;
-  }
-
-  const char *name = nullptr;  // not owned, designed for performance
-  uint64_t start_ns = 0;
-  uint64_t end_ns = 0;
-  EventRole role = EventRole::kOrdinary;
-  const char *attr = nullptr;  // not owned, designed for performance
-};
 
 template <typename HeadType, typename... RestTypes>
 struct ContainsStdString
@@ -263,6 +227,7 @@ class HostEventRecorder {
     return instance;
   }
 
+  // thread-safe
   // If your string argument has a longer lifetime than the Event,
   // use 'const char*'. e.g.: string literal, op name, etc.
   // Do your best to avoid using 'std::string' as the argument type.
@@ -272,6 +237,7 @@ class HostEventRecorder {
     GetThreadLocalRecorder()->RecordEvent(std::forward<Args>(args)...);
   }
 
+  // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
   HostEventSection GatherEvents();
 
@@ -296,6 +262,7 @@ HostEventSection HostEventRecorder::GatherEvents() {
   auto thr_recorders =
       ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
   HostEventSection host_sec;
+  host_sec.process_id = GetProcessId();
   host_sec.thr_sections.reserve(thr_recorders.size());
   for (auto &kv : thr_recorders) {
     auto &thr_recorder = kv.second.get();
