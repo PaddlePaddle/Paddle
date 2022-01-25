@@ -159,10 +159,13 @@ def test_dp_stage2():
     mlp2 = MLP()
     mlp3 = MLP()
     mlp4 = MLP()
+    mlp5 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
+    mlp5.set_state_dict(state_dict)
+
     dp_params = train_mlp(
         mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=False)
     stage2_params = train_mlp(
@@ -181,6 +184,11 @@ def test_dp_stage2():
             rtol=1e-5,
             atol=1e-5)
 
+    stage2_params = train_mlp(
+        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=True)
+    for i in range(len(dp_params)):
+        np.testing.assert_allclose(
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6)
     return
 
 
