@@ -53,10 +53,12 @@ TensorMap LoadParams(const std::string &path) {
   return *(infrt::tensor::LoadParams(path));
 }
 
-DenseHostTensor TensorMapGetTensor(TensorMap map,
-                                   Attribute<std::string> nameAttr) {
-  auto &name = nameAttr.get();
-  return *(map[name]);
+void TensorMapGetTensor(TensorMap map,
+                        const std::string &name,
+                        DenseHostTensor *out) {
+  auto it = map.find(name);
+  CHECK(it != map.end()) << "No tensor called " << name << " in the TensorMap";
+  *out = *it->second;
 }
 
 int32_t TensorMapGetSize(TensorMap map) { return map.size(); }

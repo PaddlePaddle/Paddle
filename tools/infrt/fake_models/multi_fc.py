@@ -21,8 +21,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
 
-size = 64
-num_layers = 6
+size = 2
+num_layers = 4
 paddle.enable_static()
 
 a = fluid.layers.data(name="A", shape=[-1, size], dtype='float32')
@@ -54,4 +54,3 @@ exe.run(fluid.default_startup_program())
 
 fluid.io.save_inference_model("./multi_fc_model", [a.name], [fc_out], exe)
 print('output name', fc_out.name)
-

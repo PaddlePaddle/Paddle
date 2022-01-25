@@ -122,10 +122,10 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
   // input path of model params.
   let arguments = (ins
           TensorMapType:$map,
-          StrAttr:$name
+          StringType:$name
           );
   let results = (outs TensorType:$output);
-  let assemblyFormat = "`(` $map `,` $name `)` attr-dict `->` type($output)";
+  let assemblyFormat = "`(` operands `)` attr-dict `->` type($output)";
   let verifier = ?;
 }
 
