@@ -39,7 +39,8 @@ TEST(DEV_API, copy) {
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_src->mutable_data<float>();
+  auto* dense_x_data =
+      dense_src->mutable_data<float>(paddle::platform::CPUPlace());
 
   auto dense_dst = std::make_shared<pten::DenseTensor>(
       alloc.get(),
