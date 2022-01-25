@@ -18,12 +18,13 @@
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_REGISTER_KERNEL(trace_grad,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    pten::TraceGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
+                   paddle::platform::float16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}

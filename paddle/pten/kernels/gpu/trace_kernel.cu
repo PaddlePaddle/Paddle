@@ -12,34 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 #include "paddle/pten/kernels/impl/trace_kernel_impl.h"
 #include "paddle/pten/kernels/trace_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void ScaleKernel(const Context& ctx,
+void TraceKernel(const Context& ctx,
                  const DenseTensor& x,
                  int offset,
                  int axis1,
                  int axis2,
                  DenseTensor* out) {
   T* out_data = out->mutable_data<T>(ctx.GetPlace());
-  auto diag = Diagonal<DeviceContext, T>(context, input, offset, dim1, dim2);
+  auto diag = Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
-    auto stream = context.cuda_device_context().stream();
+    auto stream = ctx.stream();
     std::vector<int> reduce_dims;
     reduce_dims.push_back(out->dims().size());
-    kernels::TensorReduceFunctorImpl<Tx,
-                                     Ty,
-                                     kps::AddFunctor,
-                                     kps::IdentityFunctor<T>>(
-        input, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    kernels::
+        TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+            diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
   } else {
-    math::SetConstant<DeviceContext, T> functor;
-    functor(context.device_context<DeviceContext>(), out, static_cast<T>(0));
+    paddle::operators::math::SetConstant<Context, T> functor;
+    functor(ctx, out, static_cast<T>(0));
   }
 }
 
@@ -53,5 +52,6 @@ PT_REGISTER_KERNEL(trace,
                    double,
                    int,
                    int64_t,
+                   paddle::platform::float16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}

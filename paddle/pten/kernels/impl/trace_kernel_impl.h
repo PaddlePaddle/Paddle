@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+#include <algorithm>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -106,7 +110,7 @@ struct TraceGradFunctor {
   T* d_x_;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 DenseTensor Diagonal(const DeviceContext& context,
                      const DenseTensor* input,
                      int64_t offset,
@@ -145,7 +149,7 @@ DenseTensor Diagonal(const DeviceContext& context,
     }
     ret_strides.push_back(stride1 + stride2);
     ret_dims.push_back(diag_size);
-    framework::Tensor diag;
+    DenseTensor diag;
     framework::DDim diag_dims = framework::make_ddim(ret_dims);
     auto dig_stride = framework::stride(diag_dims);
     auto diag_data = diag.mutable_data<T>(diag_dims, context.GetPlace());
@@ -174,7 +178,7 @@ DenseTensor Diagonal(const DeviceContext& context,
 }
 
 template <typename T, typename Context>
-void ScaleGradKernelImpl(const Context& ctx,
+void TraceGradKernelImpl(const Context& ctx,
                          const DenseTensor& out_grad,
                          const DenseTensor& x,
                          int offset,
@@ -186,12 +190,12 @@ void ScaleGradKernelImpl(const Context& ctx,
   auto output_dims = out_grad.dims();
   auto output_stride = framework::stride(output_dims);
 
-  auto* out_data = out_grad->data<T>();
-  T* x_data = in_grad->mutable_data<T>(context.GetPlace());
+  auto* out_data = out_grad.data<T>();
+  T* x_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-  math::SetConstant<DeviceContext, T> set_zero;
+  paddle::operators::math::SetConstant<Context, T> set_zero;
 
-  set_zero(ctx, d_x, static_cast<T>(0.0));
+  set_zero(ctx, in_grad, static_cast<T>(0.0));
   auto dim1 = axis1;
   auto dim2 = axis2;
   auto dim1_ = dim1 < 0 ? input_dims.size() + dim1 : dim1;
@@ -223,7 +227,7 @@ void ScaleGradKernelImpl(const Context& ctx,
     const auto* input_arr = input_stride.Get();
 #endif
 
-    platform::ForRange<DeviceContext> for_range(ctx, d_x->numel());
+    platform::ForRange<Context> for_range(ctx, in_grad->numel());
     TraceGradFunctor<T> functor(out_data,
                                 output_arr,
                                 input_arr,

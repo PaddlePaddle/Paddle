@@ -25,5 +25,6 @@ PT_REGISTER_KERNEL(trace_grad,
                    double,
                    int,
                    int64_t,
+                   paddle::platform::float16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}

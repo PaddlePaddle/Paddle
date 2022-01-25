@@ -19,7 +19,7 @@
 namespace pten {
 
 template <typename T, typename Context>
-void ScaleKernel(const Context& ctx,
+void TraceKernel(const Context& ctx,
                  const DenseTensor& x,
                  int offset,
                  int axis1,

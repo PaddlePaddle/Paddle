@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/pten/kernels/trace_grad_kernel.h"
+#include "paddle/pten/kernels/trace_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -27,27 +29,15 @@ class TraceKernel : public framework::OpKernel<T> {
     auto* input = context.Input<framework::Tensor>("Input");
     auto* out = context.Output<framework::Tensor>("Out");
 
-    const int64_t offset = context.Attr<int>("offset");
-    const int64_t dim1 = context.Attr<int>("axis1");
-    const int64_t dim2 = context.Attr<int>("axis2");
+    const int offset = context.Attr<int>("offset");
+    const int dim1 = context.Attr<int>("axis1");
+    const int dim2 = context.Attr<int>("axis2");
 
-    auto output_dims = out->dims();
-
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-
-    const framework::Tensor diag =
-        Diagonal<DeviceContext, T>(context, input, offset, dim1, dim2);
-    if (diag.numel() > 0) {
-      auto x = framework::EigenMatrix<T>::Reshape(diag, diag.dims().size() - 1);
-      auto output = framework::EigenVector<T>::Flatten(*out);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      auto reduce_dim = Eigen::array<int, 1>({1});
-      output.device(place) = x.sum(reduce_dim);
-      out->Resize(output_dims);
-    } else {
-      std::fill(out_data, out_data + out->numel(), static_cast<T>(0));
-    }
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::TraceKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *input, offset, dim1, dim2, out);
   }
 };
 
@@ -60,9 +50,17 @@ class TraceGradKernel : public framework::OpKernel<T> {
     auto* d_x =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
 
-    int64_t offset = context.Attr<int>("offset");
-    int64_t dim1 = context.Attr<int>("axis1");
-    int64_t dim2 = context.Attr<int>("axis2");
+    auto x = context.Output<framework::Tensor>("Input");
+
+    int offset = context.Attr<int>("offset");
+    int dim1 = context.Attr<int>("axis1");
+    int dim2 = context.Attr<int>("axis2");
+
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::TraceGradKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *d_out, *x, offset, dim1, dim2, d_x);
   }
 };
 

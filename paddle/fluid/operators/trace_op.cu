@@ -17,6 +17,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/trace_op.h"
+#include "paddle/pten/kernels/trace_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -28,23 +29,15 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
     auto* input = context.Input<framework::Tensor>("Input");
     auto* out = context.Output<framework::Tensor>("Out");
 
-    const int64_t offset = context.Attr<int>("offset");
-    const int64_t dim1 = context.Attr<int>("axis1");
-    const int64_t dim2 = context.Attr<int>("axis2");
+    const int offset = context.Attr<int>("offset");
+    const int dim1 = context.Attr<int>("axis1");
+    const int dim2 = context.Attr<int>("axis2");
 
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-    const framework::Tensor diag =
-        Diagonal<DeviceContext, T>(context, input, offset, dim1, dim2);
-    if (diag.numel() > 0) {
-      auto stream = context.cuda_device_context().stream();
-      std::vector<int> reduce_dims;
-      reduce_dims.push_back(out->dims().size());
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
-    } else {
-      math::SetConstant<DeviceContext, T> functor;
-      functor(context.device_context<DeviceContext>(), out, static_cast<T>(0));
-    }
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::TraceKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *input, offset, dim1, dim2, out);
   }
 };
 }  // namespace operators
