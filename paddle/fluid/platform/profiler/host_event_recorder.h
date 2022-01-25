@@ -20,7 +20,9 @@ limitations under the License. */
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/os_info.h"
 
 namespace paddle {
 namespace platform {
@@ -267,29 +269,40 @@ class HostEventRecorder {
   // It will cause deep-copy to harm performance.
   template <typename... Args>
   void RecordEvent(Args &&... args) {
-    GetThreadLocalRecorder().RecordEvent(std::forward<Args>(args)...);
+    GetThreadLocalRecorder()->RecordEvent(std::forward<Args>(args)...);
   }
 
   // Poor performance, call it at the ending
   HostEventSection GatherEvents();
 
-  void RegisterThreadRecorder(uint64_t tid, ThreadEventRecorder *recorder) {
-    const std::lock_guard<std::mutex> guard(thread_recorders_lock_);
-    thread_recorders_[tid] = recorder;
-  }
-
  private:
+  using ThreadEventRecorderRegistry =
+      framework::ThreadDataRegistry<ThreadEventRecorder>;
+
   HostEventRecorder() = default;
   DISABLE_COPY_AND_ASSIGN(HostEventRecorder);
 
-  ThreadEventRecorder &GetThreadLocalRecorder() {
-    static thread_local ThreadEventRecorder tls_recorder;
-    return tls_recorder;
+  ThreadEventRecorder *GetThreadLocalRecorder() {
+    return ThreadEventRecorderRegistry::GetInstance()
+        .GetMutableCurrentThreadData();
   }
-
-  std::mutex thread_recorders_lock_;
-  std::unordered_map<uint64_t, ThreadEventRecorder *> thread_recorders_;
 };
+
+ThreadEventRecorder::ThreadEventRecorder() {
+  thread_id_ = GetCurrentThreadSysId();
+}
+
+HostEventSection HostEventRecorder::GatherEvents() {
+  auto thr_recorders =
+      ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
+  HostEventSection host_sec;
+  host_sec.thr_sections.reserve(thr_recorders.size());
+  for (auto &kv : thr_recorders) {
+    auto &thr_recorder = kv.second.get();
+    host_sec.thr_sections.emplace_back(std::move(thr_recorder.GatherEvents()));
+  }
+  return host_sec;
+}
 
 }  // namespace platform
 }  // namespace paddle
