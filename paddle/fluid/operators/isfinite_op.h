@@ -58,8 +58,8 @@ class OverflowKernel : public framework::OpKernel<T> {
     if (x->IsType<framework::LoDTensor>()) {
       auto* in = ctx.Input<framework::Tensor>("X");
       functor(*in, out);
-    } else if (x->IsType<framework::SelectedRows>()) {
-      auto& in = ctx.Input<framework::SelectedRows>("X")->value();
+    } else if (x->IsType<pten::SelectedRows>()) {
+      auto& in = ctx.Input<pten::SelectedRows>("X")->value();
       functor(in, out);
     } else {
       PADDLE_ENFORCE_EQ(

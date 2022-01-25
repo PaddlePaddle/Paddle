@@ -18,16 +18,11 @@
 
 // NOTE: The paddle framework should add WITH_EIGEN option to support compile
 // without eigen.
-#include "paddle/pten/core/device_context.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace pten {
 
 struct CPUContext::CPUImpl {
-  Eigen::DefaultDevice* device_{nullptr};
-  CPUContextResource res_;
-  CPUPlace place_;
-
   CPUImpl() { device_ = new Eigen::DefaultDevice(); }
 
   // Users need to manage external resources.
@@ -36,7 +31,7 @@ struct CPUContext::CPUImpl {
   }
 
   ~CPUImpl() {
-    if (res_.device == nullptr) {
+    if (res_.device == nullptr && device_ != nullptr) {
       delete device_;
       device_ = nullptr;
     }
@@ -56,27 +51,28 @@ struct CPUContext::CPUImpl {
   }
 
   Place GetPlace() const { return place_; }
+
+  Eigen::DefaultDevice* device_{nullptr};
+  CPUContextResource res_;
+  CPUPlace place_;
 };
 
-CPUContext::CPUContext() : DeviceContext(), cpu_impl_(nullptr) {
+CPUContext::CPUContext() : DeviceContext() {
   cpu_impl_ = std::make_unique<CPUImpl>();
 }
 
-CPUContext::CPUContext(const CPUContext& other)
-    : DeviceContext(), cpu_impl_(nullptr) {
+CPUContext::CPUContext(const CPUContext& other) : DeviceContext() {
   cpu_impl_ = std::make_unique<CPUImpl>();
   cpu_impl_->SetEigenDevice(other.eigen_device());
 }
 
-CPUContext::CPUContext(CPUContext&& other)
-    : DeviceContext(), cpu_impl_(nullptr) {
+CPUContext::CPUContext(CPUContext&& other) : DeviceContext() {
   cpu_impl_ = std::move(other.cpu_impl_);
 }
 
 CPUContext::~CPUContext() = default;
 
-CPUContext::CPUContext(const CPUContextResource& ctx_res)
-    : DeviceContext(), cpu_impl_(nullptr) {
+CPUContext::CPUContext(const CPUContextResource& ctx_res) : DeviceContext() {
   cpu_impl_ = std::make_unique<CPUImpl>(ctx_res);
 }
 
