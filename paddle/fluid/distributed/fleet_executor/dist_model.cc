@@ -72,6 +72,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                 input_data.data.length());
   } else if (platform::is_gpu_place(place)) {
     VLOG(3) << "Loading data for GPU.";
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
@@ -79,6 +80,10 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     memory::Copy(gpu_place, static_cast<void *>(input_tensor_ptr),
                  platform::CPUPlace(), input_data.data.data(),
                  input_data.data.length(), dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Paddle wasn't compiled with CUDA, but place is GPU."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "DistModel only supports CPU and GPU."));
