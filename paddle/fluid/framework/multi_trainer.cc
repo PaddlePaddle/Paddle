@@ -136,7 +136,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (!root_var) {
           continue;
         }
-        if (root_var->IsType<SelectedRows>()) {
+        if (root_var->IsType<pten::SelectedRows>()) {
           continue;
         }
         LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();

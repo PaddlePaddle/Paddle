@@ -31,8 +31,8 @@
 #include "paddle/fluid/distributed/ps/table/depends/initializers.h"
 #include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace distributed {

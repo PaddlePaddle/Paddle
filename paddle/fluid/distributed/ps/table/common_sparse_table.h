@@ -29,8 +29,8 @@
 #include "paddle/fluid/distributed/ps/table/depends/initializers.h"
 #include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 #define PSERVER_SAVE_SUFFIX ".shard"
 
@@ -110,7 +110,7 @@ struct Meta {
 
 class CommonSparseTable : public SparseTable {
  public:
-  CommonSparseTable() { rwlock_.reset(new framework::RWLock); }
+  CommonSparseTable() { rwlock_.reset(new pten::RWLock); }
   virtual ~CommonSparseTable() {}
 
   // unused method begin
@@ -193,7 +193,7 @@ class CommonSparseTable : public SparseTable {
   std::shared_ptr<SparseOptimizer> optimizer_;
   std::vector<std::shared_ptr<ValueBlock>> shard_values_;
   std::unordered_map<uint64_t, ReservoirValue<float>> pull_reservoir_;
-  std::unique_ptr<framework::RWLock> rwlock_{nullptr};
+  std::unique_ptr<pten::RWLock> rwlock_{nullptr};
 };
 
 }  // namespace distributed
