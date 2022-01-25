@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_context.h"

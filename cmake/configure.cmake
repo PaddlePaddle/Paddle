@@ -214,4 +214,3 @@ endif(ON_INFER)
 if(WITH_CRYPTO)
     add_definitions(-DPADDLE_WITH_CRYPTO)
 endif(WITH_CRYPTO)
-

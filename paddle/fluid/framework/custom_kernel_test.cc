@@ -75,7 +75,7 @@ void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
 
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
-  auto* z = out->mutable_data<T>();
+  auto* z = out->mutable_data<T>(paddle::PlaceType::kCPU);
   auto shape = x.shape();
   auto const N = x.numel();
   auto const B = shape[shape.size() - 1];
@@ -142,13 +142,15 @@ TEST(CustomKernel, custom_kernel_dot) {
       alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
                                          paddle::framework::make_ddim({2, 3}),
                                          pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<uint8_t>();
+  auto* dense_x_data =
+      dense_x->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
                                          paddle::framework::make_ddim({2, 3}),
                                          pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y->mutable_data<uint8_t>();
+  auto* dense_y_data =
+      dense_y->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
   // dot x,y and result
   uint8_t sum[2] = {0, 0};
