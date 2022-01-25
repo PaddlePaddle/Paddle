@@ -20,8 +20,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #endif            // !_WIN32
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 

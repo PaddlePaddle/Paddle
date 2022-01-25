@@ -14,13 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/stream/stream.h"
 #include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
     */
