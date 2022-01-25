@@ -195,8 +195,8 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           xpu_wait(dev_ctx.x_context()->xpu_stream);
         }
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
       if (grad->rows().size() == 0) {
@@ -213,8 +213,8 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {
