@@ -17,7 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
@@ -52,8 +52,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src) {
   auto out = MakePtenDenseTensorBase(
       static_cast<const paddle::framework::Tensor&>(src));
-  SetLoD(&(pten::CompatibleDenseTensorUtils::GetMutableMeta(out.get())->lod),
-         src.lod());
+  SetLoD(&(pten::DenseTensorUtils::GetMutableMeta(out.get())->lod), src.lod());
   return std::move(out);
 }
 
@@ -79,8 +78,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src, const pten::TensorArgDef& arg_def) {
   auto out = MakePtenDenseTensorBase(
       static_cast<const paddle::framework::Tensor&>(src), arg_def);
-  SetLoD(&(pten::CompatibleDenseTensorUtils::GetMutableMeta(out.get())->lod),
-         src.lod());
+  SetLoD(&(pten::DenseTensorUtils::GetMutableMeta(out.get())->lod), src.lod());
   return std::move(out);
 }
 
@@ -346,7 +344,7 @@ void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
 void ReMakePtenDenseTensorBase(const paddle::framework::Tensor& src,
                                pten::DenseTensor* dst) {
   VLOG(3) << "ReMakePtenDenseTensor based Tensor.";
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  auto* meta = pten::DenseTensorUtils::GetMutableMeta(dst);
   meta->dims = src.dims();
   meta->dtype = pten::TransToPtenDataType(src.type());
   meta->layout = src.layout();
@@ -356,7 +354,7 @@ void ReMakePtenDenseTensorBase(const paddle::framework::Tensor& src,
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            pten::DenseTensor* dst) {
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  auto* meta = pten::DenseTensorUtils::GetMutableMeta(dst);
   SetLoD(&meta->lod, src.lod());
   ReMakePtenDenseTensorBase(static_cast<const paddle::framework::Tensor&>(src),
                             dst);
@@ -407,7 +405,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
 void ResetTensorByArgDef(pten::DenseTensor* dst,
                          const pten::TensorArgDef& arg_def) {
   VLOG(5) << "ResetTensor by TensorArgDef.";
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  auto* meta = pten::DenseTensorUtils::GetMutableMeta(dst);
   meta->dtype = arg_def.dtype;
   meta->layout = arg_def.layout;
 }

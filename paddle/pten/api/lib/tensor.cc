@@ -22,12 +22,12 @@ limitations under the License. */
 #include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/compat_utils.h"
-#include "paddle/pten/core/convert_utils.h"
+
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 /**
  * [ Why still include the fluid headers? ]
@@ -262,7 +262,7 @@ Tensor::data<paddle::platform::float16>();
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
     return Tensor(std::make_shared<pten::DenseTensor>(
-        std::move(pten::CompatibleDenseTensorUtils::Slice(
+        std::move(pten::DenseTensorUtils::Slice(
             *(std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get()),
             begin_idx,
             end_idx))));

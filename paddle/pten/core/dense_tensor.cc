@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -370,13 +369,6 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 /* ------------------------------ */
 /*   From framework::LoDTensor    */
 /* ------------------------------ */
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
-                         const DenseTensorMeta& meta)
-    : meta_(meta), holder_(storage->move_data_shared()) {}
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 

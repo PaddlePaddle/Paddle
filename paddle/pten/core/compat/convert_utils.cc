@@ -11,8 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/kernel_alias_name.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/compat/kernel_alias_name.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 

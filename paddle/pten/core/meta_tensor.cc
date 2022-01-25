@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/pten/core/meta_tensor.h"
 
-#include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -31,9 +31,8 @@ DataLayout MetaTensor::layout() const { return tensor_->layout(); }
 
 void MetaTensor::set_dims(const DDim& dims) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
-        ->dims = dims;
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
+        dims;
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
@@ -42,8 +41,7 @@ void MetaTensor::set_dims(const DDim& dims) {
 
 void MetaTensor::set_dtype(DataType dtype) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -53,8 +51,7 @@ void MetaTensor::set_dtype(DataType dtype) {
 
 void MetaTensor::set_layout(DataLayout layout) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->layout = layout;
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -64,9 +61,8 @@ void MetaTensor::set_layout(DataLayout layout) {
 
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
-        ->lod = meta_tensor.lod();
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->lod =
+        meta_tensor.lod();
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Unsupported share lod inplace for `%s`.",

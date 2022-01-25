@@ -19,3 +19,5 @@ endif()
 if (NOT WIN32)
 cc_test(test_rw_lock SRCS test_rw_lock.cc)
 endif (NOT WIN32)
+
+cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)

@@ -17,8 +17,8 @@
 #include <iterator>
 #include <utility>
 
-#include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/tensor_base.h"
+#include "paddle/pten/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/small_vector.h"
 

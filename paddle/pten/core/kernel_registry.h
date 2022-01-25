@@ -21,10 +21,10 @@
 #include <typeinfo>
 #include <vector>
 
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/kernel_utils.h"
 #include "paddle/pten/core/macros.h"
+#include "paddle/pten/core/type_defs.h"
 
 #include "paddle/pten/core/enforce.h"
 

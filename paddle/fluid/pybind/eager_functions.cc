@@ -29,10 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/api/lib/utils/storage.h"
+
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {

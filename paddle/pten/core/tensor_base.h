@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/ddim.h"
-#include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/utils/type_registry.h"
 
 namespace pten {

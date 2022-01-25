@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"

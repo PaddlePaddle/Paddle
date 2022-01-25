@@ -26,7 +26,7 @@ namespace pten {
 /// support being inherited.
 class Allocation {
  public:
-  using Place = paddle::platform::Place;
+  using Place = pten::Place;
   using DeleterFnPtr = void (*)(Allocation*);
 
   Allocation() = default;

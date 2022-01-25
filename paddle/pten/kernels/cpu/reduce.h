@@ -20,7 +20,6 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 
-#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "paddle/pten/kernels/funcs/transpose.h"

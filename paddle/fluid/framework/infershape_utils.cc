@@ -17,10 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
-#include "paddle/pten/core/compat_utils.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/meta_tensor.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -122,7 +122,7 @@ class CompatMetaTensor : public pten::MetaTensor {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      pten::CompatibleDenseTensorUtils::GetMutableMeta(
+      pten::DenseTensorUtils::GetMutableMeta(
           static_cast<pten::DenseTensor*>(tensor))
           ->dims = dims;
     } else {
@@ -135,7 +135,7 @@ class CompatMetaTensor : public pten::MetaTensor {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      pten::CompatibleDenseTensorUtils::GetMutableMeta(
+      pten::DenseTensorUtils::GetMutableMeta(
           static_cast<pten::DenseTensor*>(tensor))
           ->dtype = dtype;
     } else {
@@ -148,7 +148,7 @@ class CompatMetaTensor : public pten::MetaTensor {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      pten::CompatibleDenseTensorUtils::GetMutableMeta(
+      pten::DenseTensorUtils::GetMutableMeta(
           static_cast<pten::DenseTensor*>(tensor))
           ->layout = layout;
     } else {
@@ -161,7 +161,7 @@ class CompatMetaTensor : public pten::MetaTensor {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      pten::CompatibleDenseTensorUtils::GetMutableMeta(
+      pten::DenseTensorUtils::GetMutableMeta(
           static_cast<pten::DenseTensor*>(tensor))
           ->lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();

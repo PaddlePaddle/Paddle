@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/pten/core/dim.h"
+#include "paddle/pten/core/utils/dim.h"
 
 namespace pten {
 namespace platform = paddle::platform;

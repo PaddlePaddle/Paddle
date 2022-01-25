@@ -109,7 +109,7 @@ def source_include(header_file_path):
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/storage.h"
+
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/infermeta/multiary.h"
