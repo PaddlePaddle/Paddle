@@ -25,7 +25,7 @@ namespace platform {
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
   auto& ops = get_kl1_ops();
   auto v = get_xpu_version(type.place_.device);
-  if (v == XPU2) {
+  if (v == pten::backends::xpu::XPUVersion::XPU2) {
     ops = get_kl2_ops();
   }
 
@@ -117,10 +117,12 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
   return false;
 }
 #endif
-std::vector<vartype::Type> get_xpu_op_support_type(const std::string& op_name,
-                                                   XPUVersion version) {
+
+std::vector<vartype::Type> get_xpu_op_support_type(
+    const std::string& op_name, pten::backends::xpu::XPUVersion version) {
   std::vector<vartype::Type> res;
-  auto& ops = version == XPU1 ? get_kl1_ops() : get_kl2_ops();
+  auto& ops = version == pten::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
+                                                               : get_kl2_ops();
   if (ops.find(op_name) != ops.end()) {
     XPUKernelSet& type_set = ops[op_name];
     for (auto& item : type_set) {
@@ -130,9 +132,10 @@ std::vector<vartype::Type> get_xpu_op_support_type(const std::string& op_name,
   return res;
 }
 
-XPUOpListMap get_xpu_op_list(XPUVersion version) {
+XPUOpListMap get_xpu_op_list(pten::backends::xpu::XPUVersion version) {
   XPUOpListMap res;
-  auto& ops = version == XPU1 ? get_kl1_ops() : get_kl2_ops();
+  auto& ops = version == pten::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
+                                                               : get_kl2_ops();
   for (auto& op : ops) {
     std::vector<vartype::Type> op_vartypes;
     for (auto& item : op.second) {
@@ -142,7 +145,6 @@ XPUOpListMap get_xpu_op_list(XPUVersion version) {
   }
   return res;
 }
-
 }  // namespace platform
 }  // namespace paddle
 #endif
