@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pten/core/device_context.h"
-#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/tensor_base.h"
 
 namespace pten {
 using DataType = paddle::experimental::DataType;
@@ -124,15 +124,15 @@ void DeviceContext::ResetTensorInfo(pten::TensorBase* tensor,
       pten::errors::InvalidArgument(
           "Required tensor shall not be nullptr, but received nullptr."));
   // Clear holder_ in case of allocating memory in new place.
-  if (tensor->initialized() & tensor->place() != GetPlace()) {
-    if (pten::DenseTensor::classof(tensor)) {
-      auto* dense_tensor = static_cast<DenseTensor*>(tensor);
-      dense_tensor->ResetHolder(nullptr);
-    }
-  } else {
-    PADDLE_THROW(
-        pten::errors::Unimplemented("Only support DenseTensor currently."));
-  }
+  // if (tensor->initialized() && tensor->place() != GetPlace()) {
+  //   if (pten::DenseTensor::classof(tensor)) {
+  //     auto* dense_tensor = static_cast<DenseTensor*>(tensor);
+  //     dense_tensor->ResetHolder(nullptr);
+  //   }
+  // } else {
+  //   PADDLE_THROW(
+  //       pten::errors::Unimplemented("Only support DenseTensor currently."));
+  // }
 }
 
 void* DeviceContext::Alloc(TensorBase* tensor,
