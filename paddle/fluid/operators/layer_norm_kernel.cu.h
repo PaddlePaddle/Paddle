@@ -36,7 +36,7 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-#define COLS_ 1024
+#define LN_NUM_COLS 1024
 
 inline static int GetDesiredBlockDim(int64_t block_dim) {
 #ifdef __HIPCC__
@@ -207,12 +207,13 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     col += THREADS_PER_ROW;
   }
 
-  constexpr U rn = 1.f / U(COLS_);
+  constexpr U rn = 1.f / U(LN_NUM_COLS);
   for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
     Vec x[LDGS];
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Load<T, VecSize>(x_ptr + row * COLS_ + col * VecSize, &x[it]);
+      platform::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize,
+                                 &x[it]);
       col += THREADS_PER_ROW;
     }
     U xf[LDGS * VecSize];
@@ -274,7 +275,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Store<T, VecSize>(x[it], y_ptr + row * COLS_ + col * VecSize);
+      platform::Store<T, VecSize>(x[it],
+                                  y_ptr + row * LN_NUM_COLS + col * VecSize);
       col += THREADS_PER_ROW;
     }
   }
