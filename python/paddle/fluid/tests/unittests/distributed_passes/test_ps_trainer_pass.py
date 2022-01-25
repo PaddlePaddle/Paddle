@@ -37,36 +37,37 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['applied_pass_name'] = ""
 
     def setUp(self):
-        print('setUp...')
+        print('TestPsTrainerPass setUp...')
 
     def tearDown(self):
-        print('tearDown...')
+        print('TestPsTrainerPass tearDown...')
 
     def check(self):
         pass
 
     def test_ps_optimizer_minimize(self):
         self.init()
-        self.config['run_minimize'] = 1
+        self.config['run_minimize'] = '1'
 
-        self.debug_new_minimize = 0
+        self.config['debug_new_minimize'] = '0'
         self.config['log_dir'] = "./log_old"
         self.ps_launch(self.config)
 
-        self.config['debug_new_minimize'] = 1
+        self.config['debug_new_minimize'] = '1'
         self.config['log_dir'] = "./log_new"
         self.ps_launch(self.config)
 
         self.check()
 
     def test_append_send_ops_pass(self):
-        self.run_single_pass = 1
+        self.init()
+        self.config['run_single_pass'] = '1'
 
-        self.config['debug_new_pass'] = 0
+        self.config['debug_new_pass'] = '0'
         self.config['log_dir'] = "log_old"
         self.ps_launch(self.config)
 
-        self.config['debug_new_pass'] = 1
+        self.config['debug_new_pass'] = '1'
         self.config['applied_pass_name'] = "append_send_ops_pass"
         self.config['log_dir'] = "log_new"
         self.ps_launch(self.config)

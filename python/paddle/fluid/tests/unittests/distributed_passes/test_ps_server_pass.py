@@ -27,10 +27,10 @@ class TestPsServerPass(PsPassTestBase):
         pass
 
     def setUp(self):
-        print('setUp...')
+        print('TestPsServerPass setUp...')
 
     def tearDown(self):
-        print('tearDown...')
+        print('TestPsServerPass tearDown...')
 
     def test_add_lr_decay_table_passs(self):
         pass
