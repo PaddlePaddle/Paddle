@@ -22,18 +22,6 @@ import numpy as np
 
 # use dot <CPU, ANY, INT8> as test case.
 class TestCustomKernelDot1(unittest.TestCase):
-    # invalid path check
-    def test_dot_run_form_error_dir(self):
-        INVALID_PATH = '/1/2/invalid_path'
-        os.environ['CUSTOM_DEVICE_ROOT'] = INVALID_PATH
-        err_msg = 'Error: Invalid CUSTOM_DEVICE_ROOT:[' + INVALID_PATH + '], path not exist. Please check.'
-        try:
-            import paddle
-        except Exception as e:
-            self.assertTrue(str(e).strip() == err_msg)
-
-
-class TestCustomKernelDot2(unittest.TestCase):
     # user set path check
     def test_dot_run_form_cur_dir(self):
         # set environment for loading and registering compiled custom kernels
@@ -56,7 +44,7 @@ class TestCustomKernelDot2(unittest.TestCase):
                                                                     result))
 
 
-class TestCustomKernelDot3(unittest.TestCase):
+class TestCustomKernelDot2(unittest.TestCase):
     # defalut path check
     def test_dot_run_form_default_dir(self):
         # get paddle site
