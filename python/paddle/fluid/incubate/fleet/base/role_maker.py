@@ -669,27 +669,12 @@ class GeneralRoleMaker(RoleMakerBase):
                                             self._hdfs_name, self._hdfs_ugi)
                     gloo.init()
                     self._node_type_comm = gloo
-                    if self._use_ps_gpu:
+                    if self._use_ps_gpu or self._use_metric:
                         Gloo_strategy = fluid.core.GlooParallelStrategy()
                         Gloo_strategy.rank = current_id
                         Gloo_strategy.rank_num = len(worker_endpoints)
                         Gloo_strategy.ip_address = self._http_ip_port[0]
                         Gloo_strategy.ip_port = int(self._http_ip_port[1])
-                        Default_init_timeout_seconds = 3600
-                        Default_run_timeout_seconds = 9999999
-                        Gloo_strategy.init_seconds = Default_init_timeout_seconds
-                        Gloo_strategy.run_seconds = Default_run_timeout_seconds
-                        Gloo = fluid.core.GlooParallelContext(Gloo_strategy)
-                        Gloo.init()
-                    if self._use_metric:  #can't use when _use_ps_gpu=True
-                        Gloo_strategy = fluid.core.GlooParallelStrategy()
-                        Gloo_strategy.rank = current_id
-                        Gloo_strategy.rank_num = len(worker_endpoints)
-                        Gloo_strategy.ip_address = self._http_ip_port[0]
-                        Gloo_strategy.ip_port = int(self._http_ip_port[1])
-                        # Gloo_strategy.hdfs_path = self._hdfs_path + "/trainer"
-                        # Gloo_strategy.hdfs_name = self._hdfs_name
-                        # Gloo_strategy.hdfs_ugi = self._hdfs_ugi
                         Default_init_timeout_seconds = 3600
                         Default_run_timeout_seconds = 9999999
                         Gloo_strategy.init_seconds = Default_init_timeout_seconds
