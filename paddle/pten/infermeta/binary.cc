@@ -131,8 +131,13 @@ DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
 }
 
 DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
-                                     const DenseTensorMeta& y_meta,
-                                     int axis) {
+                                     const DenseTensorMeta& y_meta) {
+  return ElementwiseRawInferMeta(x_meta, y_meta, -1);
+}
+
+DenseTensorMeta ElementwiseRawInferMeta(const DenseTensorMeta& x_meta,
+                                        const DenseTensorMeta& y_meta,
+                                        int axis) {
   DenseTensorMeta return_meta(x_meta.dtype, x_meta.dims, x_meta.layout);
   if (x_meta.dims != y_meta.dims) {
     auto x_dims = x_meta.dims;
