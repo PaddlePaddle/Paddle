@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/stream/stream.h"
-
 #include "paddle/pten/core/allocator.h"
+#include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 
@@ -195,6 +195,18 @@ class DenseTensor : public TensorBase,
   /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
    */
   explicit DenseTensor(paddle::framework::proto::VarType::Type dtype);
+
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
+
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
 

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"

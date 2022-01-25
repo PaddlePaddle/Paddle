@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 namespace paddle {
 namespace pybind {

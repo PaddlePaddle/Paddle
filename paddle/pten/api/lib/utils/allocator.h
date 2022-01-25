@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/pten/core/allocator.h"
+#include "paddle/pten/core/storage.h"
 
 namespace paddle {
 namespace experimental {

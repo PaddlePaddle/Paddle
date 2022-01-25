@@ -370,6 +370,13 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 /*   From framework::LoDTensor    */
 /* ------------------------------ */
 
+DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
+                         const DenseTensorMeta& meta)
+    : meta_(meta), holder_(storage->move_data_shared()) {}
+
+DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
+    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
+
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 
 void DenseTensor::set_lod(const LoD& lod) { meta_.lod = lod; }
