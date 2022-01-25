@@ -106,7 +106,7 @@ class BackwardAPI:
             input_tensors, kernel_args = gen_utils.get_kernel_args(
                 self.args['inputs']['names'], self.args['attrs'],
                 self.kernel['param'])
-            outputs_args, output_create = gen_utils.gene_output(
+            outputs_args, output_names, output_create = gen_utils.gene_output(
                 self.output_type)
             return f"""
 // {self.return_comment}
@@ -115,8 +115,8 @@ class BackwardAPI:
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 {input_tensors}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
 {output_create}
+{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], output_names, self.infer_meta)}
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.backward_api}_kernel>();
   (*kernel_fn)({kernel_args}, {outputs_args});

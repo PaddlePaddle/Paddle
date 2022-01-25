@@ -23,7 +23,7 @@
   output : Tensor
   infer_meta :
     func : ConcatInferMeta
-    param : [x, axis, true]
+    param : [x, axis]
   kernel :
     func : concat
 

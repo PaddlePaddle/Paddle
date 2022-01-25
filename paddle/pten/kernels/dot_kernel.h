@@ -29,8 +29,8 @@ template <typename T, typename Context>
 DenseTensor Dot(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
-  auto out_meta = DotInferMeta(x.meta(), y.meta());
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  DotInferMeta(x, y, &dense_out);
   DotKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }

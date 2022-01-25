@@ -16,31 +16,18 @@ limitations under the License. */
 
 #include <set>
 
+#include "paddle/pten/common/data_type.h"
+
 namespace pten {
 
-void UnchangedInferMeta(MetaConfig config,
-                        const MetaTensor& x,
-                        MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
+void UnchangedInferMeta(const MetaTensor& x, MetaTensor out) {
+  out.share_meta(x);
 }
 
-void ReductionInferMeta(MetaConfig config,
-                        const MetaTensor& x,
-                        MetaTensor* out) {
-  const auto& out_dims = pten::framework::make_ddim({1});
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
-void FlattenInferMeta(MetaConfig config,
-                      const MetaTensor& x,
+void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
-                      MetaTensor* out) {
+                      MetaTensor out) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -74,34 +61,30 @@ void FlattenInferMeta(MetaConfig config,
     out_shape.push_back(x_dims[i]);
   }
   const auto& out_dims = pten::framework::make_ddim(out_shape);
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
+  out.set_dims(out_dims);
+  out.set_dtype(x.dtype());
+  out.set_layout(x.layout());
 
   if (x_dims[0] == out_dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
-    out->share_lod(x);
+    out.share_lod(x);
   }
 }
 
-void CastInferMeta(MetaConfig config,
-                   const MetaTensor& x,
-                   const DataType out_dtype,
-                   MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(out_dtype);
-  out->set_layout(x.layout());
+void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor out) {
+  out.set_dims(x.dims());
+  out.set_dtype(out_dtype);
+  out.set_layout(x.layout());
 }
 
-void CreateLikeInferMeta(MetaConfig config,
-                         const MetaTensor& x,
+void CreateLikeInferMeta(const MetaTensor& x,
                          DataType dtype,
                          DataLayout layout,
-                         MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(out->dtype() == DataType::UNDEFINED ? x.dtype() : dtype);
-  out->set_layout(out->layout() == DataLayout::UNDEFINED ? x.layout() : layout);
+                         MetaTensor out) {
+  out.set_dims(x.dims());
+  out.set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out.set_layout(layout == DataLayout::UNDEFINED ? x.layout() : layout);
 }
 
 static pten::framework::DDim ValidateShape(
@@ -224,10 +207,9 @@ static pten::framework::DDim ValidateShape(
   return pten::framework::make_ddim(output_shape);
 }
 
-void InferMetaFromVecValue(MetaConfig config,
-                           const MetaTensor& x,
+void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
-                           MetaTensor* out) {
+                           MetaTensor out) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
                     paddle::platform::errors::InvalidArgument(
@@ -235,46 +217,27 @@ void InferMetaFromVecValue(MetaConfig config,
                         "But received 'shape' is empty."));
   auto x_dims = x.dims();
   auto out_dims = ValidateShape(shape, x_dims);
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
+  out.set_dims(out_dims);
+  out.set_dtype(x.dtype());
+  out.set_layout(x.layout());
   if (x_dims[0] == out_dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
-    out->share_lod(x);
+    out.share_lod(x);
   }
 }
 
-void InferMetaFromVecValue(const DenseTensorMeta& x_meta,
-                           const std::vector<int64_t>& shape) {
-  PADDLE_ENFORCE_EQ(!shape.empty(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The parameter 'shape' in ReshapeOp must be set. "
-                        "But received 'shape' is empty."));
-  auto x_dims = x_meta.dims;
-  auto out_dims = ValidateShape(shape, x_dims);
-  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
-  if (x_dims[0] == return_meta.dims[0]) {
-    // Only pass LoD when the first dimension of output and Input(X)
-    // are the same.
-    return_meta.lod = x_meta.lod;
-  }
-}
-
-void ReshapeInferMeta(MetaConfig config,
-                      const MetaTensor& x,
+void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out) {
-  InferMetaFromVecValue(std::move(config), x, shape.GetData(), out);
+                      MetaTensor out) {
+  InferMetaFromVecValue(x, shape.GetData(), out);
 }
 
-void ReduceInferMeta(MetaConfig config,
-                     const MetaTensor& x,
+void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      DataType dtype,
-                     MetaTensor* out) {
+                     MetaTensor out) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x.dims().size(); ++i) {
@@ -320,9 +283,16 @@ void ReduceInferMeta(MetaConfig config,
     }
   }
 
-  out->set_dims(out_dim);
-  out->set_dtype(out_dtype);
-  out->set_layout(x.layout());
+  out.set_dims(out_dim);
+  out.set_dtype(out_dtype);
+  out.set_layout(x.layout());
+}
+
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor out) {
+  ReduceInferMeta(x, axis, keep_dim, DataType::UNDEFINED, out);
 }
 
 }  // namespace pten

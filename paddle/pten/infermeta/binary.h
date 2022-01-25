@@ -20,28 +20,25 @@ namespace pten {
 
 // Common InferMeta Functions for binary operators, The format like:
 //
-//   1. DenseTensorMeta [OpName]InferMeta(const DenseTensorMeta& x_meta, ...)
-//   {}
+//   1. void [FunctionDesc|OpName]InferMeta(const MetaTensor& x,
+//                                          const MetaTensor& y,
+//                                          ...,
+//                                          MetaTensor out) {}
 //
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 
-void DotInferMeta(MetaConfig config,
-                  const MetaTensor& x,
-                  const MetaTensor& y,
-                  MetaTensor* out);
+void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor out);
 
-void MatmulInferMeta(MetaConfig config,
-                     const MetaTensor& x,
+void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor* out);
+                     MetaTensor out);
 
-void ElementwiseInferMeta(MetaConfig config,
-                          const MetaTensor& x,
+void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           int axis,
-                          MetaTensor* out);
+                          MetaTensor out);
 }  // namespace pten

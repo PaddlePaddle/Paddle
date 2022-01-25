@@ -266,13 +266,15 @@ def gene_kernel_select(api, input_names, attrs, kernel) -> str:
     return kernel_select_code
 
 
-def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
-    infer_meta_params = infer_meta['param'] if infer_meta[
-        'param'] is not None else input_names + attr_names
+def gene_infer_meta(input_names, attr_names, output_names, infer_meta) -> str:
+    infer_meta_params = infer_meta['param'] + output_names if infer_meta[
+        'param'] is not None else input_names + attr_names + output_names
     param_code = ""
     for param in infer_meta_params:
         if param in input_names:
-            param_code = param_code + "GetDenseTensorMeta(*" + PREFIX_TENSOR_NAME + param + "), "
+            param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
+        elif param in output_names:
+            param_code = param_code + param + ", "
         elif param in attr_names:
             param_code = param_code + param + ", "
         elif isinstance(param, str):
@@ -284,7 +286,7 @@ def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
 
     param_code = param_code[:-2]
     return f"""
-  auto out_meta = pten::{infer_meta['func']}({param_code});
+  pten::{infer_meta['func']}({param_code});
 """
 
 
@@ -319,20 +321,23 @@ def get_kernel_args(input_names, attrs, kernel_param):
 
 def gene_output(output_type):
     kernel_output = ""
+    output_names = []
     output_create = f"""
   {output_type} out;"""
 
     if output_type == 'Tensor' or output_type == 'std::vector<Tensor>':
         kernel_output = 'dense_out'
+        output_names.append('dense_out')
         output_create = output_create + """
-  auto dense_out = SetKernelOutput(out_meta, kernel_backend, &out);"""
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
     elif re.match(r'std::tuple<.*>$', output_type):
         out_num = output_type.count('Tensor')
         for i in range(out_num):
             kernel_output = kernel_output + f'dense_out_{i}, '
+            output_names.append(f'dense_out_{i}')
             output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(std::get<{i}>(out_meta), kernel_backend, &std::get<{i}>(out));"""
+  auto dense_out_{i} = SetKernelOutput(kernel_backend, &std::get<{i}>(out));"""
 
         kernel_output = kernel_output[:-2]
 
-    return kernel_output, output_create
+    return kernel_output, output_names, output_create

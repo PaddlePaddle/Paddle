@@ -34,46 +34,37 @@ namespace pten {
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-void UnchangedInferMeta(MetaConfig config,
-                        const MetaTensor& x,
-                        MetaTensor* out);
+void UnchangedInferMeta(const MetaTensor& x, MetaTensor out);
 
-void ReductionInferMeta(MetaConfig config,
-                        const MetaTensor& x,
-                        MetaTensor* out);
-
-void FlattenInferMeta(MetaConfig config,
-                      const MetaTensor& x,
+void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
-                      MetaTensor* out);
+                      MetaTensor out);
 
-void CastInferMeta(MetaConfig config,
-                   const MetaTensor& x,
-                   const DataType out_dtype,
-                   MetaTensor* out);
+void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor out);
 
-void CreateLikeInferMeta(MetaConfig config,
-                         const MetaTensor& x,
+void CreateLikeInferMeta(const MetaTensor& x,
                          DataType dtype,
                          DataLayout layout,
-                         MetaTensor* out);
+                         MetaTensor out);
 
-void InferMetaFromVecValue(MetaConfig config,
-                           const MetaTensor& x,
+void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
-                           MetaTensor* out);
+                           MetaTensor out);
 
-void ReshapeInferMeta(MetaConfig config,
-                      const MetaTensor& x,
+void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out);
+                      MetaTensor out);
 
-void ReduceInferMeta(MetaConfig config,
-                     const MetaTensor& x,
+void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      DataType dtype,
-                     MetaTensor* out);
+                     MetaTensor out);
+
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor out);
 
 }  // namespace pten

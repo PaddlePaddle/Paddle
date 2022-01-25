@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/pten/core/meta_tensor.h"
 namespace pten {
 
-void ConcatInferMeta(MetaConfig config,
-                     const std::vector<MetaTensor>& x,
+void ConcatInferMeta(const std::vector<MetaTensor>& x,
                      const Scalar& axis_scalar,
-                     MetaTensor* out);
+                     MetaTensor out,
+                     MetaConfig config = MetaConfig());
 
 }  // namespace pten

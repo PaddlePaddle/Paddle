@@ -57,19 +57,17 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   kernel_context.EmplaceBackInput(dense_x.get());
   kernel_context.EmplaceBackAttr(blocking);
 
-  // 4. InferMeta
-  auto out_meta = UnchangedInferMeta(dense_x->meta());
-
-  // 5. Prepare outputs
+  // 4. Prepare outputs & InferMeta
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(backend)),
-      std::move(out_meta));
+      pten::DenseTensorMeta());
+  UnchangedInferMeta(*dense_x, dense_out.get());
   kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
   out.set_impl(dense_out);
 
-  // 6. Call kernel
+  // 5. Call kernel
   kernel(&kernel_context);
 
   return out;

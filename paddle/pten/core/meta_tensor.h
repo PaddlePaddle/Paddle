@@ -39,6 +39,8 @@ class MetaTensor {
  public:
   // supporting implicit construction is easier to use
   MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
+  MetaTensor(const TensorBase& tensor)                 // NOLINT
+      : tensor_(const_cast<TensorBase*>(&tensor)) {}
 
   MetaTensor() = default;
   MetaTensor(const MetaTensor&) = default;
@@ -55,7 +57,9 @@ class MetaTensor {
   virtual void set_dims(const DDim& dims);
   virtual void set_dtype(DataType dtype);
   virtual void set_layout(DataLayout layout);
+
   virtual void share_lod(const MetaTensor& meta_tensor);
+  virtual void share_meta(const MetaTensor& meta_tensor);
 
  private:
   // Because the lod in compiletime and runtime is different,

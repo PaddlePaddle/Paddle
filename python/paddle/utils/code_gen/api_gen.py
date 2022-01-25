@@ -63,16 +63,16 @@ PADDLE_API {self.output} {self.api}({self.args['args_declare']});
                 self.args['inputs']['names'], self.args['attrs'],
                 self.kernel['param'])
             out_type, _ = gen_utils.parse_output(self.api, self.output)
-            outputs_args, output_create = gen_utils.gene_output(out_type)
+            outputs_args, output_names, output_create = gen_utils.gene_output(
+                out_type)
             return f"""
 PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 {gen_utils.gene_kernel_select(self.api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 {input_tensors}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
 {output_create}
-
+{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], output_names, self.infer_meta)}
   auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.api}_kernel>();
   (*kernel_fn)({kernel_args}, {outputs_args});
 

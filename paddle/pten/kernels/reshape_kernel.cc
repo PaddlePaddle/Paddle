@@ -26,13 +26,13 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const ScalarArray& shape,
                    DenseTensor* out) {
-  InferMetaFromVecValue(/*is_runtime*/ true, &x, shape.GetData(), out);
+  InferMetaFromVecValue(x, shape.GetData(), out);
   if (x.data() == out->data() && x.numel() == out->numel()) {
-    out->ResizeAndAllocate(out_meta.dims);
+    out->ResizeAndAllocate(out->dims());
     return;
   }
   pten::Copy(dev_ctx, x, false, out);
-  out->ResizeAndAllocate(out_meta.dims);
+  out->ResizeAndAllocate(out->dims());
   out->ResetLoD(x.lod());
 }
 

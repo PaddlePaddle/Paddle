@@ -69,7 +69,7 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
         ->lod = meta_tensor.lod();
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported share lod inplace for `%s`.",
+        "Unsupported sharing lod inplace for `%s`.",
         tensor_->type_info().name()));
   }
 }
@@ -79,7 +79,19 @@ const LoD& MetaTensor::lod() const {
     return static_cast<DenseTensor*>(tensor_)->lod();
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
+        "Unsupported getting lod of `%s`.", tensor_->type_info().name()));
+  }
+}
+
+void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
+  if (pten::DenseTensor::classof(tensor_)) {
+    set_dims(meta_tensor.dims());
+    set_dtype(meta_tensor.dtype());
+    set_layout(meta_tensor.layout());
+    share_lod(meta_tensor);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        "Unsupported sharing meta for `%s`.", tensor_->type_info().name()));
   }
 }
 

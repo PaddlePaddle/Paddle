@@ -17,10 +17,7 @@ limitations under the License. */
 
 namespace pten {
 
-void DotInferMeta(MetaConfig config,
-                  const MetaTensor& x,
-                  const MetaTensor& y,
-                  MetaTensor* out) {
+void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor out) {
   auto x_dims = x.dims();
   auto x_rank = static_cast<size_t>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
@@ -57,17 +54,16 @@ void DotInferMeta(MetaConfig config,
                         y_dims.to_str()));
 
   x_dims[x_dims.size() - 1] = 1;
-  out->set_dims(x_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
+  out.set_dims(x_dims);
+  out.set_dtype(x.dtype());
+  out.set_layout(x.layout());
 }
 
-void MatmulInferMeta(MetaConfig config,
-                     const MetaTensor& x,
+void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor* out) {
+                     MetaTensor out) {
   std::vector<int64_t> dims_x = pten::framework::vectorize(x.dims());
   std::vector<int64_t> dims_y = pten::framework::vectorize(y.dims());
   auto ndims_x = dims_x.size();
@@ -131,17 +127,15 @@ void MatmulInferMeta(MetaConfig config,
 
   auto ddim_out = pten::framework::make_ddim(new_dims);
 
-  out->set_dims(ddim_out);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
+  out.set_dims(ddim_out);
+  out.set_dtype(x.dtype());
+  out.set_layout(x.layout());
 }
 
-void ElementwiseInferMeta(MetaConfig config,
-                          const MetaTensor& x,
+void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           int axis,
-                          MetaTensor* out) {
-  DenseTensorMeta return_meta(x_meta.dtype, x_meta.dims, x_meta.layout);
+                          MetaTensor out) {
   if (x.dims() != y.dims()) {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -178,14 +172,14 @@ void ElementwiseInferMeta(MetaConfig config,
                                   max_dim,
                                   axis);
     auto out_dims = pten::framework::make_ddim(out_dims_array);
-    out->set_dims(out_dims);
+    out.set_dims(out_dims);
   } else {
-    out->set_dims(x.dims());
+    out.set_dims(x.dims());
   }
 
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
+  out.set_dtype(x.dtype());
+  out.set_layout(x.layout());
+  out.share_lod(x);
 }
 
 }  // namespace pten

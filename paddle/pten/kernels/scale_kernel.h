@@ -34,8 +34,8 @@ DenseTensor Scale(const Context& dev_ctx,
                   const Scalar& scale,
                   float bias,
                   bool bias_after_scale) {
-  auto out_meta = UnchangedInferMeta(x.meta());
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  UnchangedInferMeta(x, &dense_out);
   ScaleKernel<T, Context>(
       dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;

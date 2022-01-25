@@ -38,9 +38,8 @@ template <typename T, typename Context>
 DenseTensor Reshape(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& shape) {
-  auto dense_out = Empty<T, Context>(dev_ctx, DenseTensorMeta());
-  InferMetaFromVecValue(
-      /*is_runtime*/ true, const_cast<DenseTensor*>(x), shape, &dense_out);
+  auto dense_out = Empty<T, Context>(dev_ctx);
+  InferMetaFromVecValue(x, shape, &dense_out);
   ReshapeKernel<Context>(dev_ctx, x, ScalarArray(shape), &dense_out);
   return dense_out;
 }
