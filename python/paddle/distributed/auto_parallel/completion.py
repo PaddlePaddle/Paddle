@@ -325,10 +325,8 @@ class Completer:
 
     def complete_forward_annotation(self, serial_main_program):
         """ Complete annotation for the partial annotated serial_main_program.
-
         Arguments:
             serial_main_program: partial annotated serial_main_program.
-
         Returns:
             serial_main_program: completed annotated serial_main_program.
         """
@@ -433,117 +431,56 @@ class Completer:
                                                                 op_dist_attr)
                 continue
 
-    if dist_context is None:
-        dist_context = get_default_distributed_context()
+            # complete the annotation of grad op (xxx_grad op or sum op)
+            # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
+            grad_op = ops[idx]
+            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+                # TODO support the case where one forward op corresponding to multiple xxx_grad op
+                forward_op = _get_op_by_id(
+                    ops[:first_backward_op_idx],
+                    dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                assert forward_op is not None
 
-    first_backward_op_idx = -1
-    for idx, op in enumerate(auto_parallel_main_prog.global_block().ops):
-        if int(op.attr('op_role')) == int(
-                int(core.op_proto_and_checker_maker.OpRole.Backward) | int(
-                    core.op_proto_and_checker_maker.OpRole.Loss)):
-            assert op.type == "fill_constant"
-            first_backward_op_idx = idx
-            break
+                if grad_op.type == "concat" and forward_op.type == "split":
+                    forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                        forward_op)
+                    output_var = vars[grad_op.desc.output('Out')[0]]
+                    split_input_var_name = forward_op.input("X")[0]
+                    ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(
+                        split_input_var_name)
+                    ref_mesh = forward_op_dist_attr.process_mesh
 
-    assert first_backward_op_idx >= 0, "No backward procedure found in this program."
+                    grad_op_dist_attr = OperatorDistributedAttribute()
+                    for input_name in grad_op.input_arg_names:
+                        grad_op_dist_attr.set_input_dims_mapping(
+                            input_name, ref_dims_mapping)
 
-    ops = list(auto_parallel_main_prog.global_block().ops)
-    vars = auto_parallel_main_prog.global_block().vars
-    dist_op_context = dist_context.dist_op_context
+                    output_var_dist_attr = TensorDistributedAttribute()
+                    output_var_dist_attr.dims_mapping = ref_dims_mapping
+                    output_var_dist_attr.process_mesh = ref_mesh
+                    dist_context.set_tensor_dist_attr_for_program(
+                        output_var, output_var_dist_attr)
 
-    for idx in range(first_backward_op_idx, len(ops)):
+                    grad_op_dist_attr.set_output_dims_mapping(output_var.name,
+                                                              ref_dims_mapping)
+                    grad_op_dist_attr.process_mesh = ref_mesh
+                    dist_context.set_op_dist_attr_for_program(grad_op,
+                                                              grad_op_dist_attr)
+                    continue
 
-        # complete the initial grad loss op
-        if idx == first_backward_op_idx:
-            assert ops[idx].type == "fill_constant"
-            assert len(
-                ops[idx].input_arg_names
-            ) == 0, "first backward op should has only ONE output, but got [{}]".format(
-                len(ops[idx].input_arg_names))
-            assert len(
-                ops[idx].output_arg_names
-            ) == 1, "first backward op should has only ONE output, but got [{}]".format(
-                len(ops[idx].output_arg_names))
-
-            grad_var = vars[ops[idx].output_arg_names[0]]
-            forward_var_name = _get_forward_varname_from_grad_varname(
-                grad_var.name)
-            forward_var = vars[forward_var_name]
-
-            # TODO complete other attribte for grad var
-            tensor_dist_attr = TensorDistributedAttribute()
-            process_mesh = dist_context.get_tensor_dist_attr_for_program(
-                forward_var).process_mesh
-            dims_mapping = dist_context.get_tensor_dist_attr_for_program(
-                forward_var).dims_mapping
-            tensor_dist_attr.dims_mapping = dims_mapping
-            tensor_dist_attr.process_mesh = process_mesh
-            dist_context.set_tensor_dist_attr_for_program(grad_var,
-                                                          tensor_dist_attr)
-
-            op_dist_attr = OperatorDistributedAttribute()
-            op_dist_attr.process_mesh = process_mesh
-            op_dist_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
-            dist_context.set_op_dist_attr_for_program(ops[idx], op_dist_attr)
-            continue
-
-        # complete the annotation of grad op (xxx_grad op or sum op)
-        # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
-        grad_op = ops[idx]
-        if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
-            # TODO support the case where one forward op corresponding to multiple xxx_grad op
-            forward_op = _get_op_by_id(
-                ops[:first_backward_op_idx],
-                dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
-            assert forward_op is not None
-
-            # fixed rule for split-concate op
-            if grad_op.type == "concat" and forward_op.type == "split":
-                forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                # op dist attr
+                forward_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
                     forward_op)
-                output_var = vars[grad_op.desc.output('Out')[0]]
-                split_input_var_name = forward_op.input("X")[0]
-                ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(
-                    split_input_var_name)
-                ref_mesh = forward_op_dist_attr.process_mesh
-
+                forward_op_process_mesh = forward_op_dist_attr.process_mesh
                 grad_op_dist_attr = OperatorDistributedAttribute()
+                grad_op_dist_attr.process_mesh = forward_op_process_mesh
+
+                # var
                 for input_name in grad_op.input_arg_names:
-                    grad_op_dist_attr.set_input_dims_mapping(input_name,
-                                                             ref_dims_mapping)
-
-                output_var_dist_attr = TensorDistributedAttribute()
-                output_var_dist_attr.dims_mapping = ref_dims_mapping
-                output_var_dist_attr.process_mesh = ref_mesh
-                dist_context.set_tensor_dist_attr_for_program(
-                    output_var, output_var_dist_attr)
-
-                grad_op_dist_attr.set_output_dims_mapping(output_var.name,
-                                                          ref_dims_mapping)
-                grad_op_dist_attr.process_mesh = ref_mesh
-                dist_context.set_op_dist_attr_for_program(grad_op,
-                                                          grad_op_dist_attr)
-                continue
-
-            # op dist attr
-            forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
-                forward_op)
-            forward_op_process_mesh = forward_op_dist_attr.process_mesh
-            grad_op_dist_attr = OperatorDistributedAttribute()
-            grad_op_dist_attr.process_mesh = forward_op_process_mesh
-
-            # var 
-            for input_name in grad_op.input_arg_names:
-                input_var = vars[input_name]
-                ref_dims_mapping = None
-                if "@GRAD" in input_name:
-                    forward_name = _get_forward_varname_from_grad_varname(
-                        input_name)
-                    ref_dims_mapping = forward_op_dist_attr.get_output_dims_mapping(
-                        forward_name)
-                else:
-                    if forward_op_dist_attr.get_input_dims_mapping(input_name):
-                        ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(
+                    input_var = vars[input_name]
+                    ref_dims_mapping = None
+                    if "@GRAD" in input_name:
+                        forward_name = _get_forward_varname_from_grad_varname(
                             input_name)
                         ref_dims_mapping = forward_op_dist_attr.get_output_dims_mapping(
                             forward_name)
