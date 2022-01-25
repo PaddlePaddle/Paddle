@@ -1573,6 +1573,64 @@ PDNode *patterns::LinearAct::operator()(
   }
 }
 
+PDNode *patterns::ElewiseAddMatmulAct::operator()(
+    paddle::framework::ir::PDNode *dout_var,
+    std::unordered_set<std::string> act_grad_types, bool is_first_matmul) {
+  auto *ele_grad_bias_var =
+      pattern->NewNode(ele_grad_bias_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y");
+  auto *ele_add_grad = pattern->NewNode(ele_add_grad_repr())
+                           ->assert_is_op("elementwise_add_grad");
+  auto *ele_grad_dx_var =
+      pattern->NewNode(ele_grad_dx_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("X"));
+  auto *ele_grad_dbias_var =
+      pattern->NewNode(ele_grad_dbias_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"));
+  ele_add_grad->LinksFrom({dout_var, ele_grad_bias_var})
+      .LinksTo({ele_grad_dx_var, ele_grad_dbias_var});
+
+  ele_grad_dx_var->AsIntermediate()->assert_is_op_input("matmul_v2_grad",
+                                                        GradVarName("Out"));
+
+  auto *matmul_grad_x_var = pattern->NewNode(matmul_grad_x_repr())
+                                ->assert_is_op_input("matmul_v2_grad", "X");
+  auto *matmul_grad_w_var = pattern->NewNode(matmul_grad_w_repr())
+                                ->assert_is_op_input("matmul_v2_grad", "Y");
+  auto *matmul_grad =
+      pattern->NewNode(matmul_grad_repr())->assert_is_op("matmul_v2_grad");
+  auto *matmul_grad_dx_var =
+      pattern->NewNode(matmul_grad_dx_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("X"));
+  auto *matmul_grad_dw_var =
+      pattern->NewNode(matmul_grad_dw_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
+  matmul_grad->LinksFrom(
+      {ele_grad_dx_var, matmul_grad_x_var, matmul_grad_w_var});
+  if (is_first_matmul) {
+    matmul_grad->LinksTo({matmul_grad_dw_var});
+  } else {
+    matmul_grad->LinksTo({matmul_grad_dx_var, matmul_grad_dw_var});
+  }
+
+  if (!is_first_matmul && act_grad_types.size() > 0) {
+    matmul_grad_dx_var->AsIntermediate()->assert_is_ops_input(
+        act_grad_types, GradVarName("Out"));
+    auto *act_grad_x_var = matmul_grad_x_var;
+    auto *act_grad =
+        pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
+    auto *act_grad_dx_var =
+        pattern->NewNode(act_grad_dx_repr())
+            ->assert_is_ops_output(act_grad_types, GradVarName("X"));
+
+    act_grad->LinksFrom({matmul_grad_dx_var, act_grad_x_var})
+        .LinksTo({act_grad_dx_var});
+    return act_grad;
+  } else {
+    return matmul_grad;
+  }
+}
+
 // conv_type: conv2d, conv3d, conv2d_transpose
 PDNode *patterns::ConvBias::operator()(
     paddle::framework::ir::PDNode *conv_input, std::string conv_type) {

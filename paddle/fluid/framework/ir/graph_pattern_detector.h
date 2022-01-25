@@ -864,7 +864,7 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
 };
 
 // The following patterns are used to fuse linear and act (ReLu or GeLU)
-// formula: act(F.linear(x)) ->
+// formula: act(F.linear(x))
 // op: matmul_v2 + elementwise_add + act
 // named nodes: matmul, elementwise_add, act
 //              matmul_w, matmul_out
@@ -873,7 +873,7 @@ struct LinearAct : public PatternBase {
   LinearAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "linear_act") {}
 
-  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts,
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> act_types,
                      bool with_grad_link);
 
   // declare operator node's name
@@ -886,6 +886,36 @@ struct LinearAct : public PatternBase {
   PATTERN_DECL_NODE(elewise_add_out);
   PATTERN_DECL_NODE(ele_bias);
   PATTERN_DECL_NODE(act_out);
+};
+
+// The following patterns are used to fuse linear_grad and act_grad (ReLu or
+// GeLU)
+// formula: the backward of F.linear( act(x) )
+// op: elementwise_add_grad + matmul_v2_grad + act_grad
+// named nodes: ele_add_grad, matmul_grad, act_grad
+//              ele_grad_bias, ele_grad_dx, ele_grad_dbias
+//              matmul_grad_x, matmul_grad_dx, matmul_grad_dx
+//              matmul_grad_dw, act_grad_dx
+struct ElewiseAddMatmulAct : public PatternBase {
+  ElewiseAddMatmulAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elewiseadd_matmul_act") {}
+
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> act_grad_types,
+                     bool is_first_matmul);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad);
+  PATTERN_DECL_NODE(matmul_grad);
+  PATTERN_DECL_NODE(act_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(ele_grad_bias);
+  PATTERN_DECL_NODE(ele_grad_dx);
+  PATTERN_DECL_NODE(ele_grad_dbias);
+  PATTERN_DECL_NODE(matmul_grad_x);
+  PATTERN_DECL_NODE(matmul_grad_w);
+  PATTERN_DECL_NODE(matmul_grad_dx);
+  PATTERN_DECL_NODE(matmul_grad_dw);
+  PATTERN_DECL_NODE(act_grad_dx);
 };
 
 // Conv with Elementwise_add as bias
