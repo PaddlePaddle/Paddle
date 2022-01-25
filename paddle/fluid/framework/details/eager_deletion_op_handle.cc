@@ -107,6 +107,21 @@ void EagerDeletionOpHandle::CallOnce() {
 
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
+static bool CanBeErased(ir::MemOptVarInfo *var_info) {
+  if (var_info->IsSkippedAllMemoryOptimization() ||
+      !var_info->DecreaseRefCnt()) {
+    return false;
+  }
+  auto parent_info = var_info->ParentHolder();
+  if (parent_info && (parent_info->IsSkippedAllMemoryOptimization() ||
+                      !parent_info->DecreaseRefCnt())) {
+    VLOG(4) << "Skip eager_deletion on var:" << var_info->Name()
+            << " due to parent_info";
+    return false;
+  }
+  return true;
+}
+
 void EagerDeletionOpHandle::RunImpl() {
   if (vars_.size() != var_infos_.size() || is_variant_scope_) {
     vars_.clear();
@@ -117,8 +132,7 @@ void EagerDeletionOpHandle::RunImpl() {
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
     auto *var_info = var_infos_[i];
-    if (var_info->IsSkippedAllMemoryOptimization() ||
-        !var_info->DecreaseRefCnt()) {
+    if (!CanBeErased(var_info)) {
       VLOG(4) << "skip memory optimization with var: " << var_info->Name();
       continue;
     }

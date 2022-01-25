@@ -285,6 +285,12 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   auto recurrent_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
   recurrent_op_eager_deletion_pass->Apply(graph);
+
+  auto share_mem_opt_info_to_subgraph_pass =
+      ir::PassRegistry::Instance().Get("share_mem_opt_info_to_subgraph_pass");
+  share_mem_opt_info_to_subgraph_pass->SetNotOwned(kMemOptVarInfoMapList,
+                                                   &var_infos);
+  share_mem_opt_info_to_subgraph_pass->Apply(graph);
 }
 
 }  // namespace ir
@@ -300,3 +306,4 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
 USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
+USE_PASS(share_mem_opt_info_to_subgraph_pass);
