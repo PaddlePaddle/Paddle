@@ -112,11 +112,11 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     }                                                                      \
   } while (0)
 
+#ifdef PADDLE_WITH_CUDA
     bool can_call_1024_kernel = false;
     if (feature_size == 1024 && scale != nullptr && bias != nullptr) {
       can_call_1024_kernel = true;
     }
-
     if (can_call_1024_kernel) {
       const int WARPS_M = 4;
       const int WARPS_N = 1;
@@ -145,12 +145,15 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
             y_data);
       }
     } else {
+#endif
       if (is_scale_bias_same_dtype_with_x) {
         PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
       } else {
         PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
       }
+#ifdef PADDLE_WITH_CUDA
     }
+#endif
 
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
   }

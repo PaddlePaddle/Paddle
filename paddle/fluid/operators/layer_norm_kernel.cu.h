@@ -172,6 +172,7 @@ __inline__ __device__ half rsqrt_(const half val) {
 }
 #endif
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T, typename U, typename ScaleT = U, int VecSize = 8,
           int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
           int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
@@ -281,6 +282,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     }
   }
 }
+#endif
 
 template <typename T, typename U, bool ScaleBiasWithSameTypeX>
 using LayerNormScaleBiasT =
