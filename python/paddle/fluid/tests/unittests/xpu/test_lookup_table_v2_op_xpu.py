@@ -264,15 +264,15 @@ class XPUTestLookupTableIsSparse(XPUOpTestWrapper):
 
     class TestLookupTableIsSparse3(TestLookupTableIsSparse):
         def set_shape(self):
-            return ((7, 3), (10, 10))
+            return ((13, 9), (52, 9))
 
     class TestLookupTableIsSparse4(TestLookupTableIsSparse):
         def set_shape(self):
-            return ((2, 5), (10, 10, 1))
+            return ((47, 1), (10, 10, 1))
 
     class TestLookupTableIsSparse5(TestLookupTableIsSparse):
         def set_shape(self):
-            return (10, (100, 100, 1))
+            return (10, (512, 127, 1))
 
 
 class TestLookupTableApi(unittest.TestCase):

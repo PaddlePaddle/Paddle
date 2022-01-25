@@ -88,16 +88,23 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     }
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+
     auto *ids_t = context.Input<LoDTensor>("Ids");
+    int64_t ids_numel = ids_t->numel();
+    PADDLE_ENFORCE_EQ(
+        ids_numel <= std::numeric_limits<int32_t>::max(), true,
+        platform::errors::OutOfRange(
+            "Number of ids greater than int32_t::max , please check "
+            "number of ids in LookupTableV2GradXPUKernel."));
+
+    std::vector<int64_t> ids;
+    ids.resize(ids_numel);
+
     bool is_sparse = context.Attr<bool>("is_sparse");
 
     if (is_sparse) {
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
-
-      int64_t ids_num = ids_t->numel();
-      std::vector<int64_t> ids;
-      ids.resize(ids_num);
 
       framework::SelectedRows &tmp_d_table = *d_table;
       framework::TensorToVector(*ids_t, dev_ctx, &ids);
@@ -105,7 +112,7 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
       tmp_d_table.set_rows(ids);
       tmp_d_table.set_height(table_dim[0]);
       auto *d_table_value = tmp_d_table.mutable_value();
-      d_table_value->Resize({ids_num, table_dim[1]});
+      d_table_value->Resize({ids_numel, table_dim[1]});
       d_table_value->mutable_data<T>(context.GetPlace());
 
       auto *d_output_data = d_output->data<T>();
@@ -127,19 +134,10 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(r,
                                   "lookup_table_v2_op_grad when sparse=True");
     } else {
-      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
 
-      int64_t ids_numel = ids_t->numel();
-      PADDLE_ENFORCE_EQ(
-          ids_numel <= std::numeric_limits<int32_t>::max(), true,
-          platform::errors::OutOfRange(
-              "Number of ids greater than int32_t::max , please check "
-              "number of ids in LookupTableV2GradXPUKernel."));
-
-      auto &dev_ctx = context.template device_context<DeviceContext>();
       const int64_t *ids_data = ids_t->data<int64_t>();
-      const T *d_output_data = d_output_t->data<T>();
+      const T *d_output_data = d_output->data<T>();
       T *d_table_data = d_table_t->mutable_data<T>(context.GetPlace());
       int xm = d_table_t->dims()[0];
       int ym = static_cast<int>(ids_numel);
