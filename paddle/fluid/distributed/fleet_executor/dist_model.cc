@@ -497,8 +497,8 @@ bool DistModel::PrepareFeedAndFetch() {
     }
     if (IsPPLastStage(config_)) {
       if (fetches_.size() == 0) {
-        LOG(ERROR) << "Fetch op is needed for the last pp stage.";
-        return false;
+        LOG(WARNING) << "No fetch op was found in the last pp stage. Make sure "
+                        "the result has been sent to frist pp stage.";
       }
     } else {
       if (fetches_.size() > 0) {
