@@ -39,6 +39,10 @@ void MatmulInferMeta(const MetaTensor& x,
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          int axis,
                           MetaTensor out);
+
+void ElementwiseRawInferMeta(const MetaTensor& x_meta,
+                             const MetaTensor& y_meta,
+                             int axis,
+                             MetaTensor out);
 }  // namespace pten

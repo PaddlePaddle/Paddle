@@ -67,4 +67,9 @@ void ReduceInferMeta(const MetaTensor& x,
                      bool keep_dim,
                      MetaTensor out);
 
+void SumInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  MetaTensor out);
 }  // namespace pten

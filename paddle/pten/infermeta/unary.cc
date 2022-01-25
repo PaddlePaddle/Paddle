@@ -233,6 +233,17 @@ void ReshapeInferMeta(const MetaTensor& x,
   InferMetaFromVecValue(x, shape.GetData(), out);
 }
 
+/*  Why not use ReduceInferMeta directly?
+    Because we need make InferMetaFunction's args follow the design of api.yaml
+*/
+void SumInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  MetaTensor out) {
+  ReduceInferMeta(x, axis, keep_dim, dtype, std::move(out));
+}
+
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,

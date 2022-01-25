@@ -109,6 +109,13 @@ class ShardingOptimizerStage2(Optimizer):
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
                                                       paddle.get_device(),
                                                       self.group)
+            if self._optim._parameter_list and isinstance(
+                    self._optim._parameter_list[0], dict):
+                for item in self._optim._param_groups:
+                    if "grad_clip" in item.keys():
+                        item["grad_clip"] = ShardingClipGrad(
+                            self._optim._grad_clip,
+                            paddle.get_device(), self.group)
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"

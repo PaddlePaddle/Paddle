@@ -50,8 +50,8 @@ template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
-               bool keep_dim,
                DataType out_dtype,
+               bool keep_dim,
                DenseTensor* out);
 
 template <typename T, typename Context>
@@ -111,7 +111,7 @@ DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
   auto dense_out = pten::Empty<T, Context>(dev_ctx);
-  ElementwiseInferMeta(x, y, -1, &dense_out);
+  ElementwiseInferMeta(x, y, &dense_out);
   AddKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -121,7 +121,7 @@ DenseTensor Subtract(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
   auto dense_out = pten::Empty<T, Context>(dev_ctx);
-  ElementwiseInferMeta(x, y, -1, &dense_out);
+  ElementwiseInferMeta(x, y, &dense_out);
   SubtractKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -131,7 +131,7 @@ DenseTensor Divide(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y) {
   auto dense_out = pten::Empty<T, Context>(dev_ctx);
-  ElementwiseInferMeta(x, y, -1, &dense_out);
+  ElementwiseInferMeta(x, y, &dense_out);
   DivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -141,7 +141,7 @@ DenseTensor Multiply(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
   auto dense_out = pten::Empty<T, Context>(dev_ctx);
-  ElementwiseInferMeta(x, y, -1, &dense_out);
+  ElementwiseInferMeta(x, y, &dense_out);
   MultiplyKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -164,9 +164,8 @@ DenseTensor Sum(const Context& dev_ctx,
                 DataType dtype,
                 bool keep_dim) {
   auto dense_out = pten::Empty<T, Context>(dev_ctx);
-  ReduceInferMeta(x, axis, keep_dim, dtype, &dense_out);
-
-  SumKernel<T, Context>(dev_ctx, x, axis, keep_dim, dtype, &dense_out);
+  SumInferMeta(x, axis, dtype, keep_dim, &dense_out);
+  SumKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &dense_out);
   return dense_out;
 }
 

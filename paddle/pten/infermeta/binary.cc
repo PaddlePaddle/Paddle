@@ -134,8 +134,14 @@ void MatmulInferMeta(const MetaTensor& x,
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          int axis,
                           MetaTensor out) {
+  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+}
+
+void ElementwiseRawInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             int axis,
+                             MetaTensor out) {
   if (x.dims() != y.dims()) {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
