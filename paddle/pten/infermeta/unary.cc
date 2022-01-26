@@ -12,11 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/unary.h"
+
 #include <set>
 
+#include "paddle/pten/core/infermeta_utils.h"
+
 namespace pten {
+
+void UnchangedInferMetaNew(MetaConfig config,
+                           const MetaTensor& x,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
 
 DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {
   return x_meta;
