@@ -47,11 +47,29 @@ struct DeviceContext::Impl {
     zero_allocator_ = allocator;
   }
 
-  const Allocator* GetDeviceAllocator() const { return device_allocator_; }
+  const Allocator& GetDeviceAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        device_allocator_,
+        pten::errors::InvalidArgument("Required device_allocator_ shall not be "
+                                      "nullptr, but received nullptr."));
+    return *device_allocator_;
+  }
 
-  const Allocator* GetHostAllocator() const { return host_allocator_; }
+  const Allocator& GetHostAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        host_allocator_,
+        pten::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                      "nullptr, but received nullptr."));
+    return *host_allocator_;
+  }
 
-  const Allocator* GetZeroAllocator() const { return zero_allocator_; }
+  const Allocator& GetZeroAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        zero_allocator_,
+        pten::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                      "nullptr, but received nullptr."));
+    return *zero_allocator_;
+  }
 
   void* Alloc(TensorBase* tensor,
               DataType dtype = DataType::UNDEFINED,
@@ -85,8 +103,7 @@ struct DeviceContext::Impl {
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
     }
-    auto* allocator =
-        tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
+    auto* allocator = tensor->numel() == 0 ? zero_allocator_ : host_allocator_;
     return tensor->AllocateFrom(
         const_cast<Allocator*>(allocator), dtype, requested_size);
   }
@@ -106,9 +123,9 @@ struct DeviceContext::Impl {
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
-  impl_->SetHostAllocator(other.GetHostAllocator());
-  impl_->SetDeviceAllocator(other.GetDeviceAllocator());
-  impl_->SetZeroAllocator(other.GetZeroAllocator());
+  impl_->SetHostAllocator(&other.GetHostAllocator());
+  impl_->SetDeviceAllocator(&other.GetDeviceAllocator());
+  impl_->SetZeroAllocator(&other.GetZeroAllocator());
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -121,7 +138,7 @@ void DeviceContext::SetDeviceAllocator(const Allocator* allocator) {
   impl_->SetDeviceAllocator(allocator);
 }
 
-const Allocator* DeviceContext::GetDeviceAllocator() const {
+const Allocator& DeviceContext::GetDeviceAllocator() const {
   return impl_->GetDeviceAllocator();
 }
 
@@ -129,7 +146,7 @@ void DeviceContext::SetHostAllocator(const Allocator* allocator) {
   impl_->SetHostAllocator(allocator);
 }
 
-const Allocator* DeviceContext::GetHostAllocator() const {
+const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
@@ -137,7 +154,7 @@ void DeviceContext::SetZeroAllocator(const Allocator* allocator) {
   impl_->SetZeroAllocator(allocator);
 }
 
-const Allocator* DeviceContext::GetZeroAllocator() const {
+const Allocator& DeviceContext::GetZeroAllocator() const {
   return impl_->GetZeroAllocator();
 }
 

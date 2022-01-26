@@ -60,44 +60,44 @@ class DeviceContext {
    *
    * @param allocator
    */
-  virtual void SetDeviceAllocator(const Allocator*);
+  void SetDeviceAllocator(const Allocator*);
 
   /**
    * @brief Set the host Allocator object.
    *
    * @param allocator
    */
-  virtual void SetHostAllocator(const Allocator*);
+  void SetHostAllocator(const Allocator*);
 
   /**
   * @brief Set the zero-size Allocator object.
   *
   * @param allocator
   */
-  virtual void SetZeroAllocator(const Allocator*);
+  void SetZeroAllocator(const Allocator*);
 
   /**
    * @brief Get the const Allocator object.
    *
    * @return Allocator
    */
-  virtual const Allocator* GetDeviceAllocator() const;
+  const Allocator& GetDeviceAllocator() const;
 
   /**
    * @brief Get the const device-related Allocator object.
    *
    * @return Allocator
    */
-  virtual const Allocator* GetHostAllocator() const;
+  const Allocator& GetHostAllocator() const;
 
-  virtual const Allocator* GetZeroAllocator() const;
+  const Allocator& GetZeroAllocator() const;
 
   /**
    * @brief Allocate device memory for tensor.
    */
-  virtual void* Alloc(TensorBase*,
-                      DataType dtype = DataType::UNDEFINED,
-                      size_t requested_size = 0) const;
+  void* Alloc(TensorBase*,
+              DataType dtype = DataType::UNDEFINED,
+              size_t requested_size = 0) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor, size_t requested_size = 0) const;
@@ -105,9 +105,9 @@ class DeviceContext {
   /**
    * @brief Allocate host memory for tensor.
    */
-  virtual void* HostAlloc(TensorBase* tensor,
-                          DataType dtype = DataType::UNDEFINED,
-                          size_t requested_size = 0) const;
+  void* HostAlloc(TensorBase* tensor,
+                  DataType dtype = DataType::UNDEFINED,
+                  size_t requested_size = 0) const;
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
