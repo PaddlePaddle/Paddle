@@ -123,6 +123,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    platform::RecordEvent op_type_record_event("%s pybind_imperative_func");
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -371,8 +372,8 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
-      inplace_strategy_str, outs_initializer, ins_initializer,
+      OP_FUNCTION_TEMPLATE, func_name, op_type, ins_cast_str, op_type,
+      input_args_num, inplace_strategy_str, outs_initializer, ins_initializer,
       ins_initializer_with_null + outs_initializer_with_null +
           view_strategy_str,
       op_type, inplace_mapping_str, return_str);
@@ -461,6 +462,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
+                                   "\"paddle/fluid/platform/profiler.h\"",
                                    "\"pybind11/detail/common.h\"",
                                    "<Python.h>"};
 

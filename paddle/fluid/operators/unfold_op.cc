@@ -143,22 +143,18 @@ class UnfoldOp : public framework::OperatorWithKernel {
             "but recieved dilations_height: %d dilations_width: %d.",
             dilations[0], dilations[1]));
 
-    bool contain_unknown_dim = framework::contain_unknown_dim(in_dims);
-    bool check = ctx->IsRuntime() || !contain_unknown_dim;
-    if (check) {
-      std::vector<int> out_dims;
-      out_dims.push_back(in_dims[0]);
+    std::vector<int> out_dims;
+    out_dims.push_back(in_dims[0]);
+    int output_channels = in_dims[1] * kernel_sizes[0] * kernel_sizes[1];
+    out_dims.push_back(output_channels);
 
-      int output_channels = in_dims[1] * kernel_sizes[0] * kernel_sizes[1];
-      out_dims.push_back(output_channels);
-
-      int output_height =
-          CalcOutputSize(in_dims[2], kernel_sizes[0], dilations[0], paddings[0],
-                         paddings[2], strides[0]);
-      int output_width =
-          CalcOutputSize(in_dims[3], kernel_sizes[1], dilations[1], paddings[1],
-                         paddings[3], strides[1]);
-      // check output height and width
+    int output_height =
+        CalcOutputSize(in_dims[2], kernel_sizes[0], dilations[0], paddings[0],
+                       paddings[2], strides[0]);
+    int output_width = CalcOutputSize(in_dims[3], kernel_sizes[1], dilations[1],
+                                      paddings[1], paddings[3], strides[1]);
+    if (ctx->IsRuntime()) {
+      // only check output height and width in runtime
       PADDLE_ENFORCE_GT(
           output_height, 0,
           platform::errors::InvalidArgument(
@@ -179,11 +175,10 @@ class UnfoldOp : public framework::OperatorWithKernel {
               in_dims[2], in_dims[3], kernel_sizes[0], kernel_sizes[1],
               strides[0], strides[1], dilations[0], dilations[1], output_height,
               output_width));
-      int output_col_length = output_height * output_width;
-      out_dims.push_back(output_col_length);
-
-      ctx->SetOutputDim("Y", framework::make_ddim(out_dims));
     }
+    int output_col_length = output_height * output_width;
+    out_dims.push_back(output_col_length);
+    ctx->SetOutputDim("Y", framework::make_ddim(out_dims));
   }
 
  protected:

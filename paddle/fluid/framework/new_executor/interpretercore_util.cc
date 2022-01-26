@@ -425,13 +425,14 @@ void build_op_func_list(const platform::Place& place,
       }
 
       if (run_pten_kernel) {
-        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx);
+        pten::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx,
+                                               &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
-        op_func_node.pt_kernel_context_ = op_with_kernel->PtenKernelContext();
 
-        (*op_func_node.pt_kernel_)(op_func_node.pt_kernel_context_);
-        op_with_kernel->WriteBackToOutputs(&runtime_context);
-        op_func_node.pt_kernel_context_->ClearData();
+        (*op_func_node.pt_kernel_)(&pt_kernel_context);
+        op_with_kernel->WriteBackToOutputs(&runtime_context,
+                                           &pt_kernel_context);
       } else {
         op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
         op_func_node.kernel_func_(exec_ctx);
@@ -467,8 +468,8 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<SelectedRows>()
+      } else if (var->IsType<pten::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<pten::SelectedRows>()
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {

@@ -152,7 +152,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *table = context.Input<LoDTensor>("W");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *d_table =
+          context.Output<pten::SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
@@ -162,7 +163,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
-      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+      auto gpu_place = context.GetPlace();
 
       if (ids->type() == framework::proto::VarType::INT32) {
         InputTypeCovert<

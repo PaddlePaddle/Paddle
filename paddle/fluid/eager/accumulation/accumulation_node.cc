@@ -18,7 +18,6 @@
 
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"

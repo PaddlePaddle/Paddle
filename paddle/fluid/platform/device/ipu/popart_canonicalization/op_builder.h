@@ -14,14 +14,15 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device/ipu/common.h"
+#include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+
+using paddle::framework::AttributeMap;
+using paddle::framework::Attribute;
 
 namespace paddle {
 namespace platform {
 namespace ipu {
-
-using paddle::framework::AttributeMap;
 
 template <typename T>
 AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
@@ -56,7 +57,7 @@ Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                   const std::vector<Node *> &outputs,
                   const AttributeMap &attrs);
 
-// otype is proto::VarType::Type
+// otype is framework::proto::VarType::Type
 Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs, const int otype);
 

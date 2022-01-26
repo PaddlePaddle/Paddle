@@ -44,8 +44,10 @@ void IndexSampleInner(const framework::ExecutionContext &context,
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
-  TensorToVector(input, context.device_context(), &input_vec);
-  TensorToVector(index, context.device_context(), &index_vec);
+  paddle::framework::TensorToVector(input, context.device_context(),
+                                    &input_vec);
+  paddle::framework::TensorToVector(index, context.device_context(),
+                                    &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
@@ -117,8 +119,10 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
                           LoDTensor *x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
-  TensorToVector(out_grad, context.device_context(), &out_grad_vec);
-  TensorToVector(index, context.device_context(), &index_vec);
+  paddle::framework::TensorToVector(out_grad, context.device_context(),
+                                    &out_grad_vec);
+  paddle::framework::TensorToVector(index, context.device_context(),
+                                    &index_vec);
 
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();

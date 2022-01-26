@@ -18,7 +18,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace paddle {
 namespace platform {
@@ -32,18 +32,8 @@ extern void* mklrt_dso_handle;
  * (for each function) to dynamic load mkldfti routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_MKLRT_WRAP(__name)                                    \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using mklrtFunc = decltype(&::__name);                               \
-      std::call_once(mklrt_dso_flag, []() {                                \
-        mklrt_dso_handle = paddle::platform::dynload::GetMKLRTDsoHandle(); \
-      });                                                                  \
-      static void* p_##__name = dlsym(mklrt_dso_handle, #__name);          \
-      return reinterpret_cast<mklrtFunc>(p_##__name)(args...);             \
-    }                                                                      \
-  };                                                                       \
+#define DYNAMIC_LOAD_MKLRT_WRAP(__name)                       \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 // mkl_dfti.h has a macro that shadows the function with the same name

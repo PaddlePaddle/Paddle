@@ -33,11 +33,13 @@ static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
   const float* tensor_data = tensor->data<float>();
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
   if (platform::is_xpu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
   return tensor_data[0];
@@ -431,8 +433,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -519,8 +521,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
             beta2 * beta2_pow->data<T>()[0];
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -535,8 +537,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {

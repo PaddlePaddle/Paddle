@@ -99,7 +99,12 @@ std::pair<size_t, size_t> EagerUtils::OutRankInfo(
 
 std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
     const egr::EagerTensor& target) {
-  return unsafe_autograd_meta(target)->GetMutableGradNode();
+  auto* meta = nullable_autograd_meta(target);
+  if (meta) {
+    return meta->GetMutableGradNode();
+  } else {
+    return nullptr;
+  }
 }
 
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,

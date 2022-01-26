@@ -16,21 +16,18 @@
 
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/platform/device/ipu/popart_canonicalization/post_canonicalization.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-
-using framework::ir::Graph;
-using framework::ir::Node;
-using platform::ipu::SymbolHandler;
 
 void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter PopartCanonicalizationPass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
+  auto custom_ops = Get<std::unordered_set<std::string>>("custom_ops");
+  std::vector<std::string> missing_ops;
   auto nodes = graph->Nodes();
   for (auto* node : nodes) {
     if (!node->IsOp()) {
@@ -40,20 +37,39 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     auto op_type = op->Type();
 
     ir::Node* new_node = nullptr;
-    SymbolHandler handler = platform::ipu::GetHandler(op_type);
+    platform::ipu::SymbolHandler handler = platform::ipu::GetHandler(op_type);
+    if (!handler && !custom_ops.empty()) {
+      if (custom_ops.count(op_type)) {
+        VLOG(10) << "Found custom op: " << op_type;
+        handler = platform::ipu::GetHandler("custom_op");
+      }
+    }
+
     if (handler) {
       VLOG(11) << "Raw Paddle Node:";
       VLOG(11) << node->Op()->Proto()->DebugString();
       new_node = handler(graph, node);
-      VLOG(11) << "Post Popart Node:";
-      VLOG(11) << new_node->Op()->Proto()->DebugString();
-
-      platform::ipu::ClearNode(node);
-      graph->RemoveNode(node);
+      if (new_node) {
+        VLOG(11) << "Post Popart Node:";
+        VLOG(11) << new_node->Op()->Proto()->DebugString();
+        platform::ipu::ClearNode(node);
+        graph->RemoveNode(node);
+      }
     } else {
-      LOG(ERROR) << "Can not find OpHandler for op_type: " << op_type;
+      missing_ops.push_back(op_type);
     }
   }
+
+  if (!missing_ops.empty()) {
+    LOG(ERROR) << "Can not find OpHandler for op_type: ";
+    for (auto& op_type : missing_ops) {
+      LOG(ERROR) << op_type;
+    }
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Found unimplemented op_handler(s) for IPU"));
+  }
+
+  // post popart_canonicalization
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
@@ -65,4 +81,5 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(popart_canonicalization_pass,
-              paddle::framework::ir::PopartCanonicalizationPass);
+              paddle::framework::ir::PopartCanonicalizationPass)
+    .DefaultPassAttr("custom_ops", new std::unordered_set<std::string>{});

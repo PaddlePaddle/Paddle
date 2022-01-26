@@ -45,7 +45,6 @@ class SplitNPUKernel : public framework::OpKernel<T> {
     }
 
     std::vector<Tensor> outputs;
-    auto place = ctx.GetPlace();
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
       outputs.push_back(*outs[j]);

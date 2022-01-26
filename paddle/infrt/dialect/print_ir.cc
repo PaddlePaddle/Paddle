@@ -11,26 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include <llvm/ADT/Optional.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/ScopedPrinter.h>
+#include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/raw_ostream.h>
+#include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/AsmState.h>
+#include <mlir/IR/Block.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/MLIRContext.h>
+#include <mlir/IR/Operation.h>
+#include <mlir/IR/Region.h>
+#include <mlir/IR/Verifier.h>
+#include <mlir/Parser.h>
+#include <mlir/Pass/PassManager.h>
+#include <mlir/Support/LogicalResult.h>
+#include <mlir/Transforms/Passes.h>
 #include <iostream>
 
-#include "llvm/ADT/Optional.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/ScopedPrinter.h"
-#include "llvm/Support/raw_os_ostream.h"
-#include "llvm/Support/raw_ostream.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
-#include "mlir/IR/AsmState.h"
-#include "mlir/IR/Block.h"
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/IR/Module.h"
-#include "mlir/IR/Operation.h"
-#include "mlir/IR/Region.h"
-#include "mlir/IR/Verifier.h"
-#include "mlir/Parser.h"
-#include "mlir/Pass/PassManager.h"
-#include "mlir/Support/LogicalResult.h"
-#include "mlir/Transforms/Passes.h"
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
 
@@ -75,8 +74,8 @@ void printOperation(mlir::Operation *op, int indent) {
   if (!op->getAttrs().empty()) {
     printIndent(indent) << op->getAttrs().size() << " attributes:\n";
     for (mlir::NamedAttribute attr : op->getAttrs()) {
-      printIndent(indent + 1) << "- {" << attr.first << " : " << attr.second
-                              << "}\n";
+      printIndent(indent + 1) << "- {" << attr.getName() << " : "
+                              << attr.getValue() << "}\n";
     }
   }
 
@@ -114,17 +113,15 @@ int main(int argc, char **argv) {
   mlir::registerPassManagerCLOptions();
   cl::ParseCommandLineOptions(argc, argv, "mlir demo");
 
-  mlir::MLIRContext *context = infrt::Global::getMLIRContext();
-  // context->allowUnregisteredDialects();
-  auto &registry = context->getDialectRegistry();
-  infrt::RegisterCinnDialects(registry);
-
+  mlir::DialectRegistry registry;
+  infrt::registerCinnDialects(registry);
+  mlir::MLIRContext context(registry);
   // mlir will verify module automatically after parsing.
   // https://github.com/llvm/llvm-project/blob/38d18d93534d290d045bbbfa86337e70f1139dc2/mlir/lib/Parser/Parser.cpp#L2051
   // mlir::OwningModuleRef module_ref = mlir::parseSourceString(mlir_source,
   // context);
   mlir::OwningModuleRef module_ref =
-      mlir::parseSourceFile(inputFilename, context);
+      mlir::parseSourceFile(inputFilename, &context);
   std::cout << "----------print IR Structure begin----------" << std::endl;
   printOperation(module_ref->getOperation(), 0);
   std::cout << "----------print IR Structure end----------" << std::endl;

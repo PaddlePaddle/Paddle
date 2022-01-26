@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/pten/common/layout.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/core/ddim.h"
 
 // Note: mixed_vector include many header now, LoD will be
 // used on CUDA device? Can we use small_vector here?
@@ -30,7 +30,7 @@ limitations under the License. */
 
 namespace pten {
 
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.

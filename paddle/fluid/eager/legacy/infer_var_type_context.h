@@ -26,7 +26,6 @@
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
 
 namespace egr {
 namespace legacy {
@@ -136,6 +135,10 @@ class TensorRuntimeInferVarTypeContext
     switch (type) {
       case paddle::framework::proto::VarType::LOD_TENSOR: {
         out->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        break;
+      }
+      case paddle::framework::proto::VarType::SELECTED_ROWS: {
+        out->MutableVar()->GetMutable<pten::SelectedRows>();
         break;
       }
       default: {

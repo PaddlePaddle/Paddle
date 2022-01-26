@@ -315,6 +315,19 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
         self.dtype = np.float32
 
 
+class TestMKLDNNMish(TestActivation):
+    def setUp(self):
+        self.op_type = "mish"
+        self.dtype = np.float32
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = x * np.tanh(np.log(1 + np.exp(x)))
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
 class TestMKLDNNSigmoidDim4(TestSigmoid):
     def setUp(self):
         super(TestMKLDNNSigmoidDim4, self).setUp()

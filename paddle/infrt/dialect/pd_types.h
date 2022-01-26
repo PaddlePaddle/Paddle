@@ -18,12 +18,11 @@
 
 #pragma once
 
-#include "mlir/IR/Diagnostics.h"
-#include "mlir/IR/Location.h"
-#include "mlir/IR/Operation.h"
-#include "mlir/IR/StandardTypes.h"
-#include "mlir/IR/TypeUtilities.h"
-#include "mlir/IR/Types.h"
+#include <mlir/IR/Diagnostics.h>
+#include <mlir/IR/Location.h>
+#include <mlir/IR/Operation.h>
+#include <mlir/IR/TypeUtilities.h>
+#include <mlir/IR/Types.h>
 
 namespace mlir {
 namespace PD {

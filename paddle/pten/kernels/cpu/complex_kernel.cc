@@ -19,15 +19,15 @@
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
-PT_REGISTER_CTX_KERNEL(conj,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::ConjKernel,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>,
-                       float,
-                       double,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(conj,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ConjKernel,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

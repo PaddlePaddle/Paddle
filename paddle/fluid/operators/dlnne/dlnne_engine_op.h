@@ -272,8 +272,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       fluid_t->Resize(framework::make_ddim(out_shapes[bind_index]));
 
       int32_t dtype;
-      output_buffers[bind_index] = fluid_t->mutable_data<float>(
-          BOOST_GET_CONST(platform::CPUPlace, dev_place));
+      output_buffers[bind_index] = fluid_t->mutable_data<float>(dev_place);
       dtype = 0;
       cpu_output_buffers[bind_index] =
           output_buffers[bind_index];  // malloc(data_bytes);

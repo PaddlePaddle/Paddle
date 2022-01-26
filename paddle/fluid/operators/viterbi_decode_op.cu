@@ -66,20 +66,23 @@ struct BinaryOperation<platform::CUDADeviceContext, BinaryFunctor, T> {
                   const Tensor& rhs, Tensor* output) {
     std::vector<const Tensor*> ins{&lhs, &rhs};
     std::vector<Tensor*> outs{output};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, -1, BinaryFunctor<T>());
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(dev_ctx, ins, &outs, -1,
+                                                      BinaryFunctor<T>());
   }
 };
 
-template <template <typename T> typename CompareFunctor, typename T>
+template <template <typename InT, typename OutT> typename CompareFunctor,
+          typename T>
 struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
                   const Tensor& rhs, Tensor* mask) {
     std::vector<const Tensor*> ins = {&lhs, &rhs};
     std::vector<Tensor*> outs = {mask};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, T>(
-        dev_ctx, ins, &outs, CompareFunctor<int64_t>());
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kBinary, int64_t, T>(dev_ctx, ins, &outs,
+                                              CompareFunctor<int64_t, T>());
   }
 };
 
