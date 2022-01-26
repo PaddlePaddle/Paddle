@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/host_context/paddle-mlir.h"
+#include "paddle/infrt/host_context/paddle_mlir.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
@@ -376,10 +376,4 @@ bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
     default:
       return false;
   }
-}
-
-int main(int argc, char **argv) {
-  MLIRModelGenImpl myGen;
-  auto module_ = myGen.ImportPaddleModel("./model");
-  module_.dump();
 }
