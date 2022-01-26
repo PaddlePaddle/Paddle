@@ -76,8 +76,12 @@ and 255.
         ",\"gray\" , \"rgb\" .")
         .SetDefault("unchanged");
     AddAttr<int>("local_rank",
-                 "(int64_t)"
+                 "(int)"
                  "The index of the op to start execution");
+    AddAttr<int64_t>("program_id",
+                     "(int64_t)"
+                     "The unique hash id used as cache key for "
+                     "decode thread pool");
   }
 };
 

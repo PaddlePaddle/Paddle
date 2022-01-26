@@ -16,6 +16,7 @@
 #include "paddle/fluid/operators/data/data_reader_op.h"
 #include "paddle/fluid/operators/data/nvjpeg_decoder.h"
 #include "paddle/fluid/operators/data/map_runner.h"
+#include "paddle/fluid/operators/data/pipeline.h"
 
 
 namespace paddle {
@@ -24,21 +25,49 @@ namespace data {
 
 extern NvjpegDecoderThreadPool* decode_pool;
 
-void ShutDownDataLoader() {
-  LOG(ERROR) << "ShutDownDataLoader enter";
+void ShutDownAllDataLoaders() {
+  LOG(ERROR) << "ShutDownAllDataLoaders enter";
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDown();
-  LOG(ERROR) << "ShutDownDataLoader reader_wrapper shutdown finish";
+  LOG(ERROR) << "ShutDownAllDataLoaders reader_wrapper shutdown finish";
   
   // step 2: shutdown decoder
   if (decode_pool) decode_pool->ShutDown();
-  LOG(ERROR) << "ShutDownDataLoader decode_pool shutdown finish";
+  LOG(ERROR) << "ShutDownAllDataLoaders decode_pool shutdown finish";
 
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
-  LOG(ERROR) << "ShutDownDataLoader MapRunner shutdown finish";
+  LOG(ERROR) << "ShutDownAllDataLoaders MapRunner shutdown finish";
+  
+  // step 3: shutdown Pipeline
+  PipelineManager::Instance()->ShutDown();
+  LOG(ERROR) << "ShutDownAllDataLoaders Pipeline shutdown finish";
 }
-}  // namespace data
 
+void ShutDownReadersAndDecoders(const int64_t program_id) {
+  LOG(ERROR) << "ShutDownReadersAndDecoders enter, program_id: " << program_id;
+  // step 1: shutdown reader
+  ReaderManager::Instance()->ShutDownReader(program_id);
+
+  // step 2: shutdown decoder
+  DecoderThreadPoolManager::Instance()->ShutDownDecoder(program_id);
+  LOG(ERROR) << "ShutDownReadersAndDecoders finish";
+}
+
+void ShutDownMaps(const std::vector<int64_t> program_ids) {
+  LOG(ERROR) << "ShutDownMaps enter, maps size: " << program_ids.size();
+  for (auto& program_id : program_ids) {
+    MapRunnerManager::Instance()->ShutDownMapRunner(program_id);
+  }
+  LOG(ERROR) << "ShutDownMaps finish";
+}
+
+void ShutDownPipeline(const int64_t program_id) {
+  LOG(ERROR) << "ShutDownPipeline program_id " << program_id << " enter";
+  PipelineManager::Instance()->ShutDownPipeline(program_id);
+  LOG(ERROR) << "ShutDownPipeline program_id " << program_id << " finish";
+}
+
+}  // namespace data
 }  // namespace operators
 }  // namespace paddle

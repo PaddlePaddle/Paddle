@@ -255,6 +255,10 @@ void NvjpegDecoderThreadPool::ThreadLoop(const int thread_idx) {
   }
 }
 
+// initialization static variables out of MapRunnerManager
+DecoderThreadPoolManager* DecoderThreadPoolManager::pm_instance_ptr_ = nullptr;
+std::mutex DecoderThreadPoolManager::m_;
+
 }  // namespace data
 }  // namespace operators
 }  // namespace paddle

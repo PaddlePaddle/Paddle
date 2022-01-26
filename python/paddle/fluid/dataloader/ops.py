@@ -121,7 +121,6 @@ def data_reader(reader_func,
     # build reader block
     main_program = helper.main_program
     with _ProgramGuard(main_program):
-        reader_id= _hash_with_id(main_program, reader_func)
         reader_block = main_program.current_block()
 
         indices_var = reader_block.create_var(
@@ -142,7 +141,7 @@ def data_reader(reader_func,
             persistable=True) for outp in program_outputs]
 
     attrs = {
-        "reader_id": reader_id,
+        "reader_id": _hash_with_id(main_program),
         "reader_block": reader_block,
         "indices_var_name": indices_var_name,
         "output_var_names": output_var_names,

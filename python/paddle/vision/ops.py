@@ -15,7 +15,7 @@
 import numpy as np
 from ..fluid.layer_helper import LayerHelper, unique_name
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid import core, layers
+from ..fluid import core, layers, default_main_program
 from ..fluid.layers import nn, utils
 from ..nn import Layer
 from ..fluid.initializer import Normal
@@ -907,14 +907,16 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
         out = core.VarBase(core.VarDesc.VarType.UINT8, [],
                            unique_name.generate("image_decode"),
                            core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
+        program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode(
                 x, out, "mode", mode, "num_threads", num_threads,
-                "local_rank", local_rank)
+                "local_rank", local_rank, "program_id", program_id)
 
     inputs = {'X': x}
     attrs = {"mode": mode,
              "num_threads": num_threads,
-             "local_rank": local_rank}
+             "local_rank": local_rank,
+             "program_id": utils._hash_with_id(default_main_program())}
 
     helper = LayerHelper("batch_decode", **locals())
     out = helper.create_variable(
@@ -993,7 +995,8 @@ def image_decode_random_crop(x,
              "area_min": area_min,
              "area_max": area_max,
              "num_attempts": num_attempts, 
-             "local_rank": local_rank}
+             "local_rank": local_rank,
+             "program_id": utils._hash_with_id(default_main_program())}
 
     helper = LayerHelper("batch_decode_random_crop", **locals())
     out = helper.create_variable(

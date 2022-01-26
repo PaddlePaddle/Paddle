@@ -277,7 +277,10 @@ if avx_supported():
         from .core_avx import _device_synchronize
         from .core_avx import _get_current_stream
         from .core_avx import _set_current_stream
-        from .core_avx import _shutdown_dataloader
+        from .core_avx import _shutdown_all_dataloaders
+        from .core_avx import _shutdown_readers_and_decoders
+        from .core_avx import _shutdown_maps
+        from .core_avx import _shutdown_pipeline
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -331,7 +334,10 @@ if load_noavx:
         from .core_noavx import _device_synchronize
         from .core_noavx import _get_current_stream
         from .core_noavx import _set_current_stream
-        from .core_noavx import _shutdown_dataloader
+        from .core_noavx import _shutdown_all_dataloaders
+        from .core_noavx import _shutdown_readers_and_decoders
+        from .core_noavx import _shutdown_maps
+        from .core_noavx import _shutdown_pipeline
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids

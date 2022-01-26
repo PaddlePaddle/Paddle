@@ -163,7 +163,6 @@ def file_label_reader(file_root,
     if in_dygraph_mode():
         sample_id = utils._hash_with_id(file_root, batch_size,
                                         shuffle, drop_last)
-        print("sample_id", sample_id)
         sampler = _sampler_manager.get(sample_id,
                                        batch_size=batch_size,
                                        num_samples=len(samples),

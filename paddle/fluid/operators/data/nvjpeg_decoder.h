@@ -117,6 +117,64 @@ class NvjpegDecoderThreadPool {
     int outstand_tasks_;
 };
 
+class DecoderThreadPoolManager {
+ private:
+  DISABLE_COPY_AND_ASSIGN(DecoderThreadPoolManager);
+
+  static DecoderThreadPoolManager *pm_instance_ptr_;
+  static std::mutex m_;
+
+  std::map<int64_t, std::unique_ptr<NvjpegDecoderThreadPool>> prog_id_to_pool_;
+
+ public:
+  static DecoderThreadPoolManager* Instance() {
+    if (pm_instance_ptr_ == nullptr) {
+      std::lock_guard<std::mutex> lk(m_);
+      if (pm_instance_ptr_ == nullptr) {
+        pm_instance_ptr_ = new DecoderThreadPoolManager;
+      }
+    }
+    return pm_instance_ptr_;
+  }
+
+  NvjpegDecoderThreadPool* GetDecoderThreadPool(
+      const int64_t program_id, const int num_threads,
+      const std::string mode, const int dev_id) {
+    auto iter = prog_id_to_pool_.find(program_id);
+    if (iter == prog_id_to_pool_.end()) {
+      prog_id_to_pool_[program_id] = 
+        std::unique_ptr<NvjpegDecoderThreadPool>(
+            new NvjpegDecoderThreadPool(num_threads, mode, dev_id));
+    }
+    return prog_id_to_pool_[program_id].get();
+  }
+
+  void ShutDownDecoder(const int64_t program_id) {
+    auto iter = prog_id_to_pool_.find(program_id);
+    if (iter != prog_id_to_pool_.end()) {
+      iter->second.get()->ShutDown();
+      prog_id_to_pool_.erase(program_id);
+    }
+  }
+
+  void ShutDown() {
+    if (prog_id_to_pool_.empty()) return;
+    
+    std::lock_guard<std::mutex> lk(m_);
+    auto iter = prog_id_to_pool_.begin();
+    for (; iter != prog_id_to_pool_.end(); iter++) {
+      if (iter->second.get()) iter->second.get()->ShutDown();
+    }
+  }
+
+  DecoderThreadPoolManager() { VLOG(1) << "DecoderThreadPoolManager init"; }
+
+  ~DecoderThreadPoolManager() {
+    VLOG(1) << "~DecoderThreadPoolManager";
+    ShutDown();
+  }
+};
+
 }  // namespace data
 }  // namespace operators
 }  // namespace paddle

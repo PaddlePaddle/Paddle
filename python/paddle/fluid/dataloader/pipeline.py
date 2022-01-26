@@ -27,7 +27,7 @@ from collections.abc import Sequence, Mapping
 __all__ = ["Pipeline"]
 
 
-CleanupFuncRegistrar.register(core._shutdown_dataloader)
+CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
 
 
 AVAILABLE_OP_TYPES = ['data_reader', 'map']
@@ -46,6 +46,8 @@ class Pipeline:
                 "queue_depth should be an integer"
         self._queue_depth = queue_depth
         self._init_programs()
+
+        self.is_shutdown = False
 
     def _init_programs(self):
         self._main_program = fluid.Program()
@@ -142,5 +144,21 @@ class Pipeline:
     def next(self):
         return self.__next__()
 
+    def shutdown(self):
+        if not self.is_shutdown:
+            try:
+                program_id = _hash_with_id(self._main_program)
+                core._shutdown_readers_and_decoders(program_id)
+
+                map_program_ids = []
+                for op in self._main_program.block(0).ops:
+                    if op.type == "map":
+                        map_program_ids.append(op.attrs['program_id'])
+                core._shutdown_maps(program_id)
+
+                core._shutdown_pipeline(program_id)
+            finally:
+                self.is_shutdown = True
+
     def __del__(self):
-        core._shutdown_dataloader()
+        self.shutdown()

@@ -254,6 +254,13 @@ class ReaderManager {
     }
   }
 
+  void ShutDownReader(const int64_t reader_id) {
+    auto iter = id_to_reader_.find(reader_id);
+    if (iter != id_to_reader_.end()) {
+      iter->second->ShutDown();
+      id_to_reader_.erase(reader_id);
+    }
+  }
   void ShutDown() {
     auto iter = id_to_reader_.begin();
     while (iter != id_to_reader_.end()){
@@ -284,7 +291,7 @@ static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capa
       if (queue == nullptr) {
         auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
         holder->InitOnce(capacity);
-        LOG(ERROR) << "DataLoaderOpKernel init queue" << holder->GetQueue();
+        VLOG(1) << "DataLoaderOpKernel init queue" << holder->GetQueue();
       }
     } else {
       VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
