@@ -22,14 +22,10 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/unary.h"
 
-PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA)
+PT_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
@@ -61,26 +57,37 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
-  auto input = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   if (x.layout() == pten::DataLayout::SPARSE_CSR) {
-    input = std::dynamic_pointer_cast<pten::SparseCsrTensor>(x.impl());
+    auto input = std::dynamic_pointer_cast<pten::SparseCsrTensor>(x.impl());
+    kernel_context.EmplaceBackInput(input.get());
+  } else {
+    auto input = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+    kernel_context.EmplaceBackInput(input.get());
   }
 
-  kernel_context.EmplaceBackInput(input.get());
   kernel_context.EmplaceBackAttr(sparse_dim);
 
   // 4. InferMeta
-  // auto out_meta = UnchangedInferMeta(dense_x->meta());
+  auto indices_meta = pten::DenseTensorMeta(
+      pten::DataType::INT64, {-1}, pten::DataLayout::NCHW);
+  auto elements_meta = pten::DenseTensorMeta(x.dtype(), {-1}, x.layout());
 
   // 5. Prepare outputs
-  // auto coo = std::make_shared<pten::SparseCooTensor>(
-  //    pten::make_intrusive<paddle::experimental::SharedStorage>(
-  //        pten::TransToFluidPlace(backend)),
-  //    std::move(out_meta));
-  // coo->mutable_data(pten::TransToFluidPlace(backend));
-  // kernel_context.EmplaceBackOutput(coo.get());
-  // Tensor out;
-  // out.set_impl(coo);
+  // create empty SparseCooTensor
+  pten::DenseTensor non_zero_indices(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(backend)),
+      std::move(indices_meta));
+  pten::DenseTensor non_zero_elements(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(backend)),
+      std::move(elements_meta));
+  auto coo = std::make_shared<pten::SparseCooTensor>(
+      non_zero_indices, non_zero_elements, x.dims());
+
+  kernel_context.EmplaceBackOutput(coo.get());
+  Tensor out;
+  out.set_impl(coo);
 
   // 6. Call kernel
   kernel(&kernel_context);
