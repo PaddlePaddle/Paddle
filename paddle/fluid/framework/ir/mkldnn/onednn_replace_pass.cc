@@ -30,8 +30,8 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
   const std::unordered_map<std::string, std::vector<std::string>> elementwise_io_map = {{"Inputs", {"X", "Y"}},
                                                                                         {"Outputs", {"Out"}}};
   const std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> in_out_map = {
-    {"elementwise_add", elementwise_io_map},
-    {"elementwise_sub", elementwise_io_map},
+    //{"elementwise_add", elementwise_io_map},
+    //{"elementwise_sub", elementwise_io_map},
     {"elementwise_mul", elementwise_io_map}
   };
 
@@ -67,7 +67,7 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
 
       auto *replace_op = op_to_replace->Op();
 
-      replace_op->SetType("elementwise_add"/*op_type*/);
+      replace_op->SetType(op_type + "_one_dnn");
     };
 
     gpd(graph, handler);
