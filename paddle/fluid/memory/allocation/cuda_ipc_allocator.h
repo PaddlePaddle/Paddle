@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _WIN32
 #pragma once
 
 #include <memory>
@@ -51,3 +52,5 @@ class CudaIpcAllocation : public Allocation {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 from .reductions import init_reductions
 import multiprocessing
 
@@ -22,11 +21,7 @@ from multiprocessing import *  # noqa: F403
 
 __all__ += multiprocessing.__all__  # type: ignore[attr-defined]
 
-# TODO add paddle c++ multiprocessing init, adds a Linux specific prctl(2) wrapper function
-# TODO:add spawn methods
-
 # Only support linux for now
 # Only support file_system sharing strategy.
-# TODO: support file_descriptor on linux
 
 init_reductions()

@@ -30,7 +30,13 @@ from multiprocessing.reduction import ForkingPickler
 from collections import OrderedDict
 
 
-def _py_supported_check():
+def _supported_check():
+    if sys.platform != "linux":
+        # warnings.warn("`paddle.multiprocessing` only support linux for now, "
+        #               " import this will not take any effect !")
+
+        return False
+
     if not sys.version_info >= (3, 4):
         warnings.warn("Use `paddle.multiprocessing` to share paddle tensor "
                       "requires python version greater than 3.4 ."
@@ -136,8 +142,8 @@ def rebuild_cuda_tensor(cls, handle, offset_bytes, size, type_idx, dims, lod,
             (handle, offset_bytes, size, type_idx, dims, lod, device_idx))
         # We only cache cuda shared tensor here.
         # The opening cost of cudaIpcMemoryHandle is very high.
-        # Since we cache the recived tensor directly, 
-        # The sender may reallocate the tensor space, 
+        # Since we cache the recived tensor directly,
+        # The sender may reallocate the tensor space,
         # you should manualy maintian the lifecycle of ipc tensor
         shared_cache[(handle, offset_bytes)] = lodtensor
     else:
@@ -177,9 +183,7 @@ def reduce_lodtensor(lodtensor):
 
 
 def init_reductions():
-    # TODO: support cuda event
-    # ForkingPickler.register(paddle.cuda.Event, reduce_event)
-    if not _py_supported_check():
+    if not _supported_check():
         return
 
     ForkingPickler.register(paddle.Tensor, reduce_tensor)
