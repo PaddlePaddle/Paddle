@@ -138,15 +138,15 @@ class SpectralNormKernel : public framework::OpKernel<T> {
       for (int i = 0; i < rank; i++) {
         real_dims.push_back(i);
       }
-      TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
+      paddle::framework::TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
     }
     weight_mat = weight_mat.Resize({h, w});
 
     Tensor sigma;
     sigma.mutable_data<T>(weight_mat.dims(), ctx.GetPlace());
     Tensor uu, vv;
-    TensorCopySync(*u, ctx.GetPlace(), &uu);
-    TensorCopySync(*v, ctx.GetPlace(), &vv);
+    paddle::framework::TensorCopySync(*u, ctx.GetPlace(), &uu);
+    paddle::framework::TensorCopySync(*v, ctx.GetPlace(), &vv);
     CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
         &sigma, &(uu.Resize({h, 1})), &(vv.Resize({w, 1})), &weight_mat,
         power_iters, eps, ctx);
@@ -167,7 +167,8 @@ class SpectralNormKernel : public framework::OpKernel<T> {
           rank, weight_mat.Resize(framework::make_ddim(real_dims)), out, perm,
           dev_ctx);
     } else {
-      TensorCopySync(weight_mat.Resize(dims), ctx.GetPlace(), out);
+      paddle::framework::TensorCopySync(weight_mat.Resize(dims), ctx.GetPlace(),
+                                        out);
     }
   }
 };
@@ -217,8 +218,9 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < rank; i++) {
         real_dims.push_back(i);
       }
-      TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
-      TensorCopySync(*out_grad, ctx.GetPlace(), &out_grad_mat);
+      paddle::framework::TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
+      paddle::framework::TensorCopySync(*out_grad, ctx.GetPlace(),
+                                        &out_grad_mat);
     }
     weight_mat = weight_mat.Resize({h, w});
     out_grad_mat = out_grad_mat.Resize({h, w});
@@ -226,8 +228,8 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
     Tensor sigma;
     sigma.mutable_data<T>(weight_mat.dims(), ctx.GetPlace());
     Tensor uu, vv;
-    TensorCopySync(*u, ctx.GetPlace(), &uu);
-    TensorCopySync(*v, ctx.GetPlace(), &vv);
+    paddle::framework::TensorCopySync(*u, ctx.GetPlace(), &uu);
+    paddle::framework::TensorCopySync(*v, ctx.GetPlace(), &vv);
     CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
         &sigma, &(uu.Resize({h, 1})), &(vv.Resize({w, 1})), &weight_mat,
         power_iters, eps, ctx);
@@ -266,7 +268,8 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
           rank, weight_grad_mat.Resize(framework::make_ddim(real_dims)),
           weight_grad, perm, dev_ctx);
     } else {
-      TensorCopySync(weight_grad_mat.Resize(dims), ctx.GetPlace(), weight_grad);
+      paddle::framework::TensorCopySync(weight_grad_mat.Resize(dims),
+                                        ctx.GetPlace(), weight_grad);
     }
   }
 };

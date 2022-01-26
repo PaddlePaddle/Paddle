@@ -29,7 +29,8 @@ class Attribute;
 class Value;
 }  // namespace mlir
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 class CoreRuntimeBuilder;
 class Value;
@@ -73,7 +74,7 @@ class MlirToRuntimeTranslator {
   bool EmitCallOp(mlir::Operation* op, function_defs_t* function_table);
 
   template <typename T>
-  boost::optional<T> EmitAttribute(const mlir::Attribute* attr);
+  boost::optional<T> EmitAttribute(const mlir::Attribute& attr);
 
   Value* GetOpResult(mlir::Operation* op);
 
@@ -104,4 +105,5 @@ void MlirToRuntimeTranslate(mlir::ModuleOp module, CoreRuntimeBuilder* runtime);
  */
 void TestMlir(mlir::ModuleOp module, KernelRegistry* registry);
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"

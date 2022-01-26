@@ -15,9 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -812,8 +815,8 @@ void DownpourWorker::TrainFiles() {
             if (var->IsType<framework::LoDTensor>()) {
               tensor = var->GetMutable<LoDTensor>();
               len = tensor->numel();
-            } else if (var->IsType<SelectedRows>()) {
-              auto selected_rows = var->GetMutable<SelectedRows>();
+            } else if (var->IsType<pten::SelectedRows>()) {
+              auto selected_rows = var->GetMutable<pten::SelectedRows>();
               tensor = selected_rows->mutable_value();
               len = tensor->numel();
             }

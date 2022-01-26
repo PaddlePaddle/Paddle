@@ -86,7 +86,7 @@ static void IndexIncreaseFromDims(const int ndim,
 }
 
 template <typename Context, typename T>
-void MatMulFunction(const Context& context,
+void MatMulFunction(const Context& dev_ctx,
                     const DenseTensor& X,
                     const DenseTensor& Y,
                     const std::vector<std::int64_t>& x_dims,
@@ -102,7 +102,7 @@ void MatMulFunction(const Context& context,
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  auto blas = paddle::operators::math::GetBlas<Context, T>(context);
+  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();
@@ -117,6 +117,8 @@ void MatMulFunction(const Context& context,
             M,
             N));
     VLOG(3) << "MatMul's case 1";
+    Out->Resize({1});
+    Out->mutable_data<T>(dev_ctx.GetPlace());
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -126,7 +128,7 @@ void MatMulFunction(const Context& context,
               y_data,
               x_data,
               static_cast<T>(flag),
-              Out->mutable_data<T>());
+              Out->data<T>());
     return;
   }
 
@@ -162,8 +164,8 @@ void MatMulFunction(const Context& context,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->Resize(paddle::framework::make_ddim(out_dims));
-    Out->mutable_data<T>();
+    Out->ResizeAndAllocate(pten::framework::make_ddim(out_dims));
+    Out->mutable_data<T>(dev_ctx.GetPlace());
     if (trans_y) {
       const int M = Y.numel() / N;
       VLOG(3) << "MatMul's case 2";
@@ -174,7 +176,7 @@ void MatMulFunction(const Context& context,
                 y_data,
                 x_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                Out->data<T>());
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
@@ -187,7 +189,7 @@ void MatMulFunction(const Context& context,
                   y_data,
                   x_data,
                   static_cast<T>(flag),
-                  Out->mutable_data<T>());
+                  Out->data<T>());
       } else {
         VLOG(3) << "MatMul's case 4";
         blas.BatchedGEMM(CblasTrans,
@@ -199,7 +201,7 @@ void MatMulFunction(const Context& context,
                          y_data,
                          x_data,
                          static_cast<T>(flag),
-                         Out->mutable_data<T>(),
+                         Out->data<T>(),
                          batch_size,
                          M * N,
                          0);
@@ -240,8 +242,8 @@ void MatMulFunction(const Context& context,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->Resize(paddle::framework::make_ddim(out_dims));
-    Out->mutable_data<T>();
+    Out->ResizeAndAllocate(pten::framework::make_ddim(out_dims));
+    Out->mutable_data<T>(dev_ctx.GetPlace());
 
     if (trans_x) {
       const int M = x_dims[x_ndim - 1];
@@ -255,7 +257,7 @@ void MatMulFunction(const Context& context,
                   x_data,
                   y_data,
                   static_cast<T>(flag),
-                  Out->mutable_data<T>());
+                  Out->data<T>());
       } else {
         VLOG(3) << "MatMul's case 6";
         blas.BatchedGEMM(CblasTrans,
@@ -267,7 +269,7 @@ void MatMulFunction(const Context& context,
                          x_data,
                          y_data,
                          static_cast<T>(flag),
-                         Out->mutable_data<T>(),
+                         Out->data<T>(),
                          batch_size,
                          M * N,
                          0);
@@ -282,7 +284,7 @@ void MatMulFunction(const Context& context,
                 x_data,
                 y_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                Out->data<T>());
     }
     return;
   }
@@ -328,8 +330,8 @@ void MatMulFunction(const Context& context,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->Resize(paddle::framework::make_ddim(out_broadcast_dims));
-  Out->mutable_data<T>();
+  Out->ResizeAndAllocate(pten::framework::make_ddim(out_broadcast_dims));
+  Out->mutable_data<T>(dev_ctx.GetPlace());
 
   const int batch_dim = ndim - 2;
   // broadcast message
@@ -365,7 +367,7 @@ void MatMulFunction(const Context& context,
               x_data,
               y_data,
               static_cast<T>(flag),
-              Out->mutable_data<T>());
+              Out->data<T>());
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
@@ -376,7 +378,7 @@ void MatMulFunction(const Context& context,
                 y_data,
                 x_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                Out->data<T>());
     } else {
       VLOG(3) << "MatMul's case 10";
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
@@ -388,7 +390,7 @@ void MatMulFunction(const Context& context,
                        x_data,
                        y_data,
                        static_cast<T>(flag),
-                       Out->mutable_data<T>(),
+                       Out->data<T>(),
                        out_batch_size,
                        0,
                        K * N);
@@ -405,7 +407,7 @@ void MatMulFunction(const Context& context,
                 x_data,
                 y_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                Out->data<T>());
     } else {
       VLOG(3) << "MatMul's case 12";
       blas.BatchedGEMM(CblasTrans,
@@ -417,7 +419,7 @@ void MatMulFunction(const Context& context,
                        x_data,
                        y_data,
                        static_cast<T>(flag),
-                       Out->mutable_data<T>(),
+                       Out->data<T>(),
                        out_batch_size,
                        M * K,
                        0);
@@ -433,7 +435,7 @@ void MatMulFunction(const Context& context,
                      x_data,
                      y_data,
                      static_cast<T>(flag),
-                     Out->mutable_data<T>(),
+                     Out->data<T>(),
                      out_batch_size,
                      M * K,
                      K * N);
@@ -452,7 +454,7 @@ void MatMulFunction(const Context& context,
 
       x_ptr[i] = x_data + x_index * M * K;
       y_ptr[i] = y_data + y_index * K * N;
-      out_ptr[i] = Out->mutable_data<T>() + i * M * N;
+      out_ptr[i] = Out->data<T>() + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 14";
@@ -471,7 +473,7 @@ void MatMulFunction(const Context& context,
 }
 
 template <typename Context, typename T>
-void MatMulFunction(const Context& context,
+void MatMulFunction(const Context& dev_ctx,
                     const DenseTensor& X,
                     const DenseTensor& Y,
                     DenseTensor* Out,
@@ -481,27 +483,27 @@ void MatMulFunction(const Context& context,
   const std::vector<std::int64_t> x_dims = vectorize(X.dims());
   const std::vector<std::int64_t> y_dims = vectorize(Y.dims());
   MatMulFunction<Context, T>(
-      context, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
+      dev_ctx, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
 }
 
 template <typename T, typename Context>
-void MatmulKernel(const Context& context,
+void MatmulKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_NE(paddle::framework::product(x.dims()),
+  PADDLE_ENFORCE_NE(pten::framework::product(x.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(X) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  PADDLE_ENFORCE_NE(paddle::framework::product(y.dims()),
+  PADDLE_ENFORCE_NE(pten::framework::product(y.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(Y) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  MatMulFunction<Context, T>(context, x, y, out, transpose_x, transpose_y);
+  MatMulFunction<Context, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 
 }  // namespace pten

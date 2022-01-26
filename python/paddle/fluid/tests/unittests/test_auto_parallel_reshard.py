@@ -22,11 +22,12 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from paddle.distributed.auto_parallel.process_group import _g_process_group_map
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
@@ -142,7 +143,11 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-def get_dist_prog(train_program, startup_program, dist_context, rank_id):
+def get_dist_prog(train_program,
+                  startup_program,
+                  dist_context,
+                  rank_id,
+                  change_process_mesh=False):
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
@@ -152,11 +157,15 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     parallelizer._dist_context = dist_context
 
     # serial forward & backward completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
 
-    parallelizer._apply_serial_forward_pass(complete_train_program,
-                                            startup_program)
+    if change_process_mesh:
+        global PP_MESH_1
+        dist_context.get_tensor_dist_attr_for_program(
+            train_program.global_block().vars[
+                "gelu_0.tmp_0"]).process_mesh = PP_MESH_1
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -302,12 +311,30 @@ class TestMLPReshard(unittest.TestCase):
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
         # parameter initialization of every rank should be different in the pipeline scene
+        self.assertTrue(check_initialization(dist_startup_prog, rank_id))
+
+    def test_mlp_pp_diff_process_mesh(self):
+        HAS_SENT.clear()
+        HAS_RECV.clear()
+        HAS_ALLGATHER.clear()
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        dist_context = DistributedContext()
+        rank_id = 1
+        dist_main_prog, dist_startup_prog = get_dist_prog(
+            train_program, startup_program, dist_context, rank_id, True)
+        for key in list(_g_process_group_map.keys()):
+            del _g_process_group_map[key]
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        print_program_with_dist_attr(dist_main_prog, dist_context)
+
+        # check send and recv result
+        self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
 
     def test_mlp_dp(self):

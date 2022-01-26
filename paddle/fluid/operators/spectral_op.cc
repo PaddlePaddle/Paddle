@@ -587,15 +587,13 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
                                   collapsed_input_conj.data<Ti>());
     for_range(functor);
     MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
-        desc.get(), collapsed_input_conj.data<void>(),
-        collapsed_output.data<void>()));
+        desc.get(), collapsed_input_conj.data(), collapsed_output.data()));
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     framework::Tensor collapsed_output_conj(collapsed_output.type());
     collapsed_output_conj.mutable_data<To>(collapsed_output.dims(),
                                            ctx.GetPlace());
     MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
-        desc.get(), collapsed_input.data<void>(),
-        collapsed_output_conj.data<void>()));
+        desc.get(), collapsed_input.data(), collapsed_output_conj.data()));
     // conjugate the output
     platform::ForRange<DeviceContext> for_range(ctx, collapsed_output.numel());
     math::ConjFunctor<To> functor(collapsed_output_conj.data<To>(),
@@ -605,12 +603,10 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   } else {
     if (forward) {
       MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
-          desc.get(), collapsed_input.data<void>(),
-          collapsed_output.data<void>()));
+          desc.get(), collapsed_input.data(), collapsed_output.data()));
     } else {
       MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
-          desc.get(), collapsed_input.data<void>(),
-          collapsed_output.data<void>()));
+          desc.get(), collapsed_input.data(), collapsed_output.data()));
     }
   }
 

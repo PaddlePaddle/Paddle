@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256

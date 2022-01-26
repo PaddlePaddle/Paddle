@@ -27,7 +27,7 @@
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -231,6 +231,9 @@ class KernelFactory {
 
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
+
+  paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash> SelectKernelMap(
+      const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;

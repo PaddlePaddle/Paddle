@@ -55,7 +55,7 @@ class WriteToArrayOp : public ArrayOp {
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
-      TensorCopy(x_tensor, place, dev_ctx, out_tensor);
+      paddle::framework::TensorCopy(x_tensor, place, dev_ctx, out_tensor);
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                   "nothing has been written to output array["

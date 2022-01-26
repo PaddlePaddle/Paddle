@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include <mlir/IR/Function.h>
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Region.h>
 
 #include <string>
 #include <unordered_map>

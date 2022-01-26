@@ -47,12 +47,12 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
     platform::Place place;
     if (place_str == "AUTO") {
       place = dev_place;
-    } else if (place_str == "CPUPLACE") {
+    } else if (place_str == "PLACE(CPU)") {
       place = platform::CPUPlace();
     } else {
       place_str = place_str.substr(0, place_str.length() - 1);
       std::istringstream sin(place_str);
-      sin.seekg(std::string("CUDAPLACE(").size(), std::ios::beg);
+      sin.seekg(std::string("PLACE(GPU:").size(), std::ios::beg);
       size_t num;
       sin >> num;
       place = platform::CUDAPlace(static_cast<int>(num));
@@ -79,7 +79,7 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
     std::unordered_set<std::string> enum_range;
     constexpr size_t kMaxCUDADevs = 128;
     for (size_t i = 0; i < kMaxCUDADevs; ++i) {
-      enum_range.insert(string::Sprintf("CUDAPLACE(%d)", i));
+      enum_range.insert(string::Sprintf("PLACE(GPU:%d)", i));
     }
     enum_range.insert("CPUPLACE");
     enum_range.insert("AUTO");

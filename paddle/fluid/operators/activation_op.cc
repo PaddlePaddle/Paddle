@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -801,6 +801,36 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
 Swish Activation Operator.
 
 $$out = \\frac{x}{1 + e^{- \beta \ x}}$$
+
+)DOC");
+  }
+};
+
+class MishOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Mish operator");
+    AddOutput("Out", "Output of Mish operator");
+    AddAttr<float>(
+        "threshold",
+        "Constant threshold of softplus in Mish operator. Approximate value "
+        "of softplus will be used if absolute value of input is greater than "
+        ":attr:`threshold`")
+        .SetDefault(20.f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddComment(R"DOC(
+Mish Activation Operator.
+
+..  math::
+    softplus(x) = \begin{cases}
+            x, \text{if } x > \text{threshold} \\
+            \ln(1 + e^{x}),  \text{otherwise}
+          \end{cases}
+
+    out = x * \tanh(softplus(x))
 
 )DOC");
   }
@@ -1900,5 +1930,12 @@ REGISTER_OP_VERSION(softplus)
             .NewAttr("beta", "The beta value of the new formula", 1.0f)
             .NewAttr("threshold", "The threshold value of the new formula",
                      20.0f));
+
+REGISTER_OP_VERSION(mish)
+    .AddCheckpoint(
+        R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_mkldnn", "(bool, default false) Only used in mkldnn kernel",
+            false));
 
 /* ========================================================================== */

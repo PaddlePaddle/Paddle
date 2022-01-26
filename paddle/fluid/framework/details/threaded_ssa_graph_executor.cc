@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {

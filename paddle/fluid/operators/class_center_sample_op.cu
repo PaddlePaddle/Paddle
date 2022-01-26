@@ -306,7 +306,7 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                           num_classes, num_samples));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    auto place = dev_ctx.GetPlace();
 
     int batch_size = label->numel();
     // Algorithm:
@@ -397,7 +397,8 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                        (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                    1) *
                   vec_size;
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(rank);
+    int device_id = ctx.GetPlace().GetDeviceId();
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && (!fix_seed)) {
       auto seed_offset = gen_cuda->IncrementOffset(offset);
       seed_data = seed_offset.first;

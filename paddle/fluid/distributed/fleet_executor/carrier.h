@@ -34,6 +34,7 @@
 namespace paddle {
 namespace framework {
 class Scope;
+class ProgramDesc;
 }
 
 namespace distributed {
@@ -55,9 +56,10 @@ class Carrier final {
       int64_t rank,
       const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-      framework::Scope* root_scope, framework::Scope* minibatch_scope,
-      const std::vector<framework::Scope*>& microbatch_scopes,
-      const platform::Place& place);
+      const framework::ProgramDesc& program, framework::Scope* scope,
+      int64_t num_micro_batches, const platform::Place& place);
+
+  void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
 
   void Release();
   void Wait();
@@ -72,10 +74,6 @@ class Carrier final {
   // set interceptor with interceptor id
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
-
-  void SetMsgBus(const std::shared_ptr<MessageBus>& msg_bus) {
-    msg_bus_ = msg_bus;
-  }
 
   void Start();
 
@@ -103,11 +101,10 @@ class Carrier final {
   std::mutex running_mutex_;
   std::condition_variable cond_var_;
   std::vector<framework::Scope*> microbatch_scopes_;
-  framework::Scope* root_scope_;
-  framework::Scope* minibatch_scope_;
+  framework::Scope* root_scope_{nullptr};
+  framework::Scope* minibatch_scope_{nullptr};
   paddle::platform::Place place_;
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
-  std::shared_ptr<MessageBus> msg_bus_;
   int64_t rank_;
   std::string carrier_id_;
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
