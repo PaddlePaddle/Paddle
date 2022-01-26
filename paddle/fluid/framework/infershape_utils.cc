@@ -15,11 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/meta_tensor.h"
 
 namespace paddle {
@@ -185,6 +188,41 @@ class CompatMetaTensor : public pten::MetaTensor {
   InferShapeVarPtr var_;
   bool is_runtime_;
 };
+
+pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                             const std::string& op_type) {
+  // 1. get kernel args
+  InitDefaultKernelSignatureMap();
+  auto arg_map_fn = pten::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
+  PADDLE_ENFORCE_NOT_NULL(
+      arg_map_fn, platform::errors::NotFound(
+                      "The ArgumentMappingFn of %s op is not found.", op_type));
+  InferShapeArgumentMappingContext arg_map_context(*ctx);
+  auto signature = arg_map_fn(arg_map_context);
+  VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
+
+  // 2. build infermeta context
+  pten::InferMetaContext infer_meta_context(ctx->IsRuntime());
+
+  auto& input_names = std::get<0>(signature.args);
+  auto& output_names = std::get<2>(signature.args);
+  // TODO(chenweihang): support attrs in next pr
+  // auto& attr_names = std::get<1>(signature.args);
+
+  // TODO(chenweihang): support multiple inputs and outputs
+  pten::InferMetaContext infer_mete_context;
+  for (auto& in_name : input_names) {
+    infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
+        ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+  }
+  for (auto& out_name : output_names) {
+    infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
+        ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
+  }
+  // TODO(chenweihang): support attrs later
+
+  return infer_meta_context;
+}
 
 }  // namespace framework
 }  // namespace paddle
