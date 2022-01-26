@@ -1293,6 +1293,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the shuffle_channel op does not support dynamic shape yet";
         return false;
       }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* input_desc = block->FindVar(desc.Input("X").front());
+      const auto input_shape = input_desc->GetShape();
+      if (input_shape.size() != 4) {
+        VLOG(3) << "input dims is invalid. The input "
+                   "dims size should be 4.";
+        return false;
+      }
     }
 
     if (op_type == "skip_layernorm") {
@@ -1586,7 +1600,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
 
-  VLOG(3) << "trt unsupported op " << op_type;
   return false;
 }
 
