@@ -385,6 +385,7 @@ __inline__ __device__ void cuLoadAddStridedInputs(
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 // 2*sms blocks
 // 32 * 4 threads per block.
 // sum_1 =
@@ -848,8 +849,8 @@ void ln_bwd_1024_kernel_driver(const platform::CUDADeviceContext &dev_ctx,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));
   }
-  // AT_CUDA_CHECK(cudaPeekAtLastError());
 }
+#endif
 
 template <typename T, typename U, int BDIMX, int BDIMY, int VPTX>
 __global__ void LayerNormBackwardPartGradGammaBeta(
@@ -1449,6 +1450,7 @@ static void LayerNormBackward(
       break;
     case 7:  // d_x != nullptr, d_scale != nullptr, d_bias != nullptr
     {
+#ifdef PADDLE_WITH_CUDA
       bool can_call_1024_kernel = false;
       // todo: rule out double type.
       if (feature_size == 1024 && sizeof(T) <= 4) {
@@ -1462,6 +1464,7 @@ static void LayerNormBackward(
             dev_ctx, batch_size, feature_size, epsilon, x, scale, mean, var,
             d_y, d_x, d_scale, d_bias);
       } else {
+#endif
         constexpr int VPT = 4;
         constexpr int BDIMX2 = 32;
         constexpr int BDIMY2 = 4;
@@ -1499,7 +1502,9 @@ static void LayerNormBackward(
             T, U, BDIMX1, BDIMY1,
             ScaleBiasWithSameTypeX><<<batch_size, threads1, 0, stream>>>(
             d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
+#ifdef PADDLE_WITH_CUDA
       }
+#endif
 
       break;
     }
