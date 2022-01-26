@@ -102,7 +102,6 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
   const int rows = dims_2d[0];
   const int cols = dims_2d[1];
-
   auto nums_meta = pten::DenseTensorMeta(DataType::INT32,
                                          paddle::framework::make_ddim({1}),
                                          pten::DataLayout::NCHW);
@@ -114,8 +113,10 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   DenseTensor d_x_dims =
       pten::Empty<T, Context>(dev_ctx, std::move(x_dims_meta));
 
+  const auto place = dev_ctx.GetPlace();
+
   // 1. get numbers of non zero elements, and get the index of non zero elements
-  int* nums_ptr = nums.mutable_data<int>();
+  int* nums_ptr = nums.mutable_data<int>(place);
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
   paddle::platform::GpuLaunchConfig config =
@@ -126,7 +127,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                             pten::DataLayout::NCHW);
   DenseTensor temp_indexs =
       pten::Empty<T, Context>(dev_ctx, std::move(temp_indexs_meta));
-  int* temp_indexs_ptr = temp_indexs.mutable_data<int>();
+  int* temp_indexs_ptr = temp_indexs.mutable_data<int>(place);
   kernel_get_non_zero_nums<<<config.block_per_grid,
                              config.thread_per_block,
                              0,
@@ -147,7 +148,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                        dev_ctx.stream());
 
   paddle::memory::Copy(paddle::platform::CUDAPlace(),
-                       d_x_dims.mutable_data<int64_t>(),
+                       d_x_dims.mutable_data<int64_t>(place),
                        paddle::platform::CPUPlace(),
                        x_dims.Get(),
                        x_dims.size() * sizeof(x_dims[0]),
@@ -169,8 +170,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(values_meta));
-  int64_t* indices_data = indices.mutable_data<int64_t>();
-  T* sparse_data = values.mutable_data<T>();
+  int64_t* indices_data = indices.mutable_data<int64_t>(place);
+  T* sparse_data = values.mutable_data<T>(place);
 
   // 3. calc indices by indexs and get values by indexs
   paddle::platform::GpuLaunchConfig config2 =
@@ -226,8 +227,9 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   }
   const int64_t dense_dim = values.dims().size() - 1;
 
+  const auto place = dev_ctx.GetPlace();
   const T* x_data = values.data<T>();
-  T* out_data = out->mutable_data<T>();
+  T* out_data = out->mutable_data<T>(place);
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
@@ -246,7 +248,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   DenseTensor d_sparse_offsets =
       pten::Empty<T, Context>(dev_ctx, std::move(sparse_offset_meta));
   paddle::memory::Copy(paddle::platform::CUDAPlace(),
-                       d_sparse_offsets.mutable_data<int64_t>(),
+                       d_sparse_offsets.mutable_data<int64_t>(place),
                        paddle::platform::CPUPlace(),
                        sparse_offsets.data(),
                        sparse_dim * sizeof(int64_t),

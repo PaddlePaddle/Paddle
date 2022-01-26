@@ -92,8 +92,9 @@ TEST(DEV_API, to_sparse_coo) {
       DenseTensorMeta(
           DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
 
+  pten::CPUPlace cpu;
   const int64_t sparse_dim = 2;
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data = dense_x.mutable_data<float>(cpu);
   float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
@@ -145,8 +146,9 @@ TEST(DEV_API, to_sparse_coo_hybird) {
       DenseTensorMeta(
           DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
 
+  pten::CPUPlace cpu;
   const int64_t sparse_dim = 1;
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data = dense_x.mutable_data<float>(cpu);
   float dense_data[3][3] = {{0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {3.2, 0.0, 0.0}};
   std::vector<float> non_zero_data = {0.0, 1.0, 0.0, 3.2, 0.0, 0.0};
   std::vector<int64_t> indices_data = {0, 2};
@@ -203,7 +205,8 @@ TEST(DEV_API, to_sparse_coo_performance) {
                                         framework::make_ddim({rows, cols}),
                                         DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::CPUPlace cpu;
+  auto* dense_x_data = dense_x.mutable_data<float>(cpu);
   std::vector<float> dense_data(rows * cols);
   std::vector<float> non_zero_data;
   std::vector<int64_t> rows_data, cols_data;
@@ -302,10 +305,11 @@ TEST(DEV_API, sparse_coo_to_dense) {
       DenseTensorMeta(
           DataType::FLOAT32, dense_elements_dims, DataLayout::NCHW));
 
-  memcpy(dense_indices.mutable_data<int64_t>(),
+  pten::CPUPlace cpu_place;
+  memcpy(dense_indices.mutable_data<int64_t>(cpu_place),
          indices_data.data(),
          indices_data.size() * sizeof(int64_t));
-  memcpy(dense_elements.mutable_data<float>(),
+  memcpy(dense_elements.mutable_data<float>(cpu_place),
          non_zero_data.data(),
          non_zero_num * sizeof(float));
 

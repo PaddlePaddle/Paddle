@@ -68,10 +68,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   int64_t non_zero_num = get_non_zero_num<T>(src, sparse_dim);
 
-  // dst->Resize(src_dims, sparse_dim, non_zero_num);
-
-  // int64_t* indices_data = dst->mutable_non_zero_indices<int64_t>();
-  // T* values_data = dst->mutable_non_zero_elements<T>();
+  const auto place = dev_ctx.GetPlace();
   const auto values_dims = InferDenseDims(src_dims, sparse_dim, non_zero_num);
   DenseTensorMeta indices_meta(
       DataType::INT64,
@@ -87,8 +84,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(values_meta));
-  int64_t* indices_data = indices.mutable_data<int64_t>();
-  T* values_data = values.mutable_data<T>();
+  int64_t* indices_data = indices.mutable_data<int64_t>(place);
+  T* values_data = values.mutable_data<T>(place);
 
   auto dims_2d = flatten_to_2d(src_dims, sparse_dim);
   const int rows = dims_2d[0];
@@ -124,8 +121,9 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   }
   const int64_t dense_dim = values.dims().size() - 1;
 
+  const auto place = dev_ctx.GetPlace();
   const T* src_data = values.data<T>();
-  T* dst_data = dst->mutable_data<T>();
+  T* dst_data = dst->mutable_data<T>(place);
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];

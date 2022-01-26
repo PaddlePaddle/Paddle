@@ -22,6 +22,7 @@ namespace pten {
 namespace tests {
 
 TEST(sparse_coo_tensor, construct) {
+  pten::CPUPlace cpu;
   auto dense_dims = pten::framework::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
   std::vector<int64_t> indices_data = {0, 1, 2, 0, 2, 1};
@@ -31,7 +32,7 @@ TEST(sparse_coo_tensor, construct) {
       pten::framework::make_ddim({2, static_cast<int>(non_zero_data.size())});
   DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
   DenseTensor indices(alloc, indices_meta);
-  memcpy(indices.mutable_data<int64_t>(),
+  memcpy(indices.mutable_data<int64_t>(cpu),
          &indices_data[0],
          indices_data.size() * sizeof(int64_t));
 
@@ -41,7 +42,7 @@ TEST(sparse_coo_tensor, construct) {
       DataType::FLOAT32, elements_dims, DataLayout::NCHW);
   DenseTensor elements(alloc, elements_meta);
 
-  memcpy(elements.mutable_data<float>(),
+  memcpy(elements.mutable_data<float>(cpu),
          &non_zero_data[0],
          non_zero_data.size() * sizeof(float));
 
