@@ -85,42 +85,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 }
 
 pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src) {
-  PADDLE_ENFORCE_EQ(src.numel(),
-                    1,
-                    paddle::platform::errors::InvalidArgument(
-                        "The Scalar only supports Tensor with 1 element, "
-                        "but now Tensor has %d element.",
-                        src.numel()));
-  switch (src.type()) {
-    case paddle::framework::proto::VarType::FP32:
-      return {src.template data<float>()[0]};
-    case paddle::framework::proto::VarType::FP64:
-      return {src.template data<double>()[0]};
-    case paddle::framework::proto::VarType::FP16:
-      return {src.template data<float16>()[0]};
-    case paddle::framework::proto::VarType::BF16:
-      return {src.template data<bfloat16>()[0]};
-    case paddle::framework::proto::VarType::INT32:
-      return {src.template data<int32_t>()[0]};
-    case paddle::framework::proto::VarType::INT64:
-      return {src.template data<int64_t>()[0]};
-    case paddle::framework::proto::VarType::INT16:
-      return {src.template data<int16_t>()[0]};
-    case paddle::framework::proto::VarType::INT8:
-      return {src.template data<int8_t>()[0]};
-    case paddle::framework::proto::VarType::UINT8:
-      return {src.template data<uint8_t>()[0]};
-    case paddle::framework::proto::VarType::BOOL:
-      return {src.template data<bool>()[0]};
-    case paddle::framework::proto::VarType::COMPLEX64:
-      return {src.template data<complex64>()[0]};
-    case paddle::framework::proto::VarType::COMPLEX128:
-      return {src.template data<complex128>()[0]};
-    default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Data type error. Don't support casting a %d LoDTensor to Scalar.",
-          src.type()));
-  }
+  return {src};
 }
 
 pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
@@ -143,17 +108,7 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
 }
 
 pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
-  if (src.type() == paddle::framework::proto::VarType::INT64) {
-    return {src.data<int64_t>(), src.numel()};
-  } else if (src.type() == paddle::framework::proto::VarType::INT32) {
-    return {src.data<int32_t>(), src.numel()};
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Data type error. When cast a LoDTensor to ScalarArray, "
-        "the data type of LoDTensor must be int32 or int64, "
-        "but now data type is %s.",
-        src.type()));
-  }
+  return {src};
 }
 
 pten::ScalarArray MakePtenScalarArrayFromVar(
@@ -176,6 +131,7 @@ pten::ScalarArray MakePtenScalarArrayFromVar(
   }
 }
 
+// TODO(chentianyu03): Inplace with ScalarArray constructor
 pten::ScalarArray MakePtenScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list) {
   if (variable_list.size() == 0) {
@@ -226,7 +182,10 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
     }
   }
 
-  return {vector_data};
+  pten::ScalarArray result{vector_data};
+  result.setInitByTensor(true);
+
+  return result;
 }
 
 std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(

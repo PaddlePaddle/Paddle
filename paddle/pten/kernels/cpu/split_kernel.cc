@@ -36,18 +36,14 @@ void SplitKernel(const Context& dev_ctx,
           << num_or_sections.IsInitByTensor();
   VLOG(0) << "axis_scalar.IsInitByTensor() = " << axis_scalar.IsInitByTensor();
   // need to infershape output
-  // if(num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
-  auto out_metas =
-      pten::SplitInferMeta(x.meta(), num_or_sections, axis_scalar, true);
+  if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
+    auto out_metas =
+        pten::SplitInferMeta(x.meta(), num_or_sections, axis_scalar, true);
 
-  VLOG(0) << "outs.size() = " << outs.size();
-  VLOG(0) << "out_metas.size() = " << out_metas.size();
-  for (size_t i = 0; i < out_metas.size(); ++i) {
-    outs[i]->Resize(out_metas[i].dims);
-
-    VLOG(0) << "outs[" << i << "].dims = " << out_metas[i].dims;
+    for (size_t i = 0; i < out_metas.size(); ++i) {
+      outs[i]->Resize(out_metas[i].dims);
+    }
   }
-  //}
 
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
