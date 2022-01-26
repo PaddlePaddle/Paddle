@@ -31,7 +31,6 @@ void ReshapeKernel(const Context& dev_ctx,
     out->ResizeAndAllocate(out->dims());
     return;
   }
-  out->set_meta(out_meta);
   out->mutable_data(dev_ctx.GetPlace());
   pten::Copy(dev_ctx, x, false, out);
   out->ResetLoD(x.lod());
