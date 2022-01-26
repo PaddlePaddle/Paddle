@@ -211,8 +211,9 @@ include(external/dlpack)    # download dlpack
 include(external/xxhash)    # download, build, install xxhash
 include(external/warpctc)   # download, build, install warpctc
 include(external/utf8proc)   # download, build, install utf8proc
+include(external/libmct)     # download, build, install libmct
 
-list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash extern_libmct)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool extern_utf8proc)
 include(external/lapack)    # download, build, install lapack
 
