@@ -21,10 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#endif
 #include "glog/logging.h"
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -229,14 +227,10 @@ CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 
 #ifdef PADDLE_WITH_IPU
-IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
-  int id = place.GetDeviceId();
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
-  device_ = ipu_backend->GetDevice(id);
-}
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
 
 Place IPUDeviceContext::GetPlace() const { return place_; }
+
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
 }
@@ -245,52 +239,14 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() {
-  context_ = xpu::create_context();
-  xpu_version_ = get_xpu_version(place_.device);
-}
+XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
-XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
-  platform::XPUDeviceGuard guard(place.device);
-
+XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                          << static_cast<int>(place_.device);
-
-  context_ = xpu::create_context();
-  const int MAX_XPU_NUM = 16;
-  static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
-
-  int l3_size = 13.5 * 1024 * 1024;
-  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-    l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
-  }
-
-  auto selected_xpus = GetXPUSelectedDevices();
-  for (unsigned int i = 0; i < selected_xpus.size(); i++) {
-    if (place.device == selected_xpus[i]) {
-      if (l3ptrs[place.device] == nullptr) {
-        xpu_malloc(static_cast<void**>(&l3ptrs[place.device]), l3_size,
-                   XPU_MEM_L3);
-      }
-      if (l3ptrs[place.device] != nullptr) {
-        context_->_l3_mgr.set(l3ptrs[place.device], l3_size);
-        VLOG(3) << "xpu place " << place.device << " set l3 size " << l3_size;
-      }
-      break;
-    }
-  }
+                          << static_cast<int>(place.device);
 }
-
-void XPUDeviceContext::Wait() const {
-  platform::SetXPUDeviceId(place_.device);
-  xpu_wait(context_->xpu_stream);
-}
-
-Place XPUDeviceContext::GetPlace() const { return place_; }
-
-xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -840,15 +796,6 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   }
   return num_entries;
 }
-
-// TODO(jczaja): Replace with C++20 equivalents when applicable
-#ifdef _WIN32
-#define likely(expr) (expr)
-#define unlikely(expr) (expr)
-#else
-#define likely(expr) (__builtin_expect(!!(expr), 1))
-#define unlikely(expr) (__builtin_expect(!!(expr), 0))
-#endif
 
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {

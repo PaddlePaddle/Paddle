@@ -28,6 +28,32 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fuse_bn_act")
+class FuseBatchNormActPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseBatchNormActPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_bn_act_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_bn_add_act")
+class FuseBatchNormAddActPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseBatchNormAddActPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_bn_add_act_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_relu_depthwise_conv")
 class FuseReluDepthwiseConvPass(CPPPassWrapper):
     def __init__(self):
