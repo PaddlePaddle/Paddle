@@ -15,6 +15,7 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -89,48 +90,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
-KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
-std::once_flag KernelSignatureMap::init_flag_;
-
-KernelSignatureMap& KernelSignatureMap::Instance() {
-  std::call_once(init_flag_, [] {
-    kernel_signature_map_ = new KernelSignatureMap();
-    for (const auto& pair : OpInfoMap::Instance().map()) {
-      const auto& op_type = pair.first;
-      const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
-          op_proto) {
-        KernelArgsNameMakerByOpProto maker(op_proto);
-        VLOG(10) << "Register kernel signature for " << op_type;
-        auto success = kernel_signature_map_->map_
-                           .emplace(pten::TransToPtenKernelName(op_type),
-                                    std::move(maker.GetKernelSignature()))
-                           .second;
-        PADDLE_ENFORCE_EQ(
-            success, true,
-            platform::errors::PermissionDenied(
-                "Kernel signature of the operator %s has been registered.",
-                op_type));
-      }
-    }
-  });
-  return *kernel_signature_map_;
-}
-
-bool KernelSignatureMap::Has(const std::string& op_type) const {
-  return map_.find(op_type) != map_.end();
-}
-
-const KernelSignature& KernelSignatureMap::Get(
-    const std::string& op_type) const {
-  auto it = map_.find(op_type);
-  PADDLE_ENFORCE_NE(
-      it, map_.end(),
-      platform::errors::NotFound(
-          "Operator `%s`'s kernel signature is not registered.", op_type));
-  return it->second;
-}
-
 const paddle::SmallVector<std::string>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {
@@ -194,6 +153,24 @@ KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
   return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
                          GetInputArgsNames(), GetAttrsArgsNames(),
                          GetOutputArgsNames());
+}
+
+std::once_flag kernel_sig_map_init_flag;
+
+void InitDefaultKernelSignatureMap() {
+  std::call_once(kernel_sig_map_init_flag, [] {
+    for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
+      const auto& op_type = pair.first;
+      const auto* op_proto = pair.second.proto_;
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+          op_proto) {
+        paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
+        VLOG(10) << "Register kernel signature for " << op_type;
+        pten::DefaultKernelSignatureMap::Instance().Insert(
+            op_type, std::move(maker.GetKernelSignature()));
+      }
+    }
+  });
 }
 
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
