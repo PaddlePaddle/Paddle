@@ -1197,7 +1197,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                 out_no_state_dict = self.check_with_opt_state_dict(
                     use_save_load=False)
             self.assertTrue(
-                np.allclose(out_use_state_dict[0], out_no_state_dict[0]))
+                np.array_equal(out_use_state_dict, out_no_state_dict))
 
 
 if __name__ == '__main__':
