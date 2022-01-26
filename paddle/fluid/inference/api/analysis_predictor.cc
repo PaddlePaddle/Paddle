@@ -668,6 +668,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuBatchSize(config_.ipu_batch_size_);
   argument_.SetIpuNeedAvgShard(config_.ipu_need_avg_shard_);
 
+  argument_.SetUseNpu(config_.use_npu_);
+  argument_.SetNPUDeviceId(config_.npu_device_id());
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);

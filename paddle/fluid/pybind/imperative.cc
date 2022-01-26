@@ -697,10 +697,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
             platform::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
-      } else if (src->Var().IsType<framework::SelectedRows>()) {
-        auto &src_selected_rows = src->Var().Get<framework::SelectedRows>();
+      } else if (src->Var().IsType<pten::SelectedRows>()) {
+        auto &src_selected_rows = src->Var().Get<pten::SelectedRows>();
         auto *dst_selected_rows =
-            dst.MutableVar()->GetMutable<framework::SelectedRows>();
+            dst.MutableVar()->GetMutable<pten::SelectedRows>();
         dst_selected_rows->set_height(src_selected_rows.height());
         dst_selected_rows->set_rows(src_selected_rows.rows());
         framework::TensorCopy(src_selected_rows.value(), dst_device,
@@ -1392,7 +1392,7 @@ void BindImperative(py::module *m_ptr) {
 
              PADDLE_ENFORCE_EQ(
                  self.Var().IsType<framework::LoDTensor>() ||
-                     self.Var().IsType<framework::SelectedRows>(),
+                     self.Var().IsType<pten::SelectedRows>(),
                  true,
                  platform::errors::InvalidArgument(
                      "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
@@ -1423,15 +1423,14 @@ void BindImperative(py::module *m_ptr) {
                detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
              } else {
                const auto &origin_selected_rows =
-                   self.Var().Get<framework::SelectedRows>();
+                   self.Var().Get<pten::SelectedRows>();
                PADDLE_ENFORCE_EQ(
                    origin_selected_rows.value().IsInitialized(), true,
                    platform::errors::InvalidArgument(
                        "Tensor %s has not been initialized!", self.Name()));
 
                auto *detach_selected_rows =
-                   detach_var->MutableVar()
-                       ->GetMutable<framework::SelectedRows>();
+                   detach_var->MutableVar()->GetMutable<pten::SelectedRows>();
                detach_selected_rows->set_height(origin_selected_rows.height());
                detach_selected_rows->set_rows(origin_selected_rows.rows());
                detach_selected_rows->mutable_value()->ShareDataWith(
@@ -1597,7 +1596,7 @@ void BindImperative(py::module *m_ptr) {
                        ? grad_var->MutableVar()
                              ->GetMutable<framework::LoDTensor>()
                        : grad_var->MutableVar()
-                             ->GetMutable<framework::SelectedRows>()
+                             ->GetMutable<pten::SelectedRows>()
                              ->mutable_value();
 
                if (tensor->IsInitialized()) {
@@ -1613,7 +1612,7 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_is_sparse",
            [](imperative::VarBase &self) {
-             return self.Var().IsType<framework::SelectedRows>();
+             return self.Var().IsType<pten::SelectedRows>();
            })
       .def("_allreduce",
            [](imperative::VarBase &self,
@@ -1623,7 +1622,7 @@ void BindImperative(py::module *m_ptr) {
 #if NCCL_VERSION_CODE >= 2212
                imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
-               if (!self.Var().IsType<framework::SelectedRows>()) {
+               if (!self.Var().IsType<pten::SelectedRows>()) {
                  imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
@@ -2126,11 +2125,10 @@ void BindImperative(py::module *m_ptr) {
                                          .Get<framework::LoDTensor>()
                                          .dims());
                                } else if (self.Var()
-                                              .IsType<
-                                                  framework::SelectedRows>()) {
+                                              .IsType<pten::SelectedRows>()) {
                                  return framework::vectorize<int>(
                                      self.Var()
-                                         .Get<framework::SelectedRows>()
+                                         .Get<pten::SelectedRows>()
                                          .value()
                                          .dims());
                                } else if (self.Var()

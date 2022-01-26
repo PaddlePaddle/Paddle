@@ -77,10 +77,12 @@ void InterpreterCoreEventGarbageCollector::Add(
   } else if (var->IsType<LoDRankTable>()) {
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
-  } else if (var->IsType<SelectedRows>()) {
-    Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
+  } else if (var->IsType<pten::SelectedRows>()) {
+    Add(var->GetMutable<pten::SelectedRows>()
+            ->mutable_value()
+            ->MoveMemoryHolder(),
         event, ctx);
-    var->GetMutable<SelectedRows>()->mutable_rows()->clear();
+    var->GetMutable<pten::SelectedRows>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {
