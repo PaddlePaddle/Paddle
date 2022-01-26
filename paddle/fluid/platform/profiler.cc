@@ -76,7 +76,7 @@ RecordEvent::RecordEvent(const char *name, const EventRole role,
   }
 #endif
 #endif
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
     OriginalConstruct(name, role, "none");
     return;
   }
@@ -99,7 +99,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
     OriginalConstruct(name, role, "none");
     return;
   }
@@ -122,7 +122,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
     OriginalConstruct(name, role, attr);
     return;
   }
