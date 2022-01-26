@@ -25,49 +25,6 @@ limitations under the License. */
 namespace pten {
 class TensorBase;
 
-class DeviceContextImpl {
- public:
-  DeviceContextImpl() = default;
-  ~DeviceContextImpl() = default;
-
-  void SetDeviceAllocator(const Allocator* allocator);
-
-  void SetHostAllocator(const Allocator* allocator);
-
-  void SetZeroAllocator(const Allocator* allocator);
-
-  const Allocator* GetDeviceAllocator() const;
-
-  const Allocator* GetHostAllocator() const;
-
-  const Allocator* GetZeroAllocator() const;
-
-  void* Alloc(TensorBase* tensor,
-              DataType dtype = DataType::UNDEFINED,
-              size_t requested_size = 0) const;
-
-  template <typename T>
-  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
-    return static_cast<T*>(Alloc(tensor, dtype, requested_size));
-  }
-
-  void* HostAlloc(TensorBase* tensor,
-                  DataType dtype = DataType::UNDEFINED,
-                  size_t requested_size = 0) const;
-
-  template <typename T>
-  T* HostAlloc(pten::TensorBase* tensor, size_t requested_size = 0) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
-    return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
-  }
-
- private:
-  const Allocator* device_allocator_{nullptr};
-  const Allocator* host_allocator_{nullptr};
-  const Allocator* zero_allocator_{nullptr};
-};
-
 /**
  * DeviceContext provides device-related interfaces.
  *
@@ -143,9 +100,7 @@ class DeviceContext {
                       size_t requested_size = 0) const;
 
   template <typename T>
-  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
-    return impl_->Alloc<T>(tensor, requested_size);
-  }
+  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const;
 
   /**
    * @brief Allocate host memory for tensor.
@@ -155,9 +110,7 @@ class DeviceContext {
                           size_t requested_size = 0) const;
 
   template <typename T>
-  T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const {
-    return impl_->HostAlloc<T>(tensor, requested_size);
-  }
+  T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
 
   // TODO(wilber): Just for the convenience of migrating the code, it will be
   // modified or removed later.
@@ -167,7 +120,8 @@ class DeviceContext {
   virtual void Wait() const {}
 
  private:
-  std::unique_ptr<DeviceContextImpl> impl_;
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace pten
