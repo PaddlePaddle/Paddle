@@ -49,7 +49,6 @@ PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eager_tensor)) egr::EagerTensor();
-    // Py_INCREF(obj);
   }
   return obj;
 }
@@ -725,7 +724,9 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
 static void EagerTensorDealloc(EagerTensorObject* self) {
   self->eager_tensor.~EagerTensor();
-  Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
+  PyTypeObject* tp = Py_TYPE(self);
+  tp->tp_free(reinterpret_cast<PyObject*>(self));
+  Py_DECREF(tp);
 }
 
 extern struct PyGetSetDef variable_properties[];
@@ -739,9 +740,8 @@ PyMappingMethods mapping_methods;
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
-  auto& internals = pybind11::detail::get_internals();
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
-      internals.default_metaclass->tp_alloc(internals.default_metaclass, 0));
+      PyType_Type.tp_alloc(&PyType_Type, 0));
   heap_type->ht_name = ToPyObject("EagerTensor");
   heap_type->ht_qualname = ToPyObject("EagerTensor");
   auto type = &heap_type->ht_type;
@@ -755,8 +755,8 @@ void BindEager(pybind11::module* module) {
   type->tp_getset = variable_properties;
   type->tp_init = EagerTensorInit;
   type->tp_new = EagerTensorNew;
-  Py_INCREF(internals.instance_base);
-  type->tp_base = reinterpret_cast<PyTypeObject*>(internals.instance_base);
+  Py_INCREF(&PyBaseObject_Type);
+  type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
 #if PY_VERSION_HEX >= 0x03050000
