@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -468,8 +469,7 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::Tensor>() ||
-           ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
@@ -550,7 +550,7 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
