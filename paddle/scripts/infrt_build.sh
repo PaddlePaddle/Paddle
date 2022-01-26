@@ -32,8 +32,8 @@ function update_pd_ops() {
    # compile and install paddle
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
-   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF -DWITH_POCKETFFT=OFF
-   make -j8
+   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
+   make -j8 paddle_python
    cd ${PADDLE_ROOT}/build
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
