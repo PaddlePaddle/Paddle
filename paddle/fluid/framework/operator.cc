@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
 class DenseTensor;
@@ -1087,6 +1088,13 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
+void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "The default InferShape function of OperatorWithKernel is not allowed to "
+      "be called, please override corresponding InferShape function in the "
+      "specific operator."));
+}
+
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
@@ -1838,8 +1846,10 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(
-      pten::TransToPtenKernelName(Type()));
+  InitDefaultKernelSignatureMap();
+  ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
+  return pten::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
+      arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePtenData(

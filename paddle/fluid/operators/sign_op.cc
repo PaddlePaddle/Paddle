@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,14 +25,6 @@ namespace operators {
 class SignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "sign");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sign");
-
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 template <typename AttrType>
@@ -64,6 +59,9 @@ class SignGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DELCARE_INFER_SHAPE_FUNCTOR(sign, SignInferShapeFunctor,
+                            PT_INFER_META(pten::UnchangedInferMetaNew));
 REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
                   ops::SignGradMaker<paddle::framework::OpDesc>,
-                  ops::SignGradMaker<paddle::imperative::OpBase>);
+                  ops::SignGradMaker<paddle::imperative::OpBase>,
+                  SignInferShapeFunctor);

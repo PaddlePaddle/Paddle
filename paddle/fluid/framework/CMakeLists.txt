@@ -199,11 +199,11 @@ ENDIF()
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory infershape_utils)
+    pten pten_utils kernel_factory infershape_utils op_utils)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory infershape_utils)
+    pten pten_utils kernel_factory infershape_utils op_utils)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -411,6 +411,7 @@ cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tens
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
 cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
+
 
 # Get the current working branch
 execute_process(

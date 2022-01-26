@@ -131,6 +131,8 @@ class DenseTensor : public TensorBase,
   /// \param meta The meta information of the tensor.
   void set_meta(DenseTensorMeta&& meta);
 
+  void set_meta(const DenseTensorMeta& meta);
+
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
