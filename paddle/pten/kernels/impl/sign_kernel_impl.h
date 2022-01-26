@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void SignKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
-  out->mutable_data<T>();
+  out->mutable_data<T>(dev_ctx.GetPlace());
   auto eigen_out = pten::EigenVector<T>::Flatten(*out);
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
 

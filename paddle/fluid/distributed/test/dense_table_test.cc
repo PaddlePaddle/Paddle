@@ -16,7 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/table/common_dense_table.h"
+#include "paddle/fluid/distributed/ps/table/common_dense_table.h"
 
 namespace paddle {
 namespace distributed {
