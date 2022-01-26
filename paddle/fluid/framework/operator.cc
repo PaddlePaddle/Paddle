@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
 class DenseTensor;
@@ -1086,6 +1087,13 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
+void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "The default InferShape function of OperatorWithKernel is not allowed to "
+      "be called, please override corresponding InferShape function in the "
+      "specific operator."));
+}
+
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
@@ -1336,6 +1344,16 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
        !paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
        paddle::platform::is_in_xpu_black_list(type_))) {
     VLOG(3) << "missing XPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_IPU
+  if (kernel_iter == kernels.end() &&
+      platform::is_ipu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing IPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -1784,8 +1802,10 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(
-      pten::TransToPtenKernelName(Type()));
+  InitDefaultKernelSignatureMap();
+  ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
+  return pten::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
+      arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePtenData(
