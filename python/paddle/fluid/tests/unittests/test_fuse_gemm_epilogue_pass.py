@@ -47,14 +47,15 @@ def verify_node_count(graph, node_name, target_count):
 
 
 class MultiFCLayer(paddle.nn.Layer):
-    def __init__(self, hidden):
+    def __init__(self, hidden, Activation):
         super(MultiFCLayer, self).__init__()
         self.linear1 = paddle.nn.Linear(hidden, hidden)
         self.linear2 = paddle.nn.Linear(hidden, hidden)
+        self.linear3 = paddle.nn.Linear(hidden, hidden)
 
-        self.relu1 = paddle.nn.ReLU()
-        self.relu2 = paddle.nn.ReLU()
-        self.relu3 = paddle.nn.ReLU()
+        self.relu1 = Activation()
+        self.relu2 = Activation()
+        self.relu3 = Activation()
 
     def forward(self, x, matmul_y, ele_y):
         output = self.linear1(x)
@@ -62,6 +63,7 @@ class MultiFCLayer(paddle.nn.Layer):
         output = self.linear2(output)
 
         output1 = paddle.matmul(output, matmul_y)
+        output = self.linear3(output)
         output = self.relu2(output)
 
         output = paddle.matmul(output, matmul_y)
@@ -73,7 +75,7 @@ class MultiFCLayer(paddle.nn.Layer):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueFWDFP32(unittest.TestCase):
+class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
     def setUp(self):
         self.batch = 64
         self.seqlen = 128
@@ -96,7 +98,7 @@ class TestFuseGemmEpilogueFWDFP32(unittest.TestCase):
             ele_y = paddle.static.data(
                 name="_ele_y", shape=[self.hidden, ], dtype='float32')
 
-            multi_layer = MultiFCLayer(self.hidden)
+            multi_layer = MultiFCLayer(self.hidden, self._get_act_type())
             with paddle.static.amp.fp16_guard():
                 out = multi_layer(data, matmul_y, ele_y)
                 self.loss = paddle.mean(out)
@@ -124,7 +126,7 @@ class TestFuseGemmEpilogueFWDFP32(unittest.TestCase):
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
-    def test_output(self):
+    def _test_output(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.fuse_gemm_epilogue = True
         program = paddle.static.CompiledProgram(self.main_prog)
@@ -140,22 +142,218 @@ class TestFuseGemmEpilogueFWDFP32(unittest.TestCase):
             compare(self.reference, result, self.atol, self.rtol),
             "[{}] outputs are miss-matched.".format(type(self).__name__))
         self.assertTrue(
-            verify_node_count(program._graph, "fused_gemm_epilogue", 2),
+            verify_node_count(program._graph, "fused_gemm_epilogue", 3),
             "[{}] The number of fused_gemm_epilogue is miss-matched.".format(
-                type(self).__name__))
-        self.assertTrue(
-            verify_node_count(program._graph, "matmul_v2", 2),
-            "[{}] The number of matmul_v2 is miss-matched.".format(
                 type(self).__name__))
 
     def _pre_test_hooks(self):
         self.atol = 1e-4
         self.rtol = 1e-3
 
+    def _get_act_type(self):
+        return paddle.nn.ReLU
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueFWDFP16(TestFuseGemmEpilogueFWDFP32):
+class TestFuseGemmEpilogueReluFWDFP32(TestFuseGemmEpilogueFWDBase):
+    def _pre_test_hooks(self):
+        self.atol = 1e-3
+        self.rtol = 1e-2
+
+    def _get_act_type(self):
+        return paddle.nn.ReLU
+
+    def test_output(self):
+        self._test_output()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueReluFWDFP16(TestFuseGemmEpilogueReluFWDFP32):
+    def _pre_test_hooks(self):
+        self.atol = 1e-3
+        self.rtol = 1e-2
+
+        fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place, self.main_prog, to_fp16_var_names=fp16_var_list)
+
+        self.data_arr = self.data_arr.astype("float16")
+        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
+        self.ele_y_arr = self.ele_y_arr.astype("float16")
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueGeluFWDFP32(TestFuseGemmEpilogueFWDBase):
+    def _pre_test_hooks(self):
+        self.atol = 1e-4
+        self.rtol = 1e-3
+
+    def _get_act_type(self):
+        return paddle.nn.GELU
+
+    def test_output(self):
+        self._test_output()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueGeluFWDFP16(TestFuseGemmEpilogueGeluFWDFP32):
+    def _pre_test_hooks(self):
+        self.atol = 1e-3
+        self.rtol = 1e-2
+
+        fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place, self.main_prog, to_fp16_var_names=fp16_var_list)
+
+        self.data_arr = self.data_arr.astype("float16")
+        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
+        self.ele_y_arr = self.ele_y_arr.astype("float16")
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
+    def setUp(self):
+        self.batch = 64
+        self.seqlen = 128
+        self.hidden = 768
+
+        paddle.enable_static()
+
+        self.main_prog = paddle.static.Program()
+        self.startup_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(self.main_prog, self.startup_prog):
+            data = paddle.static.data(
+                name="_data",
+                shape=[-1, self.seqlen, self.hidden],
+                dtype='float32')
+            matmul_y = paddle.static.data(
+                name="_matmul_y",
+                shape=[1, self.hidden, self.hidden],
+                dtype='float32')
+            ele_y = paddle.static.data(
+                name="_ele_y", shape=[self.hidden, ], dtype='float32')
+
+            multi_layer = MultiFCLayer(self.hidden, self._get_act_type())
+            with paddle.static.amp.fp16_guard():
+                out = multi_layer(data, matmul_y, ele_y)
+                self.loss = paddle.mean(out)
+                paddle.static.append_backward(loss=self.loss)
+
+        self.data_arr = np.random.random(
+            (self.batch, self.seqlen, self.hidden)).astype("float32")
+        self.matmul_y_arr = np.random.random(
+            (1, self.hidden, self.hidden)).astype("float32")
+        self.ele_y_arr = np.random.random((self.hidden, )).astype("float32")
+
+        self.place = paddle.CUDAPlace(0)
+        self.exe = paddle.static.Executor(self.place)
+        self.exe.run(self.startup_prog)
+
+        self._pre_test_hooks()
+
+        self.feed = {
+            "_data": self.data_arr,
+            "_matmul_y": self.matmul_y_arr,
+            "_ele_y": self.ele_y_arr
+        }
+
+        self.fetch = [
+            self.loss.name,
+            '{}.w_0@GRAD'.format(multi_layer.linear1.full_name()),
+            '{}.b_0@GRAD'.format(multi_layer.linear1.full_name()),
+            '{}.w_0@GRAD'.format(multi_layer.linear2.full_name()),
+            '{}.b_0@GRAD'.format(multi_layer.linear2.full_name()),
+            '{}.w_0@GRAD'.format(multi_layer.linear3.full_name()),
+            '{}.b_0@GRAD'.format(multi_layer.linear3.full_name())
+        ]
+        self.outs_ref = self.exe.run(self.main_prog,
+                                     feed=self.feed,
+                                     fetch_list=self.fetch)
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    def _test_output(self):
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.fuse_gemm_epilogue = True
+        program = paddle.static.CompiledProgram(self.main_prog)
+        program = program.with_data_parallel(
+            loss_name=self.loss.name,
+            build_strategy=build_strategy,
+            places=paddle.static.cuda_places())
+
+        outs_res = self.exe.run(program, feed=self.feed, fetch_list=self.fetch)
+
+        for ref, res in zip(self.outs_ref, outs_res):
+            self.assertTrue(
+                compare(ref, res, self.atol, self.rtol),
+                "[{}] output is miss-matched.".format(type(self).__name__))
+
+        self.assertTrue(
+            verify_node_count(program._graph, "fused_gemm_epilogue", 3))
+        self.assertTrue(
+            verify_node_count(program._graph, "fused_gemm_epilogue_grad", 3))
+
+    def _pre_test_hooks(self):
+        self.atol = 1e-4
+        self.rtol = 1e-3
+
+    def _get_act_type(self):
+        return paddle.nn.ReLU
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueReLUBWDFP32(TestFuseGemmEpilogueBWDBase):
+    def _pre_test_hooks(self):
+        self.atol = 1e-4
+        self.rtol = 1e-3
+
+    def _get_act_type(self):
+        return paddle.nn.ReLU
+
+    def test_output(self):
+        self._test_output()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueReLUBWDFP16(TestFuseGemmEpilogueReLUBWDFP32):
+    def _pre_test_hooks(self):
+        self.atol = 1e-3
+        self.rtol = 1e-2
+
+        fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place, self.main_prog, to_fp16_var_names=fp16_var_list)
+
+        self.data_arr = self.data_arr.astype("float16")
+        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
+        self.ele_y_arr = self.ele_y_arr.astype("float16")
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueGeLUBWDFP32(TestFuseGemmEpilogueBWDBase):
+    def _pre_test_hooks(self):
+        self.atol = 1e-4
+        self.rtol = 1e-3
+
+    def _get_act_type(self):
+        return paddle.nn.GELU
+
+    def test_output(self):
+        self._test_output()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFuseGemmEpilogueGeLUBWDFP16(TestFuseGemmEpilogueGeLUBWDFP32):
     def _pre_test_hooks(self):
         self.atol = 1e-3
         self.rtol = 1e-2
