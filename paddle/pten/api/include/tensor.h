@@ -42,12 +42,12 @@ class DenseTensor;
 
 namespace pten {
 class TensorBase;
+namespace framework {
+class DDim;
+}  // namespace framework
 }  // namespace pten
 
 namespace paddle {
-namespace framework {
-class DDim;
-}
 
 namespace experimental {
 
@@ -159,9 +159,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the dimensions of Tensor.
    *
-   * @return paddle::framework::DDim
+   * @return pten::framework::DDim
    */
-  paddle::framework::DDim dims() const;
+  pten::framework::DDim dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
@@ -505,6 +505,12 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+  /**
+   * Place type: Return the expected memory location if the Tensor is
+   * uninitialized.
+   */
+  PlaceType place_{PlaceType::kUNK};
 };
 
 }  // namespace experimental

@@ -19,6 +19,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/pten/kernels/funcs/concat_funcs.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include <paddle/fluid/platform/mkldnn_helper.h>
 #endif
@@ -56,8 +58,8 @@ class ConcatOp : public framework::OperatorWithKernel {
       size_t axis =
           ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
                       static_cast<int64_t>(inputs_dims[0].size()));
-      framework::DDim out_dims =
-          ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims, axis);
+      framework::DDim out_dims = pten::funcs::ComputeAndCheckShape(
+          ctx->IsRuntime(), inputs_dims, axis);
       if (out_dims[axis] < 0) {
         out_dims[axis] = -1;
       }
@@ -101,6 +103,15 @@ class ConcatOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasInput("AxisTensor")) {
+      return framework::KernelSignature("concat", {"X"}, {"AxisTensor"},
+                                        {"Out"});
+    }
+    return framework::KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
   }
 };
 

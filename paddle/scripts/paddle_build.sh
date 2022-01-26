@@ -1725,6 +1725,7 @@ function parallel_test_base_xpu() {
 EOF
 
 set +x
+        export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
@@ -1747,6 +1748,8 @@ set -x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
+        python ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/xpu/get_test_cover_info.py
+        unset XPU_OP_LIST_DIR
     fi   
 }
 

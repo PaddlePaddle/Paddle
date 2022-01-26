@@ -14,4 +14,43 @@ limitations under the License. */
 
 #include "paddle/pten/infermeta/multiary.h"
 
-namespace pten {}  // namespace pten
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/kernels/funcs/concat_funcs.h"
+namespace pten {
+
+DenseTensorMeta ConcatInferMeta(const std::vector<DenseTensorMeta>& x_meta,
+                                const Scalar& axis_scalar,
+                                bool is_runtime) {
+  PADDLE_ENFORCE_GE(x_meta.size(),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The size of input meta vector should be greater"
+                        "than 0."));
+
+  int axis = axis_scalar.to<int>();
+  // 1. calculate axis
+  int rank = x_meta[0].dims.size();
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank,
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d",
+          -rank,
+          rank,
+          axis));
+  if (axis < 0) {
+    axis = axis + rank;
+  }
+
+  // 2. calculate out dims
+  std::vector<pten::DDim> x_dims;
+  for (auto meta : x_meta) {
+    x_dims.push_back(meta.dims);
+  }
+  pten::DDim out_dim =
+      pten::funcs::ComputeAndCheckShape(is_runtime, x_dims, axis);
+
+  return {x_meta[0].dtype, out_dim, x_meta[0].layout};
+}
+
+}  // namespace pten

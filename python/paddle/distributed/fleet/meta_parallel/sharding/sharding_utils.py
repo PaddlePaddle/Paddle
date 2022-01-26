@@ -57,8 +57,6 @@ class ShardingClipGrad:
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
-        params_and_grads = []
-
         sum_square_fp16 = []
         sum_square_fp32 = []
 
@@ -114,15 +112,14 @@ class ShardingClipGrad:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
                 continue
             if p.dtype == paddle.float16:
-                new_grad = layers.elementwise_mul(x=g, y=clip_var_fp16)
+                g.scale_(clip_var_fp16)
             else:
-                new_grad = layers.elementwise_mul(x=g, y=clip_var)
-            params_and_grads.append((p, new_grad))
+                g.scale_(clip_var)
+            p._reset_grad_inplace_version(True)
 
-        return params_and_grads
+        return params_grads
 
     def __getattr__(self, item):
         return getattr(self._clip, item)

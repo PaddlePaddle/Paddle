@@ -92,20 +92,20 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
 
     framework::Tensor x, *z;
-    if (x_var->IsType<framework::SelectedRows>()) {
+    if (x_var->IsType<pten::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
                         platform::errors::InvalidArgument(
                             "For elementwise_op, if X is Sparse, Y must be "
                             "scalar. But reveived the size of Y = %s.",
                             y->dims().size()));
-      auto& x_sele = x_var->Get<framework::SelectedRows>();
-      auto out_sele = ctx.Output<framework::SelectedRows>("Out");
+      auto& x_sele = x_var->Get<pten::SelectedRows>();
+      auto out_sele = ctx.Output<pten::SelectedRows>("Out");
       x = x_sele.value();
       out_sele->set_rows(x_sele.rows());
       out_sele->set_height(x_sele.height());
       out_sele->mutable_value()->Resize(x_sele.value().dims());
       out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
-      z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+      z = ctx.Output<pten::SelectedRows>("Out")->mutable_value();
       z->mutable_data<T>(ctx.GetPlace());
       auto dims_equal = x.dims() == y->dims();
       if (dims_equal) {
@@ -124,7 +124,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
       auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
-      pten::MultiplyKernel<T>(
+      pten::MultiplyRawKernel<T>(
           static_cast<const typename framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *pt_x.get(), *pt_y.get(), axis, pt_z.get());
