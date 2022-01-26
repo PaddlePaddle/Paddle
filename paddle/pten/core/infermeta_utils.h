@@ -155,7 +155,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   struct InferMetaFnCallHelper<MetaConfig, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
-      const MetaConfig& arg = ctx->GetMetaConfig();
+      MetaConfig arg = ctx->GetMetaConfig();
       InferMetaFnCallHelper<Tail...>::template Call<in_idx, attr_idx, out_idx>(
           ctx, pargs..., arg);
     }
