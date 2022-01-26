@@ -1145,6 +1145,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
 
   auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
+  // using cache
+  if (kernel_type_.get()) {
+    dev_ctx = pool.Get(kernel_type_->place_);
+  }
 
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
