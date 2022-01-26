@@ -18,8 +18,6 @@ from paddle import compat as cpt
 
 ops_having_canonicalization = {"elementwise_add", }
 
-ops_having_canonicalization = {"elementwise_add", }
-
 
 # collect original ops: op which has both inference and grid defination
 def get_original_ops():
