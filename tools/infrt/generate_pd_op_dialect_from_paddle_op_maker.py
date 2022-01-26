@@ -270,7 +270,7 @@ def convert_op_proto_into_mlir(op_descs):
     for op_type, op_proto in op_descs.items():
         if (op_type in skipped_op_list) or (op_type not in original_ops_):
             continue
-        handler_iter = "import_handler_map_[\"" + op_type + "\"]=&OpGenImpl::buildOperation<mlir::pd::" + op_type.capitalize(
+        handler_iter = "import_handler_map_[\"" + op_type + "\"]=&MLIRModelGenImpl::buildOperation<mlir::pd::" + op_type.capitalize(
         ) + "Op>;\n"
         handler_iters_str_.append(handler_iter)
 
