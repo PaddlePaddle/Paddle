@@ -5,6 +5,7 @@ cc_test(test_convert_utils SRCS test_convert_utils.cc DEPS convert_utils)
 cc_test(test_kernel_factory SRCS test_kernel_factory.cc DEPS kernel_factory scale_kernel)
 cc_test(test_op_utils SRCS test_op_utils.cc DEPS op_compat_infos)
 cc_test(test_pten_device_context SRCS test_device_context.cc DEPS pten_context cpu_context)
+cc_test(test_meta_fn_utils SRCS test_meta_fn_utils.cc DEPS dense_tensor infermeta infermeta_utils)
 
 cc_test(test_ddim SRCS test_ddim.cc DEPS ddim)
 if(WITH_GPU)

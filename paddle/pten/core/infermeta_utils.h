@@ -235,9 +235,9 @@ struct InferMetaFnRegistrar {
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
       pt_register_infer_meta_fn_ns_check_##kernel_name_prefix,                \
       "PT_REGISTER_INFER_META_FN must be called in global namespace.");       \
-  static const ::pten::ArgumentMappingFnRegistrar                             \
+  static const ::pten::InferMetaFnRegistrar                                   \
       __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
           #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn));        \
-  int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
+  int TouchInferMetaFnSymbol_##op_type() { return 0; }
 
 }  // namespace pten
