@@ -16,6 +16,8 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/pten/api/include/api.h"
+#include "paddle/pten/api/include/utils.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
@@ -27,11 +29,8 @@ TEST(API, data_transform_same_place) {
   auto x = paddle::experimental::full(
       {3, 3}, 1.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
 
-  auto y = paddle::experimental::full({3, 3},
-                                      2.0,
-                                      experimental::DataType::INT32,
-                                      experimental::Backend::CPU,
-                                      experimental::DataLayout::NHWC);
+  auto y = paddle::experimental::full(
+      {3, 3}, 2.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
 
   std::vector<float> sum(9, 6.0);
 
@@ -58,13 +57,10 @@ TEST(API, data_transform_same_place) {
 TEST(Tensor, data_transform_diff_place) {
   // 1. create tensor
   auto x = paddle::experimental::full(
-      {3, 3}, 1.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
+      {3, 3}, 1.0, experimental::DataType::FLOAT64, experimental::Backend::CPU);
 
-  auto y = paddle::experimental::full({3, 3},
-                                      2.0,
-                                      experimental::DataType::INT32,
-                                      experimental::Backend::GPU,
-                                      experimental::DataLayout::NHWC);
+  auto y = paddle::experimental::full(
+      {3, 3}, 2.0, experimental::DataType::FLOAT64, experimental::Backend::GPU);
 
   std::vector<float> sum(9, 6.0);
 
@@ -76,23 +72,17 @@ TEST(Tensor, data_transform_diff_place) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
-  ASSERT_EQ(out.place(), pten::TransToFluidPlace(experimental::Backend::GPU));
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.dtype(), pten::DataType::FLOAT64);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
+  ASSERT_EQ(out.impl()->place(),
+            pten::TransToFluidPlace(experimental::Backend::GPU));
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto ref_out = experimental::copy_to(out, experimental::Backend::CPU, true);
 
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.GetByPlace(out.place());
-
-  auto ref_out = paddle::experimental::empty_like(
-      out, experimental::DataType::FLOAT32, experimental::Backend::CPU);
-
-  pten::Copy(*dev_ctx, *dense_out, false, ref_out.get());
-
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(ref_out.impl());
   for (size_t i = 0; i < 9; i++) {
-    ASSERT_NEAR(sum[i], ref_out->data<float>()[i], 1e-6f);
+    ASSERT_NEAR(sum[i], dense_out->data<double>()[i], 1e-6f);
   }
 }
 

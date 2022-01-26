@@ -14,6 +14,7 @@
 
 #include <tuple>
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -79,7 +80,7 @@ class ConvMKLDNNHandlerT
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
@@ -264,7 +265,7 @@ class ConvMKLDNNHandlerT
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(in->dims()),
                                 unique_name)) {
-    if (!this->isBwdCached()) {
+    if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(

@@ -37,7 +37,7 @@ inline bool NeedTransformDataType(const DataType& l, const DataType& r) {
 inline pten::DenseTensor TransDataLayout(const pten::DenseTensor& tensor,
                                          DataLayout layout) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
-  VLOG(3) << "DataLayoutTransform in, src_layout " << tensor.layout()
+  VLOG(3) << "DataLayoutTransform src_layout: " << tensor.layout()
           << " dst_layout: " << layout;
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<pten::CPUContext*>(pool.Get(tensor.place()));
@@ -48,11 +48,41 @@ inline pten::DenseTensor TransDataLayout(const pten::DenseTensor& tensor,
   }
 }
 
+template <typename Context>
+pten::DenseTensor CastDateType(const Context& dev_ctx,
+                               const pten::DenseTensor& tensor,
+                               DataType dtype) {
+  switch (tensor.dtype()) {
+    case DataType::FLOAT32:
+      return pten::Cast<float>(dev_ctx, tensor, dtype);
+    case DataType::FLOAT64:
+      return pten::Cast<double>(dev_ctx, tensor, dtype);
+    case DataType::INT32:
+      return pten::Cast<int32_t>(dev_ctx, tensor, dtype);
+    case DataType::INT64:
+      return pten::Cast<int64_t>(dev_ctx, tensor, dtype);
+    case DataType::FLOAT16:
+      return pten::Cast<platform::float16>(dev_ctx, tensor, dtype);
+    case DataType::BFLOAT16:
+      return pten::Cast<platform::bfloat16>(dev_ctx, tensor, dtype);
+    case DataType::BOOL:
+      return pten::Cast<bool>(dev_ctx, tensor, dtype);
+    case DataType::INT16:
+      return pten::Cast<int16_t>(dev_ctx, tensor, dtype);
+    case DataType::UINT8:
+      return pten::Cast<uint8_t>(dev_ctx, tensor, dtype);
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          tensor.dtype()));
+  }
+}
+
 inline pten::DenseTensor TransDataType(const pten::DenseTensor& tensor,
                                        DataType dtype) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
 
-  VLOG(3) << "DataTypeTransform in, src_dtype " << tensor.dtype()
+  VLOG(3) << "DataTypeTransform src_dtype: " << tensor.dtype()
           << " dst_dtype: " << dtype;
 
   pten::DenseTensor out(
@@ -61,15 +91,11 @@ inline pten::DenseTensor TransDataType(const pten::DenseTensor& tensor,
 
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<pten::CPUContext*>(pool.Get(tensor.place()));
-    PD_VISIT_ALL_TYPES(tensor.dtype(), "CastDataType", ([&] {
-                         pten::CastKernel<data_t>(dev_ctx, tensor, dtype, &out);
-                       }));
+    return CastDateType(*dev_ctx, tensor, dtype);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (platform::is_gpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<pten::GPUContext*>(pool.Get(tensor.place()));
-    PD_VISIT_ALL_TYPES(tensor.dtype(), "CastDataType", ([&] {
-                         pten::CastKernel<data_t>(dev_ctx, tensor, dtype, &out);
-                       }));
+    return CastDateType(*dev_ctx, tensor, dtype);
 #endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -78,22 +104,14 @@ inline pten::DenseTensor TransDataType(const pten::DenseTensor& tensor,
   return out;
 }
 
-std::shared_ptr<pten::TensorBase> PrepareData(
-    const std::shared_ptr<pten::TensorBase>& input,
-    const pten::TensorArgDef& target_args_def) {
-  if (input->place() == pten::TransToFluidPlace(target_args_def.backend) &&
-      !NeedTransformDataType(input->dtype(), target_args_def.dtype) &&
-      !NeedTransformLayout(input->layout(), target_args_def.layout)) {
-    return input;
-  }
-
-  pten::DenseTensor out = *(static_cast<pten::DenseTensor*>(input.get()));
-
-  if (NeedTransformLayout(input->layout(), target_args_def.layout)) {
+pten::DenseTensor TransformData(const pten::DenseTensor& tensor,
+                                const pten::TensorArgDef& target_args_def) {
+  pten::DenseTensor out = tensor;
+  if (NeedTransformLayout(tensor.layout(), target_args_def.layout)) {
     out = TransDataLayout(out, target_args_def.layout);
   }
 
-  if (NeedTransformDataType(input->dtype(), target_args_def.dtype)) {
+  if (NeedTransformDataType(tensor.dtype(), target_args_def.dtype)) {
     out = TransDataType(out, target_args_def.dtype);
   }
 
@@ -107,7 +125,43 @@ std::shared_ptr<pten::TensorBase> PrepareData(
         out, pten::TransToFluidPlace(target_args_def.backend), &result);
     out = result;
   }
+  return out;
+}
+
+std::shared_ptr<pten::DenseTensor> PrepareData(
+    const Tensor& input, const pten::TensorArgDef& target_args_def) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in->place() == pten::TransToFluidPlace(target_args_def.backend) &&
+      !NeedTransformDataType(tensor_in->dtype(), target_args_def.dtype) &&
+      !NeedTransformLayout(tensor_in->layout(), target_args_def.layout)) {
+    return std::dynamic_pointer_cast<pten::DenseTensor>(tensor_in);
+  }
+
+  pten::DenseTensor out = TransformData(
+      *(static_cast<pten::DenseTensor*>(tensor_in.get())), target_args_def);
   return std::make_shared<pten::DenseTensor>(out);
+}
+
+std::unique_ptr<std::vector<pten::DenseTensor>> PrepareData(
+    const std::vector<Tensor>& inputs,
+    const pten::TensorArgDef& target_args_def) {
+  auto pt_tensors = std::make_unique<std::vector<pten::DenseTensor>>();
+  pt_tensors->reserve(inputs.size());
+
+  for (const auto& input : inputs) {
+    const auto& tensor_in = input.impl();
+    if (tensor_in->place() ==
+            pten::TransToFluidPlace(target_args_def.backend) &&
+        !NeedTransformDataType(tensor_in->dtype(), target_args_def.dtype) &&
+        !NeedTransformLayout(tensor_in->layout(), target_args_def.layout)) {
+      pt_tensors->push_back(
+          *std::dynamic_pointer_cast<pten::DenseTensor>(tensor_in));
+    }
+    pt_tensors->push_back(TransformData(
+        *(static_cast<pten::DenseTensor*>(tensor_in.get())), target_args_def));
+  }
+
+  return std::move(pt_tensors);
 }
 
 }  // namespace experimental

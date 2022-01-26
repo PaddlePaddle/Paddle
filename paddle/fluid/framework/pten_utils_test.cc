@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 TEST(PtenUtils, TransPtenKernelKeyToOpKernelType) {

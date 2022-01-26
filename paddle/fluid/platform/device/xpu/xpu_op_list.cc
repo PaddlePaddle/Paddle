@@ -74,6 +74,32 @@ bool is_in_xpu_black_list(const std::string& op_name) {
   return false;
 }
 
+std::vector<vartype::Type> get_xpu_op_support_type(const std::string& op_name,
+                                                   XPUVersion version) {
+  std::vector<vartype::Type> res;
+  auto& ops = version == XPU1 ? get_kl1_ops() : get_kl2_ops();
+  if (ops.find(op_name) != ops.end()) {
+    XPUKernelSet& type_set = ops[op_name];
+    for (auto& item : type_set) {
+      res.push_back(item.data_type_);
+    }
+  }
+  return res;
+}
+
+XPUOpListMap get_xpu_op_list(XPUVersion version) {
+  XPUOpListMap res;
+  auto& ops = version == XPU1 ? get_kl1_ops() : get_kl2_ops();
+  for (auto& op : ops) {
+    std::vector<vartype::Type> op_vartypes;
+    for (auto& item : op.second) {
+      op_vartypes.push_back(item.data_type_);
+    }
+    res[op.first] = std::move(op_vartypes);
+  }
+  return res;
+}
+
 }  // namespace platform
 }  // namespace paddle
 #endif

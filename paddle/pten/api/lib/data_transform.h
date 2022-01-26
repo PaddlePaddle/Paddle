@@ -20,8 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-std::shared_ptr<pten::TensorBase> PrepareData(
-    const std::shared_ptr<pten::TensorBase>& input,
+std::shared_ptr<pten::DenseTensor> PrepareData(
+    const Tensor& input, const pten::TensorArgDef& target_args_def);
+
+std::unique_ptr<std::vector<pten::DenseTensor>> PrepareData(
+    const std::vector<Tensor>& inputs,
     const pten::TensorArgDef& target_args_def);
 
 }  // namespace experimental

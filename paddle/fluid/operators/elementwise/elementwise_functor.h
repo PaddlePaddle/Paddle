@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/core/array.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
@@ -92,12 +92,12 @@ using Complex = paddle::platform::complex<T>;
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT a,
-                                                                 const InT b,
-                                                                 const InT c) {
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT a,
+                                                               const InT b,
+                                                               const InT c) {
     // dx = dout / y
     // dy = - dout * out / y
-    paddle::framework::Array<OutT, 2> outs;
+    pten::framework::Array<OutT, 2> outs;
     outs[0] = a / c;
     outs[1] = -a * b / c;
     return outs;
@@ -106,9 +106,9 @@ struct DivGradXYFunctor {
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor<Complex<InT>, Complex<OutT>> {
-  inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
+  inline HOSTDEVICE pten::framework::Array<Complex<OutT>, 2> operator()(
       const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
-    paddle::framework::Array<Complex<OutT>, 2> outs;
+    pten::framework::Array<Complex<OutT>, 2> outs;
     Complex<InT> c_conj(c.real, -c.imag);
     Complex<InT> out_div_c_conj((b / c).real, -(b / c).imag);
     outs[0] = a / c_conj;
@@ -247,9 +247,9 @@ struct MinGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MinGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
       const InT& x, const InT& y, const InT& dout) {
-    paddle::framework::Array<OutT, 2> outs;
+    pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x < y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
     // dy = dout * (x >= y)
@@ -273,10 +273,10 @@ struct MulGradFunctor<Complex<T>> {
 
 template <typename InT, typename OutT>
 struct MulGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT a,
-                                                                 const InT b,
-                                                                 const InT c) {
-    paddle::framework::Array<OutT, 2> outs;
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT a,
+                                                               const InT b,
+                                                               const InT c) {
+    pten::framework::Array<OutT, 2> outs;
     // dx = dout * y
     outs[0] = a * b;
     // dy = dout * x
@@ -287,9 +287,9 @@ struct MulGradXYFunctor {
 
 template <typename InT, typename OutT>
 struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
-  inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
+  inline HOSTDEVICE pten::framework::Array<Complex<OutT>, 2> operator()(
       const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
-    paddle::framework::Array<Complex<OutT>, 2> outs;
+    pten::framework::Array<Complex<OutT>, 2> outs;
     // dx = dout * y
     Complex<InT> b_conj(b.real, -b.imag);
     outs[0] = a * b_conj;
@@ -316,9 +316,9 @@ struct MaxGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
       const InT& x, const InT& y, const InT& dout) {
-    paddle::framework::Array<OutT, 2> outs;
+    pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x > y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
     // dy = dout * (x <= y)
