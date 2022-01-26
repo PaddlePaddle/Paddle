@@ -45,7 +45,7 @@ TEST(GradNodeInfo, GradNodeBase) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   egr::EagerTensor et1(dt);
   grads = {{et1}};
@@ -102,7 +102,7 @@ TEST(GradNodeInfo, GradNodeBase) {
             paddle::platform::CPUPlace())
             .get(),
         meta);
-    auto* dt_ptr = dt->mutable_data<float>();
+    auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
     auto* et_ptr =
         std::dynamic_pointer_cast<pten::DenseTensor>(et.impl())->data<float>();
@@ -121,8 +121,8 @@ TEST(GradNodeInfo, GradNodeBase) {
 
   VLOG(6) << "Test Reduce Hook";
   auto reduce_hook = [&](void) -> void {
-    auto* et_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())
-                       ->mutable_data<float>();
+    auto* et_ptr =
+        std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())->data<float>();
     et_ptr[0] = 100.0;
     VLOG(6) << "Running Reduce Hook";
   };
