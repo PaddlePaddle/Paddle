@@ -46,6 +46,8 @@ class TestExpertCountOpInt64(op_test.OpTest):
         self.attrs = {"n_expert": expert_num}
 
     def test_forward(self):
+        if not paddle.is_compiled_with_cuda():
+            return
         self.check_output_with_place(paddle.CUDAPlace(0))
 
 
@@ -60,6 +62,8 @@ class TestExpertCountAPI(unittest.TestCase):
         self.place = paddle.CUDAPlace(0)
 
     def test_api_static(self):
+        if not paddle.is_compiled_with_cuda():
+            return
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
@@ -69,6 +73,8 @@ class TestExpertCountAPI(unittest.TestCase):
             assert np.allclose(res, self.out)
 
     def test_api_dygraph(self):
+        if not paddle.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         out = utils.expert_count(x, self.n_expert)
