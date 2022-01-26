@@ -186,10 +186,12 @@ class WarpCTCFunctor {
 };
 
 struct SequenceLengthInfo {
-  void ParseFromPaddingTensor(const LoDTensor& logits, const LoDTensor& label) {
+  void ParseFromPaddingTensor(const LoDTensor& logits, const LoDTensor& label,
+                              const Tensor& logits_length,
+                              const Tensor& labels_length) {
+    max_sequence_length = logits.dims()[0];
     num_sequences = logits.dims()[1];
     sequence_width = logits.dims()[2];
-    max_sequence_length = logits.dims()[0];
 
     PADDLE_ENFORCE_GT(max_sequence_length, 0,
                       platform::errors::InvalidArgument(
@@ -208,6 +210,9 @@ struct SequenceLengthInfo {
                           "The third dimension of Input(Logits) should be "
                           "greater than zero, but received %d.",
                           sequence_width));
+
+    cpu_logits_length = GetDataFromTensor<int>(&logits_length);
+    cpu_labels_length = GetDataFromTensor<int>(&labels_length);
   }
 
   void ParseFromSequenceTensor(const LoDTensor& logits,
@@ -253,11 +258,20 @@ struct SequenceLengthInfo {
 
     sequence_width = logits.numel() / logits_dims[0];
     max_sequence_length = math::MaximumSequenceLength(logits_lod);
+
+    cpu_labels_length.resize(num_sequences);
+    cpu_logits_length.resize(num_sequences);
+    for (size_t i = 0; i < num_sequences; ++i) {
+      cpu_labels_length[i] = label_lod[i + 1] - label_lod[i];
+      cpu_logits_length[i] = logits_lod[i + 1] - logits_lod[i];
+    }
   }
 
   size_t num_sequences;
   size_t sequence_width;
   size_t max_sequence_length;
+  std::vector<int> cpu_labels_length;
+  std::vector<int> cpu_logits_length;
 };
 
 template <typename DeviceContext, typename T>
@@ -270,36 +284,19 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     auto* loss = ctx.Output<Tensor>("Loss");
 
     SequenceLengthInfo seq_info;
-
-    std::vector<int> warpctc_labels_length;
-    std::vector<int> warpctc_logits_length;
-
     if (ctx.HasInput("LogitsLength") && ctx.HasInput("LabelLength")) {
       platform::RecordEvent event("has_logits_labels_length");
       // When input LogitsLength and LabelLength are set, logits and labels are
-      // in padding format.
-      seq_info.ParseFromPaddingTensor(*logits, *label);
-
+      // stored in transposed padding format.
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
       auto* labels_length = ctx.Input<framework::Tensor>("LabelLength");
-
-      warpctc_logits_length = GetDataFromTensor<int>(logits_length);
-      warpctc_labels_length = GetDataFromTensor<int>(labels_length);
+      seq_info.ParseFromPaddingTensor(*logits, *label, *logits_length,
+                                      *labels_length);
     } else {
       platform::RecordEvent event("no_logits_labels_length");
       // When input LogitsLength and LabelLength are set, logits and labels are
       // in sequence format. The lengths are saved in logits and label's lod.
       seq_info.ParseFromSequenceTensor(*logits, *label);
-
-      auto logits_lod = framework::ToAbsOffset(logits->lod())[0];
-      auto label_lod = framework::ToAbsOffset(label->lod())[0];
-
-      warpctc_labels_length.resize(seq_info.num_sequences);
-      warpctc_logits_length.resize(seq_info.num_sequences);
-      for (size_t i = 0; i < seq_info.num_sequences; ++i) {
-        warpctc_labels_length[i] = label_lod[i + 1] - label_lod[i];
-        warpctc_logits_length[i] = logits_lod[i + 1] - logits_lod[i];
-      }
     }
 
     auto loss_dims =
@@ -311,15 +308,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         {static_cast<int64_t>(seq_info.max_sequence_length),
          static_cast<int64_t>(seq_info.num_sequences),
          static_cast<int64_t>(seq_info.sequence_width)});
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    Tensor warpctc_logits_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
-    warpctc_logits.ShareDataWith(warpctc_logits_tmp);
-    if (ctx.HasInput("LogitsLength")) {
-      platform::RecordEvent event("copy_warpctc_logits");
-      paddle::framework::TensorCopy(*logits, ctx.GetPlace(), &warpctc_logits);
-    } else {
+    if (!ctx.HasInput("LogitsLength")) {
       platform::RecordEvent event("padding_lod_tensor");
+
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      Tensor warpctc_logits_tmp =
+          ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
+      warpctc_logits.ShareDataWith(warpctc_logits_tmp);
+
       LoDTensor cpu_pad_value;
       T* pad_value_data =
           cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
@@ -337,12 +333,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
           &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */,
           math::kLengthBatchWidth);
     }
-    const T* warpctc_logits_data = warpctc_logits.data<T>();
+    const T* warpctc_logits_data = ctx.HasInput("LogitsLength")
+                                       ? logits->data<T>()
+                                       : warpctc_logits.data<T>();
 
     // warpctc computes loss and gradient in one call, gradient data also stored
     // in batch format
     T* warpctc_grad_data =
-        warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
+        warpctc_grad->mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
 
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), warpctc_grad,
@@ -355,8 +353,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       framework::Vector<size_t> label_lod;
       label_lod.push_back(0);
-      for (size_t i = 0; i < warpctc_labels_length.size(); ++i) {
-        label_lod.push_back(label_lod[i] + warpctc_labels_length[i]);
+      for (size_t i = 0; i < seq_info.cpu_labels_length.size(); ++i) {
+        label_lod.push_back(label_lod[i] + seq_info.cpu_labels_length[i]);
       }
 
       warpctc_label.mutable_data<int>(
@@ -396,7 +394,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     WarpCTCFunctor<DeviceContext, T>()(
         ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
-        warpctc_labels_length.data(), warpctc_logits_length.data(),
+        seq_info.cpu_labels_length.data(), seq_info.cpu_logits_length.data(),
         seq_info.sequence_width, seq_info.num_sequences, blank, loss_data);
   }
 };
