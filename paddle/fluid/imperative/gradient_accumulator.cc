@@ -243,6 +243,13 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
 
+#ifdef PADDLE_WITH_XPU
+  // if src and dst are in different place, copy dst to src's place
+  if (dst_tensor->place() != place) {
+    paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
+  }
+#endif
+
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
