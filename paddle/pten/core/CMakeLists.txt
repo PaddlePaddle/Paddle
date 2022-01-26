@@ -3,6 +3,9 @@ add_subdirectory(compat)
 
 cc_library(errors SRCS errors.cc)
 set(pten_enforce_deps errors flags)
+if(WITH_GPU)
+  set(pten_enforce_deps ${pten_enforce_deps} external_error_proto)
+endif()
 cc_library(pten_enforce INTERFACE SRCS enforce.cc DEPS ${pten_enforce_deps})
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS pten_enforce convert_utils)

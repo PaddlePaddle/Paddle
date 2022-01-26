@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
@@ -259,80 +260,32 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
       paddle::framework::DataTypeToString(data_type), place));
 }
 
-void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
-  // TODO(jiabin): Support other tensor type later
-  auto* dst_tensor =
-      dst->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
-  auto& src_tensor = src.Var().Get<paddle::framework::LoDTensor>();
+void VariableAdd(const egr::EagerTensor& src_tensor,
+                 egr::EagerTensor* dst_tensor) {
+  auto& src = src_tensor.Var();
+  auto* dst = dst_tensor->MutableVar();
 
-  auto numel = src_tensor.numel();
-
-  // FIXME(minqiyang): loss_grad op will pass a zero grad of label
-  // ugly fix for it
-  if (numel == 0) {
-    return;
-  }
-
-  PADDLE_ENFORCE_EQ(
-      dst_tensor->numel(), numel,
-      paddle::platform::errors::PreconditionNotMet(
-          "The number of elements of source tensor and destination tensor "
-          "should be equal, but got the number of elements of source tensor is "
-          "%zu and the number of elements of destination tensor is %zu.",
-          numel, dst_tensor->numel()));
-
-  auto data_type = src_tensor.type();
-  auto place = src_tensor.place();
-
-  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
-                    paddle::platform::errors::PreconditionNotMet(
-                        "The data type of source tensor and destination tensor "
-                        "should be equal, Otherwise, the calculation results "
-                        "will be incorrect."));
-
-#define PADDLE_TENSOR_ADD(cpp_type)                                          \
-  if (data_type == paddle::framework::DataTypeTrait<cpp_type>::DataType()) { \
-    TensorAddFunctor<cpp_type> func(                                         \
-        numel, src_tensor.data<cpp_type>(),                                  \
-        dst_tensor->mutable_data<cpp_type>(place));                          \
-    paddle::platform::VisitPlace(place, func);                               \
-    return;                                                                  \
-  }
-
-  // TODO(jiabin): Support NPU here
-  PADDLE_TENSOR_ADD(float);
-// NOTE(phlrain): xpu only support float
-#ifndef PADDLE_WITH_XPU
-  PADDLE_TENSOR_ADD(double);
-  // NOTE(chenweihang): only support complex grad tensor accumulated,
-  // support selected rows if needed in the future
-  PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
-  PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
-#endif
-#undef PADDLE_TENSOR_ADD
-
-  if (data_type == paddle::framework::proto::VarType::FP16) {
-    if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      return TensorAddImpl<paddle::platform::CUDADeviceContext,
-                           paddle::platform::float16>(src_tensor, dst_tensor,
-                                                      place);
-#else
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          paddle::framework::DataTypeToString(data_type), place));
-#endif
-    } else if (paddle::platform::is_cpu_place(place)) {
-      return TensorAddImpl<paddle::platform::CPUDeviceContext,
-                           paddle::platform::float16>(src_tensor, dst_tensor,
-                                                      place);
+  if (dst->IsType<paddle::framework::LoDTensor>()) {
+    if (src.IsType<paddle::framework::LoDTensor>()) {
+      paddle::imperative::TensorAdd(src, dst);
+    } else if (src.IsType<pten::SelectedRows>()) {
+      paddle::imperative::SelectedRowsAddToTensor(src, dst);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          paddle::framework::ToTypeName(dst->Type())));
+    }
+  } else {
+    if (src.IsType<paddle::framework::LoDTensor>()) {
+      paddle::framework::Variable new_dst;
+      paddle::imperative::SelectedRowsAddTensor(*dst, src, &new_dst);
+      *dst = std::move(new_dst);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          paddle::framework::ToTypeName(dst->Type())));
     }
   }
-  PADDLE_THROW(paddle::platform::errors::Unimplemented(
-      "Gradient accumulation of data type (%s) on place (%s) is not "
-      "supported in imperative mode",
-      paddle::framework::DataTypeToString(data_type), place));
 }
 
 }  // namespace egr
