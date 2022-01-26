@@ -15,60 +15,10 @@
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/one_hot_kernel.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename DeviceContext, typename InT>
-struct OneHotV2OpFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
-  int depth_;
-  const DeviceContext& ctx_;
-  bool allow_out_of_range_;
-
-  OneHotV2OpFunctor(const framework::LoDTensor* in, framework::LoDTensor* out,
-                    int depth, const DeviceContext& ctx,
-                    bool allow_out_of_range = false)
-      : in_(in),
-        out_(out),
-        depth_(depth),
-        ctx_(ctx),
-        allow_out_of_range_(allow_out_of_range) {}
-
-  template <typename OutT>
-  void apply() const {
-    auto* p_in_data = in_->data<InT>();
-    auto numel = in_->numel();
-    auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
-    math::set_constant(ctx_, out_, 0.0);
-
-    if (allow_out_of_range_) {
-      for (int i = 0; i < numel; ++i) {
-        if (p_in_data[i] >= 0 && p_in_data[i] < depth_) {
-          *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
-        }
-      }
-    } else {
-      for (int i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_GE(
-            p_in_data[i], 0,
-            platform::errors::InvalidArgument(
-                "Illegal index value, Input(input) value should be at least 0, "
-                "but received input (%d) less than 0",
-                p_in_data[i]));
-        PADDLE_ENFORCE_LT(
-            p_in_data[i], depth_,
-            platform::errors::InvalidArgument(
-                "Illegal index value, Input(input) value should be less than "
-                "Input(depth), "
-                "but received input (%d) not less than depth (%d)",
-                p_in_data[i], depth_));
-        *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
-      }
-    }
-  }
-};
 
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
@@ -80,21 +30,18 @@ class OneHotV2Kernel : public framework::OpKernel<T> {
     auto* out = context.Output<LoDTensor>("Out");
     int depth = context.Attr<int>("depth");
     bool allow_out_of_range = context.Attr<bool>("allow_out_of_range");
-    if (context.HasInput("depth_tensor")) {
-      auto* depth_tensor = context.Input<Tensor>("depth_tensor");
-      auto* depth_data = depth_tensor->data<int32_t>();
-      depth = depth_data[0];
-      auto out_dims = out->dims();
-      out_dims[out_dims.size() - 1] = depth;
-      out->Resize(out_dims);
+    auto depth_tensor = context.Input<LoDTensor>("depth_tensor");
+    paddle::optional<const pten::DenseTensor&> depth_opt = paddle::none;
+    if (depth_tensor != nullptr) {
+      depth_opt = *depth_tensor;
     }
 
-    framework::VisitDataType(
-        static_cast<framework::proto::VarType::Type>(
-            context.Attr<int>("dtype")),
-        OneHotV2OpFunctor<DeviceContext, T>(
-            in, out, depth, context.template device_context<DeviceContext>(),
-            allow_out_of_range));
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::OneHotKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, depth_opt, depth, context.Attr<int>("dtype"), allow_out_of_range,
+        out);
   }
 };
 
