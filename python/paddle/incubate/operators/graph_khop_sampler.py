@@ -68,7 +68,7 @@ def graph_khop_sampler(row,
                            of the edges. The shape is [num_sample_edges, 1] currently.
         sample_index (Tensor): The original id of the input nodes and sampled neighbor nodes.
         reindex_nodes (Tensor): The reindex id of the input nodes.
-        edge_eids: Return the id of the sample edges if `return_eids` is True.
+        edge_eids (Tensor): Return the id of the sample edges if `return_eids` is True.
 
     Examples:
         
