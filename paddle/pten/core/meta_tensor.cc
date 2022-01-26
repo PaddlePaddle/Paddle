@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -35,7 +34,7 @@ void MetaTensor::set_dims(const DDim& dims) {
         static_cast<DenseTensor*>(tensor_))
         ->dims = dims;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -46,7 +45,7 @@ void MetaTensor::set_dtype(DataType dtype) {
         static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -57,7 +56,7 @@ void MetaTensor::set_layout(DataLayout layout) {
         static_cast<DenseTensor*>(tensor_))
         ->layout = layout;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -68,9 +67,9 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
         static_cast<DenseTensor*>(tensor_))
         ->lod = meta_tensor.lod();
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported sharing lod inplace for `%s`.",
-        tensor_->type_info().name()));
+    PADDLE_THROW(
+        pten::errors::Unimplemented("Unsupported sharing lod inplace for `%s`.",
+                                    tensor_->type_info().name()));
   }
 }
 
@@ -78,8 +77,8 @@ const LoD& MetaTensor::lod() const {
   if (pten::DenseTensor::classof(tensor_)) {
     return static_cast<DenseTensor*>(tensor_)->lod();
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported getting lod of `%s`.", tensor_->type_info().name()));
+    PADDLE_THROW(pten::errors::Unimplemented("Unsupported getting lod of `%s`.",
+                                             tensor_->type_info().name()));
   }
 }
 
@@ -90,7 +89,7 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
     set_layout(meta_tensor.layout());
     share_lod(meta_tensor);
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported sharing meta for `%s`.", tensor_->type_info().name()));
   }
 }

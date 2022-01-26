@@ -27,6 +27,9 @@
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
+// pten
+#include "paddle/pten/kernels/declarations.h"
+
 #define NUM_CREATED_DUP_INPUTS 4
 
 namespace paddle {
@@ -535,7 +538,8 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   // Skip ooerator which is not inherit form OperatorWithKernel, like while,
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-  if (!all_kernels.count(op_type)) {
+  if (!all_kernels.count(op_type) &&
+      !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
     return false;
   }
 

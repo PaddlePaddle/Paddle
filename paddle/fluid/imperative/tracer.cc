@@ -32,6 +32,8 @@ namespace imperative {
 
 thread_local bool Tracer::has_grad_ = true;
 
+thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
