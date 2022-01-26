@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -1144,22 +1145,80 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
 
   auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
+  // using cache
+  if (kernel_type_.get()) {
+    dev_ctx = pool.Get(kernel_type_->place_);
+  }
 
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
-  if (FLAGS_run_pten_kernel &&
-      pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
+  pten::KernelKey pt_kernel_key;
+  std::string pt_kernel_name;
+  if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      ChoosePtenKernel(exe_ctx);
+      pt_kernel_signature_.reset(new KernelSignature(
+          std::move(this->GetExpectedPtenKernelArgs(exe_ctx))));
+      VLOG(6) << *pt_kernel_signature_.get();
+
+      kernel_type_.reset(
+          new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
+      dev_ctx = pool.Get(kernel_type_->place_);
+
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
+      pt_kernel_.reset(
+          new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+              pt_kernel_name, pt_kernel_key)));
+
+      if (pt_kernel_->IsValid()) {
+        VLOG(6) << "Static mode ChoosePtenKernel - kernel name: "
+                << pt_kernel_name << " | kernel key: " << pt_kernel_key
+                << " | kernel: " << *pt_kernel_;
+      } else {
+        VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
+                << "` not found.";
+      }
     }
-    run_pten_kernel_ = pt_kernel_->IsValid();
+    if (pt_kernel_->IsValid()) {
+      run_pten_kernel_ = true;
+    } else {
+      auto& all_op_kernels = AllOpKernels();
+      auto kernels_iter = all_op_kernels.find(type_);
+      if (kernels_iter == all_op_kernels.end() ||
+          kernels_iter->second.find(*kernel_type_.get()) ==
+              kernels_iter->second.end()
+#ifdef PADDLE_WITH_XPU
+          ||
+          paddle::platform::is_xpu_place(kernel_type_->place_) &&  // NOLINT
+              !paddle::platform::is_xpu_support_op(
+                  type_, *kernel_type_.get())  // NOLINT
+          || paddle::platform::is_in_xpu_black_list(type_)
+#endif
+              ) {
+        auto pt_cpu_kernel_key =
+            FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
+        pt_kernel_.reset(
+            new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+                pt_kernel_name, pt_cpu_kernel_key)));
+
+        dev_ctx = pool.Get(platform::CPUPlace());
+
+        if (pt_kernel_->IsValid()) {
+          VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
+                  << " | kernel key: " << pt_cpu_kernel_key
+                  << " | kernel: " << *pt_kernel_;
+          run_pten_kernel_ = true;
+        }
+      }
+    }
   }
   if (!run_pten_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
+      dev_ctx = pool.Get(kernel_type_->place_);
     }
   }
 
@@ -1177,10 +1236,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
-
-  if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(kernel_type_->place_);
-  }
 
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
@@ -1201,6 +1256,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (run_pten_kernel_) {
       pten::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
+      // TODO(zhiqiu): support TransferInplaceVarsBack
       PreparePtenData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
                       runtime_ctx);
       BuildPtenKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
@@ -1289,7 +1345,8 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   return expected_kernel_key;
 }
 
-void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
+pten::KernelKey OperatorWithKernel::ChoosePtenKernel(
+    const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
       new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
   VLOG(6) << *pt_kernel_signature_.get();
@@ -1311,6 +1368,7 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
     VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
             << "` not found.";
   }
+  return pt_kernel_key;
 }
 
 void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
@@ -1839,25 +1897,21 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
-      // TODO(zyfncg): Now there is no kernel which need to transform input
-      // data, so we commented out following code temporarily,
-      // and it will be used in the future.
+      VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
+              << tensor_in->place() << " to " << expected_place;
 
-      // VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
-      //         << tensor_in->place() << " to " << expected_place;
+      if (!new_scope) {
+        new_scope = &scope.NewScope();
+      }
 
-      // if (!new_scope) {
-      //   new_scope = &scope.NewScope();
-      // }
+      // Create new var with the same name in transfer scopes
+      auto* trans_var = new_scope->Var(input_names[i]);
+      ins_vector[offset] = trans_var;
 
-      // // Create new var with the same name in transfer scopes
-      // auto* trans_var = new_scope->Var(input_names[i]);
-      // ins_vector[i] = trans_var;
-
-      // // Do transfer
-      // Tensor out;
-      // framework::TensorCopySync(*tensor_in, expected_place, &out);
-      // SetTensorToVariable(*var, out, trans_var);
+      // Do transfer
+      Tensor out;
+      framework::TensorCopySync(*tensor_in, expected_place, &out);
+      SetTensorToVariable(*var, out, trans_var);
     }
   }
 
