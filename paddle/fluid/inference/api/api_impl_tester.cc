@@ -37,13 +37,13 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   PaddleTensor pt;
 
   if (t->type() == framework::proto::VarType::INT64) {
-    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int64_t));
+    pt.data.Reset(t->data(), t->numel() * sizeof(int64_t));
     pt.dtype = PaddleDType::INT64;
   } else if (t->type() == framework::proto::VarType::FP32) {
-    pt.data.Reset(t->data<void>(), t->numel() * sizeof(float));
+    pt.data.Reset(t->data(), t->numel() * sizeof(float));
     pt.dtype = PaddleDType::FLOAT32;
   } else if (t->type() == framework::proto::VarType::INT32) {
-    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int32_t));
+    pt.data.Reset(t->data(), t->numel() * sizeof(int32_t));
     pt.dtype = PaddleDType::INT32;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

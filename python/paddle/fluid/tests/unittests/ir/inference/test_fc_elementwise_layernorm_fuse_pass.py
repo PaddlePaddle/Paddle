@@ -127,8 +127,7 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=300,
-            passes=["fc_elementwise_layernorm_fuse_pass"],
-            use_gpu_run_baseline=True)
+            passes=["fc_elementwise_layernorm_fuse_pass"])
 
 
 if __name__ == "__main__":

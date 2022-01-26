@@ -19,8 +19,9 @@ PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
-TENSORRT_ROOT_DIR=$5 # TensorRT root dir, default to /usr
-MSVC_STATIC_CRT=$6
+USE_TENSORRT=$5
+TENSORRT_ROOT_DIR=$6 # TensorRT root dir, default to /usr
+MSVC_STATIC_CRT=$7
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
@@ -35,11 +36,6 @@ if [ $3 == ON ]; then
   use_gpu_list='true false'
 else
   use_gpu_list='false'
-fi
-
-USE_TENSORRT=OFF
-if [ -d "$TENSORRT_ROOT_DIR" ]; then
-  USE_TENSORRT=ON
 fi
 
 PREFIX=inference-vis-demos%2F

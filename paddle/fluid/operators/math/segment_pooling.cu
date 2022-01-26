@@ -120,8 +120,9 @@ __global__ void SegmentMeanKernel(const Index* segment_ids, const T* input,
 }
 
 template <typename T, typename Index, typename Helper, typename Pool>
-__global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
-                                 T* output, Helper h, Pool pool) {
+__global__ void __launch_bounds__(1024, 1)
+    SegmentOpsKernel(const Index* segment_ids, const T* input, T* output,
+                     Helper h, Pool pool) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;

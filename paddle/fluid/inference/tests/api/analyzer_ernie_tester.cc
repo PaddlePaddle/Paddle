@@ -122,5 +122,51 @@ TEST(Analyzer_Ernie, compare_results) {
   }
 }
 
+#ifdef PADDLE_WITH_IPU
+// IPU: Compare Deterministic result
+TEST(Analyzer_Ernie_ipu, ipu_compare_determine) {
+  AnalysisConfig cfg;
+  SetIpuConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
+// IPU: Compare results
+TEST(Analyzer_Ernie_ipu, ipu_compare_results) {
+  AnalysisConfig cfg;
+  SetIpuConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+
+  std::ifstream fin(FLAGS_refer_result);
+  std::string line;
+  std::vector<float> ref;
+
+  while (std::getline(fin, line)) {
+    Split(line, ' ', &ref);
+  }
+
+  auto predictor = CreateTestPredictor(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+      FLAGS_use_analysis);
+
+  std::vector<PaddleTensor> outputs;
+  for (size_t i = 0; i < input_slots_all.size(); i++) {
+    outputs.clear();
+    predictor->Run(input_slots_all[i], &outputs);
+    auto outputs_size = outputs.front().data.length() / (sizeof(float));
+    for (size_t j = 0; j < outputs_size; ++j) {
+      EXPECT_NEAR(ref[i * outputs_size + j],
+                  static_cast<float *>(outputs[0].data.data())[j],
+                  FLAGS_accuracy);
+    }
+  }
+}
+#endif
+
 }  // namespace inference
 }  // namespace paddle

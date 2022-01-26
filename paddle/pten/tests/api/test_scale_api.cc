@@ -24,9 +24,9 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
-void CheckScaleResult(Tensor* out) {
+void CheckScaleResult(experimental::Tensor* out) {
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 3);
   ASSERT_EQ(out->dims()[1], 4);

@@ -20,6 +20,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +86,7 @@ struct FastDivMod {
 template <int kDims>
 struct BroadcastConfig {
   FastDivMod divmoders[kDims];
-  uint32_t strides[framework::DDim::kMaxRank];
+  uint32_t strides[pten::framework::DDim::kMaxRank];
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
@@ -254,8 +255,8 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
       }
     }
   } else {  // blockDim,x * NX < num
-    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int kVectorsPerThread = NX / kVectorSize;
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
     int thread_offset = threadIdx.x * kVectorsPerThread;
 
     using VecType = details::VectorType<T, kVectorSize>;
@@ -441,8 +442,8 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
     }
   } else {
     // Vector type
-    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int kVectorsPerThread = NX / kVectorSize;
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
 
     int thread_offset = threadIdx.x * kVectorsPerThread;
     using VecType = details::VectorType<T, kVectorSize>;

@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place
+from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place, _in_eager_mode
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -84,13 +84,19 @@ class LayerHelperBase(object):
         if isinstance(value, np.ndarray):
             assert in_dygraph_mode(
             ), "to_variable could only be called in dygraph mode"
-            py_var = core.VarBase(
-                value=value,
-                name=name if name else '',
-                persistable=False,
-                place=_current_expected_place(),
-                zero_copy=False)
-            return py_var
+            if _in_eager_mode():
+                return core.eager.EagerTensor(value,
+                                              _current_expected_place(), False,
+                                              False, name
+                                              if name else None, True)
+            else:
+                py_var = core.VarBase(
+                    value=value,
+                    name=name if name else '',
+                    persistable=False,
+                    place=_current_expected_place(),
+                    zero_copy=False)
+                return py_var
         elif isinstance(value, (core.VarBase, Variable)):
             return value
         else:

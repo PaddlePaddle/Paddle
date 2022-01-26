@@ -953,10 +953,10 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
             "Input features with shape should be (N, C, H, W)")
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
-        return core.ops.psroi_pool(x, boxes, boxes_num, "output_channels",
-                                   output_channels, "spatial_scale",
-                                   spatial_scale, "pooled_height",
-                                   pooled_height, "pooled_width", pooled_width)
+        return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
+                                 output_channels, "spatial_scale",
+                                 spatial_scale, "pooled_height", pooled_height,
+                                 "pooled_width", pooled_width)
 
     helper = LayerHelper('psroi_pool', **locals())
     dtype = helper.input_dtype()
@@ -1064,7 +1064,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     pooled_height, pooled_width = output_size
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        pool_out, argmaxes = core.ops.roi_pool(
+        pool_out, argmaxes = _C_ops.roi_pool(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
             pooled_width, "spatial_scale", spatial_scale)
         return pool_out
@@ -1219,7 +1219,7 @@ def roi_align(x,
     pooled_height, pooled_width = output_size
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        align_out = core.ops.roi_align(
+        align_out = _C_ops.roi_align(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
             pooled_width, "spatial_scale", spatial_scale, "sampling_ratio",
             sampling_ratio, "aligned", aligned)

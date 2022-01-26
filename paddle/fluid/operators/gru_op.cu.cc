@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 class CUDADeviceContext;
-struct CUDAPlace;
+
 }  // namespace platform
 }  // namespace paddle
 

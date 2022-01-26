@@ -42,7 +42,7 @@ endif()
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 if (WITH_GPU OR WITH_ROCM)
-    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator stream_safe_cuda_allocator)
+    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator stream_safe_cuda_allocator device_context)
     if(CUDA_VERSION GREATER_EQUAL 10.2)
       list(APPEND AllocatorFacadeDeps cuda_virtual_mem_allocator)
     endif()

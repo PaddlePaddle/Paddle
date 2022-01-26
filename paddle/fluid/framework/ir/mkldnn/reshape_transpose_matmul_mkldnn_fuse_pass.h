@@ -28,6 +28,7 @@ namespace ir {
 class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
  public:
   ReshapeTransposeMatmulMkldnnFusePass();
+  virtual ~ReshapeTransposeMatmulMkldnnFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
@@ -35,6 +36,7 @@ class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
 
   void Fuse(Graph* graph, bool with_reshape_xshape,
             bool with_transpose_xshape) const;
+  std::string op_name_;
 };
 }  // namespace ir
 }  // namespace framework

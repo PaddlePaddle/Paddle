@@ -19,7 +19,7 @@
 #include <utility>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -55,12 +55,12 @@ static void MoveOrCopyVar(framework::Variable* dst, framework::Variable* src,
     auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
     framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
     dst_tensor->set_lod(src_tensor.lod());
-  } else if (src->IsType<framework::SelectedRows>()) {
-    auto& src_selected_rows = src->Get<framework::SelectedRows>();
-    if (!dst->IsType<framework::SelectedRows>()) {
+  } else if (src->IsType<pten::SelectedRows>()) {
+    auto& src_selected_rows = src->Get<pten::SelectedRows>();
+    if (!dst->IsType<pten::SelectedRows>()) {
       dst->Clear();
     }
-    auto* dst_selected_rows = dst->GetMutable<framework::SelectedRows>();
+    auto* dst_selected_rows = dst->GetMutable<pten::SelectedRows>();
     framework::TensorCopy(src_selected_rows.value(),
                           src_selected_rows.value().place(),
                           dst_selected_rows->mutable_value());
@@ -78,7 +78,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   TensorAddFunctor(int64_t numel, const T* x, T* y)
       : numel_(numel), x_(x), y_(y) {}
 
-  void operator()(const platform::CPUPlace& place) {
+  void operator()(const platform::CPUPlace& place) const {
     platform::CPUDeviceContext* ctx = dynamic_cast<platform::CPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     auto blas = operators::math::GetBlas<platform::CPUDeviceContext, T>(*ctx);
@@ -86,7 +86,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 
 #ifdef PADDLE_WITH_XPU
-  void operator()(const platform::XPUPlace& place) {
+  void operator()(const platform::XPUPlace& place) const {
     using XPUType = typename XPUTypeTrait<T>::Type;
     platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
@@ -100,7 +100,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
                                    r, XPUAPIErrorMsg[r]));
   }
 #else
-  void operator()(const platform::XPUPlace& place) {
+  void operator()(const platform::XPUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -109,7 +109,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void operator()(const platform::CUDAPlace& place) {
+  void operator()(const platform::CUDAPlace& place) const {
     platform::CUDADeviceContext* ctx =
         dynamic_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
@@ -117,7 +117,24 @@ class TensorAddFunctor : public boost::static_visitor<> {
     blas.AXPY(numel_, 1., x_, y_);
   }
 #else
-  void operator()(const platform::CUDAPlace& place) {
+  void operator()(const platform::CUDAPlace& place) const {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  void operator()(const platform::MLUPlace& place) const {
+    // TODO(fwg): SUPPORT it
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const platform::MLUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -126,7 +143,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  void operator()(const platform::NPUPlace& place) {
+  void operator()(const platform::NPUPlace& place) const {
     // TODO(zhiqiu): SUPPORT it
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
@@ -134,7 +151,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
         place));
   }
 #else
-  void operator()(const platform::NPUPlace& place) {
+  void operator()(const platform::NPUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -142,21 +159,21 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
-  void operator()(const platform::NPUPinnedPlace& place) {
+  void operator()(const platform::NPUPinnedPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
   // there is NO blas in CUDAPinnedPlace
-  void operator()(const platform::CUDAPinnedPlace& place) {
+  void operator()(const platform::CUDAPinnedPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
   }
   // there is NO support in IPUPlace
-  void operator()(const platform::IPUPlace& place) {
+  void operator()(const platform::IPUPlace& place) const {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
@@ -166,7 +183,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
  private:
   int64_t numel_;
   const T* x_;
-  T* y_;
+  mutable T* y_;
 };
 
 #ifdef PADDLE_WITH_XPU
@@ -226,12 +243,19 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
 
+#ifdef PADDLE_WITH_XPU
+  // if src and dst are in different place, copy dst to src's place
+  if (dst_tensor->place() != place) {
+    paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
+  }
+#endif
+
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
         numel, src_tensor.data<cpp_type>(),                          \
         dst_tensor->mutable_data<cpp_type>(place));                  \
-    boost::apply_visitor(func, place);                               \
+    platform::VisitPlace(place, func);                               \
     return;                                                          \
   }
 
@@ -315,7 +339,7 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
 void SelectedRowsAddToTensor(const framework::Variable& src,
                              framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
-  auto& src_selected_rows = src.Get<framework::SelectedRows>();
+  auto& src_selected_rows = src.Get<pten::SelectedRows>();
   auto place = dst_tensor->place();
   auto data_type = src_selected_rows.value().type();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -354,7 +378,7 @@ static void SelectedRowsAddTensor(
     const framework::Variable& src_tensor_var,
     framework::Variable* dst_tensor_var) {
   const auto& src_selected_rows =
-      src_selected_rows_var.Get<framework::SelectedRows>();
+      src_selected_rows_var.Get<pten::SelectedRows>();
   const auto& src_tensor = src_tensor_var.Get<framework::LoDTensor>();
   const auto& place = src_tensor.place();
   auto data_type = src_tensor.type();
@@ -397,18 +421,18 @@ static void SelectedRowsAddTensor(
 //   to one then add it to a empty selected rows, the after is correct
 std::shared_ptr<VariableWrapper> SelectedRowsMerge(
     const framework::Variable& src1, const framework::Variable& src2) {
-  auto& src_selected_rows1 = src1.Get<framework::SelectedRows>();
-  auto& src_selected_rows2 = src2.Get<framework::SelectedRows>();
+  auto& src_selected_rows1 = src1.Get<pten::SelectedRows>();
+  auto& src_selected_rows2 = src2.Get<pten::SelectedRows>();
   auto place = src_selected_rows1.value().place();
   auto data_type = src_selected_rows1.value().type();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
-  std::vector<const framework::SelectedRows*> src_selected_rows;
+  std::vector<const pten::SelectedRows*> src_selected_rows;
   src_selected_rows.emplace_back(&src_selected_rows1);
   src_selected_rows.emplace_back(&src_selected_rows2);
   auto dst_var = std::make_shared<VariableWrapper>("Temp");
   auto* dst_selected_rows =
-      dst_var->MutableVar()->GetMutable<framework::SelectedRows>();
+      dst_var->MutableVar()->GetMutable<pten::SelectedRows>();
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {      \
@@ -446,7 +470,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
   if (dst->IsType<framework::LoDTensor>()) {
     if (src.IsType<framework::LoDTensor>()) {
       TensorAdd(src, dst);
-    } else if (src.IsType<framework::SelectedRows>()) {
+    } else if (src.IsType<pten::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -464,7 +488,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
         SelectedRowsAddToTensor(*dst, src_mutable);
         *dst = std::move(*(var->MutableVar()));
       }
-    } else if (src.IsType<framework::SelectedRows>()) {
+    } else if (src.IsType<pten::SelectedRows>()) {
       auto temp = SelectedRowsMerge(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
     } else {
@@ -480,8 +504,8 @@ static platform::Place GetPlaceOfVar(
   platform::Place place;
   if (var->Var().IsType<framework::LoDTensor>()) {
     place = var->Var().Get<framework::LoDTensor>().place();
-  } else if (var->Var().IsType<framework::SelectedRows>()) {
-    place = var->Var().Get<framework::SelectedRows>().place();
+  } else if (var->Var().IsType<pten::SelectedRows>()) {
+    place = var->Var().Get<pten::SelectedRows>().place();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "only support LoDTensor and SelectedRows in dygraph"));
@@ -513,14 +537,14 @@ void GradientAccumulator::AccumulateGrad() {
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
         TensorAdd(*src, dst);
-      } else if (src->IsType<framework::SelectedRows>()) {
+      } else if (src->IsType<pten::SelectedRows>()) {
         SelectedRowsAddToTensor(*src, dst);
       }
-    } else if (dst->IsType<framework::SelectedRows>()) {
+    } else if (dst->IsType<pten::SelectedRows>()) {
       if (src->IsType<framework::LoDTensor>()) {
         SelectedRowsAddToTensor(*dst, src);
         *dst = std::move(*src);
-      } else if (src->IsType<framework::SelectedRows>()) {
+      } else if (src->IsType<pten::SelectedRows>()) {
         auto temp = SelectedRowsMerge(*src, *dst);
         *dst = std::move(*(temp->MutableVar()));
       }
@@ -640,7 +664,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
   // so synchronous VariableWrapper with Variable.
   if (dst_var->Var().IsType<framework::LoDTensor>()) {
     dst_var->SetType(framework::proto::VarType::LOD_TENSOR);
-  } else if (dst_var->Var().IsType<framework::SelectedRows>()) {
+  } else if (dst_var->Var().IsType<pten::SelectedRows>()) {
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 
@@ -684,7 +708,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
       if (paddle::platform::is_gpu_place(place)) {
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
-          if (!var_info.var->Var().IsType<framework::SelectedRows>()) {
+          if (!var_info.var->Var().IsType<pten::SelectedRows>()) {
             continue;
           }
 
@@ -727,7 +751,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           }
           PADDLE_ENFORCE_EQ(
               var_info.var->Var().IsType<framework::LoDTensor>() ||
-                  var_info.var->Var().IsType<framework::SelectedRows>(),
+                  var_info.var->Var().IsType<pten::SelectedRows>(),
               true, platform::errors::PermissionDenied("The type of Gradient "
                                                        "var must be LoDTensor "
                                                        "or SelectedRows"));
@@ -772,7 +796,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
 
   if (dst_var->Var().IsType<framework::LoDTensor>()) {
     dst_var->SetType(framework::proto::VarType::LOD_TENSOR);
-  } else if (dst_var->Var().IsType<framework::SelectedRows>()) {
+  } else if (dst_var->Var().IsType<pten::SelectedRows>()) {
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 }

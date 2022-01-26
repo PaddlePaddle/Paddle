@@ -1,6 +1,21 @@
+#TO DO:remove fluid
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
 if (NOT WITH_INFRT)
     return()
 endif()
+
+# compile flags
+set(INFRT_FLAGS -Wno-comment)
+foreach(flag ${INFRT_FLAGS})
+  safe_set_cflag(CMAKE_C_FLAGS ${flag})
+  safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
+endforeach()
+
+set(INFRT_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/infrt" )
+set(INFRT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/infrt" )
+set(INFRT_TEST_TARGETS CACHE INTERNAL "")
+include(infrt_lib)
 
 set(infrt_src CACHE INTERNAL "" FORCE)
 
@@ -42,6 +57,7 @@ function(cc_test_tiny TARGET_NAME)
     if (${cc_test_tiny_SERIAL})
       set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
+    set(INFRT_TEST_TARGETS ${INFRT_TEST_TARGETS} ${TARGET_NAME} CACHE INTERNAL "")
   endif()
 
 endfunction()
@@ -64,7 +80,6 @@ add_subdirectory(paddle)
 
 # MLIR td file generations
 set(infrt_mlir_incs
-        ops_inc
         basic_kernels_inc
         test_kernels_inc
         infrt_base_inc
@@ -72,8 +87,12 @@ set(infrt_mlir_incs
         dense_tensor_inc
         pd_ops_inc
         rewrite_inc
+        trt_ops_inc
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 
-cc_library(infrt SRCS ${infrt_src} DEPS glog ${mlir_libs} paddle_framework_proto)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
 add_dependencies(infrt ${infrt_mlir_incs})
+
+add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})

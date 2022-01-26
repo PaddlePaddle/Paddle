@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_floordiv_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +28,8 @@ class ElementwiseFloorDivKernel<platform::CUDADeviceContext, T>
         ctx.template device_context<platform::CUDADeviceContext>();
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(
         cuda_ctx, ins, &outs, axis, FloorDivFunctor<T>());
   }
 };

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
@@ -149,6 +150,38 @@ void PSGPUWorker::TrainFiles() {
       DumpParam(*thread_scope_, batch_cnt);
     }
 
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr || !tensor->IsInitialized()) {
+        continue;
+      }
+      if (framework::TensorContainsInf(*tensor) ||
+          framework::TensorContainsNAN(*tensor)) {
+        static std::mutex mutex;
+        {
+          std::lock_guard<std::mutex> lock(mutex);
+          VLOG(0) << "worker " << thread_id_ << ": " << var_name
+                  << " cantains inf or nan";
+          auto all_vars = thread_scope_->LocalVarNames();
+          std::stringstream ss;
+          ss << "====== worker " << thread_id_ << "======\n";
+          for (auto& local_var : all_vars) {
+            platform::PrintVar(thread_scope_, local_var, local_var, &ss);
+            ss << "\n";
+          }
+          std::cout << ss.str() << std::endl;
+          VLOG(0) << "worker " << thread_id_ << "print nan var done....";
+        }
+        sleep(600);
+        exit(-1);
+      }
+    }
+
+    dev_ctx_->Wait();
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;

@@ -71,8 +71,8 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
 #if (CANN_VERSION_CODE >= 503003)
   Tensor factor_tensor(ids_t.type());
   factor_tensor.mutable_data<T>({1}, context.GetPlace());
-  TensorFromVector(std::vector<T>{static_cast<T>(start_idx)},
-                   context.device_context(), &factor_tensor);
+  paddle::framework::TensorFromVector(std::vector<T>{static_cast<T>(start_idx)},
+                                      context.device_context(), &factor_tensor);
   sub_runner.SetType("Sub")
       .AddInput(ids_t)
       .AddInput(factor_tensor)

@@ -43,6 +43,7 @@ option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
+option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
@@ -63,6 +64,9 @@ if (WITH_GPU AND WITH_ASCEND)
 endif()
 if (WITH_GPU AND WITH_ROCM)
     message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
+endif()
+if (WITH_GPU AND WITH_MLU)
+    message(FATAL_ERROR "Error when compile GPU and MLU at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -122,6 +126,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
+    # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
+    add_definitions("-DNOMINMAX")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -302,6 +308,10 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_MLU)
+    include(neuware)
+endif()
+
 if(WITH_ROCM)
     include(hip)
     include(miopen) # set miopen libraries, must before configure
@@ -416,3 +426,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
+list(JOIN all_inc_dirs "\r\n" all_inc_dirs)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/includes.txt" ${all_inc_dirs})

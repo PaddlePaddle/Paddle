@@ -13,54 +13,31 @@
 // limitations under the License.
 #pragma once
 
-#if !defined(_WIN32)
-#include <sched.h>
-#else
-#define NOMINMAX
-#include <windows.h>
-#endif  // !_WIN32
-
 #include <queue>
-#include <vector>
-
-#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
 namespace framework {
 
-using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
+using Garbage = std::shared_ptr<memory::Allocation>;
+using GarbageQueue = std::deque<Garbage>;
+
 class InterpreterCoreGarbageCollector {
  public:
   InterpreterCoreGarbageCollector();
-
-  ~InterpreterCoreGarbageCollector();
-
-  void Add(std::shared_ptr<memory::Allocation> garbage,  // NOLINT
-           paddle::platform::DeviceEvent& event,         // NOLINT
-           const platform::DeviceContext* ctx);
-
-  void Add(paddle::framework::Variable* var,
-           paddle::platform::DeviceEvent& event,  // NOLINT
-           const platform::DeviceContext* ctx);
-
+  virtual ~InterpreterCoreGarbageCollector(){};
+  virtual void Add(Variable* var);
+  virtual void Add(Variable* var, platform::DeviceEvent& event,
+                   const platform::DeviceContext* ctx);
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
 
- private:
-  void Free(GarbageQueue* garbages,
-            paddle::platform::DeviceEvent& event,  // NOLINT
-            const platform::DeviceContext* ctx);
-
-  void Free(std::shared_ptr<memory::Allocation>& garbage,  // NOLINT
-            paddle::platform::DeviceEvent& event,          // NOLINT
-            const platform::DeviceContext* ctx);
-
+ protected:
   std::unique_ptr<GarbageQueue> garbages_;
-  size_t max_memory_size_;
-  size_t cur_memory_size_;
-  std::unique_ptr<WorkQueue> queue_;
-  paddle::memory::SpinLock spinlock_;
+  int64_t max_memory_size_;
+  int64_t cur_memory_size_;
+  memory::SpinLock spinlock_;
 };
+
 }  // namespace framework
 }  // namespace paddle

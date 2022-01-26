@@ -33,26 +33,23 @@ from dygraph_sharding_stage2 import MLP, reader_decorator, optimizer_setting
 seed = 2021
 epoch = 2
 batch_size = 32
-linear_size = 8000
+linear_size = 1000
 
 np.random.seed(seed)
 paddle.seed(seed)
 
 
 def train_mlp(model, offload=False):
-    group = paddle.distributed.new_group([0, 1])
     optimizer = optimizer_setting(model=model, use_pure_fp16=True)
 
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
-    scaler = ShardingScaler(scaler, group)
+    scaler = ShardingScaler(scaler)
 
     optimizer = ShardingOptimizerStage2(
-        params=model.parameters(),
-        optim=optimizer,
-        group=group,
-        offload=offload)
-    model = ShardingStage2(model, optimizer, group=group, accumulate_grads=True)
+        params=model.parameters(), optim=optimizer, offload=offload)
+    model = ShardingStage2(
+        model, optimizer, buffer_max_size=2**21, accumulate_grads=False)
 
     train_reader = paddle.batch(
         reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
@@ -81,10 +78,9 @@ def train_mlp(model, offload=False):
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             scaler.scale(avg_loss).backward()
 
-            model.grad_scale()
             scaler.step(optimizer)
             scaler.update()
-            model.clear_gradients()
+            optimizer.clear_grad()
 
     for dtype in optimizer.param_storages:
         for dst_rank, param_storage in optimizer.param_storages[dtype].items():
@@ -102,12 +98,11 @@ def test_sharding_stage2_offload():
     mlp_offload_params = train_mlp(mlp_offload, offload=True)
 
     for i in range(len(mlp_params)):
-        for j in range(len(mlp_offload_params)):
-            if mlp_params[i].name == mlp_offload_params[j].name:
-                np.testing.assert_allclose(
-                    mlp_params[i].numpy(),
-                    mlp_offload_params[j].numpy(),
-                    rtol=1e-6)
+        np.testing.assert_allclose(
+            mlp_params[i].numpy(),
+            mlp_offload_params[i].numpy(),
+            rtol=5e-3,
+            atol=5e-3)
     return
 
 

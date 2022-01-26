@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -110,6 +111,14 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
                 pt.data.length());
+  } else if (platform::is_ipu_place(place)) {
+#ifdef PADDLE_WITH_IPU
+    std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
+                pt.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with WITH_IPU, should not reach here."));
+#endif
   } else if (platform::is_gpu_place(place)) {
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
                       platform::errors::InvalidArgument(
@@ -118,7 +127,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+    auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
@@ -128,7 +137,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place);
+    auto dst_xpu_place = place;
     memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length());
 #else
@@ -294,6 +303,14 @@ bool AnalysisPredictor::CreateExecutor() {
                                         "engine), but Paddle was not compiled "
                                         "with LITE_WITH_NNADAPTER."));
     }
+  } else if (config_.use_ipu()) {
+#ifdef PADDLE_WITH_IPU
+    place_ = paddle::platform::IPUPlace();
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use IPU forward propagation, but Paddle was not compiled "
+        "with WITH_IPU."));
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -392,7 +409,10 @@ void AnalysisPredictor::MkldnnPreSet(
 void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
-  if (config_.mkldnn_cache_capacity_ > 0) {
+  if (config_.mkldnn_cache_capacity_ > 0 &&
+      static_cast<platform::MKLDNNDeviceContext *>(
+          (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
+              ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
       auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
                                  (&platform::DeviceContextPool::Instance())
@@ -563,9 +583,6 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE_EQ(config_.params_file().empty(), false,
-                      platform::errors::PreconditionNotMet(
-                          "Either model_dir or param_file should be set."));
     PADDLE_ENFORCE_EQ(config_.prog_file().empty(), false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
@@ -588,6 +605,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+    argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -642,6 +660,16 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetNNAdapterModelCacheBuffer(buffer_vals);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
+
+  argument_.SetUseIpu(config_.use_ipu_);
+  argument_.SetIpuDeviceNum(config_.ipu_device_num());
+  argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
+  argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
+  argument_.SetIpuBatchSize(config_.ipu_batch_size_);
+  argument_.SetIpuNeedAvgShard(config_.ipu_need_avg_shard_);
+
+  argument_.SetUseNpu(config_.use_npu_);
+  argument_.SetNPUDeviceId(config_.npu_device_id());
 
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
@@ -916,6 +944,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_ipu_place(place_)) {
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
+    // IpuBackend.
+    res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
       // Currently, Paddle-Lite's XPU user interface only supports the transfer
@@ -925,14 +957,14 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -951,6 +983,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_ipu_place(place_)) {
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
+    // IpuBackend.
+    res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
       // Currently, Paddle-Lite's XPU user interface only supports the transfer
@@ -960,14 +996,14 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -1012,13 +1048,27 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
+  if (stream != nullptr) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = place_;
+    auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+    dev_ctx->SetThreadLocalStream(stream);
+  }
+  return ZeroCopyRun();
+}
+#endif
+
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
 #ifdef PADDLE_WITH_HIP
@@ -1089,7 +1139,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
   std::string filename;
   if (!config_.model_dir().empty()) {
     filename = config_.model_dir() + "/__model__";
-  } else if (!config_.prog_file().empty() && !config_.params_file().empty()) {
+  } else if (!config_.prog_file().empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
@@ -1301,6 +1351,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
+  x->executor_->ResetTrtOps(++x->clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 
@@ -1368,6 +1419,7 @@ USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(flatten);
+USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
@@ -1536,4 +1588,31 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   return preds_[idx - 1].get();
 }
 }  // namespace services
+
+namespace experimental {
+
+// Note: Can only be used under thread_local semantics.
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
+                                            bool with_interleaved) {
+#ifdef PADDLE_WITH_CUDA
+  c->trt_with_interleaved_ = with_interleaved;
+#endif
+}
+}  // namespace experimental
 }  // namespace paddle_infer

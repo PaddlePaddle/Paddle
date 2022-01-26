@@ -16,7 +16,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 
-#include "paddle/pten/api/all.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -33,31 +33,39 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
                                 pten::DenseTensor* dense_out) {
   switch (dense_tensor.dtype()) {
     case pten::DataType::FLOAT64: {
-      pten::Scale<double>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
-                          bias /* bias */,
-                          bias_after_scale /* bias_after_scale */,
-                          dense_out /* out tensor */);
+      pten::ScaleKernel<double, typename paddle::framework::
+                                    ConvertToPtenContext<DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
+          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     case pten::DataType::FLOAT32: {
-      pten::Scale<float>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
-                         bias /* bias */,
-                         bias_after_scale /* bias_after_scale */,
-                         dense_out /* out tensor */);
+      pten::ScaleKernel<float, typename paddle::framework::ConvertToPtenContext<
+                                   DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
+          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     case pten::DataType::INT64: {
-      pten::Scale<int64_t>(dev_ctx, dense_tensor /* tensor */,
-                           scale /* scale */, bias /* bias */,
-                           bias_after_scale /* bias_after_scale */,
-                           dense_out /* out tensor */);
+      pten::ScaleKernel<int64_t, typename paddle::framework::
+                                     ConvertToPtenContext<DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
+          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     case pten::DataType::INT32: {
-      pten::Scale<int32_t>(dev_ctx, dense_tensor /* tensor */,
-                           scale /* scale */, bias /* bias */,
-                           bias_after_scale /* bias_after_scale */,
-                           dense_out /* out tensor */);
+      pten::ScaleKernel<int32_t, typename paddle::framework::
+                                     ConvertToPtenContext<DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
+          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     default: {
@@ -83,7 +91,7 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
                       SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size), 0),
+          paddle::memory::Alloc(place, bytes_size)),
       std::move(tensor_meta));
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place =

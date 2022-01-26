@@ -75,6 +75,8 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->SetDumpParamVector(dump_param_);
     workers_[i]->InitRandomDumpConfig(trainer_desc);
     workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetPlace(places_[i]);
+    workers_[i]->SetReaderPlace(places_[i]);
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetWorkerNum(place_num);
   }
@@ -102,8 +104,6 @@ void PSGPUTrainer::RegisterHeterCallback() {
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                   const platform::Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
-    workers_[i]->SetPlace(places_[i]);
-    workers_[i]->SetReaderPlace(places_[i]);
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
@@ -216,7 +216,9 @@ void PSGPUTrainer::Finalize() {
       continue;
     }
     LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
-
+    if (root_tensor == nullptr || !root_tensor->IsInitialized()) {
+      continue;
+    }
     for (size_t j = 0; j < places_.size(); j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
@@ -225,6 +227,9 @@ void PSGPUTrainer::Finalize() {
         continue;
       }
       LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      if (thread_tensor == nullptr || !thread_tensor->IsInitialized()) {
+        continue;
+      }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (root_tensor->type() == proto_type) {                                   \

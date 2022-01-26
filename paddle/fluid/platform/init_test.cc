@@ -14,13 +14,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MLU)
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U);
@@ -45,6 +48,18 @@ TEST(InitDevices, XPU) {
 
 #ifdef PADDLE_WITH_XPU
   int count = paddle::platform::GetXPUDeviceCount();
+  InitDevices();
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
+#endif
+}
+
+TEST(InitDevices, MLU) {
+  using paddle::framework::InitDevices;
+  using paddle::platform::DeviceContextPool;
+
+#ifdef PADDLE_WITH_MLU
+  int count = paddle::platform::GetMLUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));

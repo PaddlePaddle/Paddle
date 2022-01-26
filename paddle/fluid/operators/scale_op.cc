@@ -70,23 +70,6 @@ class ScaleOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (ctx.InputVar("X")->IsType<framework::LoDTensor>() ||
-        ctx.InputVar("X")->IsType<framework::Tensor>()) {
-      std::string scale_attr;
-      if (ctx.HasInput("ScaleTensor")) {
-        scale_attr = "ScaleTensor";
-      } else {
-        scale_attr = "scale";
-      }
-      return framework::KernelSignature(
-          "scale", {"X"}, {scale_attr, "bias", "bias_after_scale"}, {"Out"});
-    }
-    // TODO(chenweihang): support other cases after selected rows added
-    return framework::KernelSignature("scale.unregistered", {}, {}, {});
-  }
 };
 
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {

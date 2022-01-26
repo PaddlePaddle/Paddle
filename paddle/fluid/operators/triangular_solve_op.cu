@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 
@@ -20,7 +19,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
+class MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
+ public:
   void operator()(const Tensor& in, Tensor* out,
                   const framework::ExecutionContext& ctx) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
@@ -44,7 +44,8 @@ struct MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
       }
     }
     gpuStream_t stream = ctx.cuda_device_context().stream();
-    TensorReduceFunctorImpl<T, T, CustomSum>(in, out, out_reduce_dims, stream);
+    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        in, out, kps::IdentityFunctor<T>(), out_reduce_dims, stream);
   }
 };
 

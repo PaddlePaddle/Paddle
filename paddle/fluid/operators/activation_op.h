@@ -1020,6 +1020,107 @@ struct AtanGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+template <typename T>
+struct Acosh {
+  HOSTDEVICE T operator()(const T& val) const { return acosh(val); }
+};
+
+template <>
+struct Acosh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(acosh(static_cast<float>(val)));
+  }
+};
+
+// Acosh(x) = acosh(x)
+template <typename T>
+struct AcoshFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Acosh<T>());
+  }
+};
+
+// acosh'(x) =  1/sqrt(x^2 - 1)
+template <typename T>
+struct AcoshGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * static_cast<T>(1) / (x * x - static_cast<T>(1)).sqrt();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct Asinh {
+  HOSTDEVICE T operator()(const T& val) const { return asinh(val); }
+};
+
+template <>
+struct Asinh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(asinh(static_cast<float>(val)));
+  }
+};
+
+// Asinh(x) = asinh(x)
+template <typename T>
+struct AsinhFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Asinh<T>());
+  }
+};
+
+// asinh'(x) =  1/sqrt(x^2 + 1)
+template <typename T>
+struct AsinhGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * static_cast<T>(1) / (x.square() + static_cast<T>(1)).sqrt();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct Atanh {
+  HOSTDEVICE T operator()(const T& val) const { return atanh(val); }
+};
+
+template <>
+struct Atanh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(atanh(static_cast<float>(val)));
+  }
+};
+
+// Atanh(x) = atanh(x)
+template <typename T>
+struct AtanhFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Atanh<T>());
+  }
+};
+
+// atanh'(x) =  1/(1 - x^2)
+template <typename T>
+struct AtanhGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (static_cast<T>(1) - x.square());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -1306,6 +1407,46 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
     dx.device(d) =
         (x_beta > static_cast<T>(threshold))
             .select(dout, dout / (static_cast<T>(1) + (-x_beta).exp()));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+// mish(x) = x * tanh(softplus(x))
+// softplus(x) = x, if x > threshold
+//             = ln(1 + exp(x)), otherwise
+template <typename T>
+struct MishFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) {
+    auto sp = (x > static_cast<T>(threshold))
+                  .select(x, (static_cast<T>(1) + x.exp()).log());
+    out.device(d) = x * sp.tanh();
+  }
+};
+
+// dx = dout * (tanh(sp) + x * (1 - tanh(sp) ** 2) * (1 - exp(-sp)))
+// sp = softplus(x)
+template <typename T>
+struct MishGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) {
+    auto sp = (x > static_cast<T>(threshold))
+                  .select(x, (static_cast<T>(1) + x.exp()).log());
+    auto gsp = static_cast<T>(1) - (-sp).exp();
+    auto tsp = sp.tanh();
+    dx.device(d) = dout * (tsp + x * (static_cast<T>(1) - tsp * tsp) * gsp);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -2555,8 +2696,8 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =
@@ -2610,8 +2751,8 @@ class PowGradKernel
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =
@@ -2719,6 +2860,9 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(asin, Asin, AsinFunctor, AsinGradFunctor);                          \
   __macro(sinh, Sinh, SinhFunctor, SinhGradFunctor);                          \
   __macro(cosh, Cosh, CoshFunctor, CoshGradFunctor);                          \
+  __macro(asinh, Asinh, AsinhFunctor, AsinhGradFunctor);                      \
+  __macro(acosh, Acosh, AcoshFunctor, AcoshGradFunctor);                      \
+  __macro(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);                      \
   __macro(round, Round, RoundFunctor, ZeroGradFunctor);                       \
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
   __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                      \
@@ -2737,4 +2881,5 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                      \
   __macro(thresholded_relu, ThresholdedRelu, ThresholdedReluFunctor,          \
           ThresholdedReluGradFunctor);                                        \
+  __macro(mish, Mish, MishFunctor, MishGradFunctor);                          \
   __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);

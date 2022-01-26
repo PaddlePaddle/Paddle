@@ -150,6 +150,7 @@ class PD_INFER_DECL Predictor {
 
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 ///

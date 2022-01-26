@@ -69,9 +69,11 @@ class InternalStorage:
                 param._gradient_set_empty(False)
             self.buffer.value().get_tensor()._clear()
             self.buffer = tmp_buffer
+            self._device = device
 
         if dtype is not None:
             self.buffer = self.buffer.cast(dtype=dtype)
+            self._dtype = dtype
 
 
 class ParamStorage(InternalStorage):
@@ -94,7 +96,7 @@ class ParamStorage(InternalStorage):
             self._array_params()
 
     @fluid.dygraph.no_grad
-    def add_rank_params(self, trainable_params, param2align):
+    def add_rank_params(self, trainable_params, param2align, convert_gpu=True):
         """
         Add new parameters to the InternalStorage. Params becomes a view of this InternalStorage buffer.
         """
@@ -108,12 +110,15 @@ class ParamStorage(InternalStorage):
 
         cpu_param_shape = list()
         for param in trainable_params:
-            p_shape = self._add_param_as_view(param, param2align[param.name])
+            p_shape = self._add_param_as_view(param, param2align[param.name],
+                                              convert_gpu)
             cpu_param_shape.append(p_shape)
 
-        # buffer convert from cpu to cuda
-        dev_id = int(paddle.get_device().split(":")[1])
-        self.buffer = self.buffer.cuda(dev_id)
+        if convert_gpu:
+            # buffer convert from cpu to cuda
+            dev_id = int(paddle.get_device().split(":")[1])
+            self.buffer = self.buffer.cuda(dev_id)
+
         self._fill = 0
 
         for idx, param in enumerate(trainable_params):
@@ -123,7 +128,7 @@ class ParamStorage(InternalStorage):
             self._param_ids.append(id(param))
 
     @fluid.dygraph.no_grad
-    def _add_param_as_view(self, param, align):
+    def _add_param_as_view(self, param, align, convert_gpu=True):
 
         assert (
             param.dtype == self.buffer.dtype
@@ -147,9 +152,12 @@ class ParamStorage(InternalStorage):
         with device_guard(dev_id, "cpu"):
             tmp_var = core.VarBase(tensor=self.buffer._slice(self._fill,
                                                              var_end))
-            param_cpu = param.cpu()
-            param.value().get_tensor()._clear()
-            tmp_var.set_value(param_cpu)
+            if convert_gpu:
+                param_cpu = param.cpu()
+                param.value().get_tensor()._clear()
+                tmp_var.set_value(param_cpu)
+            else:
+                tmp_var.set_value(param)
 
         self._fill = offset
         return p_shape
@@ -186,10 +194,16 @@ class GradStorage(InternalStorage):
     This is a basic class to simplify the handling of gradient InternalStorages
     """
 
-    def __init__(self, size, dtype, device, destination, parm2align):
+    def __init__(self,
+                 size,
+                 dtype,
+                 device,
+                 destination,
+                 parm2align,
+                 convert_cpu=False):
         if isinstance(size, np.int64):
             size = size.tolist()
-        super().__init__(size, dtype, device)
+        super().__init__(size, dtype, device, convert_cpu)
 
         self._max_size = size
         self._release = False

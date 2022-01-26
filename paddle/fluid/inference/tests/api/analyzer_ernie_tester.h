@@ -148,5 +148,11 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false,
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
 
+void SetIpuConfig(AnalysisConfig *cfg, int batch_size = 1) {
+  cfg->SetModel(FLAGS_infer_model);
+  // num_ipu, enable_pipelining, batches_per_step, batch_size, need_avg_shard
+  cfg->EnableIpu(4, false, 1, batch_size, true);
+}
+
 }  // namespace inference
 }  // namespace paddle

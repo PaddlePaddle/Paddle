@@ -15,11 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <set>
 #include <tuple>
-#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/memory/detail/memory_block.h"
@@ -59,6 +62,9 @@ class BuddyAllocator {
   using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
   // Each element in PoolSet is a free allocation
   using PoolSet = std::set<IndexSizeAddress>;
+  // Each element in PoolMap is an allocation record
+  // key: <size, ptr>, value: index
+  using PoolMap = std::map<std::pair<size_t, void*>, size_t>;
 
   /*! \brief Allocate fixed-size memory from system */
   void* SystemAlloc(size_t size);
@@ -79,6 +85,11 @@ class BuddyAllocator {
 
   /*! \brief Find the existing chunk which used to allocation */
   PoolSet::iterator FindExistChunk(size_t size);
+
+  /*! \brief Allocate bytes from the device */
+  size_t DeviceAllocateSize(std::function<size_t()> init_allocate_size_func,
+                            std::function<size_t()> re_allocate_size_func,
+                            size_t request_bytes);
 
  private:
   size_t total_used_ = 0;  // the total size of used memory
@@ -102,7 +113,7 @@ class BuddyAllocator {
   /**
    * \brief Record the allocated chunks when Refill pool.
    */
-  PoolSet chunks_;
+  PoolMap chunks_;
 
  private:
   /*! Unify the metadata format between GPU and CPU allocations */

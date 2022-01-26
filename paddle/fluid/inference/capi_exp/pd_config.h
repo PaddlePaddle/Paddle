@@ -705,7 +705,7 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
 ///
 /// \return Return config info.
 ///
-PADDLE_CAPI_EXPORT extern const char* PD_ConfigSummary(
+PADDLE_CAPI_EXPORT extern __pd_give PD_Cstr* PD_ConfigSummary(
     __pd_keep PD_Config* pd_config);
 
 #ifdef __cplusplus

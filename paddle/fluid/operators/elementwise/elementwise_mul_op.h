@@ -15,16 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
-// only can include the headers in paddle/pten/include dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/math_kernel.h"
+
 namespace paddle {
 namespace operators {
 
@@ -97,20 +92,20 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
 
     framework::Tensor x, *z;
-    if (x_var->IsType<framework::SelectedRows>()) {
+    if (x_var->IsType<pten::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
                         platform::errors::InvalidArgument(
                             "For elementwise_op, if X is Sparse, Y must be "
                             "scalar. But reveived the size of Y = %s.",
                             y->dims().size()));
-      auto& x_sele = x_var->Get<framework::SelectedRows>();
-      auto out_sele = ctx.Output<framework::SelectedRows>("Out");
+      auto& x_sele = x_var->Get<pten::SelectedRows>();
+      auto out_sele = ctx.Output<pten::SelectedRows>("Out");
       x = x_sele.value();
       out_sele->set_rows(x_sele.rows());
       out_sele->set_height(x_sele.height());
       out_sele->mutable_value()->Resize(x_sele.value().dims());
       out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
-      z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+      z = ctx.Output<pten::SelectedRows>("Out")->mutable_value();
       z->mutable_data<T>(ctx.GetPlace());
       auto dims_equal = x.dims() == y->dims();
       if (dims_equal) {
@@ -129,8 +124,10 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
       auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
-      pten::ElementwiseMul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
-                              pt_z.get());
+      pten::MultiplyRawKernel<T>(
+          static_cast<const typename framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          *pt_x.get(), *pt_y.get(), axis, pt_z.get());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "
@@ -174,26 +171,23 @@ struct MulGradDY<paddle::platform::complex<T>> {
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy) {
+ElementwiseMulGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
   ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
       ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_mul_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy);
+ElementwiseMulGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy);
 #endif
 
 template <typename DeviceContext, typename T>
@@ -209,14 +203,8 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
     auto* out = dout;  // out is not necessary
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
-    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-      elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-    } else {
-      ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
-          ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(),
-          MulGradDY<T>());
-    }
+
+    ElementwiseMulGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
   }
 };
 

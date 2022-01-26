@@ -54,7 +54,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   }
 
   // [[1, 2],[3, 4],[5, 6]]
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize(paddle::framework::make_ddim({3, 2}));
 
   std::vector<int> init_index = {1, 2};
@@ -75,7 +75,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
@@ -114,11 +114,11 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   tensor_index->Resize(paddle::framework::make_ddim({2}));
 
   std::vector<T> init_x = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize(paddle::framework::make_ddim({3, 2}));
 
   std::vector<T> init_dout = {5.0, 10.0, 2.0, 3.0};
-  TensorFromVector(init_dout, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize(paddle::framework::make_ddim({2, 2}));
 
   ctx.Wait();
@@ -136,7 +136,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   op->Run(*scope, place);
 
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   ctx.Wait();
 

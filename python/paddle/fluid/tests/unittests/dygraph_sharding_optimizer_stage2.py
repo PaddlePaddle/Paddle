@@ -125,7 +125,7 @@ def train_mlp():
             oss_optimizer.step()
 
     # oss_optimizer clear cache
-    oss_optimizer.clear_cache()
+    oss_optimizer._clear_cache()
 
 
 if __name__ == '__main__':

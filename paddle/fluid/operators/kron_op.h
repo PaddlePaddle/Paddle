@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "thrust/device_vector.h"
 #endif
 
@@ -237,15 +237,6 @@ struct KronGradElemFunctor<platform::complex<T>> {
   const int ndims_;
 };
 
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  template <typename U>
-  HOSTDEVICE inline U operator()(const U& x) const {
-    return x;
-  }
-};
-
 template <typename DeviceContext, typename T>
 struct KronGradOpFunctor {
   void operator()(const DeviceContext& dev_ctx, const framework::Tensor& dout,
@@ -314,14 +305,12 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor>(
-          dout_x, dx, {1}, static_cast<T>(0), cub::Sum(), IdentityFunctor(),
-          stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
     }
     if (dy) {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor>(
-          dout_y, dy, {1}, static_cast<T>(0), cub::Sum(), IdentityFunctor(),
-          stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
     }
 #else
     auto* place = dev_ctx.eigen_device();

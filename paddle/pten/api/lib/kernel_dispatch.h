@@ -21,31 +21,22 @@ limitations under the License. */
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/backend_set.h"
 #include "paddle/pten/api/lib/data_type_set.h"
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
-// TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
+// TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace experimental {
-
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
 
 namespace detail {
 BackendSet GetTensorBackendSet(const Tensor& t);
 std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(
-    pten::Backend backend);
+pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend);
 
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {

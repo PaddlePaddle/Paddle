@@ -403,6 +403,52 @@ class TestLayerTo(unittest.TestCase):
 
         self.assertRaises(AssertionError, self.linear.to, blocking=1)
 
+    def test_to_api_paddle_dtype(self):
+        self.linear.to(dtype=paddle.float64)
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(
+            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+
+        self.linear.to()
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(
+            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        for p in self.linear.parameters():
+            self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
+
+    def test_to_api_numpy_dtype(self):
+        self.linear.to(dtype=np.float64)
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(
+            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+
+        self.linear.to()
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(
+            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        self.assertEqual(self.linear.weight._grad_ivar().dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        for p in self.linear.parameters():
+            self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
+
 
 if __name__ == '__main__':
     unittest.main()

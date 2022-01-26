@@ -102,10 +102,12 @@ class InferShapeContext {
 
   virtual bool IsRuntime() const = 0;
 
+  virtual bool IsRunMKLDNNKernel() const = 0;
+
   virtual std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) = 0;
+      const std::string &name) const = 0;
   virtual std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) = 0;
+      const std::string &name) const = 0;
 
  protected:
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;

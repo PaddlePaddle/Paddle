@@ -351,6 +351,14 @@ class Cluster:
         self._num_machines += 1
         return cur_machine_id
 
+    def get_all_devices(self, device_type):
+        devices = []
+        for machine in self.machines.values():
+            for device in machine.devices.values():
+                if device.type == DeviceType[device_type]:
+                    devices.append(device)
+        return devices
+
     def __str__(self):
         str = ""
         for machine in self.machines.values():

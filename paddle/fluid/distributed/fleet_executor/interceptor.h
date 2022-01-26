@@ -15,14 +15,15 @@
 #pragma once
 
 #include <condition_variable>
+#include <deque>
 #include <functional>
 #include <map>
 #include <memory>
-#include <queue>
 #include <thread>
 #include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
@@ -36,6 +37,8 @@ class GarbageCollector;
 namespace distributed {
 
 class TaskNode;
+class Carrier;
+class TaskLoop;
 
 class Interceptor {
  public:
@@ -48,21 +51,16 @@ class Interceptor {
 
   virtual ~Interceptor();
 
-  void Join();
-
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
   void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
-  int64_t GetInterceptorId() const;
-
-  // return the conditional var
-  std::condition_variable& GetCondVar();
+  int64_t GetInterceptorId() const { return interceptor_id_; }
 
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
-  bool EnqueueRemoteInterceptorMessage(
+  void EnqueueRemoteInterceptorMessage(
       const InterceptorMessage& interceptor_message);
 
   bool Send(int64_t dst_id, InterceptorMessage& msg);  // NOLINT
@@ -77,6 +75,8 @@ class Interceptor {
   void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
     gc_ = gc;
   }
+  void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
+  void RegisterTaskLoop(TaskLoop* loop) { loop_ = loop; }
 
   TaskNode* GetTaskNode() const { return node_; }
 
@@ -100,34 +100,17 @@ class Interceptor {
   std::vector<framework::Scope*> microbatch_scopes_{};
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
- private:
-  // pool the local mailbox, parse the Message
-  void PoolTheMailbox();
+  Carrier* carrier_;
+  TaskLoop* loop_;
 
-  // fetch all Message from remote mailbox to local mailbox
-  // return true if remote mailbox not empty, otherwise return false
-  bool FetchRemoteMailbox();
+ private:
+  void LoopOnce();
 
   // interceptor handle which process message
   MsgHandle handle_{nullptr};
 
-  // mutex to control read/write conflict for remote mailbox
-  std::mutex remote_mailbox_mutex_;
-
-  // interceptor runs PoolTheMailbox() function to poll local mailbox
-  std::thread interceptor_thread_;
-
-  // conditional variable for blocking the thread when
-  // fetch an empty remote mailbox
-  std::condition_variable cond_var_;
-
-  // remote mailbox, written by EnqueueRemoteMessage()
-  // read by FetchRemoteMailbox()
-  std::queue<InterceptorMessage> remote_mailbox_;
-
-  // local mailbox, written by FetchRemoteMailbox()
-  // read by PoolTheMailbox()
-  std::queue<InterceptorMessage> local_mailbox_;
+  std::mutex mutex_;
+  std::deque<InterceptorMessage> messages_;
 
   int64_t already_run_times_{0};
   int64_t used_slot_nums_{0};

@@ -25,7 +25,7 @@ TEST(dense_tensor, meta) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   // TODO(Shixiaowei02): need to check the lod is valid.
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
 
   DenseTensorMeta meta_0;
   CHECK(!meta_0.valid());
@@ -65,17 +65,18 @@ TEST(dense_tensor, meta) {
 
 TEST(dense_tensor, def_ctor) {
   DenseTensor tensor_0;
-  CHECK(!tensor_0.valid());
+  CHECK(tensor_0.valid());
 }
 
 TEST(dense_tensor, ctor) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
 
   auto check_dense_tensor = [](const DenseTensor& t,
                                const DenseTensorMeta& m) -> bool {
@@ -95,31 +96,37 @@ TEST(dense_tensor, ctor) {
 
   DenseTensor tensor_1(alloc, DenseTensorMeta(meta));
   check_dense_tensor(tensor_0, meta);
-
-  DenseTensor tensor_2(make_intrusive<TensorStorage>(alloc), meta);
-  CHECK(tensor_2.data<int8_t>() == nullptr);
-  CHECK_NOTNULL(tensor_2.mutable_data<int8_t>());
-  check_dense_tensor(tensor_2, meta);
 }
 
 TEST(dense_tensor, resize) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto alloc = std::make_shared<FancyAllocator>();
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
   DenseTensor tensor_0(alloc, meta);
 
   CHECK_EQ(tensor_0.capacity(), 2u);
-  tensor_0.Resize({1, 2, 3});
+  tensor_0.ResizeAndAllocate({1, 2, 3});
   CHECK_EQ(tensor_0.capacity(), 6u);
-  tensor_0.mutable_data<int8_t>();
-  CHECK_EQ(tensor_0.capacity(), 6u);
+}
 
-  auto storage = tensor_0.release();
-  CHECK_EQ(storage->size(), 6u);
+TEST(dense_tensor, shallow_copy) {
+  const DDim dims({1, 2});
+  const DataType dtype{DataType::INT8};
+  const DataLayout layout{DataLayout::NHWC};
+  const LoD lod{};
+  DenseTensorMeta meta(dtype, dims, layout, lod);
+
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
+  DenseTensor tensor_0(alloc, meta);
+
+  DenseTensor tensor_1(tensor_0);
+  CHECK(tensor_0.meta() == tensor_1.meta());
 }
 
 }  // namespace tests

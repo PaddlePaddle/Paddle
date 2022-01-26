@@ -30,7 +30,7 @@ class TestTransferLayoutOpkNCHWTokNHWC(OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.transpose([0, 2, 3, 1])}
         self.attrs = {
-            'dst_layout': 0  # kNHWC
+            'dst_layout': 1  # kNHWC
         }
         self.op_type = 'transfer_layout'
 

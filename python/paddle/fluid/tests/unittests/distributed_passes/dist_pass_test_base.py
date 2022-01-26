@@ -15,7 +15,6 @@
 import unittest
 import paddle
 import os
-import random
 import sys
 import pickle
 import shlex
@@ -24,6 +23,7 @@ import inspect
 import numpy as np
 from collections import OrderedDict
 from paddle.distributed.fleet.launch_utils import run_with_coverage
+from paddle.distributed.passes.pass_base import new_pass, PassBase, PassManager
 
 
 def prepare_python_path_and_return_module(path):
@@ -58,6 +58,9 @@ def remove_path_if_exists(path):
 class DistPassTestBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
+        if paddle.is_compiled_with_cuda():
+            paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+
         seed = int(os.environ.get('SEED', -1))
         if seed <= 0:
             seed = np.random.randint(low=1, high=1000000, size=[1])[0]
@@ -80,11 +83,11 @@ class DistPassTestBase(unittest.TestCase):
     def apply_passes(self, main_prog, startup_prog):
         raise NotImplementedError()
 
-    def check_main(self, gpus=None, **kwargs):
+    def check_main(self, model=None, gpus=None, **kwargs):
         no_pass_rets = self._distributed_launch(
-            apply_pass=False, gpus=gpus, **kwargs)
+            model=model, apply_pass=True, gpus=gpus, **kwargs)
         pass_rets = self._distributed_launch(
-            apply_pass=True, gpus=gpus, **kwargs)
+            model=model, apply_pass=False, gpus=gpus, **kwargs)
         self.check_results(no_pass_rets, pass_rets)
 
     def check_results(self, no_pass_rets, pass_rets):
@@ -105,7 +108,7 @@ class DistPassTestBase(unittest.TestCase):
                             equal_nan=self.equal_nan))
 
     @classmethod
-    def _to_var_names(cls, program, names_or_vars):
+    def _to_var_names(cls, names_or_vars):
         if not isinstance(names_or_vars, (list, tuple)):
             names_or_vars = [names_or_vars]
         ret_var_names = []
@@ -116,18 +119,20 @@ class DistPassTestBase(unittest.TestCase):
                 ret_var_names.append(name_or_var.name)
         return ret_var_names
 
-    def _run_gpu_main(self, apply_pass, dump_file, **kwargs):
+    def _run_gpu_main(self, model, apply_pass, dump_file, **kwargs):
         gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
         place = paddle.CUDAPlace(gpu_id)
         scope = paddle.static.Scope()
+        if model is None:
+            model = self.get_model
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             with paddle.static.scope_guard(scope):
                 with paddle.fluid.unique_name.guard():
-                    main_prog, startup_prog, inputs, outputs, reader = self.get_model(
+                    main_prog, startup_prog, inputs, outputs, reader = model(
                         place, **kwargs)
-                    inputs = self._to_var_names(main_prog, inputs)
-                    outputs = self._to_var_names(main_prog, outputs)
+                    inputs = self._to_var_names(inputs)
+                    outputs = self._to_var_names(outputs)
                     if apply_pass:
                         self.apply_passes(main_prog, startup_prog)
 
@@ -147,13 +152,25 @@ class DistPassTestBase(unittest.TestCase):
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
 
-    def _distributed_launch(self, apply_pass, gpus=None, **kwargs):
-        if gpus is None:
-            num_gpus = paddle.device.cuda.device_count()
-            gpus = list(range(num_gpus))
-        else:
-            num_gpus = len(gpus)
+    @classmethod
+    def _get_default_gpu_lists(cls):
+        visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if visible_devices is None:
+            visible_devices = os.getenv("FLAGS_selected_gpus")
 
+        if visible_devices is None:
+            num_gpus = paddle.device.cuda.device_count()
+            return list(range(num_gpus))
+        else:
+            return [
+                int(s.strip()) for s in visible_devices.split(",") if s.strip()
+            ]
+
+    def _distributed_launch(self, model, apply_pass, gpus=None, **kwargs):
+        if gpus is None:
+            gpus = self._get_default_gpu_lists()
+
+        num_gpus = len(gpus)
         gpus = ','.join([str(gpu_id) for gpu_id in gpus])
 
         pid = os.getpid()
@@ -164,7 +181,9 @@ class DistPassTestBase(unittest.TestCase):
         remove_path_if_exists(output_dir)
         os.makedirs(output_dir, mode=777)
 
-        input_dump_file = os.path.join(output_dir, 'inputs')
+        input_dump_file = os.path.join(output_dir, 'inputs.bin')
+        model_dump_file = os.path.join(output_dir, 'model.bin')
+
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             run_with_coverage(True)
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
@@ -176,6 +195,10 @@ class DistPassTestBase(unittest.TestCase):
         try:
             with open(input_dump_file, 'wb') as f:
                 pickle.dump(kwargs, f)
+
+            if model is not None:
+                with open(model_dump_file, 'wb') as f:
+                    pickle.dump(model, f)
 
             cmd = [
                 sys.executable,
@@ -196,23 +219,62 @@ class DistPassTestBase(unittest.TestCase):
                 input_dump_file,
                 "--output_dir",
                 output_dir,
-            ] + (["--apply_pass"] if apply_pass else [])
+            ]
+            if apply_pass:
+                cmd += ["--apply_pass"]
+            if model is not None:
+                cmd += ["--model_file", model_dump_file]
             cmd = [shlex.quote(c) for c in cmd]
             prepare_python_path_and_return_module(__file__)
             exitcode = os.system(' '.join(cmd))
             self.assertEqual(
                 exitcode, 0,
-                "Pass failed with apply_pass = {}".format(apply_pass))
+                "Pass test failed with apply_pass = {}, please view log in {}".
+                format(apply_pass, output_dir))
 
             results = []
             for i in range(num_gpus):
                 dump_file = '{0}/{1}.bin'.format(output_dir, i)
                 self.assertTrue(
                     os.path.exists(dump_file),
-                    "Pass failed with apply_pass = {}".format(apply_pass))
+                    "Pass test failed with apply_pass = {}, please view log in {}".
+                    format(apply_pass, output_dir))
                 with open(dump_file, "rb") as f:
                     results.append(pickle.load(f))
             return results
         finally:
             if int(os.environ.get("DEBUG", 0)) == 0:
                 remove_path_if_exists(output_dir)
+
+
+class PassConflictChecker(DistPassTestBase):
+    def setUp(self):
+        os.environ['DEBUG'] = '1'  # to save the debug directory
+        super(PassConflictChecker, self).setUp()
+
+    def pass_config(self):
+        raise NotImplementedError()
+
+    def apply_passes(self, main_prog, startup_prog):
+        passes = self.pass_config()
+        if not isinstance(passes, (list, tuple)):
+            passes = [passes]
+        for p in passes:
+            self.assertTrue(isinstance(p, PassBase))
+
+        auto_pass_manager = PassManager(passes, auto_solve_conflict=True)
+        new_passes = auto_pass_manager.passes
+        self.assertEqual(
+            len(passes),
+            len(new_passes),
+            "After solving conflicts, the left passes are: {}".format(
+                auto_pass_manager.names))
+
+        for i, (p1, p2) in enumerate(zip(passes, new_passes)):
+            self.assertEqual(
+                id(p1),
+                id(p2),
+                "After solving conflicts, the {}-th pass is different: {} vs {}".
+                format(i, p1.name, p2.name))
+
+        auto_pass_manager.apply([main_prog], [startup_prog])

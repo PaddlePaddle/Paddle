@@ -14,7 +14,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 
 namespace pten {
 
@@ -64,8 +64,8 @@ DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
                                 const DenseTensorMeta& y_meta,
                                 bool trans_x,
                                 bool trans_y) {
-  std::vector<int64_t> dims_x = paddle::framework::vectorize(x_meta.dims);
-  std::vector<int64_t> dims_y = paddle::framework::vectorize(y_meta.dims);
+  std::vector<int64_t> dims_x = pten::framework::vectorize(x_meta.dims);
+  std::vector<int64_t> dims_y = pten::framework::vectorize(y_meta.dims);
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
@@ -125,14 +125,19 @@ DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
     new_dims.push_back(1);
   }
 
-  auto ddim_out = paddle::framework::make_ddim(new_dims);
+  auto ddim_out = pten::framework::make_ddim(new_dims);
 
   return {x_meta.dtype, ddim_out, x_meta.layout};
 }
 
 DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
-                                     const DenseTensorMeta& y_meta,
-                                     int axis) {
+                                     const DenseTensorMeta& y_meta) {
+  return ElementwiseRawInferMeta(x_meta, y_meta, -1);
+}
+
+DenseTensorMeta ElementwiseRawInferMeta(const DenseTensorMeta& x_meta,
+                                        const DenseTensorMeta& y_meta,
+                                        int axis) {
   DenseTensorMeta return_meta(x_meta.dtype, x_meta.dims, x_meta.layout);
   if (x_meta.dims != y_meta.dims) {
     auto x_dims = x_meta.dims;
@@ -162,14 +167,14 @@ DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
-    general::GetBroadcastDimsArrays(x_dims,
-                                    y_dims,
-                                    x_dims_array.data(),
-                                    y_dims_array.data(),
-                                    out_dims_array.data(),
-                                    max_dim,
-                                    axis);
-    return_meta.dims = paddle::framework::make_ddim(out_dims_array);
+    funcs::GetBroadcastDimsArrays(x_dims,
+                                  y_dims,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
+    return_meta.dims = pten::framework::make_ddim(out_dims_array);
   }
   return_meta.lod = x_meta.lod;
   return return_meta;

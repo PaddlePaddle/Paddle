@@ -42,11 +42,11 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
       paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size), 0),
+          paddle::memory::Alloc(place, bytes_size)),
       std::move(ret_meta));
 
-  float* t_ptr = t_dense->mutable_data<float>();
-  float* ret_ptr = ret_dense->mutable_data<float>();
+  float* t_ptr = t_dense->mutable_data<float>(place);
+  float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
     ret_ptr[i] = t_ptr[i] + 3.0;
   }
@@ -93,6 +93,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
     target_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
@@ -105,9 +106,11 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   // Connect ScaleNode -> AccumulationNode via Edge
   {
     auto meta = AutogradMeta();
+    meta.SetStopGradient(false);
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
-    scale_node_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    scale_node_ptr->AddEdges(&res, 0);
   }
 
   // Retain Grad for leaf tensor1
@@ -169,6 +172,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
     target_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
@@ -180,9 +184,11 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   // Connect ScaleNode -> AccumulationNode via Edge
   {
     auto meta = AutogradMeta();
+    meta.SetStopGradient(false);
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
-    scale_node_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    scale_node_ptr->AddEdges(&res, 0);
   }
 
   // Retain Grad for leaf tensor1

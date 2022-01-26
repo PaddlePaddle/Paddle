@@ -41,11 +41,11 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
       paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size), 0),
+          paddle::memory::Alloc(place, bytes_size)),
       std::move(ret_meta));
 
-  float* t_ptr = t_dense->mutable_data<float>();
-  float* ret_ptr = ret_dense->mutable_data<float>();
+  float* t_ptr = t_dense->mutable_data<float>(place);
+  float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
     ret_ptr[i] = t_ptr[i] + 5.0;
   }
@@ -184,7 +184,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
   // Examine Forward Output 2
   {
     auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out2.impl());
-    float* ptr = dense_out->mutable_data<float>();
+    float* ptr = dense_out->mutable_data<float>(paddle::platform::CPUPlace());
     for (int i = 0; i < 20; i++) {
       PADDLE_ENFORCE(ptr[i] == 150.0,
                      paddle::platform::errors::Fatal(

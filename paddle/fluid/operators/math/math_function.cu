@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -42,6 +42,22 @@ template struct SetConstant<platform::CUDADeviceContext, bool>;
 template struct SetConstant<platform::CUDADeviceContext,
                             platform::complex<float>>;
 template struct SetConstant<platform::CUDADeviceContext,
+                            platform::complex<double>>;
+
+template struct SetConstant<platform::CUDAPinnedDeviceContext,
+                            platform::float16>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext,
+                            platform::bfloat16>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, float>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, double>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, uint8_t>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, int>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, int16_t>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, int64_t>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext, bool>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext,
+                            platform::complex<float>>;
+template struct SetConstant<platform::CUDAPinnedDeviceContext,
                             platform::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                            \
@@ -98,12 +114,11 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
     auto* out_ptr = out->data<T>();
 
     // copy in_stride, out_stride, axis to gpu device
-    const platform::CUDAPlace& cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    const platform::CUDAPlace& cuda_place = context.GetPlace();
     platform::CPUPlace cpu_place = platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = memory::AllocShared(cpu_place, size);
-    auto cuda_buf_holder = memory::AllocShared(cuda_place, size);
+    auto cpu_buf_holder = memory::Alloc(cpu_place, size);
+    auto cuda_buf_holder = memory::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {
@@ -281,13 +296,6 @@ struct ElementwiseAddTo<platform::CUDADeviceContext, T> {
                   const framework::Tensor& src, framework::Tensor* dst) {
     auto in = framework::EigenVector<T>::Flatten(src);
     auto out = framework::EigenVector<T>::Flatten(*dst);
-    auto& place = *(ctx->eigen_device());
-    out.device(place) = out + in;
-  }
-  void operator()(platform::CUDADeviceContext* ctx,
-                  const pten::DenseTensor& src, pten::DenseTensor* dst) {
-    auto in = pten::EigenVector<T>::Flatten(src);
-    auto out = pten::EigenVector<T>::Flatten(*dst);
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }

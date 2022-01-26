@@ -33,7 +33,7 @@ static int HighestBitPos(size_t N) {
   }
 }
 
-BestFitAllocator::BestFitAllocator(Allocation* allocation)
+BestFitAllocator::BestFitAllocator(pten::Allocation* allocation)
     : allocation_(allocation) {
   details::Chunk chunk;
   chunk.size_ = allocation_->size();
@@ -115,7 +115,7 @@ size_t BestFitAllocator::NumFreeChunks() const {
   }
   return num;
 }
-void BestFitAllocator::FreeImpl(Allocation* allocation) {
+void BestFitAllocator::FreeImpl(pten::Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(
       bf_allocation,
@@ -150,7 +150,7 @@ void BestFitAllocator::FreeImpl(Allocation* allocation) {
   InsertFreeNode(chunk_it);
   delete allocation;
 }
-Allocation* BestFitAllocator::AllocateImpl(size_t size) {
+pten::Allocation* BestFitAllocator::AllocateImpl(size_t size) {
   auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
   MapIt map_it;
   for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {

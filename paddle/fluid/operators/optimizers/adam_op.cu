@@ -29,20 +29,18 @@ __global__ void AdamKernelREG(MT beta1, MT beta2, MT epsilon, MT beta1_pow_,
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
 
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
-
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
     MT g = static_cast<MT>(grad[id]);
-    MT mom1 = moment1[id];
-    MT mom2 = moment2[id];
+    MT mom1 = static_cast<MT>(moment1[id]);
+    MT mom2 = static_cast<MT>(moment2[id]);
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-    p -= lr * (mom1 /
-               (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -65,9 +63,6 @@ __global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
 
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
-
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
@@ -77,8 +72,9 @@ __global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
     MT mom2 = static_cast<MT>(moment2[id]);
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-    p -= lr * (mom1 /
-               (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -105,8 +101,6 @@ __global__ void SparseAdamCUDAKernelREG(
     int64_t row_numel, int64_t row_count, bool lazy_mode, int ndim) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   MT lr = *lr_;
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
@@ -122,8 +116,10 @@ __global__ void SparseAdamCUDAKernelREG(
                  : static_cast<MT>(0);
       mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-      p -= lr * (mom1 / (sqrt(mom2) +
-                         epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+      MT denom =
+          (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+      p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
       // Write back to global memory
       mom1_out_[id] = mom1;
@@ -180,8 +176,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -318,8 +314,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
               beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
         }
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -334,8 +330,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {

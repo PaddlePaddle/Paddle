@@ -13,11 +13,18 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
 #ifdef PADDLE_WITH_XPU2
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives_xpu2.h"
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives_xpu2.h"
+#include "paddle/fluid/operators/kernel_primitives/functor_primitives_xpu2.h"
+
+#define KPStream XPUStream
+#define KPDevice paddle::platform::XPUDeviceContext
+#define _ptr_ _global_ptr_
+#define __forceinline__ __inline__
+#define __restrict__
+
 #define THREAD_ID_X core_id()
 #define THREAD_ID_Y 0
 #define THREAD_ID_Z 0
@@ -36,6 +43,12 @@
 #else
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
+#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
+
+#define KPStream gpuStream_t
+#define KPDevice paddle::platform::CUDADeviceContext
+#define _ptr_
+
 #define THREAD_ID_X threadIdx.x
 #define THREAD_ID_Y threadIdx.y
 #define THREAD_ID_Z threadIdx.z

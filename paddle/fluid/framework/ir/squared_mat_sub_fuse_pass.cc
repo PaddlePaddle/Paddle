@@ -398,8 +398,7 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
-      .IsNumGE(0.99f)
-      .IsNumLE(1.01f)
+      .IsNumEQ(1.0f)
       .End()
       .AddAttr("transpose_X")
       .IsBoolEQ(false)
@@ -465,6 +464,10 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .End()
       // type:float，there is no restriction
       .AddAttr("value")
+      .End()
+      .AddAttr("str_value")
+      .IsStringEQ("")
+      .IsOptional()
       .End();
 }
 

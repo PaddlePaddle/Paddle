@@ -18,10 +18,10 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 // pten deps
-#include "paddle/pten/all.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
@@ -57,6 +57,7 @@ class EagerTensor final {
   explicit EagerTensor(const std::shared_ptr<pten::TensorBase>& tensor_impl)
       : tensor_(std::make_shared<paddle::experimental::Tensor>(tensor_impl)),
         var_(paddle::framework::Variable()) {}
+
   EagerTensor(const EagerTensor&) = default;
   EagerTensor(EagerTensor&&) = default;
 
@@ -152,6 +153,10 @@ class EagerTensor final {
    */
   bool initialized() const { return tensor_->initialized(); }
 
+  bool safe_initialized() const {
+    return initialized() || var_.IsInitialized();
+  }
+
   /**
    * @description: Reset the Tensor implementation
    * @param None
@@ -159,6 +164,44 @@ class EagerTensor final {
    */
   void reset() { tensor_->reset(); }
 
+  /**
+   * @brief Determine whether tensor is DenseTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dense_tensor() const { return tensor_->is_dense_tensor(); }
+
+  /**
+ * @brief Transfer the current Tensor to the specified device and return.
+ *
+ * @param place, the target place of which the tensor will copy to.
+ * @return Tensor
+ */
+  // TODO(chenweihang): replace Backend by new Place
+  EagerTensor copy_to(pten::Backend backend, bool blocking) const {
+    if (Var().IsInitialized()) {
+      const_cast<EagerTensor*>(this)->SyncToTensor();
+    }
+    return EagerTensor(tensor_->copy_to(backend, blocking));
+  }
+
+  /**
+ * @brief Transfer the source Tensor to current Tensor.
+ *
+ * @param src, the source Tensor to be copied.
+ * @param blocking, Should we copy this in sync way.
+ * @return void
+ */
+  void copy_(const EagerTensor& src, const bool blocking) {
+    if (src.Var().IsInitialized()) {
+      const_cast<EagerTensor*>(&src)->SyncToTensor();
+    }
+    if (Var().IsInitialized()) {
+      SyncToTensor();
+    }
+    tensor_->copy_(*(src.tensor_.get()), blocking);
+  }
   /* Part 6: Operator overloading */
   EagerTensor& operator=(const EagerTensor& x) & {
     tensor_ = x.tensor_;
@@ -197,14 +240,13 @@ class EagerTensor final {
           auto* framework_tensor =
               var_.GetMutable<paddle::framework::LoDTensor>();
           framework_tensor->Resize(tensor_->dims());
-          framework_tensor->set_layout(
-              pten::TransToFluidDataLayout(tensor_->layout()));
+          framework_tensor->set_layout(tensor_->layout());
           // Contruct framework::Tensor from egr::EagerTensor
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
-          if (tensor_dense) {
-            paddle::experimental::MovesStorage(tensor_dense.get(),
-                                               framework_tensor);
+          if (tensor_dense && tensor_dense.get()) {
+            paddle::experimental::SharesStorage(tensor_dense.get(),
+                                                framework_tensor);
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
                 "Unrecognized egr::EagerTensor type, only "
@@ -222,27 +264,23 @@ class EagerTensor final {
   /** Part 11: Sync paddle::framework::Variable with pten::Tensor **/
   void SyncToTensor() {
     // Synchronize allocation only once.
-    if (!this->defined() || !this->initialized()) {
-      // TODO(jiabin): Support selected rows later.
-      if (var_.IsInitialized()) {
-        if (var_.IsType<paddle::framework::LoDTensor>()) {
-          SetImplWithLegacyTensor<paddle::framework::LoDTensor,
-                                  pten::DenseTensor>();
-        } else if (var_.IsType<paddle::framework::Tensor>()) {
-          SetImplWithLegacyTensor<paddle::framework::Tensor,
-                                  pten::DenseTensor>();
-        } else {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "Unable to fetch underlying tensor "
-              "from VarBase, only LoDTensor and "
-              "Tensor are supported for now"));
-        }
+    if (var_.IsInitialized()) {
+      if (var_.IsType<paddle::framework::LoDTensor>()) {
+        SetImplWithLegacyTensor<paddle::framework::LoDTensor,
+                                pten::DenseTensor>();
+      } else if (var_.IsType<paddle::framework::Tensor>()) {
+        SetImplWithLegacyTensor<paddle::framework::Tensor, pten::DenseTensor>();
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
-            "not initialized!",
-            name()));
+        PADDLE_THROW(
+            paddle::platform::errors::Fatal("Unable to fetch underlying tensor "
+                                            "from VarBase, only LoDTensor and "
+                                            "Tensor are supported for now"));
       }
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
+          "not initialized!",
+          name()));
     }
   }
 
@@ -260,12 +298,29 @@ class EagerTensor final {
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
-    this->set_impl(
-        std::move(paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    if (defined()) {
+      VLOG(8) << "Sync Var to initialized tensor for: " << name();
+      paddle::experimental::ReMakePtenDenseTensor(
+          framework_tensor, static_cast<pten::DenseTensor*>(impl().get()));
+    } else {
+      VLOG(8) << "Sync Var to uninitialized tensor for: " << name();
+      this->set_impl(std::move(
+          paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    }
     var_.Clear();
   }
 
  private:
+  /**
+  * @description: Use a pten::Tensor pointer to construct a EagerTensor, never
+  * public this!!!!.
+  * @param {pten::Tensor} tensor
+  * @return {EagerTensor}
+  */
+  explicit EagerTensor(const paddle::experimental::Tensor& tensor)
+      : tensor_(std::make_shared<paddle::experimental::Tensor>(tensor)),
+        var_(paddle::framework::Variable()) {}
+
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;
   paddle::framework::Variable var_;
 };

@@ -337,8 +337,9 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     if (ctx.HasOutput("XShape")) {
-      return framework::KernelSignature(
-          "flatten.mid", {"X"}, {"start_axis", "stop_axis"}, {"Out", "XShape"});
+      return framework::KernelSignature("flatten_with_xshape", {"X"},
+                                        {"start_axis", "stop_axis"},
+                                        {"Out", "XShape"});
     } else {
       return framework::KernelSignature("flatten", {"X"},
                                         {"start_axis", "stop_axis"}, {"Out"});
@@ -429,6 +430,12 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
+  }
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("flatten_grad",
+                                      {framework::GradVarName("Out"), "XShape"},
+                                      {}, {framework::GradVarName("X")});
   }
 };
 DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInferer, {"X", "Out"});

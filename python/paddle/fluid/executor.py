@@ -400,6 +400,23 @@ def _is_enable_standalone_executor():
     return flag
 
 
+def _prepare_fleet_executor():
+    from ..distributed.fleet.proto import fleet_executor_desc_pb2
+    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints = trainer_endpoints_str.split(',')
+    fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+    cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+    fleet_exe_desc.cur_rank = cur_rank
+    nrank = len(trainer_endpoints)
+    for rank, endpoint in enumerate(trainer_endpoints):
+        rank_info = fleet_executor_desc_pb2.RankInfo()
+        rank_info.rank = rank
+        rank_info.ip_port = endpoint
+        fleet_exe_desc.cluster_info.append(rank_info)
+    fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
+    return fleet_exe
+
+
 def _get_strong_program_cache_key(program, feed, fetch_list):
     # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key. 
     def _get_varname_from_block(block):
@@ -691,6 +708,8 @@ class Executor(object):
         # NOTE: Whether to use experimental executor `StandaloneExecutor`.
         self._enable_interpreter_core = _is_enable_standalone_executor()
         self._executor_cache = _ExecutorCache(self.place)
+
+        self._fleet_executor = None
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1281,6 +1300,9 @@ class Executor(object):
 
         if isinstance(program, Program) and program._pipeline_opt:
             if "fleet_opt" in program._pipeline_opt:
+                # Move prepare here for port conflict with nccl in startup program
+                if self._fleet_executor is None:
+                    self._fleet_executor = _prepare_fleet_executor()
                 return self._run_using_fleet_executor(
                     program=program, feed=feed, fetch_list=fetch_list)
             if "startup_program" in program._pipeline_opt:
@@ -1385,23 +1407,24 @@ class Executor(object):
                 key = _get_strong_program_cache_key(inner_program, feed,
                                                     fetch_list)
 
-                program = self._add_feed_fetch_ops(
-                    program=inner_program,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name,
-                    use_fetch_v2=True)
-
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
+                    program = self._add_feed_fetch_ops(
+                        program=inner_program,
+                        feed=feed,
+                        fetch_list=fetch_list,
+                        feed_var_name=feed_var_name,
+                        fetch_var_name=fetch_var_name,
+                        use_fetch_v2=True)
+
                     new_program = program.clone()
                     new_exe = _StandaloneExecutor(self.place, new_program,
                                                   scope)
-                    self._executor_cache._cached_executors[key] = new_exe
+                    self._executor_cache._cached_executors[key] = (new_program,
+                                                                   new_exe)
 
-                new_exe = self._executor_cache._cached_executors[key]
+                program, new_exe = self._executor_cache._cached_executors[key]
 
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
@@ -1415,7 +1438,10 @@ class Executor(object):
                         [lr_value]).astype(convert_dtype(lr_var.dtype))
                     tensor = core.get_variable_tensor(scope,
                                                       lr_sheduler._var_name)
-                    tensor.set(data, self.place)
+                    # NOTE(dev): `set` always call TensorCopySync that is a 
+                    # blocking behavior. So we use `_copy_from` to replace it.
+                    cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                    tensor._copy_from(cpu_tensor, self.place)
 
                 return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
 
@@ -1555,6 +1581,9 @@ class Executor(object):
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
             lr_var = program.global_block().vars[lr_sheduler._var_name]
+            if core.is_compiled_with_ipu():
+                if hasattr(program.lr_sheduler, 'lr_var'):
+                    lr_var = program.lr_sheduler.lr_var
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
             tensor.set(data, self.place)
@@ -1956,34 +1985,58 @@ class Executor(object):
 
         return ctx
 
-    def _prepare_fleet_executor(self, program=None, scope=None, fleet_opt=None):
-        from ..distributed.fleet.proto import fleet_executor_desc_pb2
-        from google.protobuf import text_format
-        assert program, "Program for fleet executor should not be None"
-        assert fleet_opt, "Configurations for fleet executor should not be None"
-        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
-        trainer_endpoints = trainer_endpoints_str.split(',')
-        fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+    def _prepare_fleet_executor_carrier(self,
+                                        carrier_id="",
+                                        program=None,
+                                        scope=None,
+                                        fleet_opt=None):
+        num_micro_batches = fleet_opt[
+            "num_micro_batches"] if "num_micro_batches" in fleet_opt else 1
+        cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "").split(',')
         nrank = len(trainer_endpoints)
-        for rank, endpoint in enumerate(trainer_endpoints):
-            rank_info = fleet_executor_desc_pb2.RankInfo()
-            rank_info.rank = rank
-            rank_info.ip_port = endpoint
-            fleet_exe_desc.cluster_info.append(rank_info)
-        if "dist_strategy" in fleet_opt:
-            fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
-            fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
-            fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
-        if "num_micro_batches" in fleet_opt:
-            fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
-        num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
-        assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
-        fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
+
+        assert 'scheduler' in fleet_opt or 'tasks' in fleet_opt, \
+            "Fleet executor need configuration for scheduler, you can choose from 1F1B or Origin. " \
+            "Or you can provide a list of task nodes to init fleet executor directly."
+        if 'tasks' in fleet_opt:
+            assert 'task_id_to_rank' in fleet_opt, "If you provide tasks to init fleet executor," \
+                                                   " task_id_to_rank should also be provided."
+            print('fleet executor will use user defined task nodes')
+            tasks = [task.task_node() for task in fleet_opt['tasks']]
+            task_id_to_rank = fleet_opt['task_id_to_rank']
+        else:
+            scheduler = fleet_opt['scheduler']
+            if scheduler == '1F1B':
+                from paddle.distributed.fleet.fleet_executor_utils import run1f1b
+                if "dist_strategy" not in fleet_opt or \
+                   "pp_degree" not in fleet_opt["dist_strategy"] or \
+                   fleet_opt["dist_strategy"]["pp_degree"] == 1:
+                    warnings.warn("Using 1F1B scheduler with pp_degree == 1.")
+                tasks, task_id_to_rank = run1f1b(
+                    program, cur_rank,
+                    fleet_opt.get('num_micro_batches', 1),
+                    fleet_opt.get('dist_strategy', {}), nrank)
+            elif scheduler == 'Origin':
+                from paddle.distributed.fleet.fleet_executor_utils import origin
+                if "dist_strategy" in fleet_opt and \
+                   "pp_degree" in fleet_opt["dist_strategy"]:
+                    assert fleet_opt["dist_strategy"]["pp_degree"] == 1, \
+                        "For pipeline mode, the scheduler should be 1F1B instead of Origin."
+                if "num_micro_batches" in fleet_opt:
+                    assert fleet_opt["num_micro_batches"] == 1, \
+                        "For origin scheduler mode, the num micro batches should be 1."
+                tasks, task_id_to_rank = origin(program, cur_rank)
+            else:
+                raise "Fleet_executor only supports 1F1B and Origin scheduler, " \
+                      "but received " + str(scheduler) + "."
+            # NOTE: have to hold these vars, otherwise will be destructed
+            fleet_opt['tasks'] = tasks
+            fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program.desc, scope, place)
-        return fleet_exe
+        self._fleet_executor.init(carrier_id, program.desc, scope, place,
+                                  num_micro_batches, tasks, task_id_to_rank)
 
     def _run_using_fleet_executor(self,
                                   program=None,
@@ -1992,13 +2045,13 @@ class Executor(object):
                                   fetch_var_name="fetch",
                                   fetch_list=None):
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
-        cached_ctx = self._get_ctx_cache(cache_key)
-        cached_scope = self._get_scope_cache(cache_key)
         cached_program = self._get_program_cache(cache_key)
+        cached_scope = self._get_scope_cache(cache_key)
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
         if cached_program is None:
+            assert program._pipeline_opt, "program should have _pipeline_opt to start carrier"
             real_feed = [] if feed is None else feed
             real_program = program
             if "section_program" in program._pipeline_opt:
@@ -2018,12 +2071,52 @@ class Executor(object):
                         'op_role',
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             self._add_program_cache(cache_key, cached_program)
-        if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
-            cached_ctx = self._prepare_fleet_executor(
-                program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
-            self._add_ctx_cache(cache_key, cached_ctx)
+            if 'tasks' in fleet_opt:
+                # Insert feed/fetch op for cloned program in each task node,
+                # these ops has already been inserted into the origin program.
+                # To avoid every task nodes all have feed/fetch ops,
+                # only insert feed ops into the first task node,
+                # then insert fetch ops into the last task node.
+
+                # Insert feed ops
+                feed_task = fleet_opt['tasks'][0]
+                print("Inserting feed ops for task", feed_task.task_id())
+                feed_program = feed_task.get_program()
+                feed_program = self._add_feed_ops(
+                    program=feed_program,
+                    feed=real_feed,
+                    feed_var_name=feed_var_name)
+                feed_task.set_program(feed_program)
+
+                # Insert fetch ops
+                fetch_task = fleet_opt['tasks'][-1]
+                print("Inserting fetch ops for task", fetch_task.task_id())
+                fetch_program = fetch_task.get_program()
+                fetch_program = self._add_fetch_ops(
+                    program=fetch_program,
+                    fetch_list=fetch_list,
+                    fetch_var_name=fetch_var_name)
+                main_block = fetch_program.block(0)
+                for op in main_block.ops:
+                    # set the op_role of fetch op to Optimize to avoid
+                    # erase the fetched vars by gc for pipeline
+                    if op.type == 'fetch':
+                        op._set_attr(
+                            'op_role',
+                            core.op_proto_and_checker_maker.OpRole.Optimize)
+                fetch_task.set_program(fetch_program)
+
+            self._prepare_fleet_executor_carrier(
+                cache_key,
+                program=cached_program,
+                scope=cached_scope,
+                fleet_opt=fleet_opt)
+
         if feed:
+            # NOTE: don't have to traverse programs in task nodes,
+            # since they all sub program of cached program and
+            # cached program is also added feed fetch var
             self._feed_data(cached_program, feed, feed_var_name, cached_scope)
 
         from paddle.optimizer.lr import LRScheduler
@@ -2037,12 +2130,80 @@ class Executor(object):
                                               lr_sheduler._var_name)
             tensor.set(data, self.place)
 
-        cached_ctx.run()
+        self._fleet_executor.run(cache_key)
+
         if fetch_list:
             arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
             tensors = arr._move_to_list()
             return as_numpy(tensors)
         return None
+
+    def _add_feed_ops(self, program, feed, feed_var_name):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
+        else:
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True)
+
+        # prepend feed operators
+        if not has_feed_operators(global_block, feed, feed_var_name):
+            for i, name in enumerate(feed):
+                if global_block.has_var(name):
+                    out = global_block.var(name)
+                    global_block._prepend_op(
+                        type='feed',
+                        inputs={'X': [feed_var]},
+                        outputs={'Out': [out]},
+                        attrs={'col': i})
+                else:
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % name)
+
+        return tmp_program
+
+    def _add_fetch_ops(self,
+                       program,
+                       fetch_list,
+                       fetch_var_name,
+                       use_fetch_v2=False):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if fetch_var_name in global_block.vars:
+            fetch_var = global_block.var(fetch_var_name)
+        else:
+            fetch_var = global_block.create_var(
+                name=fetch_var_name,
+                type=core.VarDesc.VarType.FETCH_LIST,
+                persistable=True)
+
+        if use_fetch_v2:
+            fetch_op = 'fetch_v2'
+        else:
+            fetch_op = 'fetch'
+
+        # append fetch_operators
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name,
+                                   fetch_op):
+            for i, var in enumerate(fetch_list):
+                assert isinstance(var, Variable) or isinstance(
+                    var, six.string_types), (
+                        "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
+                global_block.append_op(
+                    type=fetch_op,
+                    inputs={'X': [var]},
+                    outputs={'Out': [fetch_var]},
+                    attrs={'col': i})
+
+        return tmp_program
 
     def _run_pipeline(self,
                       program=None,

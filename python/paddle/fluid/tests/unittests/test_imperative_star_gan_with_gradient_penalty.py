@@ -16,6 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
+from paddle import _C_ops
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -112,8 +113,8 @@ class InstanceNorm(fluid.dygraph.Layer):
 
     def forward(self, input):
         if fluid.in_dygraph_mode():
-            out, _, _ = fluid.core.ops.instance_norm(
-                input, self.scale, self.bias, 'epsilon', self.epsilon)
+            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
+                                             'epsilon', self.epsilon)
             return out
         else:
             return fluid.layers.instance_norm(

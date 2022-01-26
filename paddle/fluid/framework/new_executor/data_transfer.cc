@@ -94,8 +94,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // 2. Execute infer shape and choose kernel
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-  static_cast<const framework::OperatorWithKernel*>(op.get())->InferShape(
-      &infer_shape_ctx);
+  op.get()->Info().infer_shape_(&infer_shape_ctx);
   auto kernels_iter = all_op_kernels.find(op_type);
   PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
                     platform::errors::Unavailable(
@@ -260,7 +259,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       auto var = var_name_item.second[i];
       auto& var_name = new_ins[var_name_item.first].at(i);
       const Tensor* tensor_in;
-      if (var->IsType<LoDTensor>() || var->IsType<SelectedRows>()) {
+      if (var->IsType<LoDTensor>() || var->IsType<pten::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
         tensor_in =

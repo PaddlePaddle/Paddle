@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
@@ -130,8 +131,12 @@ class CUDAStream final {
 
   const Place& GetPlace() const { return place_; }
 
+  // Note: Can only be used under thread_local semantics.
+  void SetStream(gpuStream_t stream);
+
  private:
   Place place_;
+  bool owned_stream_{true};
 #ifdef PADDLE_WITH_HIP
   hipStream_t stream_{nullptr};
 #else

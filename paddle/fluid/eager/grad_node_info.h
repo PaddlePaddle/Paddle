@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
 
 namespace egr {
 /**
@@ -105,8 +104,8 @@ class GradNodeBase {
    *
    * This one is called slot by slot
    * **/
-  void AddEdges(const std::vector<AutogradMeta*>& metas, size_t slot_id);
-  void AddEdges(const AutogradMeta& meta, size_t slot_id);
+  void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
+  void AddEdges(AutogradMeta* meta, size_t slot_id);
 
   /**
    * GetEdges is designed to get all edges of current node**/
@@ -124,11 +123,11 @@ class GradNodeBase {
 
   void SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
                      size_t slot_rank);
-  void SetGradInMeta(const AutogradMeta& fwd_out, size_t slot_rank);
+  void SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank);
 
   void SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
                       size_t slot_rank);
-  void SetGradOutMeta(const AutogradMeta& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank);
 
   /**
    * Default setters for Grad in/out meta this should be used for same special

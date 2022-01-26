@@ -169,9 +169,6 @@ Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
       .AddInput("X")
       .IsTensor()
       .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
@@ -179,7 +176,7 @@ Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumGE(0)
+      .IsNumEQ(1)
       .End();
 
   AddOpCompat(OpCompat("mul"))
@@ -222,7 +219,7 @@ Squeeze2MatmulFusePass::Squeeze2MatmulFusePass() {
       .IsBoolEQ(false)
       .End();
 
-  AddOpCompat(OpCompat("Squeeze2"))
+  AddOpCompat(OpCompat("squeeze2"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -593,10 +590,10 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .IsNumLT(1.00001f)
       .End()
       .AddAttr("transpose_X")
-      .IsBoolEQ("False")
+      .IsBoolEQ(false)
       .End()
       .AddAttr("transpose_Y")
-      .IsBoolEQ("False")
+      .IsBoolEQ(false)
       .End();
 
   AddOpCompat(OpCompat("mul"))

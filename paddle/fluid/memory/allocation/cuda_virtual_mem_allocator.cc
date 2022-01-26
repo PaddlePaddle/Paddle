@@ -101,9 +101,9 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
 
-void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
+void CUDAVirtualMemAllocator::FreeImpl(pten::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
+      allocation->place(), place_,
       platform::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
 
@@ -140,7 +140,7 @@ void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
   delete allocation;
 }
 
-Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
+pten::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   size = AlignedSize(size, granularity_);
 
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;

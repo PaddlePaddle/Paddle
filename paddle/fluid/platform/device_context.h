@@ -18,6 +18,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/device_context.h"
+
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
@@ -75,6 +78,7 @@ struct GpuDevice;
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -103,7 +107,9 @@ enum DeviceType {
   XPU = 2,
   NPU = 3,
   IPU = 4,
-  MAX_DEVICE_TYPES = 5,
+  MLU = 5,
+
+  MAX_DEVICE_TYPES = 6,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -113,27 +119,17 @@ constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
+constexpr DeviceType kMLU = DeviceType::MLU;
 
-class DeviceContext {
- public:
-  virtual ~DeviceContext() PADDLE_MAY_THROW {}
-  virtual Place GetPlace() const = 0;
+using DeviceContext = pten::DeviceContext;
 
-  virtual void Wait() const {}
-};
-
-class CPUDeviceContext : public DeviceContext {
+// using CPUDeviceContext = pten::CPUContext;
+// TODO(wilber): The place constructor is used in many places, it is more
+// difficult to use CPUDeviceContext = pten::CPUContext directly.
+class CPUDeviceContext : public pten::CPUContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
-
-  Eigen::DefaultDevice* eigen_device() const;
-
-  Place GetPlace() const override;
-
- private:
-  CPUPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
 template <typename Place>
@@ -165,44 +161,23 @@ template <>
 struct DefaultDeviceContextType<platform::IPUPlace> {
   using TYPE = IPUDeviceContext;
 };
+#endif
 
+#ifdef PADDLE_WITH_MLU
+class MLUDeviceContext;
+
+template <>
+struct DefaultDeviceContextType<platform::MLUPlace>;
 #endif
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public DeviceContext {
+class XPUDeviceContext : public pten::XPUContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  XPUVersion xpu_version() const { return xpu_version_; }
-  Place GetPlace() const override;
-  xpu::Context* x_context() const;
-
-  /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const override;
-
-#ifdef PADDLE_WITH_XPU_BKCL
-  /*! \brief  Return bkcl context. */
-  BKCLContext_t bkcl_context() const { return bkcl_context_; }
-
-  /*! \brief  Set bkcl context. */
-  void set_bkcl_context(BKCLContext_t context) { bkcl_context_ = context; }
-#endif
-
- private:
-  XPUPlace place_;
-  XPUVersion xpu_version_;
-  xpu::Context* context_;
-#ifdef PADDLE_WITH_XPU_BKCL
-  BKCLContext_t bkcl_context_;
-#endif
-
-  // Need to be the same with other DeviceContext,
-  // Eventhough eigen_device_ is not used in XPU
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  DISABLE_COPY_AND_ASSIGN(XPUDeviceContext);
 };
 
 template <>
@@ -325,6 +300,8 @@ class CUDAContext {
     return old_stream_ptr;
   }
 
+  void SetStream(gpuStream_t stream);
+
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
 #ifdef PADDLE_WITH_HIP
@@ -347,6 +324,12 @@ class CUDAContext {
     return cublas_tensor_core_handle_;
   }
 
+#ifndef PADDLE_WITH_HIP
+  const std::unique_ptr<CusparseHandleHolder>& CusparseHandle() const {
+    return cusparse_handle_;
+  }
+#endif
+
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
@@ -356,6 +339,14 @@ class CUDAContext {
       cublas_handle_->Call(std::forward<Callback>(callback));
     }
   }
+
+#ifndef PADDLE_WITH_HIP
+  /*! \brief  Call cusparse function safely. */
+  template <typename Callback>
+  inline void CusparseCall(Callback&& callback) const {
+    cusparse_handle_->Call(std::forward<Callback>(callback));
+  }
+#endif
 
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
@@ -392,6 +383,12 @@ class CUDAContext {
 #endif  // CUDA_VERSION >= 11000
 #endif  // CUDA_VERSION >= 9000
     }
+  }
+#endif
+
+#ifndef PADDLE_WITH_HIP
+  void InitCuSparseContext() {
+    cusparse_handle_.reset(new CusparseHandleHolder(RawStream()));
   }
 #endif
 
@@ -468,6 +465,10 @@ class CUDAContext {
   }
 
 #ifndef PADDLE_WITH_HIP
+  void DestoryCuSparseContext() { cusparse_handle_.reset(); }
+#endif
+
+#ifndef PADDLE_WITH_HIP
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -490,6 +491,7 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
 #ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle_;
+  std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #endif
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
@@ -529,6 +531,14 @@ class CUDADeviceContext : public DeviceContext {
     return context()->CublasCall(callback);
   }
 
+#ifndef PADDLE_WITH_HIP
+  /*! \brief  Call cusparse function safely. */
+  template <typename Callback>
+  inline void CusparseCall(Callback&& callback) const {
+    return context()->CusparseCall(callback);
+  }
+#endif
+
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
 
@@ -551,6 +561,7 @@ class CUDADeviceContext : public DeviceContext {
   rocblas_handle cublas_handle() const;
 #else
   cublasHandle_t cublas_handle() const;
+  cusparseHandle_t cusparse_handle() const;
 #endif
 
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
@@ -605,6 +616,11 @@ class CUDADeviceContext : public DeviceContext {
       return default_ctx_;
     }
     return thread_ctx_.at(this);
+  }
+
+  // Note: Can only be used under thread_local semantics.
+  void SetThreadLocalStream(const gpuStream_t stream) {
+    thread_ctx_.at(this)->SetStream(stream);
   }
 
  private:

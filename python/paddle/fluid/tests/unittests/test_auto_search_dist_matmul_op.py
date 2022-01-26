@@ -96,7 +96,7 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-class Testcompatible(unittest.TestCase):
+class TestCompatible(unittest.TestCase):
     def test_matmulv2_matmul_2_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
@@ -123,7 +123,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                impls = dist_op_impl_container.get_impls()
+                impls = dist_op_impl_container.impls
                 op_dist_attr = OperatorDistributedAttribute()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
@@ -220,7 +220,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                impls = dist_op_impl_container.get_impls()
+                impls = dist_op_impl_container.impls
                 op_dist_attr = OperatorDistributedAttribute()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
@@ -307,7 +307,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                impls = dist_op_impl_container.get_impls()
+                impls = dist_op_impl_container.impls
                 op_dist_attr = OperatorDistributedAttribute()
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]

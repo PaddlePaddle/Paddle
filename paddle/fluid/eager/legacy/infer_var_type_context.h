@@ -26,7 +26,6 @@
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
 
 namespace egr {
 namespace legacy {
@@ -153,7 +152,8 @@ class TensorRuntimeInferVarTypeContext
 
   paddle::framework::proto::VarType::Type GetOutputType(
       const std::string& name, const int& index = 0) const override {
-    return paddle::framework::ToVarType(outputs_.at(name)[index]->Var().Type());
+    // TODO(jiabin): Support SelectedRows when we have it.
+    return paddle::framework::proto::VarType::LOD_TENSOR;
   }
 
   paddle::framework::proto::VarType::Type GetInputDataType(
