@@ -25,7 +25,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "WarpCTC");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "WarpCTC");
     OP_INOUT_CHECK(ctx->HasOutput("WarpCTCGrad"), "Output", "WarpCTCGrad",
@@ -61,12 +61,22 @@ class WarpCTCOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
         layout_, library_);
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "LogitsLength" || var_name == "LabelLength") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -163,7 +173,7 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad",
                    "WarpCTCGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
@@ -175,10 +185,20 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Loss")),
                                    ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "LogitsLength") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 

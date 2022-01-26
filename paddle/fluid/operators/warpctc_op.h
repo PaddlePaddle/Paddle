@@ -20,7 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/dynload/warpctc.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -182,6 +184,81 @@ class WarpCTCFunctor {
   ctcOptions options_;
 };
 
+struct SequenceLengthInfo {
+  void ParseFromPaddingTensor(const LoDTensor& logits, const LoDTensor& label) {
+    num_sequences = logits.dims()[1];
+    sequence_width = logits.dims()[2];
+    max_sequence_length = logits.dims()[0];
+
+    PADDLE_ENFORCE_GT(max_sequence_length, 0,
+                      platform::errors::InvalidArgument(
+                          "The first dimension of Input(Logits) should be "
+                          "greater than zero, but received %d.",
+                          max_sequence_length));
+
+    PADDLE_ENFORCE_GT(num_sequences, 0,
+                      platform::errors::InvalidArgument(
+                          "The second dimension of Input(Logits) should be "
+                          "greater than zero, but received %d.",
+                          num_sequences));
+
+    PADDLE_ENFORCE_GT(sequence_width, 0,
+                      platform::errors::InvalidArgument(
+                          "The third dimension of Input(Logits) should be "
+                          "greater than zero, but received %d.",
+                          sequence_width));
+  }
+
+  void ParseFromSequenceTensor(const LoDTensor& logits,
+                               const LoDTensor& label) {
+    PADDLE_ENFORCE_GT(logits.NumLevels(), 0UL,
+                      platform::errors::InvalidArgument(
+                          "Input(Logits) of warpctc is expected to hold LoD "
+                          "information when Input(LogitsLength) is not set."));
+    PADDLE_ENFORCE_GT(label.NumLevels(), 0UL,
+                      platform::errors::InvalidArgument(
+                          "Input(Label) of warpctc is expected to hold LoD "
+                          "information when Input(LabelLength) is not set."));
+
+    auto logits_lod = framework::ToAbsOffset(logits.lod())[0];
+    auto logits_dims = logits.dims();
+    PADDLE_ENFORCE_GT(logits_dims[0], 0,
+                      platform::errors::InvalidArgument(
+                          "The first dimension of Input(Logits) should be "
+                          "greater than zero, but received %d.",
+                          logits_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        logits_dims[0], static_cast<int64_t>(logits_lod.back()),
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(Logits) should be equal to "
+            "the sum of all sequences' lengths = %d, but received %d. ",
+            static_cast<int64_t>(logits_lod.back()), logits_dims[0]));
+
+    auto label_lod = framework::ToAbsOffset(label.lod())[0];
+    auto label_dims = label.dims();
+    PADDLE_ENFORCE_EQ(label_dims[1], 1,
+                      platform::errors::InvalidArgument(
+                          "The last dimension of Input(Label) should be 1, "
+                          "but received %d.",
+                          label_dims[1]));
+
+    num_sequences = logits_lod.size() - 1;
+    PADDLE_ENFORCE_EQ(
+        num_sequences, label_lod.size() - 1,
+        platform::errors::InvalidArgument(
+            "The number of sequences of Input(Logits) should be "
+            "equal to that of Input(Label) = %d, but received %d.",
+            label_lod.size() - 1, num_sequences));
+
+    sequence_width = logits.numel() / logits_dims[0];
+    max_sequence_length = math::MaximumSequenceLength(logits_lod);
+  }
+
+  size_t num_sequences;
+  size_t sequence_width;
+  size_t max_sequence_length;
+};
+
 template <typename DeviceContext, typename T>
 class WarpCTCKernel : public framework::OpKernel<T> {
  public:
@@ -191,117 +268,57 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     auto* warpctc_grad = ctx.Output<Tensor>("WarpCTCGrad");
     auto* loss = ctx.Output<Tensor>("Loss");
 
-    size_t num_sequences, sequence_width, max_sequence_length;
-    framework::Vector<size_t> logits_lod;
-    framework::Vector<size_t> label_lod;
+    SequenceLengthInfo seq_info;
+
+    std::vector<int> warpctc_labels_length;
+    std::vector<int> warpctc_logits_length;
 
     if (ctx.HasInput("LogitsLength") && ctx.HasInput("LabelLength")) {
-      num_sequences = logits->dims()[1];
-      sequence_width = logits->dims()[2];
-      max_sequence_length = logits->dims()[0];
-
-      PADDLE_ENFORCE_GT(max_sequence_length, 0,
-                        platform::errors::InvalidArgument(
-                            "The first dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            max_sequence_length));
-
-      PADDLE_ENFORCE_GT(num_sequences, 0,
-                        platform::errors::InvalidArgument(
-                            "The second dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            num_sequences));
-
-      PADDLE_ENFORCE_GT(sequence_width, 0,
-                        platform::errors::InvalidArgument(
-                            "The third dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            sequence_width));
+      platform::RecordEvent event("has_logits_labels_length");
+      // When input LogitsLength and LabelLength are set, logits and labels are
+      // in padding format.
+      seq_info.ParseFromPaddingTensor(*logits, *label);
 
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
       auto* labels_length = ctx.Input<framework::Tensor>("LabelLength");
-      framework::Tensor logits_length_cpu;
-      framework::Tensor labels_length_cpu;
-      framework::TensorCopy(*logits_length, platform::CPUPlace(),
-                            &logits_length_cpu);
-      framework::TensorCopy(*labels_length, platform::CPUPlace(),
-                            &labels_length_cpu);
 
-      logits_lod.push_back(0);
-      label_lod.push_back(0);
-      for (size_t i = 0; i < num_sequences; i++) {
-        logits_lod.push_back(logits_lod[i] +
-                             logits_length_cpu.data<int64_t>()[i]);
-        label_lod.push_back(label_lod[i] +
-                            labels_length_cpu.data<int64_t>()[i]);
-      }
+      warpctc_logits_length = GetDataFromTensor<int>(logits_length);
+      warpctc_labels_length = GetDataFromTensor<int>(labels_length);
     } else {
-      PADDLE_ENFORCE_GT(logits->NumLevels(), 0UL,
-                        platform::errors::InvalidArgument(
-                            "Input(Logits) Tensor of WarpCTC "
-                            "does not contain LoD information."));
-      PADDLE_ENFORCE_GT(label->NumLevels(), 0UL,
-                        platform::errors::InvalidArgument(
-                            "Input(Label) Tensor of WarpCTC "
-                            "does not contain LoD information."));
+      platform::RecordEvent event("no_logits_labels_length");
+      // When input LogitsLength and LabelLength are set, logits and labels are
+      // in sequence format. The lengths are saved in logits and label's lod.
+      seq_info.ParseFromSequenceTensor(*logits, *label);
 
-      logits_lod = framework::ToAbsOffset(logits->lod())[0];
-      auto logits_dims = logits->dims();
+      auto logits_lod = framework::ToAbsOffset(logits->lod())[0];
+      auto label_lod = framework::ToAbsOffset(label->lod())[0];
 
-      PADDLE_ENFORCE_GT(logits_dims[0], 0,
-                        platform::errors::InvalidArgument(
-                            "The first dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            logits_dims[0]));
-
-      PADDLE_ENFORCE_EQ(
-          logits_dims[0], static_cast<int64_t>(logits_lod.back()),
-          platform::errors::InvalidArgument(
-              "The first dimension of Input(Logits) should be equal to "
-              "the sum of all sequences' lengths = %d., but received %d. ",
-              static_cast<int64_t>(logits_lod.back()), logits_dims[0]));
-
-      label_lod = framework::ToAbsOffset(label->lod())[0];
-      auto label_dims = label->dims();
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        platform::errors::InvalidArgument(
-                            "The last dimension of Input(Label) should be 1, "
-                            "but received %d",
-                            label_dims[1]));
-
-      num_sequences = logits_lod.size() - 1;
-      PADDLE_ENFORCE_EQ(
-          num_sequences, label_lod.size() - 1,
-          platform::errors::InvalidArgument(
-              "The number of sequences of Input(Logits) should be "
-              "equal to that of Input(Label) = %d, but received %d",
-              label_lod.size() - 1, num_sequences));
-
-      sequence_width = logits->numel() / logits_dims[0];
-      max_sequence_length = math::MaximumSequenceLength(logits_lod);
+      warpctc_labels_length.resize(seq_info.num_sequences);
+      warpctc_logits_length.resize(seq_info.num_sequences);
+      for (size_t i = 0; i < seq_info.num_sequences; ++i) {
+        warpctc_labels_length[i] = label_lod[i + 1] - label_lod[i];
+        warpctc_logits_length[i] = logits_lod[i + 1] - logits_lod[i];
+      }
     }
 
     auto loss_dims =
-        framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
+        framework::make_ddim({static_cast<int64_t>(seq_info.num_sequences), 1});
 
     // warpctc needs sequences data stored in transposed padding format
     LoDTensor warpctc_logits;
-    auto warpctc_logits_dims =
-        framework::make_ddim({static_cast<int64_t>(max_sequence_length),
-                              static_cast<int64_t>(num_sequences),
-                              static_cast<int64_t>(sequence_width)});
+    auto warpctc_logits_dims = framework::make_ddim(
+        {static_cast<int64_t>(seq_info.max_sequence_length),
+         static_cast<int64_t>(seq_info.num_sequences),
+         static_cast<int64_t>(seq_info.sequence_width)});
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor warpctc_logits_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
     warpctc_logits.ShareDataWith(warpctc_logits_tmp);
     if (ctx.HasInput("LogitsLength")) {
-      paddle::framework::TensorCopySync(*logits, ctx.GetPlace(),
-                                        &warpctc_logits);
+      platform::RecordEvent event("copy_warpctc_logits");
+      paddle::framework::TensorCopy(*logits, ctx.GetPlace(), &warpctc_logits);
     } else {
+      platform::RecordEvent event("padding_lod_tensor");
       LoDTensor cpu_pad_value;
       T* pad_value_data =
           cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
@@ -321,14 +338,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     }
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
-    std::vector<int> warpctc_label_lengths(num_sequences);
-    std::vector<int> warpctc_logits_lengths(num_sequences);
-
-    for (size_t i = 0; i < num_sequences; ++i) {
-      warpctc_label_lengths[i] = label_lod[i + 1] - label_lod[i];
-      warpctc_logits_lengths[i] = logits_lod[i + 1] - logits_lod[i];
-    }
-
     // warpctc computes loss and gradient in one call, gradient data also stored
     // in batch format
     T* warpctc_grad_data =
@@ -341,6 +350,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     // warpctc accesses labels in CPU memory
     LoDTensor warpctc_label;
     if (ctx.HasInput("LogitsLength")) {
+      platform::RecordEvent event("unpadding_lod_tensor");
+
+      framework::Vector<size_t> label_lod;
+      label_lod.push_back(0);
+      for (size_t i = 0; i < warpctc_labels_length.size(); ++i) {
+        label_lod.push_back(label_lod[i] + warpctc_labels_length[i]);
+      }
+
       warpctc_label.mutable_data<int>(
           {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
           platform::CPUPlace());
@@ -367,6 +384,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                                           &warpctc_label);
       }
     } else {
+      platform::RecordEvent event("copy_warpctc_label");
       paddle::framework::TensorCopySync(*label, platform::CPUPlace(),
                                         &warpctc_label);
     }
@@ -378,11 +396,11 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         warpctc_loss.mutable_data<T>(loss_dims, platform::CPUPlace());
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
-
     WarpCTCFunctor<DeviceContext, T>()(
         ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
-        warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
-        sequence_width, num_sequences, blank, warpctc_loss_data);
+        warpctc_labels_length.data(), warpctc_logits_length.data(),
+        seq_info.sequence_width, seq_info.num_sequences, blank,
+        warpctc_loss_data);
 
     // Copy the loss back
     paddle::framework::TensorCopy(warpctc_loss, ctx.GetPlace(),
@@ -406,10 +424,6 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       int num_sequences = warpctc_grad->dims()[1];   // B
       int seq_width = warpctc_grad->dims()[2];       // D
 
-      auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
-      // B
-      auto logits_len_e =
-          framework::EigenTensor<int64_t, 1>::From(*logits_length);
       // (B, 1)
       auto loss_grad_e = framework::EigenTensor<T, 2>::From(*loss_grad);
       // (T, B, D)
@@ -424,6 +438,10 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
       auto* place = ctx.template device_context<DeviceContext>().eigen_device();
       if (norm_by_times) {
+        auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
+        // B
+        auto logits_len_e =
+            framework::EigenTensor<int64_t, 1>::From(*logits_length);
         auto scales = logits_len_e.cast<T>()
                           .inverse()
                           .reshape(grad_shape)
