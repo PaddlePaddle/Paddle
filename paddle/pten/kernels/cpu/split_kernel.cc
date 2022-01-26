@@ -28,13 +28,6 @@ void SplitKernel(const Context& dev_ctx,
                  const ScalarArray& num_or_sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
-  auto ns = num_or_sections.GetData();
-  for (size_t i = 0; i < ns.size(); ++i) {
-    VLOG(0) << "num_or_sections[" << i << "]=" << ns[i];
-  }
-  VLOG(0) << "num_or_sections.IsInitByTensor() = "
-          << num_or_sections.IsInitByTensor();
-  VLOG(0) << "axis_scalar.IsInitByTensor() = " << axis_scalar.IsInitByTensor();
   // need to infershape output
   if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
     auto out_metas =
@@ -47,11 +40,7 @@ void SplitKernel(const Context& dev_ctx,
 
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
-    VLOG(0) << "outs[" << j
-            << "]->mutable_data begin, dims = " << outs[j]->dims();
     outs[j]->mutable_data<T>(dev_ctx.GetPlace());
-    VLOG(0) << "outs[" << j
-            << "]->mutable_data done, dims = " << outs[j]->dims();
 
     shape_refer.emplace_back(outs[j]);
   }

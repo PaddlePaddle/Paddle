@@ -19,8 +19,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/pten/kernels/split_kernel.h"
 namespace paddle {

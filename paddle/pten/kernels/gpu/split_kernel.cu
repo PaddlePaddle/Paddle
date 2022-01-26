@@ -27,7 +27,6 @@ void SplitKernel(const Context& dev_ctx,
                  const ScalarArray& num_or_sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
-  auto ns = num_or_sections.GetData();
   // need to infershape output
   if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
     auto out_metas =
