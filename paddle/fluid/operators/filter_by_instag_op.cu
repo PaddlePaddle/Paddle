@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,17 +57,53 @@ __global__ void filter_copy_fuse_kernel(
     int64_t filter_tag_size, T* out_data, int64_t* map_data,
     size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
     const T* x1_data, int x1_embed_size, int x1_lods_filled, int x2_lods_filled,
-    float* loss_weight_data, int fill_value) {
-  
+    float* loss_weight_data, float fill_value, int* debug_value_data) {
   // N is instance num
-  // one threads for ins_per_thread(4) instances
+  // one threads for ins_per_thread instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  cg::thread_block b = cg::this_thread_block();
+  cg::thread_block_tile<WARP_SIZE> g = cg::tiled_partition<WARP_SIZE>(b);
+
+  int gid = idx / WARP_SIZE;
+
+  // general use
+  int thread_num =
+      (N + (ins_per_thread - 1)) / ins_per_thread;  // real thread num
+  int total_warp_num = thread_num / WARP_SIZE;      // 30
+  int remain_thread_num = thread_num % WARP_SIZE;   // 16
+
+  int warp_thread_num = -1;
+  if (gid < total_warp_num) {  //
+    warp_thread_num = WARP_SIZE;
+  } else {
+    warp_thread_num = remain_thread_num;
+  }
+
+  int group_num = total_warp_num;
+  if (remain_thread_num > 0) {
+    group_num = total_warp_num + 1;
+  }
+
+  if (gid >= group_num) return;
 
   int ins_start = idx * ins_per_thread;
   int ins_end = (idx + 1) * ins_per_thread;
 
-  if (ins_start >= N) return;
+  // if (ins_start >= N) then ins_start >= ins_end
+  // if (ins_start >= N) return;
+
   if (N < ins_end) ins_end = N;
+
+  // int* u = debug_value_data;
+  // if (gid == group_num - 1 && g.thread_rank() == warp_thread_num - 1) {
+  //  *u = warp_thread_num;
+  //  u++;
+  //  *u = group_num;
+  //  u++;
+  //  *u = total_warp_num;
+  //}
+  // if (N != 2048) return;
 
   if (!x1_lods_filled) {
     for (int p = ins_start; p < ins_end; p++) {
@@ -78,6 +114,16 @@ __global__ void filter_copy_fuse_kernel(
     }
   }
 
+  // int* u = debug_value_data;
+  // if (gid == group_num - 1 && g.thread_rank() == warp_thread_num - 1) {
+  //  *u = warp_thread_num;
+  //  u++;
+  //  *u = group_num;
+  //  u++;
+  //  *u = total_warp_num;
+  //}
+  // if (N != 2048) return;
+
   if (!x2_lods_filled) {
     for (int p = ins_start; p < ins_end; p++) {
       x2_lods_data[p] = p;
@@ -87,151 +133,275 @@ __global__ void filter_copy_fuse_kernel(
     }
   }
 
-  __syncthreads();
+  if (!x1_lods_filled || !x2_lods_filled) {
+    b.sync();
+  }
 
+  // if (N == 2048) {
+  // __syncthreads();
   // extern __shared__ int shared_data[];
   // int* flag_data = shared_data;
   // int* prefix_sum_data = (int*)(&(flag_data[N]));
   // int* mmap_aux_data = (int*)(&(prefix_sum_data[N]));
-
   // ================== to be optimized =============================
-
-  cg::thread_block b = cg::this_thread_block();
-  cg::thread_block_tile<WARP_SIZE> g = cg::tiled_partition<WARP_SIZE>(b);
+  // int thread_num = (N + 1) / ins_per_thread; // real thread num
 
   int flag_data[5];
   int prefix_sum_data[5];
-  
-  int gid = idx / WARP_SIZE;
+  int prefix_sum_data2[5];
 
   __shared__ int shr[MAX_WARP_NUM];
   __shared__ int shr2[MAX_WARP_NUM];
   __shared__ int shr3[MAX_WARP_NUM];
 
   for (int p = ins_start; p < ins_end; p++) {
-
     int ins_tag_start = x2_lods_data[p];
     int ins_tag_end = x2_lods_data[p + 1];
-
     flag_data[p - ins_start] = 0;
-
     // filter logic
     int i = ins_tag_start;
-
     for (; i < ins_tag_end; i++) {
-
       int64_t ins_tag = x2_data[i];
-
       int j = 0;
-
       for (; j < filter_tag_size; j++) {
         if (x3_data[j] == ins_tag) break;
       }
-
       // if ins_tag in filter tag
       if (j < filter_tag_size) {
         flag_data[p - ins_start] = 1;
         break;
       }
     }
-
   }
 
-  //if (gid == 1 && g.thread_rank() == 0) {
-  //  *debug_value = idx;
-  //}
+  int sum_addr = 0;
+  int sum_flag = 0;
+  int sum_out_lods = 0;
 
-  // prefix
-  for (int p = ins_start; p < ins_end; p++) {
-
-    int previous = -1;
-
-    if (p == ins_start) {
-      //prefix_sum_data[p - ins_start] = flag_data[p - ins_start] * ();
-      previous = 0;
-
-    } else {
-    
-      previous = prefix_sum_data[p - ins_start - 1];
-    
-    }
-    
-    prefix_sum_data[p - ins_start] = previous + 
-          flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
-  }
-
-  int local_addr = prefix_sum_data[ins_end - 1 - ins_start];
-  int sum_addr = local_addr;
-
-  // flag
+  int local_addr = 0;
   int local_flag = 0;
-  for (int p = ins_start; p < ins_end; p++) {
-    local_flag += flag_data[p - ins_start];
-  }
-  int sum_flag = local_flag;
-
-  // out_lods
   int local_out_lods = 0;
-  for (int p = ins_start; p < ins_end; p++) {
-    local_out_lods +=
-        flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
+
+  if (ins_start < ins_end) {
+    // prefix
+
+    for (int p = ins_start; p < ins_end; p++) {
+      int previous = -1;
+      if (p == ins_start) {
+        previous = 0;
+      } else {
+        previous = prefix_sum_data[p - ins_start - 1];
+      }
+
+      prefix_sum_data[p - ins_start] =
+          previous +
+          flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
+    }
+
+    local_addr = prefix_sum_data[ins_end - 1 - ins_start];
+    sum_addr = local_addr;
+
+    // flag
+    // local_flag = 0;
+    for (int p = ins_start; p < ins_end; p++) {
+      local_flag += flag_data[p - ins_start];
+    }
+    sum_flag = local_flag;
+
+    // out_lods
+    // local_out_lods = 0;
+
+    for (int p = ins_start; p < ins_end; p++) {
+      local_out_lods +=
+          flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
+    }
+
+    sum_out_lods = local_out_lods;
+
+    /*
+   int* u = debug_value_data;
+   if (gid == group_num - 1 && g.thread_rank() == warp_thread_num - 1) {
+     *u = warp_thread_num;
+     u++;
+     *u = sum_out_lods;
+     u++;
+     *u = sum_addr;
+   }
+   */
+
+    // int* u = debug_value_data;
+    // if (gid == group_num - 1 && g.thread_rank() == warp_thread_num - 1) {
+    //  *u = warp_thread_num;
+    //  u++;
+    //  *u = sum_out_lods;
+    //  u++;
+    //  *u = sum_addr;
+    //  u++;
+    //  *u = sum_flag;
+    //}
+
+    // if (N != 2048) return;
+
+    // general use
+    // int thread_num = (N + (ins_per_thread - 1)) / ins_per_thread; // real
+    // thread num
+    // int total_warp_num = thread_num / 32; // 30
+    // int remain_thread_num = thread_num % 32; // 16
+
+    // int warp_thread_num = -1;
+    // if (gid < total_warp_num) { //
+    //  warp_thread_num = 32;
+    //} else {
+    //  warp_thread_num = remain_thread_num;
+    //}
+
+    // warp reduce
   }
-  int sum_out_lods = local_out_lods;
+  /*
+      int* u = debug_value_data;
+      if (gid == group_num - 1 && ins_start == 8) {
+        *u = local_flag; // 1
+        u++;
+        *u = sum_flag; // 1
+        u++;
+        *u = sum_out_lods;      // 2
+        u++;
+        *u = local_out_lods;    // 2
+      }
+    */
+  // 32 threads
+  for (int i = 1; i < warp_thread_num; i *= 2) {
+    int temp_addr = g.shfl_up(sum_addr, i);
+    int temp_flag = g.shfl_up(sum_flag, i);
+    int temp_out_lods = g.shfl_up(sum_out_lods, i);
 
+    if (g.thread_rank() >= i) {
+      sum_addr += temp_addr;
+      sum_flag += temp_flag;
+      sum_out_lods += temp_out_lods;
+    }
 
-  
-  // warp reduce
-  for (int i = 1; i < 32; i *= 2) {
-    sum_addr += g.shfl_up(sum_addr, i);
-    sum_flag += g.shfl_up(sum_flag, i);
-    sum_out_lods += g.shfl_up(sum_out_lods, i);
+    // if (i == 2) {
+    // int* u = debug_value_data;
+    // if (gid == group_num - 1 && ins_start == 1) {
+    //   *u = g.thread_rank(); // 2
+    //   u++;
+    //   *u = sum_flag; // 1
+    //   u++;
+    //   *u = sum_out_lods;      // 2
+    //   u++;
+    //   *u = local_flag;    // 1
+    //}
+    //}
   }
 
-  if (g.thread_rank() == 31) {
+  if (g.thread_rank() == warp_thread_num - 1) {
     shr[gid] = sum_addr;
     shr2[gid] = sum_flag;
     shr3[gid] = sum_out_lods;
   }
 
-
-
+  /*
+      int* u = debug_value_data;
+      if (gid == group_num - 1 && ins_start == 1) {
+        *u = local_flag; // 1
+        u++;
+        *u = sum_flag; // 4
+        u++;
+        *u = sum_out_lods;      // 8
+        u++;
+        *u = local_out_lods;    // 2
+      }
+  */
 
   b.sync();
 
-  // communicate between warp
-  //
-  int sum_addr2 = shr[g.thread_rank()];
-  int sum_flag2 = shr2[g.thread_rank()];
-  int sum_out_lods2 = shr3[g.thread_rank()];
+  /*
+      int* u = debug_value_data;
+      if (gid == group_num - 1 && g.thread_rank() == warp_thread_num - 1) {
+        *u = warp_thread_num;
+        u++;
+        *u = sum_out_lods;
+        u++;
+        *u = sum_addr;
+        u++;
+        *u = sum_flag;
+      }
 
-  for (int i = 1; i < 32; i *= 2) {
-    sum_addr2 += g.shfl_up(sum_addr2, i);
-    sum_flag2 += g.shfl_up(sum_flag2, i);
-    sum_out_lods2 += g.shfl_up(sum_out_lods2, i);
+     if (N != 2048) return;
+  */
+  // int group_num = total_warp_num;
+  // if (remain_thread_num > 0) {
+  //  group_num = total_warp_num + 1;
+  //}
+
+  int sum_addr2 = 0;
+  int sum_flag2 = 0;
+  int sum_out_lods2 = 0;
+
+  // communicate between warp
+  if (g.thread_rank() < group_num) {
+    sum_addr2 = shr[g.thread_rank()];
+    sum_flag2 = shr2[g.thread_rank()];
+    sum_out_lods2 = shr3[g.thread_rank()];
   }
 
+  for (int i = 1; i < group_num; i *= 2) {
+    int temp_addr2 = g.shfl_up(sum_addr2, i);
+    int temp_flag2 = g.shfl_up(sum_flag2, i);
+    int temp_out_lods2 = g.shfl_up(sum_out_lods2, i);
+
+    if (g.thread_rank() >= i) {
+      sum_addr2 += temp_addr2;
+      sum_flag2 += temp_flag2;
+      sum_out_lods2 += temp_out_lods2;
+    }
+  }
+
+  /*
+      int* u = debug_value_data;
+      if (gid == group_num - 1 && g.thread_rank() == warp_thread_num - 1) {
+        *u = warp_thread_num;
+        u++;
+        *u = sum_out_lods;
+        u++;
+        *u = sum_addr;
+        u++;
+        *u = sum_flag;
+      }
+  */
   int sum_addr3 = g.shfl(sum_addr2, gid);
   int sum_flag3 = g.shfl(sum_flag2, gid);
   int sum_out_lods3 = g.shfl(sum_out_lods2, gid);
 
-  int p_addr = sum_addr3 - shr[gid] + sum_addr - local_addr;
-  int p_flag = sum_flag3 - shr2[gid] + sum_flag - local_flag;
-  int p_out_lods = sum_out_lods3 - shr3[gid] + sum_out_lods - local_out_lods;
+  int p_flag;
+  int p_addr;
+  int p_out_lods;
 
-  for (int p = ins_start; p < ins_end; p++) {
-    
-    prefix_sum_data[p - ins_start] += p_addr;
+  if (ins_start < ins_end) {
+    p_addr = sum_addr3 - shr[gid] + sum_addr - local_addr;
+    p_flag = sum_flag3 - shr2[gid] + sum_flag - local_flag;
+    //
+    p_out_lods = sum_out_lods3 - shr3[gid] + sum_out_lods - local_out_lods;
 
+    for (int p = ins_start; p < ins_end; p++) {
+      if (ins_start == p) {
+        prefix_sum_data2[p - ins_start] = p_addr;
+      } else {
+        prefix_sum_data2[p - ins_start] =
+            prefix_sum_data2[p - ins_start - 1] +
+            flag_data[p - ins_start - 1] *
+                (x1_lods_data[p] - x1_lods_data[p - 1]);
+      }
+    }
+
+    if (gid == 0 && g.thread_rank() == group_num - 1) {
+      *out_idx_data = (sum_flag2 + 1);
+      map_lods_data[sum_flag2] = sum_flag2;
+    }
   }
 
-  if (gid == 0 && g.thread_rank() == 31) {
-
-    *out_idx_data = sum_out_lods2 + 1;
-    map_lods_data[sum_out_lods2] = sum_out_lods2;
-
-  }
-
-  int sum_out_lods4 = g.shfl(sum_out_lods2 + 1, 31);
+  int sum_out_lods4 = g.shfl(sum_out_lods2 + 1, group_num - 1);
 
   // __syncthreads() only sync threads within block
   // so we let one thread process multi idx
@@ -253,87 +423,111 @@ __global__ void filter_copy_fuse_kernel(
   // }
   // __syncthreads();
 
-  int out_lods_idx = p_flag + 1;
+  if (ins_start < ins_end) {
+    int out_lods_idx = p_flag + 1;
+    /*
+        int* u = debug_value_data;
+        if (gid == group_num - 1 && ins_start == 1) {
+          *u = local_flag; // 1
+          u++;
+          *u = sum_flag; // 4
+          u++;
+          *u = sum_out_lods;      // 8
+          u++;
+          *u = local_out_lods;    // 2
+        }
+    */
+    // ins_start = 1
+    // BUG fix
+    //
+    for (int p = ins_start; p < ins_end; p++) {
+      if (flag_data[p - ins_start] == 1) {
+        // batch_len = 2
+        // batch_len = 4
+        size_t batch_len = x1_lods_data[p + 1] - x1_lods_data[p];
+        // t = 0
+        // t = 1
+        int t = out_lods_idx - 1;
+        // out_lods_data[0] = 0;
+        int previous;
 
-  for (int p = ins_start; p < ins_end; p++) {
-  
-    if (flag_data[p - ins_start] == 1) {
+        if (out_lods_idx == p_flag + 1) {
+          // out_lods_data[t] = p_out_lods;
+          previous = p_out_lods;
+        } else {
+          previous = out_lods_data[t];
+        }
 
-      size_t batch_len = x1_lods_data[p + 1] - x1_lods_data[p];
-      int t = out_lods_idx - 1;
-      out_lods_data[t] = p_out_lods;
-
-      map_data[t * 3] = (int64_t)out_lods_data[t];
-      map_data[t * 3 + 1] = x1_lods_data[p];
-      map_lods_data[t] = t;
-
-      out_lods_data[out_lods_idx] =
-          out_lods_data[t] + (x1_lods_data[p + 1] - x1_lods_data[p]);
-
-      map_data[t * 3 + 2] = out_lods_data[t + 1] - out_lods_data[t];
-
-      out_lods_idx++;
+        map_data[t * 3] = (int64_t)previous;
+        map_data[t * 3 + 1] = x1_lods_data[p];
+        map_lods_data[t] = t;
+        // out_lods_data[1] = 2
+        out_lods_data[out_lods_idx] = previous + batch_len;
+        map_data[t * 3 + 2] = batch_len;
+        out_lods_idx++;
+      }
     }
-  }
 
-  /*
+    /*
 
-    if (idx == 0) {
-      int out_lods_idx = 1;
-      for (int i = 0; i < N; i++) {
-        if (flag_data[i] == 1) {
-          size_t batch_len = x1_lods_data[i + 1] - x1_lods_data[i];
-          mmap_aux_data[out_lods_data[out_lods_idx - 1]] = x1_lods_data[i];
-          int p = out_lods_idx - 1;
-          map_data[p * 3] = (int64_t)out_lods_data[p];
-          map_data[p * 3 + 1] = mmap_aux_data[out_lods_data[p]];
-          map_lods_data[p] = p;
-          // map_data[p * 3 + 2] = out_lods_data[p + 1] - out_lods_data[p];
-          out_lods_data[out_lods_idx] =
-              out_lods_data[p] + (x1_lods_data[i + 1] - x1_lods_data[i]);
-          map_data[p * 3 + 2] = out_lods_data[p + 1] - out_lods_data[p];
-          out_lods_idx++;
+      if (idx == 0) {
+        int out_lods_idx = 1;
+        for (int i = 0; i < N; i++) {
+          if (flag_data[i] == 1) {
+            size_t batch_len = x1_lods_data[i + 1] - x1_lods_data[i];
+            mmap_aux_data[out_lods_data[out_lods_idx - 1]] = x1_lods_data[i];
+            int p = out_lods_idx - 1;
+            map_data[p * 3] = (int64_t)out_lods_data[p];
+            map_data[p * 3 + 1] = mmap_aux_data[out_lods_data[p]];
+            map_lods_data[p] = p;
+            // map_data[p * 3 + 2] = out_lods_data[p + 1] - out_lods_data[p];
+            out_lods_data[out_lods_idx] =
+                out_lods_data[p] + (x1_lods_data[i + 1] - x1_lods_data[i]);
+            map_data[p * 3 + 2] = out_lods_data[p + 1] - out_lods_data[p];
+            out_lods_idx++;
+          }
+        }
+        *out_idx_data = out_lods_idx;
+        map_lods_data[out_lods_idx - 1] = out_lods_idx - 1;
+      }
+
+    */
+
+    // =========== to be optimized =====================================
+
+    // fill loss_weight_data
+    if (sum_out_lods4 > 1) {
+      int out_data_num = sum_out_lods4 - 1;
+      int out_start = ins_start;
+
+      if (out_start < out_data_num) {
+        int out_end = ins_end >= out_data_num ? out_data_num : ins_end;
+        for (int p = out_start; p < out_end; p++) {
+          loss_weight_data[p] = fill_value;
         }
       }
-      *out_idx_data = out_lods_idx;
-      map_lods_data[out_lods_idx - 1] = out_lods_idx - 1;
     }
 
-  */
+    for (int p = ins_start; p < ins_end; p++) {
+      // copy logic
+      if (flag_data[p - ins_start] == 1) {
+        auto output_start_idx = prefix_sum_data2[p - ins_start];
+        T* dst = out_data + output_start_idx * x1_embed_size;
 
-  // =========== to be optimized =====================================
+        const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
+        const T* src_end = x1_data + x1_lods_data[p + 1] * x1_embed_size;
 
-  // fill loss_weight_data
-  if (sum_out_lods4 > 1) {
-    int out_data_num = sum_out_lods4 - 1;
-    int out_start = ins_start;
-    if (out_start < out_data_num) {
-      int out_end = ins_end > out_data_num ? out_data_num : ins_end;
-      for (int p = out_start; p < out_end; p++) {
-        loss_weight_data[p] = fill_value;
+        // optimized
+        for (const T *j = src_start; j != src_end; dst++, j++) {
+          *dst = *j;
+        }
       }
     }
   }
 
-  // 0 1 0 1 0 1 0 1
-  // 0 1 3 6 10 15 21 28 36
-  // 0 0 2 2 6 6
-  //__syncthreads();
+  b.sync();
 
-  for (int p = ins_start; p < ins_end; p++) {
-    // copy logic
-    if (flag_data[p - ins_start] == 1) {
-      auto output_start_idx = prefix_sum_data[p - ins_start];
-      T* dst = out_data + output_start_idx * x1_embed_size;
-      const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
-      const T* src_end = x1_data + x1_lods_data[p + 1] * x1_embed_size;
-      // optimized
-      for (const T *j = src_start; j != src_end; dst++, j++) {
-        *dst = *j;
-      }
-    }
-  }
-
+  //}
 }
 
 /*
@@ -537,15 +731,18 @@ __global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int ins_start = idx * ins_per_thread;
   int ins_end = (idx + 1) * ins_per_thread;
+
   if (ins_start >= N) {
     return;
   }
   if (ins_end > N) ins_end = N;
+
   for (int p = ins_start; p < ins_end; p++) {
     T* dst = x1_grad_data + map_data[p * 3 + 1] * x1_embed_size;
     const T* src_start = out_grad_data + map_data[p * 3] * x1_embed_size;
     const T* src_end =
         out_grad_data + (map_data[p * 3] + map_data[p * 3 + 2]) * x1_embed_size;
+
     for (const T *j = src_start; j != src_end; dst++, j++) {
       *dst = *j;
     }
@@ -604,16 +801,16 @@ template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    
     // platform::Timer timeline_;
     // timeline_.Start();
 
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
-    
+
     gpuStream_t current_stream = context.cuda_device_context().stream();
-    int max_thread_num_per_block =
-        context.cuda_device_context().GetMaxThreadsPerBlock();
+
+    int max_thread_num_per_block = 1024;
+    //    context.cuda_device_context().GetMaxThreadsPerBlock();
     // X1 is global FC output
     // Dim [batch size, embedding size]
     const LoDTensor* x1 = context.Input<LoDTensor>("Ins");
@@ -640,37 +837,39 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     // =========== need to be further optimized =================
 
-    int x2_lods_filled = 0;
+    int x2_lods_filled = 1;
 
     Vector<size_t> x2_lods;
     // Vector, in GPU
     if (x2->lod().size() != 0) {  // lod_level = 1
       x2_lods = x2->lod()[0];
       x2_lods_filled = 1;
+
     } else {  // lod_level = 0
-      // const size_t x2_lods_size = x2->dims()[0];
-      x2_lods.resize(x2->dims()[0] + 1);
+      const size_t x2_lods_size = x2->dims()[0];
+      // x2_lods.resize(x2->dims()[0] + 1);
       // move to cuda
-      // x2_lods.push_back(0);
-      // for (size_t i = 0; i < x2_lods_size; i++) {
-      //  x2_lods.push_back(i + 1);
-      //}
+      x2_lods.push_back(0);
+      for (size_t i = 0; i < x2_lods_size; i++) {
+        x2_lods.push_back(i + 1);
+      }
     }
 
     size_t* x2_lods_data = x2_lods.CUDAMutableData(gpu_place);
+
     const size_t x2_lods_size = x2_lods.size() - 1;
-    
+
     // Vector, in GPU
-    int x1_lods_filled = 0;
+    int x1_lods_filled = 1;
     Vector<size_t> x1_lods;
 
     if (!is_x1_lod) {
       // move to cuda
-      x1_lods.resize(x1->dims()[0] + 1);
-      // x1_lods.push_back(0);
-      // for (int i = 0; i < x1->dims()[0]; i++) {
-      //  x1_lods.push_back(i + 1);
-      //}
+      // x1_lods.resize(x1->dims()[0] + 1);
+      x1_lods.push_back(0);
+      for (int i = 0; i < x1->dims()[0]; i++) {
+        x1_lods.push_back(i + 1);
+      }
     } else {
       // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
       // new: lod_level=0 => lod() return {}
@@ -679,13 +878,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x1_lods = x1->lod()[0];
 
       } else {  // lod_level = 0
-        x1_lods.resize(x1->dims()[0] + 1);
-
+        // x1_lods.resize(x1->dims()[0] + 1);
         // move to cuda
-        // x1_lods.push_back(0);
-        // for (int i = 0; i < x1->dims()[0]; i++) {
-        //  x1_lods.push_back(i + 1);
-        //}
+        x1_lods.push_back(0);
+        for (int i = 0; i < x1->dims()[0]; i++) {
+          x1_lods.push_back(i + 1);
+        }
       }
     }
 
@@ -718,23 +916,19 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     //} else {
     out->Resize(
         framework::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
-
     //}
     map->Resize(framework::make_ddim({(int64_t)x2_lods_size, 3}));
-
     loss_weight->Resize(framework::make_ddim({(int64_t)x2_lods_size, 1}));
 
     // timeline_.Pause();
     // std::cout << "prephase 2 cost time: " << timeline_.ElapsedSec() <<
     // std::endl;
-
     // timeline_.Start();
     // loss_weight->Resize(
     //      framework::make_ddim({(int64_t)x2_lods_size, 1}));
 
     T* out_data = out->mutable_data<T>(gpu_place);
     int64_t* map_data = map->mutable_data<int64_t>(gpu_place);
-
     float* loss_weight_data = loss_weight->mutable_data<float>(gpu_place);
 
     // this is not needed if implementation is correct
@@ -784,6 +978,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     // thrust::device_vector<size_t> out_idx(1);
     Vector<size_t> out_idx(1, 0);
+    size_t* out_idx_data = out_idx.CUDAMutableData(gpu_place);
 
     // out_lods.resize(x2_lods_size + 1);
     // out_lods[0] = 0;
@@ -795,7 +990,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // int64_t* mmap_aux_data = thrust::raw_pointer_cast(&mmap_aux[0]);
 
     // int64_t* mmap_aux_data = mmap_aux.CUDAMutableData(context.GetPlace());
-    size_t* out_idx_data = out_idx.CUDAMutableData(gpu_place);
+    // size_t* out_idx_data = out_idx.CUDAMutableData(gpu_place);
     // ==================================================================
 
     // auto* out_lods_data = out_lods->mutable_data<size_t>(context.GetPlace());
@@ -816,16 +1011,16 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     //    out_lods_data, mmap_aux_data, out_idx_data, x1_data, x1_embed_size);
 
     float fill_value = 1.0;
-    
-    Vector<int> debug_value_vec(1,0);
-    int* debug_value_data = debug_value_vec.CUDAMutableData(gpu_place);
-    
-    
+
+    // std::cout << "debug for instag: " << x2_lods_size << std::endl;
+    Vector<int> debug_value(4, 0);
+    int* debug_value_data = debug_value.CUDAMutableData(gpu_place);
+
     filter_copy_fuse_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
         x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
         x3_data, x3->numel(), out_data, map_data, map_lods_data, out_lods_data,
         out_idx_data, x1_data, x1_embed_size, x1_lods_filled, x2_lods_filled,
-        loss_weight_data, fill_value);
+        loss_weight_data, fill_value, debug_value_data);
 
     // std::cout << "============DEBUG=============flag data" << std::endl;
     // for(int i = 0; i < x2_lods_size; i++) {
@@ -838,13 +1033,31 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // x1_data, map_data, x1_embed_size);
 
     platform::GpuStreamSync(current_stream);
+
+    // if (x2_lods_size != 2048) {
+
+    //}
     // timeline_.Pause();
     // std::cout << "kernel phase cost time: " << timeline_.ElapsedSec() <<
     // std::endl;
-    // std::cout << "debug for instag: " << out_idx[0] << " " << debug_value_vec[0] << std::endl;
+    // std::cout << "debug for instag: " << out_idx[0] << std::endl;
+    // std::cout << "debug for instag: " << out_idx[0] << " " << out_lods.size()
+    // << " " << out_lods.back()  << std::endl;
     // timeline_.Start();
     // out_lods resize
+
     out_lods.resize(out_idx[0]);
+    // std::cout << "debug for instag: " << out_first << " " << debug_value[0]
+    // << " " << debug_value[1] << " " << debug_value[2] << " " <<
+    // debug_value[3] << " " << std::endl;
+
+    // for(int i = 0; i < out_idx[0]; i++) {
+    //  std::cout << out_lods[i] << " ";
+    //}
+    // std::cout << std::endl;
+
+    // std::cout << "debug for instag: " << out_idx[0] << " " << out_lods.size()
+    // << " " << out_lods.back()  << std::endl;
 
     // timeline_.Pause();
     // std::cout << "kernel phase cost time: " << timeline_.ElapsedSec() << " "
@@ -881,6 +1094,16 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     //}
 
     if (out_lods.size() - 1 > 0) {
+      // std::cout << "debug for instag: " << x2_lods_size << " " <<
+      // out_lods.size() << " " << out_lods.back() << " " << x1_embed_size <<
+      // std::endl;
+      // if (out_lods.back() == 0) {
+
+      //  for (int i = 0; i < out_lods.size(); i++)
+      //    std::cout << out_lods[i] << " " << std::endl;
+      //  std::cout << std::endl;
+      //}
+
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
 
@@ -1010,8 +1233,8 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     gpuStream_t current_stream = context.cuda_device_context().stream();
-    auto max_thread_num_per_block =
-        context.cuda_device_context().GetMaxThreadsPerBlock();
+    auto max_thread_num_per_block = 1024;
+    //    context.cuda_device_context().GetMaxThreadsPerBlock();
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
@@ -1050,6 +1273,7 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
 
       size_t N = mmap->dims()[0];
       dim3 block_dim(block_size);
+
       dim3 grid_dim((N + block_size - 1) / block_size);
 
       const int ins_per_thread =
