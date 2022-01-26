@@ -18,7 +18,7 @@ namespace pten {
 
 void TensorStorage::Realloc(size_t size) {
   this->Clear();
-  data_ = paddle::memory::AllocShared(alloc_->place(), size);
+  data_ = alloc_->Allocate(size);
   size_ = size;
 }
 

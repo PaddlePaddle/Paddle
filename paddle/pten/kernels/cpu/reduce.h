@@ -22,8 +22,8 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
-#include "paddle/pten/kernels/hybird/transpose.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 namespace pten {
@@ -50,13 +50,13 @@ void ReduceFunctor(const DeviceContext& context,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = paddle::framework::vectorize(out_dims);
+    auto dims_vector = pten::framework::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = paddle::framework::make_ddim(dims_vector);
+    out_dims = pten::framework::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;
@@ -118,8 +118,8 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   std::vector<int64_t> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
-  shuffled_input->Resize(shuffled_dims);
-  shuffled_input->mutable_data<OutT>();
+  shuffled_input->ResizeAndAllocate(shuffled_dims);
+  shuffled_input->mutable_data<OutT>(dev_ctx.GetPlace());
 
   pten::math::TransposeNormal<DeviceContext, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
@@ -141,12 +141,12 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
   const int64_t reduced = shuffled_input.numel() / unreduced;
-  shuffled_input.Resize({unreduced, reduced});
+  shuffled_input.ResizeAndAllocate({unreduced, reduced});
   DDim output_dim = output->dims();
-  output->Resize({unreduced});
+  output->ResizeAndAllocate({unreduced});
   ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
       dev_ctx, shuffled_input, output, {1}, keep_dim);
-  output->Resize(output_dim);
+  output->ResizeAndAllocate(output_dim);
 }
 
 ////////////// ReduceKernel
@@ -158,7 +158,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  output->mutable_data<OutT>();
+  output->mutable_data<OutT>(dev_ctx.GetPlace());
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor

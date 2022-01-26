@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/host_context/op_executable.h"
 
+#include <mlir/IR/BuiltinOps.h>
 #include <string>
 
 #include "paddle/infrt/host_context/kernel_frame.h"
@@ -21,7 +22,8 @@
 #include "paddle/infrt/host_context/mlir_function_executable.h"
 #include "paddle/infrt/host_context/symbol_table.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 struct OpExecutable::Impl {
   Impl(const std::string& op_name,
@@ -148,4 +150,5 @@ void OpExecutable::Execute() {
 
 OpExecutable::~OpExecutable() {}
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

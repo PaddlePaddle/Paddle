@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
@@ -40,6 +39,18 @@ PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
                                            void* closure) {
   EAGER_SYNC_TRY
   return ToPyObject(self->eager_tensor.name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager_tensor_properties_get_type(EagerTensorObject* self,
+                                           void* closure) {
+  EAGER_SYNC_TRY
+  if (self->eager_tensor.is_dense_tensor()) {
+    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
+  } else {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -75,8 +86,13 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
     return ToPyObject(*accumulation_grad_node->Grad());
   } else {
     VLOG(6) << "Get grad for tensor: " << self->eager_tensor.name();
-    auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    return ToPyObject(meta->Grad());
+    auto meta = egr::EagerUtils::nullable_autograd_meta(self->eager_tensor);
+    if (meta) {
+      return ToPyObject(meta->Grad());
+    } else {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -185,6 +201,8 @@ struct PyGetSetDef variable_properties[] = {
     {"_place_str", (getter)eager_tensor_properties_get_place_str, nullptr,
      nullptr, nullptr},
     {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
+     nullptr},
+    {"type", (getter)eager_tensor_properties_get_type, nullptr, nullptr,
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 

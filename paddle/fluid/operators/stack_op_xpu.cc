@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/stack_op.h"
 #include <string>
-#ifdef PADDLE_WITH_XPU
+#include <vector>
+#include "paddle/fluid/operators/concat_op.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -59,14 +62,44 @@ class StackXPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class StackGradXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto dx = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+    auto axis = ctx.Attr<int>("axis");
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto dy_dims = dy->dims();
+
+    if (axis < 0) axis += dy_dims.size() + 1;
+    auto dy_shape = framework::vectorize<int>(dy_dims);
+
+    std::vector<int> dx_dims_list(dx.size(), 1);
+    std::vector<T*> dx_lists;
+    for (auto out : dx) {
+      dx_lists.push_back(out->mutable_data<T>(ctx.GetPlace()));
+    }
+
+    int r = xpu::split<T>(dev_ctx.x_context(), dy->data<T>(), dx_lists,
+                          dy_shape, dx_dims_list, axis);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "The stack_grad XPU kernel return wrong value[%d %s]",
+                          r, XPUAPIErrorMsg[r]));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
-
 REGISTER_OP_XPU_KERNEL(stack,
-                       ops::StackXPUKernel<plat::XPUDeviceContext, int64_t>,
+                       ops::StackXPUKernel<plat::XPUDeviceContext, float>,
                        ops::StackXPUKernel<plat::XPUDeviceContext, int>,
-                       ops::StackXPUKernel<plat::XPUDeviceContext, float>);
+                       ops::StackXPUKernel<plat::XPUDeviceContext, int64_t>);
+REGISTER_OP_XPU_KERNEL(stack_grad,
+                       ops::StackGradXPUKernel<plat::XPUDeviceContext, float>,
+                       ops::StackGradXPUKernel<plat::XPUDeviceContext, int>);
 #endif

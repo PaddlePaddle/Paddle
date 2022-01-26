@@ -53,7 +53,8 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       Tensor cpu_shape_tensor;
-      TensorCopySync(*imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(*imgrealsize, platform::CPUPlace(),
+                                        &cpu_shape_tensor);
       std::vector<int> imgreal_h;
       std::vector<int> imgreal_w;
       std::vector<int> output_height;

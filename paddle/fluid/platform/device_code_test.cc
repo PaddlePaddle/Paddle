@@ -80,8 +80,8 @@ TEST(DeviceCode, cuda) {
   float* y_data = y.mutable_data<float>(dims, place);
   float* z_data = z.mutable_data<float>(dims, place);
 
-  TensorCopySync(cpu_x, place, &x);
-  TensorCopySync(cpu_y, place, &y);
+  paddle::framework::TensorCopySync(cpu_x, place, &x);
+  paddle::framework::TensorCopySync(cpu_y, place, &y);
 
   EXPECT_EQ(code.Compile(), true);
 
@@ -93,7 +93,7 @@ TEST(DeviceCode, cuda) {
   auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
-  TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
+  paddle::framework::TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
     EXPECT_EQ(cpu_z.data<float>()[i], static_cast<float>(i) * scale + 0.5);
   }

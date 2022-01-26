@@ -133,19 +133,13 @@ class SparseCooTensor : public TensorBase,
                  const DDim& dims,
                  const bool coalesced = false);
 
-  /// \brief Get a mutable data pointer of non_zero_indices_.
-  /// return a mutable data pointer of non_zero_indices_.
-  template <typename T>
-  T* mutable_non_zero_indices() {
-    return non_zero_indices_.mutable_data<T>();
-  }
+  /// \brief Get a mutable pointer of non_zero_indices_.
+  /// return a mutable pointer of non_zero_indices_.
+  DenseTensor* mutable_non_zero_indices() { return &non_zero_indices_; }
 
-  /// \brief Get a mutable data pointer of non_zero_elements.
-  /// return a mutable data pointer of non_zero_elements.
-  template <typename T>
-  T* mutable_non_zero_elements() {
-    return non_zero_elements_.mutable_data<T>();
-  }
+  /// \brief Get a mutable pointer of non_zero_elements.
+  /// return a mutable pointer of non_zero_elements.
+  DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
  private:
   // save the indices of non zero elements in original dense tensor

@@ -17,12 +17,6 @@
 #include <gtest/gtest.h>
 #include <string>
 
-namespace paddle {
-namespace platform {
-struct float16;
-}  // namespace platform
-}  // namespace paddle
-
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 

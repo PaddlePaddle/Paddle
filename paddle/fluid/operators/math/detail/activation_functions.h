@@ -17,7 +17,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

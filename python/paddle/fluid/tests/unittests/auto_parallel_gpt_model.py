@@ -894,7 +894,6 @@ class GPTModel(nn.Layer):
                     "dims_mapping":
                     [0] + [-1 for i in range(len(input_ids.shape) - 1)]
                 })
-        attention_mask.stop_gradient = True
         encoder_outputs = self.decoder(
             embedding_output,
             memory=None,

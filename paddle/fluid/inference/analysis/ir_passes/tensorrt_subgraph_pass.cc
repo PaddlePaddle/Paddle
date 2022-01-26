@@ -46,8 +46,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
-                                             with_dynamic_shape);
+    bool is_ok = tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                                   with_dynamic_shape);
+    if (!is_ok)
+      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    return is_ok;
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -369,6 +372,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
                   opt_input_shape, disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
 

@@ -26,7 +26,7 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
     platform::NPUEventQuery(event, &status);
 
     if (status == ACL_EVENT_STATUS_COMPLETE) {
-      Allocation *allocation = it->first;
+      auto *allocation = it->first;
       void *ptr = allocation->ptr();
       free(ptr);
       npu_events_.erase(it++);
@@ -38,7 +38,7 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
   }
 }
 
-Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
+pten::Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   std::lock_guard<std::mutex> lock(mtx_);
   ProcessEventsAndFree();
   void *ptr;
@@ -50,7 +50,7 @@ Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   return new Allocation(ptr, size, platform::NPUPinnedPlace());
 }
 
-void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
+void NPUPinnedAllocator::FreeImpl(pten::Allocation *allocation) {
   std::lock_guard<std::mutex> lock(mtx_);
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);
@@ -83,7 +83,7 @@ uint64_t NPUPinnedAllocator::ReleaseImpl(const platform::Place &place) {
   return static_cast<uint64_t>(0);
 }
 
-void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
+void NPUPinnedAllocator::RecordEvent(pten::Allocation *allocation,
                                      aclrtStream stream) {
   std::lock_guard<std::mutex> lock(mtx_);
   aclrtEvent event = nullptr;

@@ -55,7 +55,7 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     // then view A as n x m and do A^T SVD, we can avoid transpose
     // Must Copy X once, because the gesvdj will change the origin input matrix
     Tensor x_tmp;
-    TensorCopy(*x, context.GetPlace(), &x_tmp);
+    paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
@@ -108,8 +108,7 @@ void SvdGPUKernel<float>::GesvdjBatched(
         info, gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -151,8 +150,7 @@ void SvdGPUKernel<double>::GesvdjBatched(
         info, gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,

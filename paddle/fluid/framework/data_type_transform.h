@@ -25,7 +25,6 @@ namespace paddle {
 namespace framework {
 
 class OpKernelType;
-class Tensor;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 

@@ -25,8 +25,8 @@ class CPUPinnedAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(pten::Allocation *allocation) override;
+  pten::Allocation *AllocateImpl(size_t size) override;
 };
 
 }  // namespace allocation
