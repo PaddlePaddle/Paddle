@@ -26,6 +26,9 @@ from .dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from .process_group import new_process_group, ProcessGroup, _g_process_group_map
 
+# NOTE: If op in _g_special_ops, it will not be resharded. 
+_g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
+
 
 class AllGatherOpDesc:
     """
@@ -276,7 +279,7 @@ def _is_overlapped(shape_x, shape_y):
     return overlapped
 
 
-def _need_reshard(dist_tensor, dist_op):
+def _need_reshard(dist_tensor, dist_op, op_input=True):
     """Judge the tensor whether needs to be resharded."""
     is_reshard = False
     tensor_dist_attr = dist_tensor.dist_attr
@@ -286,13 +289,31 @@ def _need_reshard(dist_tensor, dist_op):
     op_dist_attr = dist_op.dist_attr
     op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
     op_process_mesh = op_dist_attr.process_mesh
-    if all(
-            map(lambda x: x is not None, [
-                tensor_dims_mapping, tensor_process_mesh, op_input_dims_mapping,
-                op_process_mesh
-            ])):
-        if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
-            is_reshard = True
+    if op_input:
+        op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
+        op_process_mesh = op_dist_attr.process_mesh
+        if all(
+                map(lambda x: x is not None, [
+                    tensor_dims_mapping, tensor_process_mesh,
+                    op_input_dims_mapping, op_process_mesh
+                ])):
+            if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
+                is_reshard = True
+    else:
+        op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            tensor_name)
+        op_process_mesh = op_dist_attr.process_mesh
+        if all(
+                map(lambda x: x is not None, [
+                    tensor_dims_mapping, tensor_process_mesh,
+                    op_output_dims_mapping, op_process_mesh
+                ])):
+            if tensor_process_mesh != op_process_mesh:
+                is_reshard = True
+            if tensor_dims_mapping != op_output_dims_mapping:
+                raise ValueError(
+                    "It is not supported that tensor dims mapping is different from op output dims mapping."
+                )
     return is_reshard
 
 
@@ -945,12 +966,13 @@ def remove_no_need_in_startup(auto_parallel_main_prog,
 def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
             dist_context):
     """
-    Reshard tensor in the program according to its dist attr and corresponding op dist attr.
+    Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
 
     Args:
         auto_parallel_main_prog (Program): An auto parallel main program.
         auto_parallel_startup_prog (Program): An auto parallel startup program.
         rank_id (int): The process id.
+        dist_context (DistributedContext): The distributed context of this rank.
     """
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_main_prog))
@@ -966,6 +988,17 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
     while idx < len(block.ops):
         pre_op_count = len(block.ops)
         op = block.ops[idx]
+
+        def _is_special_op(op):
+            global _g_special_ops
+            if op.type in _g_special_ops:
+                return True
+            return False
+
+        if _is_special_op(op):
+            idx += 1
+            continue
+
         dist_op = dist_context.get_dist_op_for_program(op)
         if dist_op is not None:
             idx_offset = 0
@@ -980,6 +1013,34 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
                     reshard_op_desc = find_op_desc_seq(dist_tensor, dist_op)
                     parse_op_desc(auto_parallel_main_prog, rank_id,
                                   reshard_op_desc, var_name, op, dist_context)
+                    cur_op_count = len(block.ops)
+                    idx_offset = idx_offset + cur_op_count - pre_op_count
+                    pre_op_count = cur_op_count
+            idx = idx + idx_offset + 1
+        else:
+            idx += 1
+
+    # insert send and recv op if output process mesh is different from tensor process mesh
+    idx = 0
+    skip_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    while idx < len(block.ops):
+        pre_op_count = len(block.ops)
+        op = block.ops[idx]
+        dist_op = dist_context.get_dist_op_for_program(op)
+        if dist_op is not None and op.type not in skip_ops:
+            for var_name in op.output_arg_names:
+                var = block.vars[var_name]
+                dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                if dist_tensor is not None and _need_reshard(dist_tensor,
+                                                             dist_op, False):
+                    for index, item in enumerate(
+                            dist_op.dist_attr.process_mesh.processes):
+                        recv_rank = dist_tensor.dist_attr.process_mesh.processes[
+                            index]
+                        if rank_id == item:
+                            _insert_send_op(block, idx + 1, var, recv_rank)
+                        if rank_id == recv_rank:
+                            _insert_recv_op(block, idx + 1, var, item)
                     cur_op_count = len(block.ops)
                     idx_offset = idx_offset + cur_op_count - pre_op_count
                     pre_op_count = cur_op_count

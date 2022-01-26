@@ -35,7 +35,8 @@ class CompareOpKernel<platform::CUDADeviceContext, Functor, InverseFunctor>
         ctx.template device_context<platform::CUDADeviceContext>();
 
     int axis = PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                   InT, OutT>(
         cuda_ctx, ins, &outs, axis, functor);
   }
 };

@@ -59,7 +59,7 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
       auto in_tensor = in_array->at(i + start);
       out_tensor->set_lod(in_tensor.lod());
       if (in_tensor.memory_size() > 0) {
-        TensorCopy(in_tensor, ctx.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out_tensor);
       } else {
         VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                     "nothing has been written to output array["
@@ -69,7 +69,7 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
   } else {
     auto out = ctx.Output<Tensor>("Out");
     auto in_tensor = in_array->at(start);
-    TensorCopy(in_tensor, ctx.GetPlace(), out);
+    paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out);
   }
 }
 
@@ -309,12 +309,13 @@ class SliceGradKernel : public framework::OpKernel<T> {
             ctx.Input<LoDTensorArray>(framework::GradVarName("Out"));
         int d_out_size = d_out_arr->size();
         for (int i = 0; i < d_out_size; ++i) {
-          TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
-                     &(d_in_arr->at(start + i)));
+          paddle::framework::TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
+                                        &(d_in_arr->at(start + i)));
         }
       } else {
         auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-        TensorCopy(*d_out, ctx.GetPlace(), &(d_in_arr->at(start)));
+        paddle::framework::TensorCopy(*d_out, ctx.GetPlace(),
+                                      &(d_in_arr->at(start)));
       }
       return;
     }

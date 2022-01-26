@@ -46,8 +46,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     dev_ctx_ = reinterpret_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
-      platform::CUDADeviceGuard guard(
-          BOOST_GET_CONST(platform::CUDAPlace, place).device);
+      platform::CUDADeviceGuard guard(place.device);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event_, hipEventDisableTiming));
@@ -72,7 +71,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_->GetPlace());
+    auto gpu_place = dev_ctx_->GetPlace();
     platform::CUDADeviceGuard guard(gpu_place.device);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
@@ -85,8 +84,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 
 void EagerDeletionOpHandle::InitCUDA() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  int dev_id =
-      BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
+  int dev_id = dev_ctxes_.begin()->first.device;
   events_[dev_id] = nullptr;
 #endif
 }
@@ -131,9 +129,10 @@ void EagerDeletionOpHandle::RunImpl() {
 
     if (var->IsType<LoDTensor>()) {
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<SelectedRows>()) {
-      garbages.emplace_back(
-          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+    } else if (var->IsType<pten::SelectedRows>()) {
+      garbages.emplace_back(var->GetMutable<pten::SelectedRows>()
+                                ->mutable_value()
+                                ->MoveMemoryHolder());
     } else if (var->IsType<LoDTensorArray>()) {
       auto *tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto &t : *tensor_arr) {

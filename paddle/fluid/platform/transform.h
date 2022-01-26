@@ -19,8 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
@@ -59,6 +59,7 @@ struct Transform {
                   BinaryOperation op);
 };
 
+// NOTE: After the pten kernel is migrated, it needs to be deleted.
 template <>
 struct Transform<platform::CPUDeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
@@ -70,6 +71,23 @@ struct Transform<platform::CPUDeviceContext> {
   template <typename InputIter1, typename InputIter2, typename OutputIter,
             typename BinaryOperation>
   void operator()(const platform::CPUDeviceContext& context, InputIter1 first1,
+                  InputIter1 last1, InputIter2 first2, OutputIter result,
+                  BinaryOperation op) {
+    std::transform(first1, last1, first2, result, op);
+  }
+};
+
+template <>
+struct Transform<pten::CPUContext> {
+  template <typename InputIter, typename OutputIter, typename UnaryOperation>
+  void operator()(const pten::CPUContext& context, InputIter first,
+                  InputIter last, OutputIter result, UnaryOperation op) {
+    std::transform(first, last, result, op);
+  }
+
+  template <typename InputIter1, typename InputIter2, typename OutputIter,
+            typename BinaryOperation>
+  void operator()(const pten::CPUContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     std::transform(first1, last1, first2, result, op);

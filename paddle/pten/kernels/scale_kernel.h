@@ -16,15 +16,29 @@ limitations under the License. */
 
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 namespace pten {
 
 template <typename T, typename Context>
-void Scale(const Context& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out);
+void ScaleKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Scale(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const Scalar& scale,
+                  float bias,
+                  bool bias_after_scale) {
+  auto out_meta = UnchangedInferMeta(x.meta());
+  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  ScaleKernel<T, Context>(
+      dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten

@@ -15,16 +15,17 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <mlir/IR/Module.h>
+#include <mlir/IR/BuiltinOps.h>
 #include <string>
 
 #include <memory>
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
                                      const std::string& mlir_source);
 mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
                                    mlir::MLIRContext* context);
-
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt

@@ -12,6 +12,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include <vector>
+#include "paddle/fluid/platform/place.h"
+#include "paddle/pten/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -41,36 +43,17 @@ std::vector<int> GetXPUSelectedDevices();
 /***** Memory Management *****/
 
 //! Copy memory from address src to dst synchronously.
-void MemcpySyncH2D(void *dst, const void *src, size_t count, int dev_id);
-void MemcpySyncD2H(void *dst, const void *src, size_t count, int dev_id);
-void MemcpySyncD2D(void *dst, int dst_id, const void *src, int src_id,
+void MemcpySyncH2D(void *dst, const void *src, size_t count,
+                   const platform::XPUPlace &dst_place);
+void MemcpySyncD2H(void *dst, const void *src, size_t count,
+                   const platform::XPUPlace &src_place);
+void MemcpySyncD2D(void *dst, const platform::XPUPlace &dst_place,
+                   const void *src, const platform::XPUPlace &src_place,
                    size_t count);
 
-class XPUDeviceGuard {
- public:
-  explicit inline XPUDeviceGuard(int dev_id) {
-    int prev_id = platform::GetXPUCurrentDeviceId();
-    if (prev_id != dev_id) {
-      prev_id_ = prev_id;
-      platform::SetXPUDeviceId(dev_id);
-    }
-  }
+using XPUDeviceGuard = pten::backends::xpu::XPUDeviceGuard;
 
-  inline ~XPUDeviceGuard() {
-    if (prev_id_ != -1) {
-      platform::SetXPUDeviceId(prev_id_);
-    }
-  }
-
-  XPUDeviceGuard(const XPUDeviceGuard &o) = delete;
-  XPUDeviceGuard &operator=(const XPUDeviceGuard &o) = delete;
-
- private:
-  int prev_id_{-1};
-};
-
-enum XPUVersion { XPU1, XPU2 };
-XPUVersion get_xpu_version(int dev_id);
+pten::backends::xpu::XPUVersion get_xpu_version(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

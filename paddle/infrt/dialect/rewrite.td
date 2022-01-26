@@ -4,7 +4,7 @@
 include "paddle/infrt/dialect/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "paddle/infrt/dialect/pd_ops.td"
-
+/*
 //===----------------------------------------------------------------------===//
 // This is to fuse the composition: 'Matmul o ElementwiseAdd' into 'PD_FusedFC'.
 //
@@ -89,5 +89,5 @@ def FuseBatchNormWithConvPattern: Pat<
                 $coefficientW),
             (INFRT_createI32Attr<"1">)))
 >;
-
+*/
 #endif // INFRT_REWRITE

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/global_map.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -64,9 +64,8 @@ TEST(InterceptorTest, PingPong) {
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
   carrier->Init(0, {{0, 0}, {1, 0}});
-  auto msg_bus = std::make_shared<MessageBus>();
+  MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
-  carrier->SetMsgBus(msg_bus);
 
   Interceptor* a = carrier->SetInterceptor(
       0, InterceptorFactory::Create("PingPong", 0, nullptr));

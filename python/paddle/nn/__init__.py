@@ -46,6 +46,7 @@ from .layer.activation import Softplus  # noqa: F401
 from .layer.activation import Softshrink  # noqa: F401
 from .layer.activation import Softsign  # noqa: F401
 from .layer.activation import Swish  # noqa: F401
+from .layer.activation import Mish  # noqa: F401
 from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
@@ -76,7 +77,9 @@ from .layer.pooling import AvgPool3D  # noqa: F401
 from .layer.pooling import MaxPool1D  # noqa: F401
 from .layer.pooling import MaxPool2D  # noqa: F401
 from .layer.pooling import MaxPool3D  # noqa: F401
+from .layer.pooling import MaxUnPool1D  # noqa: F401
 from .layer.pooling import MaxUnPool2D  # noqa: F401
+from .layer.pooling import MaxUnPool3D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
@@ -294,11 +297,14 @@ __all__ = [     #noqa
            'LogSoftmax',
            'Sigmoid',
            'Swish',
+           'Mish',
            'PixelShuffle',
            'ELU',
            'ReLU6',
            'LayerDict',
            'ZeroPad2D',
+           'MaxUnPool1D',
            'MaxUnPool2D',
+           'MaxUnPool3D',
            'HingeEmbeddingLoss',
 ]

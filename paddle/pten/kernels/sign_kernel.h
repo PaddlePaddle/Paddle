@@ -15,10 +15,20 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void Sign(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+void SignKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Sign(const Context& dev_ctx, const DenseTensor& x) {
+  auto out_meta = UnchangedInferMeta(x.meta());
+  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  SignKernel<T, Context>(dev_ctx, x, &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten

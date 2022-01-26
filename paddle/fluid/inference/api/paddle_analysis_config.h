@@ -796,6 +796,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
   bool trt_use_oss_{false};
+  bool trt_with_interleaved_{false};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};
@@ -883,6 +884,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 }  // namespace paddle

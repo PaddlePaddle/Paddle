@@ -180,6 +180,17 @@ const bool is_float_equal(float a, float b, float eps) {
   return std::fabs(a - b) <= eps;
 }
 
+const int GetOutputVarDtype(const Node *node, const std::string &output_name) {
+  auto out_node = GetOutputVarNode(output_name, node);
+  PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
+                                        "Node's out node does not exist."));
+  auto var = out_node->Var();
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::Unavailable("Node is not a variable."));
+  auto proto_var_type = var->GetDataType();
+  return VarType2OnnxDtype(proto_var_type);
+}
+
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle

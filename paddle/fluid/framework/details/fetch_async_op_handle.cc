@@ -19,12 +19,6 @@
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 namespace details {
 

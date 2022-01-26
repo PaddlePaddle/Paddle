@@ -333,7 +333,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             lr_ratio=simple_lr_fun)
 
         loss_ref = np.array(
-            [4.8383293, 3.084947, 1.3323904, -0.41943002, -2.1710064])
+            [-1.7267396, -2.81524, -3.9250019, -5.05954, -6.2272625])
         for i in range(5):
             a1 = linear1(a)
             out = linear2(a1)
@@ -379,7 +379,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         exe.run(startup)
 
         loss_ref = np.array(
-            [0.36120513, 0.2720821, 0.67208904, 0.14607805, 0.24098626])
+            [0.33895183, 0.3159437, 0.19472016, 0.17764759, 0.1520702])
         for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')

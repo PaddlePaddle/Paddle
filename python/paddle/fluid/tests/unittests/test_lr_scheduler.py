@@ -205,6 +205,13 @@ def lambda_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
     return learning_rate * lr_lambda(epoch_num)
 
 
+def multiplicative_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
+    latest_lr = learning_rate
+    for i in range(epoch_num):
+        latest_lr = latest_lr * lr_lambda(i + 1)
+    return latest_lr
+
+
 def piecewise_lr(epoch_num, boundaries, values, verbose=False):
     assert len(boundaries) + 1 == len(values)
     for i in range(len(boundaries)):
@@ -518,6 +525,10 @@ class TestLRScheduler(unittest.TestCase):
         }), (lambda_lr, paddle.optimizer.lr.LambdaDecay, {
             "learning_rate": 0.5,
             "lr_lambda": lambda x: 0.95**x,
+            "verbose": True
+        }), (multiplicative_lr, paddle.optimizer.lr.MultiplicativeDecay, {
+            "learning_rate": 0.5,
+            "lr_lambda": lambda x: 0.95,
             "verbose": True
         }), (cosine_annealing_lr, paddle.optimizer.lr.CosineAnnealingDecay, {
             "learning_rate": 0.5,
