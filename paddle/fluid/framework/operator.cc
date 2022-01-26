@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
 class DenseTensor;
@@ -77,11 +78,11 @@ static DDim GetDimsDebug(const ScopeBase& scope, const std::string& name,
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
     return tensor.dims();
-  } else if (var->IsType<SelectedRows>()) {
+  } else if (var->IsType<pten::SelectedRows>()) {
     if (get_actual_dim) {
-      return var->Get<SelectedRows>().value().dims();
+      return var->Get<pten::SelectedRows>().value().dims();
     } else {
-      return var->Get<SelectedRows>().GetCompleteDims();
+      return var->Get<pten::SelectedRows>().GetCompleteDims();
     }
   } else if (var->IsType<Strings>()) {
     return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
@@ -108,8 +109,8 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
       return "";
     }
     return DataTypeToString(tensor.type());
-  } else if (var->IsType<SelectedRows>()) {
-    auto tensor = var->Get<SelectedRows>().value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    auto tensor = var->Get<pten::SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
@@ -139,8 +140,8 @@ static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
       return "";
     }
     return to_string(tensor.place());
-  } else if (var->IsType<SelectedRows>()) {
-    auto tensor = var->Get<SelectedRows>().value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    auto tensor = var->Get<pten::SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
@@ -157,8 +158,8 @@ static int GetRowSize(const ScopeBase& scope, const std::string& name) {
     return -1;
   }
 
-  if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().rows().size();
+  if (var->IsType<pten::SelectedRows>()) {
+    return var->Get<pten::SelectedRows>().rows().size();
   }
 
   return -1;
@@ -497,8 +498,8 @@ void OperatorBase::GenerateTemporaryNames() {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
   if (var.IsType<LoDTensor>()) {
     return static_cast<const Tensor*>(&(var.Get<LoDTensor>()));
-  } else if (var.IsType<SelectedRows>()) {
-    return &(var.Get<SelectedRows>().value());
+  } else if (var.IsType<pten::SelectedRows>()) {
+    return &(var.Get<pten::SelectedRows>().value());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Variable type is %s, expect LoDTensor or SelectedRows.",
@@ -509,8 +510,8 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
-  } else if (var->IsType<SelectedRows>()) {
-    return var->GetMutable<SelectedRows>()->mutable_value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    return var->GetMutable<pten::SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Variable type is %s, expect LoDTensor or SelectedRows.",
@@ -741,9 +742,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
             "The type of input (%s) and output (%s) are inconsistent.", in,
             out));
 
-    if (in_var->IsType<framework::SelectedRows>()) {
-      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+    if (in_var->IsType<pten::SelectedRows>()) {
+      auto& in_sele_rows = in_var->Get<pten::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<pten::SelectedRows>();
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
@@ -950,8 +951,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
         var, platform::errors::InvalidArgument("Input variable is nullptr."));
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
-    } else if (var->IsType<SelectedRows>()) {
-      return var->Get<SelectedRows>().GetCompleteDims();
+    } else if (var->IsType<pten::SelectedRows>()) {
+      return var->Get<pten::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Only LoDTensor or SelectedRows support 'GetDim', but input "
@@ -976,8 +977,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   void SetDim(Variable* var, const DDim& dim) {
     if (var->IsType<LoDTensor>()) {
       var->GetMutable<LoDTensor>()->Resize(dim);
-    } else if (var->IsType<SelectedRows>()) {
-      var->GetMutable<SelectedRows>()->set_height(dim[0]);
+    } else if (var->IsType<pten::SelectedRows>()) {
+      var->GetMutable<pten::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Variable type error, expect LoDTensor or SelectedRows, but received "
@@ -1084,6 +1085,13 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                         ctx.Attr<bool>("use_mkldnn") &&
                         platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
+}
+
+void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "The default InferShape function of OperatorWithKernel is not allowed to "
+      "be called, please override corresponding InferShape function in the "
+      "specific operator."));
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -1646,8 +1654,8 @@ void OperatorWithKernel::ParseInputDataType(
         t = &var->Get<Tensor>();
       } else if (var->IsType<LoDTensor>()) {
         t = &var->Get<LoDTensor>();
-      } else if (var->IsType<SelectedRows>()) {
-        t = &(var->Get<SelectedRows>().value());
+      } else if (var->IsType<pten::SelectedRows>()) {
+        t = &(var->Get<pten::SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
         for (size_t j = 0; j < t_arr->size(); j++) {
@@ -1728,8 +1736,8 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
     t = var->GetMutable<Tensor>();
   } else if (var->IsType<LoDTensor>()) {
     t = var->GetMutable<LoDTensor>();
-  } else if (var->IsType<SelectedRows>()) {
-    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    t = var->GetMutable<pten::SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported input variable type in complex type promotion."));
@@ -1784,8 +1792,10 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(
-      pten::TransToPtenKernelName(Type()));
+  InitDefaultKernelSignatureMap();
+  ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
+  return pten::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
+      arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePtenData(

@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 
 #ifdef __HIPCC__
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
@@ -350,7 +352,7 @@ void LaunchKernel(const KPDevice &ctx,
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
   }
 
   for (int i = 0; i < Arity; i++) {
@@ -576,6 +578,20 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {z};
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  pten::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+      dev_ctx, ins, &outs, axis, func);
 }
 
 // BACKWARD CODE
@@ -1935,6 +1951,132 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
         dy_op,
         dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
         dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+  }
+}
+
+template <typename T>
+static __global__ void SimpleElemwiseAddGradCUDAKernel(
+    const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = gridDim.x * blockDim.x;
+  int loop = size / vec_size;
+  int remainder = size % vec_size;
+  const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
+  float4 *dx_vec = reinterpret_cast<float4 *>(dx);
+  float4 *dy_vec = reinterpret_cast<float4 *>(dy);
+  float4 tmp_loop;
+
+  for (int i = tid; i < loop; i += stride) {
+    tmp_loop = dout_vec[i];
+    dx_vec[i] = tmp_loop;
+    dy_vec[i] = tmp_loop;
+  }
+
+  if (tid == loop && remainder != 0) {
+    T tmp_rem;
+    while (remainder) {
+      int idx = size - remainder;
+      remainder--;
+      tmp_rem = dout[idx];
+      dx[idx] = tmp_rem;
+      dy[idx] = tmp_rem;
+    }
+  }
+}
+
+template <typename T>
+void default_elementwise_add_grad(const GPUContext &ctx,
+                                  const DenseTensor &x,
+                                  const DenseTensor &y,
+                                  const DenseTensor &out,
+                                  const DenseTensor &dout,
+                                  DenseTensor *dx,
+                                  DenseTensor *dy,
+                                  int axis = -1) {
+  auto *dout_data = dout.data<T>();
+
+  // dx
+  if (dx != nullptr) {
+    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    if (dx->dims() == dout.dims()) {
+      if (dx_data != dout_data) {
+        pten::Copy(ctx, dout, false, dx);
+      }
+    } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(x.dims(), out.dims(), axis);
+      gpuStream_t stream = ctx.stream();
+      kernels::TensorReduceFunctorImpl<T,
+                                       T,
+                                       kps::AddFunctor,
+                                       kps::IdentityFunctor<T>>(
+          dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    }
+  }
+  // dy
+  if (dy != nullptr) {
+    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    if (dy->dims() == dout.dims()) {
+      if (dy_data != dout_data) {
+        pten::Copy(ctx, dout, false, dy);
+      }
+    } else {
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(y.dims(), out.dims(), axis);
+      gpuStream_t stream = ctx.stream();
+      kernels::TensorReduceFunctorImpl<T,
+                                       T,
+                                       kps::AddFunctor,
+                                       kps::IdentityFunctor<T>>(
+          dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    }
+  }
+}
+
+template <typename T>
+void elementwise_add_grad(const GPUContext &ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &y,
+                          const DenseTensor &out,
+                          const DenseTensor &dout,
+                          DenseTensor *dx,
+                          DenseTensor *dy) {
+  auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+  auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+  auto *dout_data = dout.data<T>();
+  if (dx_data == dout_data && dy_data != dout_data) {
+    VLOG(4) << "Special case when dx_data is the same as dout_data, "
+               "only need copy dout to dy";
+    pten::Copy(ctx, dout, false, dy);
+  } else if (dx_data != dout_data && dy_data == dout_data) {
+    VLOG(4) << "Special case when dy_data is the same as dout_data, "
+               "only need copy dout to dx";
+    pten::Copy(ctx, dout, false, dx);
+  } else if (dx_data != dout_data && dy_data != dout_data) {
+    auto size = x.numel();
+    int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+    dim3 grid_size =
+        dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
+                 PREDEFINED_BLOCK_SIZE,
+             1);
+    SimpleElemwiseAddGradCUDAKernel<
+        T><<<grid_size, block_size, 0, ctx.stream()>>>(
+        dout.data<T>(),
+        size,
+        vec_size,
+        dx->mutable_data<T>(ctx.GetPlace()),
+        dy->mutable_data<T>(ctx.GetPlace()));
+  } else {
+    VLOG(4) << "Special case when dy_data is the same as dout_data, "
+               "and dx_data is the same as dout_data, do not need "
+               "any operator";
   }
 }
 
