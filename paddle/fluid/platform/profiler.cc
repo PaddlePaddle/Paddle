@@ -167,15 +167,15 @@ void RecordEvent::End() {
   uint64_t end_ns = PosixInNsec();
   if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
-                                                   start_ns_, end_ns, role_,
-                                                   TracerEventType::NumTypes);
+      HostTraceEventRecorder::GetInstance().RecordEvent(
+          shallow_copy_name_, start_ns_, end_ns, role_,
+          TracerEventType::NumTypes);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(
+        HostTraceEventRecorder::GetInstance().RecordEvent(
             *name_, start_ns_, end_ns, role_, TracerEventType::NumTypes);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(
+        HostTraceEventRecorder::GetInstance().RecordEvent(
             *name_, start_ns_, end_ns, role_, TracerEventType::NumTypes,
             *attr_);
         delete attr_;

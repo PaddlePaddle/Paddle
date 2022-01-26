@@ -271,23 +271,5 @@ class HostEventRecorder {
   }
 };
 
-template <typename EventType>
-ThreadEventRecorder<EventType>::ThreadEventRecorder() {
-  thread_id_ = GetCurrentThreadSysId();
-}
-
-template <typename EventType>
-HostEventSection<EventType> HostEventRecorder<EventType>::GatherEvents() {
-  auto thr_recorders =
-      ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
-  HostEventSection<EventType> host_sec;
-  host_sec.thr_sections.reserve(thr_recorders.size());
-  for (auto &kv : thr_recorders) {
-    auto &thr_recorder = kv.second.get();
-    host_sec.thr_sections.emplace_back(std::move(thr_recorder.GatherEvents()));
-  }
-  return host_sec;
-}
-
 }  // namespace platform
 }  // namespace paddle
