@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/sparse_coo_tensor.h"
+#include "paddle/pten/core/sparse_csr_tensor.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
@@ -54,6 +55,21 @@ SparseCooTensor DenseToSparseCoo(const Context& dev_ctx,
   DenseTensor values = pten::Empty<T, Context>(dev_ctx);
   SparseCooTensor coo(indices, values, x.dims());
   DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
+  return coo;
+}
+
+template <typename T, typename Context>
+void SparseCsrToCooKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          SparseCooTensor* out);
+
+template <typename T, typename Context>
+SparseCooTensor SparseCsrToCoo(const Context& dev_ctx,
+                               const SparseCsrTensor& x) {
+  DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx);
+  SparseCooTensor coo(indices, values, x.dims());
+  SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
   return coo;
 }
 

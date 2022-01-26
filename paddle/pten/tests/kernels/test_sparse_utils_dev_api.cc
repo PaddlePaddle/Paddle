@@ -154,10 +154,6 @@ TEST(DEV_API, to_sparse_coo_hybird) {
 
   std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* cuda = pool.Get(paddle::platform::CUDAPlace());
-  auto* dev_ctx_cuda = static_cast<paddle::platform::CUDADeviceContext*>(cuda);
   pten::CPUContext dev_ctx_cpu;
 
   // 1. test cpu
@@ -172,6 +168,10 @@ TEST(DEV_API, to_sparse_coo_hybird) {
 
 // 2. test cuda
 #if defined(PADDLE_WITH_CUDA)
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* cuda = pool.Get(paddle::platform::CUDAPlace());
+  auto* dev_ctx_cuda = static_cast<paddle::platform::CUDADeviceContext*>(cuda);
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
@@ -350,6 +350,78 @@ TEST(DEV_API, sparse_coo_to_dense) {
                         h_dense_out.data<float>(),
                         sizeof(float) * rows * cols);
   ASSERT_EQ(cmp_cuda, 0);
+#endif
+}
+
+TEST(DEV_API, sparse_csr_to_coo) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor dense_x(alloc.get(),
+                            DenseTensorMeta(pten::DataType::FLOAT32,
+                                            framework::make_ddim({3, 3}),
+                                            DataLayout::NCHW));
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+  const int64_t non_zero_num = 4;
+
+  framework::DDim dense_dims = framework::make_ddim({3, 3});
+  pten::DenseTensorMeta crows_meta(DataType::INT64,
+                                   framework::make_ddim({dense_dims[0] + 1}),
+                                   DataLayout::NCHW);
+  pten::DenseTensorMeta cols_meta(
+      DataType::INT64, framework::make_ddim({non_zero_num}), DataLayout::NCHW);
+  pten::DenseTensorMeta values_meta(DataType::FLOAT32,
+                                    framework::make_ddim({non_zero_num}),
+                                    DataLayout::NCHW);
+
+  pten::CPUPlace place;
+  pten::DenseTensor crows(alloc.get(), crows_meta);
+  pten::DenseTensor cols(alloc.get(), cols_meta);
+  pten::DenseTensor values(alloc.get(), values_meta);
+  memcpy(crows.mutable_data<int64_t>(place),
+         crows_data.data(),
+         crows_data.size() * sizeof(int64_t));
+  memcpy(cols.mutable_data<int64_t>(place),
+         cols_data.data(),
+         cols_data.size() * sizeof(int64_t));
+  memcpy(values.mutable_data<float>(place),
+         non_zero_data.data(),
+         non_zero_data.size() * sizeof(float));
+  pten::SparseCsrTensor csr(crows, cols, values, dense_dims);
+
+  // 1. test cpu
+  pten::CPUContext dev_ctx_cpu;
+  auto cpu_sparse_out = SparseCsrToCoo<float>(dev_ctx_cpu, csr);
+  CheckResult<float, int64_t>(&dev_ctx_cpu,
+                              cpu_sparse_out,
+                              non_zero_data,
+                              indices_data,
+                              non_zero_num,
+                              alloc);
+
+// 2. test cuda
+#if defined(PADDLE_WITH_CUDA)
+  const auto cuda_alloc =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CUDAPlace());
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
+  pten::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
+  pten::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
+  pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
+  pten::Copy(*dev_ctx_cuda, crows, true, &d_crows);
+  pten::Copy(*dev_ctx_cuda, cols, true, &d_cols);
+  pten::Copy(*dev_ctx_cuda, values, true, &d_values);
+  pten::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
+  auto cuda_sparse_out = SparseCsrToCoo<float>(*dev_ctx_cuda, d_csr);
+  CheckResult<float, int64_t>(dev_ctx_cuda,
+                              cuda_sparse_out,
+                              non_zero_data,
+                              indices_data,
+                              non_zero_num,
+                              alloc);
 #endif
 }
 
