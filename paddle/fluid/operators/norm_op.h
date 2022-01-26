@@ -15,22 +15,10 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/norm_kernel.h"
 
 namespace paddle {
 namespace operators {
-
-inline void GetDims(const framework::DDim& dim, int axis, int* pre, int* n,
-                    int* post) {
-  *pre = 1;
-  *post = 1;
-  *n = dim[axis];
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= dim[i];
-  }
-  for (int i = axis + 1; i < dim.size(); ++i) {
-    (*post) *= dim[i];
-  }
-}
 
 template <typename DeviceContext, typename T>
 class NormKernel : public framework::OpKernel<T> {
@@ -39,52 +27,11 @@ class NormKernel : public framework::OpKernel<T> {
     auto* in_x = ctx.Input<framework::Tensor>("X");
     auto* out_y = ctx.Output<framework::Tensor>("Out");
 
-    auto xdim = in_x->dims();
-    T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
-    int axis = ctx.Attr<int>("axis");
-    if (axis < 0) axis = xdim.size() + axis;
-    int pre, n, post;
-    GetDims(xdim, axis, &pre, &n, &post);
-
-    bool is_test = ctx.Attr<bool>("is_test");
-
-    framework::Tensor* out_norm;
-    framework::Tensor out_norm_tmp;
-    if (is_test) {
-      auto out_dim = in_x->dims();
-      out_dim[axis] = 1;
-      out_norm = &out_norm_tmp;
-      out_norm->Resize(out_dim);
-    } else {
-      out_norm = ctx.Output<framework::Tensor>("Norm");
-    }
-
-    out_y->mutable_data<T>(ctx.GetPlace());
-    out_norm->mutable_data<T>(ctx.GetPlace());
-
-    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
-
-    Eigen::DSizes<int, 3> shape(pre, n, post);
-    Eigen::DSizes<int, 2> norm_shape(pre, post);
-
-    auto x_e = framework::EigenVector<T>::Flatten(*in_x);
-    auto y_e = framework::EigenVector<T>::Flatten(*out_y);
-    auto norm_e = framework::EigenVector<T>::Flatten(*out_norm);
-    auto x = x_e.reshape(shape);
-    auto y = y_e.reshape(shape);
-    auto norm = norm_e.reshape(norm_shape);
-
-    Eigen::DSizes<int, 1> rdim(1);
-    // y = x / sqrt((sum(x * x) + epsilon))
-    // norm = sqrt(sum(x * x) + epsilon)
-    auto x2 = x * x;
-    auto sum = x2.sum(rdim) + eps;
-    norm.device(*place) = sum.sqrt();
-
-    // y = x / norm
-    Eigen::DSizes<int, 3> rshape(pre, 1, post);
-    Eigen::DSizes<int, 3> bcast(1, n, 1);
-    y.device(*place) = x / norm.reshape(rshape).broadcast(bcast);
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    pten::NormKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(ctx),
+        *in_x, out_y);
   }
 };
 
