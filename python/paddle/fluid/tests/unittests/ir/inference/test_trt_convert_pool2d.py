@@ -156,7 +156,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
         self.add_skip_case(
             teller, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The results of some cases are Nan, but the results of TRT and GPU are the same."
+            "The results of some cases are Nan, but the results of TensorRT and GPU are the same."
         )
 
     def test(self):
