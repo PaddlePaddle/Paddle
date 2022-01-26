@@ -1077,7 +1077,7 @@ function collect_failed_tests() {
 
 # getting qucik disable ut list 
 function get_quickly_disable_ut() {
-    disable_ut_quicklydisable_ut_quickly='disable_ut'
+    disable_ut_quickly='disable_ut'
 }
 
 function card_test() {

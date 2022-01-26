@@ -28,7 +28,7 @@ else
     echo "========================================="
 fi
 
-disable_ut_quicklydisable_ut_quickly='disable_ut'
+disable_ut_quickly='disable_ut'
 
 # check added ut
 
