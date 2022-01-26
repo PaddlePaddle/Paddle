@@ -129,8 +129,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
   }
 }
 
-paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod) {
-  paddle::framework::LoD out;
+pten::LoD TransToFluidLoD(const pten::LoD& lod) {
+  pten::LoD out;
   out.reserve(lod.size());
 
   for (auto& elem : lod) {
@@ -139,7 +139,7 @@ paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod) {
   return out;
 }
 
-pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod) {
+pten::LoD TransToPtenLoD(const pten::LoD& lod) {
   pten::LoD out;
   out.reserve(lod.size());
 

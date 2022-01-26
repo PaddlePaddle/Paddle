@@ -77,7 +77,7 @@ Tensor::Tensor(const PlaceType &place)
           std::move(pten::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          framework::make_ddim({}),
+                                          pten::framework::make_ddim({}),
                                           pten::DataLayout::NCHW))))),
       place_{place} {}
 
@@ -86,7 +86,7 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
           std::move(pten::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          framework::make_ddim(shape),
+                                          pten::framework::make_ddim(shape),
                                           pten::DataLayout::NCHW))))),
       place_{place} {}
 
@@ -113,7 +113,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
     std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
-        pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
+        pten::DenseTensorMeta(dtype(), pten::framework::make_ddim(shape)));
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));

@@ -62,7 +62,7 @@ class Storage : public intrusive_ref_counter<Storage> {
   virtual std::shared_ptr<pten::Allocation>&& move_data_shared() = 0;
 
   virtual void ReallocShared(size_t n) {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "ReallocShared has not been overrided by the current Storage"));
   }
   /* --------- shared_ptr<Allocation> -------- */

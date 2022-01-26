@@ -26,9 +26,7 @@
 
 namespace pten {
 
-using DeviceContext = paddle::platform::DeviceContext;
-using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
+using DeviceContext = pten::DeviceContext;
 
 /**
  * Note: KernelContext doesn't manage the life if DeviceContext and Tensor

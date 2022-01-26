@@ -569,13 +569,7 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/include')) +  # pten api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/common')) +  # pten common headers
     # pten level api headers (low level api)
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten')) +  # pten extension header
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/backends', recursive=True)) +  # pten backend headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/core')) +  # pten core headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/core/utils')) +  # pten core headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/include')) +  # pten core headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/infermeta')) +  # pten core headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/kernels')) + # pten core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/core', recursive=True)) +  # pten core headers
     # utila api headers
     ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
 

@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <cstdint>
 #include <functional>
+#include <memory>
+
 #include "paddle/pten/common/place.h"
 
 namespace pten {

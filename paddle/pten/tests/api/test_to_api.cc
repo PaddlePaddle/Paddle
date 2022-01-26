@@ -33,7 +33,7 @@ paddle::experimental::Tensor CreateInputTensor() {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT64,
-                            framework::make_ddim({3, 4}),
+                            pten::framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<int64_t>(paddle::platform::CPUPlace());
