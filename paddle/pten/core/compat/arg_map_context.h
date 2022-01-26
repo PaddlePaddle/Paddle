@@ -34,6 +34,11 @@ struct KernelSignature {
   KernelArgsTuple args;
 
   KernelSignature() = default;
+  KernelSignature(const KernelSignature&) = default;
+  KernelSignature(KernelSignature&&) = default;
+  KernelSignature& operator=(const KernelSignature&) = default;
+  KernelSignature& operator=(KernelSignature&&) = default;
+
   KernelSignature(std::string&& kernel_name,
                   paddle::SmallVector<std::string>&& inputs,
                   paddle::SmallVector<std::string>&& attrs,
