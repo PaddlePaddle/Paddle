@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/graph_sample_neighbors_op.h"
+#include "paddle/fluid/operators/graph_khop_sampler_op.h"
 
 namespace paddle {
 namespace operators {
@@ -32,29 +32,28 @@ void InputShapeCheck(const framework::DDim& dims, std::string tensor_name) {
   }
 }
 
-class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
+class GraphKhopSamplerOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Src"), "Input", "Src",
-                   "GraphSampleNeighbors");
-    OP_INOUT_CHECK(ctx->HasInput("Dst_Count"), "Input", "Dst_Count",
-                   "GraphSampleNeighbors");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphSampleNeighbors");
+    OP_INOUT_CHECK(ctx->HasInput("Row"), "Input", "Row", "GraphKhopSampler");
+    OP_INOUT_CHECK(ctx->HasInput("Col_Ptr"), "Input", "Col_Ptr",
+                   "GraphKhopSampler");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphKhopSampler");
     OP_INOUT_CHECK(ctx->HasOutput("Out_Src"), "Output", "Out_Src",
-                   "GraphSampleNeighbors");
+                   "GraphKhopSampler");
     OP_INOUT_CHECK(ctx->HasOutput("Out_Dst"), "Output", "Out_Dst",
-                   "GraphSampleNeighbors");
+                   "GraphKhopSampler");
     OP_INOUT_CHECK(ctx->HasOutput("Sample_Index"), "Output", "Sample_Index",
-                   "GraphSampleNeighbors");
+                   "GraphKhopSampler");
     OP_INOUT_CHECK(ctx->HasOutput("Reindex_X"), "Output", "Reindex_X",
-                   "GraphSampleNeighbors");
+                   "GraphKhopSampler");
 
     // Restrict all the inputs as 1-dim tensor, or 2-dim tensor with the second
     // dim as 1.
-    InputShapeCheck(ctx->GetInputDim("Src"), "Src");
-    InputShapeCheck(ctx->GetInputDim("Dst_Count"), "Dst_Count");
+    InputShapeCheck(ctx->GetInputDim("Row"), "Row");
+    InputShapeCheck(ctx->GetInputDim("Col_Ptr"), "Col_Ptr");
     InputShapeCheck(ctx->GetInputDim("X"), "X");
 
     const std::vector<int>& sample_sizes =
@@ -66,11 +65,11 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
             "But received 'sample_sizes' is empty."));
     const bool& return_eids = ctx->Attrs().Get<bool>("return_eids");
     if (return_eids) {
-      OP_INOUT_CHECK(ctx->HasInput("Src_Eids"), "Input", "Src_Eids",
-                     "GraphSampleNeighbors");
-      InputShapeCheck(ctx->GetInputDim("Src_Eids"), "Src_Eids");
+      OP_INOUT_CHECK(ctx->HasInput("Eids"), "Input", "Eids",
+                     "GraphKhopSampler");
+      InputShapeCheck(ctx->GetInputDim("Eids"), "Eids");
       OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
-                     "GraphSampleNeighbors");
+                     "GraphKhopSampler");
       ctx->SetOutputDim("Out_Eids", {-1});
     }
 
@@ -86,17 +85,17 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Src"),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
         ctx.device_context());
   }
 };
 
-class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
+class GraphKhopSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Src", "The src index tensor of graph edges after sorted by dst.");
-    AddInput("Src_Eids", "The eids of the input graph edges.").AsDispensable();
-    AddInput("Dst_Count",
+    AddInput("Row", "The src index tensor of graph edges after sorted by dst.");
+    AddInput("Eids", "The eids of the input graph edges.").AsDispensable();
+    AddInput("Col_Ptr",
              "The cumulative sum of the number of src neighbors of dst index, "
              "starts from 0, end with number of edges");
     AddInput("X", "The input center nodes index tensor.");
@@ -127,8 +126,8 @@ Graph Learning Sampling Neighbors operator, for graphsage sampling method.
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(graph_sample_neighbors, ops::GraphSampleNeighborsOP,
-                  ops::GraphSampleNeighborsOpMaker);
-REGISTER_OP_CPU_KERNEL(graph_sample_neighbors,
-                       ops::GraphSampleNeighborsOpKernel<CPU, int32_t>,
-                       ops::GraphSampleNeighborsOpKernel<CPU, int64_t>);
+REGISTER_OPERATOR(graph_khop_sampler, ops::GraphKhopSamplerOP,
+                  ops::GraphKhopSamplerOpMaker);
+REGISTER_OP_CPU_KERNEL(graph_khop_sampler,
+                       ops::GraphKhopSamplerOpKernel<CPU, int32_t>,
+                       ops::GraphKhopSamplerOpKernel<CPU, int64_t>);

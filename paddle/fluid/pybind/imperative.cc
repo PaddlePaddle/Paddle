@@ -2602,7 +2602,33 @@ void BindImperative(py::module *m_ptr) {
           return new_tensor;
         },
         py::arg("obj"), py::arg("device_id") = 0,
-        py::return_value_policy::reference, R"DOC()DOC");
+        py::return_value_policy::reference, R"DOC(
+  Returns tensor with the UVA(unified virtual addressing) created from numpy array.
+
+  Args:
+      obj(numpy.ndarray): The input numpy array, supporting bool, float16, float32,
+                          float64, int8, int16, int32, int64 dtype currently.
+
+      device_id(int, optional): The destination GPU device id.
+                                Default: 0, means current device.
+
+  Returns:
+
+      new_tensor(paddle.Tensor): Return the UVA Tensor with the sample dtype and 
+                                 shape with the input numpy array.
+
+  Examples:
+      .. code-block:: python
+
+        # required: gpu
+        import numpy as np
+        import paddle
+        
+        data = np.random.randint(10, size=(3, 4))
+        tensor = paddle.fluid.core.to_uva_tensor(data)
+        print(tensor)
+)DOC");
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA)

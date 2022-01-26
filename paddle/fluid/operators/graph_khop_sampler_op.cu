@@ -38,8 +38,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/graph_sample_neighbors_imp.h"
-#include "paddle/fluid/operators/graph_sample_neighbors_op.h"
+#include "paddle/fluid/operators/graph_khop_sampler_imp.h"
+#include "paddle/fluid/operators/graph_khop_sampler_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -198,7 +198,7 @@ void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
         total_sample_num, 0,
         platform::errors::InvalidArgument(
             "The input nodes `X` should have at least one neighbor, "
-            "but none of the input nodes have neighbors"));
+            "but none of the input nodes have neighbors."));
   }
   outputs->resize(total_sample_num);
   if (return_eids) {
@@ -357,12 +357,12 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
+class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get sample neighbors operators' inputs.
-    auto* src = ctx.Input<Tensor>("Src");
-    auto* dst_count = ctx.Input<Tensor>("Dst_Count");
+    auto* src = ctx.Input<Tensor>("Row");
+    auto* dst_count = ctx.Input<Tensor>("Col_Ptr");
     auto* vertices = ctx.Input<Tensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
@@ -392,7 +392,7 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
     bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
-      auto* src_eids = ctx.Input<Tensor>("Src_Eids");
+      auto* src_eids = ctx.Input<Tensor>("Eids");
       const T* src_eids_data = src_eids->data<T>();
       for (int i = 0; i < num_layers; i++) {
         if (i == num_layers - 1) {
@@ -561,6 +561,6 @@ class GraphSampleNeighborsOpCUDAKernel : public framework::OpKernel<T> {
 using CUDA = paddle::platform::CUDADeviceContext;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(graph_sample_neighbors,
-                        ops::GraphSampleNeighborsOpCUDAKernel<CUDA, int32_t>,
-                        ops::GraphSampleNeighborsOpCUDAKernel<CUDA, int64_t>);
+REGISTER_OP_CUDA_KERNEL(graph_khop_sampler,
+                        ops::GraphKhopSamplerOpCUDAKernel<CUDA, int32_t>,
+                        ops::GraphKhopSamplerOpCUDAKernel<CUDA, int64_t>);

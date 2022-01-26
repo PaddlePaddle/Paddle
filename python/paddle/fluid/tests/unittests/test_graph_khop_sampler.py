@@ -18,14 +18,14 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestGraphSampleNeighbors(unittest.TestCase):
+class TestGraphKhopSampler(unittest.TestCase):
     def setUp(self):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
         edges = np.unique(edges, axis=0)
         edges_id = np.arange(0, len(edges))
         sorted_edges = edges[np.argsort(edges[:, 1])]
-        sorted_edges_id = edges_id[np.argsort(edges[:, 1])]
+        sorted_eid = edges_id[np.argsort(edges[:, 1])]
 
         # Calculate dst index cumsum counts.
         dst_count = np.zeros(num_nodes)
@@ -35,12 +35,12 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             dst_count[dst] = np.sum(true_index)
             dst_src_dict[dst] = sorted_edges[:, 0][true_index]
         dst_count = dst_count.astype("int64")
-        dst_cumsum_counts = np.cumsum(dst_count)
-        dst_cumsum_counts = np.insert(dst_cumsum_counts, 0, 0)
+        colptr = np.cumsum(dst_count)
+        colptr = np.insert(colptr, 0, 0)
 
-        self.sorted_src = sorted_edges[:, 0].astype("int64")
-        self.dst_cumsum_counts = dst_cumsum_counts.astype("int64")
-        self.sorted_edges_id = sorted_edges_id.astype("int64")
+        self.row = sorted_edges[:, 0].astype("int64")
+        self.colptr = colptr.astype("int64")
+        self.sorted_eid = sorted_eid.astype("int64")
         self.nodes = np.unique(np.random.randint(
             num_nodes, size=5)).astype("int64")
         self.sample_sizes = [5, 5]
@@ -48,12 +48,12 @@ class TestGraphSampleNeighbors(unittest.TestCase):
 
     def test_sample_result(self):
         paddle.disable_static()
-        sorted_src = paddle.to_tensor(self.sorted_src)
-        dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
+        row = paddle.to_tensor(self.row)
+        colptr = paddle.to_tensor(self.colptr)
         nodes = paddle.to_tensor(self.nodes)
 
         edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
+            paddle.incubate.graph_khop_sampler(row, colptr,
                                                    nodes, self.sample_sizes,
                                                    return_eids=False)
         # Reindex edge_src and edge_dst to original index.
@@ -82,17 +82,17 @@ class TestGraphSampleNeighbors(unittest.TestCase):
     def test_uva_sample_result(self):
         paddle.disable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
-            sorted_src = paddle.fluid.core.to_uva_tensor(
-                self.sorted_src.astype(self.sorted_src.dtype))
-            sorted_edges_id = paddle.fluid.core.to_uva_tensor(
-                self.sorted_edges_id.astype(self.sorted_edges_id.dtype))
-            dst_cumsum_counts = paddle.to_tensor(self.dst_cumsum_counts)
+            row = paddle.fluid.core.to_uva_tensor(
+                self.row.astype(self.row.dtype))
+            sorted_eid = paddle.fluid.core.to_uva_tensor(
+                self.sorted_eid.astype(self.sorted_eid.dtype))
+            colptr = paddle.to_tensor(self.colptr)
             nodes = paddle.to_tensor(self.nodes)
 
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
+                paddle.incubate.graph_khop_sampler(row, colptr,
                                                        nodes, self.sample_sizes,
-                                                       sorted_eids=sorted_edges_id,
+                                                       sorted_eids=sorted_eid,
                                                        return_eids=True)
             edge_src = edge_src.reshape([-1])
             edge_dst = edge_dst.reshape([-1])
@@ -117,30 +117,26 @@ class TestGraphSampleNeighbors(unittest.TestCase):
     def test_sample_result_static_with_eids(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            sorted_src = paddle.static.data(
-                name="src",
-                shape=self.sorted_src.shape,
-                dtype=self.sorted_src.dtype)
+            row = paddle.static.data(
+                name="row", shape=self.row.shape, dtype=self.row.dtype)
             sorted_eids = paddle.static.data(
                 name="eids",
-                shape=self.sorted_edges_id.shape,
-                dtype=self.sorted_edges_id.dtype)
-            dst_cumsum_counts = paddle.static.data(
-                name="dst",
-                shape=self.dst_cumsum_counts.shape,
-                dtype=self.dst_cumsum_counts.dtype)
+                shape=self.sorted_eid.shape,
+                dtype=self.sorted_eid.dtype)
+            colptr = paddle.static.data(
+                name="colptr", shape=self.colptr.shape, dtype=self.colptr.dtype)
             nodes = paddle.static.data(
                 name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype)
 
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
+                paddle.incubate.graph_khop_sampler(row, colptr,
                                                        nodes, self.sample_sizes,
                                                        sorted_eids, True)
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={
-                'src': self.sorted_src,
-                'eids': self.sorted_edges_id,
-                'dst': self.dst_cumsum_counts,
+                'row': self.row,
+                'eids': self.sorted_eid,
+                'colptr': self.colptr,
                 'nodes': self.nodes
             },
                           fetch_list=[edge_src, edge_dst, sample_index])
@@ -169,23 +165,19 @@ class TestGraphSampleNeighbors(unittest.TestCase):
     def test_sample_result_static_without_eids(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            sorted_src = paddle.static.data(
-                name="src",
-                shape=self.sorted_src.shape,
-                dtype=self.sorted_src.dtype)
-            dst_cumsum_counts = paddle.static.data(
-                name="dst",
-                shape=self.dst_cumsum_counts.shape,
-                dtype=self.dst_cumsum_counts.dtype)
+            row = paddle.static.data(
+                name="row", shape=self.row.shape, dtype=self.row.dtype)
+            colptr = paddle.static.data(
+                name="colptr", shape=self.colptr.shape, dtype=self.colptr.dtype)
             nodes = paddle.static.data(
                 name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype)
             edge_src, edge_dst, sample_index, reindex_nodes = \
-                paddle.incubate.graph_sample_neighbors(sorted_src, dst_cumsum_counts,
+                paddle.incubate.graph_khop_sampler(row, colptr,
                                                        nodes, self.sample_sizes)
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={
-                'src': self.sorted_src,
-                'dst': self.dst_cumsum_counts,
+                'row': self.row,
+                'colptr': self.colptr,
                 'nodes': self.nodes
             },
                           fetch_list=[edge_src, edge_dst, sample_index])

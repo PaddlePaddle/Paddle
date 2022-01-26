@@ -106,7 +106,7 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
                       platform::errors::InvalidArgument(
                           "The input nodes `X` should have at "
                           "least one neighbors, but none of the "
-                          "input nodes have neighbors"));
+                          "input nodes have neighbors."));
   }
   output_counts->resize(bs);
   outputs->resize(total_neighbors);
@@ -177,12 +177,12 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
 }
 
 template <typename DeviceContext, typename T>
-class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
+class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get sample neighbors operators' inputs.
-    auto* src = ctx.Input<Tensor>("Src");
-    auto* dst_count = ctx.Input<Tensor>("Dst_Count");
+    auto* src = ctx.Input<Tensor>("Row");
+    auto* dst_count = ctx.Input<Tensor>("Col_Ptr");
     auto* vertices = ctx.Input<Tensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
@@ -198,7 +198,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     auto unique_inputs_end = std::unique(inputs.begin(), inputs.end());
     inputs.resize(std::distance(inputs.begin(), unique_inputs_end));
 
-    // 3. Sample neighbors. We should distinguish w/o "Src_Eids".
+    // 3. Sample neighbors. We should distinguish w/o "Eids".
     std::vector<T> outputs;
     std::vector<T> output_counts;
     std::vector<T> outputs_eids;
@@ -212,7 +212,7 @@ class GraphSampleNeighborsOpKernel : public framework::OpKernel<T> {
     bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
-      auto* src_eids = ctx.Input<Tensor>("Src_Eids");
+      auto* src_eids = ctx.Input<Tensor>("Eids");
       const T* src_eids_data = src_eids->data<T>();
       for (size_t i = 0; i < num_layers; i++) {
         if (i == num_layers - 1) {
