@@ -15,7 +15,6 @@
 import os
 import sys
 import site
-import subprocess
 import unittest
 import numpy as np
 
@@ -29,7 +28,7 @@ class TestCustomKernelDot(unittest.TestCase):
         # --inplace to place output so file to current dir
         cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
             cur_dir, sys.executable)
-        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+        os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process

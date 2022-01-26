@@ -15,7 +15,6 @@
 import os
 import sys
 import site
-import subprocess
 import unittest
 import numpy as np
 
@@ -28,7 +27,7 @@ class TestCustomKernelLoad(unittest.TestCase):
         # --inplace to place output so file to current dir
         cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
             cur_dir, sys.executable)
-        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+        os.system(cmd)
 
         # get paddle lib path and place so
         paddle_lib_path = ''
@@ -50,7 +49,7 @@ class TestCustomKernelLoad(unittest.TestCase):
         # copy so to defalut path
         cmd = 'mkdir -p {} && cp ./*.so {}'.format(self.default_path,
                                                    self.default_path)
-        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+        os.system(cmd)  # wait
 
     def test_custom_kernel_dot_load(self):
         # test dot load
@@ -71,7 +70,7 @@ class TestCustomKernelLoad(unittest.TestCase):
 
     def tearDown(self):
         cmd = 'rm -rf {}'.format(self.default_path)
-        subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
+        os.system(cmd)
 
 
 if __name__ == '__main__':
