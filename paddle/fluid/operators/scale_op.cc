@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/scale_op.h"
 #include <string>
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/ops/compat/scale_args_fn.h"
 
 namespace paddle {
 namespace framework {
