@@ -33,7 +33,7 @@ class AddLrDecayTablePass(PassBase):
         return True
 
     def _add_tensor_table(self,
-                          context,
+                          attrs,
                           feed_var_name,
                           fetch_var_name="",
                           startup_program=None,
@@ -47,7 +47,7 @@ class AddLrDecayTablePass(PassBase):
         tensor_table_dict[feed_var_name]["main_program"] = main_program
         tensor_table_dict[feed_var_name][
             "tensor_table_class"] = tensor_table_class
-        context['tensor_table'] = tensor_table_dict
+        attrs['tensor_table'] = tensor_table_dict
 
     def _get_lr_sheduler_program(self, lr_sheduler, lr_decay_steps):
         schedler_decay = [
@@ -106,18 +106,18 @@ class AddLrDecayTablePass(PassBase):
 
         return decay_main_program, decay_startup_program, lr_name
 
-    def _apply_single_impl(self, main_program, startup_program, context):
-        if hasattr(context['origin_main_program'], 'lr_sheduler') == False:
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
+        if hasattr(attrs['origin_main_program'], 'lr_sheduler') == False:
             return
 
-        assert isinstance(context['origin_main_program'].lr_sheduler,
+        assert isinstance(attrs['origin_main_program'].lr_sheduler,
                           LRScheduler), "must be LRScheduler"
 
-        ops = get_optimize_ops(context['origin_main_program'])
+        ops = get_optimize_ops(attrs['origin_main_program'])
         lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
-            context['origin_main_program'].lr_sheduler,
-            context['lr_decay_steps'])
-        _add_tensor_table(context, "@LR_DECAY_COUNTER@", lr_name,
+            attrs['origin_main_program'].lr_sheduler, attrs['lr_decay_steps'])
+        _add_tensor_table(attrs, "@LR_DECAY_COUNTER@", lr_name,
                           lr_decay_startup_program, lr_decay_main_program,
                           "GlobalStepTable")
         return
@@ -134,8 +134,9 @@ class AddListenAndServPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
-        attrs = {
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
+        opt = {
             "grad_to_block_id": None,
             "sparse_grad_to_param": None,
             "lr_decay_block_id": None,
@@ -143,18 +144,18 @@ class AddListenAndServPass(PassBase):
             "sparse_optimize_blocks": None,
 
             # runtime attribute
-            "endpoint": get_ps_endpoint(context['role_maker']),
-            "pserver_id": get_role_id(context['role_maker']),
-            "Fanin": get_trainers(context['role_maker']),
-            "distributed_mode": context['ps_mode'],
+            "endpoint": get_ps_endpoint(attrs['role_maker']),
+            "pserver_id": get_role_id(attrs['role_maker']),
+            "Fanin": get_trainers(attrs['role_maker']),
+            "distributed_mode": attrs['ps_mode'],
             "rpc_get_thread_num": -1,
             "rpc_send_thread_num": -1,
             "rpc_prefetch_thread_num": -1
         }
         main_program.global_block().append_op(
-            type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
+            type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=opt)
 
-        context['cloned_main'] = main_program
+        attrs['cloned_main'] = main_program
 
 
 @register_pass("add_rpc_global_flags_pass")
@@ -168,7 +169,7 @@ class AddRpcGlobalFlagsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         pass
 
 
@@ -183,7 +184,7 @@ class AddOptimizerPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         pass
 
 
@@ -198,7 +199,7 @@ class AddGeoOptimizerPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         pass
 
 
@@ -213,7 +214,7 @@ class BuildPserverStartupProgramPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         pass
 
 
@@ -228,5 +229,5 @@ class DeleteUnusedInStartupPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         pass

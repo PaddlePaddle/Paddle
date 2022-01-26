@@ -17,6 +17,8 @@ from .fuse_all_reduce import *
 from .auto_parallel_gradient_merge import *
 from .auto_parallel_sharding import *
 from .auto_parallel_amp import *
+from .ps_trainer_pass import *
+from .ps_server_pass import *
 from .cpp_pass import *
 
 __all__ = [

@@ -27,14 +27,15 @@ class PsProgramBuilderFactory(object):
     def __init__(self):
         pass
 
-    def _create_ps_program_builder(self, context):
-        if context['mode'] == DistributedMode.GEO:
-            return globals()['GeoPsProgramBuilder'](context)
-        elif context['use_ps_gpu']:
-            return globals()['GpuPsProgramBuilder'](context)
-        elif context['is_heter_ps_mode']:
-            return globals()['HeterAsyncPsProgramBuilder'](context)
-        elif context['is_fl_ps_mode'] == DistributedMode.FL:
-            return globals()['FlPsProgramBuilder'](context)
+    def _create_ps_program_builder(self, pass_ctx):
+        attrs = pass_ctx._attrs
+        if attrs['mode'] == DistributedMode.GEO:
+            return globals()['GeoPsProgramBuilder'](pass_ctx)
+        elif attrs['use_ps_gpu']:
+            return globals()['GpuPsProgramBuilder'](pass_ctx)
+        elif attrs['is_heter_ps_mode']:
+            return globals()['HeterAsyncPsProgramBuilder'](pass_ctx)
+        elif attrs['is_fl_ps_mode'] == DistributedMode.FL:
+            return globals()['FlPsProgramBuilder'](pass_ctx)
         else:
-            return globals()['CpuSyncPsProgramBuilder'](context)
+            return globals()['CpuSyncPsProgramBuilder'](pass_ctx)

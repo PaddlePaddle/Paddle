@@ -158,7 +158,7 @@ class YamlHelper(object):
         return _str
 
 
-def get_strategy(config):
+def get_user_defined_strategy(config):
     if not is_distributed_env():
         logger.warn(
             "Not Find Distributed env, Change To local train mode. If you want train with fleet, please use [fleetrun] command."
@@ -214,6 +214,31 @@ def get_strategy(config):
     print("table_config:", table_config)
     strategy.sparse_table_configs = table_config
     print("strategy table config:", strategy.sparse_table_configs)
+    a_sync_configs = strategy.a_sync_configs
+    a_sync_configs["launch_barrier"] = False
+    strategy.a_sync_configs = a_sync_configs
+    print("launch_barrier: ", strategy.a_sync_configs["launch_barrier"])
+
+    return strategy
+
+
+def get_distributed_strategy(user_defined_strategy):
+    from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
+    k_steps = user_defined_strategy.a_sync_configs["k_steps"]
+    strategy = None
+
+    if not user_defined_strategy.a_sync and k_steps == 0:
+        strategy = StrategyFactory.create_sync_strategy()
+
+    if user_defined_strategy.a_sync and k_steps == 0:
+        strategy = StrategyFactory.create_async_strategy()
+
+    if user_defined_strategy.a_sync and k_steps > 0:
+        strategy = StrategyFactory.create_geo_strategy(k_steps)
+
+    if not strategy:
+        raise ValueError("k_steps must be invalid value, please check")
 
     return strategy
 
@@ -299,7 +324,8 @@ class DnnTrainer(object):
         logger.info("cpu_num: {}".format(os.getenv("CPU_NUM")))
         self.input_data = self.model.create_feeds()
         self.metrics = self.model.net(self.input_data)
-        strategy = get_strategy(self.config)
+        loss = self.model._cost
+        user_defined_strategy = get_user_defined_strategy(self.config)
         learning_rate = self.config.get(
             "hyper_parameters.optimizer.learning_rate")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
@@ -307,22 +333,28 @@ class DnnTrainer(object):
         if self.config['debug_new_minimize'] == 1:
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(self.model._cost, None,
-                                         inner_optimizer, strategy)
-            ps_optimizer.minimize_impl(self.model._cost)
+            ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
+                                         user_defined_strategy)
+            ps_optimizer.minimize_impl(loss)
         else:
-            import paddle.distributed.fleet as fleet
-            optimizer = fleet.distributed_optimizer(inner_optimizer, strategy)
-            optimizer.minimize(self.model._cost)
+            fleet_obj = fleet.distributed_optimizer(
+                inner_optimizer, user_defined_strategy)  ## Fleet 对象
+            fleet_obj.minimize(loss)
 
         if fleet.is_server():
-            _main_file = "run_minimize" + "_debug_new_minimize: " + str(
-                self.config['debug_new_minimize']) + "_server_main.prototxt"
-            debug_program(_main_file, self.model._cost.block.program, 0)
+            _main_file = '/' + 'run_minimize' + '_debug_minimize:_' + str(
+                self.config['debug_new_minimize']) + '_server_main.prototxt'
+            debug_program(_main_file, loss.block.program, 0)
         elif fleet.is_worker():
-            _main_file = "run_minimize" + "_debug_new_minimize: " + str(
-                self.config['debug_new_minimize']) + "_worker_main.prototxt"
-            debug_program(_main_file, self.model._cost.block.program, 1)
+            _main_file = '/' + 'run_minimize' + '_debug_minimize:_' + str(
+                self.config['debug_new_minimize']) + '_worker_main.prototxt'
+            debug_program(_main_file, loss.block.program, 1)
+        '''
+        if fleet.is_server():
+            logger.info("Run Server Begin")
+            fleet.init_server()
+            fleet.run_server()
+        '''
 
     def run_single_pass(self):
         logger.info("entering run_single_pass")
@@ -331,7 +363,7 @@ class DnnTrainer(object):
         input_data = self.model.create_feeds()
         metrics = self.model.net(input_data)
         loss = self.model._cost
-        strategy = get_strategy(config)
+        user_defined_strategy = get_user_defined_strategy(config)
         learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
         startup_program = paddle.static.default_startup_program()
@@ -339,34 +371,37 @@ class DnnTrainer(object):
         if self.config['debug_new_pass'] == 1:
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(loss, startup_program, inner_optimizer,
-                                         strategy)
+            ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
+                                         user_defined_strategy)
             ps_optimizer._init_ps_pass_context(loss, startup_program)
-            _main = ps_optimizer.context['cloned_main']
+            _main = ps_optimizer.attrs['cloned_main']
 
             append_send_ops_pass = new_pass(config["applied_pass_name"],
-                                            ps_optimizer.context)
-            append_send_ops_pass.apply([_main], [], ps_optimizer.context)
+                                            ps_optimizer.attrs)
+            append_send_ops_pass.apply([_main], [None], ps_optimizer.pass_ctx)
 
         else:
             from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
+            dist_strategy = get_distributed_strategy(user_defined_strategy)
             compiled_config = public.CompileTimeStrategy(
-                loss.block.program, startup_program, strategy, self.role_maker)
-            compiled_config.strategy = strategy
+                loss.block.program, startup_program, dist_strategy,
+                self.role_maker)
+
             _main = compiled_config.origin_main_program.clone()
             _startup = compiled_config.origin_startup_program.clone()
             from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
             _main = worker.append_send_ops_pass(_main, compiled_config)
 
         if fleet.is_server():
-            _main_file = str(config[
-                "applied_pass_name"]) + "debug_new_pass: " + str(self.config[
-                    'debug_new_pass']) + "_server_main.prototxt"
+            _main_file = '/' + str(config[
+                "applied_pass_name"]) + '_debug_pass:_' + str(self.config[
+                    'debug_new_pass']) + '_server_main.prototxt'
+            debug_program(_main_file, _main, 0)
         elif fleet.is_worker():
-            _main_file = str(config[
-                "applied_pass_name"]) + "debug_new_pass: " + str(self.config[
-                    'debug_new_pass']) + "_worker_main.prototxt"
-        debug_program(_main_file, _main)
+            _main_file = '/' + str(config[
+                "applied_pass_name"]) + '_debug_pass:_' + str(self.config[
+                    'debug_new_pass']) + '_worker_main.prototxt'
+            debug_program(_main_file, _main, 1)
 
 
 if __name__ == "__main__":

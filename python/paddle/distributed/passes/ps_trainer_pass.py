@@ -90,12 +90,13 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
                 RPC_OP_ROLE_ATTR_NAME: op_role_attr_name
             })
 
-    def _apply_single_impl(self, main_program, startup_program, context):
-        ps_mode = context['ps_mode']
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
+        ps_mode = attrs['ps_mode']
         if ps_mode == DistributedMode.GEO:
-            send_ctx = get_geo_trainer_send_context(context)  # geo 模式
+            send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
         else:
-            send_ctx = get_the_one_send_context(context)  # async、sync 等各种模式
+            send_ctx = get_the_one_send_context(attrs)  # async、sync 等各种模式
         dummys = []
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
@@ -453,14 +454,15 @@ class DistributedOpsPass(PassBase):
 
         return pull_sparse_ops, push_sparse_ops
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
         pull_sparse_ops, push_sparse_ops = self._get_pull_sparse_ops(program)
         send_ctx = get_the_one_send_context(
-            context, split_dense_table=context['is_heter_ps_mode'])
+            attrs, split_dense_table=attrs['is_heter_ps_mode'])
         self._pull_sparse_fuse(main_program, pull_sparse_ops,
-                               context['use_ps_gpu'], send_ctx)
+                               attrs['use_ps_gpu'], send_ctx)
         self._push_sparse_fuse(main_program, push_sparse_ops,
-                               context['use_ps_gpu'])
+                               attrs['use_ps_gpu'])
 
 
 @register_pass("delete_optimizer_pass")
@@ -496,9 +498,9 @@ class DeleteOptimizesPass(PassBase):
             if _program.global_block().has_var(var):
                 _program.global_block()._remove_var(var)
 
-    def _add_lr_var(self, main_program, context):
+    def _add_lr_var(self, main_program, attrs):
         # Todo: hard code for pe
-        lr_var = context['origin_main_program'].global_block().vars[
+        lr_var = attrs['origin_main_program'].global_block().vars[
             "learning_rate_0"]
         main_program.global_block().create_var(
             name=lr_var.name,
@@ -508,14 +510,15 @@ class DeleteOptimizesPass(PassBase):
             lod_level=lr_var.lod_level,
             persistable=True)
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
         optimizer_ops = get_optimize_ops(main_program)
         lr_ops = get_lr_ops(main_program)
         optimizer_ops.extend(lr_ops)
         self._delete_optimizer_op_and_vars(main_program, optimizer_ops)
 
-        if hasattr(context['origin_main_program'], 'lr_sheduler'):
-            self._add_lr_var(main_program, context)
+        if hasattr(attrs['origin_main_program'], 'lr_sheduler'):
+            self._add_lr_var(main_program, attrs)
 
 
 @register_pass("delete_extra_optimizer_pass")
@@ -529,7 +532,8 @@ class DeleteExtraOptimizerPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
         optimize_vars = []
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
@@ -570,10 +574,9 @@ class FakeInitOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _get_sparse_table_names(self, context):
-        dist_varnames = get_sparse_tablenames(context['origin_program'], True)
-        sparse_varnames = get_sparse_tablenames(context['origin_program'],
-                                                False)
+    def _get_sparse_table_names(self, attrs):
+        dist_varnames = get_sparse_tablenames(attrs['origin_program'], True)
+        sparse_varnames = get_sparse_tablenames(attrs['origin_program'], False)
         return list(set(dist_varnames + sparse_varnames))
 
     def _fake_init_sparsetable(self, program, sparse_table_names):
@@ -596,8 +599,9 @@ class FakeInitOpsPass(PassBase):
                 attrs={"shape": table_init_op.attr('shape')})
             delete_ops(program.global_block(), table_param_init_op)
 
-    def _apply_single_impl(self, main_program, startup_program, context):
-        sparse_tables = self._get_sparse_table_names(context)
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
+        sparse_tables = self._get_sparse_table_names(attrs)
         self._fake_init_sparsetable(startup_program, sparse_tables)
 
 
@@ -684,7 +688,8 @@ class PsGpuPass(PassBase):
         for name in remove_var:
             program.global_block()._remove_var(name)
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
         self._add_push_box_sparse_op(main_program)
         self._remove_optimizer_var(main_program)
         self._remove_lookup_table_grad_op_and_var(main_program)
@@ -701,7 +706,8 @@ class PsTranspilePass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
         t = SingleProcessMultiThread()
         env = get_dist_env()
         t.transpile(
@@ -724,7 +730,7 @@ class SplitHeterWorkerOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_heter_program(self, program, context, heter_program,
+    def _create_heter_program(self, program, attrs, heter_program,
                               program_block_ops_list, heter_ops,
                               block_var_detail):
         # This function mainly includes the following contents:
@@ -748,7 +754,7 @@ class SplitHeterWorkerOpsPass(PassBase):
         send_grad_var_list = []
 
         pre_block_idx = heter_program.num_blocks - 1
-        role_maker = context['role_maker']
+        role_maker = attrs['role_maker']
         current_device = role_maker._heter_device_type().lower()
         stage_id = int(role_maker._get_stage_id())
 
@@ -836,7 +842,7 @@ class SplitHeterWorkerOpsPass(PassBase):
             "endpoint": get_heter_worker_endpoint(role_maker),
             "fanin": len(get_previous_stage_trainers(role_maker)),
             "pserver_id": get_role_id(role_maker),
-            "distributed_mode": context['ps_mode'],
+            "distributed_mode": attrs['ps_mode'],
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
@@ -848,13 +854,14 @@ class SplitHeterWorkerOpsPass(PassBase):
             attrs=attrs)
         # TODO check heter program
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         """
         split heter worker program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
         3. create heter worker program, add listen&serv op
         """
+        attrs = pass_ctx._attrs
         default_deveice = "cpu"
         program, heter_ops, _, program_block_ops = find_heter_ops(
             main_program, default_deveice)
@@ -869,7 +876,7 @@ class SplitHeterWorkerOpsPass(PassBase):
         block_vars_detail = find_block_joints(program, program_block_ops,
                                               heter_ops)
         heter_program = framework.Program()
-        self._create_heter_program(program, context, heter_program,
+        self._create_heter_program(program, attrs, heter_program,
                                    program_block_ops, heter_ops,
                                    block_vars_detail)
         main_program = heter_program
@@ -886,7 +893,7 @@ class SplitTrainerOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_trainer_program(self, program, origin_program, context,
+    def _create_trainer_program(self, program, origin_program, attrs,
                                 program_block_ops_list, block_var_detail):
         # This function mainly includes the following contents:
         # 1. For every heter block in origin program
@@ -904,8 +911,8 @@ class SplitTrainerOpsPass(PassBase):
                 "forward"] + program_block_ops_list[heter_block_index][
                     "backward"]
             static_var += replace_ops_by_communicate_op(
-                program, context, heter_block_index, ops_list, block_var_detail)
-            remove_trainer_send_op(program, context, heter_block_index,
+                program, attrs, heter_block_index, ops_list, block_var_detail)
+            remove_trainer_send_op(program, attrs, heter_block_index,
                                    block_var_detail)
 
         optimizer_block = []
@@ -913,8 +920,8 @@ class SplitTrainerOpsPass(PassBase):
 
         bp_ops_list = program_block_ops_list[0]["backward"]
         delete_same_ops(program.global_block(), bp_ops_list)
-        delete_trainer_useless_var(context, program, static_var)
-        backward_block = create_backward_block(program, origin_program, context,
+        delete_trainer_useless_var(attrs, program, static_var)
+        backward_block = create_backward_block(program, origin_program, attrs,
                                                bp_ops_list, block_var_detail)
 
         bp_entrance_vars = block_var_detail[0]["backward"]["entrance"]
@@ -924,7 +931,7 @@ class SplitTrainerOpsPass(PassBase):
         grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":"
                                 + str(backward_block.idx))
         optimizer_block.append(backward_block)
-        role_maker = context['role_maker']
+        role_maker = attrs['role_maker']
         attrs = {
             "message_to_block_id": grad_to_block_id,
             "optimize_blocks": optimizer_block,
@@ -933,7 +940,7 @@ class SplitTrainerOpsPass(PassBase):
             get_trainer_endpoint(role_maker),  ## get trainer endpoint
             "fanin": 0,  ## get heter worker
             "pserver_id": get_role_id(role_maker),
-            "distributed_mode": context['ps_mode'],
+            "distributed_mode": attrs['ps_mode'],
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
@@ -948,14 +955,14 @@ class SplitTrainerOpsPass(PassBase):
         ## TODO add check for bp block
         #check_op_device(program.global_block(), DEFAULT_DEVICE)
 
-    def _apply_single_impl(self, main_program, startup_program, context):
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         """
         split cpu-trainer program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
         3. create cpu-trainer program, add send&recv op 
         """
-        # Todo: support user define default_device (MrChengmo)
+        attrs = pass_ctx._attrs
         default_device_ = 'cpu'
         program, heter_ops, default_ops, program_block_ops = find_heter_ops(
             main_program, default_device_)
@@ -964,7 +971,7 @@ class SplitTrainerOpsPass(PassBase):
         block_vars_detail = find_block_joints(program, program_block_ops,
                                               heter_ops)
         trainer_program = program.clone()
-        self._create_trainer_program(trainer_program, program, context,
+        self._create_trainer_program(trainer_program, program, attrs,
                                      program_block_ops, block_vars_detail)
         main_program = trainer_program
 
@@ -980,17 +987,18 @@ class SetHeterPipelineOptPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_program, startup_program, context):
-        role_maker = context['role_maker']
-        num_microbatches = context['user_defined_strategy'].pipeline_configs[
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
+        role_maker = attrs['role_maker']
+        num_microbatches = attrs['user_defined_strategy'].pipeline_configs[
             'accumulate_steps']
 
-        context['origin_startup_program']._heter_pipeline_opt = {
+        attrs['origin_startup_program']._heter_pipeline_opt = {
             "startup_program": startup_program,
             "pipeline_stage": int(role_maker._get_stage_id()) - 1,
             "heter_place": role_maker._heter_device(),
         }
-        context['origin_main_program']._heter_pipeline_opt = {
+        attrs['origin_main_program']._heter_pipeline_opt = {
             "trainer": "HeterPipelineTrainer",
             "device_worker": "HeterSection",
             "trainers":

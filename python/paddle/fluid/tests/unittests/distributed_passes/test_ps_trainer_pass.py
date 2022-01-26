@@ -27,7 +27,7 @@ from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 class TestPsTrainerPass(PsPassTestBase):
     def init(self):
         self.config = {}
-        self.config['ps_mode_config'] = "../ps/cpu_async_config.yaml"
+        self.config['ps_mode_config'] = "../ps/cpu_async_ps_config.yaml"
         self.config['worker_num'] = "1"
         self.config['server_num'] = "1"
         self.config['run_minimize'] = "0"
@@ -46,23 +46,21 @@ class TestPsTrainerPass(PsPassTestBase):
     def check(self):
         pass
 
-    '''
     def test_ps_optimizer_minimize(self):
         self.init()
         self.config['run_minimize'] = '1'
 
         self.config['debug_new_minimize'] = '0'
-        self.config['log_dir'] = "/log_old"
+        self.config['log_dir'] = "/log_old_minimize"
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.config['debug_new_minimize'] = '1'
-        self.config['log_dir'] = "/log_new"
+        self.config['log_dir'] = "/log_new_minimize"
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.check()
-    '''
 
     def test_append_send_ops_pass(self):
         self.init()

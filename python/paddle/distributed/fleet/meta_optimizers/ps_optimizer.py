@@ -20,6 +20,7 @@ import re
 import os
 import platform
 from paddle.distributed.ps.utils.public import *
+from paddle.distributed.passes import PassContext
 from ..base.private_helper_function import wait_server_ready
 
 
@@ -29,7 +30,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-        self.context = {}
+        self.attrs = {}
+        self.pass_ctx = PassContext()
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -38,53 +40,54 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
     def _init_ps_pass_context(self, loss, startup_program):
         # trainer
-        self.context["env"] = get_dist_env()
+        self.attrs["env"] = get_dist_env()
 
-        self.context['min_block_size'] = 81920
-        self.context['origin_main_program'] = loss.block.program
-        self.context['origin_startup_program'] = startup_program
+        self.attrs['min_block_size'] = 81920
+        self.attrs['origin_main_program'] = loss.block.program
+        self.attrs['origin_startup_program'] = startup_program
 
-        self.context['cloned_main'] = loss.block.program.clone()
-        self.context['cloned_startup'] = startup_program.clone()
+        self.attrs['cloned_main'] = loss.block.program.clone()
+        self.attrs['cloned_startup'] = startup_program.clone()
 
-        self.context['user_defined_strategy'] = self.user_defined_strategy
-        self.context['trainer'] = TrainerRuntimeConfig(
-            self.user_defined_strategy)
-        self.context['ps_mode'] = self.context['trainer'].mode
+        self.attrs['user_defined_strategy'] = self.user_defined_strategy
+        self.attrs['trainer'] = TrainerRuntimeConfig(self.user_defined_strategy)
+        self.attrs['ps_mode'] = self.attrs['trainer'].mode
 
-        self.context['role_maker'] = self.role_maker
-        self.context[
+        self.attrs['role_maker'] = self.role_maker
+        self.attrs[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
-        self.context['is_worker'] = self.role_maker._is_worker()
-        self.context['is_server'] = self.role_maker._is_server()
-        self.context['is_heter_worker'] = self.role_maker._is_heter_worker()
+        self.attrs['is_worker'] = self.role_maker._is_worker()
+        self.attrs['is_server'] = self.role_maker._is_server()
+        self.attrs['is_heter_worker'] = self.role_maker._is_heter_worker()
 
-        self.context['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
+        self.attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
             "use_ps_gpu"]
-        self.context[
+        self.attrs[
             'lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
                 "lr_decay_steps"]
-        self.context['k_steps'] = self.user_defined_strategy.a_sync_configs[
+        self.attrs['k_steps'] = self.user_defined_strategy.a_sync_configs[
             "k_steps"]
-        self.context[
+        self.attrs[
             'launch_barrier'] = self.user_defined_strategy.a_sync_configs[
                 "launch_barrier"]
 
-        self.context['launch_barrier_flag'] = int(
+        self.attrs['launch_barrier_flag'] = int(
             os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
 
-        build_var_distributed(self.context)
+        build_var_distributed(self.attrs)
 
         # server 
-        self.context['_main_server'] = fluid.Program()
-        self.context['_startup_server'] = fluid.Program()
-        self.context['tensor_table'] = {}
+        self.attrs['_main_server'] = fluid.Program()
+        self.attrs['_startup_server'] = fluid.Program()
+        self.attrs['tensor_table'] = {}
+
+        self.pass_ctx._attrs = self.attrs
 
     def _is_graph_out(self):
         return False
 
     def _can_apply(self):
-        if self.context['role_maker']._is_collective or self.context[
+        if self._attrs['role_maker']._is_collective or self._attrs[
                 'k_steps'] < 0:
             return False
         return True
@@ -96,9 +99,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
-        self.init_ps_pass_context(loss, startup_program)
+        self._init_ps_pass_context(loss, startup_program)
         ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
-            self.context)
+            self.pass_ctx)
         ps_builder.build_programs()
         return None, None
 

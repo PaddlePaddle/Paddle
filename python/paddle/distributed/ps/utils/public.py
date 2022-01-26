@@ -975,19 +975,17 @@ dtype_to_size = {
 }
 
 
-def set_var_lod_type(var):
-    if var.type == core.VarDesc.VarType.SELECTED_ROWS:
-        var.lod_level = None
-    elif var.type == core.VarDesc.VarType.LOD_TENSOR:
-        pass
-    else:
-        raise ValueError("can only support SELECTED_ROWS/LOD_TENSOR now")
-
-
 def get_var_mem_size(var):
     m_size = reduce(lambda x, y: x * y, var.shape)
     m_size *= dtype_to_size[var.dtype]
     return m_size
+
+
+class MergedVariable:
+    def __init__(self, merged, ordered, offsets):
+        self.merged_var = merged
+        self.ordered_vars = ordered
+        self.offsets = offsets
 
 
 def build_var_distributed(context):
@@ -1001,13 +999,9 @@ def build_var_distributed(context):
     context["merged_variable_map"] = {}
 
     for param, grad in sparse_pairs:
-        set_var_lod_type(param)
-        set_var_lod_type(grad)
         origin_for_sparse.append((param, grad))
 
     for param, grad in dense_pairs:
-        set_var_lod_type(param)
-        set_var_lod_type(grad)
         origin_for_dense.append((param, grad))
 
     for dense_pair in origin_for_dense:
@@ -1026,7 +1020,7 @@ def build_var_distributed(context):
         context["merged_variables_pairs"].append((m_param, m_grad))
         context["merged_sparse_pairs"].append((m_param, m_grad))
 
-    for merged in self.merged_variables_pairs:
+    for merged in context["merged_variables_pairs"]:
         m_param, m_grad = merged
         context["merged_variable_map"][
             m_param.merged_var.name] = m_param.merged_var
@@ -1044,7 +1038,7 @@ def build_var_distributed(context):
     context["origin_sparse_pairs"] = origin_for_sparse
     context["origin_dense_pairs"] = origin_for_dense
     context["param_name_to_grad_name"] = param_name_grad_name
-    cotext["grad_name_to_param_name"] = grad_name_to_param_name
+    context["grad_name_to_param_name"] = grad_name_to_param_name
 
 
 def _is_opt_role_op(op):
@@ -1107,8 +1101,8 @@ def get_param_grads(origin_program):
 
 def debug_program(file, program, is_trainer):
     if is_trainer:
-        with open("file_woker_{}".format(fleet.worker_index()), 'w+') as f:
+        with open(file, 'w+') as f:
             f.write(str(program))
     else:
-        with open("file_server_{}".format(fleet.worker_index()), 'w+') as f:
+        with open(file, 'w+') as f:
             f.write(str(program))
