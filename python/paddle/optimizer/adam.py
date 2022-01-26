@@ -551,8 +551,7 @@ class Adam(Optimizer):
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
             if len(self._param_dict[key]) > 0:
-                if key == 'FP32_LODTensor':
-                    self._multi_precision = False
+                find_master = self._multi_precision and key == 'FP16_LODTensor'
 
                 _beta1 = self._beta1 if not isinstance(
                     self._beta1, Variable) else self._beta1.numpy().item(0)
@@ -571,7 +570,7 @@ class Adam(Optimizer):
                         self._beta2_pow_acc_dict[key],
                         self._master_weight_dict[key], 'epsilon', self._epsilon,
                         'beta1', _beta1, 'beta2', _beta2, 'multi_precision',
-                        self._multi_precision)
+                        find_master)
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
@@ -594,11 +593,11 @@ class Adam(Optimizer):
                         "beta1": _beta1,
                         "beta2": _beta2
                     }
-                    if self._multi_precision:
+                    if find_master:
                         inputs["MasterParam"] = self._master_weight_dict[key]
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key]
-                        attrs["multi_precision"] = self._multi_precision
+                        attrs["multi_precision"] = find_master
                     target_block.append_op(
                         type="merged_adam",
                         inputs=inputs,

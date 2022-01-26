@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/empty_kernel.h"

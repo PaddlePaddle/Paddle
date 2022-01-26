@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 #if !defined(_WIN32)
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)

@@ -81,6 +81,7 @@ void EmptyEagerTensorInitializer(
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(place),
             pten::DenseTensorMeta(pten::TransToPtenDataType(dtype), ddims));
+    dense_tensor->mutable_data(place);
     self->eager_tensor.set_impl(dense_tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -724,9 +725,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
 static void EagerTensorDealloc(EagerTensorObject* self) {
   self->eager_tensor.~EagerTensor();
-  PyTypeObject* tp = Py_TYPE(self);
-  tp->tp_free(reinterpret_cast<PyObject*>(self));
-  Py_DECREF(tp);
+  Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
 extern struct PyGetSetDef variable_properties[];

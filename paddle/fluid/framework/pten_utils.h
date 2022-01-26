@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -44,26 +44,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 
 /* Kernel Args parse */
 
-// TODO(chenweihang): we can generate this map by proto info in compile time
-class KernelSignatureMap {
- public:
-  static KernelSignatureMap& Instance();
-
-  bool Has(const std::string& op_type) const;
-
-  const KernelSignature& Get(const std::string& op_type) const;
-
- private:
-  KernelSignatureMap() = default;
-  DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
-
- private:
-  static KernelSignatureMap* kernel_signature_map_;
-  static std::once_flag init_flag_;
-
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
-};
-
 class KernelArgsNameMaker {
  public:
   virtual ~KernelArgsNameMaker() {}
@@ -72,8 +52,28 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
 };
 
+void InitDefaultKernelSignatureMap();
+
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
                                   const platform::Place& place);
+
+// TODO(Wilber): support others device context.
+template <typename T>
+struct ConvertToPtenContext {
+  using TYPE = T;
+};
+
+template <>
+struct ConvertToPtenContext<platform::CPUDeviceContext> {
+  using TYPE = pten::CPUContext;
+};
+
+#ifdef PADDLE_WITH_XPU
+template <>
+struct ConvertToPtenContext<platform::XPUDeviceContext> {
+  using TYPE = pten::XPUContext;
+};
+#endif
 
 }  // namespace framework
 }  // namespace paddle
