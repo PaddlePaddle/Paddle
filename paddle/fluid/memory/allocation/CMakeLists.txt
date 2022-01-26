@@ -123,6 +123,8 @@ cc_library(virtual_memory_auto_growth_best_fit_allocator SRCS virtual_memory_aut
 
 if(NOT WIN32)
   cc_library(mmap_allocator SRCS mmap_allocator.cc DEPS allocator)
-  cc_library(cuda_ipc_allocator SRCS cuda_ipc_allocator.cc DEPS allocator)
   cc_test(mmap_allocator_test SRCS mmap_allocator_test.cc DEPS mmap_allocator allocator)
+  if (WITH_GPU)
+    cc_library(cuda_ipc_allocator SRCS cuda_ipc_allocator.cc DEPS allocator)
+  endif()
 endif(NOT WIN32)

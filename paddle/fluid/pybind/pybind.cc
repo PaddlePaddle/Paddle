@@ -60,7 +60,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
+#endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
@@ -1167,6 +1169,7 @@ PYBIND11_MODULE(core_noavx, m) {
            });
 #else
            })
+#if define(PADDLE_WITH_CUDA)
       .def("_share_buffer_with",
            [](framework::Tensor &self, const framework::Tensor src,
               py::tuple t) {
@@ -1316,7 +1319,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_cuda(metainfo))
 
         )DOC")
-
+#endif
       .def("_share_filename",
            [](framework::Tensor &self) {
              if (!self.IsInitialized() || self.numel() == 0)
