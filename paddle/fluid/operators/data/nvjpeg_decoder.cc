@@ -211,11 +211,11 @@ void NvjpegDecoderThreadPool::ShutDown() {
   running_cond_.notify_all();
   lock.unlock();
 
+  task_queue_.clear();
+
   for (auto& thread : threads_) {
     if (thread.joinable())  thread.join();
   }
-
-  task_queue_.clear();
 }
 
 void NvjpegDecoderThreadPool::SortTaskByLengthDescend() {

@@ -206,7 +206,7 @@ void MapRunner::ShutDown() {
   running_.store(false);
 
   for (auto queue :  output_queues_) {
-    if(queue) queue->Close();
+    if(queue && !queue->IsClosed()) queue->Close();
   }
 }
 

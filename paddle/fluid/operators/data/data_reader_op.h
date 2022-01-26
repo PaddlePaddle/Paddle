@@ -172,8 +172,7 @@ class DataReader {
 
   void ShutDown() {
     for(auto& queue: output_queues_) {
-      while (queue->Size()) sleep(0.5);
-      queue->Close();
+      if (queue && !queue->IsClosed()) queue->Close();
     }
 
     running_.store(false);

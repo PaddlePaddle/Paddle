@@ -1018,7 +1018,7 @@ def random_flip(x, prob=0.5, name=None):
 
     if in_dygraph_mode():
         p = np.random.uniform(0., 1., x.shape[0:1])
-        for i in range(batch_size):
+        for i in range(x.shape[0]):
             if p[i] < prob:
                 x[i] = paddle.flip(x[i], -1)
         return x

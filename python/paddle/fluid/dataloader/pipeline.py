@@ -152,9 +152,9 @@ class Pipeline:
 
                 map_program_ids = []
                 for op in self._main_program.block(0).ops:
-                    if op.type == "map":
-                        map_program_ids.append(op.attrs['program_id'])
-                core._shutdown_maps(program_id)
+                    if op.type == "map" and op.has_attr('program_id'):
+                        map_program_ids.append(op.attr('program_id'))
+                core._shutdown_maps(map_program_ids)
 
                 core._shutdown_pipeline(program_id)
             finally:
