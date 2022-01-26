@@ -105,9 +105,9 @@ static std::string DebugString(
         ss << "NOT_INITED";
       }
       ss << ">";
-    } else if (var.IsType<framework::SelectedRows>()) {
+    } else if (var.IsType<pten::SelectedRows>()) {
       ss << "SelectedRows<";
-      auto& selected_rows = var.Get<framework::SelectedRows>();
+      auto& selected_rows = var.Get<pten::SelectedRows>();
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
@@ -188,12 +188,11 @@ size_t VarBase::GradOpNum() const {
 void VarBase::ClearGradient(bool set_to_zero) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
-    if (grad_var_->Var().IsType<framework::SelectedRows>()) {
-      auto* grad_t =
-          grad_var_->MutableVar()->GetMutable<framework::SelectedRows>();
+    if (grad_var_->Var().IsType<pten::SelectedRows>()) {
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<pten::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
@@ -211,7 +210,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
           grad_t->clear();
         }
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
       }
     }
@@ -248,7 +247,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
-                                Var().IsType<framework::SelectedRows>()),
+                                Var().IsType<pten::SelectedRows>()),
       true, platform::errors::InvalidArgument(
                 "Variable is not initialized or Variable's type is not "
                 "LoDTensor or SelectedRows when getting numpy tensor"));
@@ -277,12 +276,12 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
             << dst_place;
     return new_var;
   } else {
-    auto& src_selected_rows = Var().Get<framework::SelectedRows>();
+    auto& src_selected_rows = Var().Get<pten::SelectedRows>();
     auto new_var = std::make_shared<VarBase>(
         false, "Itmp" + std::to_string(copied_counter_++));
     new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
     auto* dst_selected_rows =
-        new_var->MutableVar()->GetMutable<framework::SelectedRows>();
+        new_var->MutableVar()->GetMutable<pten::SelectedRows>();
 
     framework::TensorCopy(src_selected_rows.value(), dst_place,
                           dst_selected_rows->mutable_value());
@@ -346,10 +345,9 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
       dst_tensor->Resize(src_tensor.dims());
     }
     framework::TensorCopy(src_tensor, place, dst_tensor);
-  } else if (src.Var().IsType<framework::SelectedRows>()) {
-    auto& src_selected_rows = src.Var().Get<framework::SelectedRows>();
-    auto* dst_selected_rows =
-        MutableVar()->GetMutable<framework::SelectedRows>();
+  } else if (src.Var().IsType<pten::SelectedRows>()) {
+    auto& src_selected_rows = src.Var().Get<pten::SelectedRows>();
+    auto* dst_selected_rows = MutableVar()->GetMutable<pten::SelectedRows>();
     dst_selected_rows->set_height(src_selected_rows.height());
     dst_selected_rows->set_rows(src_selected_rows.rows());
 
@@ -426,8 +424,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
-                          const platform::Place& place,
-                          pten::KernelContext* pt_kernel_context) {
+                          const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel, platform::errors::PermissionDenied(
@@ -468,8 +465,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs,
-                                         default_attrs, pt_kernel_context);
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
@@ -497,8 +494,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place,
-                         &pt_kernel_context_);
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -507,8 +503,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place,
-                                 &pt_kernel_context_);
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

@@ -25,7 +25,8 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 using namespace host_context;  // NOLINT
 using namespace tensor;        // NOLINT
 
@@ -76,4 +77,5 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
                       INFRT_KERNEL(ShallowCopyTensor));
 }
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt

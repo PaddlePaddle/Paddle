@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {

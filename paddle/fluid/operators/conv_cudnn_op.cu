@@ -667,7 +667,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       workspace_size_d =
           std::max(workspace_size_d, search1::GetWorkspaceSize(args1));
       data_algo = search1::Find<T>(args1, exhaustive_search, deterministic,
-                                   workspace_size, ctx);
+                                   workspace_size_d, ctx);
 #else
       using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
       data_algo =
@@ -729,7 +729,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       handle, &alpha, args1.odesc.desc(), output_grad_data,
                       args1.wdesc.desc(), filter_data, args1.cdesc.desc(),
                       data_algo, &beta, args1.idesc.desc(), temp_tensor_data,
-                      cudnn_workspace_ptr, workspace_size));
+                      cudnn_workspace_ptr, workspace_size_d));
             },
             workspace_size_d);
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenOpTensor(

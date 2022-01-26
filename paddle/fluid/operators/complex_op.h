@@ -25,14 +25,14 @@ namespace operators {
 // functors to use with ElementwiseComputeEx
 template <typename T>
 struct RealAndImagToComplexFunctor {
-  inline HOSTDEVICE platform::complex<T> operator()(const T& x, const T& y) {
+  inline HOSTDEVICE platform::complex<T> operator()(const T x, const T y) {
     return platform::complex<T>(x, y);
   }
 };
 
 template <typename T>
 struct ImagAndRealToComplexFunctor {
-  inline HOSTDEVICE platform::complex<T> operator()(const T& y, const T& x) {
+  inline HOSTDEVICE platform::complex<T> operator()(const T y, const T x) {
     return platform::complex<T>(x, y);
   }
 };

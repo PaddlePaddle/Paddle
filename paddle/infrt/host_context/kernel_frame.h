@@ -21,7 +21,8 @@
 #include "llvm/ADT/SmallVector.h"
 #include "paddle/infrt/host_context/value.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 /**
  * KernelFrame captures the states(input arguments, attributes, results)
@@ -163,4 +164,5 @@ class KernelFrameBuilder : public KernelFrame {
   }
 };
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

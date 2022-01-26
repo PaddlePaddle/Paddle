@@ -34,8 +34,6 @@ class OverflowKernel;
 }  // namespace operators
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
-struct float16;
 }  // namespace platform
 }  // namespace paddle
 
@@ -64,8 +62,8 @@ class OverflowV2Op : public framework::OperatorWithKernel {
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
       dtype = x_var->Get<framework::LoDTensor>().type();
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = x_var->Get<framework::SelectedRows>().value().type();
+    } else if (x_var->IsType<pten::SelectedRows>()) {
+      dtype = x_var->Get<pten::SelectedRows>().value().type();
     } else {
       PADDLE_THROW(plat::errors::InvalidArgument(
           "Cannot find the input data type by all input data"));

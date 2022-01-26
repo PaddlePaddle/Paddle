@@ -21,10 +21,12 @@
 namespace pten {
 
 template <typename T, typename Context>
-void Conj(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+void ConjKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* out_data = out->mutable_data<T>();
+  auto* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
   paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
   paddle::operators::math::ConjFunctor<T> functor(x_data, numel, out_data);

@@ -23,12 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
-namespace paddle {
-namespace platform {
-struct float16;
-}  // namespace platform
-}  // namespace paddle
-
 DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {

@@ -31,11 +31,14 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* pEagerTensorType;
+extern void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
+                                          const pybind11::object& array,
+                                          bool zero_copy);
+
+extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
@@ -118,6 +121,30 @@ static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_tensor_method_reconstruct_from_(EagerTensorObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor src_tensor =
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  std::string orig_name = self->eager_tensor.name();
+  VLOG(6) << "Start Reconstructing Tensor from" << src_tensor.name() << " to "
+          << orig_name;
+  self->eager_tensor.copy_(src_tensor, blocking);
+  // Steal Tensor from src tensor
+  self->eager_tensor.set_tensor(src_tensor.Tensor());
+
+  // Recover source name
+  self->eager_tensor.set_name(orig_name);
+
+  VLOG(6) << "Finished Reconstructing Tensor from" << src_tensor.name()
+          << " to " << self->eager_tensor.name();
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
@@ -167,7 +194,7 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
   EAGER_SYNC_TRY
   VLOG(4) << "ClearGradient " << self->eager_tensor.name();
 
-  egr::EagerTensor grad;
+  egr::EagerTensor* grad;
   if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
     std::shared_ptr<egr::GradNodeBase> grad_node =
@@ -182,15 +209,15 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
     grad = accumulation_grad_node->Grad();
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    grad = meta->Grad();
+    grad = meta->MutableGrad();
   }
 
-  if (grad.initialized()) {
+  if (grad->initialized()) {
     VLOG(4) << "Gradient of " << self->eager_tensor.name()
             << " is initialized, will be released.";
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
-    dense_tensor->release();
+        std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
+    dense_tensor->MoveMemoryHolder();
   }
   Py_INCREF(Py_None);
   return Py_None;
@@ -202,7 +229,6 @@ static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->eager_tensor.name();
 
-  egr::EagerTensor grad;
   if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
     std::shared_ptr<egr::GradNodeBase> grad_node =
@@ -214,16 +240,162 @@ static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    grad = accumulation_grad_node->Grad();
+    if (accumulation_grad_node->Grad()->initialized()) {
+      accumulation_grad_node->Grad()->set_tensor(
+          std::make_shared<paddle::experimental::Tensor>(
+              paddle::experimental::zeros_like(
+                  *(accumulation_grad_node->Grad()->Tensor().get()))));
+    }
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-    grad = meta->Grad();
+    if (meta->MutableGrad()->initialized()) {
+      meta->MutableGrad()->set_tensor(
+          std::make_shared<paddle::experimental::Tensor>(
+              paddle::experimental::zeros_like(
+                  *(meta->MutableGrad()->Tensor().get()))));
+    }
   }
 
-  if (grad.initialized()) {
-    grad.set_tensor(std::make_shared<paddle::experimental::Tensor>(
-        paddle::experimental::zeros_like(*(grad.Tensor().get()))));
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor__share_buffer_to(EagerTensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor* dst_ptr =
+      &(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
+            ->eager_tensor);
+  PADDLE_ENFORCE_EQ(self->eager_tensor.initialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized! please initialize "
+                        "src tensor before share_buffer_with to other.",
+                        self->eager_tensor.name()));
+  auto* src_tensor =
+      static_cast<paddle::framework::Tensor*>(self->eager_tensor.impl().get());
+  auto dst_tensor =
+      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  dst_tensor->ShareDataWith(*src_tensor);
+  dst_tensor->ShareDataTypeWith(*src_tensor);
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor__is_shared_buffer_with(EagerTensorObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor* dst_ptr =
+      &(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
+            ->eager_tensor);
+  PADDLE_ENFORCE_EQ(self->eager_tensor.initialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized! please initialize "
+                        "src tensor before share_buffer_with to other.",
+                        self->eager_tensor.name()));
+  bool res = false;
+  if (!self->eager_tensor.defined() || !dst_ptr->defined()) {
+    return ToPyObject(res);
   }
+  auto* self_ptr =
+      static_cast<paddle::framework::Tensor*>(self->eager_tensor.impl().get());
+  auto dst_tensor =
+      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  res = dst_tensor->IsSharedBufferWith(*self_ptr);
+  return ToPyObject(res);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor__share_underline_tensor_to(
+    EagerTensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor* src_ptr =
+      &(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
+            ->eager_tensor);
+  PADDLE_ENFORCE_EQ(self->eager_tensor.initialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized! please initialize "
+                        "src tensor before share_buffer_with to other.",
+                        self->eager_tensor.name()));
+  src_ptr->set_impl(self->eager_tensor.impl());
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor__is_shared_underline_tensor_with(
+    EagerTensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor src_tensor =
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  PADDLE_ENFORCE_EQ(src_tensor.initialized(), true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized! please initialize "
+                        "src tensor before share_buffer_with to other.",
+                        src_tensor.name()));
+  bool res = false;
+  if (!self->eager_tensor.defined() || !src_tensor.defined()) {
+    return ToPyObject(res);
+  }
+  res = (self->eager_tensor.impl().get() == src_tensor.impl().get());
+  return ToPyObject(res);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_method_detach(EagerTensorObject* self,
+                                            PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  PADDLE_ENFORCE_EQ(
+      self->eager_tensor.initialized(), true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->eager_tensor.name()));
+
+  PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<EagerTensorObject*>(obj);
+    new (&(v->eager_tensor)) egr::EagerTensor();
+    v->eager_tensor.set_impl(self->eager_tensor.impl());
+    v->eager_tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    auto autograd_meta_src =
+        egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->eager_tensor));
+    autograd_meta->SetPersistable(autograd_meta_src->Persistable());
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
+  }
+
+  return obj;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_method_get_underline_tensor(
+    EagerTensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  if (self->eager_tensor.is_dense_tensor()) {
+    auto* tensor = static_cast<paddle::framework::LoDTensor*>(
+        self->eager_tensor.impl().get());
+    VLOG(6) << "tensor: " << tensor->IsInitialized();
+    return ToPyObject(tensor);
+  } else {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+// NOTE(wuweilong): Set value and not change self's original place
+static PyObject* eager_tensor_method_set_value(EagerTensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Value " << self->eager_tensor.name();
+  pybind11::object numpy_value =
+      pybind11::object(pybind11::handle(PyTuple_GET_ITEM(args, 0)), true);
+  InitEagerTensorWithNumpyValue(self, numpy_value, false);
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -239,12 +411,34 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"copy_", (PyCFunction)(void (*)(void))eager_tensor_method_copy_,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"reconstruct_from_",
+     (PyCFunction)(void (*)(void))eager_tensor_method_reconstruct_from_,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grads", (PyCFunction)(void (*)(void))eager_tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_clear_gradient",
      (PyCFunction)(void (*)(void))eager_tensor__clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_share_buffer_to",
+     (PyCFunction)(void (*)(void))eager_tensor__share_buffer_to,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_shared_buffer_with",
+     (PyCFunction)(void (*)(void))eager_tensor__is_shared_buffer_with,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_share_underline_tensor_to",
+     (PyCFunction)(void (*)(void))eager_tensor__share_underline_tensor_to,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_shared_underline_tensor_with",
+     (PyCFunction)(void (*)(void))eager_tensor__is_shared_underline_tensor_with,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"detach", (PyCFunction)(void (*)(void))eager_tensor_method_detach,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"get_tensor",
+     (PyCFunction)(void (*)(void))eager_tensor_method_get_underline_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_set_value", (PyCFunction)(void (*)(void))eager_tensor_method_set_value,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

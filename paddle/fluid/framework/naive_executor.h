@@ -24,6 +24,10 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 
@@ -31,7 +35,6 @@ namespace framework {
  * Simple, intuitive and effective. Only single thread is supported, and
  * currently designed for inference.
  */
-class LoDTensor;
 class ProgramDesc;
 class Scope;
 

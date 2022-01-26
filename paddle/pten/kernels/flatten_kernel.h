@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {

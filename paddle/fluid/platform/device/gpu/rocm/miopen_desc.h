@@ -26,11 +26,9 @@
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace platform {

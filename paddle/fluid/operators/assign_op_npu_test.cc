@@ -47,7 +47,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   init.push_back(static_cast<T>(3.0));
   init.push_back(static_cast<T>(4.0));
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({4});
 
   ctx.Wait();
@@ -62,7 +62,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 

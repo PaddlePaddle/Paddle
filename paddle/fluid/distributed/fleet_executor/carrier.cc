@@ -221,8 +221,8 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new framework::UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
+        gc.reset(new framework::UnsafeFastGPUGarbageCollector(place,
+                                                              max_memory_size));
       }
     }
 #endif

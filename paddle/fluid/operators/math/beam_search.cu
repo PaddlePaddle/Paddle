@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
