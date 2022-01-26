@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include "paddle/pten/core/compat/op_utils.h"
 
 namespace pten {
@@ -21,7 +19,7 @@ namespace pten {
 KernelSignature EmptyOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("ShapeTensor")) {
     return KernelSignature("empty", {}, {"ShapeTensor"}, {"Out"});
-  } else if (ctx.MultiInput<DenseTensor>("ShapeTensorList").size()) {
+  } else if (ctx.InputSize("ShapeTensorList") > 0) {
     return KernelSignature("empty", {}, {"ShapeTensorList"}, {"Out"});
   } else {
     return KernelSignature("empty", {}, {"shape"}, {"Out"});

@@ -461,11 +461,11 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   size_t InputSize(const std::string& name) const override {
-    return ctx_.InputSize(name);
+    return ctx_.MultiInputVar(name).size();
   }
 
   size_t OutputSize(const std::string& name) const override {
-    return ctx_.OutputSize(name);
+    return ctx_.MultiOutputVar(name).size();
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {

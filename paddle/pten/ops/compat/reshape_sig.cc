@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include "paddle/pten/core/compat/op_utils.h"
 
 namespace pten {
 
 KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.MultiInput<DenseTensor>("ShapeTensor").size() > 0) {
+  if (ctx.InputSize("ShapeTensor") > 0) {
     return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
   } else if (ctx.HasInput("Shape")) {
     return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});

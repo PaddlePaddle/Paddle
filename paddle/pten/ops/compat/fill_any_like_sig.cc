@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include "paddle/pten/core/compat/op_utils.h"
 
 namespace pten {
@@ -25,4 +23,4 @@ KernelSignature FillAnyLikeOpArgumentMapping(
 
 }  // namespace pten
 
-PT_REGISTER_ARG_MAPPING_FN(fill_any_like, pten::FullLikeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(fill_any_like, pten::FillAnyLikeOpArgumentMapping);
