@@ -52,20 +52,20 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         context.template device_context<platform::XPUDeviceContext>();
     int r = XPU_SUCCESS;
-    Tensor clip_logits;
-    int len = logits->numel();
-    T* clip_logits_data =
-        clip_logits.mutable_data<T>(context.GetPlace(), len * sizeof(T));
-
     if (platform::get_xpu_version(context.GetPlace().GetDeviceId()) ==
             pten::backends::xpu::XPUVersion::XPU2 &&
         soft_label) {
       r = xpu::soft_softmax_with_cross_entropy(
-          dev_ctx.x_context(), clip_logits_data, labels->data<T>(),
+          dev_ctx.x_context(), logits->data<float>(), labels->data<T>(),
           softmax->data<T>(), loss->data<T>(), n, d);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy");
       return;
     }
+
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    int len = logits->numel();
+    T* clip_logits_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(len * sizeof(T));
+    PADDLE_ENFORCE_XDNN_NOT_NULL(clip_logits_data);
 
     r = xpu::clip_v2(dev_ctx.x_context(), logits->data<float>(),
                      clip_logits_data, len, static_cast<float>(-1e20),
