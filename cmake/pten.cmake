@@ -233,7 +233,6 @@ function(register_kernels)
     list(LENGTH register_kernels_DEPS register_kernels_DEPS_len)
 
     foreach(target ${KERNELS})
-        message(${target})
         list(FIND register_kernels_EXCLUDES ${target} _index)
         if (${_index} EQUAL -1)
             if (${register_kernels_DEPS_len} GREATER 0)
