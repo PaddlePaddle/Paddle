@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
 #include <cmath>
 #include <iostream>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 
 namespace paddle {
 namespace distributed {
