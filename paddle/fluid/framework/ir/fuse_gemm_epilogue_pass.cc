@@ -28,6 +28,9 @@ void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseLinearActFwd(graph, act_types, true);
   graph = FuseLinearFwd(graph, false);
   graph = FuseLinearFwd(graph, true);
+  graph = FuseLinearActBwd(graph, {"relu_grad", "gelu_grad"});
+  graph = FuseLinearBwd(graph, false);
+  graph = FuseLinearBwd(graph, true);
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
@@ -142,19 +145,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape, matmul_op_desc))
       return;
 
-    // Only need to check weight.shape[1] for auxiliary pointer
-    // and mark it the act op is fused for backward epilogue fusion.
-    // That because cuBlasLt epilogue's restriction.
     auto activation = act_op->Op()->Type();
-    if (is_training) {
-      int divisor_of_n = activation == "relu" ? 128 : 8;
-      if (matmul_w_shape[1] % divisor_of_n) return;
-      EpiloguePassActivationCache::Instance().InsertFusedActivation(
-          act_out->Var()->Name());
-    }
 
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
-    std::string act_name = "none";
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
     fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
@@ -163,6 +156,19 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
+
+    // Only need to check weight.shape[1] for auxiliary pointer
+    // and mark it the act op is fused for backward epilogue fusion.
+    // That because cuBlasLt epilogue's restriction.
+    if (is_training) {
+      int divisor_of_n = activation == "relu" ? 128 : 8;
+      if (matmul_w_shape[1] % divisor_of_n) return;
+      EpiloguePassActivationCache::Instance().InsertFusedActivation(
+          act_out->Var()->Name());
+
+      fused_gemm_epilogue_op_desc.SetAttr("auxiliary_key",
+                                          act_out->Var()->Name());
+    }
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
     IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
@@ -185,6 +191,227 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
   gpd(graph, handler);
 
   AddStatis(found_linear_act_count);
+  return graph;
+}
+
+ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
+                                               bool is_first_gemm) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  FusePassBase::Init("gemm_epilogue", graph);
+
+  GraphPatternDetector gpd;
+  auto *dout =
+      gpd.mutable_pattern()
+          ->NewNode("gemm_epilogue_grad/dout")
+          ->AsInput()
+          ->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
+
+  patterns::ElewiseAddMatmulAct ele_add_matmul_act_pattern(
+      gpd.mutable_pattern(), "ele_add_matmul_act");
+  ele_add_matmul_act_pattern(dout, {}, is_first_gemm);
+
+  int found_ele_add_matmul_act_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
+                     Graph *g) {
+    VLOG(4) << "handle ElewiseAddMatmulAct fuse";
+
+    GET_IR_NODE_FROM_SUBGRAPH(ele_add_grad_op, ele_add_grad,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_bias, ele_grad_bias,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dx, ele_grad_dx,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dbias, ele_grad_dbias,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_op, matmul_grad,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_x, matmul_grad_x,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_w, matmul_grad_w,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dw, matmul_grad_dw,
+                              ele_add_matmul_act_pattern);
+
+    Node *matmul_grad_dx = nullptr;
+    if (!is_first_gemm) {
+      GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dx_ptr, matmul_grad_dx,
+                                ele_add_matmul_act_pattern);
+      matmul_grad_dx = matmul_grad_dx_ptr;
+    }
+
+    std::vector<int64_t> matmul_grad_x_shape = matmul_grad_x->Var()->GetShape();
+    std::vector<int64_t> matmul_grad_w_shape = matmul_grad_w->Var()->GetShape();
+
+    // Note (Ming Huang): We only support matmul_v2_grad from paddle.nn.Linear
+    // currently. The conditions below are used to verify wether matmul_v2
+    // is created by paddle.nn.Linear
+    auto matmul_grad_op_desc = matmul_grad_op->Op();
+    if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape,
+                           matmul_grad_op_desc))
+      return;
+
+    OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
+    std::string activation_grad = "none";
+    fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");
+    fused_gemm_epilogue_grad_op_desc.SetInput("DOut",
+                                              {subgraph.at(dout)->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetInput("X", {matmul_grad_x->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetInput("Y", {matmul_grad_w->Name()});
+    if (matmul_grad_dx) {
+      fused_gemm_epilogue_grad_op_desc.SetOutput("DX",
+                                                 {matmul_grad_dx->Name()});
+    }
+    fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetOutput("DBias",
+                                               {ele_grad_dbias->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetAttr("activation_grad",
+                                             activation_grad);
+    fused_gemm_epilogue_grad_op_desc.SetAttr(
+        "op_role", matmul_grad_op_desc->GetAttr("op_role"));
+
+    auto gemm_epilogue_grad_node =
+        g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
+
+    IR_NODE_LINK_TO(subgraph.at(dout), gemm_epilogue_grad_node);
+    IR_NODE_LINK_TO(matmul_grad_x, gemm_epilogue_grad_node);
+    IR_NODE_LINK_TO(matmul_grad_w, gemm_epilogue_grad_node);
+    IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dw);
+    IR_NODE_LINK_TO(gemm_epilogue_grad_node, ele_grad_dbias);
+    if (matmul_grad_dx) {
+      IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dx);
+    }
+
+    GraphSafeRemoveNodes(g, {ele_add_grad_op, ele_grad_dx, matmul_grad_op});
+
+    std::string matmul_grad_dx_name =
+        matmul_grad_dx != nullptr ? matmul_grad_dx->Name() : " ";
+    VLOG(4) << "\n\t " << subgraph.at(dout)->Name() << " and "
+            << ele_grad_bias->Name() << " -> " << ele_add_grad_op->Name()
+            << " -> " << ele_grad_dx->Name() << " and "
+            << ele_grad_dbias->Name() << "\n\t " << ele_grad_dx->Name() << ", "
+            << matmul_grad_x->Name() << " and " << matmul_grad_w->Name()
+            << " -> " << matmul_grad_op->Name() << " -> "
+            << matmul_grad_w->Name() << " and " << matmul_grad_dx_name;
+    found_ele_add_matmul_act_count++;
+  };
+
+  gpd(graph, handler);
+
+  AddStatis(found_ele_add_matmul_act_count);
+  return graph;
+}
+
+ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
+    ir::Graph *graph,
+    const std::unordered_set<std::string> &act_grad_types) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  FusePassBase::Init("gemm_epilogue", graph);
+
+  GraphPatternDetector gpd;
+  auto *dout =
+      gpd.mutable_pattern()
+          ->NewNode("gemm_epilogue_grad/dout")
+          ->AsInput()
+          ->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
+
+  patterns::ElewiseAddMatmulAct ele_add_matmul_act_pattern(
+      gpd.mutable_pattern(), "ele_add_matmul_act");
+  ele_add_matmul_act_pattern(dout, act_grad_types, false);
+
+  int found_ele_add_matmul_act_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
+                     Graph *g) {
+    VLOG(4) << "handle ElewiseAddMatmulAct fuse";
+
+    GET_IR_NODE_FROM_SUBGRAPH(ele_add_grad_op, ele_add_grad,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_bias, ele_grad_bias,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dx, ele_grad_dx,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dbias, ele_grad_dbias,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_op, matmul_grad,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_x, matmul_grad_x,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_w, matmul_grad_w,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dx, matmul_grad_dx,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dw, matmul_grad_dw,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(act_grad_op, act_grad,
+                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(act_grad_dx, act_grad_dx,
+                              ele_add_matmul_act_pattern);
+
+    if (!EpiloguePassActivationCache::Instance().HasFusedActivation(
+            matmul_grad_x->Var()->Name()))
+      return;
+
+    std::vector<int64_t> matmul_grad_x_shape = matmul_grad_x->Var()->GetShape();
+    std::vector<int64_t> matmul_grad_w_shape = matmul_grad_w->Var()->GetShape();
+
+    // Note (Ming Huang): We only support matmul_v2_grad from paddle.nn.Linear
+    // currently. The conditions below are used to verify wether matmul_v2
+    // is created by paddle.nn.Linear
+    auto matmul_grad_op_desc = matmul_grad_op->Op();
+    if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape,
+                           matmul_grad_op_desc))
+      return;
+
+    auto activation_grad = act_grad_op->Op()->Type();
+
+    OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
+    fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");
+    fused_gemm_epilogue_grad_op_desc.SetInput("DOut",
+                                              {subgraph.at(dout)->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetInput("X", {matmul_grad_x->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetInput("Y", {matmul_grad_w->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetOutput("DX", {act_grad_dx->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetOutput("DBias",
+                                               {ele_grad_dbias->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetAttr("activation_grad",
+                                             activation_grad);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("auxiliary_key",
+                                             matmul_grad_x->Var()->Name());
+    fused_gemm_epilogue_grad_op_desc.SetAttr(
+        "op_role", matmul_grad_op_desc->GetAttr("op_role"));
+
+    auto gemm_epilogue_grad_node =
+        g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
+
+    IR_NODE_LINK_TO(subgraph.at(dout), gemm_epilogue_grad_node);
+    IR_NODE_LINK_TO(matmul_grad_x, gemm_epilogue_grad_node);
+    IR_NODE_LINK_TO(matmul_grad_w, gemm_epilogue_grad_node);
+    IR_NODE_LINK_TO(gemm_epilogue_grad_node, act_grad_dx);
+    IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dw);
+    IR_NODE_LINK_TO(gemm_epilogue_grad_node, ele_grad_dbias);
+
+    GraphSafeRemoveNodes(g, {ele_add_grad_op, ele_grad_dx, matmul_grad_op,
+                             matmul_grad_dx, act_grad_op});
+
+    VLOG(4) << "\n\t " << subgraph.at(dout)->Name() << " and "
+            << ele_grad_bias->Name() << " -> " << ele_add_grad_op->Name()
+            << " -> " << ele_grad_dx->Name() << " and "
+            << ele_grad_dbias->Name() << "\n\t " << ele_grad_dx->Name() << ", "
+            << matmul_grad_x->Name() << " and " << matmul_grad_w->Name()
+            << " -> " << matmul_grad_op->Name() << " -> "
+            << matmul_grad_dx->Name() << " and " << matmul_grad_w->Name()
+            << "\n\t " << matmul_grad_dx->Name() << " -> "
+            << act_grad_op->Name() << " -> " << act_grad_dx->Name();
+    found_ele_add_matmul_act_count++;
+  };
+
+  gpd(graph, handler);
+
+  AddStatis(found_ele_add_matmul_act_count);
   return graph;
 }
 
