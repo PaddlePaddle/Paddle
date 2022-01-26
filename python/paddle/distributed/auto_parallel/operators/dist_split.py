@@ -98,6 +98,10 @@ class DistributedSplitImpl(DistributedOperatorImpl):
 
         return changed
 
+    def is_auto_compatible(self, dist_op):
+        raise NotImplementedError(
+            "Auto Search is not supported by dist split yet.")
+
     @staticmethod
     def forward(ctx, *args, **kwargs):
         DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
