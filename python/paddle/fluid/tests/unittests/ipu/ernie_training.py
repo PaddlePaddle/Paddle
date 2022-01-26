@@ -856,16 +856,15 @@ if __name__ == "__main__":
     paddle.static.load(main_prog, "model/ernie")
 
     if args.run_on_ipu:
-        ipu_strategy = compiler.get_ipu_strategy()
-        ipu_strategy.num_ipus = args.num_ipus
-        ipu_strategy.enable_manual_shard = args.num_ipus > 1
-        ipu_strategy.enable_pipelining = args.enable_pipelining
-        if args.enable_pipelining:
-            if args.is_training:
-                ipu_strategy.batches_per_step = args.num_ipus + 1
-            else:
-                ipu_strategy.batches_per_step = args.num_ipus
-        ipu_strategy.is_training = args.is_training
+        ipu_strategy = paddle.static.IpuStrategy()
+        ipu_strategy.SetGraphConfig(
+            num_ipus=args.num_ipus,
+            is_training=args.is_training,
+            enable_manual_shard=args.num_ipus > 1)
+        ipu_strategy.SetPipeliningConfig(
+            enable_pipelining=args.enable_pipelining,
+            batches_per_step=args.num_ipus + 1)
+
         ipu_compiler = compiler.IPUCompiledProgram(
             main_prog, ipu_strategy=ipu_strategy)
         program = ipu_compiler.compile(feed_list, fetch_list)

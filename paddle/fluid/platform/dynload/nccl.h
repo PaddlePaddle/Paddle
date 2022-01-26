@@ -16,28 +16,14 @@ limitations under the License. */
 #include <nccl.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/nccl.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag nccl_dso_flag;
-extern void* nccl_dso_handle;
-
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                           \
-  struct DynLoad__##__name {                                             \
-    template <typename... Args>                                          \
-    auto operator()(Args... args) -> decltype(__name(args...)) {         \
-      using nccl_func = decltype(&::__name);                             \
-      std::call_once(nccl_dso_flag, []() {                               \
-        nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
-      });                                                                \
-      static void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);           \
-    }                                                                    \
-  };                                                                     \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)       \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define NCCL_RAND_ROUTINE_EACH(__macro) \
@@ -57,30 +43,30 @@ extern void* nccl_dso_handle;
   __macro(ncclReduceScatter);           \
   __macro(ncclGetErrorString);
 
-NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+NCCL_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 
 #if NCCL_VERSION_CODE >= 2212
 #define NCCL_RAND_ROUTINE_EACH_AFTER_2212(__macro) __macro(ncclBroadcast);
-NCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+NCCL_RAND_ROUTINE_EACH_AFTER_2212(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 #if NCCL_VERSION_CODE >= 2304
 #define NCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(ncclGetVersion);
-NCCL_RAND_ROUTINE_EACH_AFTER_2304(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+NCCL_RAND_ROUTINE_EACH_AFTER_2304(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 #if NCCL_VERSION_CODE >= 2703
 #define NCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
   __macro(ncclSend);                               \
   __macro(ncclRecv);
-NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+NCCL_RAND_ROUTINE_EACH_AFTER_2703(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 #if NCCL_VERSION_CODE >= 21100
 #define NCCL_RAND_ROUTINE_EACH_AFTER_21100(__macro) \
   __macro(ncclRedOpCreatePreMulSum);                \
   __macro(ncclRedOpDestroy);
-NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+NCCL_RAND_ROUTINE_EACH_AFTER_21100(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload

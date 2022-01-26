@@ -36,7 +36,10 @@ class ConjKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
-    pten::ConjKernel<T>(dev_ctx, *x, out);
+    pten::ConjKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, out);
   }
 };
 

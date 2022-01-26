@@ -55,9 +55,9 @@ class ScaleKernel : public framework::OpKernel<T> {
     }
 
     auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<framework::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+    if (in_var->IsType<pten::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<pten::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<pten::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
@@ -67,7 +67,10 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::ScaleKernel<T>(dev_ctx, *in, scale, bias, bias_after_scale, out);
+    pten::ScaleKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, scale, bias, bias_after_scale, out);
   }
 };
 

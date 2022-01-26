@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -40,7 +40,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -117,7 +118,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+  return var.IsType<LoDTensor>() || var.IsType<pten::SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
@@ -454,8 +455,9 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
-  bool HasAttr(const std::string& name) const override {
-    return ctx_.HasAttr(name);
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.GetAttr(name);
+    return GetAttrValue(attr);
   }
 
   size_t InputSize(const std::string& name) const override {
@@ -467,12 +469,11 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::Tensor>() ||
-           ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::SelectedRows>();
+    return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
   }
 
  private:
@@ -549,7 +550,7 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
