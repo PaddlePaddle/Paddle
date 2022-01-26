@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/distributed/service/brpc_utils.h"
+#include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -56,7 +56,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
 
   // var 3
   framework::Variable* var3 = scope->Var("x3");
-  auto* slr = var3->GetMutable<framework::SelectedRows>();
+  auto* slr = var3->GetMutable<pten::SelectedRows>();
   slr->set_height(564);
   auto* tensor3 = slr->mutable_value();
   auto* rows = slr->mutable_rows();
@@ -111,7 +111,7 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var3
   framework::Variable* var3 = scope_recv.FindVar("x3");
-  auto* slr = var3->GetMutable<framework::SelectedRows>();
+  auto* slr = var3->GetMutable<pten::SelectedRows>();
   EXPECT_EQ(slr->rows().size(), 564);
   for (int i = 0; i < 564; ++i) {
     EXPECT_EQ(slr->rows()[i], i);

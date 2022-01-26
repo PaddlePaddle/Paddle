@@ -14,18 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 #endif
 
@@ -227,7 +229,7 @@ class TransformFunctor {
                    const bool is_xsize_larger = true)
       : x_(x.data<T>()),
         y_(y.data<T>()),
-        z_(z->mutable_data<OutType>()),
+        z_(z->mutable_data<OutType>(ctx.GetPlace())),
         nx_(x.numel()),
         ctx_(ctx),
         func_(func),
@@ -360,6 +362,43 @@ inline void get_mid_dims(const DDim &x_dims,
   }
 }
 
+// for broadcast backwards
+static inline std::vector<int> GetReduceDim(const paddle::framework::DDim &in,
+                                            const paddle::framework::DDim &out,
+                                            int axis) {
+  axis =
+      (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);
+  std::vector<int> dims;
+  for (int i = 0; i < axis; ++i) {
+    dims.push_back(i);
+  }
+  for (int i = 0; i < in.size(); ++i) {
+    if (out[i + axis] != in[i]) {
+      dims.push_back(i + axis);
+    }
+  }
+  for (int i = axis + in.size(); i < out.size(); ++i) {
+    dims.push_back(i);
+  }
+  return dims;
+}
+
+template <typename DeviceContext, typename T>
+static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
+                                           const DenseTensor &x,
+                                           const DenseTensor *ddx,
+                                           DenseTensor *ddx_safe) {
+  if (ddx) {
+    *ddx_safe = *ddx;
+  } else {
+    auto meta = pten::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
+    *ddx_safe = pten::Empty<T, DeviceContext>(dev_ctx, std::move(meta));
+    ddx_safe->mutable_data(dev_ctx.GetPlace());
+    paddle::operators::math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
+  }
+}
+
 template <typename DeviceContext,
           typename T,
           typename DX_OP,
@@ -388,6 +427,13 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
       dy_op,
       dx == nullptr ? nullptr : dx->mutable_data<T>(dev_ctx.GetPlace()),
       dy == nullptr ? nullptr : dy->mutable_data<T>(dev_ctx.GetPlace())});
+}
+
+inline void ElementwiseGradPreProcess(const DenseTensor &dout,
+                                      DenseTensor *dx) {
+  if (dx != nullptr) {
+    dx->set_lod(dout.lod());
+  }
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -585,7 +631,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
   }
 #ifdef PADDLE_WITH_XPU2
   int block_size = 64;

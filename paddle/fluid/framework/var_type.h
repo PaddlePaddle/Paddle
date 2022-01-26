@@ -57,7 +57,7 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       visitor(var.Get<LoDTensorArray>());
       return;
     case proto::VarType::SELECTED_ROWS:
-      visitor(var.Get<SelectedRows>());
+      visitor(var.Get<pten::SelectedRows>());
       return;
     case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());

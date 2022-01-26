@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
 
@@ -40,7 +41,7 @@ class LSTMMKLDNNHandler
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
             is_reverse, N, Ti, IC, OC, 4,
             ctx.InputName("X") + ctx.InputName("WeightH")) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       const bool is_INT8 = std::is_same<T, uint8_t>::value;
       const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
       // oneDNN kernel has hardcoded activation functions
