@@ -163,6 +163,8 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                         "s internal scope.",
                                         var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
+    VLOG(2) << "GRAD_PARAM_NAME:" << var_names[i];
+    VLOG(2) << "numel:" << var->Get<LoDTensor>().numel();
     VariableShare(*var, vars[i]);
   }
 }
@@ -343,16 +345,19 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                   &scope);
       // Debug info: scope info when run end
-      VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+      // VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
       // Step 3. run ops
       parallel_executor->RunWithoutFetch(
           /*skip_eager_delete_vars=*/skip_eager_delete_vars);
     }
 
+    // Debug info: scope info when run end
+    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names,
                                 *global_block, &scope);
+    //for (auto & name: param_grad_names) VLOG(3) << "GRAD_PARAM_NAME:" << name;
     details::ShareVarsFromScope(param_grad_vars, param_grad_names,
                                 *global_block, &scope);
 

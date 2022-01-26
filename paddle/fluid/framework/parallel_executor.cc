@@ -757,6 +757,7 @@ void ParallelExecutor::PrepareVariables(Scope *scope) {
               << " has been initialized beforehand in global scope, skipped.";
       continue;
     }
+    VLOG(4) << "Create Variable with name : " << info.name_;
     framework::InitializeVariable(scope->Var(info.name_), info.type_);
   }
 }
