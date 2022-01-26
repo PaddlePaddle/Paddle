@@ -167,6 +167,7 @@ class WarpCTCFunctor {
       options_.stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream();
+      options_.params.costs_loc = CTC_GPU;
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "[warpctc init] GPU is not enabled."));
@@ -390,21 +391,13 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     }
 
     const int* warpctc_label_data = warpctc_label.data<int>();
-    // warpctc stores loss in CPU memory
-    Tensor warpctc_loss;
-    T* warpctc_loss_data =
-        warpctc_loss.mutable_data<T>(loss_dims, platform::CPUPlace());
+    T* loss_data = loss->mutable_data<T>(loss_dims, ctx.GetPlace());
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     WarpCTCFunctor<DeviceContext, T>()(
         ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
         warpctc_labels_length.data(), warpctc_logits_length.data(),
-        seq_info.sequence_width, seq_info.num_sequences, blank,
-        warpctc_loss_data);
-
-    // Copy the loss back
-    paddle::framework::TensorCopy(warpctc_loss, ctx.GetPlace(),
-                                  ctx.device_context(), loss);
+        seq_info.sequence_width, seq_info.num_sequences, blank, loss_data);
   }
 };
 
