@@ -21,7 +21,6 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
-
 from . import cuda
 
 __all__ = [  # noqa
@@ -358,63 +357,67 @@ def get_device():
 
 def get_all_device_type():
     """
-    Get all available device types
+    Get all available device types.
 
     Returns:
-        A list of all available device types
+        A list of all available device types.
 
     Examples:
         .. code-block:: python
 
             import paddle
             paddle.device.get_all_device_type()
+            # ['cpu', 'gpu', 'FakeCPU', 'FakeGPU']
     """
     return core.get_all_device_type()
 
 
 def get_all_custom_device_type():
     """
-    Get all available custom device types
+    Get all available custom device types.
 
     Returns: 
-        A list of all available custom device types
+        A list of all available custom device types.
 
     Examples:
         .. code-block:: python
 
             import paddle
             paddle.device.get_all_custom_device_type()
+            # ['FakeCPU', 'FakeGPU']
     """
     return core.get_all_custom_device_type()
 
 
 def get_available_device():
     """
-    Get all available devices
+    Get all available devices.
 
     Returns:
-        A list of all available devices
+        A list of all available devices.
 
     Examples:
         .. code-block:: python
 
             import paddle
             paddle.device.get_available_device()
+            # ['cpu', 'gpu:0', 'gpu:1', 'FakeCPU', 'FakeGPU:0', 'FakeGPU:1']
     """
     return core.get_available_device()
 
 
 def get_available_custom_device():
     """
-    Get all available custom devices
+    Get all available custom devices.
 
     Returns:
-       A list of all available custom devices
+       A list of all available custom devices.
 
     Examples:
         .. code-block:: python
 
             import paddle
             paddle.device.get_available_custom_device()
+            # ['FakeCPU', 'FakeGPU:0', 'FakeGPU:1']
     """
     return core.get_available_custom_device()

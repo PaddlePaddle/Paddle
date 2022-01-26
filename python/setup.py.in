@@ -580,8 +580,7 @@ headers = (
     # utila api headers
     ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/small_vector.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/device/device_ext.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/device/device_ext.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn

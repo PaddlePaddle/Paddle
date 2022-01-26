@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/pten/api/ext/exception.h"
 
@@ -51,7 +52,7 @@ std::string Place::DebugString() const {
   std::ostringstream os;
   os << "Place(";
   if (alloc_type_ == AllocationType::CUSTOM) {
-    os << device_type;
+    os << GetGlobalDeviceType(device_type_id_);
   } else {
     os << AllocationTypeStr(alloc_type_);
   }
@@ -68,6 +69,25 @@ std::string Place::DebugString() const {
 std::ostream &operator<<(std::ostream &os, const Place &p) {
   os << p.DebugString();
   return os;
+}
+
+static std::unordered_map<std::string, size_t> global_registered_device_type_id;
+static std::unordered_map<size_t, std::string> global_registered_device_type;
+
+size_t GetOrRegisterGlobalDeviceTypeId(const std::string &device_type) {
+  if (device_type.empty()) return 0;
+  if (global_registered_device_type_id.find(device_type) ==
+      global_registered_device_type_id.end()) {
+    size_t device_type_id = global_registered_device_type_id.size() + 1;
+    global_registered_device_type_id[device_type] = device_type_id;
+    global_registered_device_type[device_type_id] = device_type;
+  }
+  return global_registered_device_type_id[device_type];
+}
+
+std::string GetGlobalDeviceType(size_t device_type_id) {
+  if (device_type_id == 0) return "";
+  return global_registered_device_type[device_type_id];
 }
 
 }  // namespace pten

@@ -824,7 +824,7 @@ class CustomDeviceContext : public DeviceContext {
   explicit CustomDeviceContext(CustomPlace place);
   virtual ~CustomDeviceContext();
 
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
   void Wait() const override;
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   C_Stream stream() const {

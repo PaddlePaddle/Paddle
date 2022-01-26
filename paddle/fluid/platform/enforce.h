@@ -740,5 +740,6 @@ inline void retry_sleep(unsigned millisecond) {
 
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
+
 }  // namespace platform
 }  // namespace paddle

@@ -1657,18 +1657,18 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   m.def("get_all_device_type", []() {
+    std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto device_types = platform::DeviceManager::GetAllDeviceTypes();
-    return device_types;
+    device_types = platform::DeviceManager::GetAllDeviceTypes();
 #else
-          LOG(ERROR) << string::Sprintf(
+          LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle-core\n");
-          std::exit(-1);
 #endif
+    return device_types;
   });
   m.def("get_all_custom_device_type", []() {
     std::vector<std::string> device_types;
@@ -1699,11 +1699,11 @@ All parameter, weight, gradient are variables in Paddle.
     return devices;
   });
   m.def("get_available_custom_device", [] {
+    std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto devices = platform::DeviceManager::GetAllCustomDeviceList();
-    return devices;
+    devices = platform::DeviceManager::GetAllCustomDeviceList();
 #else
-          LOG(ERROR) << string::Sprintf(
+          LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
               "installed"
               "CPU/GPU version PaddlePaddle.\n"
@@ -1711,8 +1711,8 @@ All parameter, weight, gradient are variables in Paddle.
               "install"
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle-core\n");
-          std::exit(-1);
 #endif
+    return devices;
   });
   py::class_<platform::CustomPlace>(m, "CustomPlace",
                                     R"DOC(

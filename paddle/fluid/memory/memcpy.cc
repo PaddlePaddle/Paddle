@@ -1065,7 +1065,7 @@ void Copy<pten::Place, pten::Place>(pten::Place dst_place, void* dst,
 template <>
 void Copy<pten::MLUPlace, pten::Place>(pten::MLUPlace dst_place, void* dst,
                                        pten::Place src_place, const void* src,
-                                       size_t num, mluStream stream) {
+                                       size_t num, void* stream) {
   Copy(pten::Place(dst_place.GetType(), dst_place.GetDeviceId()), dst,
        src_place, src, num, stream);
 }
@@ -1075,7 +1075,7 @@ template <>
 void Copy<pten::Place, pten::MLUPlace>(pten::Place dst_place, void* dst,
                                        pten::MLUPlace src_place,
                                        const void* src, size_t num,
-                                       mluStream stream) {
+                                       void* stream) {
   Copy(dst_place, dst,
        pten::Place(src_place.GetType(), src_place.GetDeviceId()), src, num,
        stream);
@@ -1085,7 +1085,7 @@ void Copy<pten::Place, pten::MLUPlace>(pten::Place dst_place, void* dst,
 template <>
 void Copy<pten::CPUPlace, pten::Place>(pten::CPUPlace dst_place, void* dst,
                                        pten::Place src_place, const void* src,
-                                       size_t num, mluStream stream) {
+                                       size_t num, void* stream) {
   Copy(pten::Place(dst_place.GetType()), dst, src_place, src, num, stream);
 }
 
@@ -1094,7 +1094,7 @@ template <>
 void Copy<pten::Place, pten::CPUPlace>(pten::Place dst_place, void* dst,
                                        pten::CPUPlace src_place,
                                        const void* src, size_t num,
-                                       mluStream stream) {
+                                       void* stream) {
   Copy(dst_place, dst, pten::Place(src_place.GetType()), src, num, stream);
 }
 
@@ -1159,7 +1159,7 @@ void Copy<pten::Place, pten::Place>(pten::Place dst_place, void* dst,
   }
 #endif
 #ifdef PADDLE_WITH_IPU
-  else if (src_place.GetType() == pten::AllocationType::CPU &&
+  else if (src_place.GetType() == pten::AllocationType::CPU &&  // NOLINT
            dst_place.GetType() == pten::AllocationType::IPU) {
     platform::IPUPlace place_dst(dst_place.GetDeviceId());
     platform::CPUPlace place_src;

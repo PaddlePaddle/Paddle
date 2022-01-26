@@ -241,8 +241,8 @@ void InitDevices(const std::vector<int> devices) {
         for (auto &dev_type : device_types) {
           VLOG(1) << "Device type: " << dev_type << ", visible devices count: "
                   << platform::DeviceManager::GetDeviceCount(dev_type);
-          for (size_t i = 0; i < platform::DeviceManager::GetDeviceCount(dev_type);
-              i++) {
+          for (size_t i = 0;
+               i < platform::DeviceManager::GetDeviceCount(dev_type); i++) {
             places.push_back(platform::CustomPlace(dev_type, i));
           }
         }

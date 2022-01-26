@@ -902,7 +902,7 @@ CustomDeviceContext::CustomDeviceContext(CustomPlace place) : place_(place) {
 
 CustomDeviceContext::~CustomDeviceContext() {}
 
-Place CustomDeviceContext::GetPlace() const { return place_; }
+const Place& CustomDeviceContext::GetPlace() const { return place_; }
 
 void CustomDeviceContext::Wait() const {
   // platform::RecordEvent record_event("NPUDeviceContext/wait");

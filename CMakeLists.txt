@@ -266,8 +266,7 @@ if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thr
   return()
 endif()
 
-if(LINUX AND NOT ON_INFER)
-# Compile with custom device support
+if (LINUX AND NOT WITH_CUSTOM_DEVICE AND NOT ON_INFER)
 set(WITH_CUSTOM_DEVICE ON)
 endif()
 

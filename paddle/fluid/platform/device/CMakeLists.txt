@@ -11,7 +11,7 @@ cc_library(device_base SRCS device_base.cc DEPS stream event callback_manager de
 
 ENDIF()
 
-set(DEV_LIBS cpu_device custom_device)
+set(DEV_LIBS custom_device)
 
 # GPU
 IF(WITH_GPU OR WITH_ROCM)
