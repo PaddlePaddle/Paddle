@@ -29,7 +29,7 @@
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = pten::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>

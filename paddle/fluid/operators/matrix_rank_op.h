@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/controlflow/compare_op.h"
 
 namespace paddle {
 namespace operators {
@@ -45,16 +46,6 @@ static DDim RemoveLastDim(const DDim& dim) {
   return framework::make_ddim(vec);
 }
 }  // namespace detail
-
-template <typename T>
-struct GreaterThanFunctor {
-  HOSTDEVICE int operator()(const T a, const T b) const { return a > b; }
-};
-
-template <typename T>
-struct LessThanFunctor {
-  HOSTDEVICE int operator()(const T a, const T b) const { return a < b; }
-};
 
 template <typename T>
 struct GreaterElementFunctor {

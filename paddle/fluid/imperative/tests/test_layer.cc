@@ -237,7 +237,7 @@ TEST(test_layer, test_debug_string) {
   std::shared_ptr<imperative::VarBase> selected_rows(
       new imperative::VarBase(false, "selected_rows"));
   auto tensor_sr = selected_rows->MutableVar()
-                       ->GetMutable<framework::SelectedRows>()
+                       ->GetMutable<pten::SelectedRows>()
                        ->mutable_value();
   std::string res_ui_sr = test_func(selected_rows);
   ASSERT_TRUE(res_ui_sr.find("NOT_INITED") != std::string::npos);

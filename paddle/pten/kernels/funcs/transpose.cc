@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/funcs/transpose.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -33,10 +33,10 @@ struct TransposeNormal<CPUContext, T> {
                   pten::DenseTensor* out,
                   const std::vector<int64_t>& axis) {
     const int rank = axis.size();
-    auto in_stride = paddle::framework::stride(in.dims());
-    auto out_stride = paddle::framework::stride(out->dims());
+    auto in_stride = pten::framework::stride(in.dims());
+    auto out_stride = pten::framework::stride(out->dims());
     const T* in_ptr = in.data<T>();
-    T* out_ptr = out->mutable_data<T>();
+    T* out_ptr = out->mutable_data<T>(dev_ctx.GetPlace());
 
     auto transpose_helper = [&](int64_t beg, int64_t end) {
       for (int64_t out_idx = beg; out_idx < end; ++out_idx) {
@@ -63,11 +63,8 @@ DEFINE_CPU_TRANS_NORMAL(bool);
 DEFINE_CPU_TRANS_NORMAL(int8_t);
 DEFINE_CPU_TRANS_NORMAL(uint8_t);
 DEFINE_CPU_TRANS_NORMAL(int16_t);
-DEFINE_CPU_TRANS_NORMAL(uint16_t);
 DEFINE_CPU_TRANS_NORMAL(int32_t);
-DEFINE_CPU_TRANS_NORMAL(uint32_t);
 DEFINE_CPU_TRANS_NORMAL(int64_t);
-DEFINE_CPU_TRANS_NORMAL(uint64_t);
 DEFINE_CPU_TRANS_NORMAL(float);
 DEFINE_CPU_TRANS_NORMAL(double);
 DEFINE_CPU_TRANS_NORMAL(paddle::platform::float16);

@@ -38,6 +38,11 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorBase(
                              src.dims(),
                              src.layout(),
                              src.offset()};
+  if (!src.IsInitialized()) {
+    return std::make_unique<pten::DenseTensor>(
+        std::move(pten::make_intrusive<SharedStorage>(src.place())),
+        std::move(meta));
+  }
   auto shared_storage = pten::make_intrusive<SharedStorage>(src.Holder());
   return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
                                              std::move(meta));
@@ -247,17 +252,19 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
-    if (!platform::is_same_place(tensor.place(), expected_place)) {
+
+    if (tensor.IsInitialized() &&
+        !platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return MakePtenDenseTensor(tmp_tensor);
     } else {
       return MakePtenDenseTensor(tensor);
     }
-  } else if (variable.IsType<framework::SelectedRows>()) {
+  } else if (variable.IsType<pten::SelectedRows>()) {
     // TODO(chenweihang): now we don't deal with row and height
     // by xiaowei's advice
-    const auto& tensor = variable.Get<framework::SelectedRows>();
+    const auto& tensor = variable.Get<pten::SelectedRows>();
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
       framework::Tensor tmp_tensor;
       paddle::framework::TensorCopySync(
@@ -282,8 +289,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
     return MakePtenDenseTensor(*tensor, arg_def);
-  } else if (variable->template IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->template GetMutable<framework::SelectedRows>();
+  } else if (variable->template IsType<pten::SelectedRows>()) {
+    auto* tensor = variable->template GetMutable<pten::SelectedRows>();
     // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
     // here the row and height will lost in output!
     return MakePtenDenseTensor(tensor->value(), arg_def);
@@ -304,7 +311,7 @@ void MovesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move storage."));
-  dst->ResizeAndAllocate(src->dims());
+  dst->Resize(src->dims());
   dst->set_type(pten::TransToProtoVarType(src->dtype()));
   auto storage = src->MoveMemoryHolder();
   dst->ResetHolderWithType(storage, pten::TransToProtoVarType(src->dtype()));
@@ -325,7 +332,7 @@ void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       dst,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move allocation."));
-  dst->ResizeAndAllocate(src->dims());
+  dst->Resize(src->dims());
   dst->ResetHolderWithType(src->Holder(),
                            pten::TransToProtoVarType(src->dtype()));
   dst->set_offset(src->meta().offset);
@@ -367,7 +374,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     auto* tensor = variable->GetMutable<framework::LoDTensor>();
 
     auto dtype = pten::TransToProtoVarType(src->dtype());
-    tensor->ResizeAndAllocate(src->dims());
+    tensor->Resize(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
     if (!tensor->IsInitialized() ||
@@ -382,8 +389,8 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
       tensor->set_type(dtype);
     }
 
-  } else if (variable->IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->GetMutable<framework::SelectedRows>();
+  } else if (variable->IsType<pten::SelectedRows>()) {
+    auto* tensor = variable->GetMutable<pten::SelectedRows>();
     auto dtype = pten::TransToProtoVarType(src->dtype());
 
     if (!tensor->value().IsInitialized()) {

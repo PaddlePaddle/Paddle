@@ -26,7 +26,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(API, matmul_cpu) {
   // 1. create tensor
@@ -38,14 +38,16 @@ TEST(API, matmul_cpu) {
                             framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y->mutable_data<float>();
+  auto* dense_y_data =
+      dense_y->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     dense_x_data[i] = 1.0;
@@ -87,14 +89,14 @@ TEST(API, matmul_cuda) {
                             framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
-  auto* ref_x_data = ref_x->mutable_data<float>();
+  auto* ref_x_data = ref_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   auto ref_y = std::make_shared<pten::DenseTensor>(
       alloc_cpu.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
-  auto* ref_y_data = ref_y->mutable_data<float>();
+  auto* ref_y_data = ref_y->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     ref_x_data[i] = 1.0;

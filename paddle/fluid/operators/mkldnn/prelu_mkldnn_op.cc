@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -39,7 +40,7 @@ class PReluMKLDNNHandler
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
                                 uniq_name)) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       auto x_md = memory::desc(framework::vectorize(x->dims()),
                                MKLDNNGetDataType<T>(), x->format());
 
