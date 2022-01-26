@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/utils/data_type.h"
-// See Note [ Why still include the fluid headers? ]
-// #include "paddle/fluid/framework/data_type.h"
 
 namespace pten {
 
