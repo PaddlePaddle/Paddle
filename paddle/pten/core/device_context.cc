@@ -62,6 +62,10 @@ const Allocator* DeviceContext::GetZeroAllocator() const {
 void* DeviceContextImpl::Alloc(TensorBase* tensor,
                                DataType dtype,
                                size_t requested_size) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      pten::errors::InvalidArgument(
+          "Required tensor shall not be nullptr, but received nullptr."));
   if (dtype == DataType::UNDEFINED) {
     dtype = tensor->dtype();
   }
@@ -73,6 +77,10 @@ void* DeviceContextImpl::Alloc(TensorBase* tensor,
 void* DeviceContextImpl::HostAlloc(TensorBase* tensor,
                                    DataType dtype,
                                    size_t requested_size) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      pten::errors::InvalidArgument(
+          "Required tensor shall not be nullptr, but received nullptr."));
   if (dtype == DataType::UNDEFINED) {
     dtype = tensor->dtype();
   }
@@ -117,35 +125,15 @@ const Allocator* DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
-void DeviceContext::ResetTensorInfo(pten::TensorBase* tensor,
-                                    DataType dtype) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      tensor,
-      pten::errors::InvalidArgument(
-          "Required tensor shall not be nullptr, but received nullptr."));
-  // Clear holder_ in case of allocating memory in new place.
-  // if (tensor->initialized() && tensor->place() != GetPlace()) {
-  //   if (pten::DenseTensor::classof(tensor)) {
-  //     auto* dense_tensor = static_cast<DenseTensor*>(tensor);
-  //     dense_tensor->ResetHolder(nullptr);
-  //   }
-  // } else {
-  //   PADDLE_THROW(
-  //       pten::errors::Unimplemented("Only support DenseTensor currently."));
-  // }
-}
-
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size) const {
-  ResetTensorInfo(tensor, dtype);
   return impl_->Alloc(tensor, dtype, requested_size);
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
                                DataType dtype,
                                size_t requested_size) const {
-  ResetTensorInfo(tensor, dtype);
   return impl_->HostAlloc(tensor, dtype, requested_size);
 }
 

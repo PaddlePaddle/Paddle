@@ -167,8 +167,6 @@ class DeviceContext {
   virtual void Wait() const {}
 
  private:
-  void ResetTensorInfo(pten::TensorBase*, DataType) const;
-
   std::unique_ptr<DeviceContextImpl> impl_;
 };
 
