@@ -23,38 +23,40 @@ limitations under the License. */
 
 namespace pten {
 
-#define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
-  callback(cpp_type, proto_type);
+#define _PtenForEachDataTypeHelper_(callback, cpp_type, data_type) \
+  callback(cpp_type, data_type);
 
-#define _ForEachDataType_(callback)                                      \
-  _ForEachDataTypeHelper_(callback, float, FP32);                        \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);  \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::bfloat16, BF16); \
-  _ForEachDataTypeHelper_(callback, double, FP64);                       \
-  _ForEachDataTypeHelper_(callback, int, INT32);                         \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64);                     \
-  _ForEachDataTypeHelper_(callback, bool, BOOL);                         \
-  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                     \
-  _ForEachDataTypeHelper_(callback, int16_t, INT16);                     \
-  _ForEachDataTypeHelper_(callback, int8_t, INT8);                       \
-  _ForEachDataTypeHelper_(                                               \
-      callback, ::paddle::platform::complex<float>, COMPLEX64);          \
-  _ForEachDataTypeHelper_(                                               \
-      callback, ::paddle::platform::complex<double>, COMPLEX128);
+#define _PtenForEachDataType_(callback)                                   \
+  _PtenForEachDataTypeHelper_(callback, float, DataType::FLOAT32);        \
+  _PtenForEachDataTypeHelper_(                                            \
+      callback, ::paddle::platform::float16, DataType::FLOAT16);          \
+  _PtenForEachDataTypeHelper_(                                            \
+      callback, ::paddle::platform::bfloat16, DataType::BFLOAT16);        \
+  _PtenForEachDataTypeHelper_(callback, double, DataType::FLOAT64);       \
+  _PtenForEachDataTypeHelper_(callback, int, DataType::INT32);            \
+  _PtenForEachDataTypeHelper_(callback, int64_t, DataType::INT64);        \
+  _PtenForEachDataTypeHelper_(callback, bool, DataType::BOOL);            \
+  _PtenForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);        \
+  _PtenForEachDataTypeHelper_(callback, int16_t, DataType::INT16);        \
+  _PtenForEachDataTypeHelper_(callback, int8_t, DataType::INT8);          \
+  _PtenForEachDataTypeHelper_(                                            \
+      callback, ::paddle::platform::complex<float>, DataType::COMPLEX64); \
+  _PtenForEachDataTypeHelper_(                                            \
+      callback, ::paddle::platform::complex<double>, DataType::COMPLEX128);
 
 template <typename Visitor>
 inline void VisitDataType(pten::DataType type, Visitor visitor) {
-#define VisitDataTypeCallback(cpp_type, proto_type) \
-  do {                                              \
-    if (type == proto_type) {                       \
-      visitor.template apply<cpp_type>();           \
-      return;                                       \
-    }                                               \
+#define PtenVisitDataTypeCallback(cpp_type, data_type) \
+  do {                                                 \
+    if (type == data_type) {                           \
+      visitor.template apply<cpp_type>();              \
+      return;                                          \
+    }                                                  \
   } while (0)
 
-  _ForEachDataType_(VisitDataTypeCallback);
-#undef VisitDataTypeCallback
-  PADDLE_THROW(platform::errors::Unimplemented(
+  _PtenForEachDataType_(PtenVisitDataTypeCallback);
+#undef PtenVisitDataTypeCallback
+  PADDLE_THROW(pten::errors::Unimplemented(
       "Not supported proto::VarType::Type(%d) as data type.",
       static_cast<int>(type)));
 }
