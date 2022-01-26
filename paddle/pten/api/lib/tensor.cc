@@ -48,12 +48,12 @@ limitations under the License. */
  * or the corresponding components will be re-implemented.
  */
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/ddim.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace paddle {
 namespace experimental {
@@ -68,7 +68,7 @@ Tensor cast(const Tensor &x, DataType out_dtype);
 Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
     : impl_(std::move(tensor_impl)) {
   PADDLE_ENFORCE_NOT_NULL(impl_,
-                          platform::errors::InvalidArgument(
+                          pten::errors::InvalidArgument(
                               "TensorImpl with nullptr is not supported"));
 }
 
@@ -78,7 +78,8 @@ Tensor::Tensor(const PlaceType &place)
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
                                           framework::make_ddim({}),
-                                          pten::DataLayout::NCHW))))) {}
+                                          pten::DataLayout::NCHW))))),
+      place_{place} {}
 
 Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
     : impl_(std::move(std::make_shared<pten::DenseTensor>(
@@ -86,7 +87,8 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
                                           framework::make_ddim(shape),
-                                          pten::DataLayout::NCHW))))) {}
+                                          pten::DataLayout::NCHW))))),
+      place_{place} {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
@@ -113,7 +115,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
     std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
         pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
   }
 }
@@ -131,17 +133,23 @@ bool Tensor::is_dense_tensor() const {
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
-  return ConvertInnerPlaceToExtPlace(impl_->place());
+  if (!impl_->initialized()) {
+    return place_;
+  } else {
+    return ConvertInnerPlaceToExtPlace(impl_->place());
+  }
 }
 
-paddle::platform::Place Tensor::inner_place() const { return impl_->place(); }
+paddle::platform::Place Tensor::inner_place() const {
+  return ConvertExtPlaceToInnerPlace(place());
+}
 
 bool Tensor::is_cpu() const {
-  return paddle::platform::is_cpu_place(impl_->place());
+  return paddle::platform::is_cpu_place(inner_place());
 }
 
 bool Tensor::is_cuda() const {
-  return paddle::platform::is_gpu_place(impl_->place());
+  return paddle::platform::is_gpu_place(inner_place());
 }
 
 /* Part 4: Data Access methods */
@@ -177,8 +185,8 @@ T *Tensor::mutable_data(const PlaceType &place) {
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(inner_place, impl_->place()),
         true,
-        platform::errors::Unimplemented("Modification of tensor place through "
-                                        "mutable_data is not supported now"));
+        pten::errors::Unimplemented("Modification of tensor place through "
+                                    "mutable_data is not supported now"));
   }
   if (is_dense_tensor()) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
@@ -236,7 +244,7 @@ Tensor::data<paddle::platform::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(pten::errors::Unimplemented(
       "It is not currently supported to directly obtain the modifiable data "
       "address through the tensor::data<T>() method, please use the "
       "tensor::mutable_data<T>() method."));
@@ -267,7 +275,7 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
             begin_idx,
             end_idx))));
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Only support slice operation on DenseTensor now."));
   }
 }

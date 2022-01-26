@@ -139,26 +139,27 @@ class LogsumexpGradKernel : public framework::OpKernel<T> {
                              broadcast_dim[0]);
     } else {
       int rank = input->dims().size();
+      LogsumexpGradFunctor functor;
       switch (rank) {
         case 1:
           ReduceGradFunctor<DeviceContext, T, 1, LogsumexpGradFunctor>(
               context.template device_context<DeviceContext>(), *input, *output,
-              *output_grad, input_grad, axis);
+              *output_grad, input_grad, functor, axis);
           break;
         case 2:
           ReduceGradFunctor<DeviceContext, T, 2, LogsumexpGradFunctor>(
               context.template device_context<DeviceContext>(), *input, *output,
-              *output_grad, input_grad, axis);
+              *output_grad, input_grad, functor, axis);
           break;
         case 3:
           ReduceGradFunctor<DeviceContext, T, 3, LogsumexpGradFunctor>(
               context.template device_context<DeviceContext>(), *input, *output,
-              *output_grad, input_grad, axis);
+              *output_grad, input_grad, functor, axis);
           break;
         case 4:
           ReduceGradFunctor<DeviceContext, T, 4, LogsumexpGradFunctor>(
               context.template device_context<DeviceContext>(), *input, *output,
-              *output_grad, input_grad, axis);
+              *output_grad, input_grad, functor, axis);
           break;
       }
     }

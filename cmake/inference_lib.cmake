@@ -181,6 +181,13 @@ IF(WITH_XPU)
         DSTS ${dst_dir} ${dst_dir})
 ENDIF()
 
+IF(WITH_IPU)
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
+    copy(inference_lib_dist
+        SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/device/ipu/libpaddle_ipu.so
+        DSTS ${dst_dir})
+ENDIF()
+
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -189,6 +196,7 @@ copy(inference_lib_dist
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+
 if(WIN32)
     if(WITH_STATIC_LIB)
         set(paddle_inference_lib $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib
@@ -304,7 +312,7 @@ copy(fluid_lib_dist
         )
 
 set(module "platform")
-set(platform_lib_deps profiler_proto error_codes_proto)
+set(platform_lib_deps profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif(WITH_GPU)
@@ -317,7 +325,7 @@ copy(fluid_lib_dist
 
 set(module "string")
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
+        SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/*.h ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/tinyformat/*.h 
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
         )
 

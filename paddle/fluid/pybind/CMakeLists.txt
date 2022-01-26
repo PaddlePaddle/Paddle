@@ -2,7 +2,7 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor global_utils)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -291,6 +291,10 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_IPU)
+    target_link_libraries(paddle_pybind paddle_ipu)
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
