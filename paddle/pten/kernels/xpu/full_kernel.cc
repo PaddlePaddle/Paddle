@@ -42,7 +42,7 @@ void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
   tensor->mutable_data<T>(dev_ctx.GetPlace());
 
   PD_VISIT_ALL_TYPES(tensor->dtype(), "FullValueXPU", ([&] {
-                       TensorSetConstantXPU<T, data_t>(
+                       TensorSetConstantXPU<VType, data_t>(
                            tensor, val, dev_ctx.GetPlace());
                      }));
 }
