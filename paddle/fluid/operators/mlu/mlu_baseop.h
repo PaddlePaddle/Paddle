@@ -1137,5 +1137,28 @@ class MLUCnnl {
                          void* output);
 };
 
+template <typename T>
+inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
+                                   const std::vector<int> perm,
+                                   const Tensor* transformed_input,
+                                   Tensor* transformed_output,
+                                   bool need_reshape_or_alloc) {
+  auto in_dims_vec = framework::vectorize(transformed_input->dims());
+  if (need_reshape_or_alloc) {
+    transformed_output->mutable_data<T>(
+        {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],
+         in_dims_vec[perm[3]]},
+        ctx.GetPlace());
+  }
+  MLUCnnlTensorDesc trans_in_desc(*transformed_input, CNNL_LAYOUT_ARRAY,
+                                  ToCnnlDataType<T>());
+  MLUCnnlTensorDesc trans_out_desc(*transformed_output, CNNL_LAYOUT_ARRAY,
+                                   ToCnnlDataType<T>());
+
+  MLUCnnl::Transpose(ctx, perm, in_dims_vec.size(), trans_in_desc.get(),
+                     GetBasePtr(transformed_input), trans_out_desc.get(),
+                     GetBasePtr(transformed_output));
+}
+
 }  // namespace operators
 }  // namespace paddle
