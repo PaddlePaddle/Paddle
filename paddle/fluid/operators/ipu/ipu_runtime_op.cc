@@ -1,4 +1,4 @@
-//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,32 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <memory>
-#include <vector>
+#ifdef PADDLE_WITH_IPU
 
 #include "paddle/fluid/framework/op_registry.h"
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
-#include "paddle/fluid/framework/tensor.h"
-#endif
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class IpuRuntimeKernel : public framework::OpKernel<T> {
+class IpuRuntimeOp : public framework::OperatorBase {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-#ifdef PADDLE_WITH_IPU
-    auto ipu_backend = framework::ipu::IpuBackend::GetInstance();
-    if (!ipu_backend->DeviceIsAttached()) {
-      const platform::IPUDeviceContext& ipu_ctx =
-          reinterpret_cast<const platform::IPUDeviceContext&>(
-              ctx.device_context());
-      ipu_backend->AttachDevice(ipu_ctx.DeviceId());
-    }
+  IpuRuntimeOp(const std::string& type,
+               const framework::VariableNameMap& inputs,
+               const framework::VariableNameMap& outputs,
+               const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const {
+    auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
+    auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);
+    framework::ExecutionContext ctx(*this, scope, *dev_ctx, runtime_ctx);
     auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
     auto output_names = ctx.OutputNames("FetchList");
@@ -58,12 +55,24 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
                  << "(" << dim << ")";
       }
     }
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Please compile WITH_IPU option to enable ipu_runtime op"));
-#endif
+  }
+};
+
+class IpuRuntimeOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("FeedList", "FeedList of Graph").AsDuplicable();
+    AddOutput("FetchList", "FetchList of Graph").AsDuplicable();
+    AddComment(R"DOC(
+Run graph by PopART runtime.
+)DOC");
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+REGISTER_OPERATOR(ipu_runtime, ops::IpuRuntimeOp, ops::IpuRuntimeOpMaker);
+
+#endif  // PADDLE_WITH_IPU

@@ -134,9 +134,10 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/ipu_info.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU
