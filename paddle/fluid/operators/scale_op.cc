@@ -71,12 +71,6 @@ class ScaleOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    framework::ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-    return pten::ScaleOpArgumentMapping(arg_mapping_ctx);
-  }
 };
 
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
