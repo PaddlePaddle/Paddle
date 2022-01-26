@@ -60,7 +60,11 @@ __global__ void ExpertCount(const T* gate_idx, T* expert_count,
     int x = res_tmp[i - expert_min];
 #pragma unroll
     for (int j = 1; j < WARP_SIZE; j <<= 1) {
+#ifdef __HIPCC__
+      x = x + __shfl_down(x, j);
+#else
       x = x + __shfl_down_sync(-1u, x, j);
+#endif
     }
     if (threadIdx.x % WARP_SIZE == 0) {
       platform::CudaAtomicAdd(expert_count + i, x);
