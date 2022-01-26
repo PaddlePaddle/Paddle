@@ -824,29 +824,11 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     return forward_function_str, forward_function_declaration_str
 
 
-def FakeMatmulGradAPI():
-    fake_matmul_grad_str = """
-namespace paddle {
-namespace experimental {
-    std::vector<std::vector<Tensor>> matmul_grad(const Tensor& x,
-                                                 const Tensor& y,
-                                                 const Tensor& out_grad,
-                                                 bool transpose_x,
-                                                 bool transpose_y) {
-        std::vector<std::vector<Tensor>> ret;
-        return ret;
-    }
-}
-}
-
-"""
-    return fake_matmul_grad_str
-
-
 def GenerateNodeCCFile(filepath, node_definition_str):
     file_contents = """
 #include "glog/logging.h"
 #include "paddle/pten/api/all.h"
+#include "paddle/pten/api/backward/backward_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/utils.h"
@@ -854,7 +836,6 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
 """
-    file_contents += FakeMatmulGradAPI()
     file_contents += node_definition_str
     with open(filepath, 'a') as f:
         f.write(file_contents)
