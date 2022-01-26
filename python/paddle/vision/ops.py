@@ -980,12 +980,14 @@ def image_decode_random_crop(x,
         out = core.VarBase(core.VarDesc.VarType.UINT8, [],
                 unique_name.generate("image_decode_random_crop"),
                 core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
+        program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode_random_crop(
                 x, out, "mode", mode, "num_threads", num_threads,
                 "aspect_ratio_min", aspect_ratio_min,
                 "aspect_ratio_max", aspect_ratio_max,
                 "area_min", area_min, "area_max", area_max,
-                "num_attempts", num_attempts, "local_rank", local_rank)
+                "num_attempts", num_attempts, "local_rank", local_rank,
+                "program_id", program_id)
 
     inputs = {'X': x}
     attrs = {"mode": mode,
