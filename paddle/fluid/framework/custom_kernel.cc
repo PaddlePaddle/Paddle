@@ -343,14 +343,14 @@ void RegisterKernelWithMetaInfoMap(
 void LoadCustomKernelLib(const std::string& dso_lib_path) {
 #ifdef _LINUX
   void* dso_handle = nullptr;
-  int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
+  int dynload_flags = RTLD_NOW | RTLD_LOCAL;
   dso_handle = dlopen(dso_lib_path.c_str(), dynload_flags);
 
   // MUST valid dso_lib_path
   PADDLE_ENFORCE_NOT_NULL(
       dso_handle,
       platform::errors::InvalidArgument(
-          "Fail to open library: %s with error: %s", dso_lib_path, dlerror));
+          "Fail to open library: %s with error: %s", dso_lib_path, dlerror()));
 
   typedef OpKernelInfoMap& get_op_kernel_info_map_t();
   auto* func = reinterpret_cast<get_op_kernel_info_map_t*>(
