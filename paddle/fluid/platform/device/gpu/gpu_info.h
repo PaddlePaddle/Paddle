@@ -60,6 +60,10 @@ std::vector<int> GetSelectedDevices();
 //! Get the properties of the ith GPU device.
 const gpuDeviceProp &GetDeviceProperties(int id);
 
+//! Get whether support managed memory on the ith GPU.
+//! Return 1 if device support allocating managed memory, 0 if not.
+int GetGPUManagedMemorySupported(int id);
+
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
@@ -113,7 +117,8 @@ void GpuDestroyStream(gpuStream_t stream);
 void GpuDeviceync();
 
 //! CudaMalloc with recorded info
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id);
+gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
+                             bool malloc_managed_memory = false);
 
 //! CudaFree with recorded info
 void RecordedGpuFree(void *p, size_t size, int dev_id);
@@ -139,6 +144,8 @@ bool RecordedGpuMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
 
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
 uint64_t RecordedGpuMallocSize(int dev_id);
+
+uint64_t RecordedGpuLimitSize(int dev_id);
 
 bool IsGpuMallocRecorded(int dev_id);
 

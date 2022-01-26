@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ __global__ void sum_kernel(int* data, uint64_t n, uint64_t step, int* sum) {
   }
 }
 
-TEST(UnifiledMemoryTest, H2DTest) {
+TEST(ManagedMemoryTest, H2DTest) {
   uint64_t n_data = 1024;
   uint64_t step = 1;
   AllocationPtr allocation = Alloc(platform::CUDAPlace(), n_data * sizeof(int));
@@ -45,7 +45,12 @@ TEST(UnifiledMemoryTest, H2DTest) {
 
   memset(data, 0, n_data * sizeof(int));          // located on host memory
   write_kernel<<<1, 1024>>>(data, n_data, step);  // trans to device memory
-  cudaDeviceSynchronize();
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
 
   int sum = 0;
   for (uint64_t i = 0; i < n_data; ++i) {
@@ -61,7 +66,13 @@ TEST(UnifiledMemoryTest, D2HTest) {
   int* data = static_cast<int*>(allocation->ptr());
 
   write_kernel<<<1, 1024>>>(data, n_data, step);  // located on device memory
-  cudaDeviceSynchronize();
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+
   memset(data, 0, n_data * sizeof(int));  // trans to host memory
 
   int sum = 0;
@@ -84,7 +95,13 @@ TEST(UnifiledMemoryTest, OversubscribeGPUMemoryTest) {
 
   write_kernel<<<5120, 1024>>>(data, n_data, step);
   sum_kernel<<<5120, 1024>>>(data, n_data, step, sum);
-  cudaDeviceSynchronize();
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+
   EXPECT_EQ(*sum, n_data / step);
 }
 

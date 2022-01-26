@@ -156,6 +156,18 @@ int GetGPUMaxThreadsPerBlock(int id) {
   return count;
 }
 
+int GetGPUManagedMemorySupported(int id) {
+  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetGPUDeviceCount()));
+  int ManagedMemoryAttr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&ManagedMemoryAttr, cudaDevAttrManagedMemory, id));
+  return ManagedMemoryAttr;
+}
+
 int GetCurrentDeviceId() {
   int device_id;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device_id));

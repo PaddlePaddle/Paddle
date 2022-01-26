@@ -218,6 +218,18 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
   return g_device_props[id];
 }
 
+int GetGPUManagedMemorySupported(int id) {
+  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetGPUDeviceCount()));
+  int ManagedMemoryAttr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipDeviceGetAttribute(&ManagedMemoryAttr, hipDevAttrManagedMemory, id));
+  return ManagedMemoryAttr;
+}
+
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
