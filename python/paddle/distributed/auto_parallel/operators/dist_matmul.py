@@ -562,7 +562,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
-            Weight_var.name)[1]
+            Weight_var.name)[-1]
         assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -787,7 +787,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
-            Weight_var.name)[0]
+            Weight_var.name)[-2]
         assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -1076,7 +1076,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
-            Weight_var.name)[1]
+            Weight_var.name)[-1]
         assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -1295,7 +1295,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
-            Weight_var.name)[0]
+            Weight_var.name)[-2]
         assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
