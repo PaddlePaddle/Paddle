@@ -393,6 +393,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
+      "\"paddle/fluid/pybind/eager_final_state_op_function_impl.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
@@ -438,6 +439,10 @@ int main(int argc, char* argv[]) {
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"

@@ -288,7 +288,9 @@ void EagerUtils::CheckAndRetainGrad(
 
 paddle::experimental::Tensor EagerUtils::SyncToPtenTensors(
     const egr::EagerTensor& tensor) {
-  const_cast<EagerTensor*>(&tensor)->SyncToTensor();
+  if (!tensor.initialized()) {
+    const_cast<EagerTensor*>(&tensor)->SyncToTensor();
+  }
   return *tensor.Tensor().get();
 }
 
@@ -298,7 +300,9 @@ std::vector<paddle::experimental::Tensor> EagerUtils::SyncToPtenTensors(
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
-    const_cast<EagerTensor*>(&(tensors[i]))->SyncToTensor();
+    if (!tensors[i].initialized()) {
+      const_cast<EagerTensor*>(&(tensors[i]))->SyncToTensor();
+    }
     res.push_back(*tensors[i].Tensor().get());
   }
   return res;
