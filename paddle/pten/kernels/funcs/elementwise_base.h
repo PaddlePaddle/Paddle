@@ -31,9 +31,7 @@ namespace kps = pten::kps;
 
 #endif
 
-#define MAX_NUM_INPUTS \
-  3  // Maximum number of inputs supported by kernel, MAX_NUM_INPUTS  is equal
-     // to the maximum value in ElementwiseType
+#define BASE_SIZE 1  // To avoid running errors when k = 0
 
 namespace pten {
 
@@ -562,13 +560,13 @@ template <typename InT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
 
-    const pten::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
-        &in,
+    const pten::framework::Array<const _ptr_ InT *__restrict__,
+                                 Arity + BASE_SIZE> &in,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[MAX_NUM_INPUTS][VecSize];
+  InT args[Arity + BASE_SIZE][VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
@@ -598,7 +596,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    pten::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS> ins,
+    pten::framework::Array<const _ptr_ InT *__restrict__, Arity + BASE_SIZE>
+        ins,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
@@ -639,7 +638,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = (*outs)[0]->numel();
-  pten::framework::Array<const _ptr_ InT *__restrict__, MAX_NUM_INPUTS>
+  pten::framework::Array<const _ptr_ InT *__restrict__, Arity + BASE_SIZE>
       ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
