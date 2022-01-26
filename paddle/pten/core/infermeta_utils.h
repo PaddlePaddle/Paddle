@@ -183,7 +183,7 @@ class MetaFunctionMap {
     PADDLE_ENFORCE_NE(
         Contains(kernel_name_prefix),
         true,
-        platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "`%s`'s Series Kernel's InferMetaFn has been registered.",
             kernel_name_prefix));
     meta_fn_map_.insert(
