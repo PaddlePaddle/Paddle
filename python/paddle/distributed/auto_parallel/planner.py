@@ -414,13 +414,14 @@ class MCMC(SearchAlgorithm):
                                         var_name) == dims_mapping:
                                     dist_context.set_op_dist_attr_for_program(
                                         search_op, op_dist_attr)
-                                    tensor_dist_attr = TensorDistributedAttribute(
-                                    )
-                                    tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
-                                    tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
-                                        var_name)
-                                    dist_context.set_tensor_dist_attr_for_program(
-                                        vars[var_name], tensor_dist_attr)
+                                    for name in search_op.output_arg_names:
+                                        tensor_dist_attr = TensorDistributedAttribute(
+                                        )
+                                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                                        tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
+                                            name)
+                                        dist_context.set_tensor_dist_attr_for_program(
+                                            vars[name], tensor_dist_attr)
                                     has_changed = True
                                     break
                         if has_changed:
