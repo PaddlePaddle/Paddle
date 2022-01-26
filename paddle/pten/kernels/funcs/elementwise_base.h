@@ -22,12 +22,12 @@ limitations under the License. */
 #include "paddle/pten/kernels/empty_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 #endif
 

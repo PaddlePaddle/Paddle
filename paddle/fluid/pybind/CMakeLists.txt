@@ -293,6 +293,10 @@ if(WITH_PYTHON)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
   endif()
 
+  if(WITH_IPU)
+    target_link_libraries(paddle_pybind paddle_ipu)
+  endif()
+
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
   add_dependencies(paddle_pybind op_function_generator_cmd)
