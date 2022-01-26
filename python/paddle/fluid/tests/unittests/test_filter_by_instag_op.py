@@ -84,7 +84,6 @@ class TestFilterByInstagOp(OpTest):
 
 """This is Test Case 2"""
 
-
 class TestFilterByInstagOp2(OpTest):
     def setUp(self):
         self.op_type = 'filter_by_instag'
@@ -126,9 +125,7 @@ class TestFilterByInstagOp2(OpTest):
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
-
 """This is Test Case 3"""
-
 
 class TestFilterByInstagOp3(OpTest):
     def setUp(self):
@@ -168,9 +165,7 @@ class TestFilterByInstagOp3(OpTest):
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
-
 """This is Test Case 4"""
-
 
 class TestFilterByInstagOp4(OpTest):
     def setUp(self):
@@ -282,7 +277,6 @@ class TestFilterByInstagOp7(OpTest):
 
     def test_check_grad(self):
         pass
-
 
 if __name__ == '__main__':
     unittest.main()
