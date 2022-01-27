@@ -208,7 +208,7 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
 void MLIRModelGenImpl::buildOperation(
     const infrt::paddle::framework_proto::OpDesc &op_) {
-  const std::string &op_name = op_.type();
+  const std::string &op_name = "pd." + op_.type();
   mlir::Location loc = mlir::UnknownLoc::get(context_);
   llvm::SmallVector<mlir::Value, 4> operands = GetOpInputValue(op_);
   llvm::SmallVector<mlir::Type, 4> resultTypes = GetOpOutputType(op_);
