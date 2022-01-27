@@ -14,11 +14,13 @@
 
 #include "paddle/pten/kernels/cast_kernel.h"
 
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace pten {
 
@@ -72,7 +74,7 @@ void CastKernel(const Context& dev_ctx,
           numel);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(pten::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 
