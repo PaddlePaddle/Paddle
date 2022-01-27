@@ -23,7 +23,6 @@ MLIRModelGenImpl::MLIRModelGenImpl()
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
   context_->getOrLoadDialect<mlir::pd::PaddleDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
-  InitHandlerMap();
 }
 
 infrt::paddle::framework_proto::ProgramDesc MLIRModelGenImpl::ParsePaddleModel(
@@ -135,7 +134,7 @@ void MLIRModelGenImpl::UpdateModelOps(
     if (op_desc.type() == "feed" || op_desc.type() == "fetch") {
       continue;
     }
-    (this->*(import_handler_map_[op_desc.type()]))(op_desc);
+    buildOperation(op_desc);
   }
 }
 
@@ -207,10 +206,9 @@ void MLIRModelGenImpl::UpdateModelOutputs(
   }
 }
 
-template <typename T>
 void MLIRModelGenImpl::buildOperation(
     const infrt::paddle::framework_proto::OpDesc &op_) {
-  auto op_name = T::getOperationName();
+  const std::string &op_name = op_.type();
   mlir::Location loc = mlir::UnknownLoc::get(context_);
   llvm::SmallVector<mlir::Value, 4> operands = GetOpInputValue(op_);
   llvm::SmallVector<mlir::Type, 4> resultTypes = GetOpOutputType(op_);
@@ -336,10 +334,6 @@ void MLIRModelGenImpl::RegisterOpOutputVars(
     auto var_ = mlir_op_->getResult(var_idx);
     params_map_.insert(std::pair<std::string, mlir::Value>(var_name, var_));
   }
-}
-
-void MLIRModelGenImpl::InitHandlerMap() {
-#include "tools/infrt/OpBuildTable.inc"
 }
 
 bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,

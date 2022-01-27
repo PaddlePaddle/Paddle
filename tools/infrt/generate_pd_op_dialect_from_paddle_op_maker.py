@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +15,8 @@
 import paddle.fluid.framework as framework
 from paddle.fluid import core
 from paddle import compat as cpt
+
+ops_having_canonicalization = {"elementwise_add", }
 
 
 # collect original ops: op which has both inference and grid defination
@@ -123,7 +125,18 @@ def convert_op_proto_into_mlir(op_descs):
 |*                                                                            *|\n\
 \*===----------------------------------------------------------------------===*/\n"
 
-    start_ = comment_ + "#ifndef PD_OPS\n#define PD_OPS\ninclude \"mlir/Interfaces/InferTypeOpInterface.td\"\ninclude \"mlir/Interfaces/LoopLikeInterface.td\"\ninclude \"mlir/IR/OpBase.td\"\ninclude \"paddle/infrt/dialect/pd_op_base.td\"\n\n"
+    lines = [
+        "#ifndef PD_OPS",
+        "#define PD_OPS",
+        "include \"mlir/Interfaces/InferTypeOpInterface.td\"",
+        "include \"mlir/Interfaces/LoopLikeInterface.td\"",
+        "include \"mlir/IR/OpBase.td\"",
+        "include \"paddle/infrt/dialect/pd_op_base.td\"",
+        "",
+    ]
+
+    start_ = comment_ + "\n".join(lines)
+
     with open(dst_dialect_file, 'w') as ops_mlir_file:
         ops_mlir_file.write(start_)
 
@@ -134,10 +147,9 @@ def convert_op_proto_into_mlir(op_descs):
         "while", "conditional_block", "set_value", "run_program"
     ]
     skipped_attr_list = [
-        "trainable_statistics", "use_global_stats", "is_test", "use_mkldnn",
-        "use_cudnn", "op_device", "op_namescope", "op_role", "mkldnn_data_type",
-        "with_quant_attr", "use_quantizer"
+        "trainable_statistics", "use_global_stats", "is_test", "use_quantizer"
     ]
+
     original_ops_ = get_original_ops()
     automatically_generated_op_dialect = []
     for op_type, op_proto in op_descs.items():
@@ -148,6 +160,7 @@ def convert_op_proto_into_mlir(op_descs):
         HEAD = "def PD_" + op_type.capitalize(
         ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect]> {\n"
         SUMMARY = "  let summary = \"" + op_type + " op\";\n"
+        CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
 
         # 2.2 Description
         DESCRIPTION = "  let description = [{\n"
@@ -249,6 +262,7 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(DESCRIPTION)
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
+            ops_mlir_file.write(CANONICALIZATION)
             ops_mlir_file.write("}\n")
 
     print("Skipped ops num: " + str(len(skipped_op_list)))
@@ -263,19 +277,6 @@ def convert_op_proto_into_mlir(op_descs):
 
         end_ = "\n#endif  // PD_OPS"
         ops_mlir_file.write(end_)
-
-    # 4. generate OpBuildTable.inc
-    op_builder_table_file = "../../tools/infrt/OpBuildTable.inc"
-    handler_iters_str_ = []
-    for op_type, op_proto in op_descs.items():
-        if (op_type in skipped_op_list) or (op_type not in original_ops_):
-            continue
-        handler_iter = "import_handler_map_[\"" + op_type + "\"]=&MLIRModelGenImpl::buildOperation<mlir::pd::" + op_type.capitalize(
-        ) + "Op>;\n"
-        handler_iters_str_.append(handler_iter)
-
-    with open(op_builder_table_file, 'w') as op_builer_file:
-        op_builer_file.writelines(handler_iters_str_)
 
 
 if __name__ == "__main__":

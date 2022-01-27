@@ -38,33 +38,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline std::vector<int> get_new_shape(
-    const std::vector<const Tensor *> &list_new_shape_tensor) {
-  // get tensor from
-  std::vector<int> vec_new_shape;
-  for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
-    auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
-        platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
-            "the element's shape must be [1]. But received the element's shape "
-            "is [%s]",
-            tensor->dims()));
-    if (platform::is_gpu_place(tensor->place()) ||
-        platform::is_xpu_place(tensor->place())) {
-      framework::Tensor temp;
-      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-
-      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
-    } else {
-      vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
-    }
-  }
-
-  return vec_new_shape;
-}
-
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
   ReshapeOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -370,30 +343,6 @@ class ReshapeKernel {
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
-    // framework::DDim out_dims = out->dims();
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
-
-    // we can't MakePtenDenseTensor by out, because the out of reshape may have
-    // multiple states, some can MakePtenDenseTensor but other's cannot:
-    // 1. out tensor is not initialized
-    // 2. out tensor is input (complete inplace)
-    // 3. out tensor is view of input
-    // We can't MakePtenDenseTensor for case 2, so we solve this case by
-    // creating a temporary tensor here:
-    pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
-                               in->dims(), in->layout()};
-    auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
-        pten::make_intrusive<paddle::experimental::SharedStorage>(
-            ctx.GetPlace()),
-        std::move(meta));
-    pten::DenseTensor *pt_out = nullptr;
-    if (in != nullptr && out != nullptr && in->Holder() != nullptr &&
-        out->Holder() != nullptr &&
-        in->Holder()->ptr() == out->Holder()->ptr()) {
-      pt_out = pt_x.get();
-    } else {
-      pt_out = pt_out_tmp.get();
-    }
 
     auto list_new_shape_tensor =
         ctx.MultiInput<framework::Tensor>("ShapeTensor");
@@ -410,54 +359,46 @@ class ReshapeKernel {
           framework::Tensor temp;
           paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
                                             &temp);
-          pt_vec_shape.push_back(
-              std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
+          pt_vec_shape.push_back(std::move(temp));
         } else {
-          pt_vec_shape.push_back(
-              std::move(*(paddle::experimental::MakePtenDenseTensor(*tensor))));
+          pt_vec_shape.push_back(*tensor);
         }
       }
       pt_scalar_shape = pten::ScalarArray(pt_vec_shape);
     } else if (shape_tensor) {
-      std::unique_ptr<pten::DenseTensor> pt_shape;
+      pten::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
                                           &temp);
-        pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
+        pt_shape = std::move(temp);
       } else {
-        pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);
+        pt_shape = *shape_tensor;
       }
-      pt_scalar_shape = pten::ScalarArray(*pt_shape.get());
+      pt_scalar_shape = pten::ScalarArray(pt_shape);
     } else {
       auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
       pt_scalar_shape = pten::ScalarArray(shape_attr);
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-      pten::ReshapeKernel(static_cast<const pten::CPUContext &>(dev_ctx),
-                          *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(static_cast<const pten::CPUContext &>(dev_ctx), *in,
+                          pt_scalar_shape, out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::ReshapeKernel(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(dev_ctx, *in, pt_scalar_shape, out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::ReshapeKernel(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);
+      pten::ReshapeKernel(static_cast<const pten::XPUContext &>(dev_ctx), *in,
+                          pt_scalar_shape, out);
     }
 #endif
-    // non-inplace need move all result from pt_out to out, inplace need set
-    // result dims.
-    if (in != out) {
-      paddle::experimental::SharesStorage(pt_out, static_cast<Tensor *>(out));
-    } else {
-      out->Resize(pt_out->dims());
-    }
   }
 };
 
@@ -468,24 +409,22 @@ class ReshapeGradKernel {
     auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
-    auto pt_d_x = paddle::experimental::MakePtenDenseTensor(*d_x);
-    auto pt_d_out = paddle::experimental::MakePtenDenseTensor(*d_out);
-
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
       pten::ReshapeGradKernel(static_cast<const pten::CPUContext &>(dev_ctx),
-                              *pt_d_out.get(), pt_d_x.get());
+                              *d_out, d_x);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::ReshapeGradKernel(dev_ctx, *pt_d_out.get(), pt_d_x.get());
+      pten::ReshapeGradKernel(dev_ctx, *d_out, d_x);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::ReshapeGradKernel(dev_ctx, *pt_d_out.get(), pt_d_x.get());
+      pten::ReshapeGradKernel(static_cast<const pten::XPUContext &>(dev_ctx),
+                              *d_out, d_x);
     }
 #endif
   }
@@ -498,25 +437,22 @@ class ReshapeDoubleGradKernel {
     auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
-    auto pt_dd_x = paddle::experimental::MakePtenDenseTensor(*dd_x);
-    auto pt_dd_out = paddle::experimental::MakePtenDenseTensor(*dd_out);
-
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
       pten::ReshapeDoubleGradKernel(
-          static_cast<const pten::CPUContext &>(dev_ctx), *pt_dd_x.get(),
-          pt_dd_out.get());
+          static_cast<const pten::CPUContext &>(dev_ctx), *dd_x, dd_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::ReshapeDoubleGradKernel(dev_ctx, *pt_dd_x.get(), pt_dd_out.get());
+      pten::ReshapeDoubleGradKernel(dev_ctx, *dd_x, dd_out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      pten::ReshapeDoubleGradKernel(dev_ctx, *pt_dd_x.get(), pt_dd_out.get());
+      pten::ReshapeDoubleGradKernel(
+          static_cast<const pten::XPUContext &>(dev_ctx), *dd_x, dd_out);
     }
 #endif
   }
@@ -582,7 +518,8 @@ class Reshape2OpMaker : public ReshapeOpMaker {
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
   }
 };
 

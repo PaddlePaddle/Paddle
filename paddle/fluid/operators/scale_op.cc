@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/scale_op.h"
 #include <string>
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/ops/compat/scale_args_fn.h"
 
 namespace paddle {
 namespace framework {
@@ -71,12 +70,6 @@ class ScaleOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    framework::ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-    return pten::ScaleOpArgumentMapping(arg_mapping_ctx);
-  }
 };
 
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -112,7 +105,8 @@ $$Out = scale*(X + bias)$$
         .SetDefault(true);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
   }
 };
 

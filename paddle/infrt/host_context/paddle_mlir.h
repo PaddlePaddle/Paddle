@@ -69,7 +69,6 @@ class MLIRModelGenImpl {
       const infrt::paddle::framework_proto::ProgramDesc &program);
 
   // method for converting proto::op into op in paddle dialect
-  template <typename T>
   void buildOperation(const infrt::paddle::framework_proto::OpDesc &op_);
 
   llvm::SmallVector<mlir::Value, 4> GetOpInputValue(
@@ -81,19 +80,12 @@ class MLIRModelGenImpl {
   void RegisterOpOutputVars(const infrt::paddle::framework_proto::OpDesc &op_,
                             mlir::Operation *mlir_op_);
 
-  // method to init params_map_
-  void InitHandlerMap();
-
   mlir::MLIRContext *context_;
   mlir::OpBuilder builder_;
   mlir::ModuleOp module_;
   infrt::paddle::framework_proto::BlockDesc main_block_;
 
   std::map<std::string, mlir::Value> params_map_;
-
-  using ImportHandlerType = void (MLIRModelGenImpl::*)(
-      const infrt::paddle::framework_proto::OpDesc &op_);
-  std::map<std::string, ImportHandlerType> import_handler_map_;
 
   const std::vector<std::string> skipped_attrs_{"trainable_statistics",
                                                 "use_global_stats",
