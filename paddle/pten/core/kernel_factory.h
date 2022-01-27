@@ -198,6 +198,10 @@ class Kernel {
   KernelArgsDef args_def_;
 };
 
+using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
+
+using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
+
 /**
  * Note: Each Computation need a basic kernel map that named by kernel_name.
  *       Such as for scale op, KernelMap contains a `scale` kernel map,
@@ -206,11 +210,6 @@ class Kernel {
  */
 class KernelFactory {
  public:
-  using KernelKeyMap =
-      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
-
-  using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
-
   static KernelFactory& Instance();
 
   KernelNameMap& kernels() { return kernels_; }
