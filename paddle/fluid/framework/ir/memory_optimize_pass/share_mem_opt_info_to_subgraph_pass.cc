@@ -140,6 +140,6 @@ class ShareMemOptInfoToSubGraphPass : public ir::Pass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(share_mem_opt_info_to_subgraph,
+REGISTER_PASS(share_mem_opt_info_to_subgraph_pass,
               paddle::framework::ir::ShareMemOptInfoToSubGraphPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList);
