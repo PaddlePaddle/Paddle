@@ -1,3 +1,4 @@
+// RUN: infrtexec -i %s | FileCheck %s
 // CHECK-LABEL: @benchmark
 func @benchmark() {
   // CHECK-LABEL: BM:add.f32:Count: 3
