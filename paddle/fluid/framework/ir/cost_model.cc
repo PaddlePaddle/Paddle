@@ -72,7 +72,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
   bool find_profiler_mark_in_main_thread_events = true;
   if (time_events.size() > 1) {
     std::vector<Event> sub_thread_events = time_events[1];
-    VLOG(3) << "program:sub_thread_events size" << sub_thread_events.size();
+    VLOG(3) << "program:sub_thread_events size:" << sub_thread_events.size();
   }
   std::vector<Event> thread_events;
   VLOG(3) << "main_thread_events.size" << main_thread_events.size();
@@ -304,14 +304,14 @@ bool CostData::SetGraphCostData(
     ++event_index;
   }
   // if not find profiler start and stop event in main thread events, find them
-  // in subthread events instead.
+  // in subthread events.
   if (start_profiler_idx == -1 && stop_profiler_idx == -1) {
     find_profiler_mark_in_main_thread_events = false;
     event_index = 0;
     while (event_index < sub_thread_events.size()) {
-      VLOG(3) << "sub_thread_events size" << sub_thread_events.size();
+      VLOG(3) << "sub_thread_events size:" << sub_thread_events.size();
       if (sub_thread_events[event_index].name() == "_start_profiler_") {
-        VLOG(3) << "find start profiler";
+        VLOG(3) << "find start profiler event!";
         start_profiler_idx = event_index;
       } else if (sub_thread_events[event_index].name() == "_stop_profiler_") {
         stop_profiler_idx = event_index;

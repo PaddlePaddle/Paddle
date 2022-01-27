@@ -249,10 +249,15 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
+      VLOG(3) << "(operator.cc) op Type() :" << Type();
       platform::RecordEvent op_type_record_event(Type());
       auto op_name = platform::OpName(outputs_, Type());
+      VLOG(3) << "(operator.cc) op_name :" << op_name;
       platform::RecordEvent op_name_record_event(
           op_name, platform::EventRole::kUniqueOp);
+      // record more op runtime info for cost model
+      auto op_info = platform::RecordEvent op_type_record_event(
+          op_info, platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 

@@ -65,6 +65,7 @@ double Event::CudaElapsedMs(const Event &e) const {
 }
 
 RecordEvent::RecordEvent(const char *name, const EventRole role) {
+  VLOG(3) << "RecordEvent object created, name : " << name;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -85,6 +86,7 @@ RecordEvent::RecordEvent(const char *name, const EventRole role) {
 RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
+  VLOG(3) << "RecordEvent object created, name : " << name;
   if (g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed_ = true;
@@ -101,7 +103,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         const std::string attr) {
+                         const std::string &attr) {
   VLOG(3) << "RecordEvent object created, name : " << name << "attr:" << attr;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
