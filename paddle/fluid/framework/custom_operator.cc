@@ -207,13 +207,13 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "Tensors.",
                 vec_true_outs.size(), outs.size()));
         for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          *std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl()) =
-              *vec_true_outs.at(j);
+          *vec_true_outs.at(j) =
+              *std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl());
         }
       } else {
         auto* true_out = ctx.Output<Tensor>(out_name);
-        *std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl()) =
-            *true_out;
+        *true_out =
+            *std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl());
       }
     }
   } catch (platform::EnforceNotMet& exception) {
