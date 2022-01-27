@@ -59,6 +59,11 @@ class SparseCsrTensor : public TensorBase,
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~SparseCsrTensor() = default;
 
+  /// \brief This function is not recommended
+  void* AllocateFrom(Allocator* allocator,
+                     DataType dtype,
+                     size_t requested_size = 0) override;
+
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
