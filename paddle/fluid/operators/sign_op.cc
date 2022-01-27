@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sign_op.h"
 #include <memory>
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/infermeta/unary.h"
@@ -65,13 +65,3 @@ REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
                   ops::SignGradMaker<paddle::framework::OpDesc>,
                   ops::SignGradMaker<paddle::imperative::OpBase>,
                   SignInferShapeFunctor);
-REGISTER_OP_CPU_KERNEL(
-    sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SignKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CUDA_KERNEL(
-    sign,
-    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, double>,
-    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>);
