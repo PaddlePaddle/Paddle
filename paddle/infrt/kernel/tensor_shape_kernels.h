@@ -14,14 +14,18 @@
 
 #pragma once
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 class KernelRegistry;
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 
 void RegisterTensorShapeKernels(host_context::KernelRegistry* registry);
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt

@@ -31,7 +31,7 @@ class GradientAccumulator {
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<framework::LoDTensor>()) {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
-      } else if (var->Var().IsType<framework::SelectedRows>()) {
+      } else if (var->Var().IsType<pten::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
@@ -162,6 +162,15 @@ class SortedGradientAccumulator : public GradientAccumulator {
 
   std::vector<SavedVarInfo> tmp_grad_vars_;
 };
+
+void SelectedRowsAddToTensor(const framework::Variable& src,
+                             framework::Variable* dst);
+
+void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
+                           const framework::Variable& src_tensor_var,
+                           framework::Variable* dst_tensor_var);
+
+void TensorAdd(const framework::Variable& src, framework::Variable* dst);
 
 }  // namespace imperative
 }  // namespace paddle

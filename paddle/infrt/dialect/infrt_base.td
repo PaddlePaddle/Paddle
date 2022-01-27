@@ -28,11 +28,11 @@ def TensorMapType :
 def BufferType : OpaqueType<"b", "buffer", "buffer">;
 
 class INFRT_createI32Attr<string value> : NativeCodeCall<
-    "mlir::createI32Attr($_builder, $_loc, " # value # ")">;
+    "infrt::createI32Attr($_builder, $_loc, " # value # ")">;
 
 def INFRT_cvtValueToValueRange : NativeCodeCall<
-    "mlir::cvtValueToValueRange($0)">;
+    "infrt::cvtValueToValueRange($0)">;
 
 def INFRT_concatTwoValueRange : NativeCodeCall<
-    "mlir::concatTwoValueRange($0, $1)">;
+    "infrt::concatTwoValueRange($0, $1)">;
 #endif  // INFRT_BASE

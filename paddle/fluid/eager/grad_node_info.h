@@ -121,13 +121,11 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
-                     size_t slot_rank);
-  void SetGradInMeta(const AutogradMeta& fwd_out, size_t slot_rank);
+  void SetGradInMeta(std::vector<AutogradMeta*>* fwd_out, size_t slot_rank);
+  void SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank);
 
-  void SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
-                      size_t slot_rank);
-  void SetGradOutMeta(const AutogradMeta& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in, size_t slot_rank);
+  void SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank);
 
   /**
    * Default setters for Grad in/out meta this should be used for same special

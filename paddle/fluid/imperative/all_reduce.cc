@@ -25,7 +25,7 @@
 #endif
 
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -39,8 +39,8 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<framework::LoDTensor>()) {
     return src.Get<framework::LoDTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<framework::SelectedRows>()) {
-    return src.Get<framework::SelectedRows>().value().place();
+  } else if (src.IsType<pten::SelectedRows>()) {
+    return src.Get<pten::SelectedRows>().value().place();
 #endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -70,8 +70,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 }
 
 #if NCCL_VERSION_CODE >= 2212
-static void AllReduce(const framework::SelectedRows &src,
-                      framework::SelectedRows *dst,
+static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
                       const ParallelStrategy &strategy,
                       const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
@@ -191,19 +190,18 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>(), stream, comm);
 #if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<framework::SelectedRows>()) {
+  } else if (src.IsType<pten::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<framework::SelectedRows>()) {
+      if (!dst->IsType<pten::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>(), strategy, stream,
-                comm);
+      AllReduce(src.Get<pten::SelectedRows>(),
+                dst->GetMutable<pten::SelectedRows>(), strategy, stream, comm);
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<framework::SelectedRows>(),
-                tmp_dst.GetMutable<framework::SelectedRows>(), strategy, stream,
+      AllReduce(src.Get<pten::SelectedRows>(),
+                tmp_dst.GetMutable<pten::SelectedRows>(), strategy, stream,
                 comm);
       // stream must synchronize to ensure accuracy of the move operation
       platform::GpuStreamSync(stream);

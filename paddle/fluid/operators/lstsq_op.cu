@@ -149,9 +149,8 @@ void BatchedOrmqr<platform::CUDADeviceContext, float>(
 
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 info_d, sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
+                 sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(
@@ -189,9 +188,8 @@ void BatchedOrmqr<platform::CUDADeviceContext, double>(
 
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 info_d, sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
+                 sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(

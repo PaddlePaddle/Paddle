@@ -104,7 +104,7 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     int bytes = sizeof(int) * anchors.size();
     auto anchors_ptr = memory::Alloc(dev_ctx, sizeof(int) * anchors.size());
     int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gplace = ctx.GetPlace();
     const auto cplace = platform::CPUPlace();
     memory::Copy(gplace, anchors_data, cplace, anchors.data(), bytes,
                  dev_ctx.stream());

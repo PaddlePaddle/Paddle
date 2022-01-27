@@ -25,17 +25,18 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT64,
                             framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<int64_t>();
+  auto* dense_x_data =
+      dense_x->mutable_data<int64_t>(paddle::platform::CPUPlace());
 
   for (int64_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i;

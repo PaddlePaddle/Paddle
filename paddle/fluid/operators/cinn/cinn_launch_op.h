@@ -32,6 +32,7 @@ namespace paddle {
 namespace operators {
 
 constexpr char kX[] = "X";
+constexpr char kNoNeedBufferX[] = "NoNeedBufferX";
 constexpr char kOutputs[] = "Out";
 constexpr char kCompilationKey[] = "compilation_key";
 
@@ -87,15 +88,33 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
-    auto input_variable_names = ctx.InputNames(kX);
-    const auto& input_tensors = ctx.MultiInput<LoDTensor>(kX);
     std::map<std::string, const LoDTensor*> inputs_name2tensor;
-    std::transform(input_variable_names.begin(), input_variable_names.end(),
-                   input_tensors.begin(),
-                   std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
-                   [](const std::string& name, const LoDTensor* tensor) {
-                     return std::make_pair(name, tensor);
-                   });
+    std::vector<std::string> input_x_variable_names;
+    std::vector<std::string> input_no_need_buffer_variable_names;
+    auto add_name2tensor_fn = [&inputs_name2tensor](
+        const std::vector<std::string>& variable_names,
+        const std::vector<const LoDTensor*>& tensors) {
+      std::transform(
+          variable_names.begin(), variable_names.end(), tensors.begin(),
+          std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
+          [](const std::string& name, const LoDTensor* tensor) {
+            return std::make_pair(name, tensor);
+          });
+    };
+
+    auto input_x_tensors = ctx.MultiInput<LoDTensor>(kX);
+    if (!input_x_tensors.empty()) {
+      input_x_variable_names = std::move(ctx.InputNames(kX));
+      add_name2tensor_fn(input_x_variable_names, input_x_tensors);
+    }
+    auto input_no_need_buffer_tensors =
+        ctx.MultiInput<LoDTensor>(kNoNeedBufferX);
+    if (!input_no_need_buffer_tensors.empty()) {
+      input_no_need_buffer_variable_names =
+          std::move(ctx.InputNames(kNoNeedBufferX));
+      add_name2tensor_fn(input_no_need_buffer_variable_names,
+                         input_no_need_buffer_tensors);
+    }
 
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
@@ -112,12 +131,21 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       // 3.1 Prepare input variables: tensors of input variables have
       //     been initialized before graph compiled, just check the
       //     equiality between tensors of paddle and cinn.
-      for (const auto& var_name : input_variable_names) {
+      for (const auto& var_name : input_no_need_buffer_variable_names) {
+        // the input variable declared as 'no need buffer' can not be used
+        PADDLE_ENFORCE_EQ(
+            launch_context->IsVariableUsed(var_name), false,
+            platform::errors::InvalidArgument(
+                "Input variable(%s) should not be used by cinn in execution",
+                var_name));
+      }
+
+      for (const auto& var_name : input_x_variable_names) {
+        // some input variables don't need for cinn because they are
+        // eliminated by optimized passes or some cinn operators use
+        // less variables
         if (!launch_context->IsVariableUsed(var_name)) {
-          // some input variables don't need for cinn because they are
-          // eliminated by optimized passes or some cinn operators use
-          // less variables
-          VLOG(4) << "Input variable(" << var_name << ") not used by cinn";
+          VLOG(4) << "Input variable" << var_name << " not used by cinn";
           continue;
         }
 

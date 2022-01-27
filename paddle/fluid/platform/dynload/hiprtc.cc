@@ -13,23 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/hiprtc.h"
+#include "paddle/pten/backends/dynload/hiprtc.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag hiprtc_dso_flag;
-void* hiprtc_dso_handle = nullptr;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 HIPRTC_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasNVRTC() {
-  std::call_once(hiprtc_dso_flag,
-                 []() { hiprtc_dso_handle = GetNVRTCDsoHandle(); });
-  return hiprtc_dso_handle != nullptr;
-}
+bool HasNVRTC() { return pten::dynload::HasNVRTC(); }
 
 }  // namespace dynload
 }  // namespace platform

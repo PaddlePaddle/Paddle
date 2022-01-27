@@ -23,6 +23,7 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
@@ -154,8 +155,9 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     parallelizer._dist_context = dist_context
 
     # serial forward & backward completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -173,7 +175,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
 
-    return auto_parallel_main_prog, auto_parallel_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads
 
 
 def check_runtime_estimation(cost):
@@ -227,10 +229,10 @@ class TestCostModel(unittest.TestCase):
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             dist_context = DistributedContext()
-            distributed_program, dist_startup_prog = get_dist_prog(
+            distributed_program, dist_startup_prog, dist_params_grads = get_dist_prog(
                 train_program, startup_program, dist_context, rank_id)
             reshard(distributed_program, dist_startup_prog, rank_id,
-                    dist_context)
+                    dist_context, dist_params_grads)
             dist_program.append(distributed_program)
         cluster = None
         cost = estimate_cost(

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
@@ -136,7 +136,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (!root_var) {
           continue;
         }
-        if (root_var->IsType<SelectedRows>()) {
+        if (root_var->IsType<pten::SelectedRows>()) {
           continue;
         }
         LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
