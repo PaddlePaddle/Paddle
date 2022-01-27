@@ -18,6 +18,7 @@
 #include <memory>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -234,10 +235,11 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
           "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
-  auto data_type = src_tensor.type();
+  auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto place = src_tensor.place();
 
-  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+  PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(dst_tensor->dtype()),
+                    data_type,
                     platform::errors::PreconditionNotMet(
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "
@@ -341,7 +343,8 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   auto& src_selected_rows = src.Get<pten::SelectedRows>();
   auto place = dst_tensor->place();
-  auto data_type = src_selected_rows.value().type();
+  auto data_type =
+      framework::TransToProtoVarType(src_selected_rows.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
 #define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)           \
@@ -380,7 +383,7 @@ void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
       src_selected_rows_var.Get<pten::SelectedRows>();
   const auto& src_tensor = src_tensor_var.Get<framework::LoDTensor>();
   const auto& place = src_tensor.place();
-  auto data_type = src_tensor.type();
+  auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
 
   auto* dst_tensor = dst_tensor_var->GetMutable<framework::LoDTensor>();
@@ -423,7 +426,8 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
   auto& src_selected_rows1 = src1.Get<pten::SelectedRows>();
   auto& src_selected_rows2 = src2.Get<pten::SelectedRows>();
   auto place = src_selected_rows1.value().place();
-  auto data_type = src_selected_rows1.value().type();
+  auto data_type =
+      framework::TransToProtoVarType(src_selected_rows1.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   std::vector<const pten::SelectedRows*> src_selected_rows;

@@ -169,7 +169,7 @@ class VariableWrapper {
       }
     }
     if (tensor && tensor->IsInitialized()) {
-      return tensor->type();
+      return framework::TransToProtoVarType(tensor->dtype());
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
 

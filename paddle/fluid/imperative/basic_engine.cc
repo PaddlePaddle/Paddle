@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -102,7 +103,8 @@ void BasicEngine::Init(
         platform::DeviceContextPool::Instance().Get(fwd_var.place());
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
-      grad_var->mutable_data(fwd_var.place(), fwd_var.type());
+      grad_var->mutable_data(fwd_var.place(),
+                             framework::TransToProtoVarType(fwd_var.dtype()));
       operators::math::set_constant(*dev_ctx, grad_var, 1.0);
     } else {
       paddle::framework::TensorCopy(

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -98,7 +99,7 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
                                     framework::Tensor *dst_tensor) {
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   dst_tensor->Resize(src_tensor.dims());
-  switch (src_tensor.type()) {
+  switch (framework::TransToProtoVarType(src_tensor.dtype())) {
     GLOO_CASE(framework::proto::VarType::FP32, float, gloo_wrapper);
     GLOO_CASE(framework::proto::VarType::FP64, double, gloo_wrapper);
     GLOO_CASE(framework::proto::VarType::INT32, int, gloo_wrapper);
@@ -128,7 +129,7 @@ void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
-  auto dtype = src_tensor.type();
+  auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
   const auto &src_rows = src.rows();
