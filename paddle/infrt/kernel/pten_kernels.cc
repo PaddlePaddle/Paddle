@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/infrt/kernel/pten_kernels.h"
+
 #include <iostream>
 #include <string>
 
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/pten_kernels.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/kernels/math_kernel.h"
+
+// Disable temporarily.
+// #include "paddle/pten/backends/cpu/cpu_context.h"
+// #include "paddle/pten/kernels/math_kernel.h"
 
 using infrt::host_context::Attribute;
 
