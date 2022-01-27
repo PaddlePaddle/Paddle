@@ -59,7 +59,7 @@ class MemcpyH2DFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void operator()(const framework::SelectedRows &rows) const {
+  void operator()(const pten::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
