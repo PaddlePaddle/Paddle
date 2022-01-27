@@ -72,7 +72,8 @@ struct BinaryOperation<platform::CUDADeviceContext, BinaryFunctor, T> {
   }
 };
 
-template <template <typename T> typename CompareFunctor, typename T>
+template <template <typename InT, typename OutT> typename CompareFunctor,
+          typename T>
 struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
                   const Tensor& rhs, Tensor* mask) {
@@ -81,7 +82,7 @@ struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     paddle::operators::LaunchSameDimsElementwiseCudaKernel<
         ElementwiseType::kBinary, int64_t, T>(dev_ctx, ins, &outs,
-                                              CompareFunctor<int64_t>());
+                                              CompareFunctor<int64_t, T>());
   }
 };
 

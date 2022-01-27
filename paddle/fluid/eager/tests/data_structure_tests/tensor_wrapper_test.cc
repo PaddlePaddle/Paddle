@@ -29,7 +29,7 @@ TEST(TensorWrapper, Basic) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   et1.set_impl(dt);
@@ -56,7 +56,7 @@ TEST(TensorWrapper, Basic) {
           paddle::platform::CPUPlace())
           .get(),
       meta2);
-  auto* dt_ptr2 = dt->mutable_data<float>();
+  auto* dt_ptr2 = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr2[0] = 6.0f;
   dt_ptr2[1] = 11.0f;
   et2.set_impl(dt2);

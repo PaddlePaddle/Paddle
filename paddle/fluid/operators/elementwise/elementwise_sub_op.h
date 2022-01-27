@@ -51,7 +51,7 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
     auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
-    pten::SubtractKernel<T>(
+    pten::SubtractRawKernel<T>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *pt_x.get(), *pt_y.get(), axis, pt_z.get());
@@ -78,9 +78,11 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
                              const framework::Tensor* dout,
                              framework::Tensor* dx, framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
-
-  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+  const auto& dev_ctx =
+      ctx.template device_context<platform::CPUDeviceContext>();
+  pten::ElemwiseExplicitGradCompute<T, SubGradDX<T>, SubGradDY<T>>(
+      dev_ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
+      SubGradDY<T>());
 }
 
 template <typename DeviceContext, typename T>

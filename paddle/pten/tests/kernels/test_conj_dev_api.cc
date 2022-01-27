@@ -26,7 +26,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, conj) {
   // 1. create tensor
@@ -37,7 +37,8 @@ TEST(DEV_API, conj) {
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<paddle::complex64>();
+  auto* dense_x_data =
+      dense_x.mutable_data<paddle::complex64>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = paddle::complex64(i * 1.0, i * 1.0);
   }

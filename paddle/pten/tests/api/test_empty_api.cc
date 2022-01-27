@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, empty_like) {
@@ -47,10 +47,8 @@ TEST(API, empty_like) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 TEST(API, empty1) {
@@ -63,7 +61,8 @@ TEST(API, empty1) {
       pten::DenseTensorMeta(pten::DataType::INT64,
                             framework::make_ddim({2}),
                             pten::DataLayout::NCHW));
-  auto* shape_data = dense_shape->mutable_data<int64_t>();
+  auto* shape_data =
+      dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
   shape_data[0] = 2;
   shape_data[1] = 3;
 
@@ -76,10 +75,8 @@ TEST(API, empty1) {
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 TEST(API, empty2) {
@@ -91,7 +88,7 @@ TEST(API, empty2) {
       pten::DenseTensorMeta(pten::DataType::INT32,
                             framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
-  dense_scalar->mutable_data<int32_t>()[0] = 2;
+  dense_scalar->mutable_data<int32_t>(paddle::platform::CPUPlace())[0] = 2;
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);
   paddle::experimental::Tensor shape_scalar2(dense_scalar);
@@ -103,10 +100,8 @@ TEST(API, empty2) {
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 4);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 TEST(API, empty3) {
@@ -117,10 +112,8 @@ TEST(API, empty3) {
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::INT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
 }
 
 }  // namespace tests

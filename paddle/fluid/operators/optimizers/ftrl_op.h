@@ -180,11 +180,11 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       }
 
       s_acc_out.device(place) = sq_accum + g * g;
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto grad = ctx.Input<pten::SelectedRows>("Grad");
 
-      framework::SelectedRows tmp_merged_grad;
-      framework::SelectedRows* merged_grad = &tmp_merged_grad;
+      pten::SelectedRows tmp_merged_grad;
+      pten::SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
