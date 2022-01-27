@@ -23,9 +23,8 @@ limitations under the License. */
 
 #include <algorithm>
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 template <typename T>
 __device__ __forceinline__ T FromFloat(float a);
@@ -315,6 +314,5 @@ __inline__ __device__ T PartialBlockReduceMin(T val, unsigned mask) {
   return val;
 }
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten
