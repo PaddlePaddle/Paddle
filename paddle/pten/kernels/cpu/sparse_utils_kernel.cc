@@ -49,7 +49,6 @@ inline int64_t get_non_zero_num(const DenseTensor& dense,
 
   const T* data = dense.data<T>();
   int64_t non_zero_num = 0;
-#pragma omp parallel for reduction(+ : non_zero_num)
   for (int64_t i = 0; i < rows; i++) {
     if (!is_zero(data + i * cols, cols)) {
       non_zero_num = non_zero_num + 1;

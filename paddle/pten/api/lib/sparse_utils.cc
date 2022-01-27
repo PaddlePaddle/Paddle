@@ -63,9 +63,8 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   } else {
     auto input = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
     kernel_context.EmplaceBackInput(input.get());
+    kernel_context.EmplaceBackAttr(sparse_dim);
   }
-
-  kernel_context.EmplaceBackAttr(sparse_dim);
 
   // 4. InferMeta
   auto indices_meta = pten::DenseTensorMeta(
