@@ -72,7 +72,7 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
             output_names.append('dense_out')
             output_create = f"""
   {self.return_type} out;
-  auto dense_out = SetKernelOutput(out_meta, kernel_backend, &out);"""
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
@@ -82,7 +82,7 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
                 kernel_output = kernel_output + f'dense_out_{i}, '
                 output_names.append(f'dense_out_{i}')
                 output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(std::get<{i}>(out_meta), kernel_backend, &std::get<{i}>(out));"""
+  auto dense_out_{i} = SetKernelOutput(kernel_backend, &std::get<{i}>(out));"""
 
             kernel_output = kernel_output[:-2]
         else:

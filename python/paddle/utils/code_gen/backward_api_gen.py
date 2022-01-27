@@ -114,7 +114,7 @@ class BackwardAPI:
             output_names.append('dense_out')
             output_create = f"""
   {self.return_type} out;
-  auto dense_out = SetKernelOutput(out_meta, kernel_backend, &out);"""
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
@@ -125,7 +125,7 @@ class BackwardAPI:
                 output_names.append(f'dense_out_{i}')
                 get_out_code = f'&out[{i}][0]' if out_type_item == 'Tensor' else f'&out[{i}]'
                 output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(std::get<{i}>(out_meta), kernel_backend, {get_out_code});"""
+  auto dense_out_{i} = SetKernelOutput(kernel_backend, {get_out_code});"""
 
             kernel_output = kernel_output[:-2]
         else:
