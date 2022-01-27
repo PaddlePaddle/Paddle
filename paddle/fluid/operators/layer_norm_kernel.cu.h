@@ -631,20 +631,21 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_kernel(
 
 // column reduction: (rows, 1024) -> (1, 1024)
 // #blocks: 32; #threads: 512
-template <typename T, typename U, typename ScaleT = U, int VecSize = 1,
-          int WARPS_M = 16, int WARPS_N = 1, int BYTES_PER_LDG = 4,
-          int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
-          int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
-          int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW,
-          int ROWS_PER_CTA = WARPS_M,
-          int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
-          int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA,
-          int VEC_COLS = ELTS_PER_ROW / VecSize>
+template <
+    typename U, typename ScaleT = U, int VecSize = 1, int WARPS_M = 16,
+    int WARPS_N = 1, int BYTES_PER_LDG = 4, int ELTS_PER_ROW = 1024,
+    int THREADS_PER_WARP = 32, int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
+    int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
+    int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
+    int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA,
+    int VEC_COLS = ELTS_PER_ROW / VecSize>
 __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
     const int rows, U *__restrict__ dg_part_, U *__restrict__ db_part_,
     ScaleT *__restrict__ dg_, ScaleT *__restrict__ db_) {
   using Vec = platform::AlignedVector<U, VecSize>;
   static_assert(VEC_COLS == LN_NUM_COLS / VecSize, "");
+
+  // static_assert(BYTES_PER_LDG == VecSize * sizeof(U), "");
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -754,20 +755,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
   }
 }
 
-// for double type
-template <
-    int VecSize = 1, int WARPS_M = 16, int WARPS_N = 1, int BYTES_PER_LDG = 8,
-    int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
-    int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
-    int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
-    int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
-    int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA,
-    int VEC_COLS = ELTS_PER_ROW / VecSize>
-__global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
-    const int rows, double *__restrict__ dg_part_,
-    double *__restrict__ db_part_, double *__restrict__ dg_,
-    double *__restrict__ db_) {}
-
 template <typename T, typename U, typename ScaleT = U>
 void ln_bwd_1024_kernel_driver(const platform::CUDADeviceContext &dev_ctx,
                                const int rows, const int cols, float epsilon,
@@ -815,11 +802,11 @@ void ln_bwd_1024_kernel_driver(const platform::CUDADeviceContext &dev_ctx,
         rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
         dscale_temp_ptr, dbias_temp_ptr, dx_ptr);
 #if 1
-    // using Ktraits2 = Kernel_traits<float, 1024, 16, 1, 4>;
     const int WARPS_M_2 = 16;
     const int WARPS_N_2 = 1;
     const int BYTES_PER_LDG_2 = 4;
-    const int VecSize_2 = BYTES_PER_LDG_2 / sizeof(U);  // 1
+    const int VecSize_2 =
+        std::max(1, static_cast<int>(BYTES_PER_LDG_2 / sizeof(U)));  // 1
 
     const int THREADS_PER_WARP_2 = 32;
     const int THREADS_PER_ROW_2 = WARPS_N_2 * THREADS_PER_WARP_2;  // 32
@@ -830,17 +817,13 @@ void ln_bwd_1024_kernel_driver(const platform::CUDADeviceContext &dev_ctx,
     const int gridx_2 = static_cast<int>(
         std::ceil(1024 / static_cast<float>(THREADS_PER_ROW_2 * VecSize_2)));
     // #blocks: 32，#threads_per_block: 512
-    // for double type.
-    if (VecSize_2 < 1) {
+    // can not support for double type.
+    if (sizeof(U) > 4) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Only support float and fp16 type"));
-      ln_bwd_1024_final_kernel<
-          T, U, ScaleT, 1, WARPS_M_2, WARPS_N_2,
-          1 * sizeof(T)><<<gridx_2, THREADS_PER_CTA_2, 0, stream>>>(
-          gridx, dscale_temp_ptr, dbias_temp_ptr, dscale_ptr, dbias_ptr);
     } else {
       ln_bwd_1024_final_kernel<
-          T, U, ScaleT, VecSize_2, WARPS_M_2, WARPS_N_2,
+          U, ScaleT, VecSize_2, WARPS_M_2, WARPS_N_2,
           BYTES_PER_LDG_2><<<gridx_2, THREADS_PER_CTA_2, 0, stream>>>(
           gridx, dscale_temp_ptr, dbias_temp_ptr, dscale_ptr, dbias_ptr);
     }
