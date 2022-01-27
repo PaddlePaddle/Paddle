@@ -124,6 +124,12 @@ class DenseTensor : public TensorBase,
   /// return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
 
+  /// \brief Allocate memory with requested size from allocator.
+  /// \return The mutable data pointer value of type T.
+  void* AllocateFrom(Allocator* allocator,
+                     DataType dtype,
+                     size_t requested_size = 0) override;
+
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.
   bool IsSharedWith(const DenseTensor& b) const;

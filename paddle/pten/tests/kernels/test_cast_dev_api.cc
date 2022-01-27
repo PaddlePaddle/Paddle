@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -49,6 +50,11 @@ TEST(DEV_API, cast) {
   }
 
   pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+
   pten::DataType out_dtype = pten::DataType::FLOAT64;
   // 2. test API
   auto out = pten::Cast<float>(dev_ctx, dense_x, out_dtype);

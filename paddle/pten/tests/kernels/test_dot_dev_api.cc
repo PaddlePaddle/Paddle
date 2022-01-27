@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/dot_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -59,6 +60,10 @@ TEST(DEV_API, dot) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   auto out = pten::Dot<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result

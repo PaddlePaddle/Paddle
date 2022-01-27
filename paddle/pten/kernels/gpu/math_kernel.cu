@@ -47,7 +47,7 @@ namespace pten {
     inputs.emplace_back(&x);                                         \
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
-    out->mutable_data<T>(dev_ctx.GetPlace());                        \
+    dev_ctx.template Alloc<T>(out);                                  \
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(     \
         dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }

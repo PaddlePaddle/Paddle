@@ -133,7 +133,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "is not initialized.",
                               i, in_name));
         paddle::experimental::Tensor custom_t;
-        custom_t.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
+        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
       custom_vec_ins.emplace_back(custom_vec_in);
@@ -145,7 +145,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
-      custom_in.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
+      custom_in.set_impl(std::make_shared<pten::DenseTensor>(*x));
       custom_ins.emplace_back(custom_in);
     }
   }

@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/concat_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -58,6 +59,10 @@ TEST(DEV_API, concat) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   auto out = pten::Concat<float>(dev_ctx, inputs, 0);
 
   // 3. check result
