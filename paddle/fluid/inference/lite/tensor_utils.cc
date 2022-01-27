@@ -195,8 +195,9 @@ void InitDstTensor(paddle::lite_api::Tensor* dst,
 
 void InitDstTensor(framework::LoDTensor* dst,
                    const paddle::lite_api::Tensor& src) {
-  dst->mutable_data(inference::lite::utils::GetNativePlace(src.target()),
-                    GetNativePrecisionType(src.precision()));
+  dst->mutable_data(
+      inference::lite::utils::GetNativePlace(src.target()),
+      framework::TransToPtenDataType(GetNativePrecisionType(src.precision())));
   SetLoD(dst->mutable_lod(), src.lod());
 }
 
@@ -232,7 +233,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
   const size_t bytes = src_numel * framework::SizeOfType(dst->type());
   const void* src_data = src.data<void>();
   // When Lite is ready, the source type needs to be modified here.
-  void* dst_data = dst->mutable_data(dst_place, dst->type());
+  void* dst_data = dst->mutable_data(dst_place, dst->dtype());
   VLOG(3) << "[CopyAsync lite -> fluid] Bytes = " << bytes << ", src = " << &src
           << ", dst = " << dst << ", src_type = " << dst->type();
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
