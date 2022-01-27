@@ -39,7 +39,7 @@ SparseCooTensor::SparseCooTensor(const SparseCooTensor& other)
   this->coalesced_ = other.coalesced_;
 }
 
-SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
+SparseCooTensor& SparseCooTensor::operator=(const SparseCooTensor& other) {
   this->dims_ = other.dims_;
   this->non_zero_indices_ = other.non_zero_indices_;
   this->non_zero_elements_ = other.non_zero_elements_;

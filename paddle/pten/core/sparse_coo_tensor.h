@@ -55,7 +55,7 @@ class SparseCooTensor : public TensorBase,
   SparseCooTensor(SparseCooTensor&& other);
 
   /// \brief SparseCooTensor shallow copy assignment.
-  SparseCooTensor operator=(const SparseCooTensor& other);
+  SparseCooTensor& operator=(const SparseCooTensor& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~SparseCooTensor() = default;
