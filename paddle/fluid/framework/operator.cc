@@ -2025,10 +2025,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(int32_t))) {
           pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
               &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
-        } else if (std::type_index(attr_iter->second.type()) ==
-                   std::type_index(typeid(int64_t))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
-              &BOOST_GET_CONST(int64_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "
