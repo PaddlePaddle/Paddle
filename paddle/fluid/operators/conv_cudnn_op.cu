@@ -858,7 +858,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dX = ctx.Output<Tensor>("DInput");
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
       set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {

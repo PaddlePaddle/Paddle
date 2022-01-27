@@ -25,72 +25,85 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation
-  void operator()(const DeviceContext& context, const framework::Tensor& in,
-                  framework::Tensor* out, const std::vector<int>& axis);
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& in,
+                  paddle::framework::Tensor* out,
+                  const std::vector<int>& axis);
 };
 
 template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
-  void operator()(const DeviceContext& context, const framework::Tensor& in,
-                  framework::Tensor* out, const std::vector<int>& axis);
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& in,
+                  paddle::framework::Tensor* out,
+                  const std::vector<int>& axis);
 };
 
 template <typename DeviceContext, typename T>
 struct SetConstant {
-  void operator()(const DeviceContext& context, framework::Tensor* tensor,
+  void operator()(const DeviceContext& context,
+                  paddle::framework::Tensor* tensor,
                   T num);
 };
 
 template <typename Place>
 void set_constant_with_place(const platform::DeviceContext& context,
-                             framework::Tensor* tensor, float value);
+                             paddle::framework::Tensor* tensor,
+                             float value);
 
 void set_constant(const platform::DeviceContext& context,
-                  framework::Tensor* tensor, float value);
+                  paddle::framework::Tensor* tensor,
+                  float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const framework::Tensor& vec, framework::Tensor* output);
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& input,
+                  const paddle::framework::Tensor& vec,
+                  paddle::framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename T>
 struct ElementwiseAddTo {
   // dst = dst + src
-  void operator()(DeviceContext* ctx, const framework::Tensor& src,
-                  framework::Tensor* dst);
+  void operator()(DeviceContext* ctx,
+                  const paddle::framework::Tensor& src,
+                  paddle::framework::Tensor* dst);
 };
 
 template <typename DeviceContext, typename T>
 struct ColwiseSum {
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  framework::Tensor* vec);
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* vec);
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseSum {
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  framework::Tensor* vec);
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* vec);
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseMean {
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  framework::Tensor* vec);
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* vec);
 };
 
 #ifdef PADDLE_WITH_XPU
 template <typename U>
 struct TensorSetConstantXPU {
-  TensorSetConstantXPU(framework::Tensor* tensor, U value,
-                       platform::Place place)
+  TensorSetConstantXPU(paddle::framework::Tensor* tensor,
+                       U value,
+                       paddle::platform::Place place)
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
@@ -98,15 +111,17 @@ struct TensorSetConstantXPU {
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-    memory::Copy(place_, begin, platform::CPUPlace(),
-                 static_cast<void*>(data_cpu.get()), numel * sizeof(T));
+    paddle::memory::Copy(place_,
+                         begin,
+                         platform::CPUPlace(),
+                         static_cast<void*>(data_cpu.get()),
+                         numel * sizeof(T));
   }
-  framework::Tensor* tensor_;
+  paddle::framework::Tensor* tensor_;
   U value_;
-  platform::Place place_;
+  paddle::platform::Place place_;
 };
 #endif
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

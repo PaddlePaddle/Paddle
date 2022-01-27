@@ -38,9 +38,9 @@
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 namespace paddle {
 namespace distributed {
 class GraphPyService {
@@ -89,6 +89,7 @@ class GraphPyService {
     this->num_node_types = num_node_types;
   }
   int get_server_size(int server_size) { return server_size; }
+  // NOLINTNEXTLINE
   std::vector<std::string> split(std::string& str, const char pattern);
   void set_up(std::string ips_str, int shard_num,
               std::vector<std::string> node_types,
@@ -131,6 +132,7 @@ class GraphPyClient : public GraphPyService {
   std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
+  // NOLINTNEXTLINE
   void bind_local_server(int local_channel_index, GraphPyServer& server) {
     worker_ptr->set_local_channel(local_channel_index);
     worker_ptr->set_local_graph_service(
@@ -142,8 +144,10 @@ class GraphPyClient : public GraphPyService {
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
+  // NOLINTNEXTLINE
   void add_graph_node(std::string name, std::vector<uint64_t>& node_ids,
-                      std::vector<bool>& weight_list);
+                      std::vector<bool>& weight_list);  // NOLINT
+  // NOLINTNEXTLINE
   void remove_graph_node(std::string name, std::vector<uint64_t>& node_ids);
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
@@ -173,5 +177,5 @@ class GraphPyClient : public GraphPyService {
   std::thread* client_thread;
   bool stoped_ = false;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

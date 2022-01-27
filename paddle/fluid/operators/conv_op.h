@@ -485,7 +485,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
@@ -692,7 +692,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     // dx convolution double grad:  gemm + col2im(col2vol)
@@ -991,7 +991,7 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (input_grad) {

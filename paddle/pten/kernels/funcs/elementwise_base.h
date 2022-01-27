@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/empty_kernel.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/aligned_vector.h"
@@ -394,7 +394,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
     auto meta = pten::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = pten::Empty<T, DeviceContext>(dev_ctx, std::move(meta));
     ddx_safe->mutable_data(dev_ctx.GetPlace());
-    paddle::operators::math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
 }

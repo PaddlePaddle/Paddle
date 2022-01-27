@@ -34,12 +34,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
 
@@ -179,7 +179,7 @@ inline void MergeVars(const std::string &var_name,
 
     // set output tensor to 0.
     auto cpu_ctx = paddle::platform::CPUDeviceContext();
-    paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext, T>
+    pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, T>
         constant_functor;
     constant_functor(cpu_ctx, out_t, static_cast<T>(0));
     // sum all vars to out

@@ -17,8 +17,8 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -218,7 +218,7 @@ class TraceGradKernel : public framework::OpKernel<T> {
     auto* out_data = d_out->data<T>();
     T* x_data = d_x->mutable_data<T>(context.GetPlace());
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, d_x, static_cast<T>(0.0));
 

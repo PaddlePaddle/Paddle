@@ -11,9 +11,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/row_conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -395,7 +395,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
-    math::SetConstant<platform::CUDADeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
 
     if (dFilter) {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());

@@ -16,7 +16,7 @@
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace egr {
 
@@ -34,7 +34,7 @@ static void FillUnderlyingVariableWithValue(
   // we can't get data_type_ directly. We need to check if we can only use
   // default data_type for now.
   dst_tensor->mutable_data(place, dtype);
-  paddle::operators::math::set_constant(*dev_ctx, dst_tensor, value);
+  pten::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }
 
 void GradTensorHolder::add(size_t slot_id, size_t rank,

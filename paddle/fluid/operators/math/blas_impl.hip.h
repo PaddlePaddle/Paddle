@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 

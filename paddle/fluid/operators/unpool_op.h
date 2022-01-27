@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/unpooling.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,7 @@ class UnpoolKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (output_data) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(dev_ctx, out, static_cast<T>(0));
     }
     math::Unpool2dMaxFunctor<DeviceContext, T> unpool2d_max_forward;
@@ -60,7 +60,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
     auto& device_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
 
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
@@ -84,7 +84,7 @@ class Unpool3dKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (output_data) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(dev_ctx, out, static_cast<T>(0));
     }
     math::Unpool3dMaxFunctor<DeviceContext, T> unpool3d_max_forward;
@@ -109,7 +109,7 @@ class Unpool3dGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
     auto& device_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
 
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
