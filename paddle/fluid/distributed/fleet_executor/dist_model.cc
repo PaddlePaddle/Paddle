@@ -487,21 +487,25 @@ bool DistModel::PrepareFeedAndFetch() {
       if (feeds_.size() == 0) {
         LOG(ERROR) << "Feed ops are needed for the first pp stage.";
         return false;
-      } else {
-        LOG(WARNING) << "No feed ops in non-first pp stage.";
       }
-    } else if (feeds_.size() > 0) {
-      LOG(WARNING) << "Feed op is found in the non-first stage of pp.";
+    } else {
+      if (feeds_.size() > 0) {
+        LOG(WARNING) << "Feed op is found in the non-first stage of pp.";
+      } else {
+        LOG(INFO) << "No feed ops in non-first pp stage.";
+      }
     }
     if (IsPPLastStage(config_)) {
       if (fetches_.size() == 0) {
-        LOG(ERROR) << "Fetch op is needed for the last pp stage.";
-        return false;
-      } else {
-        LOG(WARNING) << "No fetch op in non-last pp stage.";
+        LOG(WARNING) << "No fetch op was found in the last pp stage. Make sure "
+                        "the result has been sent to frist pp stage.";
       }
-    } else if (fetches_.size() > 0) {
-      LOG(WARNING) << "Fetch op is found in the non-last stage of pp.";
+    } else {
+      if (fetches_.size() > 0) {
+        LOG(WARNING) << "Fetch op is found in the non-last stage of pp.";
+      } else {
+        LOG(INFO) << "No fetch op in non-last pp stage.";
+      }
     }
   }
   return true;
@@ -607,27 +611,43 @@ bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
 
   DistModelTimer timer;
   timer.tic();
+  double feed_elapse;
+  double fleet_exe_elapse;
+  double fetch_elapse;
 
   if (!FeedData(input_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at feeding data.";
     return false;
   }
-  double feed_elapse = timer.toc();
-  VLOG(3) << "Finish loading data, cost " << feed_elapse << "ms.";
+  if (config_.enable_timer) {
+    feed_elapse = timer.toc();
+    LOG(INFO) << "Finish loading data, cost " << feed_elapse << "ms.";
+  } else {
+    VLOG(3) << "Finish loading data.";
+  }
 
   fleet_exe->Run(carrier_id_);
-  double fleet_exe_elapse = timer.toc();
-  VLOG(3) << "Finish FleetExe running, cost " << fleet_exe_elapse - feed_elapse
-          << "ms.";
+  if (config_.enable_timer) {
+    fleet_exe_elapse = timer.toc();
+    LOG(INFO) << "Finish FleetExe running, cost "
+              << fleet_exe_elapse - feed_elapse << "ms.";
+  } else {
+    VLOG(3) << "Finish FleetExe running.";
+  }
 
   if (!FetchResults(output_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at fetching result.";
     return false;
   }
-  double fetch_elapse = timer.toc();
-  VLOG(3) << "Finish fetching data, cost " << fetch_elapse - fleet_exe_elapse
-          << "ms.";
-  VLOG(3) << "DistModel finish inf, cost " << fetch_elapse << "ms";
+  if (config_.enable_timer) {
+    fetch_elapse = timer.toc();
+    LOG(INFO) << "Finish fetching data, cost "
+              << fetch_elapse - fleet_exe_elapse << "ms.";
+    LOG(INFO) << "DistModel finish inf, cost " << fetch_elapse << "ms";
+  } else {
+    VLOG(3) << "Finish fetching data.";
+    VLOG(3) << "DistModel finish inf.";
+  }
   return true;
 }
 

@@ -21,9 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#endif
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -230,14 +227,10 @@ CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 
 #ifdef PADDLE_WITH_IPU
-IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
-  int id = place.GetDeviceId();
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
-  device_ = ipu_backend->GetDevice(id);
-}
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
 
 Place IPUDeviceContext::GetPlace() const { return place_; }
+
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
 }
