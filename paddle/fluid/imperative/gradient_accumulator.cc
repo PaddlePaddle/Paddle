@@ -214,47 +214,25 @@ void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
   func(dev_ctx, src, dst);
 }
 
-template <typename VarType>
-std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(VarType* dst) {
-  PADDLE_THROW(platform::errors::Unavailable(
-      "GetInnerDstTensor only support egr::EagerTensor or framework::Variable, "
-      "please check your code and make sure you are using one of them."));
-  return nullptr;
-}
-
-template <typename VarType>
-std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor(const VarType& src) {
-  PADDLE_THROW(platform::errors::Unavailable(
-      "GetInnerSrcTensor only support egr::EagerTensor or framework::Variable, "
-      "please check your code and make sure you are using one of them."));
-  return nullptr;
-}
-
-template <>
-std::shared_ptr<pten::DenseTensor> GetInnerDstTensor<egr::EagerTensor>(
-    egr::EagerTensor* dst) {
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(egr::EagerTensor* dst) {
   std::shared_ptr<pten::DenseTensor> dst_tensor =
       std::dynamic_pointer_cast<pten::DenseTensor>(dst->impl());
   return dst_tensor;
 }
 
-template <>
-std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor<egr::EagerTensor>(
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor(
     const egr::EagerTensor& src) {
   std::shared_ptr<pten::DenseTensor> dst_tensor =
       std::dynamic_pointer_cast<pten::DenseTensor>(src.impl());
   return dst_tensor;
 }
 
-template <>
-std::shared_ptr<pten::DenseTensor> GetInnerDstTensor<framework::Variable>(
-    framework::Variable* dst) {
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   return std::make_shared<pten::DenseTensor>(*dst_tensor);
 }
 
-template <>
-std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor<framework::Variable>(
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor(
     const framework::Variable& src) {
   auto& src_tensor = src.Get<framework::LoDTensor>();
   return std::make_shared<pten::DenseTensor>(src_tensor);
@@ -262,8 +240,8 @@ std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor<framework::Variable>(
 
 template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst) {
-  std::shared_ptr<pten::DenseTensor> d_tensor = GetInnerDstTensor<VarType>(dst);
-  std::shared_ptr<pten::DenseTensor> s_tensor = GetInnerSrcTensor<VarType>(src);
+  std::shared_ptr<pten::DenseTensor> d_tensor = GetInnerDstTensor(dst);
+  std::shared_ptr<pten::DenseTensor> s_tensor = GetInnerSrcTensor(src);
 
   auto* dst_tensor = d_tensor.get();
   auto& src_tensor = *s_tensor.get();
