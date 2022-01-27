@@ -442,3 +442,11 @@ endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
 cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+
+if(WITH_GPU)
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+elseif(WITH_ROCM)
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+else()
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
+endif()

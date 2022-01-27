@@ -26,17 +26,21 @@ limitations under the License. */
 
 // TODO(chenweihang): this file may need to be removed
 
-namespace pten {
+namespace paddle {
+namespace framework {
 
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-const std::string& TransToPtenKernelName(const std::string& fluid_op_name);
+DataType TransToPtenDataType(
+    const paddle::framework::proto::VarType::Type& dtype);
 
-Backend TransToPtenBackend(const paddle::platform::Place& place);
-paddle::platform::Place TransToFluidPlace(const Backend& backend);
+paddle::framework::proto::VarType::Type TransToProtoVarType(
+    const DataType& dtype);
 
-paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod);
-pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod);
+size_t DataTypeSize(DataType dtype);
+DataType String2DataType(const std::string& str);
+std::string DataType2String(DataType dtype);
 
-}  // namespace pten
+}  // namespace framework
+}  // namespace paddle
