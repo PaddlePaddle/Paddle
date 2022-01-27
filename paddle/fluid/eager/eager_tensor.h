@@ -300,12 +300,10 @@ class EagerTensor final {
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
     if (defined()) {
       VLOG(8) << "Sync Var to initialized tensor for: " << name();
-      paddle::experimental::ReMakePtenDenseTensor(
-          framework_tensor, static_cast<pten::DenseTensor*>(impl().get()));
+      static_cast<TYPE&>(*impl()) = framework_tensor;
     } else {
       VLOG(8) << "Sync Var to uninitialized tensor for: " << name();
-      this->set_impl(std::move(
-          paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+      this->set_impl(std::make_shared<pten::DenseTensor>(framework_tensor));
     }
     var_.Clear();
   }
