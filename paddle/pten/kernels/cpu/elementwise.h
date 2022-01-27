@@ -45,10 +45,8 @@ struct SameDimsAddFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VADD(x.numel(),
-              x.data<T>(),
-              y.data<T>(),
-              z->mutable_data<T>(dev_ctx.GetPlace()));
+    blas.VADD(
+        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
 };
 
@@ -61,7 +59,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    z->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(z);
     auto eigen_x = pten::EigenVector<T>::Flatten(x);
     auto eigen_y = pten::EigenVector<T>::Flatten(y);
     auto eigen_z = pten::EigenVector<T>::Flatten(*z);
@@ -89,10 +87,8 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VSUB(x.numel(),
-              x.data<T>(),
-              y.data<T>(),
-              z->mutable_data<T>(dev_ctx.GetPlace()));
+    blas.VSUB(
+        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
 };
 
@@ -147,10 +143,8 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VDIV(x.numel(),
-              x.data<T>(),
-              y.data<T>(),
-              z->mutable_data<T>(dev_ctx.GetPlace()));
+    blas.VDIV(
+        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
 };
 
@@ -173,10 +167,8 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VMUL(x.numel(),
-              x.data<T>(),
-              y.data<T>(),
-              z->mutable_data<T>(dev_ctx.GetPlace()));
+    blas.VMUL(
+        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
 };
 
@@ -241,8 +233,8 @@ void CommonGradBroadcastCPU(const DenseTensor& x,
   const T* y_data = y.data<T>();
   const Tout* out_data = out.data<Tout>();
   const Tout* dout_data = dout.data<Tout>();
-  T* dx_data = dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace());
-  T* dy_data = dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace());
+  T* dx_data = dx == nullptr ? nullptr : ctx.Alloc<T>(dx);
+  T* dy_data = dy == nullptr ? nullptr : ctx.Alloc<T>(dy);
   if (dx_data != nullptr) {
     memset(dx_data, 0, dx->numel() * sizeof(T));
   }
@@ -292,7 +284,7 @@ void CommonForwardBroadcastCPU(const DenseTensor& x,
   PADDLE_ENFORCE_NOT_NULL(y_data,
                           paddle::platform::errors::InvalidArgument(
                               "The input Y should not be empty."));
-  OutType* out_data = z->mutable_data<OutType>(ctx.GetPlace());
+  OutType* out_data = ctx.Alloc<OutType>(z);
 
   const int out_size = std::accumulate(
       out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
@@ -373,7 +365,7 @@ void ElementwiseCompute(const CPUContext& dev_ctx,
                         int axis,
                         Functor func,
                         DenseTensor* z) {
-  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  dev_ctx.Alloc<OutType>(z);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;
@@ -677,32 +669,30 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext& ctx,
     return;
   }
   if (post == 1) {
-    ElemwiseGradBroadcast1CPU(
-        x.data<T>(),
-        y.data<T>(),
-        out.data<Tout>(),
-        dout.data<Tout>(),
-        pre,
-        n,
-        is_xsize_larger,
-        dx_op,
-        dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    ElemwiseGradBroadcast1CPU(x.data<T>(),
+                              y.data<T>(),
+                              out.data<Tout>(),
+                              dout.data<Tout>(),
+                              pre,
+                              n,
+                              is_xsize_larger,
+                              dx_op,
+                              dy_op,
+                              dx == nullptr ? nullptr : ctx.Alloc<T>(dx),
+                              dy == nullptr ? nullptr : ctx.Alloc<T>(dy));
   } else {
-    ElemwiseGradBroadcast2CPU(
-        x.data<T>(),
-        y.data<T>(),
-        out.data<Tout>(),
-        dout.data<Tout>(),
-        pre,
-        n,
-        post,
-        is_xsize_larger,
-        dx_op,
-        dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    ElemwiseGradBroadcast2CPU(x.data<T>(),
+                              y.data<T>(),
+                              out.data<Tout>(),
+                              dout.data<Tout>(),
+                              pre,
+                              n,
+                              post,
+                              is_xsize_larger,
+                              dx_op,
+                              dy_op,
+                              dx == nullptr ? nullptr : ctx.Alloc<T>(dx),
+                              dy == nullptr ? nullptr : ctx.Alloc<T>(dy));
   }
 }
 

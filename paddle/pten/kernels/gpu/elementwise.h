@@ -352,7 +352,7 @@ void LaunchKernel(const KPDevice &ctx,
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
+    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
   }
 
   for (int i = 0; i < Arity; i++) {
@@ -1264,8 +1264,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();
   const Tout *dout_data = dout.data<Tout>();
-  T *dx_data = dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace());
-  T *dy_data = dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace());
+  T *dx_data = dx == nullptr ? nullptr : ctx.Alloc<T>(dx);
+  T *dy_data = dy == nullptr ? nullptr : ctx.Alloc<T>(dy);
 
   std::vector<int> x_one_indexs;
   std::vector<int> y_one_indexs;
@@ -1923,34 +1923,32 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
     return;
   }
   if (post == 1) {
-    ElemwiseGradBroadcast1CUDA(
-        ctx.stream(),
-        x.data<T>(),
-        y.data<T>(),
-        out.data<Tout>(),
-        dout.data<Tout>(),
-        pre,
-        n,
-        is_xsize_larger,
-        dx_op,
-        dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    ElemwiseGradBroadcast1CUDA(ctx.stream(),
+                               x.data<T>(),
+                               y.data<T>(),
+                               out.data<Tout>(),
+                               dout.data<Tout>(),
+                               pre,
+                               n,
+                               is_xsize_larger,
+                               dx_op,
+                               dy_op,
+                               dx == nullptr ? nullptr : ctx.Alloc<T>(dx),
+                               dy == nullptr ? nullptr : ctx.Alloc<T>(dy));
   } else {
-    ElemwiseGradBroadcast2CUDA(
-        ctx.stream(),
-        x.data<T>(),
-        y.data<T>(),
-        out.data<Tout>(),
-        dout.data<Tout>(),
-        pre,
-        n,
-        post,
-        is_xsize_larger,
-        dx_op,
-        dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    ElemwiseGradBroadcast2CUDA(ctx.stream(),
+                               x.data<T>(),
+                               y.data<T>(),
+                               out.data<Tout>(),
+                               dout.data<Tout>(),
+                               pre,
+                               n,
+                               post,
+                               is_xsize_larger,
+                               dx_op,
+                               dy_op,
+                               dx == nullptr ? nullptr : ctx.Alloc<T>(dx),
+                               dy == nullptr ? nullptr : ctx.Alloc<T>(dy));
   }
 }
 
