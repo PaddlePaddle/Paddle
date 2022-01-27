@@ -12,11 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/unary.h"
+
 #include <set>
 
+#include "paddle/pten/core/infermeta_utils.h"
+
 namespace pten {
+
+void UnchangedInferMetaNew(MetaConfig config,
+                           const MetaTensor& x,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
 
 DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {
   return x_meta;
@@ -230,6 +239,16 @@ DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
 DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
                                  const ScalarArray& shape) {
   return InferMetaFromVecValue(x_meta, shape.GetData());
+}
+
+/*  Why not use ReduceInferMeta directly?
+    Because we need make InferMetaFunction's args follow the design of api.yaml
+*/
+DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
+                             const std::vector<int64_t>& axis,
+                             DataType dtype,
+                             bool keep_dim) {
+  return ReduceInferMeta(x_meta, axis, keep_dim, dtype);
 }
 
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,

@@ -282,6 +282,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
   DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
 
+  // npu related
+  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
+  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };

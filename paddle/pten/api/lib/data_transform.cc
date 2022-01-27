@@ -129,11 +129,14 @@ pten::DenseTensor TransformData(const pten::DenseTensor& tensor,
 }
 
 std::shared_ptr<pten::DenseTensor> PrepareData(
-    const Tensor& input, const pten::TensorArgDef& target_args_def) {
+    const Tensor& input,
+    const pten::TensorArgDef& target_args_def,
+    bool need_prepare) {
   const auto& tensor_in = input.impl();
-  if (tensor_in->place() == pten::TransToFluidPlace(target_args_def.backend) &&
-      !NeedTransformDataType(tensor_in->dtype(), target_args_def.dtype) &&
-      !NeedTransformLayout(tensor_in->layout(), target_args_def.layout)) {
+  if (!need_prepare ||
+      (tensor_in->place() == pten::TransToFluidPlace(target_args_def.backend) &&
+       !NeedTransformDataType(tensor_in->dtype(), target_args_def.dtype) &&
+       !NeedTransformLayout(tensor_in->layout(), target_args_def.layout))) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(tensor_in);
   }
 
@@ -144,7 +147,8 @@ std::shared_ptr<pten::DenseTensor> PrepareData(
 
 std::unique_ptr<std::vector<pten::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
-    const pten::TensorArgDef& target_args_def) {
+    const pten::TensorArgDef& target_args_def,
+    bool need_prepare) {
   auto pt_tensors = std::make_unique<std::vector<pten::DenseTensor>>();
   pt_tensors->reserve(inputs.size());
 

@@ -93,14 +93,7 @@ class Allocation : public pten::Allocation {
              const platform::Place& place)
       : pten::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
-  void* base_ptr() const {
-    PADDLE_ENFORCE_EQ(FLAGS_allocator_strategy, "auto_growth",
-                      paddle::platform::errors::Unimplemented(
-                          "base_ptr() is only implemented for auto_growth "
-                          "strategy, not support %s strategy",
-                          FLAGS_allocator_strategy));
-    return base_ptr_;
-  }
+  void* base_ptr() const { return base_ptr_; }
 
  private:
   inline void RegisterDecoratedAllocator(Allocator* allocator) {

@@ -21,11 +21,14 @@ namespace paddle {
 namespace experimental {
 
 std::shared_ptr<pten::DenseTensor> PrepareData(
-    const Tensor& input, const pten::TensorArgDef& target_args_def);
+    const Tensor& input,
+    const pten::TensorArgDef& target_args_def,
+    bool need_prepare = true);
 
 std::unique_ptr<std::vector<pten::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
-    const pten::TensorArgDef& target_args_def);
+    const pten::TensorArgDef& target_args_def,
+    bool need_prepare = true);
 
 }  // namespace experimental
 }  // namespace paddle

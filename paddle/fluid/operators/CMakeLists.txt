@@ -59,6 +59,10 @@ if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
 
+if(WITH_IPU)
+    add_subdirectory(ipu)
+endif()
+
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)
