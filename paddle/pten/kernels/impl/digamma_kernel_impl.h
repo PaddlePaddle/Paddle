@@ -38,7 +38,6 @@ struct DigammaFunctor {
 template <typename T, typename Context>
 void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   out->mutable_data<T>(ctx.GetPlace());
-
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();
