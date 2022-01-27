@@ -1,3 +1,3 @@
 add_subdirectory(lib)
 
-cc_library(pten_api SRCS all.cc DEPS pten_function_api pten_bw_function_api utils_api)
+cc_library(pten_api SRCS all.cc DEPS pten_function_api pten_bw_function_api utils_api sparse_utils_api)
