@@ -83,7 +83,12 @@ class AutoMixedPrecisionListsBF16(object):
 bf16_initializer_list = {'fill_constant', 'uniform_random'}
 
 # always bf16
-bf16_list = {'elementwise_add', 'mul'}
+bf16_list = {
+    'conv2d',
+    'matmul',
+    'matmul_v2',
+    'mul',
+}
 
 # depends on the prev_op type
 gray_list = {
