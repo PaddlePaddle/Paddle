@@ -445,7 +445,12 @@ class QuantizationTransformPass(object):
                                op_node.op().attr("op_namescope").find(
                                    self._skip_pattern) != -1
 
-            if user_skipped:
+            belongsto_teacher = False
+            for input in op_node.inputs:
+                if 'teacher' in input.name():
+                    belongsto_teacher = True
+                    break
+            if user_skipped or belongsto_teacher:
                 op_node.op()._set_attr("skip_quant", True)
                 op_node.op()._set_attr("with_quant_attr", True)
 
@@ -1190,7 +1195,56 @@ class QuantizationFreezePass(object):
                     else:
                         scale_v = scale_v.tolist()
                     self._quant_var_scale_map[input_arg_name] = scale_v
-                    # Quantize weight and restore
+                    #### Quantize weight and restore
+                    ###param_v = self._load_var(input_arg_name)
+                    ###if isinstance(scale_v, list) and \
+                    ###    any(_check_grandchild_op_node(op_node, op)
+                    ###    for op in _channelwise_quant_axis1_ops):
+                    ###    quant_axis = 1
+                    ###else:
+                    ###    quant_axis = 0
+                    ###quantized_param_v = self._quant(
+                    ###    param_v.copy(), scale_v, self._weight_bits, quant_axis)
+                    ###if self._bias_correction == True:
+                    ###    quantized_param_v = self._bias_correction_w(
+                    ###        param_v, quantized_param_v, scale_v, quant_axis)
+                    ###self._restore_var(input_arg_name, quantized_param_v)
+                    ###self._remove_fake_quant_and_dequant_op(graph, op_node)
+
+        for i in range(0, 12):
+            self._qkv_scales.append(0)
+
+        for name, scale in self._quant_var_scale_map.items():
+            if ('value' in name or 'query' in name or
+                    'key' in name) and 'w_0' in name:
+                if name[15] == '_':
+                    layer_num = int(name[14])
+                else:
+                    layer_num = int(name[14] + name[15])
+                    #print(layer_num)
+                if scale >= self._qkv_scales[layer_num]:
+                    self._qkv_scales[layer_num] = scale
+        for op_node in ops:
+            op_name = op_node.name()
+            if op_name in self._fake_quant_op_names:
+                input_arg_name = op_node.input('X')[0]
+                if hasattr(graph, 'out_node_mapping_table'):
+                    if input_arg_name in graph.out_node_mapping_table.keys():
+                        input_arg_name = graph.out_node_mapping_table[
+                            input_arg_name]
+                if input_arg_name in persistable_vars and 'w_0' in input_arg_name and (
+                        'value' in input_arg_name or
+                        'query' in input_arg_name or 'key' in input_arg_name):
+                    if input_arg_name[15] == '_':
+                        layer_num = int(input_arg_name[14])
+                    else:
+                        layer_num = int(input_arg_name[14] + input_arg_name[15])
+                    scale_v = self._qkv_scales[layer_num]
+                    self._quant_var_scale_map[input_arg_name] = scale_v
+                if input_arg_name in persistable_vars:
+                    scale_v = self._quant_var_scale_map[input_arg_name]
+                    #print(input_arg_name)
+                    #print(scale_v)
                     param_v = self._load_var(input_arg_name)
                     if isinstance(scale_v, list) and \
                         any(_check_grandchild_op_node(op_node, op)
