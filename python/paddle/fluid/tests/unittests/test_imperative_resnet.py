@@ -26,6 +26,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 from paddle.fluid.dygraph import TracedLayer
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
 
 #NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -242,7 +243,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         return _reader_imple
 
-    def test_resnet_float32(self):
+    def func_test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -284,7 +285,7 @@ class TestDygraphResnet(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0:
+                if batch_id % 5 == 0 and not _in_eager_mode():
                     out, traced_layer = TracedLayer.trace(resnet, img)
                     if program is not None:
                         self.assertTrue(
@@ -429,6 +430,11 @@ class TestDygraphResnet(unittest.TestCase):
             self.assertTrue(np.allclose(value, dy_param_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
+
+    def test_resnet_float32(self):
+        with _test_eager_guard():
+            self.func_test_resnet_float32()
+        self.func_test_resnet_float32()
 
 
 if __name__ == '__main__':
