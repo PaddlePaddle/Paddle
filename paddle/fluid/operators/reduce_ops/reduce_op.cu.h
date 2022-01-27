@@ -39,7 +39,8 @@ namespace operators {
 
 template <typename Tx, typename Ty, template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
+void TensorReduceFunctorImpl(const platform::CUDADeviceContext& dev_ctx,
+                             const framework::Tensor& x, framework::Tensor* y,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
@@ -49,7 +50,8 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
 
   pten::kernels::TensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
-      *pt_x.get(), pt_y.get(), transform, origin_reduce_dims, stream);
+      static_cast<const pten::GPUContext&>(dev_ctx), *pt_x.get(), pt_y.get(),
+      transform, origin_reduce_dims, stream);
 }
 
 }  // namespace operators

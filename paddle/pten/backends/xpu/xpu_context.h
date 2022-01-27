@@ -59,7 +59,7 @@ class XPUContext : public DeviceContext {
 
  public:
   // NOTE: External users manage resources. Used in inference scenarios.
-  explicit XPUContext(const XPUContextResource&);
+  explicit XPUContext(const XPUContextResource&, const XPUPlace& = XPUPlace(0));
 
   void set_x_context(xpu::Context*);
 

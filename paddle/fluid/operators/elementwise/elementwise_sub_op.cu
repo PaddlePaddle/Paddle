@@ -65,7 +65,8 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          *dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+          ctx.cuda_device_context(), *dout, dx, kps::IdentityFunctor<T>(),
+          reduce_dims, stream);
     }
   }
   // dy
@@ -87,7 +88,8 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          *dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+          ctx.cuda_device_context(), *dout, dy, kps::InverseFunctor<T>(),
+          reduce_dims, stream);
     }
   }
 }

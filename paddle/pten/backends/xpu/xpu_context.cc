@@ -16,6 +16,7 @@
 #include <memory>
 #include "paddle/pten/api/ext/exception.h"
 
+#include "paddle/pten/common/place.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
@@ -105,6 +106,13 @@ struct XPUContext::XPUImpl {
     if (context == nullptr) {
       return;
     }
+
+    // if owning resouce
+    if (res_.context == nullptr && context_ != nullptr) {
+      xpu::destroy_context(context_);
+      context_ = nullptr;
+    }
+
     res_.context = context;
     context_ = context;
   }
@@ -124,12 +132,12 @@ XPUContext::XPUContext() : DeviceContext() {
   impl_ = std::make_unique<XPUImpl>();
 }
 
-XPUContext::XPUContext(const XPUPlace& place) {
+XPUContext::XPUContext(const XPUPlace& place) : DeviceContext() {
   impl_ = std::make_unique<XPUImpl>(place);
 }
 
 XPUContext::XPUContext(const XPUContext& other) : DeviceContext() {
-  impl_ = std::make_unique<XPUImpl>();
+  impl_ = std::make_unique<XPUImpl>(other.GetPlace());
   impl_->SetXContext(other.x_context());
   impl_->SetBkclContext(other.bkcl_context());
 }
@@ -140,8 +148,9 @@ XPUContext::XPUContext(XPUContext&& other) : DeviceContext() {
 
 XPUContext::~XPUContext() = default;
 
-XPUContext::XPUContext(const XPUContextResource& ctx_res) : DeviceContext() {
-  impl_ = std::make_unique<XPUImpl>(ctx_res);
+XPUContext::XPUContext(const XPUContextResource& ctx_res, const XPUPlace& place)
+    : DeviceContext() {
+  impl_ = std::make_unique<XPUImpl>(ctx_res, place);
 }
 
 Place XPUContext::GetPlace() const { return impl_->GetPlace(); }

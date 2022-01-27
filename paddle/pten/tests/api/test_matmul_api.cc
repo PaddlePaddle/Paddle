@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/copy_kernel.h"
@@ -122,7 +123,7 @@ TEST(API, matmul_cuda) {
 
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto place = paddle::platform::CUDAPlace();
-  auto* dev_ctx = pool.GetByPlace(place);
+  auto* dev_ctx = static_cast<const pten::GPUContext*>(pool.GetByPlace(place));
 
   pten::Copy(*dev_ctx, *ref_x.get(), false, dense_x.get());
   pten::Copy(*dev_ctx, *ref_y.get(), false, dense_y.get());

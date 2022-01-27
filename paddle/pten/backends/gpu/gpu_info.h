@@ -18,10 +18,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/pten/backends/gpu/gpu_types.h"
 
-namespace paddle {
-namespace platform {
+namespace pten {
+namespace backends {
+namespace gpu {
+
 //! Get the version of dnn
 int DnnVersion();
 
@@ -64,43 +66,30 @@ const gpuDeviceProp &GetDeviceProperties(int id);
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
-//! Get the memory usage of current GPU device.
-void GpuMemoryUsage(size_t *available, size_t *total);
-
-//! Get the available memory to allocate, which is the size of available gpu
-//! minus reserving.
-size_t GpuAvailableMemToAlloc();
-
-//! Get the maximum allocation size of current GPU device.
-size_t GpuMaxAllocSize();
-
-//! Get the initial allocation size of current GPU device.
-size_t GpuInitAllocSize();
-
-//! Get the re-allocation size of current GPU device.
-size_t GpuReallocSize();
-
-//! Get the minimum chunk size for GPU buddy allocator.
-size_t GpuMinChunkSize();
-
-//! Get the maximum chunk size for GPU buddy allocator.
-size_t GpuMaxChunkSize();
-
 //! Copy memory from address src to dst asynchronously.
-void GpuMemcpyAsync(void *dst, const void *src, size_t count,
-                    gpuMemcpyKind kind, gpuStream_t stream);
+void GpuMemcpyAsync(void *dst,
+                    const void *src,
+                    size_t count,
+                    gpuMemcpyKind kind,
+                    gpuStream_t stream);
 
 //! Copy memory from address src to dst synchronously.
-void GpuMemcpySync(void *dst, const void *src, size_t count,
+void GpuMemcpySync(void *dst,
+                   const void *src,
+                   size_t count,
                    gpuMemcpyKind kind);
 
 //! Copy memory from one device to another device asynchronously.
-void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, gpuStream_t stream);
+void GpuMemcpyPeerAsync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        int src_device,
+                        size_t count,
+                        gpuStream_t stream);
 
 //! Copy memory from one device to another device synchronously.
-void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
-                       int src_device, size_t count);
+void GpuMemcpyPeerSync(
+    void *dst, int dst_device, const void *src, int src_device, size_t count);
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
@@ -113,45 +102,31 @@ void GpuDestroyStream(gpuStream_t stream);
 // ! Blocks until device has completed all operations.
 void GpuDeviceSync();
 
-//! CudaMalloc with recorded info
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id);
-
-//! CudaFree with recorded info
-void RecordedGpuFree(void *p, size_t size, int dev_id);
-
 gpuError_t GpuGetLastError();
 
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10020
-//! cuMemCreate with recorded info
-CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
-                              const CUmemAllocationProp *prop,
-                              unsigned long long flags, int dev_id);  // NOLINT
+class GPUDeviceGuard {
+ public:
+  explicit inline GPUDeviceGuard(int dev_id) {
+    int prev_id = GetCurrentDeviceId();
+    if (prev_id != dev_id) {
+      prev_id_ = prev_id;
+      SetDeviceId(dev_id);
+    }
+  }
+  inline ~GPUDeviceGuard() {
+    if (prev_id_ != -1) {
+      SetDeviceId(prev_id_);
+    }
+  }
+  GPUDeviceGuard(const GPUDeviceGuard &o) = delete;
+  GPUDeviceGuard &operator=(const GPUDeviceGuard &o) = delete;
 
-//! cuMemRelease with recorded info
-CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
-                               int dev_id);
-#endif
-#endif
+ private:
+  int prev_id_{-1};
+};
 
-//! Get available and total gpu memory with considering limitation
-bool RecordedGpuMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                           size_t *actual_total, int dev_id);
-
-//! Get recorded cudaMalloc size. If record is disabled, return 0.
-uint64_t RecordedGpuMallocSize(int dev_id);
-
-bool IsGpuMallocRecorded(int dev_id);
-
-//! Empty idle cached memory held by the allocator.
-void EmptyCache(void);
-
-//! Get the primitive pointer return from cudaMalloc, just for testing
-#ifdef PADDLE_WITH_TESTING
-void *GetGpuBasePtr(void *ptr, int dev_id);
-#endif
-
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace pten
 
 #endif

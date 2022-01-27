@@ -14,16 +14,9 @@
 
 #pragma once
 
-#include <functional>
-#include <mutex>  // NOLINT
-
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
-
-namespace paddle {
-namespace platform {
+namespace pten {
+namespace backends {
+namespace gpu {
 
 /*
  * Summary: Grid stride looping macro in CUDA kernel
@@ -69,46 +62,11 @@ namespace platform {
  *
 */
 
-#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
-  int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
-  for (index_type i = __index__; __index__ < (num);          \
-       __index__ += blockDim.x * gridDim.x, i = __index__)
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                     \
+  int64_t __index__ = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; \
+  for (index_type i = __index__; __index__ < (num);                   \
+       __index__ += hipBlockDim_x * hipGridDim_x, i = __index__)
 
-class CublasHandleHolder {
- public:
-  CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
-#if CUDA_VERSION >= 9000
-    if (math_type == CUBLAS_TENSOR_OP_MATH) {
-      PADDLE_RETRY_CUDA_SUCCESS(
-          dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
-#if CUDA_VERSION >= 11000
-    } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
-      PADDLE_RETRY_CUDA_SUCCESS(
-          dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
-#endif  // CUDA_VERSION >= 11000
-    }
-#endif  // CUDA_VERSION >= 9000
-  }
-
-  const cublasHandle_t& GetCublasHandle() const { return handle_; }
-
-  ~CublasHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
-  }
-
-  inline void Call(const std::function<void(blasHandle_t)>& callback) const {
-    std::lock_guard<std::mutex> guard(mtx_);
-    callback(handle_);
-  }
-
- private:
-  DISABLE_COPY_AND_ASSIGN(CublasHandleHolder);
-
-  cublasHandle_t handle_;
-  mutable std::mutex mtx_;
-};
-
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace pten

@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include <array>
+#include "paddle/pten/backends/gpu/gpu_info.h"
+
+// TODO(pten): remove fluid headers.
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/lock_guard_ptr.h"
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<paddle::gpuDeviceProp> g_device_props;
 
-namespace paddle {
-namespace platform {
+namespace pten {
+namespace backends {
+namespace gpu {
+
 int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
   size_t version_major, version_minor, version_patch;
@@ -78,11 +78,13 @@ int GetGPUDeviceCount() {
 }
 
 int GetGPUComputeCapability(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   int major, minor;
   auto major_error_code = hipDeviceGetAttribute(
       &major, hipDeviceAttributeComputeCapabilityMajor, id);
@@ -95,22 +97,26 @@ int GetGPUComputeCapability(int id) {
 }
 
 int GetGPURuntimeVersion(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   int runtime_version = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(hipRuntimeGetVersion(&runtime_version));
   return runtime_version;
 }
 
 int GetGPUDriverVersion(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   int driver_version = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(hipDriverGetVersion(&driver_version));
   return driver_version;
@@ -119,11 +125,13 @@ int GetGPUDriverVersion(int id) {
 bool TensorCoreAvailable() { return false; }
 
 int GetGPUMultiProcessors(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipDeviceGetAttribute(&count, hipDeviceAttributeMultiprocessorCount, id));
@@ -131,11 +139,13 @@ int GetGPUMultiProcessors(int id) {
 }
 
 int GetGPUMaxThreadsPerMultiProcessor(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
       &count, hipDeviceAttributeMaxThreadsPerMultiProcessor, id));
@@ -144,11 +154,13 @@ int GetGPUMaxThreadsPerMultiProcessor(int id) {
 }
 
 int GetGPUMaxThreadsPerBlock(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipDeviceGetAttribute(&count, hipDeviceAttributeMaxThreadsPerBlock, id));
@@ -161,35 +173,37 @@ int GetCurrentDeviceId() {
   return device_id;
 }
 
-dim3 GetGpuMaxGridDimSize(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+std::array<int, 3> GetGpuMaxGridDimSize(int id) {
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
-  dim3 ret;
+                        id,
+                        GetGPUDeviceCount()));
+  std::array<int, 3> ret;
   int size;
   auto error_code_x =
       hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimX, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_x);
-  ret.x = size;
+  ret[0] = size;
 
   auto error_code_y =
       hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimY, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_y);
-  ret.y = size;
+  ret[1] = size;
 
   auto error_code_z =
       hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimZ, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_z);
-  ret.z = size;
+  ret[2] = size;
   return ret;
 }
 
 const gpuDeviceProp &GetDeviceProperties(int id) {
   std::call_once(g_device_props_size_init_flag, [&] {
     int gpu_num = 0;
-    gpu_num = platform::GetGPUDeviceCount();
+    gpu_num = GetGPUDeviceCount();
     g_device_props_init_flags.resize(gpu_num);
     g_device_props.resize(gpu_num);
     for (int i = 0; i < gpu_num; ++i) {
@@ -198,16 +212,17 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
   });
 
   if (id == -1) {
-    id = platform::GetCurrentDeviceId();
+    id = GetCurrentDeviceId();
   }
 
   if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
-    PADDLE_THROW(platform::errors::OutOfRange(
+    PADDLE_THROW(paddle::platform::errors::OutOfRange(
         "The device id %d is out of range [0, %d), where %d is the number of "
         "devices on this machine. Because the device id should be greater than "
         "or equal to zero and smaller than the number of gpus. Please input "
         "appropriate device again!",
-        id, static_cast<int>(g_device_props.size()),
+        id,
+        static_cast<int>(g_device_props.size()),
         static_cast<int>(g_device_props.size())));
   }
 
@@ -220,32 +235,43 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
 
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_LT(id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        id,
+                        GetGPUDeviceCount()));
   PADDLE_RETRY_CUDA_SUCCESS(hipSetDevice(id));
 }
 
-void GpuMemcpyAsync(void *dst, const void *src, size_t count,
-                    gpuMemcpyKind kind, gpuStream_t stream) {
+void GpuMemcpyAsync(void *dst,
+                    const void *src,
+                    size_t count,
+                    gpuMemcpyKind kind,
+                    gpuStream_t stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(dst, src, count, kind, stream));
 }
 
-void GpuMemcpySync(void *dst, const void *src, size_t count,
+void GpuMemcpySync(void *dst,
+                   const void *src,
+                   size_t count,
                    gpuMemcpyKind kind) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, count, kind));
 }
 
-void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, gpuStream_t stream) {
+void GpuMemcpyPeerAsync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        int src_device,
+                        size_t count,
+                        gpuStream_t stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream));
 }
 
-void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
-                       int src_device, size_t count) {
+void GpuMemcpyPeerSync(
+    void *dst, int dst_device, const void *src, int src_device, size_t count) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipMemcpyPeer(dst, dst_device, src, src_device, count));
 }
@@ -265,5 +291,7 @@ void GpuDestroyStream(gpuStream_t stream) {
 void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize()); }
 
 gpuError_t GpuGetLastError() { return hipGetLastError(); }
-}  // namespace platform
-}  // namespace paddle
+
+}  // namespace gpu
+}  // namespace backends
+}  // namespace pten

@@ -46,6 +46,13 @@ struct CPUContext::CPUImpl {
     if (device == nullptr) {
       return;
     }
+
+    // if owning resouce
+    if (res_.device == nullptr && device_ != nullptr) {
+      delete device_;
+      device_ = nullptr;
+    }
+
     res_.device = device;
     device_ = device;
   }

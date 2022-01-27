@@ -39,7 +39,7 @@ class CPUContext : public DeviceContext {
 
   CPUContext(CPUContext&&);
 
-  ~CPUContext();
+  virtual ~CPUContext();
 
   Eigen::DefaultDevice* eigen_device() const;
 
