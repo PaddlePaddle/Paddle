@@ -299,9 +299,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       seq_info.ParseFromSequenceTensor(*logits, *label);
     }
 
-    auto loss_dims =
-        framework::make_ddim({static_cast<int64_t>(seq_info.num_sequences), 1});
-
     // warpctc needs sequences data stored in transposed padding format
     LoDTensor warpctc_logits;
     auto warpctc_logits_dims = framework::make_ddim(
@@ -348,8 +345,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     // warpctc accesses labels in CPU memory
     LoDTensor warpctc_label;
-    if (ctx.HasInput("LogitsLength")) {
-      platform::RecordEvent event("unpadding_lod_tensor");
+    if (ctx.HasInput("LabelLength")) {
+      platform::RecordEvent event("unpadding_labels");
 
       framework::Vector<size_t> label_lod;
       label_lod.push_back(0);
@@ -364,11 +361,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       lod.push_back(label_lod);
       warpctc_label.set_lod(lod);
 
-      if (platform::is_cpu_place(ctx.GetPlace())) {
-        math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
-            ctx.template device_context<DeviceContext>(), *label,
-            &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, math::kBatchLengthWidth);
+      if (platform::is_cpu_place(label->place())) {
+        platform::CPUDeviceContext* dev_ctx =
+            static_cast<platform::CPUDeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(
+                    platform::CPUPlace()));
+        math::UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, int>()(
+            *dev_ctx, *label, &warpctc_label, label->dims()[1] /*pad_seq_len*/,
+            0 /*lod_level*/, false /*norm_by_times*/, math::kBatchLengthWidth);
       } else {
         LoDTensor gpu_label;
         gpu_label.mutable_data<int>(
@@ -383,12 +383,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                                           &warpctc_label);
       }
     } else {
-      platform::RecordEvent event("copy_warpctc_label");
+      platform::RecordEvent event("copy_label_cpu");
       paddle::framework::TensorCopySync(*label, platform::CPUPlace(),
                                         &warpctc_label);
     }
-
     const int* warpctc_label_data = warpctc_label.data<int>();
+
+    auto loss_dims =
+        framework::make_ddim({static_cast<int64_t>(seq_info.num_sequences), 1});
     T* loss_data = loss->mutable_data<T>(loss_dims, ctx.GetPlace());
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));

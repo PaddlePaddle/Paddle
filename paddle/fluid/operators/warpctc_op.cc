@@ -72,7 +72,8 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "LogitsLength" || var_name == "LabelLength") {
+    if (var_name == "LogitsLength" || var_name == "LabelLength" ||
+        var_name == "Label") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
