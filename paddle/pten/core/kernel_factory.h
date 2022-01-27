@@ -49,8 +49,6 @@ using DataLayout = paddle::experimental::DataLayout;
 
 class KernelContext;
 
-using KernelFn = void (*)(KernelContext* ctx);
-
 class KernelKey {
  public:
   KernelKey() = default;
