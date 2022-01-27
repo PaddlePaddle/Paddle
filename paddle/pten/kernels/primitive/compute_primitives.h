@@ -52,6 +52,12 @@ class MPTypeTrait<pten::dtype::float16> {
   using Type = float;
 };
 
+template <>
+class MPTypeTrait<pten::dtype::bfloat16> {
+ public:
+  using Type = float;
+};
+
 /**
  * @brief Will be used in BlockYReduce, get the index of reduce_num in shared
  * memory.

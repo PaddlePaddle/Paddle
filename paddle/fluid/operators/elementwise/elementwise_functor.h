@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/pten/core/array.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
@@ -173,6 +174,18 @@ struct FMaxFunctor<paddle::platform::float16> {
 };
 
 template <>
+struct FMaxFunctor<paddle::platform::bfloat16> {
+  inline HOSTDEVICE paddle::platform::bfloat16 operator()(
+      const paddle::platform::bfloat16 a,
+      const paddle::platform::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<paddle::platform::bfloat16>(result);
+  }
+};
+
+template <>
 struct FMaxFunctor<int> {
   inline HOSTDEVICE int operator()(const int a, const int b) const {
     float float_a = static_cast<float>(a);
@@ -209,6 +222,18 @@ struct FMinFunctor<paddle::platform::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
     return static_cast<paddle::platform::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<paddle::platform::bfloat16> {
+  inline HOSTDEVICE paddle::platform::bfloat16 operator()(
+      const paddle::platform::bfloat16 a,
+      const paddle::platform::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<paddle::platform::bfloat16>(result);
   }
 };
 

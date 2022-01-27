@@ -29,7 +29,8 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
  public:
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<std::is_same<T, platform::float16>::value,
+      typename std::conditional<std::is_same<T, platform::float16>::value ||
+                                    std::is_same<T, platform::bfloat16>::value,
                                 float, T>::type>::type;
 
   void Compute(const framework::ExecutionContext& context) const override {

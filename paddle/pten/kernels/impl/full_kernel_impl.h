@@ -48,7 +48,8 @@ void FullLikeKernel(const Context& dev_ctx,
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<
-          std::is_same<T, paddle::platform::float16>::value,
+          std::is_same<T, paddle::platform::float16>::value ||
+              std::is_same<T, paddle::platform::bfloat16>::value,
           float,
           T>::type>::type;
 

@@ -43,7 +43,8 @@ struct GaussianGenerator {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     using MT = typename details::MPTypeTrait<T>::Type;
-    thrust::normal_distribution<MT> dist(mean_, std_);
+    thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
+                                         static_cast<MT>(std_));
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
     MT out = dist(rng);
@@ -82,7 +83,8 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
       if (FLAGS_use_curand) {
         using MT = typename details::MPTypeTrait<T>::Type;
         distribution::normal_distribution<MT> dist;
-        distribution::normal_transform<MT> trans(mean, std);
+        distribution::normal_transform<MT> trans(static_cast<MT>(mean),
+                                                 static_cast<MT>(std));
         distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
                                                     trans);
       } else {
@@ -142,11 +144,14 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(
     gaussian_random,
     paddle::operators::GPUGaussianRandomKernel<paddle::platform::float16>,
+    paddle::operators::GPUGaussianRandomKernel<paddle::platform::bfloat16>,
     paddle::operators::GPUGaussianRandomKernel<float>,
     paddle::operators::GPUGaussianRandomKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
     gaussian_random_batch_size_like,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
         paddle::platform::float16>,
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
+        paddle::platform::bfloat16>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);

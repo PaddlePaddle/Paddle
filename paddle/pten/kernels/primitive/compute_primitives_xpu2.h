@@ -38,6 +38,12 @@ class MPTypeTrait<pten::dtype::float16> {
   using Type = float;
 };
 
+template <>
+class MPTypeTrait<pten::dtype::bfloat16> {
+ public:
+  using Type = float;
+};
+
 static inline __device__ void sync_all() {
   __asm__ __volatile__(
       "sync_local\t\n"

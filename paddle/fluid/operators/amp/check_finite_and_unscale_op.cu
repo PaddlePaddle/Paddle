@@ -158,4 +158,5 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(check_finite_and_unscale,
                         ops::CheckFiniteAndUnscaleGpuKernel<float>,
                         ops::CheckFiniteAndUnscaleGpuKernel<double>,
-                        ops::CheckFiniteAndUnscaleGpuKernel<plat::float16>);
+                        ops::CheckFiniteAndUnscaleGpuKernel<plat::float16>,
+                        ops::CheckFiniteAndUnscaleGpuKernel<plat::bfloat16>);
