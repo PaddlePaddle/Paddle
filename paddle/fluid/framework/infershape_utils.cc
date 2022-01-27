@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/tensor_utils.h"
-#include "paddle/pten/core/tensor_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -117,8 +116,9 @@ class CompatMetaTensor : public pten::MetaTensor {
       auto* var = BOOST_GET_CONST(Variable*, var_);
       return var->Get<LoDTensor>().layout();
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported get layout for VarDesc now."));
+      // NOTE(chenweihang): do nothing
+      // Unsupported get layout for VarDesc now
+      return DataLayout::UNDEFINED;
     }
   }
 
@@ -156,8 +156,8 @@ class CompatMetaTensor : public pten::MetaTensor {
           static_cast<pten::DenseTensor*>(tensor))
           ->layout = layout;
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported set layout for VarDesc now."));
+      // NOTE(chenweihang): do nothing
+      // Unsupported set layout for VarDesc now
     }
   }
 
