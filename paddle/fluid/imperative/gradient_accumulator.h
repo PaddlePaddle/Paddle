@@ -163,5 +163,14 @@ class SortedGradientAccumulator : public GradientAccumulator {
   std::vector<SavedVarInfo> tmp_grad_vars_;
 };
 
+void SelectedRowsAddToTensor(const framework::Variable& src,
+                             framework::Variable* dst);
+
+void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
+                           const framework::Variable& src_tensor_var,
+                           framework::Variable* dst_tensor_var);
+
+void TensorAdd(const framework::Variable& src, framework::Variable* dst);
+
 }  // namespace imperative
 }  // namespace paddle

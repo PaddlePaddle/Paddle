@@ -341,6 +341,10 @@ else()
      endif()
 endif()
 
+if(WITH_HETERPS AND WITH_PSLIB)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+endif()
+
 if(WITH_DISTRIBUTE)
     if(LINUX)
         set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)

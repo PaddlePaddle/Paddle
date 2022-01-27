@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/heter_service.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
@@ -35,7 +35,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 typedef std::function<int(const HeterRequest*, HeterResponse*)>
     HeterServiceHandler;
 class DataFeed;

@@ -256,6 +256,10 @@ class Optimizer(object):
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+        # if has master weight and then save master weight
+        if hasattr(self, "_master_weights"):
+            if len(self._master_weights) != 0:
+                state_dict["master_weights"] = self._master_weights
         # global step if use lr decay
         if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
@@ -304,6 +308,10 @@ class Optimizer(object):
         state_dict = state_dict.copy()
         if "LR_Scheduler" in state_dict:
             state_dict.pop("LR_Scheduler")
+        if "master_weights" in state_dict:
+            if hasattr(self, "_master_weights"):
+                self._master_weights = state_dict["master_weights"]
+            state_dict.pop("master_weights")
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
