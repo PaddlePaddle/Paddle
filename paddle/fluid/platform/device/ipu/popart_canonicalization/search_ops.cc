@@ -65,7 +65,7 @@ Node *topk_handler(Graph *graph, Node *node) {
 
   Node *var_x = GetInputVarNode("X", node);
   Node *var_k = nullptr;
-  if (op->HasInput("K") && !op->Input("K").empty()) {
+  if (!op->Input("K").empty()) {
     var_k = GetInputVarNode("K", node);
   } else {
     auto k = BOOST_GET_CONST(int, op->GetAttr("k"));

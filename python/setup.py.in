@@ -519,6 +519,10 @@ if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
+if '${WITH_IPU}' == 'ON':
+    shutil.copy('${PADDLE_IPU_LIB}', libs_path)
+    package_data['paddle.libs'] += ['libpaddle_ipu' + ext_name]
+
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')

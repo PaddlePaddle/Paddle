@@ -175,7 +175,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
 
-    return auto_parallel_main_prog, auto_parallel_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads
 
 
 def check_runtime_estimation(cost):
@@ -229,10 +229,10 @@ class TestCostModel(unittest.TestCase):
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             dist_context = DistributedContext()
-            distributed_program, dist_startup_prog = get_dist_prog(
+            distributed_program, dist_startup_prog, dist_params_grads = get_dist_prog(
                 train_program, startup_program, dist_context, rank_id)
             reshard(distributed_program, dist_startup_prog, rank_id,
-                    dist_context)
+                    dist_context, dist_params_grads)
             dist_program.append(distributed_program)
         cluster = None
         cost = estimate_cost(
