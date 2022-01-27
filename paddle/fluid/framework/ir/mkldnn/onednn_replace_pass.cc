@@ -31,13 +31,13 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
                                                                                         {"Outputs", {"Out"}}};
   const std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> in_out_map = {
     //{"elementwise_add", elementwise_io_map},
-    //{"elementwise_sub", elementwise_io_map},
-    {"elementwise_mul", elementwise_io_map}
+    {"elementwise_mul", elementwise_io_map},
+    {"elementwise_sub", elementwise_io_map}
   };
 
-  GraphPatternDetector gpd;
   for(const auto& op_to_replace: in_out_map)
   {
+    GraphPatternDetector gpd = GraphPatternDetector();
     auto op_type = op_to_replace.first;
     std::vector<PDNode*> inputs;
     auto input_names = (op_to_replace.second).at("Inputs");
@@ -58,7 +58,7 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
     patterns::OneDNNOp onednn_op_pattern(gpd.mutable_pattern(), op_type + "_onednn");
     onednn_op_pattern(inputs, outputs, op_type);
 
-    auto handler = [&op_type, &onednn_op_pattern]
+    auto handler = [op_type, onednn_op_pattern]
                     (const GraphPatternDetector::subgraph_t &subgraph, Graph *g) {
       VLOG(4) << "Replace " << op_type << " with onednn version op.";
       // ops
