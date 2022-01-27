@@ -159,7 +159,7 @@ void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
   std::for_each(element_nums.begin(), element_nums.end(),
                 [feature_size](size_t &x) { x = x * feature_size; });
 
-  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   gloo_wrapper->AllGatherVector<int64_t>(const_cast<int64_t *>(src_rows_ptr),
                                          static_cast<int64_t *>(dst_rows_ptr),
                                          rows_num_vector);

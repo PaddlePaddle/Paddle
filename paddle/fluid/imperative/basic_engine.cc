@@ -103,8 +103,7 @@ void BasicEngine::Init(
         platform::DeviceContextPool::Instance().Get(fwd_var.place());
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
-      grad_var->mutable_data(fwd_var.place(),
-                             framework::TransToProtoVarType(fwd_var.dtype()));
+      grad_var->mutable_data(fwd_var.place(), fwd_var.dtype());
       operators::math::set_constant(*dev_ctx, grad_var, 1.0);
     } else {
       paddle::framework::TensorCopy(
@@ -154,7 +153,8 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         // correct. var->DataType() returns the default dtype, which is float32.
         // Here, we use the type of the corresponding forward datatype.
 
-        tensor->mutable_data(op.place(), var->ForwardDataType());
+        tensor->mutable_data(
+            op.place(), framework::TransToPtenDataType(var->ForwardDataType()));
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());

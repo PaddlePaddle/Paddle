@@ -313,9 +313,11 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   // we can't get data_type_ directly. We need to check if we can only use
   // default data_type for now.
   if (ref_var.ForwardDataType() != -1) {
-    dst_tensor->mutable_data(place, ref_var.ForwardDataType());
+    dst_tensor->mutable_data(
+        place, framework::TransToPtenDataType(ref_var.ForwardDataType()));
   } else {
-    dst_tensor->mutable_data(place, ref_var.DataType());
+    dst_tensor->mutable_data(
+        place, framework::TransToPtenDataType(ref_var.DataType()));
   }
   operators::math::set_constant(*dev_ctx, dst_tensor, value);
 }

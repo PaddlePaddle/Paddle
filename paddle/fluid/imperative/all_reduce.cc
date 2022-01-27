@@ -129,7 +129,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   dims[0] = rows_num;
   auto feature_size = framework::product(dims) / dims[0];
   dst_tensor->Resize(dims);
-  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   const auto *src_tensor_ptr = src_tensor.data();
 
   auto sizeof_dtype = framework::SizeOfType(dtype);

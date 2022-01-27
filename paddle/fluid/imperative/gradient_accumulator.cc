@@ -388,7 +388,7 @@ void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
 
   auto* dst_tensor = dst_tensor_var->GetMutable<framework::LoDTensor>();
   dst_tensor->Resize(src_tensor.dims());
-  dst_tensor->mutable_data(place, data_type);
+  dst_tensor->mutable_data(place, src_tensor.dtype());
 
 #define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)            \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {       \
@@ -652,12 +652,14 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
@@ -784,12 +786,14 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
