@@ -286,8 +286,40 @@ def get_the_one_send_context(context,
                              split_dense_table=False,
                              use_origin_program=False,
                              ep_list=None):
+    if ep_list is None:
+        ep_list = ["127.0.0.1:6071"]
     send_ctx = {}
+    trainer_id = get_role_id(context['role_maker'])
+
     idx = 0
+    idx += get_dense_send_context(context, send_ctx, idx,
+                                  context['merged_dense_pairs'], trainer_id,
+                                  split_dense_table)
+    distibuted_varnames = get_sparse_tablenames(context['origin_main_program'],
+                                                True)
+    for merged in context['merged_sparse_pairs']:
+        param, grad = merged
+        grad_name = grad.merged_var.name
+        param_name = param.merged_var.name
+        splited_varname = []
+
+        for i in range(len(ep_list)):
+            splited_varname.append("{}.block{}".format(param_name, i))
+
+        is_distributed = True if param_name in distibuted_varnames else False
+
+        var = context['origin_main_program'].global_block().vars[
+            grad.merged_var.name]
+
+        shape = list(var.shape)
+        shape[0] = 0 if is_distributed else shape[0]
+
+        sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
+                                 [grad_name], trainer_id, True, True,
+                                 is_distributed, idx, False)
+
+        idx += 1
+        send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
     if len(context['tensor_table']) > 0 and context['is_worker']:
         name, ctx = _step_ctx(idx, context['role_maker'])
@@ -996,6 +1028,7 @@ def build_var_distributed(context):
     grad_name_to_param_name = {}
     context["merged_variables_pairs"] = []
     context["merged_sparse_pairs"] = []
+    context['merged_dense_pairs'] = []
     context["merged_variable_map"] = {}
 
     for param, grad in sparse_pairs:
@@ -1010,7 +1043,7 @@ def build_var_distributed(context):
         m_param = MergedVariable(param, [param], [0])
         m_grad = MergedVariable(grad, [grad], [0])
         context["merged_variables_pairs"].append((m_param, m_grad))
-        context["merged_sparse_pairs"].append((m_param, m_grad))
+        context["merged_dense_pairs"].append((m_param, m_grad))
 
     for sparse_pair in origin_for_sparse:
         param, grad = sparse_pair

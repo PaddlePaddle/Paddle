@@ -52,7 +52,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
     def _check_conflict(self, other_pass):
         return True
 
-    def _append_send_op(self, program, union_vars, queue, is_sparse, table_id):
+    def _append_send_op(self, program, union_vars, queue, is_sparse, table_id,
+                        ps_mode):
         if queue == STEP_COUNTER:
             send_input_vars = []
         else:
@@ -62,7 +63,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             ]
 
         dummy_output = []
-        if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
+        if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
 
@@ -74,7 +75,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
                 "send_varnames": [queue],
                 "is_sparse": is_sparse,
                 "table_id": table_id,
-                RPC_OP_ROLE_ATTR_NAME: op_role_attr_name
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
         return dummy_output
@@ -87,7 +88,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             attrs={
                 "trainer_id": trainer_id,
                 "half_async": True,
-                RPC_OP_ROLE_ATTR_NAME: op_role_attr_name
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -106,7 +107,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             dummys.append(
                 self._append_send_op(main_program,
                                      send.origin_varnames(), merged_name,
-                                     is_sparse, send.table_id()))
+                                     is_sparse, send.table_id(), ps_mode))
 
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             self._append_barrier_op(main_program, dummys)
@@ -116,8 +117,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 class DistributedOpsPass(PassBase):
     def __init__(self):
         super(DistributedOpsPass, self).__init__()
-        w_2_table_id = {}
-        emb_size = {}
+        self.w_2_table_id = {}
+        self.emb_size = {}
 
     def _check_self(self):
         return True
@@ -125,8 +126,8 @@ class DistributedOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _push_sparse_fuse(self, _program, push_sparse_ops, use_ps_gpu):
-        if use_ps_gpu:
+    def _push_sparse_fuse(self, _program, push_sparse_ops, attrs):
+        if attrs['use_ps_gpu']:
             return
         if len(push_sparse_ops) == 0:
             return
@@ -142,10 +143,10 @@ class DistributedOpsPass(PassBase):
             if len(entry) == 3 and entry[0] == 'show_click_entry':
                 show_var_name = entry[1]
                 click_var_name = entry[2]
-                if show_var_name in program.global_block(
-                ).vars and click_var_name in program.global_block().vars:
-                    show = program.global_block().vars[show_var_name]
-                    clk = program.global_block().vars[click_var_name]
+                if show_var_name in _program.global_block(
+                ).vars and click_var_name in _program.global_block().vars:
+                    show = _program.global_block().vars[show_var_name]
+                    clk = _program.global_block().vars[click_var_name]
                     use_entry = True
                 else:
                     warnings.warn(
@@ -154,12 +155,12 @@ class DistributedOpsPass(PassBase):
 
         if not use_entry:
             print('ShowClickEntry not configured, will not use')
-            show = program.global_block().create_var(
+            show = _program.global_block().create_var(
                 name="show",
                 dtype=core.VarDesc.VarType.INT64,
                 persistable=False,
                 stop_gradient=True)
-            program.global_block()._insert_op(
+            _program.global_block()._insert_op(
                 index=0,
                 type='fill_constant',
                 inputs={},
@@ -170,12 +171,12 @@ class DistributedOpsPass(PassBase):
                     'value': 1,
                 })
 
-            clk = program.global_block().create_var(
+            clk = _program.global_block().create_var(
                 name="clk",
                 dtype=core.VarDesc.VarType.INT64,
                 persistable=False,
                 stop_gradient=True)
-            program.global_block()._insert_op(
+            _program.global_block()._insert_op(
                 index=0,
                 type='fill_constant',
                 inputs={},
@@ -187,26 +188,26 @@ class DistributedOpsPass(PassBase):
                 })
 
         for param, ops in push_sparse_ops.items():
-            all_ops = program.global_block().ops
+            all_ops = _program.global_block().ops
             op_idxs = [all_ops.index(op) for op in ops]
             inputs = [
-                program.global_block().vars[op.input("Ids")[0]] for op in ops
+                _program.global_block().vars[op.input("Ids")[0]] for op in ops
             ]
-            w = program.global_block().vars[ops[0].output("W@GRAD")[0]]
-            table_id = w_2_table_id[param]
+            w = _program.global_block().vars[ops[0].output("W@GRAD")[0]]
+            table_id = self.w_2_table_id[param]
 
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
             op_type = ops[0].type
             outputs = [
-                program.global_block().vars[op.input("Out@GRAD")[0]]
+                _program.global_block().vars[op.input("Out@GRAD")[0]]
                 for op in ops
             ]
 
             for idx in op_idxs[::-1]:
-                program.global_block()._remove_op(idx)
+                _program.global_block()._remove_op(idx)
 
-            program.global_block().append_op(
+            _program.global_block().append_op(
                 type="distributed_push_sparse",
                 inputs={
                     "Ids": inputs,
@@ -220,11 +221,10 @@ class DistributedOpsPass(PassBase):
                     "is_distributed": is_distributed,
                     "padding_idx": padding_idx,
                     "table_id": table_id,
-                    "size": emb_size[param]
+                    "size": self.emb_size[param]
                 })
 
-    def _pull_sparse_fuse(self, _program, pull_sparse_ops, use_ps_gpu,
-                          send_ctx):
+    def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):
         def dag_check_up_and_reorder(program, inputs, outputs):
             global_block = program.global_block()
             min_output_index = len(global_block.ops)
@@ -321,17 +321,17 @@ class DistributedOpsPass(PassBase):
                     assert global_block.desc.op(i) == global_block.ops[i].desc
 
         for param, ops in pull_sparse_ops.items():
-            all_ops = program.global_block().ops
+            all_ops = _program.global_block().ops
             op_device = ""
-            if config.is_heter_ps_mode:
+            if attrs['is_heter_ps_mode']:
                 op_device = ops[0].attr("op_device")
             inputs = [
-                program.global_block().vars[op.input("Ids")[0]] for op in ops
+                _program.global_block().vars[op.input("Ids")[0]] for op in ops
             ]
-            w = program.global_block().vars[ops[0].input("W")[0]]
-            emb_size[param] = w.shape[1]
+            w = _program.global_block().vars[ops[0].input("W")[0]]
+            self.emb_size[param] = w.shape[1]
 
-            grad_name = config.param_name_to_grad_name[w.name]
+            grad_name = attrs['param_name_to_grad_name'][w.name]
 
             table_id = -1
 
@@ -343,26 +343,26 @@ class DistributedOpsPass(PassBase):
                 raise ValueError(
                     "can not find suitable sparse table, please check")
 
-            w_2_table_id[param] = table_id
+            self.w_2_table_id[param] = table_id
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
             op_type = ops[0].type
 
             outputs = [
-                program.global_block().vars[op.output("Out")[0]] for op in ops
+                _program.global_block().vars[op.output("Out")[0]] for op in ops
             ]
 
-            dag_check_up_and_reorder(program, inputs, outputs)
+            dag_check_up_and_reorder(_program, inputs, outputs)
 
             op_idxs = [all_ops.index(op) for op in ops]
 
             for idx in op_idxs[::-1]:
-                program.global_block()._remove_op(idx)
+                _program.global_block()._remove_op(idx)
 
             inputs_idxs = [-1] * len(inputs)
-            outputs_idxs = [len(program.global_block().ops) + 1] * len(outputs)
+            outputs_idxs = [len(_program.global_block().ops) + 1] * len(outputs)
 
-            for idx, op in enumerate(program.global_block().ops):
+            for idx, op in enumerate(_program.global_block().ops):
                 for i in range(0, len(op.output_names)):
                     outs = op.output(op.output_names[i])
                     for in_id, in_var in enumerate(inputs):
@@ -381,8 +381,8 @@ class DistributedOpsPass(PassBase):
                 else:
                     distributed_idx = max(inputs_idxs) + 1
 
-                if use_ps_gpu:
-                    program.global_block()._insert_op(
+                if attrs['use_ps_gpu']:
+                    _program.global_block()._insert_op(
                         index=distributed_idx,
                         type="pull_box_sparse",
                         inputs={"Ids": inputs,
@@ -394,7 +394,7 @@ class DistributedOpsPass(PassBase):
                             "is_sparse": True
                         })
                 else:
-                    program.global_block()._insert_op(
+                    _program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
                         inputs={"Ids": inputs,
@@ -411,7 +411,7 @@ class DistributedOpsPass(PassBase):
                 for i in range(len(inputs_idxs)):
                     distributed_idx = op_idxs[i]
 
-                    program.global_block()._insert_op(
+                    _program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
                         inputs={"Ids": [inputs[i]],
@@ -425,7 +425,7 @@ class DistributedOpsPass(PassBase):
                             "op_device": op_device
                         })
 
-    def _get_pull_sparse_ops(self, _program):
+    def _get_pull_sparse_ops(self, _program, attrs):
         pull_sparse_ops = {}
         pull_sparse_ids = {}
         push_sparse_ops = {}
@@ -434,7 +434,7 @@ class DistributedOpsPass(PassBase):
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
                 param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
-                if config.is_heter_ps_mode:
+                if attrs['is_heter_ps_mode']:
                     # trick for matchnet, need to modify
                     param_name += op.input("Ids")[0][0]
                 ops = pull_sparse_ops.get(param_name, [])
@@ -456,13 +456,12 @@ class DistributedOpsPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        pull_sparse_ops, push_sparse_ops = self._get_pull_sparse_ops(program)
+        pull_sparse_ops, push_sparse_ops = self._get_pull_sparse_ops(
+            main_program, attrs)
         send_ctx = get_the_one_send_context(
             attrs, split_dense_table=attrs['is_heter_ps_mode'])
-        self._pull_sparse_fuse(main_program, pull_sparse_ops,
-                               attrs['use_ps_gpu'], send_ctx)
-        self._push_sparse_fuse(main_program, push_sparse_ops,
-                               attrs['use_ps_gpu'])
+        self._pull_sparse_fuse(main_program, pull_sparse_ops, attrs, send_ctx)
+        self._push_sparse_fuse(main_program, push_sparse_ops, attrs)
 
 
 @register_pass("delete_optimizer_pass")
@@ -575,8 +574,10 @@ class FakeInitOpsPass(PassBase):
         return True
 
     def _get_sparse_table_names(self, attrs):
-        dist_varnames = get_sparse_tablenames(attrs['origin_program'], True)
-        sparse_varnames = get_sparse_tablenames(attrs['origin_program'], False)
+        dist_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+                                              True)
+        sparse_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+                                                False)
         return list(set(dist_varnames + sparse_varnames))
 
     def _fake_init_sparsetable(self, program, sparse_table_names):

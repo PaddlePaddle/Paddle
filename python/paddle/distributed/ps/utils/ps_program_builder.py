@@ -22,6 +22,7 @@ class PsProgramBuilder(object):
     def __init__(self, pass_ctx):
         self.pass_ctx = pass_ctx
         self.attrs = self.pass_ctx._attrs
+        self.loss = self.attrs['loss']
         self.cloned_main = self.attrs['cloned_main']
         self.cloned_startup = self.attrs['cloned_startup']
 
@@ -61,11 +62,11 @@ class PsProgramBuilder(object):
         if self.attrs['is_worker']:
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
-            loss.block.program = self.cloned_main
+            self.loss.block.program = self.cloned_main
 
         elif self.attrs['is_server']:
             self._build_pserver_programs()
-            loss.block.program = self.attrs['_main_server']
+            self.loss.block.program = self.attrs['_main_server']
             fluid.framework.switch_startup_program(self.attrs[
                 '_startup_server'])
 
@@ -83,7 +84,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
 
         self.attrs['origin_main_program'] = self.cloned_main
 
-        if launch_barrier and launch_barrier_flag:
+        if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(server_endpoints)
 
         return
@@ -121,7 +122,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
 
-        if launch_barrier and launch_barrier_flag:
+        if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(server_endpoints)
 
         return
@@ -156,7 +157,7 @@ class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等模式
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
 
-        if launch_barrier and launch_barrier_flag:
+        if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(server_endpoints)
 
         return
@@ -207,7 +208,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         set_heter_pipeline_opt_pass.apply([self.cloned_main],
                                           [self.cloned_startup], pass_ctx)
 
-        if launch_barrier and launch_barrier_flag:
+        if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(server_endpoints)
 
         return
@@ -218,11 +219,11 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
             ps_set_heter_pipeline_opt_pass = new_pass(
                 "set_heter_pipeline_opt_pass", self.attrs)
             ps_set_heter_pipeline_opt_pass.apply(
-                [loss.block.program], [startup_program], self.pass_ctx)
+                [self.loss.block.program], [startup_program], self.pass_ctx)
 
         elif self.attrs['is_server']:
             self._build_pserver_programs()
-            loss.block.program = self.attrs['_main_server']
+            self.loss.block.program = self.attrs['_main_server']
             fluid.framework.switch_startup_program(self.attrs[
                 '_startup_server'])
 

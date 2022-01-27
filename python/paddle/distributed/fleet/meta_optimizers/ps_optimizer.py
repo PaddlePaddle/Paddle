@@ -22,6 +22,7 @@ import platform
 from paddle.distributed.ps.utils.public import *
 from paddle.distributed.passes import PassContext
 from ..base.private_helper_function import wait_server_ready
+from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
@@ -42,6 +43,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         # trainer
         self.attrs["env"] = get_dist_env()
 
+        self.attrs['loss'] = loss
         self.attrs['min_block_size'] = 81920
         self.attrs['origin_main_program'] = loss.block.program
         self.attrs['origin_startup_program'] = startup_program
@@ -99,10 +101,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
+        if startup_program == None:
+            startup_program = paddle.static.default_startup_program()
         self._init_ps_pass_context(loss, startup_program)
         ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
             self.pass_ctx)
-        ps_builder.build_programs()
+        ps_builder._build_programs()
         return None, None
 
     def _can_apply_geo(self, program):
