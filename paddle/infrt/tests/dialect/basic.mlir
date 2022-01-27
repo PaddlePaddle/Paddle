@@ -1,3 +1,4 @@
+// RUN: infrtexec -i %s | FileCheck %s
 // CHECK-LABEL: @basic_f32
 func @basic_f32() -> f32 {
   %v0 = infrt.constant.f32 1.0

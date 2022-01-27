@@ -25,6 +25,7 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"elementwise_div", "divide_raw"},
     {"elementwise_mul", "muliply_raw"},
     {"elementwise_sub", "subtract_raw"},
+    {"elementwise_sub_grad", "subtract_grad"},
     {"fill_any_like", "full_like"},
     {"fill_constant", "full"},
     {"flatten_contiguous_range", "flatten"},
