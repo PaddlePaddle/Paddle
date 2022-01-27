@@ -1169,7 +1169,7 @@ PYBIND11_MODULE(core_noavx, m) {
            });
 #else
            })
-#if define(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
       .def("_share_buffer_with",
            [](framework::Tensor &self, const framework::Tensor src,
               py::tuple t) {
