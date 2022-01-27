@@ -502,7 +502,8 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         dist_train_program, dist_startup_prog, dist_params_grads)
 
-    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context)
+    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context,
+            dist_params_grads)
     return dist_train_program, dist_startup_prog
 
 
