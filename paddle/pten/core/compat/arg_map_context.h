@@ -52,6 +52,7 @@ struct KernelSignature {
   KernelSignature& operator=(const KernelSignature& other) {
     name = other.name;
     args = other.args;
+    return *this;
   }
 };
 
