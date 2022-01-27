@@ -3677,7 +3677,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindIO(&m);
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
   BindMetrics(&m);
 #endif

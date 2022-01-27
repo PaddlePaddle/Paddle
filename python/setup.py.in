@@ -574,7 +574,8 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/common')) +  # pten common headers
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `paddle/pten/api/ext`,
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/small_vector.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn

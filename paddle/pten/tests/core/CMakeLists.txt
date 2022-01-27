@@ -3,6 +3,8 @@ cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
 cc_test(test_convert_utils SRCS test_convert_utils.cc DEPS convert_utils)
 cc_test(test_kernel_factory SRCS test_kernel_factory.cc DEPS kernel_factory scale_kernel)
+cc_test(test_sparse_coo_tensor SRCS test_sparse_coo_tensor.cc DEPS dense_tensor sparse_coo_tensor)
+cc_test(test_sparse_csr_tensor SRCS test_sparse_csr_tensor.cc DEPS dense_tensor sparse_csr_tensor)
 cc_test(test_op_utils SRCS test_op_utils.cc DEPS op_compat_infos)
 cc_test(test_pten_device_context SRCS test_device_context.cc DEPS pten_context cpu_context)
 
