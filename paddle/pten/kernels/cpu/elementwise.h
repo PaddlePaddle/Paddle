@@ -743,8 +743,11 @@ void ElemwiseExplicitGradCompute(const CPUContext& dev_ctx,
   }
 }
 
-// Add Grad
-
+/*
+******************************
+    Add Grad
+******************************
+*/
 template <typename T>
 struct IdentityGrad {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
@@ -784,6 +787,35 @@ elementwise_add_grad(const CPUContext& ctx,
                      int axis = -1) {
   ElemwiseExplicitGradCompute<T, IdentityGrad<T>, IdentityGrad<T>>(
       ctx, x, y, out, dout, axis, dx, dy, IdentityGrad<T>(), IdentityGrad<T>());
+}
+
+/*
+******************************
+    Sub Grad
+******************************
+*/
+
+template <typename T>
+struct SubGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
+};
+
+template <typename T>
+struct SubGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return -dout; }
+};
+
+template <typename T>
+void elementwise_sub_grad(const CPUContext& ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          const DenseTensor& out,
+                          const DenseTensor& dout,
+                          DenseTensor* dx,
+                          DenseTensor* dy,
+                          int axis = -1) {
+  ElemwiseExplicitGradCompute<T, SubGradDX<T>, SubGradDY<T>>(
+      ctx, x, y, out, dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
 }
 
 }  // namespace pten

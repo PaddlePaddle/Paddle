@@ -1952,6 +1952,12 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
   }
 }
 
+/*
+******************************
+    Add Grad
+******************************
+*/
+
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
     const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
@@ -2076,6 +2082,108 @@ void elementwise_add_grad(const GPUContext &ctx,
                "and dx_data is the same as dout_data, do not need "
                "any operator";
   }
+}
+
+/*
+******************************
+    Sub Grad
+******************************
+*/
+
+template <typename T>
+static __global__ void SimpleElemwiseSubGradCUDAKernel(const T *dout,
+                                                       int64_t size,
+                                                       T *dx,
+                                                       T *dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    if (dx != nullptr) {
+      dx[col] = dout[col];
+    }
+    dy[col] = -dout[col];
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <typename T>
+void default_elementwise_sub_grad(const GPUContext &ctx,
+                                  const DenseTensor &x,
+                                  const DenseTensor &y,
+                                  const DenseTensor &out,
+                                  const DenseTensor &dout,
+                                  DenseTensor *dx,
+                                  DenseTensor *dy,
+                                  int axis = -1) {
+  auto *dout_data = dout.data<T>();
+  // dx
+  if (dx != nullptr) {
+    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    if (dx->dims() == dout.dims()) {
+      if (dx_data != dout_data) {
+        pten::Copy(ctx, dout, false, dx);
+      }
+    } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(x.dims(), out.dims(), axis);
+      gpuStream_t stream = ctx.stream();
+      kernels::TensorReduceFunctorImpl<T,
+                                       T,
+                                       kps::AddFunctor,
+                                       kps::IdentityFunctor<T>>(
+          dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    }
+  }
+  // dy
+  if (dy != nullptr) {
+    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    if (dy->dims() == dout.dims()) {
+      if (dy_data != dout_data) {
+        dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+        auto size = dy->numel();
+        dim3 grid_size =
+            dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+        SimpleElemwiseSubGradCUDAKernel<
+            T><<<grid_size, block_size, 0, ctx.stream()>>>(
+            dout.data<T>(), size, nullptr, dy->mutable_data<T>(ctx.GetPlace()));
+      }
+    } else {
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(y.dims(), out.dims(), axis);
+      gpuStream_t stream = ctx.stream();
+      kernels::TensorReduceFunctorImpl<T,
+                                       T,
+                                       kps::AddFunctor,
+                                       kps::InverseFunctor<T>>(
+          dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+    }
+  }
+}
+
+template <typename T>
+void elementwise_sub_grad(const GPUContext &ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &y,
+                          const DenseTensor &out,
+                          const DenseTensor &dout,
+                          DenseTensor *dx,
+                          DenseTensor *dy) {
+  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+  auto size = x.numel();
+  dim3 grid_size =
+      dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+  SimpleElemwiseSubGradCUDAKernel<
+      T><<<grid_size, block_size, 0, ctx.stream()>>>(
+      dout.data<T>(),
+      size,
+      dx->mutable_data<T>(ctx.GetPlace()),
+      dy->mutable_data<T>(ctx.GetPlace()));
 }
 
 }  // namespace pten
