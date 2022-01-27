@@ -29,7 +29,7 @@ message(STATUS "Build with XPU_CLANG=" ${XPU_CLANG})
 
 # The host sysroot of XPU compiler is gcc-8.2 
 if(NOT HOST_SYSROOT)
-  set(HOST_SYSROOT /opt/compiler/gcc-8.2) #/opt/compiler/gcc-8.2
+  set(HOST_SYSROOT /opt/compiler/gcc-8.2)
 endif()
 
 if(NOT IS_DIRECTORY ${HOST_SYSROOT})
