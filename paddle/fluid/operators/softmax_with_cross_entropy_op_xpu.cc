@@ -64,7 +64,7 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
 
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int len = logits->numel();
-    T* clip_logits_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(len * sizeof(T));
+    T* clip_logits_data = RAII_GUARD.alloc_l3_or_gm<T>(len);
     PADDLE_ENFORCE_XDNN_NOT_NULL(clip_logits_data);
 
     r = xpu::clip_v2(dev_ctx.x_context(), logits->data<float>(),
