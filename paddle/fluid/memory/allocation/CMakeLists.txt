@@ -19,7 +19,7 @@ if (WITH_GPU)
   nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
   nv_library(stream_safe_cuda_allocator SRCS stream_safe_cuda_allocator.cc DEPS allocator)
   nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
-  
+
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
   if(CUDA_VERSION GREATER_EQUAL 10.2)
     nv_library(cuda_virtual_mem_allocator SRCS cuda_virtual_mem_allocator.cc DEPS dynload_cuda)

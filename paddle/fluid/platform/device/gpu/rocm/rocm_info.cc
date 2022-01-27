@@ -225,8 +225,8 @@ int GetGPUManagedMemorySupported(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetGPUDeviceCount()));
   int ManagedMemoryAttr;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipDeviceGetAttribute(&ManagedMemoryAttr, hipDevAttrManagedMemory, id));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
+      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, id));
   return ManagedMemoryAttr;
 }
 

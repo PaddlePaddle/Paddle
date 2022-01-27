@@ -34,7 +34,7 @@ if (WITH_GPU)
         set_tests_properties(cuda_managed_memory_test PROPERTIES
                              ENVIRONMENT "FLAGS_use_cuda_managed_memory=true;
                                           FLAGS_allocator_strategy=auto_growth"
-                             TIMEOUT 30)
+                             TIMEOUT 40)
     endif()
 endif()
 

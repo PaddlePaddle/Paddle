@@ -444,17 +444,17 @@ class AllocatorFacadePrivate {
 
   // Create a new CUDAAllocator or CUDAManagedAllocator for the given device
   std::shared_ptr<Allocator> CreateCUDAAllocator(platform::CUDAPlace p) {
-    PADDLE_ENFORCE_EQ(
-        strategy_, AllocatorStrategy::kAutoGrowth,
-        platform::errors::InvalidArgument(
-            "CUDA managed memory is only implemented for auto_growth strategy, "
-            "not support %s strategy.\n"
-            "Please use auto_growth strategy by command `export "
-            "FLAGS_allocator_strategy=\"auto_growth\"`, or disable managed "
-            "memory by command `export FLAGS_use_cuda_managed_memory=false`",
-            FLAGS_allocator_strategy));
-
     if (FLAGS_use_cuda_managed_memory) {
+      PADDLE_ENFORCE_EQ(
+          strategy_, AllocatorStrategy::kAutoGrowth,
+          platform::errors::InvalidArgument(
+              "CUDA managed memory is only implemented for auto_growth "
+              "strategy, not support %s strategy.\n"
+              "Please use auto_growth strategy by command `export "
+              "FLAGS_allocator_strategy=\"auto_growth\"`, or disable managed "
+              "memory by command `export FLAGS_use_cuda_managed_memory=false`",
+              FLAGS_allocator_strategy));
+
       if (!platform::GetGPUManagedMemorySupported(p.device)) {
         PADDLE_THROW(platform::errors::Unavailable(
             "Failed to create CUDAManagedAllocator on GPU %d.\n\n"
