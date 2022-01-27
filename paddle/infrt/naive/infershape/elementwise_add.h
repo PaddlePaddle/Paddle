@@ -34,8 +34,8 @@ static void ElementwiseAddInferShape(const MetaTensor& a,
 // TODO(zhiqiang) This class should be generated.
 class ElementwiseAddInferShapeLauncher : public InferShapeLauncher {
  public:
-  constexpr static uint16_t input_tensor_indice[2] = {0, 1};
-  static const uint16_t num_input_tensors = 2;
+  static const uint16_t input_tensor_indices[2];
+  static const uint16_t num_input_tensors{2};
   static const bool turn_on_infer_shape_cache{true};
 
   void Invoke(host_context::KernelFrame* frame) override {
@@ -45,18 +45,21 @@ class ElementwiseAddInferShapeLauncher : public InferShapeLauncher {
       CreateKernelFrameForInferShape(frame);
     }
     if (turn_on_infer_shape_cache) {
-      if (IsShapeChanged(input_tensor_indice, num_input_tensors)) {
+      if (IsShapeChanged(input_tensor_indices, num_input_tensors)) {
         ElementwiseAddInferShape(
             infershape_kernel_frame_builder.GetArgAt<MetaTensor>(0),
             infershape_kernel_frame_builder.GetArgAt<MetaTensor>(1),
             &infershape_kernel_frame_builder.GetArgAt(2)->get<MetaTensor>());
-        BuildInferShapeCache(input_tensor_indice, num_input_tensors);
+        BuildInferShapeCache(input_tensor_indices, num_input_tensors);
       }
     } else {
-      BuildInferShapeCache(input_tensor_indice, num_input_tensors);
+      BuildInferShapeCache(input_tensor_indices, num_input_tensors);
     }
   }
 };
+
+const uint16_t ElementwiseAddInferShapeLauncher::input_tensor_indices[2] = {0,
+                                                                            1};
 
 }  // namespace naive
 }  // namespace infrt

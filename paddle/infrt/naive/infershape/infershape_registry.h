@@ -20,18 +20,22 @@
 namespace infrt {
 namespace naive {
 
-class InferShapeLauncher;
+struct InferShapeLauncher;
 
 class InferShapeRegistry {
  public:
   using InferShapeLauncherHandle = std::unique_ptr<InferShapeLauncher>;
   using InferShapeLauncherCreator = std::function<InferShapeLauncherHandle()>;
 
+  InferShapeRegistry();
+
   void AddKernel(const std::string& key, InferShapeLauncherCreator&& creator);
 
   const InferShapeLauncherCreator& GetKernel(const std::string& key) const;
 
   size_t size() const;
+
+  ~InferShapeRegistry();
 
  private:
   struct Impl;

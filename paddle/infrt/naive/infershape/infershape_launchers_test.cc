@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/naive/infershape/infershape_launchers.h"
-
 #include <gtest/gtest.h>
 
 #include "paddle/infrt/naive/infershape/infershape_launcher.h"
+#include "paddle/infrt/naive/infershape/infershape_launchers.h"
 #include "paddle/infrt/naive/infershape/infershape_registry.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 
@@ -38,7 +37,7 @@ TEST(ElementwiseAdd, registry) {
   host_context::KernelFrameBuilder kernel_frame_builder;
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(a)));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
-  kernel_frame_builder.AddArgument(new host_context::Value(std::move(c)));
+  kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});
 
   infershape_launcher_handle->Invoke(&kernel_frame_builder);
 }

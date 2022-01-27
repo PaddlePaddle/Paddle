@@ -25,6 +25,8 @@ struct InferShapeRegistry::Impl {
   std::unordered_map<std::string, InferShapeLauncherCreator> data;
 };
 
+InferShapeRegistry::InferShapeRegistry() : impl_(std::make_unique<Impl>()) {}
+
 void InferShapeRegistry::AddKernel(
     const std::string& key,
     InferShapeRegistry::InferShapeLauncherCreator&& creator) {
@@ -45,6 +47,8 @@ InferShapeRegistry* GetInferShapeRegistry() {
   static auto registry = std::make_unique<InferShapeRegistry>();
   return registry.get();
 }
+
+InferShapeRegistry::~InferShapeRegistry() {}
 
 }  // namespace naive
 }  // namespace infrt

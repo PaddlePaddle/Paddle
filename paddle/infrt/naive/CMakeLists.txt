@@ -4,4 +4,4 @@ cc_library(infrt_naive SRCS meta_tensor.cc
         infershape/infershape_launchers.cc
         )
 
-cc_test_tiny(test_infershape_launchers SRCS infershape/infershape_launchers_test.cc DEPS infrt)
+cc_test_tiny(test_infrt_infershape_launchers SRCS infershape/infershape_launchers_test.cc DEPS infrt)
