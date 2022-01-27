@@ -7,4 +7,6 @@ IF(WITH_MLU)
     
     cc_library(mlu_device_context SRCS device_context.cc DEPS mlu_stream eigen3)
     cc_test(mlu_device_context_test SRCS device_context_test.cc DEPS mlu_device_context)
+
+    cc_library(mlu_collective_helper SRCS mlu_collective_helper.cc DEPS mlu_stream mlu_info)
 ENDIF()
