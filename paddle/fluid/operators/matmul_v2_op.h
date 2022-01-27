@@ -39,27 +39,6 @@ namespace operators {
 
 using framework::Tensor;
 
-template <typename DeviceContext, typename T>
-class MatMulV2Kernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* Out = ctx.Output<Tensor>("Out");
-    bool trans_x = ctx.Attr<bool>("trans_x");
-    bool trans_y = ctx.Attr<bool>("trans_y");
-
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
-    Out->mutable_data<T>(X->place());
-
-    // call new kernel
-    pten::MatmulKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *X, *Y, trans_x, trans_y, Out);
-  }
-};
-
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
 static framework::Tensor FoldInitDims(const framework::Tensor& input) {
@@ -132,32 +111,6 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
 }
-
-template <typename DeviceContext, typename T>
-class MatMulV2GradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    bool transpose_x = ctx.Attr<bool>("trans_x");
-    bool transpose_y = ctx.Attr<bool>("trans_y");
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-
-    if (dx) dx->mutable_data<T>(ctx.GetPlace());
-    if (dy) dy->mutable_data<T>(ctx.GetPlace());
-
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
-
-    // call new kernel
-    pten::MatmulGradKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *x, *y, *dout, transpose_x, transpose_y, dx, dy);
-  }
-};
 
 template <typename DeviceContext, typename T>
 class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
