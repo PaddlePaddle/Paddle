@@ -52,7 +52,7 @@ void NormKernel(const Context& ctx,
   DenseTensor* out_norm;
   DenseTensor out_norm_tmp;
   if (is_test) {
-    auto out_dim = in_x->dims();
+    auto out_dim = x.dims();
     out_dim[axis] = 1;
     out_norm = &out_norm_tmp;
     out_norm->Resize(out_dim);
@@ -60,7 +60,7 @@ void NormKernel(const Context& ctx,
     out_norm = norm;
   }
 
-  out_y->mutable_data<T>(ctx.GetPlace());
+  out->mutable_data<T>(ctx.GetPlace());
   out_norm->mutable_data<T>(ctx.GetPlace());
 
   auto* place = ctx.eigen_device();
@@ -68,24 +68,24 @@ void NormKernel(const Context& ctx,
   Eigen::DSizes<int, 3> shape(pre, n, post);
   Eigen::DSizes<int, 2> norm_shape(pre, post);
 
-  auto x_e = paddle::framework::EigenVector<T>::Flatten(*in_x);
-  auto y_e = paddle::framework::EigenVector<T>::Flatten(*out_y);
+  auto x_e = paddle::framework::EigenVector<T>::Flatten(x);
+  auto y_e = paddle::framework::EigenVector<T>::Flatten(*out);
   auto norm_e = paddle::framework::EigenVector<T>::Flatten(*out_norm);
-  auto x = x_e.reshape(shape);
+  auto x_r = x_e.reshape(shape);
   auto y = y_e.reshape(shape);
-  auto norm = norm_e.reshape(norm_shape);
+  auto norm_reshape = norm_e.reshape(norm_shape);
 
   Eigen::DSizes<int, 1> rdim(1);
   // y = x / sqrt((sum(x * x) + epsilon))
   // norm = sqrt(sum(x * x) + epsilon)
-  auto x2 = x * x;
+  auto x2 = x_r * x_r;
   auto sum = x2.sum(rdim) + eps;
-  norm.device(*place) = sum.sqrt();
+  norm_reshape.device(*place) = sum.sqrt();
 
   // y = x / norm
   Eigen::DSizes<int, 3> rshape(pre, 1, post);
   Eigen::DSizes<int, 3> bcast(1, n, 1);
-  y.device(*place) = x / norm.reshape(rshape).broadcast(bcast);
+  y.device(*place) = x_r / norm_reshape.reshape(rshape).broadcast(bcast);
 }
 
 }  // namespace pten
