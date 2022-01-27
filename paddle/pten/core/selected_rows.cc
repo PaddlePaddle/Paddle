@@ -91,6 +91,12 @@ struct TensorFillVisitor {
   int64_t size_;
 };
 
+void* SelectedRows::AllocateFrom(Allocator* allocator,
+                                 DataType dtype,
+                                 size_t requested_size) {
+  return value_->AllocateFrom(allocator, dtype, requested_size);
+}
+
 bool SelectedRows::HasKey(int64_t key) const {
   return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false
                                                                    : true;
