@@ -24,11 +24,4 @@ void Copy(const Context& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst);
-
-template <typename Context>
-void CopySparse(const Context& dev_ctx,
-                const SparseCsrTensor& src,
-                bool blocking,
-                SparseCsrTensor* dst);
-
 }  // namespace pten
