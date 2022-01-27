@@ -136,6 +136,13 @@ struct KernelRegistrar {
     for (size_t dtype = static_cast<size_t>(DataType::BOOL);
          dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
          dtype++) {
+      // NOTE(zhiqiu): why skip these types, because fluid kernel has no kernel
+      // of these type.
+      if (dtype == static_cast<size_t>(DataType::UINT32) ||
+          dtype == static_cast<size_t>(DataType::UINT64) ||
+          dtype == static_cast<size_t>(DataType::UINT16)) {
+        continue;
+      }
       ConstructKernel(kernel_name_cstr,
                       backend,
                       layout,

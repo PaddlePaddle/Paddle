@@ -719,41 +719,46 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def(
       "_get_all_register_op_kernels",
       [](const std::string &lib) {
-        auto &all_kernels =
-            paddle::framework::OperatorWithKernel::AllOpKernels();
         std::unordered_map<std::string, std::vector<std::string>>
             all_kernels_info;
-        for (auto &kernel_pair : all_kernels) {
-          auto op_type = kernel_pair.first;
-          std::vector<std::string> kernel_types;
-          for (auto &info_pair : kernel_pair.second) {
-            paddle::framework::OpKernelType kernel_type = info_pair.first;
-            kernel_types.emplace_back(
-                paddle::framework::KernelTypeToString(kernel_type));
-          }
-          all_kernels_info.emplace(op_type, kernel_types);
-        }
+        if (lib == "fluid" || lib == "all") {
+          auto &all_kernels =
+              paddle::framework::OperatorWithKernel::AllOpKernels();
 
-        auto pten_kernels = pten::KernelFactory::Instance().kernels();
-        for (auto &kernel_pair : pten_kernels) {
-          auto op_type = pten::TransToFluidOpName(kernel_pair.first);
-          std::vector<std::string> kernel_types;
-          for (auto &info_pair : kernel_pair.second) {
-            framework::OpKernelType kernel_type =
-                framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
-            auto kernel_type_str = framework::KernelTypeToString(kernel_type);
-            if (all_kernels_info.count(op_type)) {
-              if (std::find(all_kernels_info[op_type].begin(),
-                            all_kernels_info[op_type].end(), kernel_type_str) ==
-                  all_kernels_info[op_type].end()) {
-                all_kernels_info[op_type].emplace_back(kernel_type_str);
-              }
-            } else {
-              kernel_types.emplace_back(kernel_type_str);
+          for (auto &kernel_pair : all_kernels) {
+            auto op_type = kernel_pair.first;
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              paddle::framework::OpKernelType kernel_type = info_pair.first;
+              kernel_types.emplace_back(
+                  paddle::framework::KernelTypeToString(kernel_type));
             }
-          }
-          if (!kernel_types.empty()) {
             all_kernels_info.emplace(op_type, kernel_types);
+          }
+        }
+        if (lib == "pten" || lib == "all") {
+          auto pten_kernels = pten::KernelFactory::Instance().kernels();
+          for (auto &kernel_pair : pten_kernels) {
+            auto op_type = pten::TransToFluidOpName(kernel_pair.first);
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              framework::OpKernelType kernel_type =
+                  framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
+              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
+              if (all_kernels_info.count(op_type)) {
+                if (std::find(all_kernels_info[op_type].begin(),
+                              all_kernels_info[op_type].end(),
+                              kernel_type_str) ==
+                    all_kernels_info[op_type].end()) {
+                  all_kernels_info[op_type].emplace_back(kernel_type_str);
+                }
+              } else {
+                kernel_types.emplace_back(kernel_type_str);
+              }
+            }
+            if (!kernel_types.empty()) {
+              all_kernels_info.emplace(op_type, kernel_types);
+            }
           }
         }
 
