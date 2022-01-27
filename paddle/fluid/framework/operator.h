@@ -476,6 +476,14 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
   }
 
+  bool IsDenseTensorOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<pten::SelectedRows>();
+  }
+
  private:
   const ExecutionContext& ctx_;
 };
