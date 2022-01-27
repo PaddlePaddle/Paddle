@@ -1,3 +1,4 @@
+// RUN: infrtexec -i %s | FileCheck %s
 // CHECK-LABEL: test_tensor_type
 func @test_tensor_type() {
   %a = dt.create_uninit_tensor.f32 [3, 4] -> !infrt.tensor<X86, NCHW, F32>
