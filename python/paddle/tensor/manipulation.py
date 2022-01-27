@@ -2751,6 +2751,31 @@ def moveaxis(x, source, destination, name=None):
     return out
 
 
+def non_negative_axis(arr, axis):
+    ndim = len(arr.shape)
+    if axis >= 0:
+        assert axis < ndim, "'axis'  must be in the range of [-{0}, {0})".format(
+            ndim)
+    else:
+        assert axis >= -ndim, "'axis'  must be in the range of [-{0}, {0})".format(
+            ndim)
+        axis += ndim
+
+    return axis
+
+
+def infer_broadcast_shape(arr, indices, axis):
+    # This function is used in take/put_along_axis 
+    broadcast_shape_list = list(arr.shape)
+    broadcast_shape_list[axis] = list(indices.shape)[axis]
+    broadcast_shape = tuple(broadcast_shape_list)
+    for i in range(len(arr.shape)):
+        if arr.shape[i] < indices.shape[i]:
+            # if indices matrix has larger size than arr matrix, do not broadcast.
+            return None
+    return broadcast_shape
+
+
 def take_along_axis(arr, indices, axis):
     """
     Take values from the input array by given indices matrix along the designated axis.
@@ -2779,14 +2804,20 @@ def take_along_axis(arr, indices, axis):
             print(result)
             # [[1, 2, 3]]
     """
-    if (arr.shape == indices.shape):
-        broadcast_shape = arr.shape
-    else:
-        broadcast_shape_list = list(arr.shape)
-        broadcast_shape_list[axis] = 1
-        broadcast_shape = tuple(broadcast_shape_list)
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
+    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+    if not broadcast_shape:
+        # if indices matrix have larger size than arr, arr should broadcast into indices shape.
+        broadcast_shape = indices.shape
     if in_dygraph_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
+        broadcast_shape_list = list(broadcast_shape)
+        broadcast_shape_list[axis] = list(arr.shape)[axis]
+        broadcast_shape = tuple(broadcast_shape_list)
+        arr = paddle.broadcast_to(arr, broadcast_shape)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
         arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -2794,6 +2825,10 @@ def take_along_axis(arr, indices, axis):
     check_variable_and_dtype(indices, 'index', ['int32', 'int64'],
                              'take_along_axis')
     indices = paddle.broadcast_to(indices, broadcast_shape)
+    broadcast_shape_list = list(broadcast_shape)
+    broadcast_shape_list[axis] = list(arr.shape)[axis]
+    broadcast_shape = tuple(broadcast_shape_list)
+    arr = paddle.broadcast_to(arr, broadcast_shape)
     helper = LayerHelper('take_along_axis', **locals())
     dtype = helper.input_dtype()
     result = helper.create_variable_for_type_inference(dtype)
@@ -2837,17 +2872,17 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             # [60, 40, 50]]
 
     """
-    if (arr.shape == indices.shape):
-        broadcast_shape = arr.shape
-    else:
-        broadcast_shape_list = list(arr.shape)
-        broadcast_shape_list[axis] = 1
-        broadcast_shape = tuple(broadcast_shape_list)
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
+    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     if in_dygraph_mode():
-        indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.to_tensor(values) if not isinstance(
             values, paddle.Tensor) else values
-        values = paddle.broadcast_to(values, broadcast_shape)
+        if broadcast_shape:
+            indices = paddle.broadcast_to(indices, broadcast_shape)
+        values = paddle.broadcast_to(values, indices.shape)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
                                      "Reduce", reduce)
 
@@ -2856,8 +2891,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         'put_along_axis')
     check_variable_and_dtype(indices, 'index', ['int32', 'int64'],
                              'put_along_axis')
-    indices = paddle.broadcast_to(indices, broadcast_shape)
-    values = paddle.broadcast_to(values, broadcast_shape)
+    if broadcast_shape:
+        indices = paddle.broadcast_to(indices, broadcast_shape)
+    values = paddle.broadcast_to(values, indices.shape)
     helper = LayerHelper('put_along_axis', **locals())
     dtype = helper.input_dtype()
     result = helper.create_variable_for_type_inference(dtype)
@@ -2875,19 +2911,18 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
 @inplace_apis_in_dygraph_only
 def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     r"""
-    Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``x``.
+    Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
     Please refer to :ref:`api_tensor_put_along_axis`.
     """
-    if (arr.shape == indices.shape):
-        broadcast_shape = arr.shape
-    else:
-        broadcast_shape_list = list(arr.shape)
-        broadcast_shape_list[axis] = 1
-        broadcast_shape = tuple(broadcast_shape_list)
-
-    indices = paddle.broadcast_to(indices, broadcast_shape)
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
+    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
     values = paddle.to_tensor(values) if not isinstance(
         values, paddle.Tensor) else values
-    values = paddle.broadcast_to(values, broadcast_shape)
+    if broadcast_shape:
+        indices = paddle.broadcast_to(indices, broadcast_shape)
+    values = paddle.broadcast_to(values, indices.shape)
     return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
                                   reduce)
