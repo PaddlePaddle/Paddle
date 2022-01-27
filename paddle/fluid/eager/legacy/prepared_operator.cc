@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/legacy/prepared_operator.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
 
 #include "paddle/fluid/eager/legacy/infer_shape_context.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -71,6 +72,21 @@ PreparedOp::PreparedOp(
       func_(func),
       dev_ctx_(dev_ctx) {}
 
+PreparedOp::PreparedOp(
+    const paddle::framework::OperatorBase& op,
+    const paddle::framework::RuntimeContext& ctx,
+    const paddle::framework::OpKernelType& kernel_type,
+    const paddle::framework::KernelSignature& kernel_signature,
+    const pten::Kernel& pt_kernel, paddle::platform::DeviceContext* dev_ctx)
+    : op_(op),
+      ctx_(ctx),
+      kernel_type_(kernel_type),
+      func_(nullptr),
+      dev_ctx_(dev_ctx),
+      run_pten_kernel_(true),
+      pt_kernel_signature_(kernel_signature),
+      pt_kernel_(pt_kernel) {}
+
 PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
                        const paddle::framework::OperatorWithKernel& op,
                        const paddle::platform::Place& place,
@@ -104,17 +120,71 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
+  // fit for pten
+  pten::KernelSignature pt_kernel_signature;
+  pten::KernelKey pt_kernel_key;
+  std::string pt_kernel_name;
+  if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
+    VLOG(6) << pt_kernel_signature;
+
+    pt_kernel_name = pt_kernel_signature.name;
+    pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
+    auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
+        pt_kernel_name, pt_kernel_key);
+
+    if (pt_kernel.IsValid()) {
+      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
+              << " | kernel key: " << pt_kernel_key
+              << " | kernel: " << pt_kernel;
+
+      // TODO(chenweihang): using CPUKernel when miss device kernel case
+      return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
+                        pt_kernel, dev_ctx);
+    } else {
+      VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
+              << "` not found.";
+    }
+  }
+
   // 2. check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
+
+  if (kernels_iter == all_op_kernels.end() ||
+      kernels_iter->second.find(expected_kernel_key) ==
+          kernels_iter->second.end()
+#ifdef PADDLE_WITH_XPU
+      ||
+      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+          !paddle::platform::is_xpu_support_op(op.Type(),
+                                               expected_kernel_key) ||
+      paddle::platform::is_in_xpu_black_list(op.Type())
+#endif
+          ) {
+    if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+      auto pt_cpu_kernel_key =
+          FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
+      auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
+          pt_kernel_name, pt_cpu_kernel_key);
+      if (pt_cpu_kernel.IsValid()) {
+        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
+                << " | kernel key: " << pt_cpu_kernel_key
+                << " | kernel: " << pt_cpu_kernel;
+        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
+                          pt_cpu_kernel, dev_ctx);
+      }
+    }
+  }
+
   PADDLE_ENFORCE_NE(
       kernels_iter, all_op_kernels.end(),
       paddle::platform::errors::NotFound(
           "There are no kernels which are registered in the %s operator.",
           op.Type()));
-
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
+
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
@@ -202,11 +272,46 @@ static void PreparedOpRunImpl(
   VLOG(6) << "Finish Runing Prepared Op";
 }
 
+static void PreparedOpRunPtImpl(
+    const paddle::framework::OperatorBase& op,
+    const paddle::framework::OpKernelType& kernel_type,
+    const paddle::framework::KernelSignature& pt_kernel_signature,
+    const pten::Kernel& pt_kernel, paddle::platform::DeviceContext* dev_ctx,
+    const NameTensorMap& ins, const NameTensorMap& outs,
+    const paddle::framework::AttributeMap& attrs,
+    const paddle::framework::AttributeMap& default_attrs) {
+  EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
+                                         op.Type());
+  static_cast<const paddle::framework::OperatorWithKernel&>(op).InferShape(
+      &infer_shape_ctx);
+
+  paddle::imperative::PreparePtenData<EagerTensor>(
+      pt_kernel, pt_kernel_signature,
+      static_cast<paddle::imperative::NameTensorMap>(ins));
+
+  pten::KernelContext pt_kernel_context;
+  paddle::imperative::BuildDygraphPtenKernelContext<EagerTensor>(
+      pt_kernel_signature, pt_kernel,
+      static_cast<paddle::imperative::NameTensorMap>(ins),
+      static_cast<paddle::imperative::NameTensorMap>(outs), attrs,
+      default_attrs, dev_ctx, &pt_kernel_context);
+
+  pt_kernel(&pt_kernel_context);
+
+  // TODO(chenweihang): add debug flags later
+  // TODO(chenweihang): deal with complex cases later
+}
+
 void PreparedOp::Run(const NameTensorMap& ins, const NameTensorMap& outs,
                      const paddle::framework::AttributeMap& attrs,
                      const paddle::framework::AttributeMap& default_attrs) {
-  PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs, attrs,
-                    default_attrs);
+  if (run_pten_kernel_) {
+    PreparedOpRunPtImpl(op_, kernel_type_, pt_kernel_signature_, pt_kernel_,
+                        dev_ctx_, ins, outs, attrs, default_attrs);
+  } else {
+    PreparedOpRunImpl(op_, ctx_, kernel_type_, func_, dev_ctx_, ins, outs,
+                      attrs, default_attrs);
+  }
 }
 
 std::shared_ptr<NameTensorMap> PrepareData(

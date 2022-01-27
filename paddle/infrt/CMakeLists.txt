@@ -76,6 +76,7 @@ add_subdirectory(tensor)
 add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
+add_subdirectory(tests)
 
 
 # MLIR td file generations
@@ -86,13 +87,14 @@ set(infrt_mlir_incs
         tensor_shape_inc
         dense_tensor_inc
         pd_ops_inc
+        pd_extra_ops_inc
         rewrite_inc
         trt_ops_inc
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
-cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs})
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})
