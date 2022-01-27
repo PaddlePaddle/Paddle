@@ -327,7 +327,7 @@ std::vector<LoDTensor> SplitLoDTensor(
     for (size_t i = 0; i < places.size(); ++i) {
       LoDTensor dst;
       dst.Resize(src.dims());
-      dst.mutable_data(places[i], src.type());
+      dst.mutable_data(places[i], src.dtype());
       if (!src.lod().empty()) {
         dst.set_lod(src.lod());
       }
@@ -444,7 +444,7 @@ void MergeLoDTensor(LoDTensor *target,
   target->Resize(new_dim);
   target->set_layout(new_layout);
   target->set_lod(new_lod);
-  target->mutable_data(dst_place, new_type);
+  target->mutable_data(dst_place, framework::TransToPtenDataType(new_type));
 
   int begin = 0;
   for (auto *src : lod_tensors) {

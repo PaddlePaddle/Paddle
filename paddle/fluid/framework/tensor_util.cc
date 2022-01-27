@@ -55,10 +55,10 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   // than numel()*size(type())
   auto dst_ptr =
       src.layout() == DataLayout::kMKLDNN
-          ? dst->mutable_data(dst_place, src.type(), src.memory_size())
-          : dst->mutable_data(dst_place, src.type());
+          ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
+          : dst->mutable_data(dst_place, src.dtype());
 #else
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
 #endif
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -126,7 +126,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
     Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(src.dims());
     auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, src.type());
+        npu_pinned_tensor.mutable_data(npu_pinned_place, src.dtype());
     memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
 
     //  2. async copy npu pinned tensor -> npu tensor
@@ -410,7 +410,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #endif
   auto src_place = src.place();
   auto src_ptr = src.data();
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
   if (src_ptr == dst_ptr && src_place == dst_place) {

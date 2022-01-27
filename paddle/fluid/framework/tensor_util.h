@@ -160,7 +160,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
     Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(dst->dims());
     auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->type());
+        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->dtype());
     memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
 
     //  2. async copy npu pinned tensor -> npu tensor
@@ -280,7 +280,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
     Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(dst->dims());
     auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->type());
+        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->dtype());
     memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
 
     //  2. async copy npu pinned tensor -> npu tensor

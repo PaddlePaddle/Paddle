@@ -876,8 +876,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
         auto copy_memory = [&] {
           t->Resize(dims);
-          t->mutable_data(cpu,
-                          framework::TransToProtoVarType(main_tensor.dtype()));
+          t->mutable_data(cpu, main_tensor.dtype);
           paddle::framework::TensorCopy(main_tensor, cpu, t);
         };
 

@@ -170,10 +170,10 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   dst_lodtensor->set_lod(src_lodtensors[0]->lod());
   if (platform::is_gpu_place(src_lodtensors[0]->place())) {
     dst_lodtensor->mutable_data(platform::CUDAPinnedPlace(),
-                                src_lodtensors[0]->type());
+                                src_lodtensors[0]->dtype());
   } else {
     dst_lodtensor->mutable_data(platform::CPUPlace(),
-                                src_lodtensors[0]->type());
+                                src_lodtensors[0]->dtype());
   }
 
   // slice and memcpy

@@ -206,7 +206,9 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
       LoDTensor tensor;
       DDim dims = {256, 1024};
       tensor.Resize(dims);
-      tensor.mutable_data(platform::CPUPlace(), proto::VarType::FP32);
+      tensor.mutable_data(
+          platform::CPUPlace(),
+          framework::TransToPtenDataType(framework::proto::VarType::FP32));
       return tensor;
     };
 #define FillFeedList(Name) feed_targets[#Name] = create_tensor();

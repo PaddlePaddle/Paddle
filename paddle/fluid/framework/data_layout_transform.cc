@@ -79,10 +79,10 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   }
 
   out->Resize(make_ddim(dst_dim));
-  out->mutable_data(expected_kernel_type.place_, in.type());
+  out->mutable_data(expected_kernel_type.place_, in.dtype());
 
   framework::VisitDataType(
-      in.type(),
+      framework::TransToProtoVarType(in.type()),
       CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
 
   out->set_layout(expected_kernel_type.data_layout_);

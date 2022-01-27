@@ -494,8 +494,7 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
 
   framework::Tensor cpu_tensor;
   cpu_tensor.Resize(tensor->dims());
-  cpu_tensor.mutable_data(platform::CPUPlace(),
-                          framework::TransToProtoVarType(tensor->dtype()));
+  cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype());
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
 
   LOG(WARNING) << "print [" << var_name << "] tensor info:";

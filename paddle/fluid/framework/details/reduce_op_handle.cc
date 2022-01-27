@@ -171,7 +171,7 @@ void ReduceOpHandle::RunImpl() {
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
-          out_var_handle->place(), pre_in.type());
+          out_var_handle->place(), pre_in.dtype());
 
       auto out_p = out_var_handle->place();
       int root_id = out_p.device;
@@ -218,7 +218,7 @@ void ReduceOpHandle::RunImpl() {
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
-          out_var_handle->place(), pre_in.type());
+          out_var_handle->place(), pre_in.dtype());
 
       auto out_p = out_var_handle->place();
       int root_id = out_p.device;
