@@ -32,12 +32,14 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("ScaleTensor")) {
       framework::Tensor float_scale_tensor =
           *ctx.Input<framework::Tensor>("ScaleTensor");
-      if (float_scale_tensor.type() != in->type()) {
+      if (framework::TransToProtoVarType(float_scale_tensor.dtype()) !=
+          in->type()) {
         scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
         MLUCnnlTensorDesc float_scale_desc(float_scale_tensor);
         MLUCnnlTensorDesc final_scale_desc(scale_tensor);
-        cnnlCastDataType_t cast_type =
-            GetCastDataType(float_scale_tensor.type(), scale_tensor.type());
+        cnnlCastDataType_t cast_type = GetCastDataType(
+            framework::TransToProtoVarType(float_scale_tensor.dtype()),
+            framework::TransToProtoVarType(scale_tensor.dtype()));
         MLUCnnl::Cast(ctx, cast_type, float_scale_desc.get(),
                       GetBasePtr(&float_scale_tensor), final_scale_desc.get(),
                       GetBasePtr(&scale_tensor));

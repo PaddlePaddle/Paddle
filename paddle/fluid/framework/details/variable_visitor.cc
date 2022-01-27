@@ -115,7 +115,8 @@ struct EnforceShapeAndDTypeEQVisitor {
             "The place type of the two variables is not equal. The src place "
             "is %s, but the dst place is %s",
             src.place().DebugString(), tensor.place().DebugString()));
-    PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
+    PADDLE_ENFORCE_EQ(src.type(),
+                      framework::TransToProtoVarType(tensor.dtype()),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(

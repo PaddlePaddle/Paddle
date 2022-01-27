@@ -264,7 +264,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
-  self->SetDataType(tensor.type());
+  self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   // Same place，share data directly
   if (place == tensor.place()) {
@@ -289,7 +289,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
-  self->SetDataType(tensor.type());
+  self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   // Same place，share data directly
   if (platform::is_same_place(place, tensor.place())) {
@@ -433,9 +433,11 @@ static Py_ssize_t GetSliceIndexFromTensor(
     const std::shared_ptr<imperative::VarBase> &tensor_index) {
   const auto &tensor = tensor_index->Var().Get<framework::LoDTensor>();
   if (tensor.numel() == 1) {
-    if (tensor.type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(tensor.dtype()) ==
+        framework::proto::VarType::INT32) {
       return static_cast<Py_ssize_t>(operators::GetValue<int32_t>(&tensor));
-    } else if (tensor.type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(tensor.dtype()) ==
+               framework::proto::VarType::INT64) {
       return static_cast<Py_ssize_t>(operators::GetValue<int64_t>(&tensor));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1314,7 +1316,7 @@ void BindImperative(py::module *m_ptr) {
               }
             }
 #define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
-  if (tensor.type() == proto_type) {                                         \
+  if (framework::TransToProtoVarType(tensor.dtype()) == proto_type) {        \
     std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(proto_type); \
     T b = TensorGetElement<T>(tensor, offset);                               \
     return py::array(py::dtype(py_dtype_str.c_str()), {}, {},                \
@@ -1324,8 +1326,7 @@ void BindImperative(py::module *m_ptr) {
             _ForEachDataType_(TENSOR_TO_PY_SCALAR);
 #undef TENSOR_TO_PY_SCALAR
             PADDLE_THROW(platform::errors::Unimplemented(
-                "Unsupported tensor data type: %s",
-                framework::DataTypeToString(tensor.type())));
+                "Unsupported tensor data type: %s", tensor.dtype()));
           },
           py::return_value_policy::copy)
       .def("_inplace_version",

@@ -723,7 +723,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   bool is_npu_tensor = platform::is_npu_place(tensor.place());
   bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
-  auto tensor_dtype = tensor.type();
+  auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
 
   std::vector<size_t> py_dims(tensor_dims.size());
@@ -738,7 +738,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   const void *tensor_buf_ptr = tensor.data();
 
-  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
+  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
+      framework::TransToProtoVarType(tensor.dtype()));
 
   if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor) {
     if (!need_deep_copy) {

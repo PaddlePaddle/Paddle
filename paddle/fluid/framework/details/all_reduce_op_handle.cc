@@ -127,7 +127,7 @@ void AllReduceOpHandle::AllReduceImpl(
           platform::errors::PreconditionNotMet(
               "The numel of tensor %s should be > 0, but got numel is %d.",
               in_var_handles[i]->name(), numel));
-      dtype = lod_tensor.type();
+      dtype = framework::TransToProtoVarType(lod_tensor.dtype());
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());
 #if defined(PADDLE_WITH_XPU_BKCL)
       is_xpu_place = platform::is_xpu_place(lod_tensor.place());
@@ -139,7 +139,7 @@ void AllReduceOpHandle::AllReduceImpl(
             "The size of tensors of the same variable in different local "
             "scopes should be equal."));
     PADDLE_ENFORCE_EQ(
-        dtype, lod_tensor.type(),
+        dtype, framework::TransToProtoVarType(lod_tensor.dtype()),
         platform::errors::PreconditionNotMet(
             "The dtype of tensors of the same variable in different local "
             "scopes should be equal."));

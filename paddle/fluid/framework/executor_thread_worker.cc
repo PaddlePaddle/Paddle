@@ -232,16 +232,16 @@ void print_lod_tensor(std::string var_name, const LoDTensor& lod_tensor) {
 static void print_fetch_var(Scope* scope, const std::string& var_name) {
   auto& tensor = scope->FindVar(var_name)->Get<LoDTensor>();
 
-#define PrintLoDTensorCallback(cpp_type, proto_type) \
-  do {                                               \
-    if (tensor.type() == proto_type) {               \
-      print_lod_tensor<cpp_type>(var_name, tensor);  \
-      return;                                        \
-    }                                                \
+#define PrintLoDTensorCallback(cpp_type, proto_type)                    \
+  do {                                                                  \
+    if (framework::TransToProtoVarType(tensor.dtype()) == proto_type) { \
+      print_lod_tensor<cpp_type>(var_name, tensor);                     \
+      return;                                                           \
+    }                                                                   \
   } while (0)
 
   _ForEachDataType_(PrintLoDTensorCallback);
-  VLOG(1) << "print_fetch_var: unrecognized data type:" << tensor.type();
+  VLOG(1) << "print_fetch_var: unrecognized data type:" << tensor.dtype();
 }
 
 void ExecutorThreadWorker::TrainFilesWithTimer() {

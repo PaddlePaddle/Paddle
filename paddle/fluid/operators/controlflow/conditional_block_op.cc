@@ -242,7 +242,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     }
     VLOG(4) << "Assigning zero to " << outside_tensor;
     outside_tensor->Resize(input_tensor.dims());
-    outside_tensor->mutable_data(place, input_tensor.type());
+    outside_tensor->mutable_data(
+        place, framework::TransToProtoVarType(input_tensor.dtype()));
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
     math::set_constant(*dev_ctx, outside_tensor, 0.0f);

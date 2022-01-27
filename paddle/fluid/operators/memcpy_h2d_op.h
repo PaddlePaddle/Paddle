@@ -46,7 +46,7 @@ class MemcpyH2DFunctor {
     auto stream = nullptr;
 #endif
     out_tensor.mutable_data(
-        dev_ctx_.GetPlace(), lod_tensor.type(),
+        dev_ctx_.GetPlace(), framework::TransToProtoVarType(lod_tensor.dtype()),
         platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
 
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {

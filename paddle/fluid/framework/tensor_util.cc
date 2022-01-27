@@ -582,8 +582,9 @@ struct AnyDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(tensor.type(), AnyDTypeVisitor<Predicate, DevCtx>(
-                                   predicate, tensor, ctx, out));
+  VisitDataType(
+      framework::TransToProtoVarType(tensor.dtype()),
+      AnyDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -722,8 +723,9 @@ struct AllDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
-                                   predicate, tensor, ctx, out));
+  VisitDataType(
+      framework::TransToProtoVarType(tensor.dtype()),
+      AllDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -930,7 +932,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
      // int32_t  size
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(tensor.type());
+    desc.set_data_type(framework::TransToProtoVarType(tensor.dtype()));
     auto dims = framework::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
@@ -941,7 +943,9 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
+    uint64_t size =
+        tensor.numel() *
+        framework::SizeOfType(framework::TransToProtoVarType(tensor.dtype()));
 
     auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size, (std::numeric_limits<std::streamsize>::max)(),
@@ -1419,17 +1423,17 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
     dev_ctx.Wait();
   }
 
-#define PrintTensorCallback(cpp_type, proto_type)            \
-  do {                                                       \
-    if (tensor.type() == proto_type) {                       \
-      os << "  - dtype: " << proto_type << "\n";             \
-      paddle::framework::print_tensor<cpp_type>(os, tensor); \
-      return os;                                             \
-    }                                                        \
+#define PrintTensorCallback(cpp_type, proto_type)                       \
+  do {                                                                  \
+    if (framework::TransToProtoVarType(tensor.dtype()) == proto_type) { \
+      os << "  - dtype: " << proto_type << "\n";                        \
+      paddle::framework::print_tensor<cpp_type>(os, tensor);            \
+      return os;                                                        \
+    }                                                                   \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);
   VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
   return os;
 }
-}
+}  // namespace pten

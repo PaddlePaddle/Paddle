@@ -85,7 +85,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                 inp_var_names[i]));
         // Serialize tensors one by one
         // Check types to see if a fp16 transformation is required
-        auto in_dtype = tensor.type();
+        auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
         auto out_dtype =
             save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

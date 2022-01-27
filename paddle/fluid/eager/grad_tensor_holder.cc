@@ -103,9 +103,10 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
       switch (type) {
         case paddle::framework::proto::VarType::LOD_TENSOR: {
           auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
-          FillUnderlyingVariableWithValue(1.0, t_ftensor.dims(),
-                                          t_ftensor.place(), t_ftensor.type(),
-                                          &buffer_tensor);
+          FillUnderlyingVariableWithValue(
+              1.0, t_ftensor.dims(), t_ftensor.place(),
+              framework::TransToProtoVarType(t_ftensor.dtype()),
+              &buffer_tensor);
           break;
         }
         default: {

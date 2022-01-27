@@ -191,7 +191,8 @@ void ReduceOpHandle::RunImpl() {
                   out_var_handle->place());
         }
 
-        int type = platform::ToNCCLDataType(lod_tensor.type());
+        int type = platform::ToNCCLDataType(
+            framework::TransToProtoVarType(in_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
@@ -237,7 +238,8 @@ void ReduceOpHandle::RunImpl() {
                   out_var_handle->place());
         }
 
-        int type = platform::ToBKCLDataType(lod_tensor.type());
+        int type = platform::ToBKCLDataType(
+            framework::TransToProtoVarType(in_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
                                        &bkcl_ctx] {

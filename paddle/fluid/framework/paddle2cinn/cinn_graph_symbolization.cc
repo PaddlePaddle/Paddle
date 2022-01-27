@@ -57,7 +57,7 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
   // op
   auto tensor_type = ::paddle::framework::proto::VarType::FP32;
   if (!skip_trans_type) {
-    tensor_type = tensor.type();
+    tensor_type = framework::TransToProtoVarType(tensor.dtype());
   }
   auto cinn_var_type = TransformVarDataTypeToCinn(tensor_type);
   info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);

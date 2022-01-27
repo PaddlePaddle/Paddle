@@ -134,7 +134,8 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   t_.device = paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
 
   // init dtype
-  t_.dtype = internal::GetDLDataTypeFromTypeIndex(tensor.type());
+  t_.dtype = internal::GetDLDataTypeFromTypeIndex(
+      framework::TransToProtoVarType(tensor.dtype()));
   t_.dtype.lanes = lanes;
 
   // init ndim, tensor rank

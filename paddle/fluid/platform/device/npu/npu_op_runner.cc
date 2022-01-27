@@ -373,7 +373,8 @@ std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
 
 aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
                                              aclMemType mem_type) {
-  auto dtype = ConvertToNpuDtype(tensor.type());
+  auto dtype =
+      ConvertToNpuDtype(framework::TransToProtoVarType(tensor.dtype()));
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
   int size = dims.size();

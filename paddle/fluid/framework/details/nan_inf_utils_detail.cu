@@ -208,7 +208,7 @@ void tensor_check<platform::CUDADeviceContext>(const std::string& op_type,
 
   TensorCheckerVisitor<platform::CUDADeviceContext> vistor(op_type, var_name,
                                                            tensor, place);
-  VisitDataType(tensor.type(), vistor);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
 }  // namespace details

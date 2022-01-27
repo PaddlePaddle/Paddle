@@ -87,7 +87,8 @@ void BroadcastOpHandle::BroadcastOneVar(
     int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;
 
-    int type = platform::ToNCCLDataType(in_tensor.type());
+    int type = platform::ToNCCLDataType(
+        framework::TransToProtoVarType(in_tensor.dtype()));
     size_t numel = static_cast<size_t>(in_tensor.numel());
 
     for (auto out_var_handle : out_var_handles) {
@@ -147,7 +148,8 @@ void BroadcastOpHandle::BroadcastOneVar(
     int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;
 
-    int type = platform::ToBKCLDataType(in_tensor.type());
+    int type = platform::ToBKCLDataType(
+        framework::TransToProtoVarType(in_tensor.dtype()));
     size_t numel = static_cast<size_t>(in_tensor.numel());
 
     for (auto out_var_handle : out_var_handles) {
@@ -238,8 +240,8 @@ void BroadcastOpHandle::InitOutputValue(
       t_out_p = platform::CPUPlace();
     }
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
-    VariableVisitor::GetMutableTensor(out_var).mutable_data(t_out_p,
-                                                            in_tensor.type());
+    VariableVisitor::GetMutableTensor(out_var).mutable_data(
+        t_out_p, framework::TransToProtoVarType(in_tensor.dtype()));
   }
 }
 

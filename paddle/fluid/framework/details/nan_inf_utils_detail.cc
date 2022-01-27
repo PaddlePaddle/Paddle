@@ -307,7 +307,7 @@ void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
                                               const platform::Place& place) {
   TensorCheckerVisitor<platform::CPUDeviceContext> vistor(op_type, var_name,
                                                           tensor, place);
-  VisitDataType(tensor.type(), vistor);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,

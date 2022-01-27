@@ -109,13 +109,13 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
-    return DataTypeToString(tensor.type());
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<pten::SelectedRows>()) {
     auto tensor = var->Get<pten::SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
-      return DataTypeToString(tensor.type());
+      return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
     }
   } else if (var->IsType<Strings>()) {
     return "strings";
@@ -1054,8 +1054,8 @@ static void CheckTensorNANOrInf(const std::string& op_type,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type() != proto::VarType::FP32 &&
-      tensor.type() != proto::VarType::FP64) {
+  if (framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP32 &&
+      framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP64) {
     return;
   }
   PADDLE_ENFORCE_NE(

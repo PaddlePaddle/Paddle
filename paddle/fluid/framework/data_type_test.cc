@@ -30,7 +30,8 @@ TEST(DataType, float16) {
   tensor.mutable_data(cpu, dtype);
 
   // test fp16 tensor
-  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(float16)));
+  EXPECT_EQ(framework::TransToProtoVarType(tensor.dtype()),
+            f::ToDataType(typeid(float16)));
 
   // test fp16 size
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
@@ -52,7 +53,8 @@ TEST(DataType, bfloat16) {
   tensor.mutable_data(cpu, dtype);
 
   // test bf16 tensor
-  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(bfloat16)));
+  EXPECT_EQ(framework::TransToProtoVarType(tensor.dtype()),
+            f::ToDataType(typeid(bfloat16)));
 
   // test bf16 size
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
