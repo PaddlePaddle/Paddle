@@ -39,7 +39,8 @@ class GatherOpKernel : public framework::OpKernel<T> {
     // get axis from tensor
     if (ctx.HasInput("Axis")) {
       const Tensor *axis_tensor = ctx.Input<Tensor>("Axis");
-      const auto &axis_type = axis_tensor->type();
+      const auto &axis_type =
+          framework::TransToProtoVarType(axis_tensor->dtype());
       if (axis_type == framework::proto::VarType::INT32) {
         axis = static_cast<int>(axis_tensor->data<int32_t>()[0]);
       } else if (axis_type == framework::proto::VarType::INT64) {
@@ -82,7 +83,8 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("Axis")) {
       const Tensor *axis_tensor = ctx.Input<Tensor>("Axis");
-      const auto &axis_type = axis_tensor->type();
+      const auto &axis_type =
+          framework::TransToProtoVarType(axis_tensor->dtype());
       if (axis_type == framework::proto::VarType::INT32) {
         axis = static_cast<int>(axis_tensor->data<int32_t>()[0]);
       } else if (axis_type == framework::proto::VarType::INT64) {

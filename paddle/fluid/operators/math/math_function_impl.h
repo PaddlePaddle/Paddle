@@ -33,7 +33,7 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
   if (platform::is_xpu_place(context.GetPlace())) {
     xpu_place = true;
     framework::VisitDataType(
-        tensor->type(),
+        framework::TransToProtoVarType(tensor->dtype()),
         TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
   }
 #endif

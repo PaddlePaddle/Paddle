@@ -63,7 +63,8 @@ inline std::vector<T> GetDataFromTensorList(
                           "is [%s]",
                           tensor->dims()));
 
-    if (tensor->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(tensor->dtype()) ==
+        framework::proto::VarType::INT32) {
       if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -71,7 +72,8 @@ inline std::vector<T> GetDataFromTensorList(
       } else {
         vec_new_data.push_back(static_cast<T>(*tensor->data<int>()));
       }
-    } else if (tensor->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(tensor->dtype()) ==
+               framework::proto::VarType::INT64) {
       if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -84,7 +86,7 @@ inline std::vector<T> GetDataFromTensorList(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The dtype of Tensor in list must be int32 or int64, but received: "
           "%s",
-          tensor->type()));
+          tensor->dtype()));
     }
   }
   return vec_new_data;

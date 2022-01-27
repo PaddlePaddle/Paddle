@@ -35,7 +35,7 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor cpu_tensor(tensor->type());
+    Tensor cpu_tensor(framework::TransToProtoVarType(tensor->dtype()));
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::normal_distribution<T> dist(mean, std);

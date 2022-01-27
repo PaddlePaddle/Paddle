@@ -80,7 +80,7 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor cpu_tensor(tensor->type());
+    Tensor cpu_tensor(framework::TransToProtoVarType(tensor->dtype()));
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),

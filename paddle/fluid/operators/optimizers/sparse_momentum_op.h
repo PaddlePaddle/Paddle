@@ -354,7 +354,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       Tensor cpu_axis;
       const Tensor* axis_tensor = ctx.Input<Tensor>("Axis");
       framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
-      const auto& axis_type = axis_tensor->type();
+      const auto& axis_type =
+          framework::TransToProtoVarType(axis_tensor->dtype());
       if (axis_type == framework::proto::VarType::INT32) {
         axis = static_cast<int>(cpu_axis.data<int32_t>()[0]);
       } else if (axis_type == framework::proto::VarType::INT64) {

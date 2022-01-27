@@ -82,7 +82,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
-    auto in_dtype = tensor->type();
+    auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {

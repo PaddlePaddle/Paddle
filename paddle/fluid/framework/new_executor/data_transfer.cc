@@ -366,7 +366,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       // only focus on complex dtype now
-      auto src_type = grad_tensor->type();
+      auto src_type = framework::TransToProtoVarType(grad_tensor->dtype());
       if (!framework::IsComplexType(src_type)) {
         VLOG(3) << "skip grad_tensor with not complexType";
         continue;

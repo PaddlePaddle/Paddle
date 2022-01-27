@@ -86,7 +86,7 @@ void GroupConcatSplit(Place place, size_t size) {
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
-    group.dtype_ = tensor->type();
+    group.dtype_ = framework::TransToProtoVarType(tensor->dtype());
   }
 
   paddle::platform::DeviceContextPool& pool =

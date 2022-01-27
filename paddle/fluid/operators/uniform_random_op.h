@@ -25,7 +25,8 @@ using Tensor = framework::Tensor;
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const Tensor* new_data_tensor) {
-  if (new_data_tensor->type() == framework::proto::VarType::INT64) {
+  if (framework::TransToProtoVarType(new_data_tensor->dtype()) ==
+      framework::proto::VarType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
     framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
@@ -36,7 +37,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     std::vector<int64_t> vec_new_data(new_data,
                                       new_data + new_data_tensor->numel());
     return vec_new_data;
-  } else if (new_data_tensor->type() == framework::proto::VarType::INT32) {
+  } else if (framework::TransToProtoVarType(new_data_tensor->dtype()) ==
+             framework::proto::VarType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
     framework::Tensor cpu_starts_tensor;
@@ -53,7 +55,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Expected dtype of ShapeTensor must be int32, int64. But got "
         "unsupport dtype: %s.",
-        paddle::framework::DataTypeToString(new_data_tensor->type())));
+        new_data_tensor->dtype()));
   }
 }
 
@@ -70,7 +72,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
             "But received tensor's dim=%s.",
             tensor->dims()));
 
-    if (tensor->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(tensor->dtype()) ==
+        framework::proto::VarType::INT32) {
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -78,7 +81,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
       }
-    } else if (tensor->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(tensor->dtype()) ==
+               framework::proto::VarType::INT64) {
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -91,7 +95,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
           "Expected dtype of ShapeTensorList of %d-th must be int32, int64. "
           "But got "
           "unsupport dtype: %s.",
-          i, paddle::framework::DataTypeToString(tensor->type())));
+          i, paddle::framework::DataTypeToString(
+                 framework::TransToProtoVarType(tensor->dtype()))));
     }
   }
 

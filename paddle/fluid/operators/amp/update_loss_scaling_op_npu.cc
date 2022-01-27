@@ -42,7 +42,8 @@ void Update(const platform::NPUDeviceContext& ctx,
     platform::NPUMemsetAsync(static_cast<void*>(g), 0,
                              good_out_tensor->numel() * sizeof(int), stream);
     // bad_out_data = bad_in_data + 1
-    Tensor factor_tensor(bad_out_tensor->type());
+    Tensor factor_tensor(
+        framework::TransToProtoVarType(bad_out_tensor->dtype()));
     factor_tensor.mutable_data<int>({1}, place);
     FillNpuTensorWithConstant<int>(&factor_tensor, static_cast<int>(1));
     const auto& runner_p2 = NpuOpRunner("Add", {*bad_in_tensor, factor_tensor},
@@ -91,7 +92,8 @@ void Update(const platform::NPUDeviceContext& ctx,
                              bad_out_tensor->numel() * sizeof(int), stream);
 
     // good_out_data = good_in_data + 1
-    Tensor factor_tensor(good_out_tensor->type());
+    Tensor factor_tensor(
+        framework::TransToProtoVarType(good_out_tensor->dtype()));
     factor_tensor.mutable_data<int>({1}, place);
     FillNpuTensorWithConstant<int>(&factor_tensor, static_cast<int>(1));
     const auto& runner_p2 = NpuOpRunner("Add", {*good_in_tensor, factor_tensor},

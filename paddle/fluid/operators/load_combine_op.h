@@ -108,7 +108,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         // Get data from fin to tensor
         paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
-        auto in_dtype = tensor->type();
+        auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
         auto out_dtype =
             load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

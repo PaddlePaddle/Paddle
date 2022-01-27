@@ -134,9 +134,10 @@ class SumOp : public framework::OperatorWithKernel {
           continue;
         }
         if (dtype == -1) {
-          dtype = tensor->type();
+          dtype = framework::TransToProtoVarType(tensor->dtype());
         } else {
-          PADDLE_ENFORCE_EQ(dtype, tensor->type(),
+          PADDLE_ENFORCE_EQ(dtype,
+                            framework::TransToProtoVarType(tensor->dtype()),
                             platform::errors::InvalidArgument(
                                 "The inputs type of sum op must be same"));
         }

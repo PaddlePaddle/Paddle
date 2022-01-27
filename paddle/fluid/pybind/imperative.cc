@@ -187,7 +187,7 @@ static void InitVarBaseAndTensor(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace"));
   }
-  self->SetDataType(tensor->type());
+  self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
@@ -242,7 +242,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   }
   SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
-  self->SetDataType(tensor->type());
+  self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
 
 static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
@@ -1887,7 +1887,9 @@ void BindImperative(py::module *m_ptr) {
              // Register the cpu memory as the cuda host memory
              const auto &data_numel = self_tensor->numel();
              const size_t &need_allocate_size =
-                 data_numel * framework::SizeOfType(self_tensor->type());
+                 data_numel *
+                 framework::SizeOfType(
+                     framework::TransToProtoVarType(self_tensor->dtype()));
              void *data_ptr = self_tensor->data();
              auto result = cudaHostRegister(data_ptr, need_allocate_size,
                                             cudaHostRegisterDefault);
@@ -1907,7 +1909,8 @@ void BindImperative(py::module *m_ptr) {
                  std::make_shared<memory::allocation::Allocation>(
                      cuda_device_pointer, need_allocate_size,
                      platform::CUDAPlace(device_id));
-             self_tensor->ResetHolderWithType(holder, self_tensor->type());
+             self_tensor->ResetHolderWithType(
+                 holder, framework::TransToProtoVarType(self_tensor->dtype()));
            },
            py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
         Returns self tensor with the UVA(unified virtual addressing).

@@ -143,7 +143,7 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
 
   int numel = tensor->numel();
   if (numel == 1) {
-    Tensor npu_pinned_tensor(tensor->type());
+    Tensor npu_pinned_tensor(framework::TransToProtoVarType(tensor->dtype()));
     platform::NPUPinnedPlace npu_pinned_place;
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data<T>({1}, npu_pinned_place);
