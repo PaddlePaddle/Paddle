@@ -409,12 +409,11 @@ bool DistModel::LoadParameters() {
 
 bool DistModel::PrepareFleetExe() {
   task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
-  if (config_.local_rank - config_.mp_degree >= 0) {
-    task_node_->AddUpstreamTask(config_.local_rank - config_.mp_degree);
-  }
-  if (config_.local_rank + config_.mp_degree < config_.nranks) {
-    task_node_->AddDownstreamTask(config_.local_rank + config_.mp_degree);
-  }
+  // NOTE (YuangLiu): No need to add upstream/downstream for pp.
+  // In generation inference model, there is while op and fetch op,
+  // add upstream/downstream will result in hang.
+  // Q (fleet exe dev): For classification inference, are upstream
+  // and downstream needed?
   task_node_->SetType("Compute");
   task_node_->Init();
   executor_desc_ = FleetExecutorDesc();
