@@ -48,7 +48,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto xplace = BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace());
+    auto xplace = ctx.GetPlace();
     int rois_batch_size = 0;
     int* cpu_lod = nullptr;
     if (ctx.HasInput("RoisNum")) {
@@ -157,7 +157,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto xplace = BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace());
+    auto xplace = ctx.GetPlace();
 
     int rois_batch_size = 0;
     int* cpu_lod = nullptr;

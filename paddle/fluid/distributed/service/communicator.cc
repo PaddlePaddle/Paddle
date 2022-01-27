@@ -30,6 +30,8 @@ namespace distributed {
 using framework::LoDTensor;
 using framework::SelectedRows;
 
+const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
+
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
@@ -574,6 +576,181 @@ void AsyncCommunicator::MainThread() {
     RpcProfilerControl();
   }
   VLOG(1) << "communicator stopped, send thread exit";
+}
+
+void AsyncCommunicator::PullSparseToTensorSync(
+    const uint64_t table_id, int fea_dim, uint64_t padding_id,
+    platform::Place place, bool is_training,
+    std::vector<const LoDTensor *> *inputs, std::vector<LoDTensor *> *outputs) {
+  std::vector<uint64_t> fea_keys;
+  std::vector<float *> pull_result_ptr;
+  fea_keys.reserve(MAX_FEASIGN_NUM / 100);
+  pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<float> init_value(fea_dim, 0);
+  framework::LoDTensor *output = nullptr;
+  float *output_data = nullptr;
+  size_t output_index = -1;
+  size_t output_len = 0;
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    const framework::LoDTensor *tensor = inputs->at(index);
+    const int64_t *ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+      if (!output || output_len == size_t(output->numel())) {
+        ++output_index;
+        CHECK(output_index < outputs->size());  // NOLINT
+        output = outputs->at(output_index);
+        output->set_lod(tensor->lod());
+        output_data = output->mutable_data<float>(place);
+        output_len = 0;
+        CHECK(output->numel() % fea_dim == 0);  // NOLINT
+        CHECK(output_data != nullptr);          // NOLINT
+      }
+      uint64_t real_id = static_cast<uint64_t>(ids[i]);
+      if (real_id == padding_id) {
+        memcpy(output_data + output_len, init_value.data(),
+               sizeof(float) * fea_dim);
+        continue;
+      }
+      fea_keys.push_back(real_id);
+      pull_result_ptr.push_back(output_data + output_len);
+    }
+  }
+  auto status =
+      _worker_ptr->pull_sparse(pull_result_ptr.data(), table_id,
+                               fea_keys.data(), fea_keys.size(), is_training);
+  status.wait();
+  auto ret = status.get();
+  if (ret != 0) {
+    LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
+    sleep(sleep_seconds_before_fail_exit_);
+  }
+}
+
+void AsyncCommunicator::PushSparseFromTensorAsync(
+    const uint64_t table_id, int fea_dim, uint64_t padding_id,
+    platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
+    const framework::LoDTensor *shows, const framework::LoDTensor *clks,
+    std::vector<framework::LoDTensor *> *outputs) {
+  int batch_size = -1;
+  bool batch_size_consist = true;
+  for (auto *input : *inputs) {
+    int cur_batch_size =
+        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+    if (batch_size == -1) {
+      batch_size = cur_batch_size;
+    } else {
+      // CHECK(batch_size == cur_batch_size);  // NOLINT
+      batch_size_consist = false;
+      break;
+    }
+  }
+  CHECK(batch_size > 0);  // NOLINT
+
+  int show_size =
+      shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
+  CHECK(show_size == batch_size || show_size == 1);
+  int clk_size =
+      clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
+  CHECK(clk_size == batch_size || clk_size == 1);
+
+  CHECK(outputs->size() == inputs->size());
+  std::vector<uint64_t> push_keys;
+  push_keys.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<std::vector<float>> push_values;
+  push_values.reserve(MAX_FEASIGN_NUM / 100);
+  size_t output_len = 0;
+  size_t input_idx = 0;
+
+  VLOG(2) << "fleet.cc::emb_dim: " << fea_dim;
+
+  // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
+  // const long int* show_tensor = shows->data<int64_t>();
+  // const long int* clk_tensor = clks->data<int64_t>();
+  const int64_t *show_tensor = shows->data<int64_t>();
+  const int64_t *clk_tensor = clks->data<int64_t>();
+
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    framework::LoDTensor *g_tensor = outputs->at(index);
+    float *g = g_tensor->data<float>();
+    // no cvm
+    if (batch_size_consist) {  // TODO(zhaocaibei123): add config
+                               // scale_sparse_gradient_with_batch_size_
+      Eigen::Map<
+          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+          g_mat(g, g_tensor->numel() / fea_dim, fea_dim);
+      g_mat.rightCols(fea_dim) *= batch_size;
+    }
+
+    const framework::LoDTensor *tensor = inputs->at(index);
+    const int64_t *ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    output_len = 0;
+
+    if (tensor->lod().size() > 0) {
+      for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
+        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+             ++j, output_len += fea_dim) {
+          uint64_t real_id = static_cast<uint64_t>(ids[j]);
+          if (real_id == padding_id) {
+            continue;
+          }
+          push_keys.emplace_back(real_id);
+          push_values.emplace_back(fea_dim + 3);
+          // slot show clk grad... consistent with CtrCommonPushValue defined in
+          // ctr_accessor.h
+          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[1] =
+              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          push_values.back()[2] =
+              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+
+          float *data = push_values.back().data() + 3;
+
+          memcpy(data, g + output_len, sizeof(float) * fea_dim);
+
+          ++input_idx;
+        }
+      }
+    } else {
+      for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+        uint64_t real_id = static_cast<uint64_t>(ids[i]);
+        if (real_id == padding_id) {
+          continue;
+        }
+        push_keys.emplace_back(real_id);
+        push_values.emplace_back(fea_dim + 3);
+        // slot show clk grad... consistent with CtrCommonPushValue defined in
+        // ctr_accessor.h
+        push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+        push_values.back()[1] =
+            (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+        push_values.back()[2] =
+            (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+
+        float *data = push_values.back().data() + 3;
+
+        memcpy(data, g + output_len, sizeof(float) * fea_dim);
+
+        ++input_idx;
+      }
+    }
+    CHECK(output_len == g_tensor->numel());
+  }
+
+  std::vector<float *> push_g_vec(input_idx, nullptr);
+
+  for (auto i = 0u; i < push_keys.size(); ++i) {
+    push_g_vec[i] = push_values.at(i).data();
+  }
+
+  PADDLE_ENFORCE_EQ(
+      this->Check(table_id), true,
+      platform::errors::InvalidArgument(
+          "can not find table: %s, please check your config", table_id));
+  auto status = _worker_ptr->push_sparse(table_id, push_keys.data(),
+                                         (const float **)push_g_vec.data(),
+                                         push_keys.size());
 }
 
 void HalfAsyncCommunicator::MainThread() {

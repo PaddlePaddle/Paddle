@@ -22,7 +22,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/pten/common/bfloat16.h"
 namespace pten {
 
 template <typename T, typename Context>

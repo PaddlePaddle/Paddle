@@ -193,7 +193,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
           grad_var_->MutableVar()->GetMutable<framework::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
@@ -211,7 +211,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
           grad_t->clear();
         }
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
       }
     }
@@ -408,6 +408,8 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
     grad_t->Resize(var_->dims());
   }
 }
+
+pten::KernelContext OpBase::pt_kernel_context_;
 
 void OpBase::SetType(const std::string& type) {
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);

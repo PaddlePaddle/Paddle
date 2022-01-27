@@ -354,7 +354,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
     float* cpu_data = new float[tensor->numel()];
     memory::Copy(platform::CPUPlace(), static_cast<void*>(cpu_data),
-                 BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
+                 tensor->place(),
                  static_cast<const void*>(tensor->data<float>()),
                  tensor->numel() * sizeof(float));
     bool flag = false;

@@ -110,7 +110,7 @@ TEST(dense_tensor, resize) {
   DenseTensor tensor_0(alloc, meta);
 
   CHECK_EQ(tensor_0.capacity(), 2u);
-  tensor_0.Resize({1, 2, 3});
+  tensor_0.ResizeAndAllocate({1, 2, 3});
   CHECK_EQ(tensor_0.capacity(), 6u);
   tensor_0.mutable_data<int8_t>();
   CHECK_EQ(tensor_0.capacity(), 6u);

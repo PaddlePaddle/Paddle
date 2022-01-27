@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/funcs/transpose.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 
 namespace pten {
 namespace math {
@@ -33,8 +33,8 @@ struct TransposeNormal<CPUContext, T> {
                   pten::DenseTensor* out,
                   const std::vector<int64_t>& axis) {
     const int rank = axis.size();
-    auto in_stride = paddle::framework::stride(in.dims());
-    auto out_stride = paddle::framework::stride(out->dims());
+    auto in_stride = pten::framework::stride(in.dims());
+    auto out_stride = pten::framework::stride(out->dims());
     const T* in_ptr = in.data<T>();
     T* out_ptr = out->mutable_data<T>();
 

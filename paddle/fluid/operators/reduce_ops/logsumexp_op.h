@@ -23,7 +23,8 @@ namespace operators {
 
 #define HANDLE_DIM(NDIM, RDIM)                                            \
   if (ndim == NDIM && rdim == RDIM) {                                     \
-    ReduceFunctor<DeviceContext, OutT, NDIM, RDIM, LogsumexpFunctor>(     \
+    paddle::operators::ReduceFunctor<DeviceContext, OutT, NDIM, RDIM,     \
+                                     LogsumexpFunctor>(                   \
         context.template device_context<DeviceContext>(), *input, output, \
         axis, keepdim);                                                   \
   }

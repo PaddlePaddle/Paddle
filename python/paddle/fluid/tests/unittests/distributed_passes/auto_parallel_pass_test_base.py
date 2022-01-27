@@ -110,14 +110,8 @@ class AutoPallelPassTestBase(DistPassTestBase):
         elif strategy == "mp":
             modeling._global_parallel_strategy = "mp"
             modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-        elif strategy == "pp":
-            modeling._global_parallel_strategy = "pp"
-            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-            modeling.PP_MESH_LIST = [
-                auto.ProcessMesh(mesh=[0]), auto.ProcessMesh(mesh=[1])
-            ]
         else:
-            raise ValueError("'get_gpt_model' only support dp, mp and pp.")
+            raise ValueError("'get_gpt_model' only support dp and mp.")
 
         tokens = paddle.static.data(
             name="tokens", shape=[batch_size, sequence_len], dtype='int64')

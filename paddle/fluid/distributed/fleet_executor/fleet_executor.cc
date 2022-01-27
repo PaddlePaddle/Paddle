@@ -35,6 +35,13 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   InitMessageBus();
 }
 
+FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
+    : exe_desc_(exe_desc) {
+  // Message bus will be created and inited only once
+  GlobalVal<MessageBus>::Create();
+  InitMessageBus();
+}
+
 FleetExecutor::~FleetExecutor() {
   for (const auto& carrier_id : carrier_ids_) {
     GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();

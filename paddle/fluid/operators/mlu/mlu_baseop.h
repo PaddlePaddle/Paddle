@@ -74,6 +74,9 @@ inline cnnlDataType_t ToCnnlDataType(const framework::proto::VarType::Type& t) {
     case framework::proto::VarType::INT8:
       type = CNNL_DTYPE_INT8;
       break;
+    case framework::proto::VarType::INT16:
+      type = CNNL_DTYPE_INT16;
+      break;
     case framework::proto::VarType::INT32:
       type = CNNL_DTYPE_INT32;
       break;
@@ -82,6 +85,9 @@ inline cnnlDataType_t ToCnnlDataType(const framework::proto::VarType::Type& t) {
       break;
     case framework::proto::VarType::BOOL:
       type = CNNL_DTYPE_BOOL;
+      break;
+    case framework::proto::VarType::UINT8:
+      type = CNNL_DTYPE_UINT8;
       break;
     default:
       break;
@@ -107,6 +113,47 @@ inline static const MLUDeviceContext& GetDevCtxFromCTX(
     const ExecutionContext& ctx) {
   return ctx.template device_context<MLUDeviceContext>();
 }
+
+using VT = framework::proto::VarType;
+const std::map<std::pair<VT::Type, VT::Type>, cnnlCastDataType_t>
+    MLU_SUPPORTED_CAST_TYPE = {
+        {{VT::FP32, /*cast to*/ VT::FP16}, CNNL_CAST_FLOAT_TO_HALF},
+        {{VT::FP32, /*cast to*/ VT::INT32}, CNNL_CAST_FLOAT_TO_INT32},
+        {{VT::FP32, /*cast to*/ VT::INT16}, CNNL_CAST_FLOAT_TO_INT16},
+        {{VT::FP32, /*cast to*/ VT::INT8}, CNNL_CAST_FLOAT_TO_INT8},
+        {{VT::FP32, /*cast to*/ VT::UINT8}, CNNL_CAST_FLOAT_TO_UINT8},
+        {{VT::FP32, /*cast to*/ VT::BOOL}, CNNL_CAST_FLOAT_TO_BOOL},
+        {{VT::FP16, /*cast to*/ VT::FP32}, CNNL_CAST_HALF_TO_FLOAT},
+        {{VT::FP16, /*cast to*/ VT::INT32}, CNNL_CAST_HALF_TO_INT32},
+        {{VT::FP16, /*cast to*/ VT::INT16}, CNNL_CAST_HALF_TO_INT16},
+        {{VT::FP16, /*cast to*/ VT::INT8}, CNNL_CAST_HALF_TO_INT8},
+        {{VT::FP16, /*cast to*/ VT::UINT8}, CNNL_CAST_HALF_TO_UINT8},
+        {{VT::FP16, /*cast to*/ VT::BOOL}, CNNL_CAST_HALF_TO_BOOL},
+        {{VT::INT32, /*cast to*/ VT::FP32}, CNNL_CAST_INT32_TO_FLOAT},
+        {{VT::INT32, /*cast to*/ VT::FP16}, CNNL_CAST_INT32_TO_HALF},
+        {{VT::INT32, /*cast to*/ VT::INT64}, CNNL_CAST_INT32_TO_INT64},
+        {{VT::INT32, /*cast to*/ VT::INT16}, CNNL_CAST_INT32_TO_INT16},
+        {{VT::INT32, /*cast to*/ VT::INT8}, CNNL_CAST_INT32_TO_INT8},
+        {{VT::INT32, /*cast to*/ VT::BOOL}, CNNL_CAST_INT32_TO_BOOL},
+        {{VT::INT16, /*cast to*/ VT::FP32}, CNNL_CAST_INT16_TO_FLOAT},
+        {{VT::INT16, /*cast to*/ VT::FP16}, CNNL_CAST_INT16_TO_HALF},
+        {{VT::INT16, /*cast to*/ VT::INT32}, CNNL_CAST_INT16_TO_INT32},
+        {{VT::INT8, /*cast to*/ VT::FP32}, CNNL_CAST_INT8_TO_FLOAT},
+        {{VT::INT8, /*cast to*/ VT::FP16}, CNNL_CAST_INT8_TO_HALF},
+        {{VT::INT8, /*cast to*/ VT::INT32}, CNNL_CAST_INT8_TO_INT32},
+        {{VT::UINT8, /*cast to*/ VT::FP32}, CNNL_CAST_UINT8_TO_FLOAT},
+        {{VT::UINT8, /*cast to*/ VT::FP16}, CNNL_CAST_UINT8_TO_HALF},
+        {{VT::UINT8, /*cast to*/ VT::INT64}, CNNL_CAST_UINT8_TO_INT64},
+        {{VT::UINT8, /*cast to*/ VT::INT32}, CNNL_CAST_UINT8_TO_INT32},
+        {{VT::BOOL, /*cast to*/ VT::FP32}, CNNL_CAST_BOOL_TO_FLOAT},
+        {{VT::BOOL, /*cast to*/ VT::FP16}, CNNL_CAST_BOOL_TO_HALF},
+        {{VT::BOOL, /*cast to*/ VT::INT32}, CNNL_CAST_BOOL_TO_INT32},
+        {{VT::INT64, /*cast to*/ VT::INT32}, CNNL_CAST_INT64_TO_INT32},
+};
+
+cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
+                                   const VT::Type& dst_type);
+bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type);
 
 cnnlDeviceType_t GetCnnlDev(int dev_ordinal);
 
@@ -149,6 +196,8 @@ class MLUCnnlTensorDesc {
 
   MLUCnnlTensorDesc(const Tensor& tensor, const cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype);
+
+  explicit MLUCnnlTensorDesc(const Tensor& tensor);
 
   MLUCnnlTensorDesc(const Tensor& tensor, cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype, int position);
