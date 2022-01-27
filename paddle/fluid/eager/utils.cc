@@ -79,12 +79,12 @@ std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
   return metas;
 }
 
-std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
+std::vector<AutogradMeta*> EagerUtils::autograd_meta(
     std::vector<egr::EagerTensor>* targets) {
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
-  // for multi_autograd_meta we can tolerent it has nullptr.
+  // for autograd_meta we can tolerent it has nullptr.
   for (auto& t : (*targets)) {
     auto* p_autograd_meta = autograd_meta(&t);
     ret.push_back(static_cast<AutogradMeta*>(p_autograd_meta));
