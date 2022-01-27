@@ -14,10 +14,13 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Scope;
 class Variable;
 
@@ -135,13 +138,11 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, places_[i]), w,
-                     platform::CUDAPinnedPlace(), pin_w,
+        memory::Copy(places_[i], w, platform::CUDAPinnedPlace(), pin_w,
                      sizeof(float) * tensor->numel(), copy_streams_[i]);
 #endif
 #ifdef PADDLE_WITH_XPU
-        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, places_[i]), w,
-                     platform::CPUPlace(), pin_w,
+        memory::Copy(places_[i], w, platform::CPUPlace(), pin_w,
                      sizeof(float) * tensor->numel());
 #endif
       }

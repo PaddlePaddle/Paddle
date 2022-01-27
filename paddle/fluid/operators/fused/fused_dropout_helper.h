@@ -150,7 +150,7 @@ class FusedDropoutHelper {
     LaunchResidualDropoutBiasGrad<T, uint8_t>(
         d_out, mask, dropout_param_.dropout_prob,
         dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
-    auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto cuda_place = ctx.GetPlace();
     memory::Copy(cuda_place, d_residual, cuda_place, d_out,
                  rows_ * cols_ * sizeof(T), ctx.stream());
   }

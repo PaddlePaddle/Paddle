@@ -29,8 +29,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     auto* new_data = new_data_tensor->data<int64_t>();
     framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                     &cpu_starts_tensor);
+      paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                                        &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
     }
     std::vector<int64_t> vec_new_data(new_data,
@@ -41,8 +41,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     std::vector<int64_t> vec_new_data;
     framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                     &cpu_starts_tensor);
+      paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                                        &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
     for (int i = 0; i < new_data_tensor->numel(); ++i) {
@@ -73,7 +73,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     if (tensor->type() == framework::proto::VarType::INT32) {
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
@@ -81,7 +81,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     } else if (tensor->type() == framework::proto::VarType::INT64) {
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
         vec_new_shape.push_back(*tensor->data<int64_t>());

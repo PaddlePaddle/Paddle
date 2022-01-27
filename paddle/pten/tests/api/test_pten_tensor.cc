@@ -58,11 +58,11 @@ void TestAPIPlace() {
   std::vector<int64_t> tensor_shape = {5, 5};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto t1 = experimental::Tensor(paddle::PlaceType::kGPU, tensor_shape);
-  t1.mutable_data<float>();
+  t1.mutable_data<float>(paddle::PlaceType::kGPU);
   CHECK((paddle::PlaceType::kGPU == t1.place()));
 #endif
   auto t2 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
-  t2.mutable_data<float>();
+  t2.mutable_data<float>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t2.place()));
 }
 
@@ -80,29 +80,30 @@ void TestAPISlice() {
   std::vector<int64_t> tensor_shape_sub2 = {1, 5, 5};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto t1 = experimental::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin1);
-  t1.mutable_data<float>();
+  t1.mutable_data<float>(paddle::PlaceType::kGPU);
   CHECK(t1.slice(0, 5).shape() == tensor_shape_origin1);
   CHECK(t1.slice(0, 3).shape() == tensor_shape_sub1);
   auto t2 = experimental::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin2);
-  t2.mutable_data<float>();
+  t2.mutable_data<float>(paddle::PlaceType::kGPU);
   CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
 #endif
   auto t3 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin1);
-  t3.mutable_data<float>();
+  t3.mutable_data<float>(paddle::PlaceType::kCPU);
   CHECK(t3.slice(0, 5).shape() == tensor_shape_origin1);
   CHECK(t3.slice(0, 3).shape() == tensor_shape_sub1);
   auto t4 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin2);
-  t4.mutable_data<float>();
+  t4.mutable_data<float>(paddle::PlaceType::kCPU);
   CHECK(t4.slice(4, 5).shape() == tensor_shape_sub2);
 
   // Test writing function for sliced tensor
   auto t = InitCPUTensorForTest<float>();
   auto t_sliced = t.slice(0, 1);
-  auto* t_sliced_data_ptr = t_sliced.mutable_data<float>();
+  auto* t_sliced_data_ptr =
+      t_sliced.mutable_data<float>(paddle::PlaceType::kCPU);
   for (int64_t i = 0; i < t_sliced.size(); i++) {
     t_sliced_data_ptr[i] += static_cast<float>(5);
   }
-  auto* t_data_ptr = t.mutable_data<float>();
+  auto* t_data_ptr = t.mutable_data<float>(paddle::PlaceType::kCPU);
   for (int64_t i = 0; i < t_sliced.size(); i++) {
     CHECK_EQ(t_data_ptr[i], static_cast<float>(10));
   }
@@ -112,7 +113,7 @@ template <typename T>
 paddle::DataType TestDtype() {
   std::vector<int64_t> tensor_shape = {5, 5};
   auto t1 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
-  t1.template mutable_data<T>();
+  t1.template mutable_data<T>(paddle::PlaceType::kCPU);
   return t1.type();
 }
 
@@ -120,13 +121,13 @@ template <typename T>
 void TestCast(paddle::DataType data_type) {
   std::vector<int64_t> tensor_shape = {5, 5};
   auto t1 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
-  t1.template mutable_data<T>();
+  t1.template mutable_data<T>(paddle::PlaceType::kCPU);
   auto t2 = t1.cast(data_type);
   CHECK(t2.type() == data_type);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto tg1 = experimental::Tensor(paddle::PlaceType::kGPU);
   tg1.reshape(tensor_shape);
-  tg1.template mutable_data<T>();
+  tg1.template mutable_data<T>(paddle::PlaceType::kGPU);
   auto tg2 = tg1.cast(data_type);
   CHECK(tg2.type() == data_type);
 #endif
@@ -194,7 +195,7 @@ void GroupTestDtype() {
 void TestInitilized() {
   experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
   CHECK(test_tensor.is_initialized() == false);
-  test_tensor.mutable_data<float>();
+  test_tensor.mutable_data<float>(paddle::PlaceType::kCPU);
   CHECK(test_tensor.is_initialized() == true);
   float* tensor_data = test_tensor.mutable_data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {

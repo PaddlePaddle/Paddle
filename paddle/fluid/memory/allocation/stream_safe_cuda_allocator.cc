@@ -164,8 +164,7 @@ void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
-  std::vector<StreamSafeCUDAAllocator*>& allocators =
-      allocator_map_[BOOST_GET_CONST(platform::CUDAPlace, place)];
+  std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;
   for (StreamSafeCUDAAllocator* allocator : allocators) {
     released_size += allocator->ProcessUnfreedAllocationsWithRelease();
@@ -192,7 +191,7 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsWithRelease() {
   return underlying_allocator_->Release(place_);
 }
 
-std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator*>>
+std::map<platform::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;
 SpinLock StreamSafeCUDAAllocator::allocator_map_lock_;
 

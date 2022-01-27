@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
@@ -171,9 +171,9 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
       platform::errors::InvalidArgument(
           "The type of input (%s) and output (%s) are inconsistent.", in, out));
 
-  if (in_var->IsType<framework::SelectedRows>()) {
-    auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-    auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+  if (in_var->IsType<pten::SelectedRows>()) {
+    auto& in_sele_rows = in_var->Get<pten::SelectedRows>();
+    auto out_sele_rows = out_var->GetMutable<pten::SelectedRows>();
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
@@ -313,7 +313,7 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
              framework::DataLayout::kMKLDNN));
-  } catch (std::bad_cast exp) {
+  } catch (std::bad_cast& exp) {
     return false;
   }
 }
@@ -392,8 +392,8 @@ DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
-  } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    return var->Get<pten::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Only LoDTensor or SelectedRows support 'GetDim', but input "
@@ -420,8 +420,8 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
   if (var->IsType<LoDTensor>()) {
     var->GetMutable<LoDTensor>()->Resize(dim);
-  } else if (var->IsType<SelectedRows>()) {
-    var->GetMutable<SelectedRows>()->set_height(dim[0]);
+  } else if (var->IsType<pten::SelectedRows>()) {
+    var->GetMutable<pten::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Variable type error, expect LoDTensor or SelectedRows, but received "
@@ -686,10 +686,6 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
 
 pten::Kernel* Instruction::PtenKernel() const {
   return op_func_node_.pt_kernel_;
-}
-
-pten::KernelContext* Instruction::PtenKernelContext() const {
-  return op_func_node_.pt_kernel_context_;
 }
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }

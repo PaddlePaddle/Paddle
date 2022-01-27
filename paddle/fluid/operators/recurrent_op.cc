@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
 
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 }  // namespace framework
 }  // namespace paddle
