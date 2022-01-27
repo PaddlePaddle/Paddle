@@ -437,10 +437,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-      if (with_dynamic_shape) {
-        if (axis < 0) return false;
-      } else {
-        if (axis <= 0) return false;
+      if (!with_dynamic_shape) {
+        if (axis == 0) return false;
       }
       auto concat_inputs = desc.Inputs();
       if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
@@ -1464,30 +1462,48 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the " << op_type
                 << " does not have attr (keep_dim or dim or "
                    "reduce_all)";
-        std::cout << "attr " << desc.HasAttr("keep_dim") << " "
-                  << desc.HasAttr("dim") << " " << desc.HasAttr("reduce_all");
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
         return false;
       }
 
       // The batch size dimension cannot be reduced if it's not dynamic shape.
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       if (!with_dynamic_shape) {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        const auto input_shape = x_var_desc->GetShape();
         for (auto x : dim) {
-          if (!x) return false;
+          if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
+
       } else {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
-      if (desc.HasAttr("out_dtype")) {
-        int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
-        if (out_dtype != -1) {
-          return false;
-        }
+
+      auto dtype = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_GE(7000)
+      if (dtype != framework::proto::VarType::INT32 &&
+          dtype != framework::proto::VarType::FP32) {
+        VLOG(3) << "reduce op input data type must be int32 or float32";
+        return false;
       }
+#else
+      if (dtype != framework::proto::VarType::FP32) {
+        VLOG(3)
+            << "reduce op input data type must be float32 using TensorRT < 7.0";
+        return false;
+      }
+#endif
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
