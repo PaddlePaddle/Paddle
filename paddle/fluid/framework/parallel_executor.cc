@@ -787,8 +787,7 @@ void ParallelExecutor::BCastParamsToDevices(
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
-          buffer = t->mutable_data(
-              place, framework::TransToProtoVarType(main_tensor.dtype()));
+          buffer = t->mutable_data(place, main_tensor.dtype());
         }
         buffers.push_back(buffer);
       }
@@ -832,8 +831,7 @@ void ParallelExecutor::BCastParamsToDevices(
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
-          buffer = t->mutable_data(
-              place, framework::TransToProtoVarType(main_tensor.dtype()));
+          buffer = t->mutable_data(place, main_tensor.dtype());
         }
         buffers.push_back(buffer);
       }

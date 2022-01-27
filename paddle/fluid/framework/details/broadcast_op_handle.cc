@@ -240,8 +240,8 @@ void BroadcastOpHandle::InitOutputValue(
       t_out_p = platform::CPUPlace();
     }
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
-    VariableVisitor::GetMutableTensor(out_var).mutable_data(
-        t_out_p, framework::TransToProtoVarType(in_tensor.dtype()));
+    VariableVisitor::GetMutableTensor(out_var).mutable_data(t_out_p,
+                                                            in_tensor.dtype());
   }
 }
 

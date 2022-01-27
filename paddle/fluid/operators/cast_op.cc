@@ -102,9 +102,7 @@ class CastOp : public framework::OperatorWithKernel {
       return true;
     };
 
-    if (this->CanMKLDNNBeUsed(
-            ctx, framework::TransToProtoVarType(tensor->dtype())) &&
-        MKLDNNSupportsCast()) {
+    if (this->CanMKLDNNBeUsed(ctx, tensor->dtype()) && MKLDNNSupportsCast()) {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor->dtype()), ctx.GetPlace(),
           framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);

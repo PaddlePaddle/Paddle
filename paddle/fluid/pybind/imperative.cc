@@ -1910,8 +1910,7 @@ void BindImperative(py::module *m_ptr) {
                  std::make_shared<memory::allocation::Allocation>(
                      cuda_device_pointer, need_allocate_size,
                      platform::CUDAPlace(device_id));
-             self_tensor->ResetHolderWithType(
-                 holder, framework::TransToProtoVarType(self_tensor->dtype()));
+             self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
            },
            py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
         Returns self tensor with the UVA(unified virtual addressing).

@@ -42,8 +42,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
-  auto *dst_ptr = dst->mutable_data(
-      src.place(), framework::TransToProtoVarType(src.dtype()));
+  auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
   auto bkcl_dtype =
       platform::ToBKCLDataType(framework::TransToProtoVarType(src.dtype()));
 

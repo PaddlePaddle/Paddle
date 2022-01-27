@@ -265,8 +265,7 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
               framework::LoDTensor *dst_tensor) {
             // create output tensor at begin
             dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
-            dst_tensor->mutable_data(
-                place, framework::TransToProtoVarType(src_tensor.dtype()));
+            dst_tensor->mutable_data(place, src_tensor.dtype());
 
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed

@@ -45,8 +45,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 
   void *src_ptr = const_cast<void *>(src.data());
   dst->Resize(src.dims());
-  void *dst_ptr = dst->mutable_data(
-      src.place(), framework::TransToProtoVarType(src.dtype()));
+  void *dst_ptr = dst->mutable_data(src.place(), src.dtype());
   HcclDataType hccl_dtype =
       platform::ToHCCLDataType(framework::TransToProtoVarType(src.dtype()));
 

@@ -385,8 +385,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
     framework::LoDTensor cpu_tensor;
     cpu_tensor.Resize(tensor->dims());
-    float* cpu_data = static_cast<float*>(cpu_tensor.mutable_data(
-        platform::CPUPlace(), framework::TransToProtoVarType(tensor->dtype())));
+    float* cpu_data = static_cast<float*>(
+        cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
 
     framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
     bool flag = false;
