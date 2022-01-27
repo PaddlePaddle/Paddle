@@ -3690,7 +3690,9 @@ def group_norm(input,
     inputs = {'X': input}
     input_shape = input.shape
     if len(input_shape) < 2:
-        raise ValueError("a")
+        raise ValueError(
+            f"The dimensions of Op(fluid.layers.group_norm)'s input should be more than 1. But received {len(input_shape)}"
+        )
     if data_layout != 'NCHW' and data_layout != 'NHWC':
         raise ValueError(
             "Param(data_layout) of Op(fluid.layers.group_norm) got wrong value: received "
