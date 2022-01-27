@@ -32,6 +32,9 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
+// pten
+#include "paddle/pten/kernels/declarations.h"
+
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";

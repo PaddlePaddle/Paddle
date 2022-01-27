@@ -26,7 +26,6 @@ class InferMetaContext;
 namespace paddle {
 namespace framework {
 
-// TODO(chenweihang): impl this function in next PR
 pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type);
 

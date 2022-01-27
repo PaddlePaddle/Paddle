@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
 #include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/pten/kernels/funcs/math_cuda_utils.h"
 
 #if CUDA_VERSION >= 11000
 #include <cooperative_groups.h>
@@ -170,8 +170,8 @@ __global__ void L2NormKernel(
     g_tmp += (tmp1 * tmp1);
     tid += grid_stride;
   }
-  p_tmp = math::blockReduceSum<MT>(p_tmp, FINAL_MASK);
-  g_tmp = math::blockReduceSum<MT>(g_tmp, FINAL_MASK);
+  p_tmp = pten::funcs::blockReduceSum<MT>(p_tmp, FINAL_MASK);
+  g_tmp = pten::funcs::blockReduceSum<MT>(g_tmp, FINAL_MASK);
 
   if (threadIdx.x == 0) {
     p_buffer[blockIdx.x] = p_tmp;
@@ -181,8 +181,8 @@ __global__ void L2NormKernel(
   cg->sync();  // Grid sync for writring partial result to gloabl memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
-  MT tmp0 = math::blockReduceSum<MT>(p_part_sum, FINAL_MASK);
-  MT tmp1 = math::blockReduceSum<MT>(g_part_sum, FINAL_MASK);
+  MT tmp0 = pten::funcs::blockReduceSum<MT>(p_part_sum, FINAL_MASK);
+  MT tmp1 = pten::funcs::blockReduceSum<MT>(g_part_sum, FINAL_MASK);
   if (threadIdx.x == 0) {
     s_buffer[0] = tmp0;
     s_buffer[1] = tmp1;
@@ -294,9 +294,10 @@ __global__ void MomentumLarsKernel(
   MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
   MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
-  MT param_norm = Sqrt(math::blockReduceSum<MT>(param_part_norm, FINAL_MASK));
-  MT grad_norm = Sqrt(rescale_grad_pow *
-                      math::blockReduceSum<MT>(grad_part_norm, FINAL_MASK));
+  MT param_norm =
+      Sqrt(pten::funcs::blockReduceSum<MT>(param_part_norm, FINAL_MASK));
+  MT grad_norm = Sqrt(rescale_grad_pow * pten::funcs::blockReduceSum<MT>(
+                                             grad_part_norm, FINAL_MASK));
 #endif
   MomentumUpdate<T, MT>(param, grad, velocity, param_out, velocity_out,
                         master_param, master_param_out, learning_rate, mu,

@@ -75,7 +75,7 @@ class FusedMultiHeadAttention(Layer):
                  embed_dim,
                  num_heads,
                  dropout_rate=0.5,
-                 attn_dropout_rate=0.5,
+                 attn_dropout_rate=None,
                  kdim=None,
                  vdim=None,
                  normalize_before=False,

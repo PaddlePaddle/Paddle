@@ -16,6 +16,8 @@ import paddle.fluid.framework as framework
 from paddle.fluid import core
 from paddle import compat as cpt
 
+ops_having_canonicalization = {"elementwise_add", }
+
 
 # collect original ops: op which has both inference and grid defination
 def get_original_ops():
@@ -158,6 +160,7 @@ def convert_op_proto_into_mlir(op_descs):
         HEAD = "def PD_" + op_type.capitalize(
         ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect]> {\n"
         SUMMARY = "  let summary = \"" + op_type + " op\";\n"
+        CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
 
         # 2.2 Description
         DESCRIPTION = "  let description = [{\n"
@@ -259,6 +262,7 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(DESCRIPTION)
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
+            ops_mlir_file.write(CANONICALIZATION)
             ops_mlir_file.write("}\n")
 
     print("Skipped ops num: " + str(len(skipped_op_list)))
