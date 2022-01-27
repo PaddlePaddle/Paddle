@@ -1618,6 +1618,8 @@ class Layer(object):
                 bool), "blocking value error, must be the True, False or None"
 
         def transform(t, device, dtype, blocking):
+            if t is None:
+                return
             if device is None:
                 device = t.place
             if dtype is None:
