@@ -214,9 +214,59 @@ void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
   func(dev_ctx, src, dst);
 }
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
+template <typename VarType>
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(VarType* dst) {
+  PADDLE_THROW(platform::errors::Unavailable(
+      "GetInnerDstTensor only support egr::EagerTensor or framework::Variable, "
+      "please check your code and make sure you are using one of them."));
+  return nullptr;
+}
+
+template <typename VarType>
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor(const VarType& src) {
+  PADDLE_THROW(platform::errors::Unavailable(
+      "GetInnerSrcTensor only support egr::EagerTensor or framework::Variable, "
+      "please check your code and make sure you are using one of them."));
+  return nullptr;
+}
+
+template <>
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor<egr::EagerTensor>(
+    egr::EagerTensor* dst) {
+  std::shared_ptr<pten::DenseTensor> dst_tensor =
+      std::dynamic_pointer_cast<pten::DenseTensor>(dst->impl());
+  return dst_tensor;
+}
+
+template <>
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor<egr::EagerTensor>(
+    const egr::EagerTensor& src) {
+  std::shared_ptr<pten::DenseTensor> dst_tensor =
+      std::dynamic_pointer_cast<pten::DenseTensor>(src.impl());
+  return dst_tensor;
+}
+
+template <>
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor<framework::Variable>(
+    framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
+  return std::make_shared<pten::DenseTensor>(*dst_tensor);
+}
+
+template <>
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor<framework::Variable>(
+    const framework::Variable& src) {
   auto& src_tensor = src.Get<framework::LoDTensor>();
+  return std::make_shared<pten::DenseTensor>(src_tensor);
+}
+
+template <typename VarType>
+void TensorAdd(const VarType& src, VarType* dst) {
+  std::shared_ptr<pten::DenseTensor> d_tensor = GetInnerDstTensor<VarType>(dst);
+  std::shared_ptr<pten::DenseTensor> s_tensor = GetInnerSrcTensor<VarType>(src);
+
+  auto* dst_tensor = d_tensor.get();
+  auto& src_tensor = *s_tensor.get();
 
   auto numel = src_tensor.numel();
 
@@ -335,6 +385,11 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
       "supported in imperative mode",
       framework::DataTypeToString(data_type), place));
 }
+
+template void TensorAdd<framework::Variable>(const framework::Variable& src,
+                                             framework::Variable* dst);
+template void TensorAdd<egr::EagerTensor>(const egr::EagerTensor& src,
+                                          egr::EagerTensor* dst);
 
 void SelectedRowsAddToTensor(const framework::Variable& src,
                              framework::Variable* dst) {
@@ -462,13 +517,41 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
       framework::DataTypeToString(data_type)));
 }
 
+void VariableAdd(const egr::EagerTensor& src_tensor,
+                 egr::EagerTensor* dst_tensor) {
+  auto& src = src_tensor.Var();
+  auto* dst = dst_tensor->MutableVar();
+
+  if (dst->IsType<paddle::framework::LoDTensor>()) {
+    if (src.IsType<paddle::framework::LoDTensor>()) {
+      paddle::imperative::TensorAdd<paddle::framework::Variable>(src, dst);
+    } else if (src.IsType<pten::SelectedRows>()) {
+      paddle::imperative::SelectedRowsAddToTensor(src, dst);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          paddle::framework::ToTypeName(dst->Type())));
+    }
+  } else {
+    if (src.IsType<paddle::framework::LoDTensor>()) {
+      paddle::framework::Variable new_dst;
+      paddle::imperative::SelectedRowsAddTensor(*dst, src, &new_dst);
+      *dst = std::move(new_dst);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          paddle::framework::ToTypeName(dst->Type())));
+    }
+  }
+}
+
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         VariableWrapper* dst_var, bool unchange_input) {
   auto& src = var->Var();
   auto* dst = dst_var->MutableVar();
   if (dst->IsType<framework::LoDTensor>()) {
     if (src.IsType<framework::LoDTensor>()) {
-      TensorAdd(src, dst);
+      TensorAdd<framework::Variable>(src, dst);
     } else if (src.IsType<pten::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
@@ -535,7 +618,7 @@ void GradientAccumulator::AccumulateGrad() {
                "previous gradient.";
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
-        TensorAdd(*src, dst);
+        TensorAdd<framework::Variable>(*src, dst);
       } else if (src->IsType<pten::SelectedRows>()) {
         SelectedRowsAddToTensor(*src, dst);
       }
