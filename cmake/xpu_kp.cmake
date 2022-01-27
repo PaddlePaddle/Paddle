@@ -27,8 +27,9 @@ message(STATUS "Build with XPU_TOOLCHAIN=" ${XPU_TOOLCHAIN})
 set(XPU_CLANG ${XPU_TOOLCHAIN}/bin/clang++)
 message(STATUS "Build with XPU_CLANG=" ${XPU_CLANG})
 
+# The host sysroot of XPU compiler is gcc-8.2 
 if(NOT HOST_SYSROOT)
-  set(HOST_SYSROOT /opt/compiler/gcc-8.2)
+  set(HOST_SYSROOT /opt/compiler/gcc-8.2) #/opt/compiler/gcc-8.2
 endif()
 
 if(NOT IS_DIRECTORY ${HOST_SYSROOT})
@@ -57,7 +58,7 @@ set(TOOLCHAIN_ARGS )
 if(OPT_LEVEL)
   set(OPT_LEVEL ${OPT_LEVEL})
 else()
-  set(OPT_LEVEL "-O2")
+  set(OPT_LEVEL "-O3")
 endif()
 
 message(STATUS "Build with API_ARCH=" ${API_ARCH})
@@ -101,9 +102,25 @@ macro(compile_kernel COMPILE_ARGS)
 
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
-  set(XPU_CXX_INCLUDES  -I${CMAKE_SOURCE_DIR}/build -I${CMAKE_SOURCE_DIR}/paddle/fluid/framework/io -I${CMAKE_SOURCE_DIR}/build/third_party/install/zlib/include -I${CMAKE_SOURCE_DIR}/build/third_party/install -I${CMAKE_SOURCE_DIR}/build/third_party/install/gflags/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/glog/include -I${CMAKE_SOURCE_DIR}/build/third_party/boost/src/extern_boost -I${CMAKE_SOURCE_DIR}/build/third_party/eigen3/src/extern_eigen3 -I${CMAKE_SOURCE_DIR}/build/third_party/threadpool/src/extern_threadpool -I${CMAKE_SOURCE_DIR}/build/third_party/dlpack/src/extern_dlpack/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xxhash/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/warpctc/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/utf8proc/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/openblas/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I${CMAKE_SOURCE_DIR}/build/third_party/pybind/src/extern_pybind/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/gtest/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xpu/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/gloo/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xbyak/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xbyak/include/xbyak -I${CMAKE_SOURCE_DIR}/build/third_party/install/cryptopp/include -I${CMAKE_SOURCE_DIR}/build/third_party/pocketfft/src -I${CMAKE_SOURCE_DIR} -I${CMAKE_SOURCE_DIR}/paddle/fluid/platform)
-  set(XPU_CXX_FLAGS  -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
-  set(XPU_CXX_DEFINES -DHPPL_STUB_FUNC -DPADDLE_DISABLE_PROFILER -DPADDLE_DLL_EXPORT -DPADDLE_USE_OPENBLAS -DPADDLE_USE_PTHREAD_BARRIER -DPADDLE_USE_PTHREAD_SPINLOCK -DPADDLE_VERSION=0.0.0 -DPADDLE_VERSION_INTEGER=0 -DPADDLE_WITH_AVX -DPADDLE_WITH_CRYPTO -DPADDLE_WITH_POCKETFFT -DPADDLE_WITH_SSE3 -DPADDLE_WITH_TESTING -DPADDLE_WITH_XBYAK -DPADDLE_WITH_XPU_KP -DPADDLE_WITH_XPU -DXBYAK64 -DXBYAK_NO_OP_NAMES)
+  set(XPU_CXX_FLAGS  -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DNDEBUG )
+
+  #include path
+  get_property(dirs DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+  set(XPU_CXX_INCLUDES "")
+  foreach(dir IN LISTS dirs)
+    list(APPEND XPU_CXX_INCLUDES "-I${dir}")
+  endforeach()
+  string(REPLACE ";" " " XPU_CXX_INCLUDES "${XPU_CXX_INCLUDES}" )
+  separate_arguments(XPU_CXX_INCLUDES UNIX_COMMAND "${XPU_CXX_INCLUDES}")
+
+  #related flags
+  get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
+  set(XPU_CXX_DEFINES "")
+  foreach(def IN LISTS DirDefs)
+    list(APPEND XPU_CXX_DEFINES "-D${def}")
+  endforeach()
+  string(REPLACE ";" " " XPU_CXX_DEFINES "${XPU_CXX_DEFINES}" )
+  separate_arguments(XPU_CXX_DEFINES UNIX_COMMAND "${XPU_CXX_DEFINES}")
 
   add_custom_command(
     OUTPUT
@@ -111,7 +128,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-    ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
+    ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
        -I.  -o kernel_build/${kernel_name}.bin.o.sec ${kernel_path}/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
@@ -132,7 +149,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-    ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
+    ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
         -I.  -o kernel_build/${kernel_name}.host.o ${kernel_path}/${kernel_name}.xpu
         --xpu-host-only -c -v 
     WORKING_DIRECTORY
@@ -181,7 +198,6 @@ macro(xpu_add_library TARGET_NAME)
 
     if(${xpu_kernel_lists_num})
         foreach(xpu_kernel IN LISTS xpu_kernel_lists)
-            message(STATUS "Process ${xpu_kernel}")
             get_filename_component(kernel_name ${xpu_kernel} NAME_WE)
             get_filename_component(kernel_dir ${xpu_kernel} DIRECTORY)
             set(kernel_rules ${kernel_dir}/${kernel_name}.rules)

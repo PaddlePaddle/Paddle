@@ -79,9 +79,8 @@ bool is_in_xpu_black_list(const std::string& op_name) {
 bool is_xpu_kp_support_op(const std::string& op_name,
                           const pOpKernelType& type) {
   auto& ops = get_kl1_ops();
-  auto v =
-      get_xpu_version(BOOST_GET_CONST(platform::XPUPlace, type.place_).device);
-  if (v == XPU2) {
+  auto v = get_xpu_version(type.place_.device);
+  if (v == pten::backends::xpu::XPUVersion::XPU2) {
     ops = get_kp_ops();
   }
 

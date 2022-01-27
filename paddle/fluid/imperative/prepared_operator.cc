@@ -243,7 +243,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (use_xpu_kp_kernel_debug) {
     VLOG(3) << "xpu_kp using debug mode ";
   }
-  if (is_xpu_place(expected_kernel_key.place_) &&
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
     expected_kernel_key.place_ = platform::XPUPlace();
     expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
